@@ -196,6 +196,23 @@ public class ExternalApiKeyObservabilityTests
     }
 
     [Test]
+    public async Task BusinessMetrics_RecordExternalApiKeyAuthentication_UsesBoundedNonSecretTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+
+        metrics.RecordExternalApiKeyAuthentication("invalid", tenantId: "unknown", ownerType: "unknown");
+
+        var measurement = await metricsCapture.SingleAsync("explore.external_api_keys.authentication_attempts");
+        await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("invalid");
+        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo("unknown");
+        await Assert.That(measurement.Tags["owner_type"]?.ToString()).IsEqualTo("unknown");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("api_key");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("secret");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("path");
+    }
+
+    [Test]
     public async Task RevokeExternalApiKeyCommandHandler_WithSuccessfulRequest_RecordsRevocationMetric()
     {
         using var metricsCapture = new MetricsCapture();

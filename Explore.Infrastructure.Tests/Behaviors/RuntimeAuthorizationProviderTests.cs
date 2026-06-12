@@ -12,6 +12,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Domain;
@@ -122,6 +123,55 @@ public class RuntimeAuthorizationProviderTests
     }
 
     [Test]
+    public async Task IsAllowedBatchAsync_WithInstanceCerbosUnavailable_AllowsSettingChecksThroughLocalAdminParity()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns<CheckResourcesResponse>(_ => throw CreateUnavailableRpcException());
+
+        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        [
+            new AuthorizationCheck(
+                ResourceKinds.InstanceSetting,
+                "storage",
+                AuthorizationActions.InstanceSettings.Update,
+                new Dictionary<string, object> { ["settingKey"] = "storage" }),
+            new AuthorizationCheck(
+                ResourceKinds.InstanceSetting,
+                "storage",
+                AuthorizationActions.InstanceSettings.View,
+                new Dictionary<string, object> { ["settingKey"] = "storage" })
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true, true]);
+        await fixture.CerbosClient.Received(1).CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithInstanceCerbosUnavailable_KeepsNonSettingChecksFailClosed()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns<CheckResourcesResponse>(_ => throw CreateUnavailableRpcException());
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            "islamuevent_tenant",
+            TestTenantId.ToString(),
+            "create");
+
+        await Assert.That(result).IsFalse();
+        await fixture.CerbosClient.Received(1).CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
     public async Task IsAllowedBatchAsync_WithInstanceCerbosMode_UsesLocalAuthorizationForAiConversations()
     {
         var fixture = CreateRuntimeProviderFixture();
@@ -145,6 +195,33 @@ public class RuntimeAuthorizationProviderTests
         ]);
 
         await Assert.That(results).IsEquivalentTo([true, true]);
+        await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithInstanceCerbosMode_UsesLocalAuthorizationForEventPreCreate()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+
+        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        [
+            new AuthorizationCheck(
+                ResourceKinds.Event,
+                CreateEventCommand.PreCreateResourceId,
+                AuthorizationActions.Create,
+                new Dictionary<string, object>
+                {
+                    ["authorizationPhase"] = CreateEventCommand.PreCreateAuthorizationPhase
+                })
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true]);
         await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
             Arg.Any<CheckResourcesRequest>(),
             Arg.Any<Metadata>());

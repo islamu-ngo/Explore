@@ -480,6 +480,38 @@ public class CerbosPolicyContractTests : IDisposable
     }
 
     [Test]
+    public async Task RegularUser_ShouldBeAllowed_EventPreCreateGate()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-regular",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_event",
+            resourceId: "create",
+            resourceAttrs: new { tenantId = "tenant-1", authorizationPhase = "pre_create" },
+            actions: ["create"]);
+
+        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW",
+            "pre-create event checks only decide whether the authenticated human request can reach CreateEventCommandHandler; EventActorResolver enforces publishing policy");
+    }
+
+    [Test]
+    public async Task MachineCaller_ShouldBeDenied_EventPreCreateGate()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "api-key-machine",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { }, is_machine = true },
+            resourceKind: "islamuevent_event",
+            resourceId: "create",
+            resourceAttrs: new { tenantId = "tenant-1", authorizationPhase = "pre_create" },
+            actions: ["create"]);
+
+        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY",
+            "machine/API-key event create is governed by scope and owner checks, not the human pre-create rule");
+    }
+
+    [Test]
     public async Task RegularUser_ShouldBeAllowed_RegisterForEvents()
     {
         var result = await _cerbos.CheckResourceAsync(

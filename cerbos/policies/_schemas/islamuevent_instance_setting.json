@@ -2,5 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Resource attributes for instance_setting resources. Instance-level settings have no tenant scope.",
   "type": "object",
-  "properties": {}
+  "properties": {
+    "settingKey": {
+      "type": "string",
+      "description": "Canonical instance setting key. Storage administration sends the bounded key 'storage' for HAL affordance checks."
+    }
+  }
 }

@@ -1,8 +1,8 @@
 // ABOUTME: Projects governed AI tool contracts into first-class MCP proposal tools.
 // ABOUTME: Keeps dynamic MCP tools registry-derived, authenticated, and proposal-first.
 
-using System.Globalization;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;

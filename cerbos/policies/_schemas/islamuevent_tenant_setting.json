@@ -11,6 +11,10 @@
       "type": "boolean",
       "description": "Whether this setting is locked by an instance admin. Used in policy condition to prevent tenant admin updates."
     },
+    "settingKey": {
+      "type": "string",
+      "description": "Canonical tenant setting key. Storage administration sends the bounded key 'storage' for HAL affordance checks."
+    },
     "documentKey": {
       "type": "string",
       "description": "Optional typed settings document key. tenant.branding is authorized before handler-level field lock validation."

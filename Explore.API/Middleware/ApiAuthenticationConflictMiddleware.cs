@@ -1,7 +1,7 @@
 // ABOUTME: Rejects API requests that send conflicting direct-auth credentials.
 // ABOUTME: Keeps auth dispatch deterministic and fail-closed before authentication handlers run.
 
-using Explore.Application.Constants;
+using Explore.API.Authentication;
 using Explore.API.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -29,7 +29,7 @@ public sealed class ApiAuthenticationConflictMiddleware
         }
 
         var hasAuthorizationHeader = context.Request.Headers.ContainsKey("Authorization");
-        var hasApiKeyHeader = context.Request.Headers.ContainsKey(ApiAuthenticationHeaderNames.ApiKey);
+        var hasApiKeyHeader = ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request);
 
         if (hasAuthorizationHeader && hasApiKeyHeader)
         {

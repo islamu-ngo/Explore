@@ -45,6 +45,30 @@ resources:
       tenantId: "tenant-1"
       isLockedByInstance: true
 
+  unlocked_storage_setting:
+    kind: "islamuevent_tenant_setting"
+    id: "tenant-1:storage"
+    attr:
+      tenantId: "tenant-1"
+      settingKey: "storage"
+      isLockedByInstance: false
+
+  locked_storage_setting:
+    kind: "islamuevent_tenant_setting"
+    id: "tenant-1:storage"
+    attr:
+      tenantId: "tenant-1"
+      settingKey: "storage"
+      isLockedByInstance: true
+
+  other_tenant_storage_setting:
+    kind: "islamuevent_tenant_setting"
+    id: "tenant-2:storage"
+    attr:
+      tenantId: "tenant-2"
+      settingKey: "storage"
+      isLockedByInstance: false
+
 tests:
   - name: "Instance admin can update locked settings"
     input:
@@ -81,6 +105,55 @@ tests:
         resource: "locked_setting"
         actions:
           view: EFFECT_ALLOW
+          update: EFFECT_DENY
+
+  - name: "Instance admin can update locked tenant storage settings"
+    input:
+      principals: ["islamuevent_instance_admin"]
+      resources: ["locked_storage_setting"]
+      actions: ["view", "update", "delete"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "locked_storage_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+
+  - name: "Tenant admin can update unlocked storage settings"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["unlocked_storage_setting"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "unlocked_storage_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+
+  - name: "Tenant admin CANNOT update locked storage settings"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["locked_storage_setting"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "locked_storage_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+
+  - name: "Tenant admin CANNOT update another tenant's storage settings"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["other_tenant_storage_setting"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "other_tenant_storage_setting"
+        actions:
+          view: EFFECT_DENY
           update: EFFECT_DENY
 
   - name: "Regular user cannot access tenant settings"

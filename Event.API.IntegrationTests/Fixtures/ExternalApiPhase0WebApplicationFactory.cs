@@ -1,6 +1,7 @@
 // ABOUTME: Test host factory for the Phase 0 external API access seam.
 // ABOUTME: Provides deterministic JWT validation, API-key config, and tenant lookup stubs for split-phase tenant tests.
 
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -18,6 +19,7 @@ using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.TestHost;
@@ -215,6 +217,41 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
 
                 services.PostConfigure<RateLimiterOptions>(options =>
                 {
+                    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                    options.OnRejected = async (ctx, token) =>
+                    {
+                        ctx.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                        if (ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                        {
+                            ctx.HttpContext.Response.Headers.RetryAfter =
+                                ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
+                        }
+
+                        ctx.HttpContext.Response.Headers["X-RateLimit-Limit"] =
+                            tokenLimit.ToString(NumberFormatInfo.InvariantInfo);
+                        ctx.HttpContext.Response.Headers["X-RateLimit-Remaining"] = "0";
+
+                        var problemDetailsService = ctx.HttpContext.RequestServices.GetService<IProblemDetailsService>();
+                        if (problemDetailsService is null)
+                        {
+                            return;
+                        }
+
+                        await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+                        {
+                            HttpContext = ctx.HttpContext,
+                            ProblemDetails = new ProblemDetails
+                            {
+                                Type = "https://tools.ietf.org/html/rfc6585#section-4",
+                                Title = "Too Many Requests",
+                                Status = StatusCodes.Status429TooManyRequests,
+                                Detail = "Rate limit exceeded. Please retry after the period indicated in the Retry-After header.",
+                                Instance = ctx.HttpContext.Request.Path
+                            }
+                        });
+                    };
+
                     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                     {
                         var apiKeyId = httpContext.User.GetApiKeyId();

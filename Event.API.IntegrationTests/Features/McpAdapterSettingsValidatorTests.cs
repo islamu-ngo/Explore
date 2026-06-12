@@ -14,9 +14,15 @@ public sealed class McpAdapterSettingsValidatorTests
     [Test]
     public void Validate_WhenDefaultsAreUsed_Succeeds()
     {
-        var result = _validator.Validate(null, new McpAdapterSettings());
+        var settings = new McpAdapterSettings();
+
+        var result = _validator.Validate(null, settings);
 
         result.Succeeded.Should().BeTrue();
+        settings.Enabled.Should().BeTrue();
+        settings.EndpointPath.Should().Be("/mcp");
+        settings.Stateless.Should().BeTrue();
+        settings.EnableLegacySse.Should().BeTrue();
     }
 
     [Test]

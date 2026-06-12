@@ -88,6 +88,16 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         return await ExecuteCheckAsync(_client, _settings.GrpcEndpoint, checks, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<bool>> IsAllowedBatchWithUnavailableSignalAsync(
+        IReadOnlyList<AuthorizationCheck> checks,
+        CancellationToken cancellationToken = default)
+    {
+        if (checks.Count == 0)
+            return [];
+
+        return await ExecuteCheckAsync(_client, _settings.GrpcEndpoint, checks, cancellationToken, throwOnUnavailable: true);
+    }
+
     /// <summary>
     /// Checks permissions against a specific Cerbos PDP endpoint (for BYO tenants).
     /// Uses <see cref="ICerbosClientFactory"/> to get a cached gRPC client for the BYO endpoint.

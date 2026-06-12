@@ -18,7 +18,15 @@
     "organizationId": {
       "type": "string",
       "description": "Owning organization identifier. Used by islamuevent_org_admin derived role."
+    },
+    "authorizationPhase": {
+      "type": "string",
+      "description": "Authorization phase marker. Event create checks use pre_create before an actor or event ID exists."
+    },
+    "groupId": {
+      "type": "string",
+      "description": "Owning group identifier for pre-create event requests. Publisher permissions are enforced by the handler."
     }
   },
-  "required": ["tenantId", "actorId"]
+  "required": ["tenantId"]
 }

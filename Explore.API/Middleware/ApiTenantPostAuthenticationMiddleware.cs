@@ -1,11 +1,11 @@
 // ABOUTME: Completes split-phase tenant handling after authentication for API-key callers and mismatch checks.
 // ABOUTME: Sets tenant context from authenticated machine principals and fail-closes when tenant hints conflict.
 
+using Explore.API.Authentication;
+using Explore.API.Configuration;
 using Explore.Application.Authentication;
-using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Telemetry;
-using Explore.API.Configuration;
 using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -40,7 +40,7 @@ public sealed class ApiTenantPostAuthenticationMiddleware
         var apiKeyPrincipal = context.User.TryGetApiKeyPrincipalContext();
         var authenticatedTenantId = apiKeyPrincipal?.TenantId;
         var requestedTenantId = ResolveRequestedTenantId(context);
-        var hasApiKeyHeader = context.Request.Headers.ContainsKey(ApiAuthenticationHeaderNames.ApiKey);
+        var hasApiKeyHeader = ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request);
 
         if (authenticatedTenantId is Guid authenticatedApiKeyTenantId &&
             requestedTenantId is Guid hintedTenantId &&

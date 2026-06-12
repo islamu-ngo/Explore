@@ -6,7 +6,9 @@
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.DTOs.Event;
 using Explore.Application.Exceptions;
+using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -204,6 +206,52 @@ public class AuthorizationBehaviorTests
             command.OrganizationId.ToString(),
             "delete",
             Arg.Is<IDictionary<string, object>?>(d => d != null && d.ContainsKey("tenantId")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WithCreateEventCommand_UsesPreCreateResourceContext()
+    {
+        var secureBehavior = new AuthorizationBehavior<CreateEventCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<CreateEventCommand, BaseCommandResponse<Guid>>>>());
+        var organizationId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Community Dinner",
+                OrganizationId = organizationId,
+                GroupId = groupId
+            }
+        };
+        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+
+        _authService.IsAllowedAsync(
+                ResourceKinds.Event,
+                CreateEventCommand.PreCreateResourceId,
+                AuthorizationActions.Create,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["authorizationPhase"].Equals(CreateEventCommand.PreCreateAuthorizationPhase)
+                    && attributes["organizationId"].Equals(organizationId.ToString())
+                    && attributes["groupId"].Equals(groupId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _authService.Received(1).IsAllowedAsync(
+            ResourceKinds.Event,
+            CreateEventCommand.PreCreateResourceId,
+            AuthorizationActions.Create,
+            Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes != null
+                && attributes["authorizationPhase"].Equals(CreateEventCommand.PreCreateAuthorizationPhase)
+                && attributes["organizationId"].Equals(organizationId.ToString())
+                && attributes["groupId"].Equals(groupId.ToString())),
             Arg.Any<CancellationToken>());
     }
 

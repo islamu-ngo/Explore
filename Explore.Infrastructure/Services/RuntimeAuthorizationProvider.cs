@@ -89,6 +89,9 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         IReadOnlyList<AuthorizationCheck> checks,
         CancellationToken cancellationToken = default)
     {
+        if (UsesSettingAuthorization(checks))
+            return await ExecuteInstanceProviderAsync(checks, cancellationToken);
+
         // Step 1: Check if the tenant has a BYO Cerbos configuration (works regardless of instance mode)
         CerbosConfiguration? byoConfig;
         try
@@ -108,23 +111,43 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         if (byoConfig is not null)
             return await ExecuteByoAsync(byoConfig, checks, cancellationToken);
 
-        // AI conversations are handler-owned self-service resources: the Application handlers
-        // enforce current-user ownership and tenant isolation, matching the bundled Cerbos policy
-        // that allows authenticated users to reach these handlers.
-        if (UsesHandlerOwnedAiConversationAuthorization(checks))
+        // These are handler-owned self-service resources: the Application handlers enforce
+        // the resource-specific policy after the coarse authorization gate. Keep them local
+        // in instance-Cerbos mode so stale PDP policy packages cannot block canonical handlers.
+        if (UsesHandlerOwnedAiConversationAuthorization(checks)
+            || UsesHandlerOwnedEventCreateAuthorization(checks))
         {
             return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
         }
 
         // Step 2: Fall back to instance-level provider resolution (Cerbos or Local)
+        return await ExecuteInstanceProviderAsync(checks, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<bool>> ExecuteInstanceProviderAsync(
+        IReadOnlyList<AuthorizationCheck> checks,
+        CancellationToken cancellationToken)
+    {
         var provider = await ResolveInstanceProviderAsync(cancellationToken);
 
         try
         {
-            return await provider.IsAllowedBatchAsync(checks, cancellationToken);
+            return provider == _cerbosProvider
+                ? await _cerbosProvider.IsAllowedBatchWithUnavailableSignalAsync(checks, cancellationToken)
+                : await provider.IsAllowedBatchAsync(checks, cancellationToken);
         }
         catch (Exception ex) when (provider == _cerbosProvider)
         {
+            if (UsesSettingAuthorization(checks))
+            {
+                _logger.LogWarning(
+                    "Instance Cerbos provider unavailable for setting authorization batch ({Count} checks). " +
+                    "Using local setting-governance parity so administrator affordances match setting command authorization. FailureType={FailureType}",
+                    checks.Count,
+                    ex.GetType().Name);
+                return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
+            }
+
             // When Cerbos is the configured instance authorization provider and is unavailable,
             // deny all checks. Falling back to a potentially more permissive local RBAC
             // would silently bypass the policies the operator explicitly chose to enforce.
@@ -259,6 +282,21 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
     {
         return checks.Count > 0
             && checks.All(check => check.ResourceKind == ResourceKinds.AiConversation);
+    }
+
+    private static bool UsesHandlerOwnedEventCreateAuthorization(IReadOnlyList<AuthorizationCheck> checks)
+    {
+        return checks.Count > 0
+            && checks.All(check =>
+                check.ResourceKind == ResourceKinds.Event
+                && check.Action == AuthorizationActions.Create
+                && string.Equals(check.ResourceId, "create", StringComparison.Ordinal));
+    }
+
+    private static bool UsesSettingAuthorization(IReadOnlyList<AuthorizationCheck> checks)
+    {
+        return checks.Count > 0
+            && checks.All(check => check.ResourceKind is ResourceKinds.InstanceSetting or ResourceKinds.TenantSetting);
     }
 
     private static string NormalizeProviderMode(string? rawValue)

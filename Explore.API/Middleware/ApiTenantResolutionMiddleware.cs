@@ -1,10 +1,11 @@
 // ABOUTME: Resolves tenant identity authoritatively inside the API host from trusted forwarded context.
 // ABOUTME: Uses slug and host hints to set the shared tenant accessor before application code touches tenant-scoped data.
 
+using Explore.API.Authentication;
+using Explore.API.Configuration;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
-using Explore.API.Configuration;
 using Explore.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -69,7 +70,7 @@ public sealed class ApiTenantResolutionMiddleware
         var resolvedTenantId = await ResolveFromSlugHeaderAsync(context, tenantSlugCache);
         resolvedTenantId ??= await ResolveFromHostAsync(context, configuration, tenantSlugCache);
 
-        var hasApiKeyHeader = context.Request.Headers.ContainsKey(ApiAuthenticationHeaderNames.ApiKey);
+        var hasApiKeyHeader = ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request);
         if (hasApiKeyHeader && !isMcpPath)
         {
             if (resolvedTenantId is Guid requestedTenantId && requestedTenantId != Guid.Empty)

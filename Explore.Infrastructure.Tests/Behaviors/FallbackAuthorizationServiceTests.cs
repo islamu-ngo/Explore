@@ -303,6 +303,60 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_EventCreateForAuthenticatedUser_AllowsHandlerPolicyEvaluation()
+    {
+        var userId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId,
+            ["authorizationPhase"] = "pre_create"
+        };
+
+        var result = await _service.IsAllowedAsync("islamuevent_event", "create", "create", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventCreateWithoutAuthenticatedUser_Denies()
+    {
+        _adminContext.UserId.Returns((Guid?)null);
+        _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId,
+            ["authorizationPhase"] = "pre_create"
+        };
+
+        var result = await _service.IsAllowedAsync("islamuevent_event", "create", "create", attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventCreateWithDifferentTenant_Denies()
+    {
+        _adminContext.UserId.Returns(Guid.NewGuid());
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = Guid.NewGuid(),
+            ["authorizationPhase"] = "pre_create"
+        };
+
+        var result = await _service.IsAllowedAsync("islamuevent_event", "create", "create", attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
     public async Task IsAllowed_EventChildWithEventContext_AllowsTenantAdmin()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);

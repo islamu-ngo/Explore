@@ -34,16 +34,10 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue(Options.HeaderName, out var headerValues))
-        {
-            return AuthenticateResult.NoResult();
-        }
-
-        var rawApiKey = headerValues.FirstOrDefault();
+        var rawApiKey = ApiKeyHeaderReader.GetFirstNonEmptyValue(Request, Options.HeaderName);
         if (string.IsNullOrWhiteSpace(rawApiKey))
         {
-            _metrics.RecordExternalApiKeyAuthentication("empty_header", tenantId: "unknown", ownerType: "unknown");
-            return AuthenticateResult.Fail("API key header is empty.");
+            return AuthenticateResult.NoResult();
         }
 
         var persistedResult = await TryAuthenticatePersistedClientAsync(rawApiKey);

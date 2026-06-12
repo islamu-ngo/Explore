@@ -106,6 +106,7 @@ public partial class FallbackAuthorizationService
             "islamuevent_organization_review" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "islamuevent_group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "islamuevent_group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
+            "islamuevent_event" when action is "create" => IsEventCreateAllowedForProfile(profile, resourceAttributes),
             "islamuevent_event" or "islamuevent_event_session" or "islamuevent_event_session_group" or "islamuevent_event_session_agenda_item" or "islamuevent_event_day" or "islamuevent_event_agenda_item"
                 => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                     && (IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
@@ -154,6 +155,14 @@ public partial class FallbackAuthorizationService
             return true;
 
         return profile.IsTenantAdmin;
+    }
+
+    private bool IsEventCreateAllowedForProfile(
+        AuthorityProfile profile,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        var tenantId = ResolveTenantId(resourceAttributes);
+        return tenantId == profile.TenantId && profile.UserId.HasValue;
     }
 
     private static bool IsOrgAdminFromProfile(

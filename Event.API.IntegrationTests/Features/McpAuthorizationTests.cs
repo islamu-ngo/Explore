@@ -71,6 +71,40 @@ public sealed class McpAuthorizationTests
     }
 
     [Test]
+    public async Task McpEndpoint_WhenStartupDefaultsAreUsed_MapsDefaultPath()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory
+        {
+            AuthorizationProviderOverride = new StubAuthorizationProvider()
+        };
+        using var client = factory.CreateClient();
+        using var request = CreateMcpRequest();
+
+        var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var toolNames = await ReadToolNamesAsync(response);
+        toolNames.Should().Contain("list_ai_tool_contracts");
+    }
+
+    [Test]
+    public async Task McpEndpoint_WithEmptyApiKeyHeader_TreatsHeaderAsAnonymous()
+    {
+        await using var factory = CreateMcpEnabledFactory();
+        using var client = factory.CreateClient();
+        using var request = CreateMcpRequest();
+        request.Headers.Add("X-API-Key", string.Empty);
+
+        var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var toolNames = await ReadToolNamesAsync(response);
+        toolNames.Should().Contain("list_ai_tool_contracts");
+        toolNames.Should().NotContain("propose_ai_tool_action");
+        toolNames.Should().NotContain("propose_create_event_draft");
+    }
+
+    [Test]
     public async Task McpEndpoint_WhenAuthenticated_ReachesMcpProtocolBoundary()
     {
         await using var factory = CreateMcpEnabledFactory();
@@ -234,6 +268,89 @@ public sealed class McpAuthorizationTests
         using var errorDocument = await ReadJsonRpcDocumentAsync(callResponse);
         errorDocument.RootElement.TryGetProperty("error", out _).Should().BeTrue(errorDocument.RootElement.GetRawText());
         errorDocument.RootElement.GetRawText().Should().NotContain(rawApiKey);
+    }
+
+    [Test]
+    public async Task McpEndpoint_RateLimiting_PartitionsAnonymousAndApiKeyTraffic()
+    {
+        const string keyId = "mcp-rate-limited-key";
+        const string secret = "mcp-rate-limited-secret";
+        var rawApiKey = ApiKeyHashing.FormatPersistedApiKey(keyId, secret);
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DeploymentMode = DeploymentMode.SingleTenant,
+            DefaultTenantId = PlatformDefaults.DefaultTenantId,
+            McpEnabled = true,
+            DisableRateLimitingInTesting = false,
+            GlobalRateLimitTokenLimit = 1,
+            GlobalRateLimitTokensPerPeriod = 1,
+            GlobalRateLimitReplenishPeriodSeconds = 60,
+            PersistedApiKeys =
+            [
+                new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
+                {
+                    KeyId = keyId,
+                    Secret = secret,
+                    TenantId = PlatformDefaults.DefaultTenantId,
+                    OwnerId = Guid.CreateVersion7(),
+                    Scopes = [ExternalApiKeyScopes.McpRead]
+                }
+            ]
+        };
+        using var client = factory.CreateClient();
+
+        using var firstAnonymousRequest = CreateMcpRequest();
+        var firstAnonymousResponse = await client.SendAsync(firstAnonymousRequest);
+
+        using var secondAnonymousRequest = CreateMcpRequest();
+        var throttledAnonymousResponse = await client.SendAsync(secondAnonymousRequest);
+
+        using var firstApiKeyRequest = CreateMcpRequest();
+        firstApiKeyRequest.Headers.Add("X-API-Key", rawApiKey);
+        var firstApiKeyResponse = await client.SendAsync(firstApiKeyRequest);
+
+        using var secondApiKeyRequest = CreateMcpRequest();
+        secondApiKeyRequest.Headers.Add("X-API-Key", rawApiKey);
+        var throttledApiKeyResponse = await client.SendAsync(secondApiKeyRequest);
+
+        firstAnonymousResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        throttledAnonymousResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        throttledAnonymousResponse.Headers.Contains("Retry-After").Should().BeTrue();
+        firstApiKeyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        throttledApiKeyResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        throttledApiKeyResponse.Headers.Contains("Retry-After").Should().BeTrue();
+    }
+
+    [Test]
+    public async Task McpEndpoint_WithInvalidApiKey_IsRateLimitedWithoutEchoingCredential()
+    {
+        const string invalidApiKey = "invalid-mcp-rate-limit-secret";
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DeploymentMode = DeploymentMode.SingleTenant,
+            DefaultTenantId = PlatformDefaults.DefaultTenantId,
+            McpEnabled = true,
+            DisableRateLimitingInTesting = false,
+            GlobalRateLimitTokenLimit = 1,
+            GlobalRateLimitTokensPerPeriod = 1,
+            GlobalRateLimitReplenishPeriodSeconds = 60
+        };
+        using var client = factory.CreateClient();
+
+        using var firstRequest = CreateMcpRequest();
+        firstRequest.Headers.Add("X-API-Key", invalidApiKey);
+        var firstResponse = await client.SendAsync(firstRequest);
+
+        using var throttledRequest = CreateMcpRequest();
+        throttledRequest.Headers.Add("X-API-Key", invalidApiKey);
+        var throttledResponse = await client.SendAsync(throttledRequest);
+        var throttledBody = await throttledResponse.Content.ReadAsStringAsync();
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        throttledResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        throttledBody.Should().NotContain(invalidApiKey);
     }
 
     [Test]

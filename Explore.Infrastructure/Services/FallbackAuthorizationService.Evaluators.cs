@@ -191,6 +191,9 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
+        if (resourceKind is "islamuevent_event" && action is "create")
+            return await EvaluateEventCreateAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken);
+
         if (!TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out var tenantId, out var eventId))
         {
             LogDecision("deny", "missing_event_context", resourceKind, resourceId, action);
@@ -221,6 +224,31 @@ public partial class FallbackAuthorizationService
 
         LogDecision("deny", "no_event_authority", resourceKind, resourceId, action);
         return false;
+    }
+
+    private async Task<bool> EvaluateEventCreateAccessAsync(
+        string resourceKind,
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        var tenantId = ResolveTenantId(resourceAttributes);
+        if (tenantId != _tenantContext.TenantId)
+        {
+            LogDecision("deny", "tenant_mismatch", resourceKind, resourceId, action);
+            return false;
+        }
+
+        var userId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (!userId.HasValue)
+        {
+            LogDecision("deny", "missing_user_id", resourceKind, resourceId, action);
+            return false;
+        }
+
+        LogDecision("allow", "authenticated_pre_create_handler_policy", resourceKind, resourceId, action);
+        return true;
     }
 
     private async Task<bool> EvaluateEventRolePermissionAsync(

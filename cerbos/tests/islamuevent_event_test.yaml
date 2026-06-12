@@ -39,6 +39,15 @@ principals:
       tenantMemberships: {}
       orgMemberships: {}
 
+  machine_user:
+    id: "api-key-machine"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      is_machine: true
+
   unrelated_islamuevent_tenant_admin:
     id: "user-unrelated-tenant"
     roles: ["islamuevent_authenticated_user"]
@@ -65,6 +74,13 @@ resources:
       tenantId: "tenant-1"
       actorId: "actor-1"
       organizationId: "org-1"
+
+  event_pre_create:
+    kind: "islamuevent_event"
+    id: "create"
+    attr:
+      tenantId: "tenant-1"
+      authorizationPhase: "pre_create"
 
 tests:
   - name: "Instance admin can do everything on events"
@@ -122,6 +138,21 @@ tests:
           create: EFFECT_DENY
           update: EFFECT_DENY
           delete: EFFECT_DENY
+
+  - name: "Regular user can pass event pre-create gate but machine caller cannot"
+    input:
+      principals: ["regular_user", "machine_user"]
+      resources: ["event_pre_create"]
+      actions: ["create"]
+    expected:
+      - principal: "regular_user"
+        resource: "event_pre_create"
+        actions:
+          create: EFFECT_ALLOW
+      - principal: "machine_user"
+        resource: "event_pre_create"
+        actions:
+          create: EFFECT_DENY
 
   - name: "Unrelated tenant admin cannot manage events in different tenant"
     input:

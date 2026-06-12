@@ -98,6 +98,40 @@ public class CerbosGrpcSdkTests : IDisposable
         AssertEffect(result, "delete", Effect.Deny);
     }
 
+    [Test]
+    public async Task GrpcSdk_RegularUser_ShouldPassEventPreCreateGate()
+    {
+        var principal = BuildRegularUserPrincipal();
+        var resource = ResourceEntry
+            .NewInstance("islamuevent_event", "create")
+            .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
+            .WithAttribute("authorizationPhase", AttributeValue.StringValue("pre_create"))
+            .WithActions("create");
+
+        var response = await SendCheckResourcesAsync(principal, resource);
+        var result = response.Find("create")!;
+
+        AssertEffect(result, "create", Effect.Allow,
+            "human event pre-create checks are allowed through to CreateEventCommandHandler, where EventActorResolver enforces publishing policy");
+    }
+
+    [Test]
+    public async Task GrpcSdk_MachineCaller_ShouldNotPassHumanEventPreCreateGate()
+    {
+        var principal = BuildMachinePrincipal();
+        var resource = ResourceEntry
+            .NewInstance("islamuevent_event", "create")
+            .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
+            .WithAttribute("authorizationPhase", AttributeValue.StringValue("pre_create"))
+            .WithActions("create");
+
+        var response = await SendCheckResourcesAsync(principal, resource);
+        var result = response.Find("create")!;
+
+        AssertEffect(result, "create", Effect.Deny,
+            "machine/API-key event create is governed by scope and owner checks, not the human pre-create rule");
+    }
+
     #endregion
 
     #region Tenant Admin via gRPC SDK
@@ -288,6 +322,14 @@ public class CerbosGrpcSdkTests : IDisposable
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(false))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()));
+
+    private static Principal BuildMachinePrincipal() =>
+        Principal
+            .NewInstance("api-key-machine-grpc", "islamuevent_authenticated_user")
+            .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(false))
+            .WithAttribute("tenantMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()))
+            .WithAttribute("orgMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()))
+            .WithAttribute("is_machine", AttributeValue.BoolValue(true));
 
     private static Principal BuildTenantAdminPrincipal(string tenantId) =>
         Principal

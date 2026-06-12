@@ -12,8 +12,8 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
-using Explore.Application.Responses;
 using Explore.Application.Models;
+using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Ai;
@@ -482,6 +482,40 @@ public sealed class McpProtocolContractTests
                 .Count(message => message.Role == AiMessageRole.User && message.CreatedAt >= sinceUtc);
 
             return Task.FromResult(count);
+        }
+
+        public Task<int> ReleaseStaleRunningConversationsForUserAsync(
+            Guid userId,
+            DateTime staleBeforeUtc,
+            string failureCode,
+            string failureMessage,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
+        {
+            var staleConversations = TenantConversations
+                .Where(conversation => conversation.UserId == userId)
+                .Where(conversation => conversation.Status == AiConversationStatus.Running)
+                .Where(conversation => conversation.Runs.Any(run =>
+                    run.Status is AiRunStatus.Queued or AiRunStatus.InProgress
+                    && (run.StartedAt ?? run.QueuedAt) <= staleBeforeUtc))
+                .Where(conversation => !conversation.Runs.Any(run =>
+                    run.Status is AiRunStatus.Queued or AiRunStatus.InProgress
+                    && (run.StartedAt ?? run.QueuedAt) > staleBeforeUtc))
+                .ToList();
+
+            foreach (var conversation in staleConversations)
+            {
+                foreach (var run in conversation.Runs.Where(run =>
+                    run.Status is AiRunStatus.Queued or AiRunStatus.InProgress
+                    && (run.StartedAt ?? run.QueuedAt) <= staleBeforeUtc))
+                {
+                    run.Fail(failureCode, failureMessage, utcNow);
+                }
+
+                conversation.Activate(utcNow);
+            }
+
+            return Task.FromResult(staleConversations.Count);
         }
 
         public Task<int> CountRunningConversationsForUserAsync(Guid userId, CancellationToken cancellationToken)

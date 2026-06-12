@@ -57,7 +57,7 @@ public static class AuthenticationExtensions
             {
                 options.ForwardDefaultSelector = context =>
                 {
-                    if (context.Request.Headers.ContainsKey(ApiAuthenticationHeaderNames.ApiKey))
+                    if (ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request))
                     {
                         return ApiAuthenticationSchemeNames.ApiKey;
                     }
