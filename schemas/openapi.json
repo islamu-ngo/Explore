@@ -22922,6 +22922,182 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/instance/settings/ai-assistant": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get AI Assistant Governance Settings",
+        "description": "Returns instance AI assistant defaults and tenant override lock settings.",
+        "operationId": "GetInstanceAiAssistantGovernanceSettings",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiAssistantGovernanceSettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiAssistantGovernanceSettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiAssistantGovernanceSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update AI Assistant Governance Settings",
+        "description": "Updates instance AI assistant defaults and tenant override lock settings. Requires instance administrator.",
+        "operationId": "UpdateInstanceAiAssistantGovernanceSettings",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AiAssistantGovernanceSettingsDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AiAssistantGovernanceSettingsDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AiAssistantGovernanceSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/instance/settings/mcp": {
       "get": {
         "tags": [
@@ -39877,6 +40053,24 @@
               "string"
             ]
           },
+          "actorContexts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "actorId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "actorType": {
+                  "type": "string"
+                },
+                "actorDisplayName": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "models": {
             "type": "array",
             "items": {
@@ -39978,6 +40172,41 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "AiAssistantGovernanceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "endpointUrl": {
+            "type": "string"
+          },
+          "apiKey": {
+            "type": "string"
+          },
+          "modelId": {
+            "type": "string"
+          },
+          "allowedModelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowAnonymousAccess": {
+            "type": "boolean"
+          },
+          "toolProposalsEnabled": {
+            "type": "boolean"
+          },
+          "lockTenantAiAssistant": {
+            "type": "boolean"
           }
         }
       },
@@ -54209,6 +54438,24 @@
               "string"
             ]
           },
+          "actorContexts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "actorId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "actorType": {
+                  "type": "string"
+                },
+                "actorDisplayName": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "models": {
             "type": "array",
             "items": {
@@ -59770,6 +60017,37 @@
           "lockTenantStorage": {
             "type": "boolean"
           },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "routeKey": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "maxUploadBytes": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int64"
+                },
+                "providerSource": {
+                  "type": "string"
+                },
+                "maxUploadSource": {
+                  "type": "string"
+                },
+                "isReadOnly": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
           "s3Endpoint": {
             "type": "string"
           },
@@ -59849,6 +60127,37 @@
               },
               "quotaSource": {
                 "type": "string"
+              },
+              "routes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "routeKey": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "maxUploadBytes": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int64"
+                    },
+                    "providerSource": {
+                      "type": "string"
+                    },
+                    "maxUploadSource": {
+                      "type": "string"
+                    },
+                    "isReadOnly": {
+                      "type": "boolean"
+                    }
+                  }
+                }
               }
             }
           },
@@ -61671,6 +61980,37 @@
           "tenantStorageLocked": {
             "type": "boolean"
           },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "routeKey": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "maxUploadBytes": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int64"
+                },
+                "providerSource": {
+                  "type": "string"
+                },
+                "maxUploadSource": {
+                  "type": "string"
+                },
+                "isReadOnly": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
           "s3Endpoint": {
             "type": "string"
           },
@@ -61750,6 +62090,37 @@
               },
               "quotaSource": {
                 "type": "string"
+              },
+              "routes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "routeKey": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "maxUploadBytes": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int64"
+                    },
+                    "providerSource": {
+                      "type": "string"
+                    },
+                    "maxUploadSource": {
+                      "type": "string"
+                    },
+                    "isReadOnly": {
+                      "type": "boolean"
+                    }
+                  }
+                }
               }
             }
           },
@@ -62247,6 +62618,12 @@
           },
           "quotaSource": {
             "type": "string"
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorageRouteSettingsDto"
+            }
           }
         }
       },
@@ -62358,6 +62735,12 @@
           },
           "lockTenantStorage": {
             "type": "boolean"
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorageRouteSettingsDto"
+            }
           },
           "s3Endpoint": {
             "type": "string"
@@ -66342,6 +66725,22 @@
           },
           "idempotencyKey": {
             "type": "string"
+          },
+          "actorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "modelId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mode": {
+            "type": "string"
           }
         }
       },
@@ -66867,6 +67266,34 @@
           }
         }
       },
+      "StorageRouteSettingsDto": {
+        "type": "object",
+        "properties": {
+          "routeKey": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "maxUploadBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "providerSource": {
+            "type": "string"
+          },
+          "maxUploadSource": {
+            "type": "string"
+          },
+          "isReadOnly": {
+            "type": "boolean"
+          }
+        }
+      },
       "StorageUploadSessionDto": {
         "required": [
           "provider",
@@ -66895,6 +67322,23 @@
           },
           "provider": {
             "type": "string"
+          },
+          "routeKey": {
+            "type": "string"
+          },
+          "policyMaxUploadBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "policyVersion": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "expectedSizeBytes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -67925,6 +68369,12 @@
           "aiAssistantModelId": {
             "type": "string"
           },
+          "aiAssistantAllowedModelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "aiAssistantAllowAnonymousAccess": {
             "type": "boolean"
           },
@@ -67980,6 +68430,12 @@
           },
           "quotaSource": {
             "type": "string"
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorageRouteSettingsDto"
+            }
           }
         }
       },
@@ -68017,6 +68473,12 @@
           },
           "tenantStorageLocked": {
             "type": "boolean"
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorageRouteSettingsDto"
+            }
           },
           "s3Endpoint": {
             "type": "string"
@@ -70891,6 +71353,12 @@
           },
           "aiAssistantModelId": {
             "type": "string"
+          },
+          "aiAssistantAllowedModelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "aiAssistantAllowAnonymousAccess": {
             "type": "boolean"

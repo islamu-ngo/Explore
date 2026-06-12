@@ -9,7 +9,7 @@ Deferred / not implemented.
 
 ## Context
 
-Phase 12 improved MCP debuggability for the existing API-hosted adapter. The supported product adapter is still disabled by default, API-key-first for scoped external clients, tenant-resolved for tenant/private capabilities, registry-backed, stateless Streamable HTTP through `Explore.API`, and anonymous-safe only for explicit registry discovery.
+Phase 12 improved MCP debuggability for the existing API-hosted adapter. The supported product adapter is mapped by default at `/mcp` unless startup disables it, API-key-first for scoped external clients, tenant-resolved for tenant/private capabilities, registry-backed, stateless Streamable HTTP through `Explore.API`, and anonymous-safe only for explicit registry discovery.
 
 `stdio` is useful for local developer tools, but it has different safety constraints than HTTP with explicit auth/tenant context:
 

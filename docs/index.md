@@ -6,25 +6,38 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 > **Audience:** Operators | Contributors | Admins | Integrators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-05-28
-> **Source Anchors:** `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `.github/workflows/agent-context.yml`
+> **Last Verified:** 2026-06-12
+> **Source Anchors:** `README.md`, `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `.github/workflows/agent-context.yml`
 
-## Audience Paths
+Start with [README.md](../README.md) if you are new to the project. Use this page when you already know your task or need the complete documentation inventory.
 
-| Audience | Start Here | Then Read |
+## Task Paths
+
+| I need to... | Start Here | Then Read |
 |---|---|---|
-| Evaluators | [README.md](../README.md), [PROJECT.md](PROJECT.md) | [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md), [SELF_HOSTING.md](SELF_HOSTING.md) |
-| Operators | [SELF_HOSTING.md](SELF_HOSTING.md) | [CONFIGURATION.md](CONFIGURATION.md), [SECRETS.md](SECRETS.md), [STORAGE.md](STORAGE.md), [EMAIL_NOTIFICATIONS.md](EMAIL_NOTIFICATIONS.md), [NOTIFICATIONS.md](NOTIFICATIONS.md), [SEO.md](SEO.md), [OPERATIONS.md](OPERATIONS.md), [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md), [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) |
-| Admins | [ADMIN_GUIDE.md](ADMIN_GUIDE.md) | [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md), [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md), [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [TEMPLATE_SYNC.md](TEMPLATE_SYNC.md), [CONTACT_SHARING.md](CONTACT_SHARING.md), [NOTIFICATIONS.md](NOTIFICATIONS.md), [SEO.md](SEO.md), [STORAGE.md](STORAGE.md), [EMAIL_NOTIFICATIONS.md](EMAIL_NOTIFICATIONS.md) |
-| Integrators | [API_COOKBOOK.md](API_COOKBOOK.md) | [API.md](API.md), [CONTACT_SHARING.md](CONTACT_SHARING.md), [NOTIFICATIONS.md](NOTIFICATIONS.md), [SEO.md](SEO.md), [API_CHANGELOG.md](API_CHANGELOG.md), [SECURITY.md](SECURITY.md), [CONFIGURATION.md](CONFIGURATION.md) |
-| Contributors | [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md), [CONTRIBUTING.md](CONTRIBUTING.md) | [TESTING.md](TESTING.md), [BENCHMARKS.md](BENCHMARKS.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [DOCUMENTATION_STYLE_GUIDE.md](DOCUMENTATION_STYLE_GUIDE.md) |
-| AI agents | [../AGENTS.md](../AGENTS.md), [../AGENTS.md](../AGENTS.md) | [../.claude/contract/README.md](../.claude/contract/README.md), [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml), [../dev/_journal/README.md](../dev/_journal/README.md) |
+| Understand the product and current scope | [PROJECT.md](PROJECT.md) | [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
+| Run the app locally | [GETTING_STARTED.md](GETTING_STARTED.md) | [TESTING.md](TESTING.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
+| Self-host or operate a deployment | [SELF_HOSTING.md](SELF_HOSTING.md) | [CONFIGURATION.md](CONFIGURATION.md), [SECRETS.md](SECRETS.md), [OPERATIONS.md](OPERATIONS.md), [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) |
+| Troubleshoot a failure | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | [OPERATIONS.md](OPERATIONS.md), [CONFIGURATION.md](CONFIGURATION.md), [TEST_RELIABILITY.md](TEST_RELIABILITY.md) |
+| Configure tenants, admins, or branding | [ADMIN_GUIDE.md](ADMIN_GUIDE.md) | [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md), [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md), [MULTI_TENANCY.md](MULTI_TENANCY.md) |
+| Integrate with the API | [API_COOKBOOK.md](API_COOKBOOK.md) | [API.md](API.md), [API_CHANGELOG.md](API_CHANGELOG.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
+| Change authorization or Cerbos behavior | [AUTHORIZATION.md](AUTHORIZATION.md) | [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [SECURITY-MODEL.md](SECURITY-MODEL.md), [OPERATIONS.md](OPERATIONS.md) |
+| Contribute code or docs | [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md) | [CONTRIBUTING.md](CONTRIBUTING.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [TESTING.md](TESTING.md) |
+| Work on Blazor UI | [BLAZOR.md](BLAZOR.md) | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), [ACCESSIBILITY.md](ACCESSIBILITY.md), [RENDER_POLICIES.md](RENDER_POLICIES.md) |
+| Use an AI coding agent | [../AGENTS.md](../AGENTS.md) | [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [../dev/_journal/README.md](../dev/_journal/README.md) |
+
+## How To Use This Index
+
+- Prefer the task path first, then use the full inventory below only when you need a specific reference.
+- Treat how-to pages as workflows and reference pages as the exact source for keys, contracts, commands, and runtime behavior.
+- If two docs disagree, prefer the page with source anchors to code, infrastructure, tests, or workflows, then fix the stale page.
 
 ## Read First
-- [README.md](../README.md) - product overview and quick start.
-- [GETTING_STARTED.md](GETTING_STARTED.md) - short local build, run, and first-contribution path.
-- [AGENTS.md](../AGENTS.md) - project rules used by contributors and AI agents.
+
+- [README.md](../README.md) - product overview and top-level route into the docs.
+- [GETTING_STARTED.md](GETTING_STARTED.md) - shortest local build, run, and first-contribution path.
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - implementation constraints that are easy to violate.
+- [AGENTS.md](../AGENTS.md) - contribution contract used by contributors and AI agents.
 
 ## Core Architecture
 - [ARCHITECTURE.md](ARCHITECTURE.md) - layer boundaries, BFF model, CQRS flow.
@@ -57,7 +70,6 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 
 ## AI Agent Contribution Context
 - [../AGENTS.md](../AGENTS.md) - tool-neutral entrypoint, Contribution Contract, rule authority, cold-start flow.
-- [../AGENTS.md](../AGENTS.md) - Claude Code-specific bootloader.
 - [../.claude/contract/README.md](../.claude/contract/README.md) - Contribution Contract (eight questions every change must answer).
 - [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml) - intent → context map (paths, rules, skills, tests, docs).
 - [../.claude/rules/README.md](../.claude/rules/README.md) - path-scoped rule files auto-loaded by editing scope.

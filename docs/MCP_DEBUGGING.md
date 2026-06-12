@@ -8,7 +8,7 @@ ABOUTME: Provides secret-free Inspector, VS Code, Copilot, JSON-RPC, and compati
 > **Last Verified:** 2026-06-07
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Mcp/*`, `Event.API.IntegrationTests/Features/McpProtocolContractTests.cs`, `docs/adr/ADR-010-mcp-adapter-hosting-strategy.md`
 
-This runbook is for debugging the optional API-hosted Model Context Protocol (MCP) adapter. It does **not** change the product boundary: MCP stays disabled by default, stateless, API-key-first for external clients, registry-backed, and proposal-first. No credentials or invalid API keys may see only the explicitly anonymous-safe registry discovery surface; scoped tools/resources/prompts still require a valid authenticated context.
+This runbook is for debugging the optional API-hosted Model Context Protocol (MCP) adapter. It does **not** change the product boundary: MCP is mapped by default at `/mcp`, stateless, API-key-first for external clients, registry-backed, and proposal-first. No credentials, a blank API-key header, or invalid API keys may see only the explicitly anonymous-safe registry discovery surface; scoped tools/resources/prompts still require a valid authenticated context.
 
 ## Safe Local Posture
 
@@ -18,11 +18,11 @@ Required configuration for local MCP debugging:
 
 | Setting | Required value | Why |
 |---|---|---|
-| `Mcp:Enabled` | `true` | Maps the local `/mcp` endpoint for the debugging session only. |
+| `Mcp:Enabled` | `true` or unset default | Maps the local `/mcp` endpoint. Set `false` only when you intentionally want the endpoint unmapped. |
 | `mcp.enabled` | `true` or unset default | Runtime governance must also allow the adapter. If a mapped endpoint returns `404`, check this instance/tenant setting before debugging tools. |
 | `Mcp:Stateless` | `true` | Keeps Streamable HTTP stateless; no session affinity or `Mcp-Session-Id`. |
-| `Mcp:EnableLegacySse` | `false` | Legacy SSE remains unavailable at runtime. A true startup value is only a ceiling for future governance, not an automatic runtime transport change. |
-| `mcp.enable_legacy_sse` | `false` | Records runtime intent only; it does not expose legacy SSE in the current adapter. |
+| `Mcp:EnableLegacySse` | `true` or unset default | Legacy SSE remains unavailable at runtime. The true startup value is only a ceiling for future governance, not an automatic runtime transport change. |
+| `mcp.enable_legacy_sse` | `false` or unset default | Records runtime intent only; it does not expose legacy SSE in the current adapter. |
 | Auth | prefer one `X-API-Key` | Normal external MCP smoke uses a disposable API key. Bearer tokens are allowed only for user-delegated local smoke. Do not send both. |
 | Tenant binding | normal API edge binding | Anonymous or invalid-key reads still need a resolved tenant in multi-tenant mode. A valid tenant-bound API key may provide tenant context. |
 
@@ -33,7 +33,7 @@ ASPNETCORE_ENVIRONMENT=Development \
 Mcp__Enabled=true \
 Mcp__EndpointPath=/mcp \
 Mcp__Stateless=true \
-Mcp__EnableLegacySse=false \
+Mcp__EnableLegacySse=true \
 dotnet run --project Explore.API/Explore.API.csproj --configuration Debug --urls http://127.0.0.1:<redacted-port>
 ```
 
@@ -41,6 +41,8 @@ Runtime governance checks:
 
 - `Mcp:Enabled=false` means `/mcp` is not mapped and requires an API restart after changing startup configuration.
 - `Mcp:Enabled=true` plus `mcp.enabled=false` means the path is mapped but the runtime gate returns `404` without exposing MCP details.
+- MCP clients that render an optional API-key field as `"X-API-Key": ""` are treated the same as no API key. Remove the header or leave it blank for anonymous-safe discovery.
+- Invalid, revoked, or missing API keys can still reach anonymous-safe discovery only, but they remain rate-limited by remote IP. Repeated bad-key smoke attempts should produce `429`/`Retry-After` without echoing the credential.
 - Instance admins configure `mcp.enabled`, `mcp.enable_legacy_sse`, `governance.lock_tenant_mcp`, and `governance.lock_tenant_mcp_legacy_sse` from instance administration. Tenant admins see MCP overrides only when the corresponding lock is open.
 - Endpoint path and stateless mode are never runtime settings. Legacy SSE remains unavailable even when both startup and runtime legacy-SSE values are true.
 - `/health/ready` exposes only bounded MCP booleans such as `startupEnabled`, `runtimeEnabled`, `legacySseRuntimeRequested`, and `legacySseRuntimeEnabled`; it must not include tenant IDs, endpoint URLs, keys, prompts, or raw protocol bodies.
@@ -123,7 +125,7 @@ npx -y @modelcontextprotocol/inspector
 Inspector checklist:
 
 1. Connect to `http://127.0.0.1:<redacted-port>/mcp`.
-2. Configure `X-API-Key` for scoped smoke, leave credentials blank for anonymous-safe discovery, or use a bearer token only for user-delegated local smoke. Do not configure both bearer and API key.
+2. Configure `X-API-Key` for scoped smoke, leave credentials blank for anonymous-safe discovery, or use a bearer token only for user-delegated local smoke. Do not configure both bearer and API key. Valid keys are rate-limited by key ID; missing/invalid/revoked keys are rate-limited by remote IP.
 3. Include the same tenant binding used by the API edge when multi-tenant routing is active. A valid tenant-bound API key can provide tenant context; anonymous/no-key smoke still needs trusted tenant binding outside single-tenant mode.
 4. If the client receives `404`, check the startup ceiling (`Mcp:Enabled`) and runtime setting (`mcp.enabled`) before investigating client headers.
 5. Initialize the connection and list tools, resources, resource templates, and prompts.
@@ -223,7 +225,7 @@ Before upgrading `ModelContextProtocol.AspNetCore` or supporting new client-visi
 2. Rerun focused MCP API integration tests.
 3. Rerun `ai-replay-report` and advisory evals when relevant.
 4. Repeat redacted Inspector smoke if endpoint behavior changed.
-5. Verify docs still say startup-disabled-by-default, runtime-governed, stateless, API-key-first for external clients, anonymous-safe only without a valid key, registry-backed, and proposal-first.
+5. Verify docs still say startup default `/mcp`, runtime-governed, stateless, API-key-first for external clients, anonymous-safe only without a valid key, registry-backed, and proposal-first.
 6. Keep rollback simple: set runtime `mcp.enabled=false` for immediate shutdown or set `Mcp:Enabled=false` plus restart to unmap the endpoint.
 
 Unsupported without a new ADR/task: stateful sessions, legacy SSE, server-to-client requests, sampling, elicitation, roots, completions, subscriptions, list-changed notifications, remote tool import/execution, direct repository mutation, and product stdio hosting.

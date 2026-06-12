@@ -22,7 +22,7 @@ Current repository evidence:
 
 ## Decision
 
-Host the initial MCP adapter inside `Explore.API` as an optional, disabled-by-default ASP.NET Core endpoint using the official `ModelContextProtocol.AspNetCore` package and stateless Streamable HTTP transport.
+Host the MCP adapter inside `Explore.API` as an optional ASP.NET Core endpoint, mapped by default at `/mcp` unless startup `Mcp:Enabled=false`, using the official `ModelContextProtocol.AspNetCore` package and stateless Streamable HTTP transport.
 
 The adapter is an API presentation adapter over the existing Application registry and MediatR flows:
 
@@ -64,7 +64,7 @@ Before enabling any new MCP protocol capability, complete an ADR/task review tha
 - protocol-version upgrades, new required headers, or client-specific behavior differences;
 - any change that treats SDK annotations as authorization or execution authority rather than non-binding hints.
 
-The default answer to compatibility pressure is to keep `Mcp:Enabled=false` or keep the current stateless surface unchanged until the review and targeted smoke tests pass.
+The default answer to compatibility pressure is to keep the current stateless surface unchanged, or explicitly set `Mcp:Enabled=false` for that deployment, until the review and targeted smoke tests pass.
 
 ## Authentication And Tenancy
 

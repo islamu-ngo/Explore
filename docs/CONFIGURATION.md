@@ -113,8 +113,8 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 | `AiProvider:Enabled` | `false` | Enables provider readiness evaluation. Disabled reports healthy-disabled and performs no provider network call. |
 | `AiProvider:Provider` | `none` | Supported values: `none`, `fake`, `openai-compatible`, `openai-sdk`, and `azure-openai`. SDK-backed modes are opt-in; `openai-compatible` remains the generic/self-hosted fallback. |
 | `AiProvider:EndpointUrl` | unset | Admin/deployment-controlled provider base URL. Required for `openai-compatible` and `azure-openai`; Azure OpenAI must use HTTPS. Must have no embedded credentials, query string, or fragment. Local/private endpoints require explicit opt-in. |
-| `AiProvider:ApiKey` | unset | Sensitive provider credential. Never expose in browser payloads, health data, logs, metrics, traces, screenshots, or issue templates. |
-| `AiProvider:ModelId` | unset | Default model identifier for the concrete adapter. For Azure OpenAI this is the deployment name passed to the Azure SDK. Health/metrics use only boolean presence flags, not the raw model ID. |
+| `AiProvider:ApiKey` | unset | Sensitive provider credential. Optional for local/self-hosted OpenAI-compatible endpoints that do not require authentication; required only for providers that enforce API-key authentication. Never expose in browser payloads, health data, logs, metrics, traces, screenshots, or issue templates. |
+| `AiProvider:ModelId` | unset | Default model identifier for the concrete adapter. Required for OpenAI-compatible, OpenAI SDK, and Azure OpenAI providers when enabled. For Azure OpenAI this is the deployment name passed to the Azure SDK. Health/metrics use only boolean presence flags, not the raw model ID. |
 | `AiProvider:AzureCredentialMode` | `api-key` | Azure OpenAI credential mode: `api-key` or `default-azure-credential`. Prefer `default-azure-credential` for Azure-hosted deployments with managed identity. |
 | `AiProvider:AzureTenantId` | unset | Optional tenant ID used to constrain `DefaultAzureCredential` for Azure OpenAI. Leave unset for the SDK default chain. |
 | `AiProvider:AllowLocalProviderEndpoints` | `false` | Allows loopback/link-local/private provider URLs for deliberate self-hosted/local-model deployments. Keep `false` for public SaaS/provider endpoints. |
@@ -127,14 +127,14 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 
 ### MCP Adapter Static Configuration
 
-The Model Context Protocol adapter is optional and disabled by default. The API composes the official MCP SDK services, but maps the Streamable HTTP endpoint only when explicitly enabled. Use [MCP_DEBUGGING.md](MCP_DEBUGGING.md) for redacted local client templates and smoke guidance. It remains an adapter over the AI Tool Contract Registry rather than a second tool authority. The implementation wires configuration, health, endpoint registration, read-only registry discovery, first-class registry-projected proposal tools, safe AI conversation resources, a confirmation prompt, and proposal-first tool mutation through the normal MediatR/API confirmation path.
+The Model Context Protocol adapter is enabled by default in development and self-hosted startup configuration, unless `Mcp:Enabled=false`/`MCP_ENABLED=false` is set. The API composes the official MCP SDK services and maps the Streamable HTTP endpoint at `/mcp` by default. Use [MCP_DEBUGGING.md](MCP_DEBUGGING.md) for redacted local client templates and smoke guidance. It remains an adapter over the AI Tool Contract Registry rather than a second tool authority. The implementation wires configuration, health, endpoint registration, read-only registry discovery, first-class registry-projected proposal tools, safe AI conversation resources, a confirmation prompt, and proposal-first tool mutation through the normal MediatR/API confirmation path.
 
 | Key | Default | Description |
 |---|---:|---|
-| `Mcp:Enabled` | `false` | Enables the API-hosted MCP endpoint. Keep disabled unless an operator intentionally exposes MCP. |
+| `Mcp:Enabled` | `true` | Enables the API-hosted MCP endpoint. Set `false` only when the endpoint must be unmapped at startup. |
 | `Mcp:EndpointPath` | `/mcp` | Route prefix for the Streamable HTTP MCP endpoint. Bare values such as `mcp` are normalized to `/mcp` before validation and endpoint mapping. |
 | `Mcp:Stateless` | `true` | Uses stateless Streamable HTTP so API replicas do not require MCP session affinity. Startup validation rejects `false`. |
-| `Mcp:EnableLegacySse` | `false` | Startup ceiling for future legacy-SSE governance only. Runtime legacy SSE remains unavailable and the health check reports `legacySseRuntimeEnabled=false`. |
+| `Mcp:EnableLegacySse` | `true` | Startup ceiling for future legacy-SSE governance only. Runtime legacy SSE remains unavailable and the health check reports `legacySseRuntimeEnabled=false`. |
 
 Runtime MCP governance is stored in the hierarchical settings cascade. These values can disable an already mapped startup endpoint without restarting the API, but they cannot map a new endpoint when `Mcp:Enabled=false` at startup and cannot make endpoint path/stateless mode runtime-editable.
 
@@ -149,12 +149,12 @@ MCP must not expose provider credentials, endpoint URLs, model IDs, prompts, pro
 
 Operational expectations:
 
-- Keep `Mcp:Enabled=false` unless an operator intentionally exposes the API-hosted endpoint to trusted MCP clients. Once the endpoint is mapped at startup, use `mcp.enabled=false` for runtime rollback without restart.
+- Keep `Mcp:Enabled=true` or unset for the default local/self-hosted endpoint at `/mcp`. Use `mcp.enabled=false` for runtime rollback without restart, or set startup `Mcp:Enabled=false` only when the endpoint must be unmapped.
 - Keep `Mcp:EndpointPath` and `Mcp:Stateless` startup-only. Runtime/admin settings must not change route shape or session posture after startup.
 - Keep `Mcp:Stateless=true`; the initial adapter is designed for stateless Streamable HTTP and API replicas without MCP session affinity. Startup validation rejects `false`.
-- Keep `Mcp:EnableLegacySse=false` in normal deployments. A true value is accepted only as a startup ceiling for future governance; the current runtime does not enable legacy SSE because the SDK's legacy mode requires stateful in-memory sessions and weaker backpressure than Streamable HTTP.
+- `Mcp:EnableLegacySse` defaults to `true` as a startup ceiling for future governance, but the current runtime does not enable legacy SSE because the SDK's legacy mode requires stateful in-memory sessions and weaker backpressure than Streamable HTTP.
 - Do not add a product `stdio` MCP host to the API deployment. `stdio` remains deferred by [ADR-011](adr/ADR-011-local-mcp-stdio-diagnostic-host.md) unless a future local-only diagnostic host is separately approved and verified.
-- Treat MCP as API-key-first for external clients. The endpoint is mapped anonymously so SDK authorization filters can expose explicitly anonymous-safe registry discovery, while scope-aware MCP authorization policies and normal MediatR authorization still gate scoped operations. Valid `X-API-Key` requests with `mcp:read` can use MCP read resources, `mcp:propose` is required to discover/call proposal tools or proposal prompts, and no key, invalid keys, or revoked keys can use only anonymous-safe capabilities.
+- Treat MCP as API-key-first for external clients. The endpoint is mapped anonymously so SDK authorization filters can expose explicitly anonymous-safe registry discovery, while scope-aware MCP authorization policies and normal MediatR authorization still gate scoped operations. Valid `X-API-Key` requests with `mcp:read` can use MCP read resources, `mcp:propose` is required to discover/call proposal tools or proposal prompts, and no key, invalid keys, or revoked keys can use only anonymous-safe capabilities. Valid MCP API-key traffic is rate-limited per key ID; no-key, invalid-key, and revoked-key traffic remains rate-limited per remote IP and must not echo credentials in `429` bodies.
 - Keep SDK registration explicit. The API host uses `WithTools<T>()`, `WithResources<T>()`, `WithPrompts<T>()`, and registry-projected tool options instead of assembly-wide discovery so transport/startup behavior remains reviewable and avoids avoidable reflection pressure. Native AOT compatibility is not promised until a dedicated publish profile is added and tested.
 - Treat projected `propose_*` MCP tools as ergonomic wrappers only. Their payload fields come from ATCR JSON schemas, SDK annotations are hints, and execution still persists a proposed action for API/HAL confirmation.
 - Treat MCP protocol evolution as ADR-gated. There is no configuration-only switch for stateful sessions, resource subscriptions, sampling, elicitation, roots, progress notifications, list-changed notifications, or client-specific compatibility shims.
@@ -311,7 +311,7 @@ Important safety behavior:
 `Explore.API.Extensions.ConfigurationExtensions` maps compatibility names into canonical .NET keys. Most mappings use `TrySet`, so existing canonical keys are not overwritten; `CERBOS_GRPC_ENDPOINT` explicitly assigns `Cerbos:GrpcEndpoint` when present.
 
 - `DEPLOYMENT_MODE` (Infisical `/api`) -> `Deployment:Mode` (`single_tenant`/`multi_tenant` normalized to `SingleTenant`/`MultiTenant`)
-- `MCP_ENABLED`, `MCP_ENDPOINT_PATH`, `MCP_STATELESS`, `MCP_ENABLE_LEGACY_SSE` (Infisical `/api` or `/mcp`) -> `Mcp:Enabled`, `Mcp:EndpointPath`, `Mcp:Stateless`, `Mcp:EnableLegacySse`; bare endpoint paths such as `mcp` normalize to `/mcp`, and `MCP_ENABLE_LEGACY_SSE` is a startup ceiling only
+- `MCP_ENABLED`, `MCP_ENDPOINT_PATH`, `MCP_STATELESS`, `MCP_ENABLE_LEGACY_SSE` (Infisical `/api` or `/mcp`) -> `Mcp:Enabled`, `Mcp:EndpointPath`, `Mcp:Stateless`, `Mcp:EnableLegacySse`; when absent, defaults are `true`, `/mcp`, `true`, and `true`; bare endpoint paths such as `mcp` normalize to `/mcp`, and `MCP_ENABLE_LEGACY_SSE` is a startup ceiling only
 - `KEYCLOAK_ENDPOINT` + `KEYCLOAK_REALM` (Infisical `/keycloak`) -> `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:AuthorizationUrl`
 - Keycloak mapper defaults -> `Keycloak:Audience=islamu-event-api`, `Keycloak:RequireHttpsMetadata=true`
 - `CERBOS_GRPC_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:GrpcEndpoint`
@@ -401,10 +401,11 @@ Canonical keys:
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `ai_assistant.enabled` | bool | `false` | Master enable switch. Disabled remains the safe default until provider health, egress validation, auth, quotas, and retention gates are implemented. |
-| `ai_assistant.provider` | string | `"none"` | Tenant/runtime provider intent. Static `AiProvider:*` controls concrete Infrastructure wiring and currently supports `none`, `fake`, `openai-compatible`, `openai-sdk`, and `azure-openai`. `fake` is for deterministic tests/dev flows; real providers require model and credential configuration. |
+| `ai_assistant.provider` | string | `"none"` | Tenant/runtime provider intent. Static `AiProvider:*` controls concrete Infrastructure wiring and currently supports `none`, `fake`, `openai-compatible`, `openai-sdk`, and `azure-openai`. `fake` is for deterministic tests/dev flows; real providers require model configuration, while API keys are optional for local OpenAI-compatible endpoints that do not enforce authentication. |
 | `ai_assistant.endpoint_url` | string | `""` | Provider base URL for self-hosted or OpenAI-compatible adapters. This is deployment/admin-controlled; browser or request payloads must never choose outbound provider hosts. |
-| `ai_assistant.api_key` | string | `""` | Sensitive provider credential. Treat as write-only/redacted; never expose to Blazor, API responses, logs, screenshots, traces, or issue templates. |
-| `ai_assistant.model_id` | string | `""` | Default model ID. Real providers are not considered configured unless both API key and model ID are present. |
+| `ai_assistant.api_key` | string | `""` | Sensitive provider credential. Optional for local/self-hosted OpenAI-compatible endpoints that do not require authentication; required only for providers that enforce API-key authentication. Treat as write-only/redacted; never expose to Blazor, API responses, logs, screenshots, traces, or issue templates. |
+| `ai_assistant.model_id` | string | `""` | Default model ID. Real providers are not considered configured unless a model ID is present; local OpenAI-compatible endpoints may leave API key empty when the provider accepts unauthenticated requests. |
+| `ai_assistant.allowed_model_ids` | JSON array | `[]` | Optional model picker allow-list. The default model is always included in the effective allow-list; duplicate and blank entries are ignored by availability resolution. |
 | `ai_assistant.max_input_tokens` | int | `8000` | Prompt/context budget used before provider calls. Handlers must still enforce bounded context and prompt length. |
 | `ai_assistant.max_output_tokens` | int | `1024` | Maximum requested provider completion size. |
 | `ai_assistant.temperature` | decimal | `0.2` | Provider sampling temperature. Keep low for structured assistant workflows. |
@@ -420,7 +421,7 @@ Canonical keys:
 
 Important notes:
 
-- `AiAssistantSettingGroup.IsConfigured` treats `fake` as configured for deterministic tests, but `openai-compatible` requires both `ai_assistant.api_key` and `ai_assistant.model_id`.
+- `AiAssistantSettingGroup.IsConfigured` treats `fake` as configured for deterministic tests. `openai-compatible` requires `ai_assistant.endpoint_url` and `ai_assistant.model_id`; `ai_assistant.api_key` is optional and sent only when configured.
 - Provider output is untrusted data. It may produce structured action candidates, but those candidates must be persisted as proposals and require explicit confirmation before any write command runs.
 - Do not log raw prompts, model responses, selected reference content, provider request IDs tied to content, endpoint credentials, or provider exception bodies.
 - Provider endpoint URLs are deployment/admin-controlled. Browser payloads and per-request DTOs must never choose outbound provider hosts.
@@ -619,7 +620,7 @@ Validators (`CreateExternalApiKeyDtoValidator`, `UpdateExternalApiKeyPolicyDtoVa
 
 ### Forwarded Headers Interaction
 
-External API keys are often presented by callers behind reverse proxies. The `ForwardedHeadersTrust` settings (see above) determine which proxies are trusted to forward `X-Forwarded-For`/`X-Forwarded-Host`. When an API-key caller comes through a trusted proxy, the rate-limit partition key remains `api-key:{keyId}` — the forwarded IP is used only for `LastUsedIp` telemetry and logging.
+External API keys are often presented by callers behind reverse proxies. The `ForwardedHeadersTrust` settings (see above) determine which proxies are trusted to forward `X-Forwarded-For`/`X-Forwarded-Host`. When an API-key caller comes through a trusted proxy, the rate-limit partition key remains `api-key:{keyId}` only after the key authenticates successfully. Empty, malformed, invalid, revoked, or inactive API-key attempts use the anonymous/IP partition; the forwarded IP is also used for `LastUsedIp` telemetry and logging when trusted.
 
 When `TrustLoopbackProxy=true` (Aspire-style local development), loopback proxies are trusted for forwarded headers but untrusted proxies still have their `X-Forwarded-*` headers dropped before middleware sees them.
 

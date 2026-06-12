@@ -60,7 +60,7 @@ Dependency direction is inward: presentation -> application -> domain.
 ## MCP Adapter Boundary
 1. The initial Model Context Protocol adapter is an optional `Explore.API` presentation adapter, not a new authority for AI tools.
 2. MCP hosting uses ASP.NET Core Streamable HTTP through the official C# MCP SDK, with stateless transport selected explicitly.
-3. The adapter is disabled by default through `Mcp:Enabled=false`; the MCP endpoint is mapped only when enabled, and self-hosted deployments must remain fully functional without MCP.
+3. The adapter is mapped by default through `Mcp:Enabled=true` at `/mcp`; self-hosted deployments can still unmap it with startup `Mcp:Enabled=false` or disable it at runtime with `mcp.enabled=false`.
 4. MCP tools, resources, and prompts must be registry-backed. Tool definitions and JSON schemas come from `IAiToolContractRegistry`; first-class projected MCP proposal tools add only the `conversationId`/`summary` envelope around registry payload fields, and mutating tools follow the existing proposal/confirmation path.
 5. MCP endpoint mapping is anonymous at the transport edge so official SDK authorization filters can expose only explicitly anonymous-safe registry discovery. Scoped tools, resources, prompts, proposals, and conversation data remain tenant-resolved and authenticated through `[Authorize]`, API-key/bearer principals, MediatR authorization, and HAL/API confirmation; no key or an invalid key can use only anonymous-safe capabilities.
 6. Stateful MCP sessions, runtime legacy SSE transport, sampling, elicitation, roots, completions, progress/list-changed notifications, resource subscriptions, and client-specific compatibility shims are ADR-gated protocol changes, not incidental adapter tweaks.

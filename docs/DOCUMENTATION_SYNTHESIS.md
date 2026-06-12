@@ -6,8 +6,8 @@ ABOUTME: Keeps only the decisions and actions that materially improve developer 
 > **Audience:** Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `docs/index.md`, `Event.Architecture.Tests/DocumentationQualityTests.cs`
+> **Last Verified:** 2026-06-12
+> **Source Anchors:** `README.md`, `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `docs/index.md`, `Event.Architecture.Tests/DocumentationQualityTests.cs`
 
 ## Current State
 
@@ -29,11 +29,12 @@ Weaknesses:
 ## High-Value Direction
 
 1. Keep repository Markdown authoritative before investing in a public docs website.
-2. Keep reference docs authoritative and short.
-3. Keep troubleshooting symptom-first and link to runbooks instead of duplicating long procedures.
-4. Keep onboarding tutorials minimal and runnable.
-5. Keep architecture docs focused on implemented patterns only.
-6. Treat release documentation as part of the release contract.
+2. Keep `README.md` as the public task router and `docs/index.md` as the full inventory.
+3. Keep reference docs authoritative and short.
+4. Keep troubleshooting symptom-first and link to runbooks instead of duplicating long procedures.
+5. Keep onboarding tutorials minimal and runnable.
+6. Keep architecture docs focused on implemented patterns only.
+7. Treat release documentation as part of the release contract.
 
 ## Canonical Reference Set
 

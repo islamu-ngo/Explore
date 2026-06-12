@@ -71,7 +71,7 @@ Use the Inspector only after the deterministic replay report is green. The norma
 
 Manual smoke scope:
 
-1. Enable MCP only for the target API instance with `Mcp:Enabled=true`, `Mcp:Stateless=true`, and `Mcp:EnableLegacySse=false`.
+1. Use the target API instance's default MCP startup posture (`Mcp:Enabled=true`, `Mcp:EndpointPath=/mcp`, `Mcp:Stateless=true`, and `Mcp:EnableLegacySse=true`) unless the deployment explicitly disables MCP.
 2. Connect MCP Inspector to the Streamable HTTP endpoint configured by `Mcp:EndpointPath` (usually `/mcp`) using one authenticated context only: either `Authorization: Bearer <redacted-token>` or `X-API-Key: <redacted-api-key>`. For multi-tenant routes, include the same tenant binding used by the API edge, such as trusted host routing or `X-Tenant-Slug: <redacted-tenant-slug>`, but never persist the real value in artifacts.
 3. List tools, resources, resource templates, and prompts. Expected bounded surface: `list_ai_tool_contracts`, `propose_ai_tool_action`, projected `propose_create_event_draft`, resource `ai_conversations`, resource template `ai_conversation_detail`, and prompt `create_event_draft_with_confirmation`.
 4. Call `list_ai_tool_contracts` and verify the registry advertises proposal/confirmation semantics. Do not save raw response bodies if they contain fixture labels or private metadata.

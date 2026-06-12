@@ -6,8 +6,8 @@ ABOUTME: Keeps docs source-grounded, audience-oriented, and safe to evolve witho
 > **Audience:** Contributors | Operators | Admins | Integrators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `docs/index.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `Event.Architecture.Tests/DocumentationQualityTests.cs`, `.github/workflows/agent-context.yml`
+> **Last Verified:** 2026-06-12
+> **Source Anchors:** `README.md`, `docs/index.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `Event.Architecture.Tests/DocumentationQualityTests.cs`, `.github/workflows/agent-context.yml`
 
 This repository uses Markdown-first documentation as the canonical operator, contributor, and agent knowledge base. A separately hosted public docs website is deferred until repository docs are accurate, validated, and release-ready.
 
@@ -26,16 +26,17 @@ If a page needs two intents, split the task steps from the reference table and l
 
 ## Audience Paths
 
-Use `docs/index.md` as the entry point and keep these paths obvious:
+Use `README.md` as the public entry point. It should route new readers by task and audience without forcing them into the full documentation inventory. Use `docs/index.md` as the complete documentation map for readers who already know their task or need a specific reference.
 
 | Audience | Start Here | Then Read |
 |---|---|---|
-| Evaluators | `README.md`, `PROJECT.md` | `ARCHITECTURE.md`, `SECURITY.md`, `SELF_HOSTING.md` |
+| Evaluators | `README.md`, `PROJECT.md` | `ARCHITECTURE.md`, `SECURITY-MODEL.md`, `SELF_HOSTING.md` |
+| Local developers | `GETTING_STARTED.md` | `TESTING.md`, `TROUBLESHOOTING.md` |
 | Operators | `SELF_HOSTING.md` | `CONFIGURATION.md`, `SECRETS.md`, `OPERATIONS.md`, `BACKUP_RESTORE_UPGRADE.md`, `RELEASE_CHECKLIST.md` |
-| Instance and tenant admins | `ADMIN_HIERARCHY.md` | `DEPLOYMENT_MODES.md`, `AUTHORIZATION_PATTERNS.md`, product feature docs |
-| Integrators | `API.md` | `API_CHANGELOG.md`, `SECURITY.md`, `CONFIGURATION.md` |
-| Contributors | `CONTRIBUTING.md` | `TESTING.md`, `QUICK_REFERENCE.md`, `DOCUMENTATION_STYLE_GUIDE.md` |
-| AI agents | `AGENTS.md`, `AGENTS.md` | `.claude/contract/README.md`, `.claude/contract/intents.yaml`, `dev/_journal/README.md` |
+| Instance and tenant admins | `ADMIN_GUIDE.md` | `ADMIN_HIERARCHY.md`, `DEPLOYMENT_MODES.md`, `AUTHORIZATION_PATTERNS.md`, product feature docs |
+| Integrators | `API_COOKBOOK.md` | `API.md`, `API_CHANGELOG.md`, `SECURITY-MODEL.md`, `CONFIGURATION.md` |
+| Contributors | `FIRST_CONTRIBUTION.md` | `CONTRIBUTING.md`, `TESTING.md`, `QUICK_REFERENCE.md`, `DOCUMENTATION_STYLE_GUIDE.md` |
+| AI agents | `AGENTS.md` | `.claude/contract/README.md`, `.claude/contract/intents.yaml`, `dev/_journal/README.md` |
 
 ## Canonical Docs And Owners
 
@@ -49,7 +50,7 @@ Each canonical doc has an owner category. Ownership means the category is respon
 | Frontend | `BLAZOR.md`, `DESIGN_SYSTEM.md`, `ACCESSIBILITY.md`, `RENDER_POLICIES.md` |
 | Product/Admin | `ADMIN_HIERARCHY.md`, feature/admin workflow docs |
 | Contributor Experience | `CONTRIBUTING.md`, `TESTING.md`, `DOCUMENTATION_STYLE_GUIDE.md`, this document |
-| Agent Context | `AGENTS.md`, `AGENTS.md`, `.claude/contract/`, `.claude/skills/`, `dev/_journal/` |
+| Agent Context | `AGENTS.md`, `.claude/contract/`, `.claude/skills/`, `dev/_journal/` |
 
 ## Metadata Policy
 

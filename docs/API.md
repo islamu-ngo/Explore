@@ -95,7 +95,7 @@ Configured in `RateLimitingExtensions.cs`. All settings are configurable via `ap
 
 ### Global (IP Token Bucket)
 - **Policy**: `global` — applied to all endpoints by default.
-- **Mechanism**: Token bucket per API key ID when present, otherwise per remote IP address.
+- **Mechanism**: Token bucket per successfully authenticated API key ID when present, otherwise per remote IP address. Empty, malformed, invalid, revoked, or inactive API keys do not create key partitions and remain in the anonymous/IP partition.
 - **Defaults**: 200 tokens, replenish 40 tokens per 10 seconds.
 - **IP Resolution**: uses `HttpContext.Connection.RemoteIpAddress`; trusted forwarded-header middleware updates the effective remote/host values earlier in the pipeline.
 - **Exemption**: Localhost (`127.0.0.1`, `::1`) is exempt.
@@ -125,7 +125,7 @@ Configured in `RateLimitingExtensions.cs`. All settings are configurable via `ap
 - Includes `Retry-After` when available plus `X-RateLimit-Limit` and `X-RateLimit-Remaining`.
 
 ### Testing Override
-In `Testing` environment, all rate limiters are replaced with `NoLimiter` (disabled).
+In `Testing` environment, all rate limiters are replaced with `NoLimiter` (disabled). Integration factories can opt back into the global limiter to verify `429`, `Retry-After`, and per-key/IP partition behavior.
 
 ---
 
@@ -242,6 +242,7 @@ Non-interactive callers authenticate with long-lived `X-API-Key` credentials in 
 1. `ApiKeyAuthenticationHandler` parses the `X-API-Key` header, splits `{keyId}.{secret}`.
 2. Repository lookup via `IgnoreTenantFilter` (auth path only) returns the stored key.
 3. Secret is SHA256-hashed and verified with fixed-time comparison against `SecretHash`.
+   Failed authentication attempts are recorded with bounded `outcome`, `tenant_id`, and `owner_type` tags only; raw API keys, secrets, and request paths are never metric tags.
 4. `ApiTenantPostAuthenticationMiddleware` asserts the API-key `TenantId` matches the resolved request tenant (skipped for `InstanceAdmin` keys where `TenantId` is null).
 5. Principal is materialized with claims `explore:api-key:id`, `explore:tenant:id` (absent for InstanceAdmin), `explore:api-key:owner:type`, `explore:api-key:owner:id`, and repeated `explore:api-key:scope` claims.
 6. `TouchUsageMetadata` updates `LastUsedAt`/`LastUsedIp` (5-minute throttle per key).
@@ -553,7 +554,7 @@ Meter name: `Explore.Business`. Tags vary by counter and include dimensions such
 | `explore.authorization.decisions` | Authorization check outcomes |
 | `explore.external_api_keys.created` | External API keys created |
 | `explore.external_api_keys.revoked` | External API keys revoked |
-| `explore.external_api_keys.authentication_attempts` | External API-key authentication attempts |
+| `explore.external_api_keys.authentication_attempts` | External API-key authentication attempts with bounded `outcome`/`tenant_id`/`owner_type` tags only |
 | `explore.external_api_keys.throttled` | External API-key throttling events |
 | `explore.external_api_keys.policy_updated` | External API-key policy updates |
 | `explore.external_api_keys.rotated` | External API-key rotations |
@@ -587,6 +588,7 @@ Authorization decisions are also traced via `ActivitySource` named `Explore.Auth
 ### AI Assistant Run Polling
 
 - AI assistant run progress uses authenticated polling as the supported transport. `POST /api/ai/assistant/conversations/{conversationId}/messages` returns `202 Accepted` with a `Location` route to `GET /api/ai/assistant/conversations/{conversationId}/runs/{runId}`.
+- Send-message requests accept `mode: "ask" | "build"`. `ask` is text-only and disables action schemas/tool proposals; `build` permits proposal-only actions such as event-draft creation, still requiring HAL affordance checks and explicit user confirmation before any write side effect runs.
 - The run-status response is a HAL resource. It includes `self` and conversation `up` links, plus `cancel-run` only while the run is queued or in progress.
 - Streaming is intentionally not part of the current AI assistant contract. `ai_assistant.streaming_enabled` remains disabled until a separate hardening slice covers transport buffering, cancellation, timeout behavior, authentication, logs, and non-streaming fallback.
 - Polling responses must remain safe metadata only: status, provider label, model label, timestamps, bounded failure code/message, and HAL links. Do not return prompt content, provider response bodies, tool payloads, provider request IDs tied to content, endpoint URLs, API keys, or raw provider exceptions.

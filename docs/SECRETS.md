@@ -79,14 +79,16 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/keycloak/REALM_NAME` | `Keycloak:RealmName` |
 | `/keycloak/KEYCLOAK_BLAZOR_CLIENT_SECRET` | Blazor BFF `Keycloak:ClientSecret` and Compose `keycloak-init` client-secret sync input |
 | `/keycloak/KEYCLOAK_API_CLIENT_SECRET` | Optional Compose `keycloak-init` sync input for the API resource-server client |
+| root or AI path + `AI_TOOL_PROPOSALS_ENABLED` | `AiProvider:ToolProposalsEnabled` |
 | `/postgresql/POSTGRESQL_HOST` | PostgreSQL bootstrap host |
 | `/postgresql/POSTGRESQL_PORT` | PostgreSQL bootstrap port |
 | `/postgresql/POSTGRESQL_DATABASE` | PostgreSQL bootstrap database |
 | `/postgresql/POSTGRESQL_USERNAME` | PostgreSQL bootstrap username |
 | `/postgresql/POSTGRESQL_PASSWORD` | PostgreSQL bootstrap password |
-| storage path + `STORAGE_S3_*` | `S3Settings:*` |
+| storage path + `STORAGE_S3_*` | `Storage:S3*` (for example `/storage/STORAGE_S3_ENDPOINT` → `Storage:S3Endpoint`) |
+| raw process environment + `STORAGE_S3_*` | consumed directly by the S3 resolver as a compatibility fallback |
 
-Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string.
+Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string.
 
 Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be stored in governance settings or copied into support artifacts. The init logs redact client secret values.
 

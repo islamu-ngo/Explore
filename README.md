@@ -18,7 +18,7 @@ ISLAMU Event powers ISLAMU’s Islamic events instance, but the software itself 
 [![Discussions][github-discussions-shield]][github-discussions-link]
 [![Discord][discord-shield]][discord-link]
 
-[**ISLAMU Islamic Events Instance**][islamu-platform] · [**Quick Start**](#-quick-start) · [**Docs**](docs/index.md) · [**Roadmap**][roadmap-link]
+[**ISLAMU Islamic Events Instance**][islamu-platform] · [**Quick Start**](#quick-start) · [**Docs**](docs/index.md) · [**Roadmap**][roadmap-link]
 
 </div>
 
@@ -33,6 +33,22 @@ The public ISLAMU instance is Islamic-focused, but the software itself is purpos
 It is built as a **white-label platform engine**: the hosted ISLAMU instance focuses on Islamic events, while the software is purpose-agnostic and designed to be rebranded for any event ecosystem.
 
 ![Event List Screenshot][event-list-image]
+
+## Quick Start
+
+Use this README as the entry point. Pick the path that matches your task; each path links to the canonical doc instead of repeating the same instructions in multiple places.
+
+| I want to... | Start here | Then read |
+|---|---|---|
+| Understand what this project is | [Project](docs/PROJECT.md) | [Architecture](docs/ARCHITECTURE.md), [Security Model](docs/SECURITY-MODEL.md) |
+| Run it locally for development | [Getting Started](docs/GETTING_STARTED.md) | [Testing](docs/TESTING.md), [Troubleshooting](docs/TROUBLESHOOTING.md) |
+| Self-host it | [Self-Hosting](docs/SELF_HOSTING.md) | [Configuration](docs/CONFIGURATION.md), [Operations](docs/OPERATIONS.md), [Backup/Restore/Upgrade](docs/BACKUP_RESTORE_UPGRADE.md) |
+| Configure tenants, branding, or admin behavior | [Admin Guide](docs/ADMIN_GUIDE.md) | [Deployment Modes](docs/DEPLOYMENT_MODES.md), [Multi-Tenancy](docs/MULTI_TENANCY.md), [Admin Hierarchy](docs/ADMIN_HIERARCHY.md) |
+| Integrate with the API | [API Cookbook](docs/API_COOKBOOK.md) | [API Reference](docs/API.md), [API Changelog](docs/API_CHANGELOG.md) |
+| Make a first contribution | [First Contribution](docs/FIRST_CONTRIBUTION.md) | [Contributing](docs/CONTRIBUTING.md), [Quick Reference](docs/QUICK_REFERENCE.md) |
+| Use AI-assisted development | [AGENTS.md](AGENTS.md) | [Contract Intents](.claude/contract/intents.yaml), [Quick Reference](docs/QUICK_REFERENCE.md) |
+
+For the complete documentation inventory, use [docs/index.md](docs/index.md). If a page gives task steps and another page gives exact keys/contracts, treat the task page as the workflow and the reference page as the source of truth.
 
 ## ✨ Who It Serves
 
@@ -96,6 +112,16 @@ We treat security as a first-class citizen, not an afterthought.
 - **🌐 CORS:** Configurable origin whitelist
 - **⏱️ Rate Limiting:** ASP.NET Core middleware
 
+## Used in production
+
+ISLAMU Event is used by:
+
+<img src="assets/images/adopters/islamu-text-only.png" alt="ISLAMU" width="200" />
+
+---
+
+Using ISLAMU Event and want to add your project/organization to this list? [Open a pull request!](https://github.com/islamu-ngo/Event/edit/main/README.md)
+
 ## Roadmap
 
 The roadmap is tracked publicly in the [Roadmap Kanban View][roadmap-link]. Use it to follow planned work, vote, comment,
@@ -122,21 +148,23 @@ There are many ways you can contribute to ISLAMU Event:
 
 Start with [Contributing](docs/CONTRIBUTING.md). Code contributors should also read [Governance](docs/GOVERNANCE.md), [Quick Reference](docs/QUICK_REFERENCE.md), and [Architecture](docs/ARCHITECTURE.md).
 
-AI-assisted contributors should follow [`AGENTS.md`](AGENTS.md) and [`AGENTS.md`](AGENTS.md).
+AI-assisted contributors should follow [`AGENTS.md`](AGENTS.md).
 
 Please read [Contribution Guidelines][contribution-guidelines] for details on the process for submitting pull requests to us.
 
 ## 📚 Documentation
 
-| Reader | Start here | Then read |
-|---|---|---|
-| New self-hoster | [Self-Hosting](docs/SELF_HOSTING.md) | [Configuration](docs/CONFIGURATION.md), [Operations](docs/OPERATIONS.md), [Troubleshooting](docs/TROUBLESHOOTING.md) |
-| Contributor | [Contributing](docs/CONTRIBUTING.md) | [Governance](docs/GOVERNANCE.md), [Quick Reference](docs/QUICK_REFERENCE.md), [Architecture](docs/ARCHITECTURE.md) |
-| API integrator | [API](docs/API.md) | [API Cookbook](docs/API_COOKBOOK.md), [Domain Model](docs/DOMAIN.md), [Security Model](docs/SECURITY-MODEL.md) |
-| Platform operator | [Deployment Modes](docs/DEPLOYMENT_MODES.md) | [Multi-Tenancy](docs/MULTI_TENANCY.md), [Admin Hierarchy](docs/ADMIN_HIERARCHY.md), [Backup/Restore/Upgrade](docs/BACKUP_RESTORE_UPGRADE.md) |
-| UI/frontend contributor | [Blazor](docs/BLAZOR.md) | [Design System](docs/DESIGN_SYSTEM.md), [Accessibility](docs/ACCESSIBILITY.md), [Render Policies](docs/RENDER_POLICIES.md) |
+The README is the entrypoint for new readers. [docs/index.md](docs/index.md) is the full documentation map once you know the area you need.
 
-Full documentation index: [docs/index.md](docs/index.md).
+| Reader | Best first page | Use when |
+|---|---|---|
+| Evaluator | [Project](docs/PROJECT.md) | You want product scope, status, and architecture context. |
+| Local developer | [Getting Started](docs/GETTING_STARTED.md) | You want to build, run, and validate the app locally. |
+| Self-hoster/operator | [Self-Hosting](docs/SELF_HOSTING.md) | You want Docker Compose, infrastructure, secrets, health checks, and upgrades. |
+| Contributor | [First Contribution](docs/FIRST_CONTRIBUTION.md) | You want the shortest safe path to a docs-only or small-bug PR. |
+| API integrator | [API Cookbook](docs/API_COOKBOOK.md) | You want task-first API examples before the full API reference. |
+| Frontend contributor | [Blazor](docs/BLAZOR.md) | You want client architecture, render policies, and UI conventions. |
+| AI-assisted contributor | [AGENTS.md](AGENTS.md) | You need the repository contribution contract and required context-loading rules. |
 
 ## 🏗️ Technology Stack (v0.1.0)
 

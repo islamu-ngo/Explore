@@ -89,6 +89,22 @@ The API uses a Hypermedia as the Engine of Application State (HATEOAS) model. HA
 -   **Usage**: When configured, the `CerbosAuthorizationService` translates the application's authorization request into a Cerbos `CheckResources` API call. Cerbos policy resource kinds are namespaced, for example `islamuevent_custom_property_template` and `islamuevent_custom_property_projection`.
 -   **BYO (Bring Your Own) Cerbos**: The platform supports a multi-tenant model where each tenant can optionally provide their own Cerbos PDP and Admin API configuration.
 
+### 4.1.1 Manual Cerbos Package Upload
+
+When Admin API sync is unavailable, operators can push local policy and schema files with `cerbosctl` directly:
+
+```bash
+docker run --rm -it -v "/home/{user}/ISLAMU/Github/Event/cerbos/policies/_schemas:/schemas:ro" ghcr.io/cerbos/cerbosctl:0.51.0 --server={cerbos.example.com:443} --username={username} --password={password} put schema -R /schemas
+
+docker run --rm -it -v "/home/{user}/ISLAMU/Github/Event/cerbos/policies:/policies:ro" ghcr.io/cerbos/cerbosctl:0.51.0 --server={cerbos.example.com:443} --username={username} --password={password} put policy -R /policies
+```
+
+If the password contains spaces, wrap it in quotes:
+
+```bash
+--password="password with spaces"
+```
+
 ### 4.2. Fallback RBAC Service
 
 -   **Description**: A local, in-database implementation of Role-Based Access Control. It serves as the default authorization provider. It is not used as an automatic fallback when the instance-level Cerbos provider is selected and unavailable.
