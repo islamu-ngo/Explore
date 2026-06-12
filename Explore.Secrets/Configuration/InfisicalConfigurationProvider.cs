@@ -262,6 +262,11 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
             return "ConnectionStrings:DefaultConnection";
         }
 
+        if (secretKey.Equals("AI_TOOL_PROPOSALS_ENABLED", StringComparison.OrdinalIgnoreCase))
+        {
+            return "AiProvider:ToolProposalsEnabled";
+        }
+
         // Normalize path to get section name
         var section = path.Trim('/');
         if (string.IsNullOrEmpty(section))

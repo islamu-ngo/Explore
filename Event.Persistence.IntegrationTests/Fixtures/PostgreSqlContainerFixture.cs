@@ -122,6 +122,12 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
     private static readonly Table[] LookupTables =
     [
         new("__EFMigrationsHistory"),
+        new("ai_conversation_statuses"),
+        new("ai_message_roles"),
+        new("ai_proposed_action_kinds"),
+        new("ai_proposed_action_statuses"),
+        new("ai_reference_kinds"),
+        new("ai_run_statuses"),
         new("actor_types"),
         new("analytics_providers"),
         new("approval_statuses"),

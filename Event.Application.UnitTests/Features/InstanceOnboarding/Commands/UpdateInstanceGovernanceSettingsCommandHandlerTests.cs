@@ -234,6 +234,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             OrganizationPolicy = new OrganizationPolicyDto(),
             Branding = new BrandingSettingsDto(),
             Domains = new DomainSettingsDto(),
+            AiAssistant = new AiAssistantGovernanceSettingsDto(),
             Mcp = new McpGovernanceSettingsDto(),
             TenantDelegation = new TenantDelegationSettingsDto
             {
@@ -273,6 +274,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             OrganizationPolicy = new OrganizationPolicyDto(),
             Branding = new BrandingSettingsDto(),
             Domains = new DomainSettingsDto(),
+            AiAssistant = new AiAssistantGovernanceSettingsDto(),
             Mcp = new McpGovernanceSettingsDto(),
             TenantDelegation = new TenantDelegationSettingsDto
             {
