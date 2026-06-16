@@ -1,3 +1,5 @@
+@* ABOUTME: Centralized Blazouter route table for client pages and route guards.
+   ABOUTME: Registers explicit page routes so navigation links do not depend on Razor route discovery. *@
 @using Blazouter.Models
 @using Blazouter.Enums
 @using Blazouter.Interfaces
@@ -19,6 +21,7 @@
 @using Explore.Blazor.Client.Pages.Contact
 @using Explore.Blazor.Client.Pages.About
 @using Explore.Blazor.Client.Pages.Onboarding
+@using Explore.Blazor.Client.Pages.Events.Sessions
 @using Explore.Blazor.Client.Providers
 @using Explore.Blazor.Client.Routing.Guards
 @using Microsoft.AspNetCore.Components.Authorization
@@ -103,6 +106,8 @@
             // Event management routes — specific literals before parameterized at same depth
             new RouteConfig { Path = "/events/create", Component = typeof(CreateEvent), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/events/:eventId/edit", Component = typeof(EventEdit), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/events/:eventId/sessions/create", Component = typeof(CreateSession), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/events/:eventId/sessions/:sessionId/edit", Component = typeof(EditSession), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/event-created/:eventId", Component = typeof(EventCreated), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/organizations/:organizationId/events/create", Component = typeof(CreateEvent), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             // Parameterized event route last — catches /events/{any-guid}

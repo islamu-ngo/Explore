@@ -65,6 +65,26 @@ public class RoutesConfigurationTests
         await Assert.That(routesContent).Contains("Path = \"/organization/reviews/:id\", Component = typeof(OrganizationReviews), Transition = RouteTransition.Fade }");
     }
 
+    [Test]
+    public async Task EventSessionRoutes_ShouldBeRegistered_BeforeEventDetailCatchAll()
+    {
+        var routesFilePath = FindRoutesFilePath();
+        var routesContent = await File.ReadAllTextAsync(routesFilePath);
+
+        const string createSessionRoute = "Path = \"/events/:eventId/sessions/create\", Component = typeof(CreateSession)";
+        const string editSessionRoute = "Path = \"/events/:eventId/sessions/:sessionId/edit\", Component = typeof(EditSession)";
+        const string eventDetailRoute = "Path = \"/events/:eventId\", Component = typeof(EventDetail)";
+
+        await Assert.That(routesContent).Contains("@using Explore.Blazor.Client.Pages.Events.Sessions");
+        await Assert.That(routesContent).Contains(createSessionRoute);
+        await Assert.That(routesContent).Contains(editSessionRoute);
+
+        await Assert.That(routesContent.IndexOf(createSessionRoute, StringComparison.Ordinal))
+            .IsLessThan(routesContent.IndexOf(eventDetailRoute, StringComparison.Ordinal));
+        await Assert.That(routesContent.IndexOf(editSessionRoute, StringComparison.Ordinal))
+            .IsLessThan(routesContent.IndexOf(eventDetailRoute, StringComparison.Ordinal));
+    }
+
     private static string FindRoutesFilePath()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

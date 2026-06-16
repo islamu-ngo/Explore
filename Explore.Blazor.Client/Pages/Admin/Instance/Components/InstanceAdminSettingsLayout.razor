@@ -680,6 +680,7 @@
         if (settings is not null)
         {
             AiAssistantState.SetPolicy(
+                settings.IsAiAssistantEnabled,
                 settings.IsAiAssistantAvailable,
                 settings.AiAssistantAllowAnonymousAccess,
                 isAuthenticated: true);

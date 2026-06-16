@@ -73,7 +73,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
                 {
                     Key = kvp.Key,
                     Value = kvp.Value,
-                    Source = 5, // User scope (local override)
+                    Source = (SettingSource)5, // User scope (local override)
                     IsLocked = false,
                     CanEdit = true
                 }).ToList()
@@ -265,7 +265,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
             SettingValueTypeId = setting.SettingValueTypeId,
             SettingValueTypeCode = setting.SettingValueTypeCode,
             SettingValueTypeName = setting.SettingValueTypeName,
-            Source = ParseSettingSource(setting.Source),
+            Source = (SettingSource?)ParseSettingSource(setting.Source),
             IsLocked = setting.IsLocked,
             CanEdit = setting.CanEdit,
             Reason = setting.Reason,

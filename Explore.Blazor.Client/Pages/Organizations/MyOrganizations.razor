@@ -17,10 +17,6 @@
             <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">MANAGEMENT</MudText>
             <MudText Typo="Typo.h4" HtmlTag="h1">My Organizations</MudText>
         </div>
-        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
-                   Href="/organizations/create">
-            Create Organization
-        </MudButton>
     </div>
 
     @if (_isLoading)
@@ -49,13 +45,8 @@
             <MudIcon Icon="@Icons.Material.Outlined.Business" Size="Size.Large" Color="Color.Default" Style="width: 80px; height: 80px; opacity: 0.2;" />
             <MudText Typo="Typo.h5" Class="mt-4">No organizations yet</MudText>
             <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
-                Create an organization to start hosting events
+                No organization creation affordance is currently available.
             </MudText>
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
-                       Href="/organizations/create"
-                       StartIcon="@Icons.Material.Filled.Add">
-                Create your first organization
-            </MudButton>
         </div>
     }
     else

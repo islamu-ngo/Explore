@@ -159,6 +159,7 @@ public partial class NavMenu : IDisposable
             ? settings.BrandLogoUrl ?? string.Empty
             : _brandLogoUrl;
         AiAssistantState.SetPolicy(
+            settings.IsAiAssistantEnabled,
             settings.IsAiAssistantAvailable,
             settings.AiAssistantAllowAnonymousAccess,
             isAuthenticated);

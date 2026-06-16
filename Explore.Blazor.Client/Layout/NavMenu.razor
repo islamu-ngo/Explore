@@ -331,7 +331,7 @@
             </AuthorizeView>
 
             @* AI Assistant toggle follows tenant audience policy and the current user's preference. *@
-            @if (AiAssistantState.IsAvailable)
+            @if (AiAssistantState.IsButtonVisible)
             {
                 <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
                                Color="Color.Inherit"

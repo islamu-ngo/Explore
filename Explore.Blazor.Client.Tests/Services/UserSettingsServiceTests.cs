@@ -55,7 +55,7 @@ public sealed class UserSettingsServiceTests
         await Assert.That(result).IsNotNull();
         var setting = result!.Settings.Single();
         await Assert.That(setting.Key).IsEqualTo("ai_assistant_preferences.show_navbar_button");
-        await Assert.That(setting.Source).IsEqualTo(5);
+        await Assert.That(setting.Source).IsEqualTo(SettingSource.UserPreference);
     }
 
     private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler

@@ -92,13 +92,9 @@ public partial class MyOrganizations : ComponentBase
     }
 
     /// <summary>
-    /// Check if user can create events for this organization.
-    /// Roles: Creator (1), CoOwner (2), Admin (3)
+    /// Check if the server advertised event creation for this organization.
     /// </summary>
-    private static bool CanCreateEvents(OrganizationListDto org)
-    {
-        return RoleHelper.CanManage(org.CurrentUserRole);
-    }
+    private static bool CanCreateEvents(OrganizationListDto org) => org.HasHalLink("create-event");
 
     /// <summary>
     /// Gets a consistent color based on organization name.
