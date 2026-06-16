@@ -169,19 +169,6 @@ public sealed class ConfirmAiProposedActionCommandHandler(
             "Selected AI actor context is not allowed to create events for this user.");
     }
 
-    private sealed record ActorMappingContextResult(
-        bool Succeeded,
-        CreateEventDraftAiActionMappingContext? Context,
-        string? FailureCode,
-        string? FailureMessage)
-    {
-        public static ActorMappingContextResult Success(CreateEventDraftAiActionMappingContext context)
-            => new(true, context, null, null);
-
-        public static ActorMappingContextResult Failure(string failureCode, string failureMessage)
-            => new(false, null, failureCode, failureMessage);
-    }
-
     private static string GetToolName(AiProposedActionKind kind)
         => kind == AiProposedActionKind.CreateEventDraft ? "CreateEventDraft" : kind.ToString();
 

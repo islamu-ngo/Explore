@@ -58,9 +58,8 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
             definition.JsonSchema);
 
         if (!allowProviderNormalization
-            || validation.Succeeded
             || kind != AiProposedActionKind.CreateEventDraft
-            || !ShouldNormalizeOptionalReferenceIds(validation))
+            || (!validation.Succeeded && !ShouldNormalizeOptionalReferenceIds(validation)))
         {
             return validation;
         }
@@ -113,8 +112,14 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
         var changed = false;
         changed |= RemoveInvalidOptionalUuid(payload, "organizationId");
         changed |= RemoveInvalidOptionalUuid(payload, "groupId");
-        changed |= RemoveInvalidOptionalUuidArray(payload, "categoryIds");
-        changed |= RemoveInvalidOptionalUuidArray(payload, "tagIds");
+        changed |= RemoveUnsafeLookupReference(payload, "eventTypeId");
+        changed |= RemoveUnsafeLookupReference(payload, "audienceGenderId");
+        changed |= RemoveUnsafeLookupReference(payload, "audienceAgeId");
+        changed |= RemoveUnsafeLookupReference(payload, "visibilityTypeId");
+        changed |= RemoveUnsafeLookupReference(payload, "eventFormatId");
+        changed |= RemoveUnsafeLookupReference(payload, "madhabId");
+        changed |= RemoveUnsafeLookupReference(payload, "categoryIds");
+        changed |= RemoveUnsafeLookupReference(payload, "tagIds");
 
         if (!changed)
         {
@@ -149,38 +154,7 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
         return payload.Remove(propertyName);
     }
 
-    private static bool RemoveInvalidOptionalUuidArray(JsonObject payload, string propertyName)
-    {
-        if (!payload.TryGetPropertyValue(propertyName, out var value) || value is not JsonArray values)
-        {
-            return false;
-        }
+    private static bool RemoveUnsafeLookupReference(JsonObject payload, string propertyName)
+        => payload.Remove(propertyName);
 
-        var normalizedValues = new JsonArray();
-        var removedInvalidValue = false;
-        foreach (var item in values)
-        {
-            if (item?.GetValueKind() == JsonValueKind.String
-                && Guid.TryParse(item.GetValue<string>(), out _))
-            {
-                normalizedValues.Add(item.DeepClone());
-                continue;
-            }
-
-            removedInvalidValue = true;
-        }
-
-        if (!removedInvalidValue)
-        {
-            return false;
-        }
-
-        if (normalizedValues.Count == 0)
-        {
-            return payload.Remove(propertyName);
-        }
-
-        payload[propertyName] = normalizedValues;
-        return true;
-    }
 }

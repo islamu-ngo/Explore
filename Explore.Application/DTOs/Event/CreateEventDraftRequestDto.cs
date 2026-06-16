@@ -1,5 +1,5 @@
-// ABOUTME: Draft-only event create contract for the progressive Create Event shell.
-// ABOUTME: Excludes sessions, rooms, days, and agenda graph fields; program items are added after draft save.
+// ABOUTME: Progressive-disclosure Create Event contract: metadata plus an optional inline single session.
+// ABOUTME: Multi-session/days/rooms/agenda graph remain post-create via the dedicated session composer.
 
 namespace Explore.Application.DTOs.Event;
 
@@ -35,6 +35,7 @@ public sealed class CreateEventDraftRequestDto
     public int? RegistrationPolicyId { get; set; }
     public List<Guid> CategoryIds { get; set; } = [];
     public List<Guid> TagIds { get; set; } = [];
+    public List<CreateEventSessionRequest> Sessions { get; set; } = [];
 
     public CreateEventRequest ToCreateEventRequest() => new()
     {
@@ -69,7 +70,7 @@ public sealed class CreateEventDraftRequestDto
         RegistrationPolicyId = RegistrationPolicyId,
         CategoryIds = CategoryIds,
         TagIds = TagIds,
-        Sessions = [],
+        Sessions = Sessions,
         Days = [],
         Rooms = [],
         AgendaItems = []

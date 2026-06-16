@@ -137,23 +137,23 @@ public sealed class CreateEventDraftAiActionMapper
             Description = Normalize(payload.Description),
             Content = Normalize(payload.Content),
             Slug = Normalize(payload.Slug),
-            EventTypeId = payload.EventTypeId,
-            AudienceGenderId = payload.AudienceGenderId,
-            AudienceAgeId = payload.AudienceAgeId,
+            EventTypeId = null,
+            AudienceGenderId = null,
+            AudienceAgeId = null,
             OrganizationId = organizationId,
             GroupId = groupId,
             Price = payload.Price,
             CurrencyCode = Normalize(payload.CurrencyCode),
             IsRegistrationRequired = payload.IsRegistrationRequired,
             ExternalRegistrationUrl = Normalize(payload.ExternalRegistrationUrl),
-            VisibilityTypeId = payload.VisibilityTypeId,
-            EventFormatId = payload.EventFormatId,
-            MadhabId = payload.MadhabId,
+            VisibilityTypeId = 1,
+            EventFormatId = 1,
+            MadhabId = null,
             Timezone = Normalize(payload.Timezone),
             EventTimeZoneId = Normalize(payload.EventTimeZoneId),
             EventUrl = Normalize(payload.EventUrl),
-            CategoryIds = payload.CategoryIds.Distinct().ToList(),
-            TagIds = payload.TagIds.Distinct().ToList()
+            CategoryIds = new List<Guid>(),
+            TagIds = new List<Guid>()
         };
 
         return CreateEventDraftAiActionMappingResult.Success(draft);
