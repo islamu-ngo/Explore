@@ -4,39 +4,60 @@
 
 @if (Action is not null)
 {
-    <article class="ai-rail__action-card" data-testid="ai-rail-proposed-action">
+    <article class="@ActionCardClass" data-testid="ai-rail-proposed-action" aria-label="@ActionAriaLabel">
+        <div class="ai-rail__action-status-row">
+            <span class="@StatusBadgeClass">
+                <MudIcon Icon="@StatusIcon" Size="Size.Small" />
+                @StatusLabel
+            </span>
+            @if (!string.IsNullOrWhiteSpace(Action.Kind))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@Action.Kind</MudText>
+            }
+        </div>
+
         <div class="ai-rail__action-content">
-            <MudText Typo="Typo.body2" Class="ai-rail__action-title">@Action.Kind</MudText>
-            <MudText Typo="Typo.caption" Color="Color.Secondary">@Action.Status</MudText>
+            <MudText Typo="Typo.body2" Class="ai-rail__action-title">@ActionTitle</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ai-rail__action-description">@ActionDescription</MudText>
             @if (string.Equals(Action.Kind, "CreateEventDraft", StringComparison.OrdinalIgnoreCase))
             {
                 <CreateEventDraftActionPreview PayloadJson="@Action.PayloadJson" />
             }
             <AiActionResultCard Action="Action" />
         </div>
-        <div class="ai-rail__action-buttons">
-            @if (AiAssistantConversationState.CanReject(Action))
+
+        @if (HasActionButtons)
+        {
+            <div class="ai-rail__action-buttons" aria-label="AI proposed action controls">
+                @if (AiAssistantConversationState.CanReject(Action))
+                {
+                    <MudButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               Disabled="@(!ActionsEnabled || IsBusy)"
+                               OnClick="() => OnReject.InvokeAsync(Action)"
+                               data-testid="ai-rail-reject-action">
+                        Reject
+                    </MudButton>
+                }
+                @if (AiAssistantConversationState.CanConfirm(Action))
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               Disabled="@(!ActionsEnabled || IsBusy)"
+                               OnClick="() => OnConfirm.InvokeAsync(Action)"
+                               data-testid="ai-rail-confirm-action">
+                        Confirm
+                    </MudButton>
+                }
+            </div>
+            @if (!ActionsEnabled)
             {
-                <MudButton Variant="Variant.Text"
-                           Size="Size.Small"
-                           Disabled="@(!ActionsEnabled || IsBusy)"
-                           OnClick="() => OnReject.InvokeAsync(Action)"
-                           data-testid="ai-rail-reject-action">
-                    Reject
-                </MudButton>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ai-rail__action-mode-hint">
+                    Switch to Build mode to respond to this proposal.
+                </MudText>
             }
-            @if (AiAssistantConversationState.CanConfirm(Action))
-            {
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           Size="Size.Small"
-                           Disabled="@(!ActionsEnabled || IsBusy)"
-                           OnClick="() => OnConfirm.InvokeAsync(Action)"
-                           data-testid="ai-rail-confirm-action">
-                    Confirm
-                </MudButton>
-            }
-        </div>
+        }
     </article>
 }
 
@@ -55,4 +76,67 @@
 
     [Parameter]
     public EventCallback<ProposedActions2> OnReject { get; set; }
+
+    private bool HasActionButtons => Action is not null
+        && (AiAssistantConversationState.CanReject(Action) || AiAssistantConversationState.CanConfirm(Action));
+
+    private bool IsRejected => string.Equals(Action?.Status, "Rejected", StringComparison.OrdinalIgnoreCase)
+        || Action?.RejectedAt is not null;
+
+    private bool IsCompleted => Action?.ResultResourceId is not null;
+
+    private bool IsFailed => !string.IsNullOrWhiteSpace(Action?.FailureCode)
+        || !string.IsNullOrWhiteSpace(Action?.FailureMessage);
+
+    private string ActionCardClass => string.Join(' ', new[]
+    {
+        "ai-rail__action-card",
+        IsCompleted ? "ai-rail__action-card--completed" : null,
+        IsRejected ? "ai-rail__action-card--rejected" : null,
+        IsFailed ? "ai-rail__action-card--failed" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string StatusBadgeClass => string.Join(' ', new[]
+    {
+        "ai-rail__action-status",
+        IsCompleted ? "ai-rail__action-status--completed" : null,
+        IsRejected ? "ai-rail__action-status--rejected" : null,
+        IsFailed ? "ai-rail__action-status--failed" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string StatusIcon => IsCompleted
+        ? Icons.Material.Filled.CheckCircle
+        : IsRejected
+            ? Icons.Material.Filled.Block
+            : IsFailed
+                ? Icons.Material.Filled.Error
+                : Icons.Material.Filled.PendingActions;
+
+    private string StatusLabel => IsCompleted
+        ? "Executed"
+        : IsRejected
+            ? "Rejected"
+            : IsFailed
+                ? "Failed"
+                : "Proposed";
+
+    private string ActionTitle => string.Equals(Action?.Kind, "CreateEventDraft", StringComparison.OrdinalIgnoreCase)
+        ? GetCreateEventDraftTitle()
+        : Action?.Kind ?? "AI proposed action";
+
+    private string ActionDescription => IsCompleted
+        ? "The draft was created and is ready to open."
+        : IsRejected
+            ? "You rejected this proposal. No event draft was created."
+            : IsFailed
+                ? "The assistant could not complete this action."
+                : "Review the draft details before confirming or rejecting the action.";
+
+    private string ActionAriaLabel => $"AI action {StatusLabel}: {ActionTitle}";
+
+    private string GetCreateEventDraftTitle() => IsCompleted
+        ? "Event draft created"
+        : IsRejected
+            ? "Event draft proposal rejected"
+            : "Review event draft proposal";
 }

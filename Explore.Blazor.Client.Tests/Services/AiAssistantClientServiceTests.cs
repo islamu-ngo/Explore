@@ -208,6 +208,74 @@ public sealed class AiAssistantClientServiceTests
     }
 
     [Test]
+    public async Task ConfirmProposedActionAsync_WhenApiReturnsProblemDetails_UsesProblemDetailsMessage()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var proposedActionId = Guid.CreateVersion7();
+        _apiClient.ConfirmAiProposedActionAsync(
+                conversationId,
+                proposedActionId,
+                Arg.Any<string?>(),
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException<ProblemDetails>(
+                "Bad Request",
+                400,
+                """{"type":"https://httpstatuses.com/400","title":"AI assistant request failed","status":400,"detail":"AI event draft organization is not allowed for this mapping context.","code":"invalid_organization_scope"}""",
+                new Dictionary<string, IEnumerable<string>>(),
+                new ProblemDetails
+                {
+                    Title = "AI assistant request failed",
+                    Detail = "AI event draft organization is not allowed for this mapping context.",
+                    AdditionalProperties = { ["code"] = "invalid_organization_scope" }
+                },
+                null));
+
+        var service = CreateService();
+
+        var result = await service.ConfirmProposedActionAsync(conversationId, proposedActionId, "confirm-key");
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_organization_scope");
+        await Assert.That(result.Message).IsEqualTo("AI event draft organization is not allowed for this mapping context.");
+    }
+
+    [Test]
+    public async Task ConfirmProposedActionAsync_WhenApiExceptionResponseIsBlank_UsesTypedProblemDetails()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var proposedActionId = Guid.CreateVersion7();
+        _apiClient.ConfirmAiProposedActionAsync(
+                conversationId,
+                proposedActionId,
+                Arg.Any<string?>(),
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException<ProblemDetails>(
+                "Bad Request",
+                400,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                new ProblemDetails
+                {
+                    Title = "AI assistant request failed",
+                    Detail = "Selected AI actor context is not allowed to create events for this user.",
+                    AdditionalProperties = { ["code"] = "actor_context_not_allowed" }
+                },
+                null));
+
+        var service = CreateService();
+
+        var result = await service.ConfirmProposedActionAsync(conversationId, proposedActionId, "confirm-key");
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("actor_context_not_allowed");
+        await Assert.That(result.Message).IsEqualTo("Selected AI actor context is not allowed to create events for this user.");
+    }
+
+    [Test]
     public async Task RejectProposedActionAsync_WhenApiFails_ReturnsFailureResult()
     {
         _apiClient.RejectAiProposedActionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())

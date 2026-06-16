@@ -215,6 +215,16 @@ public sealed class AiAssistantClientService(
 
             return AiAssistantCommandResult.FromResponse(response);
         }
+        catch (ApiException<ProblemDetails> ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to confirm AI proposed action {ProposedActionId} for conversation {ConversationId}.",
+                proposedActionId,
+                conversationId);
+
+            return FailureFromProblem(ex, "The AI proposed action could not be confirmed.");
+        }
         catch (ApiException ex)
         {
             logger.LogWarning(
@@ -258,7 +268,7 @@ public sealed class AiAssistantClientService(
         string fallbackMessage)
     {
         var message = FirstNonEmpty(ex.Result?.Detail, ex.Result?.Title, fallbackMessage);
-        var failureCode = FirstNonEmpty(TryGetProblemCode(ex.Result), FailureCodeFor(ex));
+        var failureCode = FirstNonEmpty(TryGetProblemCode(ex.Result), TryGetProblemCode(ex.Response), FailureCodeFor(ex));
         return AiAssistantCommandResult.Failure(failureCode, message);
     }
 
@@ -301,6 +311,30 @@ public sealed class AiAssistantClientService(
             JsonElement { ValueKind: JsonValueKind.String } json => json.GetString()?.Trim(),
             _ => null
         };
+    }
+
+    private static string? TryGetProblemCode(string? response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(response);
+            if (document.RootElement.TryGetProperty("code", out var code)
+                && code.ValueKind == JsonValueKind.String)
+            {
+                return code.GetString()?.Trim();
+            }
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
     }
 
     private static string FirstNonEmpty(params string?[] values)

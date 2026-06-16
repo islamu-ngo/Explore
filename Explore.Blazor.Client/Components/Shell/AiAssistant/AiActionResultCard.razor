@@ -1,14 +1,96 @@
-@* ABOUTME: Read-only result state for completed or failed AI proposed actions. *@
-@* ABOUTME: Keeps committed-result display separate from proposed action preview. *@
+@* ABOUTME: Visual result card for completed or failed AI proposed actions. *@
+@* ABOUTME: Shows a rich event card with payload details for CreateEventDraft, clickable to navigate to event detail. *@
+@using System.Text.Json
+@inject NavigationManager Navigation
 
 @if (Action is not null && ShouldRenderResult)
 {
     <div class="ai-rail__action-result" data-testid="ai-action-result">
         @if (Action.ResultResourceId is Guid resultId)
         {
-            <MudText Typo="Typo.caption" Color="Color.Success">
-                Created result @resultId
-            </MudText>
+            @if (IsCreateEventDraft)
+            {
+                <div class="ai-rail__result-event-card" data-testid="ai-result-event-card">
+                    <div class="ai-rail__result-event-header">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                 Size="Size.Small"
+                                 Color="Color.Success" />
+                        <MudText Typo="Typo.caption" Color="Color.Success" Style="font-weight: 600;">
+                            Event Draft Created
+                        </MudText>
+                    </div>
+
+                    <a href="@($"/events/{resultId}")"
+                       class="ai-rail__result-event-link"
+                       data-testid="ai-result-event-link"
+                       @onclick="() => NavigateToEvent(resultId)"
+                       @onclick:preventDefault>
+                        <MudText Typo="Typo.subtitle2" Class="ai-rail__result-event-title">
+                            @(PayloadTitle ?? "Untitled Event")
+                        </MudText>
+                        <MudIcon Icon="@Icons.Material.Filled.OpenInNew"
+                                 Size="Size.Small"
+                                 Class="ai-rail__result-event-arrow" />
+                    </a>
+
+                    @if (HasPayloadDetails)
+                    {
+                        <div class="ai-rail__result-event-details" data-testid="ai-result-event-details">
+                            @if (!string.IsNullOrWhiteSpace(PayloadDescription))
+                            {
+                                <div class="ai-rail__result-detail-row">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Description" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @TruncateDescription(PayloadDescription)
+                                    </MudText>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(PayloadFormat))
+                            {
+                                <div class="ai-rail__result-detail-row">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Devices" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption">
+                                        <strong>Format:</strong> @PayloadFormat
+                                    </MudText>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(PayloadPrice))
+                            {
+                                <div class="ai-rail__result-detail-row">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Payments" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption">
+                                        <strong>Price:</strong> @PayloadPrice
+                                    </MudText>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(PayloadVisibility))
+                            {
+                                <div class="ai-rail__result-detail-row">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption">
+                                        <strong>Visibility:</strong> @PayloadVisibility
+                                    </MudText>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(PayloadTimezone))
+                            {
+                                <div class="ai-rail__result-detail-row">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption">
+                                        <strong>Timezone:</strong> @PayloadTimezone
+                                    </MudText>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Color="Color.Success">
+                    Created result @resultId
+                </MudText>
+            }
         }
         else if (!string.IsNullOrWhiteSpace(Action.FailureCode) || !string.IsNullOrWhiteSpace(Action.FailureMessage))
         {
@@ -30,4 +112,150 @@
     private string FailureText => !string.IsNullOrWhiteSpace(Action?.FailureMessage)
         ? Action.FailureMessage!
         : Action?.FailureCode ?? "Action failed.";
+
+    private bool IsCreateEventDraft =>
+        string.Equals(Action?.Kind, "CreateEventDraft", StringComparison.OrdinalIgnoreCase);
+
+    private void NavigateToEvent(Guid eventId) => Navigation.NavigateTo($"/events/{eventId}");
+
+    // ── Payload extraction ──
+    private JsonDocument? _parsedPayload;
+    private string? _lastPayloadJson;
+
+    private JsonDocument? ParsedPayload
+    {
+        get
+        {
+            var json = Action?.PayloadJson;
+            if (json == _lastPayloadJson)
+            {
+                return _parsedPayload;
+            }
+
+            _parsedPayload?.Dispose();
+            _lastPayloadJson = json;
+            _parsedPayload = null;
+
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                try
+                {
+                    var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                    {
+                        _parsedPayload = doc;
+                    }
+                    else
+                    {
+                        doc.Dispose();
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Invalid JSON — leave null
+                }
+            }
+
+            return _parsedPayload;
+        }
+    }
+
+    private string? PayloadTitle => ReadString("title");
+    private string? PayloadDescription => ReadString("description");
+
+    private string? PayloadFormat => MapFormatId(ReadInt("eventFormatId"));
+
+    private string? PayloadPrice
+    {
+        get
+        {
+            var price = ReadDecimal("price");
+            var currency = ReadString("currencyCode");
+            if (price is null || price == 0)
+            {
+                return "Free";
+            }
+
+            return $"{currency ?? "€"}{price:F2}";
+        }
+    }
+
+    private string? PayloadVisibility => MapVisibilityId(ReadInt("visibilityTypeId"));
+
+    private string? PayloadTimezone => ReadString("timezone") ?? ReadString("eventTimeZoneId");
+
+    private bool HasPayloadDetails =>
+        !string.IsNullOrWhiteSpace(PayloadDescription)
+        || !string.IsNullOrWhiteSpace(PayloadFormat)
+        || !string.IsNullOrWhiteSpace(PayloadPrice)
+        || !string.IsNullOrWhiteSpace(PayloadVisibility)
+        || !string.IsNullOrWhiteSpace(PayloadTimezone);
+
+    private string? ReadString(string propertyName)
+    {
+        var doc = ParsedPayload;
+        if (doc is null) return null;
+
+        return doc.RootElement.TryGetProperty(propertyName, out var property)
+            && property.ValueKind == JsonValueKind.String
+                ? property.GetString()
+                : null;
+    }
+
+    private int? ReadInt(string propertyName)
+    {
+        var doc = ParsedPayload;
+        if (doc is null) return null;
+
+        if (!doc.RootElement.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        return property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var value)
+            ? value
+            : null;
+    }
+
+    private decimal? ReadDecimal(string propertyName)
+    {
+        var doc = ParsedPayload;
+        if (doc is null) return null;
+
+        if (!doc.RootElement.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        return property.ValueKind == JsonValueKind.Number && property.TryGetDecimal(out var value)
+            ? value
+            : null;
+    }
+
+    private static string? MapFormatId(int? formatId) => formatId switch
+    {
+        1 => "In-Person (Local)",
+        2 => "Online (Digital)",
+        3 => "Hybrid",
+        _ => null
+    };
+
+    private static string? MapVisibilityId(int? visibilityId) => visibilityId switch
+    {
+        1 => "Public",
+        2 => "Private",
+        3 => "Unlisted",
+        _ => null
+    };
+
+    private static string TruncateDescription(string description)
+    {
+        const int maxLength = 120;
+        if (description.Length <= maxLength) return description;
+        var truncated = description[..maxLength];
+        var lastSpace = truncated.LastIndexOf(' ');
+        return lastSpace > 0
+            ? string.Concat(truncated.AsSpan(0, lastSpace), "…")
+            : string.Concat(truncated, "…");
+    }
 }

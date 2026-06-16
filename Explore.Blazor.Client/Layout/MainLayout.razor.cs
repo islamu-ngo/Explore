@@ -155,6 +155,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                     _brandDisplayName = settings.BrandDisplayName;
                     _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
                     AiAssistantState.SetPolicy(
+                        settings.IsAiAssistantEnabled,
                         settings.IsAiAssistantAvailable,
                         settings.AiAssistantAllowAnonymousAccess,
                         isAuthenticated);

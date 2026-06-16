@@ -92,15 +92,28 @@
             }
             else if (ConversationState.SelectedConversation is not null)
             {
-                @if (ConversationState.SelectedConversation.Messages?.Count > 0)
+                var timelineItems = GetTimelineItems();
+                @if (timelineItems.Count > 0)
                 {
-                    <div class="ai-rail__message-list" role="log" aria-live="polite" aria-label="AI conversation messages">
-                        @foreach (var message in ConversationState.SelectedConversation.Messages.OrderBy(message => message.Sequence))
+                    <div class="ai-rail__timeline" role="log" aria-live="polite" aria-label="AI conversation messages and actions">
+                        @foreach (var item in timelineItems)
                         {
-                            <article class="@GetMessageClass(message.Role)" data-testid="ai-rail-message">
-                                <span class="ai-rail__message-role">@message.Role</span>
-                                <p>@message.Content</p>
-                            </article>
+                            @if (item.Message is not null)
+                            {
+                                <article @key="item.Key" class="@GetMessageClass(item.Message.Role)" data-testid="ai-rail-message">
+                                    <span class="ai-rail__message-role">@item.Message.Role</span>
+                                    <p>@item.Message.Content</p>
+                                </article>
+                            }
+                            else if (item.Action is not null)
+                            {
+                                <AiProposedActionCard @key="item.Key"
+                                                      Action="item.Action"
+                                                      IsBusy="@IsActionBusy(item.Action.Id)"
+                                                      ActionsEnabled="@IsBuildCapabilitySelected"
+                                                      OnConfirm="ConfirmActionAsync"
+                                                      OnReject="RejectActionAsync" />
+                            }
                         }
                     </div>
                 }
@@ -109,23 +122,6 @@
                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ai-rail__empty-hint">
                         No messages yet.
                     </MudText>
-                }
-
-                @if (ConversationState.SelectedConversation.ProposedActions?.Count > 0)
-                {
-                    <section class="ai-rail__actions-group" aria-labelledby="ai-rail-actions-title">
-                        <MudText Typo="Typo.caption" Class="ai-rail__inline-label" id="ai-rail-actions-title">
-                            Proposed actions
-                        </MudText>
-                        @foreach (var action in ConversationState.SelectedConversation.ProposedActions)
-                        {
-                            <AiProposedActionCard Action="action"
-                                                  IsBusy="@IsActionBusy(action.Id)"
-                                                  ActionsEnabled="@IsBuildCapabilitySelected"
-                                                  OnConfirm="ConfirmActionAsync"
-                                                  OnReject="RejectActionAsync" />
-                        }
-                    </section>
                 }
             }
         </div>
@@ -844,6 +840,49 @@
 
     private bool IsActionBusy(Guid? actionId) => actionId is Guid id && _busyActionIds.Contains(id);
 
+    private IReadOnlyList<AiRailTimelineItem> GetTimelineItems()
+    {
+        var conversation = ConversationState.SelectedConversation;
+        if (conversation is null)
+        {
+            return [];
+        }
+
+        var messageSequenceById = (conversation.Messages ?? [])
+            .Where(message => message.Id is Guid)
+            .ToDictionary(message => message.Id!.Value, message => message.Sequence ?? long.MaxValue);
+
+        var items = new List<AiRailTimelineItem>();
+        foreach (var message in conversation.Messages ?? [])
+        {
+            items.Add(AiRailTimelineItem.ForMessage(message));
+        }
+
+        foreach (var action in conversation.ProposedActions ?? [])
+        {
+            items.Add(AiRailTimelineItem.ForAction(action, GetActionSequenceAnchor(action, messageSequenceById)));
+        }
+
+        return items
+            .OrderBy(item => item.SequenceAnchor)
+            .ThenBy(item => item.CreatedAt ?? DateTimeOffset.MaxValue)
+            .ThenBy(item => item.SortKind)
+            .ThenBy(item => item.Key, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static decimal GetActionSequenceAnchor(
+        ProposedActions2 action,
+        IReadOnlyDictionary<Guid, long> messageSequenceById)
+    {
+        if (action.MessageId is Guid messageId && messageSequenceById.TryGetValue(messageId, out var messageSequence))
+        {
+            return messageSequence + 0.1m;
+        }
+
+        return decimal.MaxValue;
+    }
+
     private static bool IsActiveRunStatus(string? status) =>
         string.Equals(status, "Queued", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(status, "InProgress", StringComparison.OrdinalIgnoreCase);
@@ -1055,4 +1094,29 @@
 
     private sealed record AiRailModelOption(string Id, string DisplayName);
     private sealed record AiRailActorOption(Guid ActorId, string ActorType, string ActorDisplayName);
+
+    private sealed record AiRailTimelineItem(
+        string Key,
+        Messages2? Message,
+        ProposedActions2? Action,
+        decimal SequenceAnchor,
+        DateTimeOffset? CreatedAt,
+        int SortKind)
+    {
+        public static AiRailTimelineItem ForMessage(Messages2 message) => new(
+            $"message:{message.Id?.ToString() ?? message.Sequence?.ToString() ?? message.CreatedAt?.ToUnixTimeMilliseconds().ToString() ?? message.Content ?? string.Empty}",
+            message,
+            null,
+            message.Sequence ?? long.MaxValue,
+            message.CreatedAt,
+            0);
+
+        public static AiRailTimelineItem ForAction(ProposedActions2 action, decimal sequenceAnchor) => new(
+            $"action:{action.Id?.ToString() ?? action.CreatedAt?.ToUnixTimeMilliseconds().ToString() ?? action.PayloadJson ?? string.Empty}",
+            null,
+            action,
+            sequenceAnchor,
+            action.CreatedAt ?? action.ConfirmedAt ?? action.RejectedAt,
+            1);
+    }
 }

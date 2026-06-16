@@ -532,7 +532,7 @@ public class MainLayoutTests : IDisposable
 
         await cut.InvokeAsync(() =>
         {
-            aiAssistantState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+            aiAssistantState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
             aiAssistantState.Open();
         });
 
@@ -562,7 +562,7 @@ public class MainLayoutTests : IDisposable
         var aiAssistantState = _ctx.Services.GetRequiredService<AiAssistantState>();
         var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
 
-        await cut.InvokeAsync(() => aiAssistantState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true));
+        await cut.InvokeAsync(() => aiAssistantState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true));
 
         cut.WaitForElement("[data-testid='shell-ai-toggle']");
         cut.Find("[data-testid='shell-ai-toggle']").Click();
@@ -596,7 +596,7 @@ public class MainLayoutTests : IDisposable
 
         await cut.InvokeAsync(() =>
         {
-            aiAssistantState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+            aiAssistantState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
             aiAssistantState.Open();
         });
 
@@ -664,7 +664,7 @@ public class MainLayoutTests : IDisposable
         var cut = RenderLayout();
         var aiAssistantState = _ctx.Services.GetRequiredService<AiAssistantState>();
 
-        await cut.InvokeAsync(() => aiAssistantState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true));
+        await cut.InvokeAsync(() => aiAssistantState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true));
 
         cut.WaitForElement("[data-testid='shell-ai-toggle']");
         var toggle = cut.Find("[data-testid='shell-ai-toggle']");

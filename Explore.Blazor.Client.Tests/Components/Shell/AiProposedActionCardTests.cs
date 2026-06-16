@@ -64,4 +64,26 @@ public sealed class AiProposedActionCardTests : IDisposable
         await Assert.That(cut.FindAll("[data-testid='ai-rail-reject-action']")).IsEmpty();
         await Assert.That(cut.FindAll("[data-testid='ai-action-result']").Count).IsEqualTo(1);
     }
+
+    [Test]
+    public async Task Render_WhenRejected_ShowsRejectedCardWithoutActionButtons()
+    {
+        var action = new ProposedActions2
+        {
+            Id = Guid.CreateVersion7(),
+            Kind = "CreateEventDraft",
+            Status = "Rejected",
+            RejectedAt = DateTimeOffset.UtcNow,
+            PayloadJson = "{\"title\":\"Community Iftar\",\"description\":\"Plan the meal.\"}"
+        };
+
+        var cut = _ctx.RenderMudComponent<AiProposedActionCard>(parameters => parameters
+            .Add(component => component.Action, action));
+
+        await Assert.That(cut.FindAll("[data-testid='ai-rail-confirm-action']")).IsEmpty();
+        await Assert.That(cut.FindAll("[data-testid='ai-rail-reject-action']")).IsEmpty();
+        await Assert.That(cut.Markup).Contains("Rejected");
+        await Assert.That(cut.Markup).Contains("Event draft proposal rejected");
+        await Assert.That(cut.Markup).Contains("No event draft was created.");
+    }
 }

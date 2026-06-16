@@ -53,7 +53,7 @@ public sealed class AiAssistantRailTests : IDisposable
                     new Messages2 { Role = "User", Sequence = 1, Content = "Plan an iftar" },
                     new Messages2 { Role = "Assistant", Sequence = 2, Content = "I can help with that." }
                 ])));
-        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
@@ -109,7 +109,7 @@ public sealed class AiAssistantRailTests : IDisposable
             .Returns(Task.FromResult(new AiAssistantCommandResult(true, Guid.CreateVersion7(), "Confirmed", null, [])));
         _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(_conversationState.SelectedConversation));
-        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
@@ -130,6 +130,55 @@ public sealed class AiAssistantRailTests : IDisposable
             linkedActionId,
             Arg.Is<string?>(value => value != null && value.StartsWith("blazor-ai-confirm-", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Render_WhenActionBelongsToAssistantMessage_RendersActionInlineAfterThatMessage()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var userMessageId = Guid.CreateVersion7();
+        var assistantMessageId = Guid.CreateVersion7();
+        _conversationState.SelectConversation(CreateConversation(
+            conversationId,
+            "Inline proposal",
+            [
+                new Messages2 { Id = userMessageId, Role = "User", Sequence = 1, Content = "Create an event draft" },
+                new Messages2 { Id = assistantMessageId, Role = "Assistant", Sequence = 2, Content = "I prepared a draft for review." }
+            ],
+            [
+                new ProposedActions2
+                {
+                    Id = Guid.CreateVersion7(),
+                    MessageId = assistantMessageId,
+                    Kind = "CreateEventDraft",
+                    Status = "Proposed",
+                    PayloadJson = "{\"title\":\"Community Iftar\",\"description\":\"Plan the meal.\"}",
+                    _links = new Dictionary<string, Anonymous59>
+                    {
+                        ["confirm-action"] = new() { Href = "/confirm", Method = "POST" },
+                        ["reject-action"] = new() { Href = "/reject", Method = "POST" }
+                    }
+                }
+            ]));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var markup = cut.Markup;
+            var userIndex = markup.IndexOf("Create an event draft", StringComparison.Ordinal);
+            var assistantIndex = markup.IndexOf("I prepared a draft for review.", StringComparison.Ordinal);
+            var actionIndex = markup.IndexOf("Community Iftar", StringComparison.Ordinal);
+
+            if (userIndex < 0 || assistantIndex < 0 || actionIndex < 0 || !(userIndex < assistantIndex && assistantIndex < actionIndex))
+            {
+                throw new InvalidOperationException("Expected proposal card to render inline after its assistant message.");
+            }
+        });
     }
 
     [Test]
@@ -154,7 +203,7 @@ public sealed class AiAssistantRailTests : IDisposable
                     }
                 }
             ]));
-        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
@@ -197,7 +246,7 @@ public sealed class AiAssistantRailTests : IDisposable
             .Returns(Task.FromResult(new AiAssistantCommandResult(true, conversationId, "Created", null, [])));
         _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "New AI plan")));
-        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
@@ -247,7 +296,7 @@ public sealed class AiAssistantRailTests : IDisposable
                 [
                     new Messages2 { Role = "Assistant", Sequence = 1, Content = "Draft created." }
                 ])));
-        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
@@ -284,7 +333,7 @@ public sealed class AiAssistantRailTests : IDisposable
         _conversationState.SelectConversation(CreateConversation(conversationId, "Actor test"));
         _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
-        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
@@ -320,7 +369,7 @@ public sealed class AiAssistantRailTests : IDisposable
                 ["AI conversation is not ready for a new message."])));
         _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "Send conflict")));
-        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
@@ -344,7 +393,7 @@ public sealed class AiAssistantRailTests : IDisposable
             .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
         _clientService.CreateConversationAsync(Arg.Any<CreateAiConversationRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(false, null, "AI assistant is disabled.", "disabled", [])));
-        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
@@ -366,7 +415,7 @@ public sealed class AiAssistantRailTests : IDisposable
         _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(
                 CreateConversationCollection([], canCreate: false)));
-        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
@@ -425,13 +474,15 @@ public sealed class AiAssistantRailTests : IDisposable
     private static HalResourceOfAiConversationDto CreateConversation(
         Guid conversationId,
         string title,
-        ICollection<Messages2>? messages = null)
+        ICollection<Messages2>? messages = null,
+        ICollection<ProposedActions2>? proposedActions = null)
     {
         return new HalResourceOfAiConversationDto
         {
             Id = conversationId,
             Title = title,
             Messages = messages,
+            ProposedActions = proposedActions,
             _links = new Dictionary<string, Anonymous6>
             {
                 ["send-message"] = new() { Href = $"/api/ai/assistant/conversations/{conversationId}/messages", Method = "POST" }
