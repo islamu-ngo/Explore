@@ -48,31 +48,31 @@
                     </MudItem>
 
                     <MudItem xs="12" sm="6">
-                        <MudSelect T="int?"
+                        <MudSelect T="GenderSegregationMode?"
                                    Label="Gender Mode"
                                    @bind-Value="_model.GenderMode"
                                    Variant="Variant.Outlined">
-                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.Mixed">Mixed</MudSelectItem>
-                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.MenOnly">Men Only</MudSelectItem>
-                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.WomenOnly">Women Only</MudSelectItem>
-                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.Segregated">Segregated</MudSelectItem>
-                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.Family">Family</MudSelectItem>
+                            <MudSelectItem T="GenderSegregationMode?" Value="GenderSegregationMode.Mixed">Mixed</MudSelectItem>
+                            <MudSelectItem T="GenderSegregationMode?" Value="GenderSegregationMode.MenOnly">Men Only</MudSelectItem>
+                            <MudSelectItem T="GenderSegregationMode?" Value="GenderSegregationMode.WomenOnly">Women Only</MudSelectItem>
+                            <MudSelectItem T="GenderSegregationMode?" Value="GenderSegregationMode.Segregated">Segregated</MudSelectItem>
+                            <MudSelectItem T="GenderSegregationMode?" Value="GenderSegregationMode.Family">Family</MudSelectItem>
                         </MudSelect>
                     </MudItem>
 
                     <MudItem xs="12" sm="6">
-                        <MudSelect T="int?"
+                        <MudSelect T="PrayerTime?"
                                    Label="Reference Prayer Time"
                                    @bind-Value="_model.ReferencePrayer"
                                    Clearable="true"
                                    HelperText="Schedule event relative to a prayer time"
                                    Variant="Variant.Outlined">
-                            <MudSelectItem T="int?" Value="(int)PrayerTime.Fajr">Fajr</MudSelectItem>
-                            <MudSelectItem T="int?" Value="(int)PrayerTime.Sunrise">Sunrise</MudSelectItem>
-                            <MudSelectItem T="int?" Value="(int)PrayerTime.Dhuhr">Dhuhr</MudSelectItem>
-                            <MudSelectItem T="int?" Value="(int)PrayerTime.Asr">Asr</MudSelectItem>
-                            <MudSelectItem T="int?" Value="(int)PrayerTime.Maghrib">Maghrib</MudSelectItem>
-                            <MudSelectItem T="int?" Value="(int)PrayerTime.Isha">Isha</MudSelectItem>
+                            <MudSelectItem T="PrayerTime?" Value="PrayerTime.Fajr">Fajr</MudSelectItem>
+                            <MudSelectItem T="PrayerTime?" Value="PrayerTime.Sunrise">Sunrise</MudSelectItem>
+                            <MudSelectItem T="PrayerTime?" Value="PrayerTime.Dhuhr">Dhuhr</MudSelectItem>
+                            <MudSelectItem T="PrayerTime?" Value="PrayerTime.Asr">Asr</MudSelectItem>
+                            <MudSelectItem T="PrayerTime?" Value="PrayerTime.Maghrib">Maghrib</MudSelectItem>
+                            <MudSelectItem T="PrayerTime?" Value="PrayerTime.Isha">Isha</MudSelectItem>
                         </MudSelect>
                     </MudItem>
 

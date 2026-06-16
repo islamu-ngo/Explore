@@ -123,7 +123,7 @@ public sealed class EditSessionTests : IDisposable
             && dto.MaxAudienceAttendees == 50
             && dto.RegistrationModeId == 2
             && dto.IslamicAspect != null
-            && dto.IslamicAspect.ReferencePrayer == 2
+            && dto.IslamicAspect.ReferencePrayer == (PrayerTime)2
             && dto.IslamicAspect.RequiresWudu == true
             && dto.StartTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 14, 0, 0))
             && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 15, 30, 0))
@@ -342,10 +342,10 @@ public sealed class EditSessionTests : IDisposable
             EventSessionKindMasterCode = "WORKSHOP",
             MaxAudienceAttendees = 25,
             RegistrationModeId = 1,
-            IslamicAspect = new IslamicAspect2
+            IslamicAspect = new EventSessionIslamicAspectDto
             {
-                StartTimeType = 1,
-                ReferencePrayer = 2,
+                StartTimeType = SessionStartTimeType.RelativeToPrayer,
+                ReferencePrayer = (PrayerTime)2,
                 OffsetMinutes = 15,
                 RequiresWudu = true,
                 RitualRequirementsJson = "{\"note\":\"Bring prayer mat\"}"

@@ -1,5 +1,5 @@
 @* ABOUTME: Single-page create event form inspired by Luma's design. Two-column layout with image left, form right. *@
-@* ABOUTME: Replaces the previous multi-step wizard. Uses inline first session, description dialog popup, and publisher row. *@
+@* ABOUTME: Saves draft event metadata before handing off program setup to dedicated session management. *@
 @page "/events/create"
 @using MudBlazor
 @using Explore.Blazor.Client.Shared
@@ -673,7 +673,7 @@
                 </MudItem>
             </MudGrid>
 
-            @* ===== Review And Publish Button with Draft Option ===== *@
+            @* ===== Draft And Session Setup Button with Draft Option ===== *@
             <div class="d-flex gap-0 mt-6" style="width: 100%;">
                 <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" ButtonType="ButtonType.Submit"
                            Disabled="@IsSubmitDisabled"
@@ -683,7 +683,7 @@
                     @if (_submitState.IsSubmitting)
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                        <span>Reviewing...</span>
+                        <span>Saving draft...</span>
                     }
                     else if (_isUploadingImage)
                     {
@@ -697,7 +697,7 @@
                     }
                     else
                     {
-                        <span>Review and publish</span>
+                        <span>Save draft and add sessions</span>
                     }
                 </MudButton>
                 <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown"

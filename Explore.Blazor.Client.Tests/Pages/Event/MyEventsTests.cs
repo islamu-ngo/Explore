@@ -2,6 +2,7 @@
 // ABOUTME: Verifies resilient rendering for parallel data load and event list presentation.
 
 using System.Reflection;
+using System.Text.Json;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events;
@@ -71,7 +72,7 @@ public class MyEventsTests : IDisposable
 
         // Assert
         await Assert.That(cut.Markup).Contains("No events found");
-        await Assert.That(cut.Markup).Contains("Create an event to get started");
+        await Assert.That(cut.Markup).Contains("No event creation affordance is currently available.");
     }
 
     [Test]
@@ -143,8 +144,18 @@ public class MyEventsTests : IDisposable
             Id = eventId,
             Title = "Community Iftar",
             ActorId = actorId,
-            EventStatusId = 1
+            EventStatusId = 1,
+            AdditionalProperties = new Dictionary<string, object>()
         };
+
+        var links = new Dictionary<string, object>
+        {
+            ["self"] = new { href = $"/api/events/{eventId}" },
+            ["publish"] = new { href = $"/api/events/{eventId}/publish", method = "POST" }
+        };
+
+        using var linksDocument = JsonDocument.Parse(JsonSerializer.Serialize(links));
+        draft.AdditionalProperties["_links"] = linksDocument.RootElement.Clone();
 
         _eventService.GetMyEventsAsync().Returns(new List<EventListDto> { draft });
         _organizationService.GetMyOrganizationsAsync().Returns(new List<OrganizationListDto>

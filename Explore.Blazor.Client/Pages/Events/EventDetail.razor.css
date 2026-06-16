@@ -8,6 +8,8 @@
     background: var(--event-bg-color, var(--mud-palette-background));
     color: var(--event-theme-text-color, var(--mud-palette-text-primary));
     transition: background 0.3s ease, color 0.3s ease;
+    --event-theme-text-color: var(--mud-palette-text-primary);
+    --event-theme-muted-color: var(--mud-palette-text-secondary);
 }
 
 .event-detail-container {
@@ -17,7 +19,7 @@
 
 .event-cover-image {
     width: 100%;
-    aspect-ratio: 1;
+    aspect-ratio: 3 / 4;
     border-radius: 16px;
     object-fit: cover;
     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
@@ -34,6 +36,9 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    --event-theme-text-color: var(--mud-palette-text-primary);
+    --event-theme-muted-color: var(--mud-palette-text-secondary);
+    color: var(--mud-palette-text-primary);
 }
 
 .event-icon-box--calendar .month {
@@ -61,6 +66,9 @@
     border: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));
     border-radius: 16px;
     overflow: hidden;
+    --event-theme-text-color: var(--mud-palette-text-primary);
+    --event-theme-muted-color: var(--mud-palette-text-secondary);
+    color: var(--mud-palette-text-primary);
 }
 
 .event-registration-card__header {
@@ -137,6 +145,9 @@
     border: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));
     border-radius: 16px;
     background: var(--mud-palette-surface);
+    --event-theme-text-color: var(--mud-palette-text-primary);
+    --event-theme-muted-color: var(--mud-palette-text-secondary);
+    color: var(--mud-palette-text-primary);
 }
 
 .event-detail-side-panel__title {
@@ -153,7 +164,7 @@
 }
 
 .event-detail-side-panel__row span {
-    color: var(--event-theme-muted-color, var(--mud-palette-text-secondary));
+    color: var(--mud-palette-text-secondary);
 }
 
 .event-detail-side-panel__row strong {
@@ -170,8 +181,41 @@
 .event-description {
     font-size: 1rem;
     line-height: 1.6;
-    color: var(--mud-palette-text-primary);
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
     white-space: pre-wrap;
+}
+
+/* Ensure readable text/icons inside the wrapper when themed */
+.event-detail-wrapper ::deep .mud-typography-color-default {
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary)) !important;
+}
+
+.event-detail-wrapper ::deep .mud-typography-color-secondary {
+    color: var(--event-theme-muted-color, var(--mud-palette-text-secondary)) !important;
+}
+
+.event-detail-wrapper ::deep .mud-icon-color-default {
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary)) !important;
+}
+
+.event-detail-wrapper ::deep .mud-icon-color-secondary {
+    color: var(--event-theme-muted-color, var(--mud-palette-text-secondary)) !important;
+}
+
+.event-detail-wrapper ::deep .mud-icon-color-info {
+    color: var(--event-theme-text-color, var(--mud-palette-info)) !important;
+}
+
+.event-detail-wrapper ::deep .event-sidebar-link {
+    color: var(--event-theme-muted-color, var(--mud-palette-text-secondary));
+}
+
+.event-detail-wrapper ::deep .event-sidebar-link:hover {
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
+}
+
+.event-detail-wrapper ::deep .event-section-title {
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
 }
 
 /* Dark mode specific overrides using MudBlazor's automatic class if possible, or we can just rely on surface colors */

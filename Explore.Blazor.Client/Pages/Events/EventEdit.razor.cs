@@ -412,7 +412,7 @@ public partial class EventEdit
             ImageUri = currentEvent.BackgroundImageUri ?? string.Empty,
             BackgroundEffect = currentEvent.BackgroundEffect ?? "None"
         };
-        imagePreviewUrl = currentEvent.FeaturedImageUri;
+        imagePreviewUrl = BuildFeaturedImagePreviewUrl(currentEvent);
 
         if (!string.IsNullOrEmpty(currentEvent.Timezone))
         {
@@ -428,6 +428,22 @@ public partial class EventEdit
 
         _editContext = new EditContext(updateDto);
         _errorStore.Init(_editContext);
+    }
+
+    private string? BuildFeaturedImagePreviewUrl(EventDto? eventDto)
+    {
+        if (!string.IsNullOrWhiteSpace(eventDto?.FeaturedImageUri))
+        {
+            return eventDto.FeaturedImageUri;
+        }
+
+        if (eventDto?.FeaturedImageId is not Guid imageId || imageId == Guid.Empty)
+        {
+            return null;
+        }
+
+        var baseUri = Navigation.BaseUri.TrimEnd('/');
+        return $"{baseUri}/api/storageobject/{imageId}/public";
     }
 
     // ========== Image Upload ==========
@@ -479,7 +495,7 @@ public partial class EventEdit
             else
             {
                 _uploadError = uploadResult?.ErrorMessage ?? "Failed to upload image.";
-                imagePreviewUrl = currentEvent?.FeaturedImageUri;
+                imagePreviewUrl = BuildFeaturedImagePreviewUrl(currentEvent);
                 _uploadedImageStorageObjectId = null;
             }
         }
@@ -487,7 +503,7 @@ public partial class EventEdit
         {
             Logger.LogError(ex, "Image upload error for {FileName}", file.Name);
             _uploadError = $"Upload error: {ex.Message}";
-            imagePreviewUrl = currentEvent?.FeaturedImageUri;
+            imagePreviewUrl = BuildFeaturedImagePreviewUrl(currentEvent);
             _uploadedImageStorageObjectId = null;
         }
         finally

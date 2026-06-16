@@ -1,3 +1,6 @@
+// ABOUTME: Component tests for CreateEvent draft creation, upload binding, and publish handoff behavior.
+// ABOUTME: Verifies single-page create flow preserves user-entered data before navigating to program setup.
+
 using System.Reflection;
 using Blazouter.Services;
 using Explore.Blazor.Client.Models.EventSessions;
@@ -644,7 +647,7 @@ public class CreateEventTests : IDisposable
         PrepareValidSubmitState(cut.Instance);
 
         // Act
-        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+        await SubmitReviewAndPublishAsync(cut.Instance);
 
         // Assert
         await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
@@ -687,6 +690,35 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
+    public async Task HandleSubmit_WithPreUploadedImage_SendsFeaturedImageIdAndNavigatesToSessionComposer()
+    {
+        var createdEventId = Guid.NewGuid();
+        var uploadedImageId = Guid.NewGuid();
+        CreateEventDraftRequestDto? capturedRequest = null;
+        _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto)).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+        PrepareValidSubmitState(cut.Instance);
+        SetPrivateField<Guid?>(cut.Instance, "_uploadedImageStorageObjectId", uploadedImageId);
+
+        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.FeaturedImageId).IsEqualTo(uploadedImageId);
+        await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}/sessions/create");
+    }
+
+    [Test]
     public async Task CreateEvent_WhenReviewPublishIsReady_PublishesDraftWithConcurrencyStamp()
     {
         // Arrange
@@ -723,7 +755,7 @@ public class CreateEventTests : IDisposable
         PrepareValidSubmitState(cut.Instance);
 
         // Act
-        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+        await SubmitReviewAndPublishAsync(cut.Instance);
 
         // Assert
         await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
@@ -781,7 +813,7 @@ public class CreateEventTests : IDisposable
         PrepareValidSubmitState(cut.Instance);
 
         // Act
-        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+        await SubmitReviewAndPublishAsync(cut.Instance);
 
         // Assert
         await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
@@ -819,10 +851,8 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
-    public async Task CreateEvent_ShowsReviewAction()
+    public async Task CreateEvent_ShowsDraftSessionSetupAction()
     {
-        // The form is now a single-page layout (no multi-step wizard).
-        // The primary publish-intent action should be visible immediately.
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 
         var cut = _ctx.RenderMudComponent<CreateEvent>();
@@ -830,10 +860,10 @@ public class CreateEventTests : IDisposable
         cut.WaitForAssertion(() =>
         {
             var buttons = cut.FindAll("button");
-            var hasReviewButton = buttons.Any(b => b.TextContent.Contains("Review and publish", StringComparison.OrdinalIgnoreCase));
-            if (!hasReviewButton)
+            var hasDraftSessionButton = buttons.Any(b => b.TextContent.Contains("Save draft and add sessions", StringComparison.OrdinalIgnoreCase));
+            if (!hasDraftSessionButton)
             {
-                throw new InvalidOperationException("Review action was not rendered.");
+                throw new InvalidOperationException("Draft session setup action was not rendered.");
             }
         }, TimeSpan.FromSeconds(3));
     }
@@ -1103,6 +1133,15 @@ public class CreateEventTests : IDisposable
         }
 
         throw new InvalidOperationException($"Private method {methodName} did not return a Task.");
+    }
+
+    private static Task SubmitReviewAndPublishAsync(CreateEvent component)
+    {
+        var intentType = typeof(CreateEvent).GetNestedType("CreateEventSubmitIntent", BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("CreateEventSubmitIntent was not found.");
+
+        var intent = Enum.Parse(intentType, "ReviewAndPublish");
+        return InvokePrivateAsync(component, "SubmitEventAsync", intent);
     }
 
     private static T GetPrivateField<T>(CreateEvent component, string fieldName)

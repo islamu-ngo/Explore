@@ -762,8 +762,8 @@ public class EventServiceTests
             EventSessionKindId = 1,
             IslamicAspect = new EventSessionIslamicAspectDto
             {
-                StartTimeType = 1,
-                ReferencePrayer = 2,
+                StartTimeType = (SessionStartTimeType)1,
+                ReferencePrayer = (PrayerTime)2,
                 OffsetMinutes = 10,
                 RequiresWudu = true,
                 RitualRequirementsJson = "{\"note\":\"Create\"}"
@@ -794,7 +794,7 @@ public class EventServiceTests
                 && dto.RegistrationModeId == 2
                 && dto.EventSessionKindId == 1
                 && dto.IslamicAspect != null
-                && dto.IslamicAspect.ReferencePrayer == 2
+                && dto.IslamicAspect.ReferencePrayer == (PrayerTime)2
                 && dto.IslamicAspect.RitualRequirementsJson == "{\"note\":\"Create\"}"),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -824,8 +824,8 @@ public class EventServiceTests
             EventSessionKindId = 2,
             IslamicAspect = new EventSessionIslamicAspectDto
             {
-                StartTimeType = 2,
-                ReferencePrayer = 3,
+            StartTimeType = (SessionStartTimeType)2,
+            ReferencePrayer = (PrayerTime)3,
                 OffsetMinutes = 20,
                 RequiresWudu = false,
                 RitualRequirementsJson = "{\"note\":\"Update\"}"
@@ -858,7 +858,7 @@ public class EventServiceTests
                 && dto.RegistrationModeId == 3
                 && dto.EventSessionKindId == 2
                 && dto.IslamicAspect != null
-                && dto.IslamicAspect.ReferencePrayer == 3
+                && dto.IslamicAspect.ReferencePrayer == (PrayerTime)3
                 && dto.IslamicAspect.RitualRequirementsJson == "{\"note\":\"Update\"}"),
             Arg.Any<string?>(),
             Arg.Any<string?>(),

@@ -2,6 +2,7 @@
 @* ABOUTME: Uses HAL links for edit/delete affordances and metadata helpers for SEO/social previews. *@
 
 @rendermode InteractiveServer
+@implements IDisposable
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
@@ -37,20 +38,10 @@
                 @* ── Left Column: Image & Organizer Info ── *@
                 <MudItem xs="12" md="5" lg="4">
                     <div style="position: relative;">
-                        @if (!string.IsNullOrEmpty(_eventDetails.FeaturedImageUri))
-                        {
-                            <img src="@_eventDetails.FeaturedImageUri" alt="@_eventDetails.Title" class="event-cover-image mb-6" />
-                        }
-                        else if (!string.IsNullOrWhiteSpace(_appearance.ImageUri))
-                        {
-                            <img src="@_appearance.ImageUri" alt="@_eventDetails.Title" class="event-cover-image mb-6" />
-                        }
-                        else
-                        {
-                            <div class="event-cover-image mb-6 d-flex align-center justify-center" style="background: linear-gradient(135deg, @GetEventColor(), #333);">
-                                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" Color="Color.Surface" Style="font-size: 5rem; opacity: 0.2;" />
-                            </div>
-                        }
+                        <img src="@(_imageLoadFailed ? GetFallbackSvgDataUri() : (GetImageUrl() ?? GetFallbackSvgDataUri()))"
+                             alt="@_eventDetails.Title"
+                             class="event-cover-image mb-6"
+                             @onerror="HandleImageError" />
 
                         @* Admin controls — 3-dot action menu *@
                         @if ((_canEdit || _canDelete) && !_isCheckingAuth)
@@ -640,7 +631,7 @@ else if (_isLoading)
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8 mt-8">
         <MudGrid Spacing="8">
             <MudItem xs="12" md="5" lg="4">
-                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" Class="rounded-xl mb-6" />
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Class="event-cover-image mb-6" Style="aspect-ratio: 3 / 4; height: auto;" />
                 <MudSkeleton Width="100px" Height="20px" Class="mb-3" />
                 <div class="d-flex align-center gap-3 mb-6">
                     <MudSkeleton SkeletonType="SkeletonType.Circle" Width="40px" Height="40px" />

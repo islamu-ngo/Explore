@@ -120,11 +120,11 @@
     {
         return Aspect?.GenderMode switch
         {
-            (int)GenderSegregationMode.Mixed => "Mixed",
-            (int)GenderSegregationMode.MenOnly => "Men Only",
-            (int)GenderSegregationMode.WomenOnly => "Women Only",
-            (int)GenderSegregationMode.Segregated => "Segregated",
-            (int)GenderSegregationMode.Family => "Family",
+            GenderSegregationMode.Mixed => "Mixed",
+            GenderSegregationMode.MenOnly => "Men Only",
+            GenderSegregationMode.WomenOnly => "Women Only",
+            GenderSegregationMode.Segregated => "Segregated",
+            GenderSegregationMode.Family => "Family",
             _ => "Mixed"
         };
     }
@@ -133,10 +133,10 @@
     {
         return Aspect?.GenderMode switch
         {
-            (int)GenderSegregationMode.MenOnly => Color.Info,
-            (int)GenderSegregationMode.WomenOnly => Color.Secondary,
-            (int)GenderSegregationMode.Segregated => Color.Warning,
-            (int)GenderSegregationMode.Family => Color.Success,
+            GenderSegregationMode.MenOnly => Color.Info,
+            GenderSegregationMode.WomenOnly => Color.Secondary,
+            GenderSegregationMode.Segregated => Color.Warning,
+            GenderSegregationMode.Family => Color.Success,
             _ => Color.Default
         };
     }
@@ -147,12 +147,12 @@
 
         var prayerName = Aspect.ReferencePrayer switch
         {
-            (int)PrayerTime.Fajr => "Fajr",
-            (int)PrayerTime.Sunrise => "Sunrise",
-            (int)PrayerTime.Dhuhr => "Dhuhr",
-            (int)PrayerTime.Asr => "Asr",
-            (int)PrayerTime.Maghrib => "Maghrib",
-            (int)PrayerTime.Isha => "Isha",
+            PrayerTime.Fajr => "Fajr",
+            PrayerTime.Sunrise => "Sunrise",
+            PrayerTime.Dhuhr => "Dhuhr",
+            PrayerTime.Asr => "Asr",
+            PrayerTime.Maghrib => "Maghrib",
+            PrayerTime.Isha => "Isha",
             _ => "Unknown"
         };
 

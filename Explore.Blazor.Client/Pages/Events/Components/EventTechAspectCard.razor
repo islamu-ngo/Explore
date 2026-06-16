@@ -156,10 +156,10 @@
     {
         return Aspect?.SkillLevel switch
         {
-            (int)SkillLevel.AllLevels => "All Levels",
-            (int)SkillLevel.Beginner => "Beginner",
-            (int)SkillLevel.Intermediate => "Intermediate",
-            (int)SkillLevel.Advanced => "Advanced",
+            SkillLevel.AllLevels => "All Levels",
+            SkillLevel.Beginner => "Beginner",
+            SkillLevel.Intermediate => "Intermediate",
+            SkillLevel.Advanced => "Advanced",
             _ => "All Levels"
         };
     }
@@ -168,9 +168,9 @@
     {
         return Aspect?.SkillLevel switch
         {
-            (int)SkillLevel.Beginner => Color.Success,
-            (int)SkillLevel.Intermediate => Color.Warning,
-            (int)SkillLevel.Advanced => Color.Error,
+            SkillLevel.Beginner => Color.Success,
+            SkillLevel.Intermediate => Color.Warning,
+            SkillLevel.Advanced => Color.Error,
             _ => Color.Default
         };
     }

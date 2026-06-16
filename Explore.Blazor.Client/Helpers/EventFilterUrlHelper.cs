@@ -2,6 +2,7 @@
 // ABOUTME: Builds URLs via GetUriWithQueryParameters, syncs filter bar state, and provides CSV parsing for [SupplyParameterFromQuery].
 
 using System.Globalization;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Microsoft.AspNetCore.Components;

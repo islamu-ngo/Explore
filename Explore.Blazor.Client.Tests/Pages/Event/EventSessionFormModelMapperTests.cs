@@ -88,7 +88,7 @@ public sealed class EventSessionFormModelMapperTests
             RegistrationModeId = 2,
             StartTime = new DateTimeOffset(2026, 7, 3, 14, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 3, 15, 30, 0, TimeSpan.Zero),
-            IslamicAspect = new IslamicAspect2 { ReferencePrayer = 2, RequiresWudu = true },
+            IslamicAspect = new EventSessionIslamicAspectDto { ReferencePrayer = (PrayerTime)2, RequiresWudu = true },
             SessionGroups =
             [
                 new SessionGroups { EventSessionGroupId = secondaryGroupId, IsPrimary = false, SortOrder = 1 },
@@ -103,7 +103,7 @@ public sealed class EventSessionFormModelMapperTests
         await Assert.That(request.Title).IsEqualTo("Workshop");
         await Assert.That(request.Description).IsEqualTo("Practical work");
         await Assert.That(request.IslamicAspect).IsNotNull();
-        await Assert.That(request.IslamicAspect!.ReferencePrayer).IsEqualTo(2);
+        await Assert.That(request.IslamicAspect!.ReferencePrayer).IsEqualTo((PrayerTime)2);
         await Assert.That(request.IslamicAspect.RequiresWudu).IsTrue();
         await Assert.That(state.PrimarySessionGroupId).IsEqualTo(primaryGroupId);
         await Assert.That(state.SessionDate).IsEqualTo(DateTimeHelper.ConvertUtcToLocal(source.StartTime)!.Value.Date);

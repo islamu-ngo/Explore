@@ -1,3 +1,6 @@
+// ABOUTME: Component tests for EventEdit program-management and image preview behavior.
+// ABOUTME: Verifies draft edit affordances preserve existing metadata and storage-backed images.
+
 using System.Reflection;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
@@ -70,6 +73,22 @@ public sealed class EventEditTests : IDisposable
         await Assert.That(navigation.Uri).IsEqualTo(originalUri);
         await Assert.That(GetSubmitError(component))
             .IsEqualTo("You do not currently have permission to add sessions to this event.");
+    }
+
+    [Test]
+    public async Task PopulateFormFromEvent_WhenFeaturedImageUriMissing_UsesPublicStorageObjectUrl()
+    {
+        var eventId = Guid.NewGuid();
+        var imageId = Guid.NewGuid();
+        var component = CreateComponent(eventId, canAddSession: true);
+        var currentEvent = GetPrivateField<EventDto>(component, "currentEvent");
+        currentEvent.FeaturedImageId = imageId;
+        currentEvent.FeaturedImageUri = null;
+
+        InvokePrivate(component, "PopulateFormFromEvent");
+
+        var imagePreviewUrl = GetPrivateField<string>(component, "imagePreviewUrl");
+        await Assert.That(imagePreviewUrl).EndsWith($"/api/storageobject/{imageId}/public");
     }
 
     [Test]

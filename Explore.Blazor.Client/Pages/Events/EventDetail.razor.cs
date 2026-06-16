@@ -23,8 +23,11 @@ namespace Explore.Blazor.Client.Pages.Events;
 /// Code-behind for EventDetail page.
 /// Displays detailed information about an event including sessions, registration, and organizer info.
 /// </summary>
-public partial class EventDetail : ComponentBase
+public partial class EventDetail : ComponentBase, IDisposable
 {
+    private const string MainContentAppearanceOwner = "EventDetail";
+
+    [Inject] private MainContentAppearanceState MainContentAppearanceState { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
@@ -63,6 +66,9 @@ public partial class EventDetail : ComponentBase
     private bool _isAuthenticated = false;
     private bool _isCheckingAuth = true;
     private string? _errorMessage;
+    private bool _imageLoadFailed;
+    private Guid _lastRenderedEventId;
+    private bool _wasLoading = true;
 
     private ICollection<EventDayListDto>? _eventDays;
 
@@ -91,10 +97,33 @@ public partial class EventDetail : ComponentBase
 
         if (TryRestoreState())
         {
+            PublishMainContentAppearance();
             return;
         }
 
         await LoadEventDataAsync();
+    }
+
+    /// <summary>
+    /// Resets scroll position when navigating to a new event.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (_lastRenderedEventId != EventId || (_wasLoading && !_isLoading))
+        {
+            _lastRenderedEventId = EventId;
+            _wasLoading = _isLoading;
+            try
+            {
+                await JsRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to scroll to top on navigation");
+            }
+        }
     }
 
     /// <summary>
@@ -106,6 +135,7 @@ public partial class EventDetail : ComponentBase
         _isCheckingRegistration = true;
         _isCheckingAuth = true;
         _errorMessage = null;
+        _imageLoadFailed = false;
 
         try
         {
@@ -121,6 +151,7 @@ public partial class EventDetail : ComponentBase
                     ImageUri = _eventDetails.BackgroundImageUri ?? string.Empty,
                     BackgroundEffect = _eventDetails.BackgroundEffect ?? "None"
                 };
+                PublishMainContentAppearance();
                 _islamicAspect = MapIslamicAspect(_eventDetails.IslamicAspect);
                 _techAspect = MapTechAspect(_eventDetails.TechAspect);
 
@@ -187,6 +218,8 @@ public partial class EventDetail : ComponentBase
         _eventAgendaItems = PersistedState.EventAgendaItems;
         _agendaItems = PersistedState.SessionAgendaItems;
         _appearance = PersistedState.Appearance ?? new AppearanceSettings();
+        _imageLoadFailed = false;
+        PublishMainContentAppearance();
         _isLoading = false;
         _isCheckingRegistration = true;
         _isCheckingAuth = true;
@@ -235,48 +268,9 @@ public partial class EventDetail : ComponentBase
         public AppearanceSettings? Appearance { get; init; }
     }
 
-    private static EventIslamicAspectDto? MapIslamicAspect(IslamicAspect? aspect)
-    {
-        if (aspect is null)
-        {
-            return null;
-        }
+    private static EventIslamicAspectDto? MapIslamicAspect(EventIslamicAspectDto? aspect) => aspect;
 
-        return new EventIslamicAspectDto
-        {
-            MadhabId = aspect.MadhabId,
-            MadhabName = aspect.MadhabName,
-            ReferencePrayer = aspect.ReferencePrayer,
-            PrayerTimeOffset = aspect.PrayerTimeOffset,
-            GenderMode = aspect.GenderMode,
-            GenderModeName = aspect.GenderModeName,
-            IncludesQuranRecitation = aspect.IncludesQuranRecitation,
-            PrimaryLanguageId = aspect.PrimaryLanguageId,
-            PrimaryLanguageName = aspect.PrimaryLanguageName
-        };
-    }
-
-    private static EventTechAspectDto? MapTechAspect(TechAspect? aspect)
-    {
-        if (aspect is null)
-        {
-            return null;
-        }
-
-        return new EventTechAspectDto
-        {
-            GithubRepoUrl = aspect.GithubRepoUrl,
-            HackathonTrack = aspect.HackathonTrack,
-            SkillLevel = aspect.SkillLevel,
-            SkillLevelName = aspect.SkillLevelName,
-            TechStackTags = aspect.TechStackTags,
-            RequiresLaptop = aspect.RequiresLaptop,
-            IsCodingCompetition = aspect.IsCodingCompetition,
-            MaxTeamSize = aspect.MaxTeamSize,
-            PrizePool = aspect.PrizePool,
-            PrizeCurrencyCode = aspect.PrizeCurrencyCode
-        };
-    }
+    private static EventTechAspectDto? MapTechAspect(EventTechAspectDto? aspect) => aspect;
 
     private bool NeedsAspectFallbackLoad()
     {
@@ -771,13 +765,7 @@ public partial class EventDetail : ComponentBase
 
     private string GetOgImageUrl()
     {
-        if (_eventDetails?.FeaturedImageId != Guid.Empty && _eventDetails?.FeaturedImageId != null)
-        {
-            var baseUri = Navigation.BaseUri.TrimEnd('/');
-            return $"{baseUri}/api/storageobject/{_eventDetails.FeaturedImageId}/public";
-        }
-
-        return string.Empty;
+        return GetFeaturedImagePublicUrl() ?? string.Empty;
     }
 
     private static string TruncateTitle(string title)
@@ -1241,6 +1229,60 @@ public partial class EventDetail : ComponentBase
         return _appearance.IsEmpty
             ? string.Empty
             : AppearanceStyleBuilder.BuildSurfaceStyle(_appearance, $"#{GetEventColor()}");
+    }
+
+    private string? GetImageUrl()
+    {
+        if (!string.IsNullOrEmpty(_eventDetails?.FeaturedImageUri))
+        {
+            return _eventDetails.FeaturedImageUri;
+        }
+
+        var publicFeaturedImageUrl = GetFeaturedImagePublicUrl();
+        if (!string.IsNullOrWhiteSpace(publicFeaturedImageUrl))
+        {
+            return publicFeaturedImageUrl;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_appearance.ImageUri))
+        {
+            return _appearance.ImageUri;
+        }
+        return null;
+    }
+
+    private string? GetFeaturedImagePublicUrl()
+    {
+        if (_eventDetails?.FeaturedImageId is not Guid imageId || imageId == Guid.Empty)
+        {
+            return null;
+        }
+
+        var baseUri = Navigation.BaseUri.TrimEnd('/');
+        return $"{baseUri}/api/storageobject/{imageId}/public";
+    }
+
+    private string GetFallbackSvgDataUri()
+    {
+        return ImageHelper.GetEventImageUrl(null, _eventDetails?.Title ?? "Event", GetEventColor(), width: 300, height: 400);
+    }
+
+    private void PublishMainContentAppearance()
+    {
+        var style = _appearance.IsEmpty
+            ? string.Empty
+            : AppearanceStyleBuilder.BuildSurfaceStyle(_appearance, $"#{GetEventColor()}");
+        MainContentAppearanceState.Set(MainContentAppearanceOwner, style);
+    }
+
+    private void HandleImageError()
+    {
+        _imageLoadFailed = true;
+    }
+
+    public void Dispose()
+    {
+        MainContentAppearanceState.Clear(MainContentAppearanceOwner);
     }
 
     private string GetDateMonth() => _eventDetails?.FirstSessionDate?.ToString("MMM") ?? "TBD";

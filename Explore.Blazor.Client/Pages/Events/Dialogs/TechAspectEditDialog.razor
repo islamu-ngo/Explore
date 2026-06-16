@@ -24,14 +24,14 @@
             <AppValidationSummary />
             <MudGrid Spacing="3">
                 <MudItem xs="12" sm="6">
-                    <MudSelect T="int?"
+                    <MudSelect T="SkillLevel?"
                                Label="Skill Level"
                                @bind-Value="_model.SkillLevel"
                                Variant="Variant.Outlined">
-                        <MudSelectItem T="int?" Value="(int)SkillLevel.AllLevels">All Levels</MudSelectItem>
-                        <MudSelectItem T="int?" Value="(int)SkillLevel.Beginner">Beginner</MudSelectItem>
-                        <MudSelectItem T="int?" Value="(int)SkillLevel.Intermediate">Intermediate</MudSelectItem>
-                        <MudSelectItem T="int?" Value="(int)SkillLevel.Advanced">Advanced</MudSelectItem>
+                        <MudSelectItem T="SkillLevel?" Value="SkillLevel.AllLevels">All Levels</MudSelectItem>
+                        <MudSelectItem T="SkillLevel?" Value="SkillLevel.Beginner">Beginner</MudSelectItem>
+                        <MudSelectItem T="SkillLevel?" Value="SkillLevel.Intermediate">Intermediate</MudSelectItem>
+                        <MudSelectItem T="SkillLevel?" Value="SkillLevel.Advanced">Advanced</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 

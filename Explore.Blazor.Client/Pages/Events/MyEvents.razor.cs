@@ -82,12 +82,13 @@ public partial class MyEvents : ComponentBase
         await LoadDataAsync();
     }
 
-    private bool CanEditEvent(EventListDto evt)
-    {
-        var org = _myOrganizations.FirstOrDefault(o => o.Id == evt.ActorId);
-        if (org == null) return false;
-        return RoleHelper.CanManage(org.CurrentUserRole);
-    }
+    private static bool CanEditEvent(EventListDto evt) => evt.HasHalLink("edit");
+
+    private static bool CanDeleteEvent(EventListDto evt) => evt.HasHalLink("delete");
+
+    private static bool CanPublishEvent(EventListDto evt) => evt.HasHalLink("publish");
+
+    private static bool CanManageRegistrations(EventListDto evt) => evt.HasHalLink("registrations");
 
     private void EditEvent(EventListDto evt)
     {
@@ -133,7 +134,7 @@ public partial class MyEvents : ComponentBase
 
     private async Task DeleteEvent(EventListDto evt)
     {
-        if (!CanEditEvent(evt))
+        if (!CanDeleteEvent(evt))
         {
             Snackbar.Add("You do not have permission to delete this event.", Severity.Error);
             return;
@@ -166,7 +167,7 @@ public partial class MyEvents : ComponentBase
 
     private async Task PublishEvent(EventListDto evt)
     {
-        if (!CanEditEvent(evt))
+        if (!CanPublishEvent(evt))
         {
             Snackbar.Add("You do not have permission to publish this event.", Severity.Error);
             return;
@@ -208,8 +209,6 @@ public partial class MyEvents : ComponentBase
     private void OnSearch(string value) => _searchString = value;
     private void OnCategoryChanged(string value) => _selectedCategory = value;
     private void OnOrganizationChanged(Guid? organizationId) => _selectedOrganizationId = organizationId ?? Guid.Empty;
-    private void NavigateToCreateEvent() => Navigation.NavigateTo("/events/create");
-    private void NavigateToCreateOrganization() => Navigation.NavigateTo("/organizations/create");
 
     private static string GetEventColorCode(EventListDto evt) =>
         EventColorHelper.GetColorByTypeName(evt.EventTypeFullName);

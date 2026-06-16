@@ -1108,7 +1108,7 @@ public partial class CreateEvent : IDisposable
         return GetPublisherOption("group", groupId)?.CanPublish == true;
     }
 
-    private async Task HandleSubmit() => await SubmitEventAsync(CreateEventSubmitIntent.ReviewAndPublish);
+    private async Task HandleSubmit() => await SubmitEventAsync(CreateEventSubmitIntent.SaveDraftAndAddSession);
 
     private async Task SubmitEventAsync(CreateEventSubmitIntent intent)
     {

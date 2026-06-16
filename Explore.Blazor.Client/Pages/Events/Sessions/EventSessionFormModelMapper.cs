@@ -195,19 +195,7 @@ internal static class EventSessionFormModelMapper
             .Select(group => group.EventSessionGroupId)
             .FirstOrDefault(groupId => groupId.HasValue && groupId.Value != Guid.Empty);
 
-    private static EventSessionIslamicAspectDto? MapIslamicAspect(IslamicAspect2? aspect)
-    {
-        return aspect is null
-            ? null
-            : new EventSessionIslamicAspectDto
-            {
-                StartTimeType = aspect.StartTimeType,
-                ReferencePrayer = aspect.ReferencePrayer,
-                OffsetMinutes = aspect.OffsetMinutes,
-                RequiresWudu = aspect.RequiresWudu,
-                RitualRequirementsJson = aspect.RitualRequirementsJson
-            };
-    }
+    private static EventSessionIslamicAspectDto? MapIslamicAspect(EventSessionIslamicAspectDto? aspect) => aspect;
 }
 
 internal sealed record EventSessionCreateFormState(

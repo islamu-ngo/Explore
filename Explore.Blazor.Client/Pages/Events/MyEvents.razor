@@ -18,17 +18,6 @@
             <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">MANAGE</MudText>
             <MudText Typo="Typo.h4" HtmlTag="h1">My Events</MudText>
         </div>
-        <div class="d-flex flex-wrap gap-3">
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
-                       StartIcon="@Icons.Material.Filled.Business"
-                       OnClick="NavigateToCreateOrganization">
-                Create Organization
-            </MudButton>
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="NavigateToCreateEvent">
-                Organize Event
-            </MudButton>
-        </div>
     </div>
 
     @if (_isLoading)
@@ -100,7 +89,7 @@
                     }
                     else
                     {
-                        <span>Create an event to get started</span>
+                        <span>No event creation affordance is currently available.</span>
                     }
                 </MudText>
             </div>
@@ -124,17 +113,23 @@
                                         <MudMenuItem OnClick="@(() => ViewEventDetails(evt))">
                                             <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
                                         </MudMenuItem>
-                                        @if (CanEditEvent(evt))
-                                        {
-                                            @if (IsDraftEvent(evt))
-                                            {
-                                                <MudMenuItem OnClick="@(() => PublishEvent(evt))">
-                                                    <MudIcon Icon="@Icons.Material.Filled.Publish" Class="mr-2" Size="Size.Small" /> Publish
-                                                </MudMenuItem>
-                                            }
+                                         @if (CanPublishEvent(evt))
+                                         {
+                                             @if (IsDraftEvent(evt))
+                                             {
+                                                 <MudMenuItem OnClick="@(() => PublishEvent(evt))">
+                                                     <MudIcon Icon="@Icons.Material.Filled.Publish" Class="mr-2" Size="Size.Small" /> Publish
+                                                 </MudMenuItem>
+                                             }
+                                         }
+                                         @if (CanManageRegistrations(evt))
+                                         {
                                             <MudMenuItem OnClick="@(() => ViewRegistrations(evt))">
                                                 <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" Size="Size.Small" /> Registrations
                                             </MudMenuItem>
+                                        }
+                                        @if (CanDeleteEvent(evt))
+                                        {
                                             <MudMenuItem OnClick="@(() => DeleteEvent(evt))" Class="text-error">
                                                 <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" /> Delete
                                             </MudMenuItem>
@@ -209,18 +204,3 @@
         }
     }
 </MudContainer>
-
-<!-- Fixed quick-create FAB (visible on small screens, supplements header buttons) -->
-<MudFabMenu StartIcon="@Icons.Material.Filled.Add"
-            Color="Color.Primary"
-            Fixed="true"
-            Class="d-flex d-sm-none">
-    <MudFabMenuItem StartIcon="@Icons.Material.Filled.Event"
-                    Label="Event"
-                    Color="Color.Primary"
-                    OnClick="NavigateToCreateEvent" />
-    <MudFabMenuItem StartIcon="@Icons.Material.Filled.Business"
-                    Label="Organization"
-                    Color="Color.Secondary"
-                    OnClick="NavigateToCreateOrganization" />
-</MudFabMenu>
