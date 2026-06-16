@@ -1,12 +1,14 @@
 // ABOUTME: Command to update tenant-level footer scalar settings (template, description, social links, copyright).
 // ABOUTME: Respects instance-level lock flags — locked settings are silently skipped.
 
+using Explore.Application.Authorization;
 using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.Footer.Requests.Commands;
 
-public class UpdateTenantFooterSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+[AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
+public class UpdateTenantFooterSettingsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid UserId { get; set; }
     public bool? Enabled { get; set; }
@@ -17,4 +19,7 @@ public class UpdateTenantFooterSettingsCommand : IRequest<BaseCommandResponse<Gu
     public string? SocialLinksJson { get; set; }
     public string? CopyrightText { get; set; }
     public bool? ShowCookieSettingsLink { get; set; }
+    string? ISecureRequest.ResourceId => null;
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
+
 }

@@ -347,7 +347,7 @@ public static class AuthorizationActions
     /// <summary>
     /// Valid actions for the <c>custom_property_projection</c> resource kind.
     /// Covers projection rebuild, dirty-scope drain, and status inspection.
-    /// Part of the <c>property_governance_admin</c> policy (D2 Operability).
+    /// Authorized through explicit custom-property projection resource metadata.
     /// </summary>
     public static class CustomPropertyProjections
     {
@@ -358,7 +358,7 @@ public static class AuthorizationActions
     /// <summary>
     /// Valid actions for the <c>custom_property_governance</c> resource kind.
     /// Covers Rule 12 governance reporting and promotion recommendations.
-    /// Part of the <c>property_governance_admin</c> policy (D2 Operability).
+    /// Authorized through explicit custom-property governance resource metadata.
     /// </summary>
     public static class CustomPropertyGovernance
     {

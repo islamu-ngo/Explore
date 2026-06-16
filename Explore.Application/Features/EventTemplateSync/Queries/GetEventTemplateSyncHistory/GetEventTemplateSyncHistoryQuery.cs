@@ -1,11 +1,16 @@
 // ABOUTME: Requests a paged audit-backed history of prior event template sync executions for one event.
-// ABOUTME: Keeps history retrieval read-only and isolated from controller concerns.
+// ABOUTME: Authorizes history retrieval with the same custom-property template view resource metadata used by HAL links.
 
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventTemplateSync;
 using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.EventTemplateSync.Queries.GetEventTemplateSyncHistory;
 
+[AuthorizeResource(ResourceKinds.CustomPropertyTemplate, AuthorizationActions.CustomPropertyTemplates.View)]
 public sealed record GetEventTemplateSyncHistoryQuery(Guid EventId, int PageNumber, int PageSize)
-    : IRequest<PaginatedResult<EventTemplateSyncHistoryItemDto>>;
+    : IRequest<PaginatedResult<EventTemplateSyncHistoryItemDto>>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => EventId.ToString();
+}

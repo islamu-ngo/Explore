@@ -172,6 +172,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             OnboardingRenderMode = governanceSettings.RenderPolicy.OnboardingRenderMode,
             OnboardingPrerenderEnabled = governanceSettings.RenderPolicy.OnboardingPrerenderEnabled,
             DisallowInteractiveServerOnOnboarding = governanceSettings.RenderPolicy.DisallowInteractiveServerOnOnboarding,
+            IsAiAssistantEnabled = aiSettingGroup.Enabled,
             IsAiAssistantAvailable = aiSettingGroup.IsAvailable,
             AiAssistantAllowAnonymousAccess = aiSettingGroup.AllowAnonymousAccess,
             FooterConfig = footerConfig,

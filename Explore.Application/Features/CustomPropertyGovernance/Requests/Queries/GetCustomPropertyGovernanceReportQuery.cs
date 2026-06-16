@@ -1,5 +1,5 @@
 // ABOUTME: Query for the Rule 12 operational governance surface listing all active Layer 3 definitions with promotion recommendations.
-// ABOUTME: Implements Atlassian 4-question matrix; authorized via property_governance_admin policy.
+// ABOUTME: Implements Atlassian 4-question matrix with custom-property governance resource authorization metadata.
 
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.CustomPropertyGovernance;
