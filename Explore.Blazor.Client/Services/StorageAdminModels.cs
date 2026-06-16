@@ -481,27 +481,27 @@ public sealed class StorageRouteSettingsModel
         StorageRouteSettingsDto route,
         long fallbackMaxUploadBytes,
         bool isReadOnly) => new()
-    {
-        RouteKey = StorageRouteOptions.Normalize(route.RouteKey),
-        Provider = StorageProviderOptions.Normalize(route.Provider),
-        MaxUploadBytes = PositiveOrDefault(route.MaxUploadBytes ?? fallbackMaxUploadBytes),
-        ProviderSource = route.ProviderSource ?? "SystemDefault",
-        MaxUploadSource = route.MaxUploadSource ?? "SystemDefault",
-        IsReadOnly = route.IsReadOnly ?? isReadOnly
-    };
+        {
+            RouteKey = StorageRouteOptions.Normalize(route.RouteKey),
+            Provider = StorageProviderOptions.Normalize(route.Provider),
+            MaxUploadBytes = PositiveOrDefault(route.MaxUploadBytes ?? fallbackMaxUploadBytes),
+            ProviderSource = route.ProviderSource ?? "SystemDefault",
+            MaxUploadSource = route.MaxUploadSource ?? "SystemDefault",
+            IsReadOnly = route.IsReadOnly ?? isReadOnly
+        };
 
     private static StorageRouteSettingsModel FromGeneratedRoute(
         object route,
         long fallbackMaxUploadBytes,
         bool isReadOnly) => new()
-    {
-        RouteKey = StorageRouteOptions.Normalize(ReadProperty<string>(route, "RouteKey")),
-        Provider = StorageProviderOptions.Normalize(ReadProperty<string>(route, "Provider")),
-        MaxUploadBytes = PositiveOrDefault(ReadProperty<long?>(route, "MaxUploadBytes") ?? fallbackMaxUploadBytes),
-        ProviderSource = ReadProperty<string>(route, "ProviderSource") ?? "SystemDefault",
-        MaxUploadSource = ReadProperty<string>(route, "MaxUploadSource") ?? "SystemDefault",
-        IsReadOnly = ReadProperty<bool?>(route, "IsReadOnly") ?? isReadOnly
-    };
+        {
+            RouteKey = StorageRouteOptions.Normalize(ReadProperty<string>(route, "RouteKey")),
+            Provider = StorageProviderOptions.Normalize(ReadProperty<string>(route, "Provider")),
+            MaxUploadBytes = PositiveOrDefault(ReadProperty<long?>(route, "MaxUploadBytes") ?? fallbackMaxUploadBytes),
+            ProviderSource = ReadProperty<string>(route, "ProviderSource") ?? "SystemDefault",
+            MaxUploadSource = ReadProperty<string>(route, "MaxUploadSource") ?? "SystemDefault",
+            IsReadOnly = ReadProperty<bool?>(route, "IsReadOnly") ?? isReadOnly
+        };
 
     private static string? ReadString(JsonElement item, string propertyName) =>
         item.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String

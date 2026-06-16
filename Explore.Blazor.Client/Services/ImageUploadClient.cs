@@ -1,4 +1,4 @@
-// ABOUTME: Image upload transport client for BFF upload sessions, upload proxy, and direct provider uploads.
+// ABOUTME: Image upload transport client for BFF upload sessions, upload proxy, and trusted direct provider uploads.
 // ABOUTME: Keeps upload-specific raw multipart/streaming HTTP isolated from ImageStorageService orchestration.
 
 using System.Net;
@@ -51,10 +51,10 @@ public sealed class ImageUploadClient(
             };
 
             var isBrowser = OperatingSystem.IsBrowser();
-            var bffUploadSession = isBrowser && expectedSizeBytes.HasValue
+            var bffUploadSession = expectedSizeBytes.HasValue
                 ? await GetUploadSessionViaBffAsync(fileName, contentType, expectedSizeBytes.Value)
                 : null;
-            if (isBrowser && bffUploadSession != null)
+            if (bffUploadSession != null)
             {
                 return bffUploadSession;
             }
@@ -62,6 +62,12 @@ public sealed class ImageUploadClient(
             if (isBrowser)
             {
                 logger.LogWarning("BFF upload session request returned no usable response in browser runtime.");
+                return null;
+            }
+
+            if (expectedSizeBytes.HasValue)
+            {
+                logger.LogWarning("BFF upload session request returned no usable response for sized upload. Direct provider fallback is disabled for browser-originated image uploads.");
                 return null;
             }
 
@@ -84,7 +90,7 @@ public sealed class ImageUploadClient(
                 return null;
             }
 
-            logger.LogDebug("Got upload URL: {UploadUrlPreview}...", response.UploadUrl?.Substring(0, Math.Min(50, response.UploadUrl?.Length ?? 0)));
+            logger.LogDebug("Got trusted direct upload URL response for content type {ContentType}", contentType);
             return new ImageUploadResponse
             {
                 UploadUrl = response.UploadUrl ?? string.Empty,

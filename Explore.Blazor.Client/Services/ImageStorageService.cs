@@ -1,5 +1,5 @@
 // ABOUTME: Image storage orchestration service for upload sessions, metadata records, and previews.
-// ABOUTME: Keeps browser flows on server-issued BFF sessions while preserving trusted direct-upload helpers.
+// ABOUTME: Requires browser-originated record uploads to use server-issued BFF sessions and proxy upload.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services.Http;
@@ -33,7 +33,7 @@ public interface IImageStorageService
     Task<FileUploadData?> ReadFileAsync(IBrowserFile file, long maxFileSize = 10 * 1024 * 1024);
 
     /// <summary>
-    /// Get a server-issued upload session or pre-signed URL for uploading an image.
+    /// Get a server-issued upload session or trusted pre-signed URL for uploading an image.
     /// </summary>
     Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null);
 
@@ -227,7 +227,6 @@ public class ImageStorageService : IImageStorageService
             _logger.LogInformation("Starting byte-based upload process for: {FileName} ({Size} bytes)",
                 fileData.FileName, fileData.Size);
 
-            // Step 1: Get a server-issued upload session or legacy pre-signed upload URL.
             var uploadResponse = await GetUploadUrlAsync(fileData.FileName, fileData.ContentType, fileData.Size);
             if (uploadResponse == null)
             {
@@ -239,10 +238,9 @@ public class ImageStorageService : IImageStorageService
                 };
             }
 
-            _logger.LogDebug("Got upload session response. ObjectKey: {ObjectKey}", uploadResponse.ObjectKey);
+            _logger.LogDebug("Got upload session response for file {FileName}", fileData.FileName);
 
-            // Step 2: Upload through the provider-neutral BFF proxy in browser runtime.
-            if (OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
+            if (!string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
             {
                 var bffUploadResult = await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, fileData);
                 return bffUploadResult ?? new ImageUploadResult
@@ -252,21 +250,12 @@ public class ImageStorageService : IImageStorageService
                 };
             }
 
-            var uploadSuccess = await UploadImageFromBytesAsync(uploadResponse.UploadUrl, fileData);
-            if (!uploadSuccess)
+            _logger.LogError("Upload session response for file {FileName} did not include a BFF upload session", fileData.FileName);
+            return new ImageUploadResult
             {
-                _logger.LogError("Direct storage upload failed for file {FileName}", fileData.FileName);
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = "Failed to upload image to storage. Please check your connection and try again."
-                };
-            }
-
-            _logger.LogDebug("Direct storage upload completed successfully for {FileName}", fileData.FileName);
-
-            // Step 3: Create StorageObject record
-            return await _storageRecordClient.CreateRecordFromBytesAsync(uploadResponse, fileData);
+                Success = false,
+                ErrorMessage = "Failed to get an upload session. Please check your authentication and try again."
+            };
         }
         catch (ApiException ex)
         {
@@ -295,7 +284,6 @@ public class ImageStorageService : IImageStorageService
         {
             _logger.LogInformation("Starting upload process for: {FileName}", file.Name);
 
-            // Step 1: Get a server-issued upload session or legacy pre-signed upload URL.
             var uploadResponse = await GetUploadUrlAsync(file.Name, file.ContentType, file.Size);
             if (uploadResponse == null)
             {
@@ -306,8 +294,7 @@ public class ImageStorageService : IImageStorageService
                 };
             }
 
-            // Step 2: Upload through the provider-neutral BFF proxy in browser runtime.
-            if (OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
+            if (!string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
             {
                 var bffUploadResult = await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, file);
                 return bffUploadResult ?? new ImageUploadResult
@@ -317,18 +304,12 @@ public class ImageStorageService : IImageStorageService
                 };
             }
 
-            var uploadSuccess = await UploadImageAsync(uploadResponse.UploadUrl, file);
-            if (!uploadSuccess)
+            _logger.LogError("Upload session response for file {FileName} did not include a BFF upload session", file.Name);
+            return new ImageUploadResult
             {
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = "Failed to upload image to storage"
-                };
-            }
-
-            // Step 3: Create StorageObject record
-            return await _storageRecordClient.CreateRecordFromFileAsync(uploadResponse, file);
+                Success = false,
+                ErrorMessage = "Failed to get an upload session"
+            };
         }
         catch (ApiException ex)
         {

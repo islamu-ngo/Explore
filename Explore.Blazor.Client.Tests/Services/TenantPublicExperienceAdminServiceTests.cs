@@ -201,7 +201,7 @@ public class TenantPublicExperienceAdminServiceTests
         // Assert
         await Assert.That(result.Success).IsTrue();
         await Assert.That(captured).IsNotNull();
-        await Assert.That(captured!.Mode).IsEqualTo(1);
+        await Assert.That(captured!.Mode).IsEqualTo(BatchUpdateMode.Strict);
         await Assert.That(captured.Values["public_experience.mode"]).IsEqualTo("OrganizationCentric");
         await Assert.That(captured.Values["public_experience.event_catalog_label"]).IsEqualTo("Programs");
         await Assert.That(captured.Values["public_experience.primary_organization_id"]).IsEqualTo(string.Empty);
@@ -360,7 +360,7 @@ public class TenantPublicExperienceAdminServiceTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(categories).IsEquivalentTo(["Events", "Organizations", "Groups", "AiAssistant"]);
         await Assert.That(batches.Count).IsEqualTo(4);
-        await Assert.That(batches.All(batch => batch.Mode == 1)).IsTrue();
+        await Assert.That(batches.All(batch => batch.Mode == BatchUpdateMode.Strict)).IsTrue();
         await Assert.That(batches[0].Values["events.user_submission_enabled"]).IsEqualTo("true");
         await Assert.That(batches[0].Values["events.group_submission_enabled"]).IsEqualTo("false");
         await Assert.That(batches[1].Values["organizations.verification_required"]).IsEqualTo("true");
@@ -496,7 +496,7 @@ public class TenantPublicExperienceAdminServiceTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(capturedCategory).IsEqualTo(Category);
         await Assert.That(captured).IsNotNull();
-        await Assert.That(captured!.Mode).IsEqualTo(1);
+        await Assert.That(captured!.Mode).IsEqualTo(BatchUpdateMode.Strict);
         await Assert.That(captured.Values["public_experience.announcement_bar.enabled"]).IsEqualTo("true");
         await Assert.That(captured.Values["public_experience.announcement_bar.message"]).IsEqualTo("New update");
         await Assert.That(captured.Values["public_experience.announcement_bar.revision"]).IsEqualTo("8");

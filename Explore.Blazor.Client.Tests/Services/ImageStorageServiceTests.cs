@@ -207,7 +207,7 @@ public class ImageStorageServiceTests
     #region UploadAndCreateRecordFromBytesAsync
 
     [Test]
-    public async Task UploadAndCreateRecordFromBytesAsync_ReturnsSuccess_WhenFullFlowSucceeds()
+    public async Task UploadAndCreateRecordFromBytesAsync_ReturnsFailure_WhenBffSessionMissing()
     {
         // Arrange
         _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
@@ -217,18 +217,6 @@ public class ImageStorageServiceTests
                 ObjectKey = "images/test.jpg",
                 ViewUrl = "https://cdn.example.com/images/test.jpg",
                 ExpiresInMinutes = 30
-            });
-
-        _httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload)
-            .Returns(CreateHttpClient(new HttpResponseMessage(HttpStatusCode.OK)));
-
-        var storageId = Guid.NewGuid();
-        _apiClient.CreateStorageObjectAsync(Arg.Any<CreateStorageObjectDto>())
-            .Returns(new BaseCommandResponseOfGuid
-            {
-                Success = true,
-                Id = storageId,
-                Message = "OK"
             });
 
         var fileData = new FileUploadData
@@ -243,9 +231,10 @@ public class ImageStorageServiceTests
 
         // Assert
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Success).IsTrue();
-        await Assert.That(result.StorageObjectId).IsEqualTo(storageId);
-        await Assert.That(result.ObjectKey).IsEqualTo("images/test.jpg");
+        await Assert.That(result!.Success).IsFalse();
+        await Assert.That(result.ErrorMessage).Contains("Failed to get an upload session");
+        _httpClientFactory.DidNotReceive().CreateClient(StorageHttpClientNames.DirectUpload);
+        await _apiClient.DidNotReceive().CreateStorageObjectAsync(Arg.Any<CreateStorageObjectDto>());
     }
 
     [Test]
@@ -269,6 +258,45 @@ public class ImageStorageServiceTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
         await Assert.That(result.ErrorMessage).Contains("Failed to get an upload session");
+    }
+
+    [Test]
+    public async Task UploadAndCreateRecordFromBytesAsync_WithUploadSession_UsesBffProxyOutsideBrowser()
+    {
+        var uploadClient = Substitute.For<IImageUploadClient>();
+        var fileData = new FileUploadData
+        {
+            Content = new byte[] { 10, 20, 30 },
+            FileName = "test.jpg",
+            ContentType = "image/jpeg"
+        };
+        var storageId = Guid.NewGuid();
+        uploadClient.GetUploadUrlAsync(fileData.FileName, fileData.ContentType, fileData.Size)
+            .Returns(new ImageUploadResponse
+            {
+                UploadSessionId = "session-1",
+                ExpiresInMinutes = 15
+            });
+        uploadClient.UploadViaBffProxyAsync("session-1", fileData)
+            .Returns(new ImageUploadResult
+            {
+                Success = true,
+                StorageObjectId = storageId,
+                ViewUrl = $"/api/storageobject/{storageId}/public"
+            });
+        var service = new ImageStorageService(
+            _apiClient,
+            _httpClientFactory,
+            _logger,
+            uploadClient: uploadClient);
+
+        var result = await service.UploadAndCreateRecordFromBytesAsync(fileData);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+        await Assert.That(result.StorageObjectId).IsEqualTo(storageId);
+        await uploadClient.Received(1).UploadViaBffProxyAsync("session-1", fileData);
+        await uploadClient.DidNotReceive().UploadImageFromBytesAsync(Arg.Any<string>(), Arg.Any<FileUploadData>());
     }
 
     #endregion

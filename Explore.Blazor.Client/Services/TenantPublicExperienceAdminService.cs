@@ -252,7 +252,7 @@ public sealed class TenantPublicExperienceAdminService(
                 new UpdateSettingBatchDto
                 {
                     Values = values,
-                    Mode = 1 // Strict admin save: reject the batch if any key is locked or invalid.
+                    Mode = (BatchUpdateMode)1 // Strict admin save: reject the batch if any key is locked or invalid.
                 },
                 cancellationToken: cancellationToken);
 
@@ -426,7 +426,7 @@ public sealed class TenantPublicExperienceAdminService(
             new UpdateSettingBatchDto
             {
                 Values = values,
-                Mode = 1
+                Mode = (BatchUpdateMode)1
             },
             cancellationToken: cancellationToken);
 

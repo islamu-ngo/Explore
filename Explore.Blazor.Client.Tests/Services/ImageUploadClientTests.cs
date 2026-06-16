@@ -40,17 +40,23 @@ public sealed class ImageUploadClientTests
     }
 
     [Test]
-    public async Task GetUploadUrlAsync_WhenBffSessionSucceedsOutsideBrowser_StillUsesDirectUploadUrl()
+    public async Task GetUploadUrlAsync_WhenSizedBffSessionUnavailable_ReturnsNullWithoutDirectFallback()
     {
-        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
-            .Returns(new UploadUrlResponseDto
-            {
-                UploadUrl = "https://upload.example.com/direct-object",
-                ObjectKey = "images/direct.jpg",
-                ViewUrl = "https://cdn.example.com/images/direct.jpg",
-                ExpiresInMinutes = 45
-            });
+        var client = new ImageUploadClient(
+            _apiClient,
+            _httpClientFactory,
+            _logger,
+            apiClientExecutor: new FailingExecutor());
 
+        var result = await client.GetUploadUrlAsync("test.jpg", "image/jpeg", expectedSizeBytes: 3);
+
+        await Assert.That(result).IsNull();
+        await _apiClient.DidNotReceive().GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>());
+    }
+
+    [Test]
+    public async Task GetUploadUrlAsync_WhenBffSessionSucceedsOutsideBrowser_ReturnsUploadSession()
+    {
         var client = new ImageUploadClient(
             _apiClient,
             _httpClientFactory,
@@ -60,9 +66,10 @@ public sealed class ImageUploadClientTests
         var result = await client.GetUploadUrlAsync("direct.jpg", "image/jpeg", expectedSizeBytes: 3);
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.UploadSessionId).IsEmpty();
-        await Assert.That(result.UploadUrl).IsEqualTo("https://upload.example.com/direct-object");
-        await Assert.That(result.ObjectKey).IsEqualTo("images/direct.jpg");
+        await Assert.That(result!.UploadSessionId).IsEqualTo("session-1");
+        await Assert.That(result.UploadUrl).IsEmpty();
+        await Assert.That(result.ObjectKey).IsEmpty();
+        await _apiClient.DidNotReceive().GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>());
     }
 
     [Test]
