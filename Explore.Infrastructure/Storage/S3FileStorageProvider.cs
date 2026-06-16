@@ -102,6 +102,10 @@ public sealed class S3FileStorageProvider : IFileStorageProvider
             InputStream = hashingStream,
             AutoCloseStream = false
         };
+        if (input.ExpectedSizeBytes is { } expectedSizeBytes)
+        {
+            request.Headers.ContentLength = expectedSizeBytes;
+        }
 
         var client = _clientFactory.CreateDataClient(config);
         await client.PutObjectAsync(request, cancellationToken);

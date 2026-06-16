@@ -151,8 +151,11 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         CancellationToken cancellationToken,
         bool throwOnUnavailable = false)
     {
-        var userId = _adminContext.UserId;
         var machineContext = _machinePrincipalAccessor.Current;
+        var userId = _adminContext.UserId;
+
+        if (userId is null && machineContext is null)
+            userId = await _adminContext.ResolveUserIdAsync(cancellationToken);
 
         if (userId is null && machineContext is null)
         {

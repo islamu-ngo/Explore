@@ -13,6 +13,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Domain;
@@ -219,6 +220,45 @@ public class RuntimeAuthorizationProviderTests
                 {
                     ["authorizationPhase"] = CreateEventCommand.PreCreateAuthorizationPhase
                 })
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true]);
+        await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
+    [Test]
+    [Arguments(nameof(CreateStorageUploadSessionCommand), true)]
+    [Arguments("019ecd1d-6b34-7b05-9945-970edd3c1440", false)]
+    public async Task IsAllowedBatchAsync_WithInstanceCerbosMode_UsesLocalAuthorizationForStorageUploadSessionGate(
+        string resourceId,
+        bool includeUploadMetadata)
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+
+        var attributes = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId.ToString()
+        };
+
+        if (includeUploadMetadata)
+        {
+            attributes["purpose"] = "event_image";
+            attributes["visibility"] = "public_image";
+        }
+
+        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        [
+            new AuthorizationCheck(
+                ResourceKinds.StorageObject,
+                resourceId,
+                AuthorizationActions.Create,
+                attributes)
         ]);
 
         await Assert.That(results).IsEquivalentTo([true]);

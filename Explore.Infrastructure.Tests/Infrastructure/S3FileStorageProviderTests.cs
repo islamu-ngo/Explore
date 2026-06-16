@@ -57,6 +57,8 @@ public sealed class S3FileStorageProviderTests
         await Assert.That(capturedRequest).IsNotNull();
         await Assert.That(capturedRequest!.BucketName).IsEqualTo(config.BucketName);
         await Assert.That(capturedRequest.ContentType).IsEqualTo("text/plain");
+        await Assert.That(capturedRequest.Headers.ContentLength).IsEqualTo(15);
+        await Assert.That(capturedRequest.InputStream.CanSeek).IsFalse();
         await Assert.That(capturedBytes).IsEquivalentTo(Encoding.UTF8.GetBytes("storage payload"));
     }
 

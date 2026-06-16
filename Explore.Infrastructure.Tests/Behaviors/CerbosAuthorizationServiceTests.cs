@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for CerbosAuthorizationService gRPC SDK request/response mapping and deny semantics.
-// Verifies principal construction, missing-user fail-closed behavior, and gRPC error handling.
+// ABOUTME: Verifies principal construction, missing-user fail-closed behavior, and gRPC error handling.
 
 using Cerbos.Api.V1.Effect;
 using Cerbos.Sdk;
@@ -93,6 +93,35 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(result[1]).IsFalse();
         await _cerbosClient.Received(1)
             .CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_UserIdClaimMissingButResolvable_UsesResolvedUserIdForCerbosPrincipal()
+    {
+        var resolvedUserId = Guid.NewGuid();
+        _adminContext.UserId.Returns((Guid?)null);
+        _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns(resolvedUserId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+
+        Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
+        var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        protoResponse.Results.Add(CreateResultEntry("storage-upload", "islamuevent_storage_object", "create", Effect.Allow));
+
+        _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(call =>
+            {
+                capturedRequest = call.ArgAt<CheckResourcesRequest>(0).ToCheckResourcesRequest();
+                return new CheckResourcesResponse(protoResponse);
+            });
+
+        var service = CreateService();
+        var result = await service.IsAllowedAsync("islamuevent_storage_object", "storage-upload", "create");
+
+        await Assert.That(result).IsTrue();
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.Principal.Id).IsEqualTo(resolvedUserId.ToString());
     }
 
     [Test]

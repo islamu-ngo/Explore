@@ -5,6 +5,7 @@ using System.Text.Json;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Models;
 using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Memory;
@@ -115,7 +116,8 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         // the resource-specific policy after the coarse authorization gate. Keep them local
         // in instance-Cerbos mode so stale PDP policy packages cannot block canonical handlers.
         if (UsesHandlerOwnedAiConversationAuthorization(checks)
-            || UsesHandlerOwnedEventCreateAuthorization(checks))
+            || UsesHandlerOwnedEventCreateAuthorization(checks)
+            || UsesHandlerOwnedStorageUploadSessionAuthorization(checks))
         {
             return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
         }
@@ -291,6 +293,20 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                 check.ResourceKind == ResourceKinds.Event
                 && check.Action == AuthorizationActions.Create
                 && string.Equals(check.ResourceId, "create", StringComparison.Ordinal));
+    }
+
+    private static bool UsesHandlerOwnedStorageUploadSessionAuthorization(IReadOnlyList<AuthorizationCheck> checks)
+    {
+        return checks.Count > 0
+            && checks.All(IsHandlerOwnedStorageUploadSessionCheck);
+    }
+
+    private static bool IsHandlerOwnedStorageUploadSessionCheck(AuthorizationCheck check)
+    {
+        return check.ResourceKind == ResourceKinds.StorageObject
+            && check.Action == AuthorizationActions.Create
+            && (string.Equals(check.ResourceId, nameof(CreateStorageUploadSessionCommand), StringComparison.Ordinal)
+                || Guid.TryParse(check.ResourceId, out _));
     }
 
     private static bool UsesSettingAuthorization(IReadOnlyList<AuthorizationCheck> checks)
