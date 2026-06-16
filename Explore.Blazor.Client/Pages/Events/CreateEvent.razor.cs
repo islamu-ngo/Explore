@@ -110,8 +110,12 @@ public partial class CreateEvent : IDisposable
     private TagCategoryMode _createTagCatMode;
     private IReadOnlyCollection<Guid> _createTagCatInitialIds = Array.Empty<Guid>();
 
-    // Draft program state. Sessions are created after the event draft is saved.
     private List<SessionEditorModel> sessions = new();
+    private DateTime? _inlineSessionDate;
+    private TimeSpan? _inlineSessionStartTime = TimeSpan.FromHours(9);
+    private TimeSpan? _inlineSessionEndTime = TimeSpan.FromHours(17);
+    private Guid? _inlineSessionLocationId;
+    private int? _inlineSessionCapacity;
     private string _bgColor = string.Empty;
     private string _bgEffect = "None";
     private string _bgImageUri = string.Empty;
@@ -932,6 +936,7 @@ public partial class CreateEvent : IDisposable
         {
             createDto.IsRegistrationRequired = true;
         }
+        _inlineSessionDate ??= DateTime.Today.AddDays(1);
     }
 
     // ========== Validation & Submission ==========
@@ -1108,7 +1113,7 @@ public partial class CreateEvent : IDisposable
         return GetPublisherOption("group", groupId)?.CanPublish == true;
     }
 
-    private async Task HandleSubmit() => await SubmitEventAsync(CreateEventSubmitIntent.SaveDraftAndAddSession);
+    private async Task HandleSubmit() => await SubmitEventAsync(CreateEventSubmitIntent.ReviewAndPublish);
 
     private async Task SubmitEventAsync(CreateEventSubmitIntent intent)
     {
@@ -1154,6 +1159,10 @@ public partial class CreateEvent : IDisposable
             createDto.BackgroundEffect = string.IsNullOrWhiteSpace(_bgEffect) || _bgEffect == "None" ? null : _bgEffect;
 
             PopulateCreateRequest();
+            if (!ApplyInlineSessionForIntent(intent))
+            {
+                return;
+            }
 
             Logger.LogInformation(
                 "Creating event (publisherMode={Mode}, organizationId={OrgId}, groupId={GroupId})",
@@ -1209,6 +1218,50 @@ public partial class CreateEvent : IDisposable
             Logger.LogError(ex, "Exception during event creation");
             _submitState.Fail($"Error creating event: {ex.Message}");
         }
+    }
+
+    private bool ApplyInlineSessionForIntent(CreateEventSubmitIntent intent)
+    {
+        createDto.Sessions = new List<CreateEventSessionRequest>();
+
+        if (intent != CreateEventSubmitIntent.ReviewAndPublish)
+        {
+            return true;
+        }
+
+        var startTimeUtc = DateTimeHelper.CombineDateTimeToUtc(_inlineSessionDate, _inlineSessionStartTime);
+        var endTimeUtc = DateTimeHelper.CombineDateTimeToUtc(_inlineSessionDate, _inlineSessionEndTime);
+
+        if (!startTimeUtc.HasValue || !endTimeUtc.HasValue)
+        {
+            _submitState.Fail("Choose the event date, start time, and end time before publishing.");
+            return false;
+        }
+
+        if (endTimeUtc.Value <= startTimeUtc.Value)
+        {
+            _submitState.Fail("The event end time must be after the start time.");
+            return false;
+        }
+
+        createDto.Sessions = new List<CreateEventSessionRequest>
+        {
+            new()
+            {
+                TempKey = "inline-primary-session",
+                Title = string.IsNullOrWhiteSpace(createDto.Title) ? "Main session" : createDto.Title.Trim(),
+                Description = createDto.Description,
+                StartTime = startTimeUtc.Value,
+                EndTime = endTimeUtc.Value,
+                LocationId = _inlineSessionLocationId,
+                SortOrder = 1,
+                MaxAudienceAttendees = _inlineSessionCapacity is > 0 ? _inlineSessionCapacity : null,
+                RegistrationModeId = registrationModes?.FirstOrDefault()?.Id,
+                LanguageIds = new List<int>()
+            }
+        };
+
+        return true;
     }
 
     private async Task SaveAsDraftAsync()

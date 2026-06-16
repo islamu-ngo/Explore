@@ -54820,6 +54820,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("tagIds")]
         public System.Collections.Generic.ICollection<System.Guid>? TagIds { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("sessions")]
+        public System.Collections.Generic.ICollection<CreateEventSessionRequest>? Sessions { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -55233,6 +55236,82 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class CreateEventSessionRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tempKey")]
+        public string? TempKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dayTempKey")]
+        public string? DayTempKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roomTempKey")]
+        public string? RoomTempKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("startTime")]
+        public System.DateTimeOffset? StartTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endTime")]
+        public System.DateTimeOffset? EndTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locationId")]
+        public System.Guid? LocationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roomId")]
+        public System.Guid? RoomId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("featuredImageId")]
+        public System.Guid? FeaturedImageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SortOrder { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("slug")]
+        public string? Slug { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxAudienceAttendees")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxAudienceAttendees { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? RegistrationModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("price")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? Price { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionTemplateId")]
+        public System.Guid? SessionTemplateId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("islamicAspect")]
+        public EventSessionIslamicAspectDto? IslamicAspect { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("languageIds")]
+        public System.Collections.Generic.ICollection<int>? LanguageIds { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
