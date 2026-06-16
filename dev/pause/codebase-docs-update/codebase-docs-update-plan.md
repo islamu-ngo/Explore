@@ -384,7 +384,7 @@ Document:
 ---
 
 #### Task 3.2: Clarify Sentry Integration Status
-**File**: `.claude/skills/error-tracking/SKILL.md`
+**File**: `.agents/skills/error-tracking/SKILL.md`
 
 **Investigation Required**:
 1. Check `Explore.API/Program.cs` for `UseSentry()` call
@@ -436,7 +436,7 @@ priority: critical|high|medium|low
 ---
 
 #### Task 3.4: Expand dotnet-efcore-guidelines Skill
-**File**: `.claude/skills/dotnet-efcore-guidelines/SKILL.md`
+**File**: `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
 
 **Add Sections**:
 1. **Complete Entity Auditing Pattern** (QUICK_REFERENCE.md Rule #11)
@@ -731,13 +731,13 @@ Content:
 11. `docs/SKILLS_AGENTS_REFERENCE.md` (NEW) - Reference matrix
 
 ### Skill Files (7 skills)
-1. `.claude/skills/auth-patterns/` - Verify 1 resource
-2. `.claude/skills/blazor-bff-patterns/` - Verify 4 resources
-3. `.claude/skills/blazor-ui-conventions/` - Verify 7 resources
-4. `.claude/skills/clean-architecture-rules/` - Verify 4 resources
-5. `.claude/skills/cqrs-mediatr-guidelines/` - Verify 5 resources
-6. `.claude/skills/dotnet-efcore-guidelines/` - Verify 5 resources + expand
-7. `.claude/skills/error-tracking/` - Clarify Sentry + verify 6 resources
+1. `.agents/skills/auth-patterns/` - Verify 1 resource
+2. `.agents/skills/blazor-bff-patterns/` - Verify 4 resources
+3. `.agents/skills/blazor-ui-conventions/` - Verify 7 resources
+4. `.agents/skills/clean-architecture-rules/` - Verify 4 resources
+5. `.agents/skills/cqrs-mediatr-guidelines/` - Verify 5 resources
+6. `.agents/skills/dotnet-efcore-guidelines/` - Verify 5 resources + expand
+7. `.agents/skills/error-tracking/` - Clarify Sentry + verify 6 resources
 
 ### Agent Files (9 agents)
 1. `.claude/agents/clean-code-architect.md` - Add YAML

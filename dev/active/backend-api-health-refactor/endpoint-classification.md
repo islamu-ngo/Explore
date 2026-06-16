@@ -3,7 +3,7 @@
 
 # Endpoint Classification
 
-Last Updated: 2026-05-07 Europe/Brussels
+Last Updated: 2026-06-13 Europe/Brussels
 
 ## Purpose
 
@@ -23,10 +23,10 @@ This artifact defines the target classification model used by `endpoint-inventor
 
 ## Required Per-Endpoint Decisions
 
-- Public endpoints must state whether data is tenant-scoped public data, global platform-level data, or authenticated export/download data.
+- Public endpoints must state whether data is tenant-scoped public data, global platform-level data, or authenticated export/download data. Anonymous public endpoints must not return user IDs, user emails, user full names, roles, memberships, invitations, role grants, revocation metadata, registration identity, or tenant/member authorization metadata unless an explicit product/security decision is recorded in the risk register and enforced by tests.
 - Writes must identify handler-level authorization metadata or a documented exception.
 - Admin endpoints must use capability/resource/action policy names, not role-sounding placeholders.
-- HAL-enabled resources must list candidate rels and fail-closed authorization behavior.
+- HAL-enabled resources must list candidate rels and fail-closed authorization behavior. UI affordances consume these rels as the source of truth; local role checks are not a valid substitute.
 - Rate-limit policy must be one of: `anonymous-public-read`, `authenticated-read`, `authenticated-write`, `auth-sensitive`, `download-sensitive`, `admin-write`, `setup_secret`, `export-public-or-authenticated`.
 - Cache policy must state whether the endpoint is uncached, output-cached, user-varying, tenant-varying, host-varying, or public-resource-varying.
 
@@ -65,3 +65,13 @@ This artifact defines the target classification model used by `endpoint-inventor
 - Public endpoints with tenant-scoped data declare `RuntimeTenantOptionalPublicRead` rationale.
 - Admin/setup/download-sensitive endpoints declare explicit rate-limit policy.
 - Public ingestion endpoints declare abuse controls and a dedicated limiter rather than inheriting generic anonymous read semantics.
+
+## 2026-06-13 Audit Reclassification Queue
+
+These endpoint families are not allowed to remain generic `Public` without DTO splitting or explicit approval. The 2026-06-13 Phase 1P first slice chose the fail-closed option for all three families: protect the identity-bearing read endpoints now, then decide later whether any safe public projection is needed.
+
+- `EventRegistration` reads: now authenticated in code because registration identity fields make public responses unsafe. Follow-up: self/event-admin resource authorization and optional public-safe aggregate DTOs.
+- `TenantUserRoleGrant` reads: now authenticated in code by removing the anonymous action override. Follow-up: tenant-admin/resource policy and explicit OpenAPI metadata regeneration.
+- `OrganizationMember` reads: now authenticated in code because membership identity and role data make public responses unsafe. Follow-up: organization-scoped resource policy and optional safe public member profile projection.
+
+If product requirements later need anonymous access for any of these families, the endpoint must use a separate safe public DTO and API tests must prove only approved fields are returned.

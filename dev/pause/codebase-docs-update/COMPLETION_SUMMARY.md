@@ -152,7 +152,7 @@ Comprehensive update of documentation, skills, agents, and codebase to enterpris
 
 ### Task 3.2: Update error-tracking Skill
 **Status**: ✅ **COMPLETE**
-**File**: `.claude/skills/error-tracking/SKILL.md`
+**File**: `.agents/skills/error-tracking/SKILL.md`
 
 **Changes**:
 - ✅ Removed all Sentry references
@@ -279,7 +279,7 @@ These sections can be refactored to:
 5. `docs/API.md` - HATEOAS + OutputCache
 6. `docs/DOMAIN.md` - EventAspects + session hierarchy
 7. `C:\Users\AM5\.claude\projects\C--ISLAMU-GitHub-Explore\memory\MEMORY.md` - Statistics update
-8. `.claude/skills/error-tracking/SKILL.md` - Prometheus/Loki migration
+8. `.agents/skills/error-tracking/SKILL.md` - Prometheus/Loki migration
 
 ### Code Files Modified: 78 Files (by refactor agent)
 - 26 delete command classes
@@ -319,8 +319,8 @@ These sections can be refactored to:
 **Status**: ✅ **COMPLETE**
 
 **Files Fixed**:
-1. `.claude/skills/blazor-bff-patterns/SKILL.md` - Added missing opening `---`
-2. `.claude/skills/auth-patterns/SKILL.md` - Added missing opening `---`
+1. `.agents/skills/blazor-bff-patterns/SKILL.md` - Added missing opening `---`
+2. `.agents/skills/auth-patterns/SKILL.md` - Added missing opening `---`
 
 **Impact**: Skills now load correctly in Claude Code CLI.
 
@@ -328,7 +328,7 @@ These sections can be refactored to:
 
 ### Task 4.2: Integrate EF Core 10+ DbContext Pooling
 **Status**: ✅ **COMPLETE**
-**File**: `.claude/skills/dotnet-efcore-guidelines/SKILL.md`
+**File**: `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
 
 **Changes**:
 - ✅ Added DbContext pooling pattern with `AddDbContextPool<T>()`
@@ -342,7 +342,7 @@ These sections can be refactored to:
 
 ### Task 4.3: Add MudBlazor ParameterState Framework
 **Status**: ✅ **COMPLETE**
-**File**: `.claude/skills/blazor-ui-conventions/SKILL.md`
+**File**: `.agents/skills/blazor-ui-conventions/SKILL.md`
 
 **Changes**:
 - ✅ Added `ParameterState<T>` pattern for MudBlazor components
@@ -356,7 +356,7 @@ These sections can be refactored to:
 
 ### Task 4.4: Modernize with C# 12 Primary Constructors
 **Status**: ✅ **COMPLETE**
-**File**: `.claude/skills/clean-architecture-rules/SKILL.md`
+**File**: `.agents/skills/clean-architecture-rules/SKILL.md`
 
 **Changes**:
 - ✅ Added C# 12 primary constructor pattern as preferred approach

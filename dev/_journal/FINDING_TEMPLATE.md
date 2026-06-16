@@ -16,7 +16,7 @@
 **References**:
 - `path/to/file.cs:line`
 - `docs/<related-doc>.md`
-- `.claude/skills/<related-skill>/SKILL.md`
+- `.agents/skills/<related-skill>/SKILL.md`
 - `.claude/rules/<related-rule>.md`
 - PR / commit: `<url-or-sha>`
 

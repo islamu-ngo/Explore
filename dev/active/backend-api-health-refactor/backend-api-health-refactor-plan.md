@@ -3,21 +3,22 @@
 
 # Backend API Health Refactor Plan
 
-Last Updated: 2026-05-07 Europe/Brussels
+Last Updated: 2026-06-13 Europe/Brussels
 
 ## 1. Goal
 
-Refactor the backend/API codebase toward an enterprise-grade, highly maintainable Clean Architecture implementation without preserving development-era compatibility mistakes. This workstream is backend/API-only: `Explore.API`, `Explore.Application`, `Explore.Persistence` (including `ApiTickerQDbContext`), `Explore.Infrastructure` (including storage and messaging implementations), `Explore.Domain`, backend tests, documentation, OpenAPI/HAL contracts, and authorization policy assets are in scope; Blazor UI behavior and styling are out of scope except where API/HAL contracts require documentation of downstream impact.
+Refactor the backend/API codebase toward an enterprise-grade, highly maintainable Clean Architecture implementation without preserving development-era compatibility mistakes. This workstream is backend/API-led: `Explore.API`, `Explore.Application`, `Explore.Persistence` (including `ApiTickerQDbContext`), `Explore.Infrastructure` (including storage and messaging implementations), `Explore.Domain`, backend tests, documentation, OpenAPI/HAL contracts, and authorization policy assets are in scope. Blazor visual redesign remains out of scope, but Blazor action-affordance fixes are in scope when the backend HAL contract is being violated by role/claim/local-state gating.
 
 ## 2. Success Criteria
 
 - Phase 0 produces mandatory implementation artifacts before behavior changes begin.
+- P0 data exposure endpoints are reclassified and hardened before broad refactoring: event registrations, tenant role grants, and organization member reads must not anonymously expose user IDs, emails, names, roles, grant metadata, or membership data.
 - Runtime tenant isolation fails closed for normal request paths and cannot silently return cross-tenant data when tenant context is absent.
 - Tenant/system execution paths are explicit, named, logged, reason-coded, and test-covered; background workers (RabbitMQ consumers, TickerQ scheduled tasks) and storage reconciliation workers run safely under `BackgroundSystem` context without leaving permanent filter-bypass loopholes.
-- API authorization policies express capabilities/resources/actions rather than role-sounding placeholders backed only by `RequireAuthenticatedUser()`. This covers core entities as well as AI assistants, file storage, email admin, and scheduling subsystems.
+- API authorization policies express capabilities/resources/actions rather than role-sounding placeholders backed only by `RequireAuthenticatedUser()`. This covers core entities as well as footer management, event registrations, organization membership, tenant role grants, AI assistants, file storage, email admin, and scheduling subsystems.
 - First-admin/bootstrap behavior is documented and verified for self-hosted SingleTenant and MultiTenant deployments, including Keycloak integration and secret rotation.
 - Error responses use one RFC 7807 ProblemDetails factory/writer with typed problem codes and required `traceId`, `timestamp`, and `correlationId` extensions.
-- Route names, endpoint classifications, HAL affordances, OpenAPI operation IDs, rate-limit policies, cache policies, tenant modes, and authorization posture are inventory-backed and test-enforced.
+- Route names, endpoint classifications, HAL affordances, OpenAPI operation IDs, rate-limit policies, cache policies, tenant modes, and authorization posture are inventory-backed and test-enforced; Blazor action buttons use HAL `_links`, not local role checks or empty-list fallbacks.
 - Controllers become thin dispatch/representation boundaries only after contract/error/route stability is established, ensuring controllers like `AiAssistantController`, `StorageObjectController`, and `EmailDispatchAdminController` remain thin HTTP adaptors.
 - CQRS handlers remain single-purpose, cancellation-aware, idempotency-aware where relevant (e.g., `Idempotency-Key` processing), and do not bypass MediatR behaviors by directly invoking other handlers.
 - Persistence repositories remain entity-first, tenant-safe, cancellation-aware, index-conscious, and projection/read-model exceptions are explicit.
@@ -27,7 +28,7 @@ Refactor the backend/API codebase toward an enterprise-grade, highly maintainabl
 
 - No backward compatibility requirement before v1.0: route names, response shapes, command/query contracts, policy names, and internal abstractions may change when the new design is cleaner.
 - All breaking changes must still be documented in `docs/API_CHANGELOG.md`, reflected in OpenAPI, and followed by generated-client regeneration where applicable.
-- No Blazor UI refactor in this workstream.
+- No Blazor visual/UI redesign in this workstream. Exception: Blazor HAL affordance violations (`MyEvents`, `MyOrganizations`, event template create fallback) are contract/security bugs and must be corrected or explicitly handed to a linked UI workstream before this plan can be complete.
 - Do not weaken public endpoint access accidentally; classify every endpoint before changing authorization.
 - Do not split major controllers until endpoint inventory, endpoint classification, error mapping, route names, and OpenAPI/HAL guardrails are stable.
 - Do not remove tenant/soft-delete filters to make tests pass.
@@ -184,17 +185,22 @@ Ensure background processing of outbox events (like `OutboxProcessor` and Rabbit
 
 ## 6. Evidence Base
 
-Repo evidence is captured in `backend-api-health-refactor-context.md`. The highest-risk confirmed hotspots are:
+Repo evidence is captured in `backend-api-health-refactor-context.md`. The 2026-06-13 audit changed the priority order: fix confirmed data exposure and authorization/HAL contract defects before broad structural cleanup. Highest-risk confirmed hotspots are:
 
-- `Explore.Persistence/ExploreDbContext.QueryFilters.cs`: many tenant filters include `TenantContext == null || ...`, which makes missing tenant context permissive.
-- `Explore.API/Extensions/AuthenticationExtensions.cs`: `template_admin`, `event_editor`, `property_governance_admin`, and `platform_namespace_editor` currently require only authentication.
-- `Explore.API/Controllers/EventController.cs`: combines discovery, my-events, calendar export, lifecycle mutations, publishing, deletion, and aspect CRUD.
-- `Explore.API/Controllers/AiAssistantController.cs`, `StorageObjectController.cs`, and `EmailDispatchAdminController.cs`: expose newly added complex surfaces (AI assistant run/proposed actions, provider-neutral upload sessions, outbox pause/park/replay controls) but only apply general class-level `[Authorize]` without capability-based policy checks.
-- `Explore.API/Scheduling/EmailDispatchTickerQJobs.cs` and `EventLifecycleTickerQJobs.cs`: background scheduler jobs executing state transitions and triggers via `ApiTickerQDbContext` and external messaging providers.
-- `Explore.Infrastructure/Messaging/EmailDispatchRabbitMqConsumerService.cs`: processes RabbitMQ messages in background threads where tenant isolation and scope setup must be strictly verified.
-- `Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs`: large create-graph handler with dozens of dependencies.
-- `Event.API.IntegrationTests/Features/RouteNameCoverageTests.cs`: the two route-name drift tests are skipped.
-- `Explore.Persistence/Repositories/EventRepository.cs` and related repositories: repeated offset pagination and missing `CancellationToken` forwarding. This must also be checked for new AI assistant conversation history, storage object, and email outbox listings.
+- `Explore.API/Controllers/EventRegistrationController.cs`: anonymous list/detail/by-session/by-user reads return registration DTOs containing `UserId`, `UserFullName`, `UserEmail`, status, event/session, and tenant data. Reclassify or split public aggregate reads from user/member identity reads.
+- `Explore.API/Controllers/TenantUserRoleGrantController.cs`: class-level `[Authorize]` is overridden by `[AllowAnonymous]` on read endpoints that expose user email/full name, tenant, role, grant, and revocation metadata.
+- `Explore.API/Controllers/OrganizationMemberController.cs`: anonymous member reads expose user email/full name, role, and position metadata.
+- `Explore.API/Controllers/FooterController.cs`: authenticated footer writes pass `CurrentUserId ?? Guid.Empty` and footer commands lack `ISecureRequest`, `IAuthorizedRequest`, or `[AuthorizeResource]` metadata. Treat footer management as tenant-admin/governance authorization, not generic authentication.
+- `Explore.Blazor.Client/Pages/Events/MyEvents.*`, `Explore.Blazor.Client/Pages/Organizations/MyOrganizations.*`, and `Explore.Blazor.Client/Pages/Admin/EventTemplates/EventTemplateListPage.razor`: action affordances are gated by local roles or an empty-list `create` fallback instead of HAL `_links`.
+- `Explore.Domain/**/*.cs`: at least 80 `System.ComponentModel.DataAnnotations`/`Schema` matches across 25 Domain files, including many `[ForeignKey]` attributes on `Event`; move persistence mapping to `Explore.Persistence` EF configuration and add an architecture guard.
+- Query request/handler pairs such as `GetEmailDispatchStatusQuery`, event aggregate view queries, and event/session custom-property projection queries return `BaseCommandResponse<T>` and place query data in the command-response `Id` slot.
+- `Explore.Application/Contracts/Persistence/IEventAggregateViewRepository.cs`: repository contract accepts `AggregateViewFilterDto`, leaking Application DTO shape into a Persistence contract and bypassing the intended specification/read-model boundary.
+- `Explore.Persistence/Repositories/GenericRepository.cs`: `GetById` uses tracked `FindAsync`; `Exists` calls `GetById`; `IGenericRepository.HardDelete` is globally exposed with only comment-level admin constraints.
+- `Explore.Application/Services/TenantPolicySettingService.Read.cs`: dozens of sequential per-key setting reads despite repository bulk-read capability; `TenantSettingRepository.GetByTenantAndKey` does not use `AsNoTracking`.
+- Duplicated event/session template services and custom-property projection filters share near-identical algorithms and must be consolidated before divergence hardens.
+- `Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs`, `SendAiMessageCommandHandler.cs`, and `ProcessAiRunCommandHandler.cs`: oversized use-case coordinators needing targeted decomposition after P0 security work.
+
+Important cleared/non-primary risks from the audit: no production `Explore.Application` direct `ExploreDbContext` usage was found; repository interfaces were not found returning DTOs or `IQueryable`; validator DI injection was not found; sampled query handlers did not mutate state; direct raw runtime `.IgnoreQueryFilters()` is already guarded by architecture tests, though semantic bypass predicates still require review.
 
 External evidence used for the plan:
 
@@ -219,15 +225,16 @@ Exit criteria:
 - Authorization-policy matrix and tenant-execution-model documents are approved implementation inputs.
 - No behavior-changing phase can start without a risk-register entry for each known breaking change.
 
-### Phase 1 — Tenant Isolation and Authorization Hardening
+### Phase 1 — P0 Data Exposure, Tenant Isolation, and Authorization Hardening
 
-Purpose: remove the highest-risk cross-tenant and privileged-action ambiguity without trying to solve every controller ownership issue at once.
+Purpose: remove confirmed anonymous identity/membership/role exposure and privileged-action ambiguity before broad controller decomposition or CQRS cleanup.
 
 Subphases:
+- **1P P0 endpoint hardening:** reclassify and harden `EventRegistration`, `TenantUserRoleGrant`, and `OrganizationMember` read endpoints. Public endpoints may return only explicitly public aggregate/resource data; user email/name/id, membership, role, grant, and revocation metadata requires authenticated/resource/admin authorization and cache variance that cannot leak identity data.
 - **1A Tenant execution model:** implement explicit execution modes and absent-tenant failure behavior. Background worker threads (RabbitMQ outbox consumer, TickerQ jobs, storage reconciliation worker) must run safely under `BackgroundSystem` context.
 - **1B Query filter fail-closed implementation:** replace permissive `TenantContext == null || ...` runtime semantics. Ensure pooled state and `ApiTickerQDbContext` behave safely under fail-closed filters.
 - **1C Filter bypass quarantine:** remove or restrict `IgnoreAllFilters()` and require named reason-coded system/host-admin APIs.
-- **1D Authorization policy replacement:** replace placeholder policies with capability/resource/action policies. This includes new policies for AI (`AiAssistant.Interact`/`AiAssistant.Manage`), Storage (`StorageObjects.Read`/`StorageObjects.Write`), Tenant Storage Settings (`TenantStorage.Manage`), and Email Admin (`Email.Dispatch`/`Email.Manage`).
+- **1D Authorization policy replacement:** replace placeholder policies with capability/resource/action policies. This includes footer management (`Footer.Manage`), registration/member/grant reads and management, AI (`AiAssistant.Interact`/`AiAssistant.Manage`), Storage (`StorageObjects.Read`/`StorageObjects.Write`), Tenant Storage Settings (`TenantStorage.Manage`), and Email Admin (`Email.Dispatch`/`Email.Manage`). Footer writes must fail closed when current user id is absent; `Guid.Empty` must not be accepted as an actor fallback.
 - **1E Self-host bootstrap/admin verification:** define first-admin, setup-secret/Keycloak role behavior, Keycloak client secret rotation and backup-confirmed sync, disablement, audit, and missing-auth-provider handling.
 
 Exit criteria:
@@ -235,6 +242,7 @@ Exit criteria:
 - Cross-tenant/system operations use explicit methods, reason enums, structured logging, and no controller-level LINQ filter bypass.
 - Privileged policies cannot be satisfied by authentication alone unless intentionally named as authenticated-only.
 - Bootstrap/admin setup behavior is documented, tested, and audited.
+- Anonymous endpoints that expose identity/membership/role data are either removed, reclassified, DTO-split, or protected with API tests proving unauthenticated access fails.
 
 ### Phase 2 — API Contract, Error Catalog, and Result Mapping
 
@@ -282,7 +290,7 @@ Actions:
 - Add optimistic concurrency for event lifecycle/status/settings mutations and AI assistant run state changes.
 - Remove obsolete `IAuthorizedRequest` compatibility path and use `[AuthorizeResource]` plus `ISecureRequest` consistently.
 - Replace direct handler-to-handler calls with MediatR dispatch or Application query services that do not bypass behaviors accidentally.
-- Normalize query handlers to return DTOs or `PaginatedResult<TDto>`, not command response envelopes.
+- Normalize query handlers to return DTOs, nullable DTOs, `IReadOnlyList<TDto>`, or `PaginatedResult<TDto>`, not command response envelopes. Initial targets: `GetEmailDispatchStatusQuery`, `GetEventWithSessionsAggregateViewQuery`, `GetEventListAggregateViewQuery`, event custom-property projection queries, and event-session custom-property projection queries.
 - Centralize cache keys/tags and invalidation policy.
 - Add audit events for event lifecycle, Keycloak configurations, upload sessions, outbox pause/park/replay controls, and security-sensitive use cases.
 
@@ -297,8 +305,8 @@ Purpose: make data access efficient, cancellation-aware, tenant-safe, and contra
 
 Subphases:
 - **5A Cancellation tokens:** add `CancellationToken` parameters to repository contracts and pass tokens into EF async calls (including AI assistant history, storage queries, outbox transitions, and TickerQ db operations).
-- **5B Tenant-safe repository/query contracts:** preserve entity-first repositories; make cross-tenant read models explicit.
-- **5C Query shape cleanup:** remove broad includes only on confirmed hotspots and replace with projection-specific read models/detail queries.
+- **5B Tenant-safe repository/query contracts:** preserve entity-first repositories; make cross-tenant read models explicit; remove DTO-shaped inputs from repository contracts such as `AggregateViewFilterDto`; quarantine or replace global `HardDelete`.
+- **5C Query shape cleanup:** remove broad includes only on confirmed hotspots and replace with projection-specific read models/detail queries; ensure generic and concrete read paths use `AsNoTracking` unless mutation/tracking is required; batch tenant policy-setting reads.
 - **5D Cursor pagination:** introduce opaque versioned cursor pagination for public high-volume feeds, AI assistant conversations, and storage object listings, and define remaining offset-based endpoints.
 - **5E Index and migration review:** review high-volume event/session/feed indexes, tenant composite indexes, soft-delete predicates, and model assertions/migration tests. Review index coverage for AI run states, storage metadata, and outbox tables.
 - **5F Transaction retry strategy:** route manual transactions through `IUnitOfWork` or EF execution strategies (specifically for outbox updates and TickerQ operational state transitions).
@@ -314,7 +322,7 @@ Purpose: prevent regression after conventions land. Guardrails should be introdu
 
 Actions:
 - Convert temporary skipped/failing Phase 0B tests into passing hard gates.
-- Add or finalize architecture tests for auth metadata, endpoint classification, route-name constants, ProblemDetails metadata, no repository injection into controllers, no domain entity API responses, no direct handler injection, cancellation-aware repository interfaces, safe query-filter bypass, audit coverage, idempotency on high-risk POSTs, and optimistic concurrency on lifecycle/status/settings updates.
+- Add or finalize architecture tests for auth metadata, endpoint classification, no anonymous identity/membership/role DTO exposure, HAL affordance source-of-truth, route-name constants, ProblemDetails metadata, no repository injection into controllers, no domain entity API responses, no Domain DataAnnotations/Schema mapping attributes, no direct handler injection, cancellation-aware repository interfaces, safe query-filter bypass, guarded hard-delete semantics, audit coverage, idempotency on high-risk POSTs, and optimistic concurrency on lifecycle/status/settings updates.
 - Update `docs/API.md`, `docs/SECURITY-MODEL.md`, `docs/AUTHORIZATION.md`, `docs/MULTI_TENANCY.md`, `docs/OPERATIONS.md`, and `docs/API_CHANGELOG.md` for changed contracts.
 - Keep `dev/active/api-contract-stabilization` and `dev/active/openapi-modernization` aligned; this workstream owns the backend refactor, those workstreams own their narrower inventories/generation concerns.
 
@@ -343,14 +351,15 @@ Do not use solution-level `dotnet test` unless repo guidance changes.
 Use this order:
 
 0. Inventory and classification.
-1. Tenant execution model and fail-closed filters.
-2. Authorization policy matrix and privileged policy hardening.
-3. ProblemDetails/error catalog/result mapping.
-4. Route names, HAL, OpenAPI operation consistency.
-5. Controller decomposition.
-6. CreateEvent/CQRS decomposition.
-7. Repository cancellation/query-shape/pagination/index work.
-8. Audit logging, idempotency, and concurrency hardening.
-9. Final architecture tests and docs.
+1. P0 data-exposure hardening for registration, role-grant, and organization-member reads.
+2. Footer write authorization and Blazor HAL affordance contract fixes.
+3. Tenant execution model and fail-closed filters.
+4. Authorization policy matrix and privileged policy hardening.
+5. ProblemDetails/error catalog/result mapping.
+6. Route names, HAL, OpenAPI operation consistency.
+7. Controller decomposition.
+8. CQRS query-envelope and oversized-handler decomposition.
+9. Repository contract/read-path/pagination/index work.
+10. Domain persistence-annotation cleanup and final architecture tests/docs.
 
 Audit/idempotency/concurrency must be designed early and implemented alongside the use-case and persistence phases; do not postpone them as cosmetic cleanup.

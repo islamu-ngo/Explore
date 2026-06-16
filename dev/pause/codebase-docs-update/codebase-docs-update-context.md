@@ -323,7 +323,7 @@ All broken and should be removed:
 - docs/SKILLS_AGENTS_REFERENCE.md (NEW)
 
 ### Skills to Update (7 skills)
-- All skills in `.claude/skills/` need resource file verification
+- All skills in `.agents/skills/` need resource file verification
 - `dotnet-efcore-guidelines` needs expansion
 
 ### Agents to Update (9 agents)

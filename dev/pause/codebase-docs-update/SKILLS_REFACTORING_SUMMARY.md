@@ -19,8 +19,8 @@ Refactor all project-specific skills and agents to enterprise-grade standards ba
 **Status**: ✅ **FIXED**
 
 **Files Fixed**:
-1. `.claude/skills/blazor-bff-patterns/SKILL.md` - Added missing opening `---`
-2. `.claude/skills/auth-patterns/SKILL.md` - Added missing opening `---`
+1. `.agents/skills/blazor-bff-patterns/SKILL.md` - Added missing opening `---`
+2. `.agents/skills/auth-patterns/SKILL.md` - Added missing opening `---`
 
 **Impact**: Without proper YAML frontmatter, skills fail to load and become unavailable to the CLI.
 
@@ -45,7 +45,7 @@ description: ...
 
 ### Enhancement 2.1: EF Core DbContext Pooling
 **Status**: ✅ **COMPLETE**
-**File**: `.claude/skills/dotnet-efcore-guidelines/SKILL.md`
+**File**: `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
 
 **Changes**:
 - ✅ Added EF Core 10+ DbContext pooling pattern
@@ -77,7 +77,7 @@ builder.Services.AddDbContextPool<{DbContext}>((provider, options) =>
 
 ### Enhancement 2.2: MudBlazor ParameterState Framework
 **Status**: ✅ **COMPLETE**
-**File**: `.claude/skills/blazor-ui-conventions/SKILL.md`
+**File**: `.agents/skills/blazor-ui-conventions/SKILL.md`
 
 **Changes**:
 - ✅ Added MudBlazor `ParameterState<T>` pattern
@@ -109,7 +109,7 @@ public {Entity}Card()
 
 ### Enhancement 2.3: C# 12+ Primary Constructors
 **Status**: ✅ **COMPLETE**
-**File**: `.claude/skills/clean-architecture-rules/SKILL.md`
+**File**: `.agents/skills/clean-architecture-rules/SKILL.md`
 
 **Changes**:
 - ✅ Added C# 12 primary constructor pattern as preferred approach

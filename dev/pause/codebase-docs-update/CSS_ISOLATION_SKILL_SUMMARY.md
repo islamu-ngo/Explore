@@ -19,7 +19,7 @@ Create comprehensive skill for Blazor CSS isolation with BEM methodology, verifi
 
 ### 1. New Skill: blazor-css-isolation
 **Status**: ✅ **CREATED**
-**File**: `.claude/skills/blazor-css-isolation/SKILL.md`
+**File**: `.agents/skills/blazor-css-isolation/SKILL.md`
 
 **Comprehensive Coverage**:
 - ✅ CSS Isolation architecture (build-time transformation, scope attributes)
@@ -210,7 +210,7 @@ Create comprehensive skill for Blazor CSS isolation with BEM methodology, verifi
 
 ### Files Created: 1 Skill
 
-1. `.claude/skills/blazor-css-isolation/SKILL.md`
+1. `.agents/skills/blazor-css-isolation/SKILL.md`
    - 400+ lines of enterprise-grade patterns
    - Verified against official Microsoft docs
    - Comprehensive examples and debugging guide

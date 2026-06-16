@@ -420,7 +420,7 @@
 ### Task 3.2: Clarify Sentry Integration Status
 **Status**: ⏳ Not Started
 **Estimated Time**: 30 minutes
-**File**: `.claude/skills/error-tracking/SKILL.md`
+**File**: `.agents/skills/error-tracking/SKILL.md`
 **BLOCKS**: Task 3.1 (error-tracking resources)
 
 - [ ] **Investigate current Sentry integration**:
@@ -504,7 +504,7 @@ priority: critical|high|medium|low
 ### Task 3.4: Expand dotnet-efcore-guidelines Skill
 **Status**: ⏳ Not Started
 **Estimated Time**: 45 minutes
-**File**: `.claude/skills/dotnet-efcore-guidelines/SKILL.md`
+**File**: `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
 
 - [ ] Add new section: "Complete Entity Auditing Pattern"
   - [ ] Document full entity template with all auditing fields:

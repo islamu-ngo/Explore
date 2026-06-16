@@ -51,7 +51,7 @@ At a glance:
 | Signal | Promote To |
 |---|---|
 | Rule that applies to new code going forward | `docs/QUICK_REFERENCE.md` (non-inferable rule) OR new `.claude/rules/*.md` entry |
-| Pattern that teaches a way of working | `.claude/skills/*/SKILL.md` |
+| Pattern that teaches a way of working | `.agents/skills/*/SKILL.md` |
 | Architectural decision | `docs/MAJOR_DECISIONS.md` + ADR under `docs/adr/` |
 | Discovery that informs governance / conventions | `docs/GOVERNANCE.md` |
 | One-off debugging lesson | **Stays in journal** — no promotion needed |

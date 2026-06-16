@@ -29,7 +29,7 @@ Promote an entry when **any** of the following is true:
 |---|---|---|
 | Non-inferable rule applying to new code | `docs/QUICK_REFERENCE.md` | Hard invariants, auto-loaded by every agent |
 | Rule scoped to a specific folder / project | New or existing `.claude/rules/*.md` | Path-scoped, loads only when editing those files |
-| Pattern teaching a way of working | `.claude/skills/<name>/SKILL.md` | Skills are progressive-disclosure how-tos |
+| Pattern teaching a way of working | `.agents/skills/<name>/SKILL.md` | Skills are progressive-disclosure how-tos |
 | System-wide decision (layer boundary, tech choice) | `dev/_journal/MAJOR_DECISIONS.md` + new ADR under `docs/adr/` | Decisions deserve their own formal record |
 | Convention / code style choice | `docs/GOVERNANCE.md` | Decision frameworks and conventions live here |
 | Operational quirk (env-specific, tool-specific) | `docs/TROUBLESHOOTING.md` | Where cold-start agents look for "weird" errors |
