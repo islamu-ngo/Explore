@@ -6,6 +6,22 @@
     "tenantId": {
       "type": "string",
       "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    },
+    "owningResourceKind": {
+      "type": "string",
+      "description": "Kind of the resource that will own the uploaded object during provider-neutral upload-session creation."
+    },
+    "owningResourceId": {
+      "type": "string",
+      "description": "Identifier of the resource that will own the uploaded object when it is known before upload finalization."
+    },
+    "purpose": {
+      "type": "string",
+      "description": "Storage-object purpose requested by the upload-session command, such as event image or attachment."
+    },
+    "visibility": {
+      "type": "string",
+      "description": "Requested storage-object visibility for the upload session."
     }
   },
   "required": ["tenantId"]
