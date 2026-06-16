@@ -706,6 +706,8 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 5. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `schemas/openapi.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
 6. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
 
+Before v1.0, intentional breaking API contract changes may be accepted when they make the API, HAL affordances, or generated OpenAPI contract cleaner. They still require an entry in [API_CHANGELOG.md](API_CHANGELOG.md), regenerated OpenAPI/inventory/generated-client artifacts through the documented workflow when applicable, and retained contract-governance evidence. Do not hand-edit `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, or generated NSwag client output. At v1.0, breaking schema diffs become blocking per governance.
+
 ---
 
 ## Related Docs

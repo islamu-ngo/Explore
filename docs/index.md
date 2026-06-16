@@ -73,7 +73,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [../.claude/contract/README.md](../.claude/contract/README.md) - Contribution Contract (eight questions every change must answer).
 - [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml) - intent → context map (paths, rules, skills, tests, docs).
 - [../.claude/rules/README.md](../.claude/rules/README.md) - path-scoped rule files auto-loaded by editing scope.
-- [../.claude/skills/_SKILL_SCHEMA.md](../.claude/skills/_SKILL_SCHEMA.md) - schema every migrated `SKILL.md` follows.
+- [../.agents/skills/_SKILL_SCHEMA.md](../.agents/skills/_SKILL_SCHEMA.md) - schema every migrated `SKILL.md` follows.
 - [../.claude/agents/_AGENT_SCHEMA.md](../.claude/agents/_AGENT_SCHEMA.md) - schema every subagent file follows.
 - [../.claude/benchmarks/README.md](../.claude/benchmarks/README.md) - cold-start agent benchmark scenarios.
 - [../dev/_journal/README.md](../dev/_journal/README.md) - durable findings log + promotion rules.

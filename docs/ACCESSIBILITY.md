@@ -426,4 +426,4 @@ await Focus.RestoreFocusAsync(fallbackSelector: "#trigger-button");
 | `Explore.Blazor.Client/Providers/LanguageProvider.razor` | Language/direction cascading provider |
 | `Explore.Blazor/Extensions/BffPreferenceEndpoints.cs` | Direction preference BFF endpoint |
 | `Explore.Domain/Settings/Definitions/AppearanceSettingDefinitions.cs` | Direction setting definition |
-| `.claude/skills/accessibility/SKILL.md` | AI agent accessibility rules |
+| `.agents/skills/accessibility/SKILL.md` | AI agent accessibility rules |

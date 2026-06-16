@@ -50,7 +50,7 @@ Each canonical doc has an owner category. Ownership means the category is respon
 | Frontend | `BLAZOR.md`, `DESIGN_SYSTEM.md`, `ACCESSIBILITY.md`, `RENDER_POLICIES.md` |
 | Product/Admin | `ADMIN_HIERARCHY.md`, feature/admin workflow docs |
 | Contributor Experience | `CONTRIBUTING.md`, `TESTING.md`, `DOCUMENTATION_STYLE_GUIDE.md`, this document |
-| Agent Context | `AGENTS.md`, `.claude/contract/`, `.claude/skills/`, `dev/_journal/` |
+| Agent Context | `AGENTS.md`, `.claude/contract/`, `.agents/skills/`, `dev/_journal/` |
 
 ## Metadata Policy
 

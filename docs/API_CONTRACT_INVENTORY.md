@@ -17,7 +17,7 @@
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **0**
 - Operations missing `x-endpoint-class` extension: **0**
-- Classification breakdown: `Admin`=13, `Authenticated`=313, `Public`=125
+- Classification breakdown: `Admin`=13, `Authenticated`=321, `Public`=117
 
 ## Operations
 
@@ -157,11 +157,11 @@
 | 132 | `/api/eventday/{id}` | `DELETE` | `DeleteEventDay` | Delete Event Day | EventDay | _(Phase 1.4)_ | `Authenticated` | no |
 | 133 | `/api/eventformat` | `GET` | `GetEventFormatOptions` | Get all Event Formats | EventFormat | _(Phase 1.4)_ | `Public` | no |
 | 134 | `/api/eventformat/{id}` | `GET` | `GetEventFormatOptionById` | Get Event Format by ID | EventFormat | _(Phase 1.4)_ | `Public` | no |
-| 135 | `/api/eventregistration` | `GET` | `GetEventRegistrations` | Get all Event Registrations | EventRegistration | _(Phase 1.4)_ | `Public` | no |
+| 135 | `/api/eventregistration` | `GET` | `GetEventRegistrations` | Get all Event Registrations | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
 | 136 | `/api/eventregistration` | `POST` | `CreateEventRegistration` | Register User for Event Session | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
-| 137 | `/api/eventregistration/by-session/{eventSessionId}` | `GET` | `GetRegistrationsBySession` | Get Registrations by Event Session | EventRegistration | _(Phase 1.4)_ | `Public` | no |
-| 138 | `/api/eventregistration/by-user/{userId}` | `GET` | `GetRegistrationsByUser` | Get Registrations by User | EventRegistration | _(Phase 1.4)_ | `Public` | no |
-| 139 | `/api/eventregistration/{id}` | `GET` | `GetEventRegistrationById` | Get Event Registration by ID | EventRegistration | _(Phase 1.4)_ | `Public` | no |
+| 137 | `/api/eventregistration/by-session/{eventSessionId}` | `GET` | `GetRegistrationsBySession` | Get Registrations by Event Session | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
+| 138 | `/api/eventregistration/by-user/{userId}` | `GET` | `GetRegistrationsByUser` | Get Registrations by User | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
+| 139 | `/api/eventregistration/{id}` | `GET` | `GetEventRegistrationById` | Get Event Registration by ID | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
 | 140 | `/api/eventregistration/{id}` | `PUT` | `UpdateEventRegistration` | Update Event Registration | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
 | 141 | `/api/eventregistration/{id}` | `DELETE` | `DeleteEventRegistration` | Cancel Event Registration | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
 | 142 | `/api/eventregistrationpolicy` | `GET` | `GetEventRegistrationPolicies` | Get all Event Registration Policies | EventRegistrationPolicy | _(Phase 1.4)_ | `Public` | no |
@@ -248,10 +248,10 @@
 | 223 | `/api/group` | `GET` | `GetGroups` | Get all Groups | Group | _(Phase 1.4)_ | `Public` | no |
 | 224 | `/api/group` | `POST` | `CreateGroup` | Create Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
 | 225 | `/api/group/my` | `GET` | `GetMyGroups` | Get my Groups | Group | _(Phase 1.4)_ | `Authenticated` | no |
-| 226 | `/api/group/updatestatustype/{id}` | `PUT` | `UpdateGroupApprovalStatus` | Update Group Approval Status | Group | _(Phase 1.4)_ | `Authenticated` | no |
-| 227 | `/api/group/{id}` | `GET` | `GetGroupById` | Get Group Details | Group | _(Phase 1.4)_ | `Public` | no |
-| 228 | `/api/group/{id}` | `PUT` | `UpdateGroup` | Update Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
-| 229 | `/api/group/{id}` | `DELETE` | `DeleteGroup` | Delete Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
+| 226 | `/api/group/{id}` | `GET` | `GetGroupById` | Get Group Details | Group | _(Phase 1.4)_ | `Public` | no |
+| 227 | `/api/group/{id}` | `PUT` | `UpdateGroup` | Update Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
+| 228 | `/api/group/{id}` | `DELETE` | `DeleteGroup` | Delete Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
+| 229 | `/api/group/{id}/approval-status` | `PUT` | `UpdateGroupApprovalStatus` | Update Group Approval Status | Group | _(Phase 1.4)_ | `Authenticated` | no |
 | 230 | `/api/groupmember` | `POST` | `CreateGroupMember` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Authenticated` | no |
 | 231 | `/api/groupmember/member/{id}` | `GET` | `GetGroupMemberById` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Public` | no |
 | 232 | `/api/groupmember/role` | `PUT` | `UpdateGroupMember` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Authenticated` | no |
@@ -356,18 +356,18 @@
 | 331 | `/api/organization` | `GET` | `GetOrganizations` | Get all Organizations | Organization | _(Phase 1.4)_ | `Public` | no |
 | 332 | `/api/organization` | `POST` | `CreateOrganization` | Create Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
 | 333 | `/api/organization/my` | `GET` | `GetMyOrganizations` | Get my Organizations | Organization | _(Phase 1.4)_ | `Authenticated` | no |
-| 334 | `/api/organization/updatestatustype/{id}` | `PUT` | `UpdateOrganizationApprovalStatus` | Update Organization Approval Status | Organization | _(Phase 1.4)_ | `Authenticated` | no |
-| 335 | `/api/organization/{id}` | `GET` | `GetOrganizationById` | Get Organization Details | Organization | _(Phase 1.4)_ | `Public` | no |
-| 336 | `/api/organization/{id}` | `PUT` | `UpdateOrganization` | Update Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
-| 337 | `/api/organization/{id}` | `DELETE` | `DeleteOrganization` | Delete Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
+| 334 | `/api/organization/{id}` | `GET` | `GetOrganizationById` | Get Organization Details | Organization | _(Phase 1.4)_ | `Public` | no |
+| 335 | `/api/organization/{id}` | `PUT` | `UpdateOrganization` | Update Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
+| 336 | `/api/organization/{id}` | `DELETE` | `DeleteOrganization` | Delete Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
+| 337 | `/api/organization/{id}/approval-status` | `PUT` | `UpdateOrganizationApprovalStatus` | Update Organization Approval Status | Organization | _(Phase 1.4)_ | `Authenticated` | no |
 | 338 | `/api/organizationmember` | `POST` | `AddOrganizationMember` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
 | 339 | `/api/organizationmember/invitations` | `GET` | `GetMyOrganizationInvitations` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
 | 340 | `/api/organizationmember/invitations/{id}/accept` | `POST` | `AcceptOrganizationInvitation` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
 | 341 | `/api/organizationmember/invitations/{id}/decline` | `POST` | `DeclineOrganizationInvitation` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 342 | `/api/organizationmember/member/{id}` | `GET` | `GetOrganizationMemberById` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Public` | no |
+| 342 | `/api/organizationmember/member/{id}` | `GET` | `GetOrganizationMemberById` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
 | 343 | `/api/organizationmember/role` | `PUT` | `UpdateOrganizationMemberRole` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
 | 344 | `/api/organizationmember/{id}` | `DELETE` | `DeleteOrganizationMember` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 345 | `/api/organizationmember/{organizationId}` | `GET` | `GetOrganizationMembersByOrganization` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Public` | no |
+| 345 | `/api/organizationmember/{organizationId}` | `GET` | `GetOrganizationMembersByOrganization` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
 | 346 | `/api/organizationposition` | `GET` | `GetOrganizationPositions` | Get all Organization Positions | OrganizationPosition | _(Phase 1.4)_ | `Public` | no |
 | 347 | `/api/organizationposition/{id}` | `GET` | `GetOrganizationPositionById` | Get Organization Position by ID | OrganizationPosition | _(Phase 1.4)_ | `Public` | no |
 | 348 | `/api/organizationreview` | `GET` | `GetOrganizationReviews` | _(none)_ | OrganizationReview | _(Phase 1.4)_ | `Public` | no |
@@ -420,9 +420,9 @@
 | 395 | `/api/tagtype/{id}` | `GET` | `GetTagTypeById` | _(none)_ | TagType | _(Phase 1.4)_ | `Public` | no |
 | 396 | `/api/tenant` | `GET` | `GetTenants` | Get all Tenants | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
 | 397 | `/api/tenant` | `POST` | `CreateTenant` | Create new Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 398 | `/api/tenant-user-role-grants` | `GET` | `GetTenantUserRoleGrants` | Get all tenant user role grants | TenantUserRoleGrant | _(Phase 1.4)_ | `Public` | no |
+| 398 | `/api/tenant-user-role-grants` | `GET` | `GetTenantUserRoleGrants` | Get all tenant user role grants | TenantUserRoleGrant | _(Phase 1.4)_ | `Authenticated` | no |
 | 399 | `/api/tenant-user-role-grants` | `POST` | `CreateTenantUserRoleGrant` | Create tenant user role grant | TenantUserRoleGrant | _(Phase 1.4)_ | `Authenticated` | no |
-| 400 | `/api/tenant-user-role-grants/{id}` | `GET` | `GetTenantUserRoleGrantById` | Get tenant user role grant by ID | TenantUserRoleGrant | _(Phase 1.4)_ | `Public` | no |
+| 400 | `/api/tenant-user-role-grants/{id}` | `GET` | `GetTenantUserRoleGrantById` | Get tenant user role grant by ID | TenantUserRoleGrant | _(Phase 1.4)_ | `Authenticated` | no |
 | 401 | `/api/tenant-user-role-grants/{id}` | `DELETE` | `RevokeTenantUserRoleGrant` | Revoke tenant user role grant | TenantUserRoleGrant | _(Phase 1.4)_ | `Authenticated` | no |
 | 402 | `/api/tenant/count` | `GET` | `GetActiveTenantCount` | Get Active Tenant Count | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
 | 403 | `/api/tenant/navigation` | `GET` | `GetTenantNavigationLinks` | Get Tenant Navigation Links | Tenant | _(Phase 1.4)_ | `Public` | no |

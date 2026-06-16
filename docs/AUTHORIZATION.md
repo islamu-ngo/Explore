@@ -94,9 +94,9 @@ The API uses a Hypermedia as the Engine of Application State (HATEOAS) model. HA
 When Admin API sync is unavailable, operators can push local policy and schema files with `cerbosctl` directly:
 
 ```bash
-docker run --rm -it -v "/home/{user}/ISLAMU/Github/Event/cerbos/policies/_schemas:/schemas:ro" ghcr.io/cerbos/cerbosctl:0.51.0 --server={cerbos.example.com:443} --username={username} --password={password} put schema -R /schemas
+docker run --rm -it -v "/home/{user}/ISLAMU/Github/Event/cerbos/policies/_schemas:/schemas:ro" ghcr.io/cerbos/cerbosctl:0.53.0 --server={cerbos.example.com:443} --username={username} --password={password} put schema -R /schemas
 
-docker run --rm -it -v "/home/{user}/ISLAMU/Github/Event/cerbos/policies:/policies:ro" ghcr.io/cerbos/cerbosctl:0.51.0 --server={cerbos.example.com:443} --username={username} --password={password} put policy -R /policies
+docker run --rm -it -v "/home/{user}/ISLAMU/Github/Event/cerbos/policies:/policies:ro" ghcr.io/cerbos/cerbosctl:0.53.0 --server={cerbos.example.com:443} --username={username} --password={password} put policy -R /policies
 ```
 
 If the password contains spaces, wrap it in quotes:

@@ -6,7 +6,7 @@ ABOUTME: Replaces generic template guidance with repo-specific constraints and l
 > **Standards and Conventions for .NET Clean Architecture Projects**
 >
 > This document defines naming conventions, organizational patterns, and architectural decisions.
-> For code examples and implementation patterns, see the relevant skills in `.claude/skills/`.
+> For code examples and implementation patterns, see the relevant skills in `.agents/skills/`.
 
 **Last Updated**: 2026-04-19
 

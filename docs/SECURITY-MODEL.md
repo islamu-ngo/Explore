@@ -79,7 +79,7 @@ Cookie-authenticated unsafe BFF endpoints must validate antiforgery tokens becau
 - Server self-call path: `BffCookieForwardingHandler` forwards captured cookies and mirrors `XSRF-TOKEN` into `X-CSRF-TOKEN` when InteractiveServer code calls BFF endpoints.
 - Endpoint validation: unsafe minimal BFF endpoints call `.ValidateAntiforgery()`, which returns `400 Antiforgery validation failed` for missing or invalid tokens.
 - Protected endpoint families include auth refresh, storage upload proxy, preference mutations, and appearance profile mutations.
-- Documented exceptions are setup-secret bootstrap endpoints and `/bff/auth/refresh-session/internal`; these remain constrained by setup credentials, authorization, and rate limiting because they are used before or outside normal browser antiforgery semantics.
+- Documented exceptions are setup-secret bootstrap endpoints, `/bff/auth/refresh-session/internal`, and the storage upload session/proxy endpoints (`/bff/storage/upload-session`, `/bff/storage/upload-proxy`); these remain constrained by setup credentials, authorization, per-user session ownership binding (`IStorageUploadSessionStore`), cryptographically random short-lived session IDs, server-side stream-to-API proxying (browser never reaches the storage provider), and rate limiting because they are used before, outside, or via InteractiveServer circuit self-calls where browser antiforgery semantics cannot be reliably satisfied.
 
 Do not add new unsafe `/bff/*` endpoints without either `.ValidateAntiforgery()` or a documented bootstrap/internal exception with equivalent compensating controls.
 
