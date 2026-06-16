@@ -15,7 +15,7 @@
     ".claude/contract/**/*",
     ".claude/settings.json",
     ".claude/rules/**/*",
-    ".claude/skills/**/*",
+    ".agents/skills/**/*",
     ".claude/settings.json",
     ".codex/rules/**/*"
   ],

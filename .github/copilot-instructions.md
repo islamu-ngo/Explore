@@ -28,7 +28,7 @@ Priority order (highest wins):
 2. [`docs/QUICK_REFERENCE.md`](../docs/QUICK_REFERENCE.md)
 3. [`docs/GOVERNANCE.md`](../docs/GOVERNANCE.md)
 4. Path-scoped rules in [`.claude/rules/`](../.claude/rules/) whose `paths:` glob matches your edit.
-5. Skills in [`.claude/skills/`](../.claude/skills/) — loaded on demand.
+5. Skills in [`.agents/skills/`](../.agents/skills/) — loaded on demand.
 
 ---
 

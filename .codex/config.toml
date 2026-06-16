@@ -1,3 +1,35 @@
+model = "gpt-5.5"
+model_context_window = 400000
+model_reasoning_effort = "high"
+plan_mode_reasoning_effort = "xhigh"
 [mcp_servers.context7]
 url = "https://mcp.context7.com/mcp"
-http_headers = { "CONTEXT7_API_KEY" = "ctx7sk-7280a8a2-f4a8-47f1-a601-a944ff28abe3" }
+
+[mcp_servers.context7.http_headers]
+CONTEXT7_API_KEY = "ctx7sk-7280a8a2-f4a8-47f1-a601-a944ff28abe3"
+
+[mcp_servers.at-explore]
+url = "https://mcp.atexplore.social/mcp"
+
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = [
+    "-y",
+    "chrome-devtools-mcp@latest",
+]
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = [
+    "-y",
+    "@modelcontextprotocol/server-sequential-thinking",
+]
+
+[mcp_servers.tavily]
+url = "https://mcp.tavily.com/mcp/?tavilyApiKey=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"
+
+# Managed by LazyCodex: multi_agent_v2 is re-disabled on every Codex session start
+# because enabling it fails every turn with HTTP 400 (openai/codex#26753).
+# Opt out: LAZYCODEX_CONFIG_MIGRATION_DISABLED=1 (or OMO_CODEX_CONFIG_MIGRATION_DISABLED=1).
+[features.multi_agent_v2]
+enabled = false

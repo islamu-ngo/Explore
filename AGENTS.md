@@ -78,7 +78,7 @@ Every change must answer these eight questions **before editing any file**:
 |---|---|
 | New request | [`.claude/contract/intents.yaml`](.claude/contract/intents.yaml) — find `triggers` |
 | Known path | [`.claude/rules/`](.claude/rules/) — find matching `paths` |
-| Pattern/Skill | [`.claude/skills/`](.claude/skills/) — load relevant `SKILL.md` |
+| Pattern/Skill | [`.agents/skills/`](.agents/skills/) — load relevant `SKILL.md` |
 | Build/Test | [`docs/OPERATIONS.md#verification-policy`](docs/OPERATIONS.md) |
 | UI Workflow | [`docs/BLAZOR_DEV_WORKFLOW.md`](docs/BLAZOR_DEV_WORKFLOW.md) |
 | Agent Ops | [`docs/OPERATIONS.md#ai-agent-operational-rules`](docs/OPERATIONS.md) |
@@ -94,7 +94,7 @@ When a task touches a topic covered by docs / skills / rules, you **MUST open th
 **Minimum required reading:**
 - This file (`AGENTS.md`)
 - Relevant `docs/*.md` (see [`docs/index.md`](docs/index.md))
-- Matching `.claude/skills/*/SKILL.md`
+- Matching `.agents/skills/*/SKILL.md`
 - Matching `.claude/rules/*.md` for the file paths you will edit
 
 ---
