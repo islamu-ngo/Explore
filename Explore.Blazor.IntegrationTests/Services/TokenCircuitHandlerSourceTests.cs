@@ -19,6 +19,19 @@ public sealed class TokenCircuitHandlerSourceTests
         await Assert.That(source).Contains("First-run setup is unauthenticated");
     }
 
+    [Test]
+    public async Task TokenCircuitHandler_ShouldRefreshCookies_BeforeInboundActivityScope()
+    {
+        var source = await ReadTokenCircuitHandlerSourceAsync();
+
+        var refreshIndex = source.IndexOf("CaptureCookieHeader(_httpContextAccessor.HttpContext, \"inbound activity\");", StringComparison.Ordinal);
+        var cookieScopeIndex = source.IndexOf("_bffAuthCookieStore.BeginActivityScope()", StringComparison.Ordinal);
+
+        await Assert.That(refreshIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(cookieScopeIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(refreshIndex).IsLessThan(cookieScopeIndex);
+    }
+
     private static async Task<string> ReadTokenCircuitHandlerSourceAsync()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

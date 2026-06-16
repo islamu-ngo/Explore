@@ -63,6 +63,62 @@ public class BffCookieForwardingHandlerTests
         await Assert.That(headerValues).Contains("request-xsrf");
     }
 
+    [Test]
+    public async Task SendAsync_WhenCapturedCircuitCookieLacksXsrf_MergesCurrentRequestXsrfCookie()
+    {
+        var circuitCookieStore = new BffAuthCookieStore();
+        circuitCookieStore.SetCookieHeader("AuthCookie=circuit-value");
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers.Cookie = "XSRF-TOKEN=current-xsrf";
+        var innerHandler = new CapturingHandler();
+        var handler = new BffCookieForwardingHandler(
+            circuitCookieStore,
+            new HttpContextAccessor { HttpContext = httpContext },
+            NullLogger<BffCookieForwardingHandler>.Instance)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://bff.example.com/bff/storage/upload-session");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.TryGetValues("Cookie", out var cookieValues)).IsTrue();
+        await Assert.That(cookieValues).Contains("AuthCookie=circuit-value; XSRF-TOKEN=current-xsrf");
+        await Assert.That(innerHandler.CapturedRequest.Headers.TryGetValues("X-CSRF-TOKEN", out var headerValues)).IsTrue();
+        await Assert.That(headerValues).Contains("current-xsrf");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenCapturedCircuitCookieHasStaleAntiforgeryTokens_UsesCurrentRequestAntiforgeryPair()
+    {
+        var circuitCookieStore = new BffAuthCookieStore();
+        circuitCookieStore.SetCookieHeader("AuthCookie=circuit-value; .AspNetCore.Antiforgery.test=stale-cookie; XSRF-TOKEN=stale-xsrf");
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers.Cookie = ".AspNetCore.Antiforgery.test=current-cookie; XSRF-TOKEN=current-xsrf";
+        var innerHandler = new CapturingHandler();
+        var handler = new BffCookieForwardingHandler(
+            circuitCookieStore,
+            new HttpContextAccessor { HttpContext = httpContext },
+            NullLogger<BffCookieForwardingHandler>.Instance)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://bff.example.com/bff/storage/upload-session");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.TryGetValues("Cookie", out var cookieValues)).IsTrue();
+        await Assert.That(cookieValues).Contains("AuthCookie=circuit-value; .AspNetCore.Antiforgery.test=current-cookie; XSRF-TOKEN=current-xsrf");
+        await Assert.That(innerHandler.CapturedRequest.Headers.TryGetValues("X-CSRF-TOKEN", out var headerValues)).IsTrue();
+        await Assert.That(headerValues).Contains("current-xsrf");
+    }
+
     private sealed class CapturingHandler : HttpMessageHandler
     {
         public HttpRequestMessage? CapturedRequest { get; private set; }

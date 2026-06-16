@@ -123,6 +123,7 @@ public class TokenCircuitHandler : CircuitHandler
     {
         return async context =>
         {
+            CaptureCookieHeader(_httpContextAccessor.HttpContext, "inbound activity");
             using var userScope = _circuitUserContext.BeginActivityScope();
             using var cookieScope = _bffAuthCookieStore.BeginActivityScope();
             await next(context);

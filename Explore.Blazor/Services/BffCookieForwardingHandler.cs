@@ -8,6 +8,7 @@ namespace Explore.Blazor.Services;
 public class BffCookieForwardingHandler : DelegatingHandler
 {
     private const string AntiforgeryCookieName = "XSRF-TOKEN";
+    private const string FrameworkAntiforgeryCookiePrefix = ".AspNetCore.Antiforgery.";
     private const string AntiforgeryHeaderName = "X-CSRF-TOKEN";
     private readonly IBffAuthCookieStore _bffAuthCookieStore;
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -34,11 +35,8 @@ public class BffCookieForwardingHandler : DelegatingHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        var cookie = _bffAuthCookieStore.CookieHeader;
-        if (string.IsNullOrWhiteSpace(cookie))
-        {
-            cookie = _httpContextAccessor.HttpContext?.Request.Headers.Cookie.ToString();
-        }
+        var currentRequestCookie = _httpContextAccessor.HttpContext?.Request.Headers.Cookie.ToString();
+        var cookie = BuildForwardedCookieHeader(_bffAuthCookieStore.CookieHeader, currentRequestCookie);
 
         if (!string.IsNullOrEmpty(cookie) && !request.Headers.Contains("Cookie"))
         {
@@ -78,4 +76,67 @@ public class BffCookieForwardingHandler : DelegatingHandler
 
         return null;
     }
+
+    private static string? BuildForwardedCookieHeader(string? circuitCookie, string? currentRequestCookie)
+    {
+        if (string.IsNullOrWhiteSpace(circuitCookie))
+        {
+            return string.IsNullOrWhiteSpace(currentRequestCookie) ? null : currentRequestCookie;
+        }
+
+        if (string.IsNullOrWhiteSpace(currentRequestCookie))
+        {
+            return circuitCookie;
+        }
+
+        var mergedCookies = ParseCookies(circuitCookie);
+        foreach (var currentCookie in ParseCookies(currentRequestCookie))
+        {
+            var existingIndex = mergedCookies.FindIndex(cookie => string.Equals(cookie.Name, currentCookie.Name, StringComparison.Ordinal));
+            if (existingIndex < 0)
+            {
+                mergedCookies.Add(currentCookie);
+                continue;
+            }
+
+            if (IsAntiforgeryCookie(currentCookie.Name))
+            {
+                mergedCookies[existingIndex] = currentCookie;
+            }
+        }
+
+        return string.Join("; ", mergedCookies.Select(cookie => $"{cookie.Name}={cookie.Value}"));
+    }
+
+    private static bool IsAntiforgeryCookie(string cookieName)
+    {
+        return string.Equals(cookieName, AntiforgeryCookieName, StringComparison.Ordinal)
+            || cookieName.StartsWith(FrameworkAntiforgeryCookiePrefix, StringComparison.Ordinal);
+    }
+
+    private static List<CookieValue> ParseCookies(string cookieHeader)
+    {
+        var cookies = new List<CookieValue>();
+        foreach (var segment in cookieHeader.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separatorIndex = segment.IndexOf('=');
+            if (separatorIndex <= 0)
+            {
+                continue;
+            }
+
+            var name = segment[..separatorIndex];
+            var value = segment[(separatorIndex + 1)..];
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            cookies.Add(new CookieValue(name, value));
+        }
+
+        return cookies;
+    }
+
+    private readonly record struct CookieValue(string Name, string Value);
 }
