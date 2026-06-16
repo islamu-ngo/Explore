@@ -28,7 +28,7 @@ The link checks treat the following files as link graph roots:
 4. `.claude/contract/**/*.md`
 5. `.claude/rules/**/*.md`
 6. `.claude/agents/**/*.md`
-7. migrated `.claude/skills/*/SKILL.md`
+7. migrated `.agents/skills/*/SKILL.md`
 8. selected custom `.claude/commands/*.md`
 9. journal/benchmark index files
 

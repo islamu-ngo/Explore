@@ -53,7 +53,18 @@
         },
         "category": {
           "type": "string",
-          "enum": ["api", "application", "persistence", "domain", "blazor", "auth", "authorization", "infrastructure", "tests", "docs"],
+          "enum": [
+            "api",
+            "application",
+            "persistence",
+            "domain",
+            "blazor",
+            "auth",
+            "authorization",
+            "infrastructure",
+            "tests",
+            "docs"
+          ],
           "description": "Broad grouping. Restricted enum so routing/reporting stays predictable."
         },
         "triggers": {
@@ -64,17 +75,23 @@
         },
         "must_read_docs": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^(docs|schema|dev)/.+\\.md$" },
+          "items": {
+            "type": "string",
+            "pattern": "^(docs|schema|dev)/.+\\.md$"
+          },
           "description": "Repo-relative paths. AgentContextLinkTests verifies each exists."
         },
         "load_skills": {
           "type": "array",
           "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
-          "description": "Skill slugs under .claude/skills/."
+          "description": "Skill slugs under .agents/skills/."
         },
         "load_rules": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^\\.claude/rules/[a-z0-9-]+\\.md$" },
+          "items": {
+            "type": "string",
+            "pattern": "^\\.claude/rules/[a-z0-9-]+\\.md$"
+          },
           "description": "Rule file paths under .claude/rules/. AgentContextLinkTests verifies each exists."
         },
         "paths_in_scope": {
@@ -89,7 +106,10 @@
         },
         "minimum_tests": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9.]*Tests?$" },
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9.]*Tests?$"
+          },
           "description": "Test project names (e.g. Event.API.IntegrationTests). AgentContextIntentManifestTests verifies each project exists."
         },
         "docs_to_update": {
@@ -115,7 +135,10 @@
         },
         "related_intents": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+          },
           "description": "Cross-references to sibling intents by id."
         },
         "verification_commands": {

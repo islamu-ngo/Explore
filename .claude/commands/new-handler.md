@@ -11,7 +11,7 @@ priority: high
 
 > **Primary references:**
 > - [`.claude/rules/application-layer.md`](../rules/application-layer.md)
-> - [`.claude/skills/cqrs-mediatr-guidelines/SKILL.md`](../skills/cqrs-mediatr-guidelines/SKILL.md)
+> - [`.agents/skills/cqrs-mediatr-guidelines/SKILL.md`](../../.agents/skills/cqrs-mediatr-guidelines/SKILL.md)
 > - [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md)
 > - [`docs/QUICK_REFERENCE.md`](../../docs/QUICK_REFERENCE.md)
 
@@ -101,7 +101,7 @@ See [`.claude/rules/api-hateoas.md`](../rules/api-hateoas.md).
 - For dynamic resource context, use `ISecureRequest`.
 - Denied → `AuthorizationException` → 403 via chained `IExceptionHandler`.
 
-See [`.claude/skills/auth-patterns/SKILL.md`](../skills/auth-patterns/SKILL.md).
+See [`.agents/skills/auth-patterns/SKILL.md`](../../.agents/skills/auth-patterns/SKILL.md).
 
 ## Anti-Patterns (fail fast if you see these)
 

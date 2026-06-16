@@ -356,14 +356,14 @@ intents:
       - docs/DOCUMENTATION_STYLE_GUIDE.md
       - docs/OPERATIONS.md
       - docs/TESTING.md
-      - .claude/skills/_SKILL_SCHEMA.md
+      - .agents/skills/_SKILL_SCHEMA.md
     load_skills:
       - skill-authoring
       - agentic-research
       - senior-cto-feedback
     load_rules: []
     paths_in_scope:
-      - ".claude/skills/"
+      - ".agents/skills/"
       - ".claude/contract/"
       - "Event.Architecture.Tests/"
       - "dev/active/"
@@ -371,7 +371,7 @@ intents:
       - Event.Architecture.Tests
     docs_to_update:
       - .claude/contract/intents.yaml
-      - .claude/skills/_SKILL_SCHEMA.md
+      - .agents/skills/_SKILL_SCHEMA.md
     unique_acceptance:
       - "New SKILL.md satisfies the skill schema without adding a schema-test skip exception"
       - "Every resource linked from SKILL.md or resources/index.md exists and has two ABOUTME lines"

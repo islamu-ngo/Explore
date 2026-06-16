@@ -52,7 +52,7 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 |---|---|
 | Describe the architecture | `docs/ARCHITECTURE.md`, `docs/GOVERNANCE.md` |
 | Enumerate every rule | `docs/QUICK_REFERENCE.md` |
-| Tell you how to *implement* a pattern | `.claude/skills/*/SKILL.md` |
+| Tell you how to *implement* a pattern | `.agents/skills/*/SKILL.md` |
 | Handle totally novel changes | Fall back to `AGENTS.md` and ask the user |
 
 ## Related
