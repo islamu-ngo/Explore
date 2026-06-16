@@ -27,10 +27,6 @@ public class ApiConventionTests
 
     private static readonly HashSet<string> QuarantinedPrivilegedAuthenticationOnlyPolicies = new(StringComparer.Ordinal)
     {
-        "template_admin",
-        "event_editor",
-        "property_governance_admin",
-        "platform_namespace_editor"
     };
 
     #region API Versioning Conventions

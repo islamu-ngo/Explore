@@ -106,12 +106,12 @@ public class AgentContextLinkTests
     [Test]
     public async Task MigratedSkillFilesHaveNoDeadLinks()
     {
-        var skillsDir = RepoPath(".claude", "skills");
+        var skillsDir = RepoPath(".agents", "skills");
         var files = Directory.Exists(skillsDir)
             ? Directory.EnumerateDirectories(skillsDir)
                 .Where(d => !SkipSkillLinkChecks.Contains(Path.GetFileName(d)))
                 .SelectMany(d => Directory.EnumerateFiles(d, "*.md", SearchOption.AllDirectories))
-                .Concat(new[] { RepoPath(".claude", "skills", "_SKILL_SCHEMA.md") }.Where(File.Exists))
+                .Concat(new[] { RepoPath(".agents", "skills", "_SKILL_SCHEMA.md") }.Where(File.Exists))
             : Array.Empty<string>();
 
         var errors = CheckLinks(files);

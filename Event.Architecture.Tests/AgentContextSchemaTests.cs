@@ -1,4 +1,4 @@
-// ABOUTME: Validates structure of .claude/rules/, .claude/skills/, and .claude/agents/ files.
+// ABOUTME: Validates structure of .claude/rules/, .agents/skills/, and .claude/agents/ files.
 // ABOUTME: Enforces the schemas defined in _schema.md, _SKILL_SCHEMA.md, and _AGENT_SCHEMA.md.
 
 namespace Event.Architecture.Tests;
@@ -31,7 +31,10 @@ public class AgentContextSchemaTests
         "blazor-bff-patterns", "blazor-css-isolation", "conventional-commit",
         "design-system", "error-tracking", "footer-management", "gitkraken-cli",
         "mcp-csharp-create", "mcp-csharp-debug", "mcp-csharp-publish", "mcp-csharp-test",
-        "outbox-pattern", "prd", "technology-selection",
+        "outbox-pattern", "plane-mcp", "prd",
+        "source-command-check", "source-command-finding", "source-command-new-handler",
+        "source-command-plan", "source-command-review-pr", "source-command-robin-neutral",
+        "source-command-tasks", "technology-selection",
     };
 
     private static readonly string[] RequiredAgentFrontmatterKeys =
@@ -208,7 +211,7 @@ public class AgentContextSchemaTests
 
     private static IEnumerable<string> EnumerateMigratedSkillFiles()
     {
-        var dir = RepoPath(".claude", "skills");
+        var dir = RepoPath(".agents", "skills");
         if (!Directory.Exists(dir)) { yield break; }
         foreach (var sub in Directory.EnumerateDirectories(dir))
         {

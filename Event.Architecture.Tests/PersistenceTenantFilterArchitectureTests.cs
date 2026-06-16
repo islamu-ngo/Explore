@@ -87,6 +87,36 @@ public class PersistenceTenantFilterArchitectureTests
             .Because("runtime tenant-filter bypasses must reference TenantFilterBypassReasons constants so cross-tenant access remains named, reviewable, and auditable.");
     }
 
+    [Test]
+    [DisplayName("API controllers must not call tenant-filter bypass helpers directly")]
+    public async Task ApiControllers_ShouldNotCall_TenantFilterBypassHelpersDirectly()
+    {
+        var controllersRoot = ContextSystemHelpers.RepoPath(
+            "Explore.API",
+            "Controllers");
+        var forbiddenTokens = new[]
+        {
+            ".IgnoreTenantFilter(",
+            ".IgnoreAllFilters(",
+            ".IgnoreQueryFilters(",
+            ".EnableTenantFilterBypass(",
+            "TenantFilterBypassReasons.",
+        };
+
+        var violations = new List<string>();
+        foreach (var sourceFile in Directory.GetFiles(controllersRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            var source = await File.ReadAllTextAsync(sourceFile);
+            if (forbiddenTokens.Any(token => source.Contains(token, StringComparison.Ordinal)))
+            {
+                violations.Add(Path.GetRelativePath(ContextSystemHelpers.RepoRoot, sourceFile));
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("controllers must express cross-tenant intent through commands, queries, and authorization metadata; raw EF tenant-filter bypasses belong in reviewed Persistence/system services only.");
+    }
+
     private static bool IsGeneratedOrNonRuntime(string relativePath)
     {
         return relativePath.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}", StringComparison.Ordinal)

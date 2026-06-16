@@ -145,7 +145,7 @@ public class AgentContextIntentManifestTests
     public async Task EveryLoadedSkillExists()
     {
         var intents = LoadIntents();
-        var skillsDir = RepoPath(".claude", "skills");
+        var skillsDir = RepoPath(".agents", "skills");
         var errors = new List<string>();
 
         foreach (var intent in intents)

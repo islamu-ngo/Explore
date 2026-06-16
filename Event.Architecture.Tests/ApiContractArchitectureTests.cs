@@ -16,6 +16,7 @@ using NetArchTest.Rules;
 public class ApiContractArchitectureTests
 {
     private static readonly Assembly ApiAssembly = typeof(Program).Assembly;
+    private static readonly Assembly ApplicationAssembly = typeof(GetEventListRequest).Assembly;
 
     private static readonly Type[] HttpVerbAttributes =
     {
@@ -27,6 +28,113 @@ public class ApiContractArchitectureTests
         typeof(HttpOptionsAttribute),
         typeof(HttpHeadAttribute)
     };
+
+    [Test]
+    [DisplayName("ApiProblemCodes must expose every initial catalog code")]
+    public async Task ApiProblemCodes_MustExpose_EveryInitialCatalogCode()
+    {
+        var apiProblemCodesType = ApiAssembly.GetType("Explore.API.ExceptionHandling.ApiProblemCodes")
+            ?? throw new InvalidOperationException("ApiProblemCodes type not found.");
+        var codes = apiProblemCodesType
+            .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+            .Where(field => field is { IsLiteral: true, IsInitOnly: false } && field.FieldType == typeof(string))
+            .Select(field => (string)field.GetRawConstantValue()!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var expectedCodes = new[]
+        {
+            "validation_failed",
+            "tenant_required",
+            "authentication_required",
+            "forbidden",
+            "resource_not_found",
+            "resource_conflict",
+            "concurrency_conflict",
+            "duplicate_request",
+            "rate_limited",
+            "unexpected_error"
+        };
+
+        await Assert.That(expectedCodes.Except(codes, StringComparer.Ordinal)).IsEmpty()
+            .Because("the Phase 2 API error catalog requires stable machine-readable codes for every initial ProblemDetails category.");
+    }
+
+    [Test]
+    [DisplayName("Central API exception and validation writers must emit ProblemDetails code extensions")]
+    public async Task CentralProblemDetailsWriters_MustEmit_CodeExtensions()
+    {
+        var sourceRoot = LocateSourceRoot();
+        var sourceFiles = new[]
+        {
+            Path.Combine(sourceRoot, "Explore.API", "ExceptionHandling", "GlobalExceptionHandler.cs"),
+            Path.Combine(sourceRoot, "Explore.API", "ExceptionHandling", "ValidationExceptionHandler.cs"),
+            Path.Combine(sourceRoot, "Explore.API", "ExceptionHandling", "ApiValidationProblemDetailsFactory.cs")
+        };
+
+        var violations = new List<string>();
+        foreach (var sourceFile in sourceFiles)
+        {
+            var source = await File.ReadAllTextAsync(sourceFile);
+            if (!source.Contains("Extensions[\"code\"]", StringComparison.Ordinal))
+            {
+                violations.Add(Path.GetRelativePath(sourceRoot, sourceFile));
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("every central ProblemDetails writer must attach the stable `code` extension required by dev/active/backend-api-health-refactor/api-error-catalog.md.");
+    }
+
+    [Test]
+    [DisplayName("DTO enum properties must be registered in the OpenAPI string-enum schema catalog")]
+    public async Task DtoEnumProperties_MustBeRegisteredIn_OpenApiStringEnumSchemaCatalog()
+    {
+        var dtoEnumTypes = ApplicationAssembly
+            .GetExportedTypes()
+            .Where(IsPublicDtoContractType)
+            .SelectMany(type => type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            .SelectMany(property => CollectEnumTypes(property.PropertyType))
+            .Distinct()
+            .OrderBy(type => type.FullName, StringComparer.Ordinal)
+            .ToList();
+
+        var catalogType = ApiAssembly.GetType("Explore.API.OpenApi.OpenApiStringEnumSchemaCatalog")
+            ?? throw new InvalidOperationException("OpenApiStringEnumSchemaCatalog type not found.");
+        var enumTypesProperty = catalogType.GetProperty("EnumTypes", BindingFlags.Public | BindingFlags.Static)
+            ?? throw new InvalidOperationException("OpenApiStringEnumSchemaCatalog.EnumTypes property not found.");
+        var catalogEnumTypes = ((IEnumerable<Type>?)enumTypesProperty.GetValue(null) ?? Enumerable.Empty<Type>())
+            .ToHashSet();
+
+        var missing = dtoEnumTypes
+            .Where(enumType => !catalogEnumTypes.Contains(enumType))
+            .Select(enumType => enumType.FullName ?? enumType.Name)
+            .ToList();
+
+        await Assert.That(missing).IsEmpty()
+            .Because("every enum exposed by public API DTOs must be registered in OpenApiStringEnumSchemaCatalog so OpenAPI emits string enum schemas matching the API JSON string-enum contract.");
+    }
+
+
+    [Test]
+    [DisplayName("Controllers must not return raw missing-user Unauthorized strings")]
+    public async Task Controllers_MustNotReturn_RawMissingUserUnauthorizedStrings()
+    {
+        var sourceRoot = LocateSourceRoot();
+        var controllersRoot = Path.Combine(sourceRoot, "Explore.API", "Controllers");
+        var violations = Directory
+            .EnumerateFiles(controllersRoot, "*.cs", SearchOption.TopDirectoryOnly)
+            .Select(file => new
+            {
+                File = file,
+                Source = File.ReadAllText(file)
+            })
+            .Where(candidate => candidate.Source.Contains("Unauthorized(\"User ID not found in token\")", StringComparison.Ordinal))
+            .Select(candidate => Path.GetRelativePath(sourceRoot, candidate.File))
+            .ToList();
+
+        await Assert.That(violations).IsEmpty()
+            .Because("missing authenticated user identifiers must use catalog-backed ProblemDetails with the `authentication_required` code instead of raw string 401 responses.");
+    }
 
     [Test]
     [DisplayName("Every non-hidden [Http*] action must have Name= set")]
@@ -394,6 +502,66 @@ public class ApiContractArchitectureTests
         }
 
         return false;
+    }
+
+    private static IEnumerable<Type> CollectEnumTypes(Type type)
+    {
+        var underlyingNullableType = Nullable.GetUnderlyingType(type);
+        if (underlyingNullableType is not null)
+        {
+            type = underlyingNullableType;
+        }
+
+        if (type.IsEnum)
+        {
+            yield return type;
+            yield break;
+        }
+
+        if (type.IsArray && type.GetElementType() is { } elementType)
+        {
+            foreach (var enumType in CollectEnumTypes(elementType))
+            {
+                yield return enumType;
+            }
+
+            yield break;
+        }
+
+        if (!type.IsGenericType || type == typeof(string))
+        {
+            yield break;
+        }
+
+        foreach (var genericArgument in type.GetGenericArguments())
+        {
+            foreach (var enumType in CollectEnumTypes(genericArgument))
+            {
+                yield return enumType;
+            }
+        }
+    }
+
+    private static bool IsPublicDtoContractType(Type type)
+        => type.Namespace?.StartsWith("Explore.Application.DTOs", StringComparison.Ordinal) == true
+           && !type.Namespace.Contains(".Validators", StringComparison.Ordinal)
+           && !type.Name.EndsWith("Validator", StringComparison.Ordinal);
+
+    private static string LocateSourceRoot()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "Explore.sln")) &&
+                Directory.Exists(Path.Combine(current.FullName, "Explore.API")))
+            {
+                return current.FullName;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new InvalidOperationException("Could not locate repository root containing Explore.sln and Explore.API.");
     }
 
     private static bool IsHiddenFromApiExplorer(MemberInfo member)
