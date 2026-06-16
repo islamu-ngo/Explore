@@ -2,10 +2,10 @@
 // ABOUTME: Wraps IEventApiClient with HAL unwrap + error handling.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Domain.Enums;
 
 namespace Explore.Blazor.Client.Contracts.Services.CustomProperties;
 

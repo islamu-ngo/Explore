@@ -1,7 +1,7 @@
 // ABOUTME: Tooltip copy and semantic color map for custom-property governance flags.
 // ABOUTME: Centralizes operator-facing explanations referenced by the exposure governance UI (Task 9.9).
 
-using Explore.Domain.Enums;
+using Explore.Blazor.Client.Clients;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Admin.CustomProperties.Components;
@@ -34,10 +34,10 @@ internal static class GovernanceTooltips
 
     public static Color ExposureColor(ExposureLevel level) => level switch
     {
-        Explore.Domain.Enums.ExposureLevel.Internal => Color.Default,
-        Explore.Domain.Enums.ExposureLevel.OrganizerOnly => Color.Info,
-        Explore.Domain.Enums.ExposureLevel.TenantAdminOnly => Color.Warning,
-        Explore.Domain.Enums.ExposureLevel.Public => Color.Success,
+        Clients.ExposureLevel.Internal => Color.Default,
+        Clients.ExposureLevel.OrganizerOnly => Color.Info,
+        Clients.ExposureLevel.TenantAdminOnly => Color.Warning,
+        Clients.ExposureLevel.Public => Color.Success,
         _ => Color.Default
     };
 }

@@ -1,10 +1,10 @@
 // ABOUTME: Client contract for tenant-scoped governance operations on custom-property definitions.
 // ABOUTME: Wraps IEventApiClient with HAL unwrap + error handling so admin pages bind to plain models.
 
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Domain.Enums;
 
 namespace Explore.Blazor.Client.Contracts.Services.CustomProperties;
 

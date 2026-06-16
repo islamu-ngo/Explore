@@ -3,12 +3,12 @@
 
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -33,7 +33,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         try
         {
             var response = await _apiClient.GetCustomPropertyDefinitionsAsync(
-                (int)entityTypeName,
+                entityTypeName,
                 pageNumber,
                 pageSize,
                 cancellationToken: cancellationToken);
@@ -161,7 +161,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
             var response = await _apiClient.GetCustomPropertyGovernanceReportAsync(
                 tenantId,
                 scope,
-                recommendation is null ? null : (int)recommendation.Value,
+                recommendation,
                 pageNumber,
                 pageSize,
                 cancellationToken: cancellationToken);
@@ -339,17 +339,17 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         {
             Id = detail.Id,
             ExpectedConcurrencyStamp = detail.ConcurrencyStamp,
-            EntityTypeName = (int)detail.EntityTypeName,
+            EntityTypeName = detail.EntityTypeName,
             Namespace = detail.Namespace,
             Key = detail.Key,
             DisplayName = detail.DisplayName,
             Description = detail.Description,
-            PropertyType = (int)detail.PropertyType,
+            PropertyType = detail.PropertyType,
             IsRequired = detail.IsRequired,
             IsMulti = detail.IsMulti,
             IsActive = detail.IsActive,
             SortOrder = detail.SortOrder,
-            ExposureLevel = (int)update.ExposureLevel,
+            ExposureLevel = update.ExposureLevel,
             IsSearchable = update.IsSearchable,
             IsFilterable = update.IsFilterable,
             IsExportable = update.IsExportable,
@@ -501,7 +501,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
             DisplayName = dto.DisplayName ?? string.Empty,
             EntityScope = dto.EntityScope ?? string.Empty,
             PropertyType = dto.PropertyType ?? string.Empty,
-            ExposureLevel = (ExposureLevel)(dto.ExposureLevel ?? 1),
+            ExposureLevel = dto.ExposureLevel ?? ExposureLevel.TenantAdminOnly,
             IsSearchable = dto.IsSearchable ?? false,
             IsFilterable = dto.IsFilterable ?? false,
             IsExportable = dto.IsExportable ?? false,

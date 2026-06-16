@@ -2,12 +2,12 @@
 // ABOUTME: Handles HAL unwrap, error catching, and logging for CRUD of layer 3 definitions.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -32,7 +32,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         try
         {
             var response = await _apiClient.GetCustomPropertyDefinitionsAsync(
-                (int)entityTypeName,
+                entityTypeName,
                 pageNumber,
                 pageSize,
                 cancellationToken: cancellationToken);

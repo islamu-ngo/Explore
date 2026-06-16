@@ -7,7 +7,6 @@
 @using Explore.Blazor.Client.Pages.Admin.CustomProperties.Components
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
-@using Explore.Domain.Enums
 @using Microsoft.AspNetCore.Authorization
 @using MudBlazor
 
@@ -201,7 +200,7 @@
                 IsMulti = model.IsMulti,
                 IsActive = model.IsActive,
                 SortOrder = model.SortOrder,
-                ExposureLevel = (int)model.ExposureLevel,
+                ExposureLevel = model.ExposureLevel,
                 MinLength = model.MinLength,
                 MaxLength = model.MaxLength,
                 RegexPattern = model.RegexPattern,

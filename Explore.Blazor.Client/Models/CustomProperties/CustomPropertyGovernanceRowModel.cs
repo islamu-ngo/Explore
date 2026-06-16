@@ -1,7 +1,7 @@
 // ABOUTME: Governance report row mirroring the server CustomPropertyGovernanceRowDto.
 // ABOUTME: Carries active-instance counts and the Atlassian 4-question promotion recommendation.
 
-using Explore.Domain.Enums;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Models.CustomProperties;
 

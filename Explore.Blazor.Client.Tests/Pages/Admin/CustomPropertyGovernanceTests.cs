@@ -5,7 +5,7 @@ using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Domain.Enums;
+using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 

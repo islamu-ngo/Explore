@@ -7,7 +7,6 @@
 @using Explore.Blazor.Client.Pages.Admin.CustomProperties.Components
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
-@using Explore.Domain.Enums
 @using Microsoft.AspNetCore.Authorization
 @using MudBlazor
 
@@ -137,16 +136,16 @@
         {
             var createDto = new CreateCustomPropertyDefinitionDto
             {
-                EntityTypeName = (int)model.EntityTypeName,
+                EntityTypeName = model.EntityTypeName,
                 Namespace = model.Namespace,
                 Key = model.Key,
                 DisplayName = model.DisplayName,
                 Description = model.Description,
-                PropertyType = (int)model.PropertyType,
+                PropertyType = model.PropertyType,
                 IsRequired = model.IsRequired,
                 IsMulti = model.IsMulti,
                 SortOrder = model.SortOrder,
-                ExposureLevel = (int)model.ExposureLevel,
+                ExposureLevel = model.ExposureLevel,
                 MinLength = model.MinLength,
                 MaxLength = model.MaxLength,
                 RegexPattern = model.RegexPattern,

@@ -1,7 +1,7 @@
 // ABOUTME: Client-side lightweight read model mirroring Explore.Application's CustomPropertyDefinitionListDto.
 // ABOUTME: Deserialized from HAL payloads via JSON round-trip since NSwag generates the payload as ICollection<object>.
 
-using Explore.Domain.Enums;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Models.CustomProperties;
 

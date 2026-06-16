@@ -1,7 +1,7 @@
 // ABOUTME: Client-side detail model mirroring Explore.Application's CustomPropertyDefinitionDto.
 // ABOUTME: Used when the admin UI needs the full definition payload for editing flag state.
 
-using Explore.Domain.Enums;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Models.CustomProperties;
 
