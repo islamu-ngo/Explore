@@ -8,6 +8,6 @@
     "Domain": "Active (DDD)",
     "Infra": "Active (EF Core)"
   },
-  "RecentFocus": "Infrastructure (AnthropicCompatibleChatProvider.cs)",
-  "LastUpdate": "2026-06-12 10:56:32"
+  "RecentFocus": "Application (CreateEventDraftRequestDto.cs)",
+  "LastUpdate": "2026-06-16 12:12:20"
 }

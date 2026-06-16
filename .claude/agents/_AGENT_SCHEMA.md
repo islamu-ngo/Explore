@@ -138,6 +138,6 @@ All 13 agents migrated simultaneously:
 
 ## Related
 
-- Skill schema → [`.claude/skills/_SKILL_SCHEMA.md`](../skills/_SKILL_SCHEMA.md)
+- Skill schema → [`.agents/skills/_SKILL_SCHEMA.md`](../../.agents/skills/_SKILL_SCHEMA.md)
 - Contribution contract → [`.claude/contract/README.md`](../contract/README.md)
 - Documentation style → [`docs/DOCUMENTATION_STYLE_GUIDE.md`](../../docs/DOCUMENTATION_STYLE_GUIDE.md)

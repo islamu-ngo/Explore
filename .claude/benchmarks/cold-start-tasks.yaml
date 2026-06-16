@@ -23,7 +23,7 @@ scenarios:
       - "docs/API.md"
       - ".claude/rules/api-controllers.md"
       - ".claude/rules/api-hateoas.md"
-      - ".claude/skills/cqrs-mediatr-guidelines/SKILL.md"
+      - ".agents/skills/cqrs-mediatr-guidelines/SKILL.md"
     expected_paths_in_scope:
       - "Explore.API/Controllers/**/*.cs"
       - "Explore.API/Hateoas/**/*.cs"
@@ -59,7 +59,7 @@ scenarios:
       - "docs/QUICK_REFERENCE.md"
       - "docs/API.md"
       - ".claude/rules/api-hateoas.md"
-      - ".claude/skills/auth-patterns/SKILL.md"
+      - ".agents/skills/auth-patterns/SKILL.md"
     expected_paths_in_scope:
       - "Explore.API/Hateoas/**/*.cs"
     expected_paths_forbidden:
@@ -93,8 +93,8 @@ scenarios:
       - "docs/QUICK_REFERENCE.md"
       - "docs/ARCHITECTURE.md"
       - ".claude/rules/application-layer.md"
-      - ".claude/skills/cqrs-mediatr-guidelines/SKILL.md"
-      - ".claude/skills/clean-architecture-rules/SKILL.md"
+      - ".agents/skills/cqrs-mediatr-guidelines/SKILL.md"
+      - ".agents/skills/clean-architecture-rules/SKILL.md"
     expected_paths_in_scope:
       - "Explore.Application/Features/**/Commands/**/*.cs"
       - "Explore.Application/Features/**/DTOs/**/*.cs"
@@ -129,7 +129,7 @@ scenarios:
       - ".claude/rules/domain.md"
       - ".claude/rules/efcore-persistence.md"
       - ".claude/rules/efcore-migrations.md"
-      - ".claude/skills/dotnet-efcore-guidelines/SKILL.md"
+      - ".agents/skills/dotnet-efcore-guidelines/SKILL.md"
     expected_paths_in_scope:
       - "Explore.Domain/**/*.cs"
       - "Explore.Persistence/Configurations/**/*.cs"
@@ -160,8 +160,8 @@ scenarios:
       - "docs/QUICK_REFERENCE.md"
       - "docs/ARCHITECTURE.md"
       - ".claude/rules/efcore-persistence.md"
-      - ".claude/skills/cqrs-mediatr-guidelines/SKILL.md"
-      - ".claude/skills/dotnet-efcore-guidelines/SKILL.md"
+      - ".agents/skills/cqrs-mediatr-guidelines/SKILL.md"
+      - ".agents/skills/dotnet-efcore-guidelines/SKILL.md"
     expected_paths_in_scope:
       - "Explore.Application/Features/**/*.cs"
       - "Explore.Persistence/Repositories/**/*.cs"
@@ -190,8 +190,8 @@ scenarios:
       - "docs/QUICK_REFERENCE.md"
       - "docs/BLAZOR.md"
       - ".claude/rules/blazor-client.md"
-      - ".claude/skills/blazor-ui-conventions/SKILL.md"
-      - ".claude/skills/auth-patterns/SKILL.md"
+      - ".agents/skills/blazor-ui-conventions/SKILL.md"
+      - ".agents/skills/auth-patterns/SKILL.md"
     expected_paths_in_scope:
       - "Explore.Blazor.Client/**/*.razor"
       - "Explore.Blazor.Client/**/*.razor.cs"
@@ -224,8 +224,8 @@ scenarios:
       - "docs/SECURITY-MODEL."
       - "docs/AUTHORIZATION.md"
       - ".claude/rules/blazor-server.md"
-      - ".claude/skills/auth-patterns/SKILL.md"
-      - ".claude/skills/blazor-bff-patterns/SKILL.md"
+      - ".agents/skills/auth-patterns/SKILL.md"
+      - ".agents/skills/blazor-bff-patterns/SKILL.md"
     expected_paths_in_scope:
       - "Explore.Blazor/**/*.cs"
       - "Explore.API/**/*.cs"
@@ -254,7 +254,7 @@ scenarios:
       - "docs/QUICK_REFERENCE.md"
       - "docs/SECURITY-MODEL.md"
       - "docs/AUTHORIZATION.md"
-      - ".claude/skills/auth-patterns/SKILL.md"
+      - ".agents/skills/auth-patterns/SKILL.md"
     expected_paths_in_scope:
       - "cerbos/**/*.yaml"
       - "Event.Architecture.Tests/**/*AuthorizationParityTests*.cs"
