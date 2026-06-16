@@ -59,4 +59,4 @@ LIMIT @limit;
 ## Related
 
 - `resources/entity-model.md` — field definitions
-- `.claude/skills/dotnet-efcore-guidelines/SKILL.md` — EF Core conventions
+- `.agents/skills/dotnet-efcore-guidelines/SKILL.md` — EF Core conventions

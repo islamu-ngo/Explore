@@ -14,7 +14,7 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 Run a diff whitespace check for files touched:
 
 ```bash
-git diff --check -- .claude/contract/intents.yaml .claude/skills Event.Architecture.Tests/AgentContextLinkTests.cs
+git diff --check -- .claude/contract/intents.yaml .agents/skills Event.Architecture.Tests/AgentContextLinkTests.cs
 ```
 
 When the full architecture project has unrelated failures, still prove the agent-context lane with focused TUnit filters:

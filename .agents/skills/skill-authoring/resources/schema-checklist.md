@@ -5,10 +5,10 @@
 
 ## File Shape
 
-- Path is `.claude/skills/<kebab-case-name>/SKILL.md`.
+- Path is `.agents/skills/<kebab-case-name>/SKILL.md`.
 - Folder name equals frontmatter `name`.
 - YAML frontmatter is first when present, followed by two `ABOUTME` comments.
-- Resources live under `.claude/skills/<name>/resources/*.md`.
+- Resources live under `.agents/skills/<name>/resources/*.md`.
 - `SKILL.md` stays under 250 lines, with a target of 60 to 180 lines.
 
 ## Required Frontmatter

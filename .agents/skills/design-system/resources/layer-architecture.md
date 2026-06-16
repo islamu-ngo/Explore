@@ -48,4 +48,4 @@ MudThemeProvider (unlayered) > Blazor CSS isolation (unlayered) > utilities > co
 ## Related
 
 - `resources/token-system.md` — what goes in the tokens layer
-- `.claude/skills/blazor-css-isolation/SKILL.md` — component CSS isolation rules
+- `.agents/skills/blazor-css-isolation/SKILL.md` — component CSS isolation rules

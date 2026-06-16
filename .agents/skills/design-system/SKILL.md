@@ -56,5 +56,5 @@ Load this skill when:
 ## Related
 
 - `docs/DESIGN_SYSTEM.md`
-- `.Codex/skills/blazor-ui-conventions/SKILL.md`
-- `.Codex/skills/blazor-css-isolation/SKILL.md`
+- `.agents/skills/blazor-ui-conventions/SKILL.md`
+- `.agents/skills/blazor-css-isolation/SKILL.md`

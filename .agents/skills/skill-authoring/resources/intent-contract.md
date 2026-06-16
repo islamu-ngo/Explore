@@ -11,8 +11,8 @@ Use `create-agent-context-skill` when a task creates or materially updates proje
 
 Primary files are:
 
-- `.claude/skills/<skill-name>/SKILL.md`
-- `.claude/skills/<skill-name>/resources/*.md`
+- `.agents/skills/<skill-name>/SKILL.md`
+- `.agents/skills/<skill-name>/resources/*.md`
 - `.claude/contract/intents.yaml`
 - `Event.Architecture.Tests/AgentContext*Tests.cs`
 - `dev/active/<task>/*` when an active workstream is driving the skill work

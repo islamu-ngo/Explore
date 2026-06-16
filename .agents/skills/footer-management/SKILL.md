@@ -51,5 +51,5 @@ Load this skill when:
 ## Related
 
 - `docs/FOOTER_MANAGEMENT.md`
-- `.Codex/skills/blazor-ui-conventions/SKILL.md`
-- `.Codex/skills/cqrs-mediatr-guidelines/SKILL.md`
+- `.agents/skills/blazor-ui-conventions/SKILL.md`
+- `.agents/skills/cqrs-mediatr-guidelines/SKILL.md`

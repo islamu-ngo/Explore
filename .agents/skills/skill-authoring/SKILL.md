@@ -9,18 +9,18 @@ priority: high
 <!-- ABOUTME: Converts implementation-plan knowledge into schema-compliant, verifiable, context-efficient agent guidance. -->
 
 ## Purpose
-Use this skill when creating or changing `.Codex/skills/*` so the result is a concise router plus a durable resource library. It protects context quality, schema compliance, evidence boundaries, and future-agent usability.
+Use this skill when creating or changing `.agents/skills/*` so the result is a concise router plus a durable resource library. It protects context quality, schema compliance, evidence boundaries, and future-agent usability.
 
 ## When to Load
 - Keywords: create a skill, write a skill, skill resources, agentic engineering, context engineering, agent-context skill.
 - Intent IDs: `create-agent-context-skill`.
-- File patterns: `.Codex/skills/**`, `.Codex/contract/intents.yaml`, `Event.Architecture.Tests/AgentContext*Tests.cs`, `dev/active/**` workstreams that plan a skill.
+- File patterns: `.agents/skills/**`, `.Codex/contract/intents.yaml`, `Event.Architecture.Tests/AgentContext*Tests.cs`, `dev/active/**` workstreams that plan a skill.
 - A plan or handoff says implementation knowledge should become reusable agent guidance.
 - A skill is becoming long, vague, under-resourced, or hard to verify.
 
 ## When NOT to Load
 - Not for ordinary application-code work unless the task changes agent instructions or skill files.
-- Not for generic documentation edits that do not affect `.Codex/skills`, `.Codex/contract`, or agent-context tests.
+- Not for generic documentation edits that do not affect `.agents/skills`, `.Codex/contract`, or agent-context tests.
 - Not for creating external opencode configuration outside this repository.
 - Not for adding a runtime feature where a domain, CQRS, auth, Blazor, or persistence skill is the primary rule source.
 - Not for bypassing schema failures by adding skip-list exceptions.
@@ -70,7 +70,7 @@ This skill provides workflow guidance grounded in the listed sources. It does no
 
 ## Verification Hooks
 - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-- `git diff --check -- .Codex/contract/intents.yaml .Codex/skills Event.Architecture.Tests/AgentContextLinkTests.cs`
+- `git diff --check -- .Codex/contract/intents.yaml .agents/skills Event.Architecture.Tests/AgentContextLinkTests.cs`
 
 ## Related Skills
 - [../agentic-research/SKILL.md](../agentic-research/SKILL.md)

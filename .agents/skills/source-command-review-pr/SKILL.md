@@ -14,8 +14,8 @@ Use this skill when the user asks to run the migrated source command `review-pr`
 
 # /review-pr — Pull Request Review Checklist
 
-> **Primary reference:** [`.Codex/contract/intents.yaml`](../contract/intents.yaml) — every intent owns its `pr_checklist`.
-> **Authority:** [`AGENTS.md`](../../AGENTS.md) §5 CRITICAL RULES.
+> **Primary reference:** [`.claude/contract/intents.yaml`](../../../.claude/contract/intents.yaml) — every intent owns its `pr_checklist`.
+> **Authority:** [`AGENTS.md`](../../../AGENTS.md) §5 CRITICAL RULES.
 
 ## When to Run
 
@@ -24,7 +24,7 @@ Use this skill when the user asks to run the migrated source command `review-pr`
 
 ## Step 1 — Re-Identify the Intent
 
-Which intent in [`intents.yaml`](../contract/intents.yaml) does this PR implement? If the PR spans multiple intents, review each in turn and merge the checklists.
+Which intent in [`intents.yaml`](../../../.claude/contract/intents.yaml) does this PR implement? If the PR spans multiple intents, review each in turn and merge the checklists.
 
 ## Step 2 — Execute the Intent's PR Checklist
 
@@ -112,7 +112,7 @@ Outstanding questions: <list or None>
 
 ## Related
 
-- [`AGENTS.md`](../../AGENTS.md) — get to a valid PR state.
-- [`/check`](check.md) — run the verification commands.
-- [`/docs-lint`](docs-lint.md) — check doc link integrity.
-- [`AGENTS.md`](../../AGENTS.md) — Contribution Contract authority.
+- [`AGENTS.md`](../../../AGENTS.md) — get to a valid PR state.
+- [`/check`](../../../.claude/commands/check.md) — run the verification commands.
+- [`/docs-lint`](../../../.claude/commands/docs-lint.md) — check doc link integrity.
+- [`AGENTS.md`](../../../AGENTS.md) — Contribution Contract authority.

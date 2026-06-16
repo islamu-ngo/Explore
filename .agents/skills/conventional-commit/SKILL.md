@@ -233,7 +233,7 @@ Use the outermost/entrypoint project as the scope. Prefer splitting into separat
 ## Related Documentation
 
 - [Conventional Commits v1.0.0 Spec](https://www.conventionalcommits.org/en/v1.0.0/)
-- `.Codex/skills/gitkraken-cli/SKILL.md` — uses this skill for commit composition and formatting
+- `.agents/skills/gitkraken-cli/SKILL.md` — uses this skill for commit composition and formatting
 - `docs/CONTRIBUTING.md` — contributor workflow
 
 **Enforcement Level**: ENFORCE

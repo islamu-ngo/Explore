@@ -14,7 +14,7 @@ Use this skill when the user asks to run the migrated source command `check`.
 
 # /check — Standard Verification Cycle
 
-> **Source of truth:** [`AGENTS.md`](../../AGENTS.md) §7 Verification Policy.
+> **Source of truth:** [`AGENTS.md`](../../../AGENTS.md) §7 Verification Policy.
 > This command is a convenience wrapper — the command strings themselves live in AGENTS.md and `AGENTS.md` to avoid drift.
 
 ## When to Run
@@ -59,7 +59,7 @@ Run the full list only when the change touches multiple layers or you are about 
 
 ## Skipped by Default
 
-- `Explore.Blazor.Client.E2ETests` — requires running Aspire AppHost. Run manually via [`docs/BLAZOR_DEV_WORKFLOW.md`](../../docs/BLAZOR_DEV_WORKFLOW.md).
+- `Explore.Blazor.Client.E2ETests` — requires running Aspire AppHost. Run manually via [`docs/BLAZOR_DEV_WORKFLOW.md`](../../../docs/BLAZOR_DEV_WORKFLOW.md).
 
 ## On Failure
 
@@ -81,8 +81,8 @@ Run the full list only when the change touches multiple layers or you are about 
 
 ## Related
 
-- [`AGENTS.md`](../../AGENTS.md) §7 — canonical command source.
-- [`AGENTS.md`](../../AGENTS.md) — Codex-specific notes.
-- [`docs/TROUBLESHOOTING.md`](../../docs/TROUBLESHOOTING.md) — common failure modes.
-- [`AGENTS.md`](../../AGENTS.md) — full cold-start workflow (includes this step).
-- [`/review-pr`](review-pr.md) — pre-PR checklist.
+- [`AGENTS.md`](../../../AGENTS.md) §7 — canonical command source.
+- [`AGENTS.md`](../../../AGENTS.md) — Codex-specific notes.
+- [`docs/TROUBLESHOOTING.md`](../../../docs/TROUBLESHOOTING.md) — common failure modes.
+- [`AGENTS.md`](../../../AGENTS.md) — full cold-start workflow (includes this step).
+- [`/review-pr`](../../../.claude/commands/review-pr.md) — pre-PR checklist.

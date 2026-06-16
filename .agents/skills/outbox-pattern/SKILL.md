@@ -54,5 +54,5 @@ Load this skill when:
 
 - `docs/OUTBOX_PATTERN.md`
 - `docs/ARCHITECTURE.md` (Background Services section)
-- `.Codex/skills/dotnet-efcore-guidelines/SKILL.md`
-- `.Codex/skills/clean-architecture-rules/SKILL.md`
+- `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
+- `.agents/skills/clean-architecture-rules/SKILL.md`

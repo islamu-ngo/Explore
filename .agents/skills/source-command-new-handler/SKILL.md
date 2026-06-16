@@ -15,10 +15,10 @@ Use this skill when the user asks to run the migrated source command `new-handle
 # /new-handler — Scaffold a CQRS Handler
 
 > **Primary references:**
-> - [`.Codex/rules/application-layer.md`](../rules/application-layer.md)
-> - [`.Codex/skills/cqrs-mediatr-guidelines/SKILL.md`](../skills/cqrs-mediatr-guidelines/SKILL.md)
-> - [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md)
-> - [`docs/QUICK_REFERENCE.md`](../../docs/QUICK_REFERENCE.md)
+> - [`.claude/rules/application-layer.md`](../../../.claude/rules/application-layer.md)
+> - [`.agents/skills/cqrs-mediatr-guidelines/SKILL.md`](../cqrs-mediatr-guidelines/SKILL.md)
+> - [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md)
+> - [`docs/QUICK_REFERENCE.md`](../../../docs/QUICK_REFERENCE.md)
 
 ## Step 1 — Classify the Handler
 
@@ -89,7 +89,7 @@ Required minimum:
   - CancellationToken propagation (where meaningful).
 - Integration test in `Event.API.IntegrationTests/Controllers/{Resource}ControllerTests.cs` covering:
   - HTTP status codes (200/201/400/401/403/404).
-  - HAL link presence (if applicable — see [`add-hal-link`](../contract/intents.yaml) intent).
+  - HAL link presence (if applicable — see [`add-hal-link`](../../../.claude/contract/intents.yaml) intent).
 
 ## Step 5 — HATEOAS (for write endpoints producing visible resources)
 
@@ -98,7 +98,7 @@ If the resource is exposed with HAL links, add / update:
 - `Explore.API/Hateoas/Policies/{Resource}LinkPolicy.cs` — separate policies for detail and collection.
 - Use `yield return` in policies. Do not inline conditions in the controller.
 
-See [`.Codex/rules/api-hateoas.md`](../rules/api-hateoas.md).
+See [`.claude/rules/api-hateoas.md`](../../../.claude/rules/api-hateoas.md).
 
 ## Step 6 — Authorization
 
@@ -106,7 +106,7 @@ See [`.Codex/rules/api-hateoas.md`](../rules/api-hateoas.md).
 - For dynamic resource context, use `ISecureRequest`.
 - Denied → `AuthorizationException` → 403 via chained `IExceptionHandler`.
 
-See [`.Codex/skills/auth-patterns/SKILL.md`](../skills/auth-patterns/SKILL.md).
+See [`.agents/skills/auth-patterns/SKILL.md`](../auth-patterns/SKILL.md).
 
 ## Anti-Patterns (fail fast if you see these)
 
@@ -131,9 +131,9 @@ dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.cspr
 
 ## Related
 
-- [`AGENTS.md`](../../AGENTS.md) — cold-start flow.
-- [`/check`](check.md)
-- [`/review-pr`](review-pr.md)
-- Intent: [`add-cqrs-handler`](../contract/intents.yaml)
-- Intent: [`add-write-endpoint`](../contract/intents.yaml)
-- Intent: [`add-get-endpoint`](../contract/intents.yaml)
+- [`AGENTS.md`](../../../AGENTS.md) — cold-start flow.
+- [`/check`](../../../.claude/commands/check.md)
+- [`/review-pr`](../../../.claude/commands/review-pr.md)
+- Intent: [`add-cqrs-handler`](../../../.claude/contract/intents.yaml)
+- Intent: [`add-write-endpoint`](../../../.claude/contract/intents.yaml)
+- Intent: [`add-get-endpoint`](../../../.claude/contract/intents.yaml)

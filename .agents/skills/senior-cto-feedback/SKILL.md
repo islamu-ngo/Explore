@@ -13,7 +13,7 @@ Use this skill when the user wants blunt Senior CTO feedback on an implementatio
 
 ## When to Load
 - The user asks for CTO feedback, plan critique, approval/rejection, or plan rewrite.
-- The input is a `dev/active/...` workstream created from `.Codex/commands/dev-docs.md`.
+- The input is a `dev/active/...` workstream created from `.claude/commands/dev-docs.md`.
 - The user wants stronger architecture, sequencing, security, multi-tenancy, operations, or verification expectations in a plan.
 - Breaking changes are acceptable, and the main question is whether the proposed direction is worth implementing.
 - The user wants the existing `plan.md`, `context.md`, and `tasks.md` improved before implementation.
@@ -31,7 +31,7 @@ Use this skill when the user wants blunt Senior CTO feedback on an implementatio
 - [../../../docs/GOVERNANCE.md](../../../docs/GOVERNANCE.md)
 - [../../../docs/OPERATIONS.md](../../../docs/OPERATIONS.md)
 - [../../../dev/active/README.md](../../../dev/active/README.md)
-- [../../../.Codex/commands/dev-docs.md](../../../.Codex/commands/dev-docs.md)
+- [../../../.claude/commands/dev-docs.md](../../../.claude/commands/dev-docs.md)
 - [resources/input-contract.md](resources/input-contract.md)
 - [resources/islamu-event-guardrails.md](resources/islamu-event-guardrails.md)
 - [resources/review-rubric.md](resources/review-rubric.md)
@@ -58,7 +58,7 @@ Use this skill when the user wants blunt Senior CTO feedback on an implementatio
 ```text
 Review flow:
 1. Read plan/context/tasks
-2. Compare against .Codex/commands/dev-docs.md
+2. Compare against .claude/commands/dev-docs.md
 3. Verify referenced files/docs/rules
 4. Decide: approve, approve with required changes, split, reject, or defer
 5. Return ranked risks, concrete required changes, and a recommended plan rewrite

@@ -145,7 +145,7 @@ For large changesets, call `gitlens_commit_composer(directory=...)` to propose g
 
 ## Related Documentation
 
-- `.Codex/skills/conventional-commit/SKILL.md` — commit composition and message policy (MUST load before commits)
+- `.agents/skills/conventional-commit/SKILL.md` — commit composition and message policy (MUST load before commits)
 - `docs/CONTRIBUTING.md` — contributor workflow
 
 **Enforcement Level**: GUIDE

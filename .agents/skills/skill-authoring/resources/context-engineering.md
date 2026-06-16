@@ -14,7 +14,7 @@ For substantial skill work, maintain these surfaces:
 - `dev/active/<task>/<task>-plan.md` for strategy, scope, source routing, and validation expectations.
 - `dev/active/<task>/<task>-context.md` for current state, files touched, decisions, blockers, and handoff notes.
 - `dev/active/<task>/<task>-tasks.md` for phase checklist and verification status.
-- `.claude/skills/<skill>/resources/index.md` as the durable reading map.
+- `.agents/skills/<skill>/resources/index.md` as the durable reading map.
 
 ## Source Distillation
 
