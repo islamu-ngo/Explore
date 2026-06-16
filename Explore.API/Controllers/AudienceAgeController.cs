@@ -48,7 +48,7 @@ public class AudienceAgeController : ControllerBase
     [EndpointDescription("Retrieve details of a specific audience age group")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(AudienceAgeDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<AudienceAgeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {

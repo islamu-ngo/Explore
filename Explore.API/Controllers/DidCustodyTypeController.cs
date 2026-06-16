@@ -48,7 +48,7 @@ public class DidCustodyTypeController : ControllerBase
     [EndpointDescription("Retrieve details of a specific DID custody type")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(DidCustodyTypeDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<DidCustodyTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {

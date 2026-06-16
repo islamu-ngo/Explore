@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.EventSeries;
@@ -21,6 +22,20 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventSeriesController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "eventSeries",
+        "Event series validation failed",
+        "Event series creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "eventSeries",
+        "Event series validation failed",
+        "Event series update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor NotFoundProblem = new(
+        "Event series not found",
+        "The requested event series could not be found.");
+
     private readonly IMediator _mediator;
 
     public EventSeriesController(IMediator mediator)
@@ -31,8 +46,8 @@ public class EventSeriesController : ControllerBase
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetEventSeries)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(PaginatedResult<EventSeriesListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PaginatedResult<EventSeriesListDto>>> GetAll(
         [FromQuery] EventSeriesListQueryRequest query,
         CancellationToken cancellationToken = default)
@@ -49,8 +64,8 @@ public class EventSeriesController : ControllerBase
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventSeriesById)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(EventSeriesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventSeriesDto>> GetById(Guid id)
     {
         var response = await _mediator.Send(new GetEventSeriesDetailRequest { Id = id });
@@ -61,7 +76,7 @@ public class EventSeriesController : ControllerBase
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet("top", Name = RouteNames.GetTopEventSeries)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(EventSeriesDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult<EventSeriesDto>> GetTop()
     {
@@ -76,14 +91,14 @@ public class EventSeriesController : ControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEventSeries)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSeriesDto dto)
     {
         var response = await _mediator.Send(new CreateEventSeriesCommand { EventSeriesDto = dto });
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
         return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
     }
@@ -91,20 +106,22 @@ public class EventSeriesController : ControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSeries)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSeriesDto dto)
     {
         if (id != dto.Id)
         {
-            return BadRequest("ID mismatch.");
+            return this.ToValidationProblem(UpdateValidationProblem, "Event series ID mismatch.");
         }
 
         var response = await _mediator.Send(new UpdateEventSeriesCommand { EventSeriesDto = dto });
         if (!response.Success)
         {
-            return response.Message?.Contains("not found") == true ? NotFound(response) : BadRequest(response);
+            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? this.ToNotFoundProblem(NotFoundProblem)
+                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
         return Ok(response);
     }
@@ -112,14 +129,14 @@ public class EventSeriesController : ControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventSeries)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<bool>>> Delete(Guid id)
     {
         var response = await _mediator.Send(new DeleteEventSeriesCommand { Id = id });
         if (!response.Success)
         {
-            return NotFound(response);
+            return this.ToNotFoundProblem(NotFoundProblem);
         }
         return Ok(response);
     }

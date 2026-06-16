@@ -1,23 +1,17 @@
-// ABOUTME: OpenAPI operation transformer that emits x-endpoint-class for every classified action.
-// ABOUTME: Reads [EndpointClassification] from endpoint metadata and injects a vendor extension.
+// ABOUTME: OpenAPI operation transformer that emits endpoint posture vendor extensions.
+// ABOUTME: Projects classification, rate-limit, cache, and tenant-mode metadata from endpoint attributes.
 
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.API.Attributes;
+using Explore.API.Filters;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
 
 namespace Explore.API.OpenApi;
 
-/// <summary>
-/// Operation transformer that projects each action's <see cref="EndpointClassificationAttribute"/>
-/// into the <c>x-endpoint-class</c> OpenAPI vendor extension. This makes the classification
-/// visible to downstream consumers of <c>/openapi/event-api.json</c> (the generated
-/// <c>IEventApiClient</c>, the action-inventory markdown, and contract diff tooling).
-/// Attribute resolution: <c>ActionDescriptor.EndpointMetadata</c> is populated with both
-/// controller-level and action-level attributes, so a single lookup via <c>GetMetadata</c>
-/// returns the effective value with action-level winning over controller-level.
-/// </summary>
 public sealed class EndpointClassificationTransformer : IOpenApiOperationTransformer
 {
     public Task TransformAsync(
@@ -25,19 +19,45 @@ public sealed class EndpointClassificationTransformer : IOpenApiOperationTransfo
         OpenApiOperationTransformerContext context,
         CancellationToken cancellationToken)
     {
-        var classification = context.Description.ActionDescriptor
-            .EndpointMetadata
-            .OfType<EndpointClassificationAttribute>()
-            .LastOrDefault();
+        var endpointMetadata = context.Description.ActionDescriptor.EndpointMetadata;
+        var classification = endpointMetadata.OfType<EndpointClassificationAttribute>().LastOrDefault();
+        var rateLimit = endpointMetadata.OfType<EnableRateLimitingAttribute>().LastOrDefault();
+        var outputCache = endpointMetadata.OfType<OutputCacheAttribute>().LastOrDefault();
+        var requiresMultiTenant = endpointMetadata.OfType<RequireMultiTenantAttribute>().Any();
 
-        if (classification is null)
+        if (classification is null
+            && rateLimit is null
+            && outputCache is null
+            && !requiresMultiTenant)
         {
             return Task.CompletedTask;
         }
 
         operation.Extensions ??= new Dictionary<string, IOpenApiExtension>();
-        operation.Extensions["x-endpoint-class"] =
-            new JsonNodeExtension(classification.Class.ToString());
+
+        if (classification is not null)
+        {
+            operation.Extensions["x-endpoint-class"] =
+                new JsonNodeExtension(classification.Class.ToString());
+        }
+
+        if (!string.IsNullOrWhiteSpace(rateLimit?.PolicyName))
+        {
+            operation.Extensions["x-rate-limit-policy"] =
+                new JsonNodeExtension(rateLimit.PolicyName);
+        }
+
+        if (!string.IsNullOrWhiteSpace(outputCache?.PolicyName))
+        {
+            operation.Extensions["x-output-cache-policy"] =
+                new JsonNodeExtension(outputCache.PolicyName);
+        }
+
+        if (requiresMultiTenant)
+        {
+            operation.Extensions["x-tenant-mode"] =
+                new JsonNodeExtension("multi-tenant-required");
+        }
 
         return Task.CompletedTask;
     }

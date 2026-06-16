@@ -76,12 +76,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -89,7 +89,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -152,12 +153,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -254,7 +255,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -326,12 +328,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -538,7 +540,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/actor/by-tenant/{tenantId}": {
@@ -621,12 +624,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -634,7 +637,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/actorkeystore": {
@@ -692,7 +696,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -857,7 +862,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -1199,12 +1205,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -1429,12 +1435,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -1567,12 +1573,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -1689,7 +1695,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/actortype/{id}": {
@@ -1771,7 +1778,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/ai/assistant/bootstrap": {
@@ -2468,7 +2476,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "AiAssistant"
       }
     },
     "/api/ai/assistant/conversations/{conversationId}/messages": {
@@ -2681,7 +2690,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "AiAssistant"
       }
     },
     "/api/ai/assistant/conversations/{conversationId}/proposed-actions/{proposedActionId}/confirm": {
@@ -2871,7 +2881,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "AiAssistant"
       }
     },
     "/api/ai/assistant/conversations/{conversationId}/proposed-actions/{proposedActionId}/reject": {
@@ -3037,7 +3048,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "AiAssistant"
       }
     },
     "/api/ai/assistant/conversations/{conversationId}/runs/{runId}": {
@@ -3318,7 +3330,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "AiAssistant"
       }
     },
     "/api/a/t": {
@@ -3374,23 +3387,24 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "AnalyticsRelay"
       }
     },
     "/api/approvalstatus": {
@@ -3448,7 +3462,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/atprotorecord": {
@@ -3504,7 +3519,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -3625,7 +3641,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -3814,7 +3831,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/audienceage/{id}": {
@@ -3896,7 +3914,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/audiencegender": {
@@ -3954,7 +3973,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/audiencegender/{id}": {
@@ -4036,7 +4056,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/category": {
@@ -4110,12 +4131,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -4123,7 +4144,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -4186,12 +4208,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -4288,7 +4310,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -4360,12 +4383,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -4540,7 +4563,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/categorytype/{id}": {
@@ -4600,7 +4624,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/categorytype/with-categories": {
@@ -4658,7 +4683,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/contactshareconsent/my": {
@@ -4953,17 +4979,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -5047,17 +5073,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -5144,12 +5170,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -5157,7 +5183,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -5220,12 +5247,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -5339,7 +5366,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -5411,12 +5439,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -5639,12 +5667,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -5800,23 +5828,24 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
       }
     },
     "/api/admin/custom-property-projections/status": {
@@ -5885,7 +5914,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
       }
     },
     "/api/admin/custom-property-projections/rebuild": {
@@ -5953,12 +5983,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -5983,7 +6013,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/admin/custom-property-projections/rebuild-single-event": {
@@ -6051,12 +6082,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6064,7 +6095,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/admin/custom-property-projections/drain-dirty-scopes": {
@@ -6132,12 +6164,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6145,7 +6177,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/admin/custom-property-projections/dirty-scopes": {
@@ -6232,12 +6265,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6245,7 +6278,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
       }
     },
     "/api/admin/custom-property-projections/events/{eventId}": {
@@ -6309,12 +6343,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6322,7 +6356,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
       }
     },
     "/api/admin/custom-property-projections/sessions/status": {
@@ -6391,7 +6426,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
       }
     },
     "/api/admin/custom-property-projections/sessions/rebuild": {
@@ -6459,12 +6495,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6489,7 +6525,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/admin/custom-property-projections/sessions/rebuild-single": {
@@ -6557,12 +6594,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6570,7 +6607,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/admin/custom-property-projections/sessions/{eventSessionId}": {
@@ -6634,12 +6672,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6647,7 +6685,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
       }
     },
     "/api/didcustodytype": {
@@ -6705,7 +6744,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/didcustodytype/{id}": {
@@ -6787,7 +6827,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/admin/email-dispatch/status": {
@@ -6869,7 +6910,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
       }
     },
     "/api/admin/email-dispatch/tenants/{tenantId}/pause": {
@@ -6946,7 +6988,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       },
       "delete": {
         "tags": [
@@ -7014,7 +7057,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/park": {
@@ -7134,7 +7178,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/replay": {
@@ -7247,7 +7292,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/email/unsubscribe": {
@@ -7357,7 +7403,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "Global"
       }
     },
     "/api/eventagendaitem/by-event/{eventId}": {
@@ -7412,7 +7459,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/eventagendaitem/{id}": {
@@ -7484,7 +7532,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -7752,7 +7801,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/eventagendaitem": {
@@ -8329,7 +8379,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -8392,12 +8443,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -8496,12 +8547,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -8750,7 +8801,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/event/{id}": {
@@ -8822,7 +8874,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -8894,12 +8947,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -9116,7 +9169,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/event/{id}/publish-readiness": {
@@ -9279,12 +9333,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -9296,12 +9350,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -9400,12 +9454,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -9519,7 +9573,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -9591,12 +9646,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -9787,7 +9842,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -9859,12 +9915,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -10065,12 +10121,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -10078,7 +10134,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -10141,12 +10198,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -10260,7 +10317,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -10332,12 +10390,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -10560,12 +10618,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -10684,7 +10742,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "put": {
         "tags": [
@@ -10747,12 +10806,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -10859,12 +10918,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -10961,7 +11020,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/eventday/{id}": {
@@ -11033,7 +11093,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -11105,12 +11166,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -11294,12 +11355,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -11382,7 +11443,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/eventformat/{id}": {
@@ -11464,7 +11526,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/eventregistration": {
@@ -11541,23 +11604,23 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "post": {
         "tags": [
@@ -11648,17 +11711,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -11762,7 +11825,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "put": {
         "tags": [
@@ -12044,7 +12107,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/eventregistration/by-user/{userId}": {
@@ -12111,7 +12174,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/eventregistrationpolicy": {
@@ -12169,7 +12232,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/eventseries": {
@@ -12249,12 +12313,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -12328,12 +12392,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -12486,12 +12550,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -12712,23 +12776,24 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -12873,7 +12938,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -13075,7 +13141,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/eventsession": {
@@ -13179,7 +13246,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -13344,7 +13412,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -13595,7 +13664,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/eventsessioncustomproperty": {
@@ -13677,12 +13747,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -13690,7 +13760,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -13753,12 +13824,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -13872,7 +13943,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -13944,12 +14016,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -14172,12 +14244,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -14296,7 +14368,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "put": {
         "tags": [
@@ -14359,12 +14432,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -14471,12 +14544,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -14573,7 +14646,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/eventsessiongroup/{id}": {
@@ -14645,7 +14719,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -14921,7 +14996,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -15306,7 +15382,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/eventsessionlanguage/by-session/{eventSessionId}": {
@@ -15641,12 +15718,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -15654,7 +15731,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -15717,12 +15795,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -15819,7 +15897,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -15891,12 +15970,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -16553,7 +16632,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/eventstatus/{id}": {
@@ -16635,7 +16715,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/eventteam/by-event/{eventId}": {
@@ -17096,12 +17177,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -17109,7 +17190,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -17172,12 +17254,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -17291,7 +17373,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -17363,12 +17446,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -18042,7 +18125,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/externalapikey": {
@@ -18100,7 +18184,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -18265,7 +18350,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -18522,7 +18608,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/features/my-flags": {
@@ -18636,7 +18723,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/filetype/{id}": {
@@ -18718,7 +18806,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/footer/config": {
@@ -18878,12 +18967,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -19036,12 +19125,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -19214,12 +19303,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -19304,12 +19393,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -19394,12 +19483,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -19560,12 +19649,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -19647,12 +19736,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -19660,7 +19749,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -19723,12 +19813,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -19827,12 +19917,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -19929,7 +20019,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -20001,12 +20092,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -20104,7 +20195,7 @@
         "x-endpoint-class": "Authenticated"
       }
     },
-    "/api/group/updatestatustype/{id}": {
+    "/api/group/{id}/approval-status": {
       "put": {
         "tags": [
           "Group"
@@ -20175,12 +20266,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -20292,7 +20383,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/groupmember/member/{id}": {
@@ -20362,7 +20454,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/groupmember": {
@@ -20652,7 +20745,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/groupposition/{id}": {
@@ -20734,7 +20828,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/indexeddid": {
@@ -20778,7 +20873,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -20892,7 +20988,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -21124,17 +21221,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -21237,7 +21334,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "SetupSecret"
       }
     },
     "/api/instanceonboarding/auth-provider-configuration": {
@@ -21352,17 +21450,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -21485,17 +21583,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -21646,17 +21744,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -21715,17 +21813,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -21847,17 +21945,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -22003,17 +22101,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -22179,17 +22277,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -22355,17 +22453,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -22531,17 +22629,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -22707,17 +22805,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -22883,17 +22981,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -23059,17 +23157,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -23235,17 +23333,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -23411,17 +23509,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -23587,17 +23685,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -23752,17 +23850,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -24061,17 +24159,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -24300,17 +24398,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -24471,17 +24569,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -24642,17 +24740,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -24813,17 +24911,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -25169,17 +25267,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -25383,17 +25481,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -25472,17 +25570,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -25655,7 +25753,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/language/{id}": {
@@ -25717,7 +25816,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/admin/localization/test-connection": {
@@ -25753,17 +25853,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -26000,17 +26100,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -26079,17 +26179,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -26189,12 +26289,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -26202,7 +26302,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -26265,12 +26366,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -26367,7 +26468,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -26439,12 +26541,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -26617,7 +26719,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/location/by-country/{country}": {
@@ -26671,7 +26774,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/locationroom/by-location/{locationId}": {
@@ -26726,7 +26830,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/locationroom/{id}": {
@@ -26798,7 +26903,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -27147,7 +27253,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/madhab/{id}": {
@@ -27229,7 +27336,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/managed-provider-provisioning/clients:ensure": {
@@ -27302,17 +27410,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfManagedProviderClientProvisioningResultDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfManagedProviderClientProvisioningResultDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfManagedProviderClientProvisioningResultDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -27649,17 +27757,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -27766,17 +27874,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -27956,17 +28064,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -28749,12 +28857,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -28762,7 +28870,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -28825,12 +28934,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -28929,12 +29038,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -29031,7 +29140,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -29103,12 +29213,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -29247,7 +29357,7 @@
         "x-endpoint-class": "Authenticated"
       }
     },
-    "/api/organization/updatestatustype/{id}": {
+    "/api/organization/{id}/approval-status": {
       "put": {
         "tags": [
           "Organization"
@@ -29408,7 +29518,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/organizationmember/member/{id}": {
@@ -29478,7 +29588,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/organizationmember": {
@@ -29873,7 +29983,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/organizationposition/{id}": {
@@ -29955,7 +30066,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/organizationreview": {
@@ -29999,7 +30111,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -30120,7 +30233,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       }
     },
     "/api/organizationreview/user/{userId}": {
@@ -30277,7 +30391,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "PublicExperienceShell"
       }
     },
     "/api/registrationmode": {
@@ -30335,7 +30450,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/registrationmode/{id}": {
@@ -30417,7 +30533,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/registrationscope": {
@@ -30475,7 +30592,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/role": {
@@ -30545,7 +30663,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/role/{id}": {
@@ -30627,7 +30746,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/scheduleitemkind": {
@@ -30685,7 +30805,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/settings/user/{category}": {
@@ -30841,17 +30962,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BatchUpdateResponseDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BatchUpdateResponseDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BatchUpdateResponseDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -30958,17 +31079,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -31053,17 +31174,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -31265,17 +31386,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BatchUpdateResponseDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BatchUpdateResponseDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BatchUpdateResponseDto"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -31402,17 +31523,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -31519,17 +31640,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -31634,17 +31755,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -31725,7 +31846,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "SitemapData"
       }
     },
     "/api/storageobject": {
@@ -31799,12 +31921,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -31812,7 +31934,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -31880,12 +32003,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -31982,7 +32105,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -32059,12 +32183,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -32392,7 +32516,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/storageobject/generate-upload-url": {
@@ -32462,12 +32587,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -32626,7 +32751,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/storageobject/upload-sessions/{uploadSessionId}/content": {
@@ -32783,7 +32909,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/storageobject/upload-sessions/{uploadSessionId}": {
@@ -32906,7 +33033,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/syncstate": {
@@ -32962,7 +33090,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -33087,7 +33216,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -33255,7 +33385,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "SystemConfig"
       }
     },
     "/api/system/onboarding-preflight": {
@@ -33378,12 +33509,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -33391,7 +33522,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -33454,12 +33586,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -33556,7 +33688,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -33628,12 +33761,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -33808,7 +33941,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/tagtype/{id}": {
@@ -33868,7 +34002,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/tagtype/with-tags": {
@@ -33926,7 +34061,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/tenant": {
@@ -33984,7 +34120,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -34055,17 +34192,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -34213,7 +34350,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -34293,17 +34431,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -34446,7 +34584,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "TenantNav"
       },
       "post": {
         "tags": [
@@ -34517,17 +34656,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -34615,17 +34754,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -34809,17 +34948,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -34874,7 +35013,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-tenant-mode": "multi-tenant-required"
       }
     },
     "/api/tenantonboarding/settings": {
@@ -34923,7 +35063,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-tenant-mode": "multi-tenant-required"
       },
       "put": {
         "tags": [
@@ -34994,17 +35135,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -35030,7 +35171,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-tenant-mode": "multi-tenant-required"
       }
     },
     "/api/tenantonboarding/complete": {
@@ -35103,17 +35245,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -35139,7 +35281,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-tenant-mode": "multi-tenant-required"
       }
     },
     "/api/tenantonboarding/steps": {
@@ -35212,23 +35355,24 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-tenant-mode": "multi-tenant-required"
       }
     },
     "/api/tenant/settings/documents/branding": {
@@ -35383,17 +35527,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -35622,12 +35766,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -35715,7 +35859,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "post": {
         "tags": [
@@ -35783,12 +35927,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -35868,7 +36012,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "delete": {
         "tags": [
@@ -36217,17 +36361,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -36237,17 +36381,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -36431,17 +36575,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -36451,17 +36595,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -36530,17 +36674,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -36902,17 +37046,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -37726,7 +37870,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -37891,7 +38036,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -38429,7 +38575,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "ListData"
       },
       "post": {
         "tags": [
@@ -38500,17 +38647,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -38594,7 +38741,8 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Authenticated",
+        "x-output-cache-policy": "DetailData"
       },
       "put": {
         "tags": [
@@ -38827,7 +38975,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "LookupData"
       }
     },
     "/api/visibilitytype/{id}": {
@@ -38909,7 +39058,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     }
   },
@@ -41708,7 +41858,11 @@
         }
       },
       "BatchUpdateMode": {
-        "type": "integer"
+        "enum": [
+          "BestEffort",
+          "Strict"
+        ],
+        "type": "string"
       },
       "BatchUpdateResponseDto": {
         "required": [
@@ -45292,7 +45446,17 @@
         }
       },
       "CustomPropertyFilterOperator": {
-        "type": "integer"
+        "enum": [
+          "Equals",
+          "Contains",
+          "Exists",
+          "BooleanTrue",
+          "OptionEquals",
+          "OptionIn",
+          "NumberRange",
+          "DateRange"
+        ],
+        "type": "string"
       },
       "CustomPropertyGovernanceRowDto": {
         "type": "object",
@@ -45443,7 +45607,11 @@
         }
       },
       "DeclineBehavior": {
-        "type": "integer"
+        "enum": [
+          "Disable",
+          "Cookieless"
+        ],
+        "type": "string"
       },
       "DeploymentMode": {
         "enum": [
@@ -45743,7 +45911,12 @@
         }
       },
       "EntityTypeName": {
-        "type": "integer"
+        "enum": [
+          "Event",
+          "Organization",
+          "Group"
+        ],
+        "type": "string"
       },
       "EventAgendaItemDto": {
         "required": [
@@ -46984,125 +47157,10 @@
             }
           },
           "islamicAspect": {
-            "type": "object",
-            "properties": {
-              "madhabId": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "madhabName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "referencePrayer": {
-                "type": "integer"
-              },
-              "prayerTimeOffset": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "genderMode": {
-                "type": "integer"
-              },
-              "genderModeName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "includesQuranRecitation": {
-                "type": "boolean"
-              },
-              "primaryLanguageId": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "primaryLanguageName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventIslamicAspectDto"
           },
           "techAspect": {
-            "type": "object",
-            "properties": {
-              "githubRepoUrl": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "hackathonTrack": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "skillLevel": {
-                "type": "integer"
-              },
-              "skillLevelName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "techStackTags": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "requiresLaptop": {
-                "type": "boolean"
-              },
-              "isCodingCompetition": {
-                "type": "boolean"
-              },
-              "maxTeamSize": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "prizePool": {
-                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-                "type": [
-                  "null",
-                  "number",
-                  "string"
-                ],
-                "format": "double"
-              },
-              "prizeCurrencyCode": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventTechAspectDto"
           },
           "backgroundColor": {
             "type": [
@@ -48058,7 +48116,13 @@
         }
       },
       "EventRoleAssignmentStatus": {
-        "type": "integer"
+        "enum": [
+          "Pending",
+          "Active",
+          "Revoked",
+          "Expired"
+        ],
+        "type": "string"
       },
       "EventRolePresetDto": {
         "required": [
@@ -49257,33 +49321,7 @@
             ]
           },
           "islamicAspect": {
-            "type": "object",
-            "properties": {
-              "startTimeType": {
-                "type": "integer"
-              },
-              "referencePrayer": {
-                "type": "integer"
-              },
-              "offsetMinutes": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "requiresWudu": {
-                "type": "boolean"
-              },
-              "ritualRequirementsJson": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
           },
           "sessionGroups": {
             "type": "array",
@@ -49822,33 +49860,7 @@
             ]
           },
           "islamicAspect": {
-            "type": "object",
-            "properties": {
-              "startTimeType": {
-                "type": "integer"
-              },
-              "referencePrayer": {
-                "type": "integer"
-              },
-              "offsetMinutes": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "requiresWudu": {
-                "type": "boolean"
-              },
-              "ritualRequirementsJson": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
           },
           "sessionGroups": {
             "type": "array",
@@ -51042,7 +51054,13 @@
         }
       },
       "ExposureLevel": {
-        "type": "integer"
+        "enum": [
+          "Internal",
+          "OrganizerOnly",
+          "TenantAdminOnly",
+          "Public"
+        ],
+        "type": "string"
       },
       "ExternalApiKeyListDto": {
         "required": [
@@ -51564,7 +51582,14 @@
         }
       },
       "GenderSegregationMode": {
-        "type": "integer"
+        "enum": [
+          "Mixed",
+          "MenOnly",
+          "WomenOnly",
+          "Segregated",
+          "Family"
+        ],
+        "type": "string"
       },
       "GroupDto": {
         "required": [
@@ -56926,125 +56951,10 @@
             }
           },
           "islamicAspect": {
-            "type": "object",
-            "properties": {
-              "madhabId": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "madhabName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "referencePrayer": {
-                "type": "integer"
-              },
-              "prayerTimeOffset": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "genderMode": {
-                "type": "integer"
-              },
-              "genderModeName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "includesQuranRecitation": {
-                "type": "boolean"
-              },
-              "primaryLanguageId": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "primaryLanguageName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventIslamicAspectDto"
           },
           "techAspect": {
-            "type": "object",
-            "properties": {
-              "githubRepoUrl": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "hackathonTrack": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "skillLevel": {
-                "type": "integer"
-              },
-              "skillLevelName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "techStackTags": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "requiresLaptop": {
-                "type": "boolean"
-              },
-              "isCodingCompetition": {
-                "type": "boolean"
-              },
-              "maxTeamSize": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "prizePool": {
-                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-                "type": [
-                  "null",
-                  "number",
-                  "string"
-                ],
-                "format": "double"
-              },
-              "prizeCurrencyCode": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventTechAspectDto"
           },
           "backgroundColor": {
             "type": [
@@ -58037,33 +57947,7 @@
             ]
           },
           "islamicAspect": {
-            "type": "object",
-            "properties": {
-              "startTimeType": {
-                "type": "integer"
-              },
-              "referencePrayer": {
-                "type": "integer"
-              },
-              "offsetMinutes": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "requiresWudu": {
-                "type": "boolean"
-              },
-              "ritualRequirementsJson": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
           },
           "sessionGroups": {
             "type": "array",
@@ -58540,33 +58424,7 @@
             ]
           },
           "islamicAspect": {
-            "type": "object",
-            "properties": {
-              "startTimeType": {
-                "type": "integer"
-              },
-              "referencePrayer": {
-                "type": "integer"
-              },
-              "offsetMinutes": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "null",
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "requiresWudu": {
-                "type": "boolean"
-              },
-              "ritualRequirementsJson": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
           },
           "sessionGroups": {
             "type": "array",
@@ -62839,7 +62697,11 @@
         }
       },
       "KeycloakBootstrapMode": {
-        "type": "integer"
+        "enum": [
+          "PatchExistingRealm",
+          "CreateRealm"
+        ],
+        "type": "string"
       },
       "KeycloakBootstrapRequestDto": {
         "type": "object",
@@ -63926,7 +63788,11 @@
         }
       },
       "ManagedProviderOrganizerKindDto": {
-        "type": "integer"
+        "enum": [
+          "Organization",
+          "Group"
+        ],
+        "type": "string"
       },
       "McpGovernanceSettingsDto": {
         "type": "object",
@@ -65352,13 +65218,31 @@
         }
       },
       "PosthogCookielessMode": {
-        "type": "integer"
+        "enum": [
+          "Off",
+          "Always",
+          "OnReject"
+        ],
+        "type": "string"
       },
       "PosthogPersonProfiles": {
-        "type": "integer"
+        "enum": [
+          "Always",
+          "IdentifiedOnly",
+          "Never"
+        ],
+        "type": "string"
       },
       "PrayerTime": {
-        "type": "integer"
+        "enum": [
+          "Fajr",
+          "Sunrise",
+          "Dhuhr",
+          "Asr",
+          "Maghrib",
+          "Isha"
+        ],
+        "type": "string"
       },
       "PresignedDownloadUrlResponseDto": {
         "type": "object",
@@ -65556,10 +65440,24 @@
         }
       },
       "PromotionRecommendation": {
-        "type": "integer"
+        "enum": [
+          "None",
+          "ConsiderProjectionFirst",
+          "ConsiderLayer2Promotion",
+          "ConsiderLayer1Promotion"
+        ],
+        "type": "string"
       },
       "PropertyType": {
-        "type": "integer"
+        "enum": [
+          "Text",
+          "Number",
+          "Option",
+          "Boolean",
+          "DateTime",
+          "Url"
+        ],
+        "type": "string"
       },
       "PublicExperienceCtaDto": {
         "type": "object",
@@ -65590,10 +65488,21 @@
         }
       },
       "PublicExperienceCtaPlacement": {
-        "type": "integer"
+        "enum": [
+          "Header",
+          "Hero",
+          "HomeBlock",
+          "Footer"
+        ],
+        "type": "string"
       },
       "PublicExperienceCtaStyle": {
-        "type": "integer"
+        "enum": [
+          "Primary",
+          "Secondary",
+          "Text"
+        ],
+        "type": "string"
       },
       "PublicExperienceEventCatalogDto": {
         "type": "object",
@@ -65669,7 +65578,14 @@
         }
       },
       "PublicExperienceHomeBlockKind": {
-        "type": "integer"
+        "enum": [
+          "Hero",
+          "RichText",
+          "EventSection",
+          "CallToAction",
+          "OrganizationSummary"
+        ],
+        "type": "string"
       },
       "PublicExperienceHomeDto": {
         "type": "object",
@@ -65695,7 +65611,11 @@
         }
       },
       "PublicExperienceMode": {
-        "type": "integer"
+        "enum": [
+          "DiscoveryCentric",
+          "OrganizationCentric"
+        ],
+        "type": "string"
       },
       "PublicExperienceNavigationDto": {
         "type": "object",
@@ -65762,7 +65682,16 @@
         }
       },
       "PublicExperiencePrimaryOrganizationState": {
-        "type": "integer"
+        "enum": [
+          "Available",
+          "NotConfigured",
+          "Missing",
+          "Deleted",
+          "HiddenOrInactive",
+          "CrossTenantInvalid",
+          "ActorUnavailable"
+        ],
+        "type": "string"
       },
       "PublicExperienceSettingsDto": {
         "type": "object",
@@ -65930,6 +65859,9 @@
             "type": "boolean"
           },
           "disallowInteractiveServerOnOnboarding": {
+            "type": "boolean"
+          },
+          "isAiAssistantEnabled": {
             "type": "boolean"
           },
           "isAiAssistantAvailable": {
@@ -66745,7 +66677,11 @@
         }
       },
       "SessionStartTimeType": {
-        "type": "integer"
+        "enum": [
+          "Fixed",
+          "RelativeToPrayer"
+        ],
+        "type": "string"
       },
       "SetActiveProfileRequestDto": {
         "type": "object",
@@ -66951,7 +66887,16 @@
         }
       },
       "SettingSource": {
-        "type": "integer"
+        "enum": [
+          "SystemDefault",
+          "TenantOverride",
+          "SystemLocked",
+          "OrganizationOverride",
+          "GroupOverride",
+          "UserPreference",
+          "TenantLocked"
+        ],
+        "type": "string"
       },
       "SettingUpdateResultDto": {
         "required": [
@@ -67006,7 +66951,13 @@
         }
       },
       "SkillLevel": {
-        "type": "integer"
+        "enum": [
+          "AllLevels",
+          "Beginner",
+          "Intermediate",
+          "Advanced"
+        ],
+        "type": "string"
       },
       "StatusTypeListDto": {
         "required": [

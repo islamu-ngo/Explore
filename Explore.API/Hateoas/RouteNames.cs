@@ -24,9 +24,6 @@ public static class RouteNames
     public const string UpdateOrganization = "UpdateOrganization";
     public const string UpdateOrganizationApprovalStatus = "UpdateOrganizationApprovalStatus";
     public const string DeleteOrganization = "DeleteOrganization";
-    public const string GetOrganizationEvents = "GetOrganizationEvents";
-    public const string GetOrganizationMembers = "GetOrganizationMembers";
-
     #endregion
 
     #region Event Routes
@@ -45,8 +42,6 @@ public static class RouteNames
     public const string UpdateEventStatus = "UpdateEventStatus";
     public const string DeleteEvent = "DeleteEvent";
     public const string GetEventSessions = "GetEventSessions";
-    public const string GetEventCategories = "GetEventCategories";
-    public const string GetEventTags = "GetEventTags";
     public const string GetEventTemplateSyncDiff = "GetEventTemplateSyncDiff";
     public const string ApplyEventTemplateSync = "ApplyEventTemplateSync";
     public const string GetEventTemplateSyncHistory = "GetEventTemplateSyncHistory";
@@ -62,7 +57,6 @@ public static class RouteNames
     public const string GetEventSessionLanguages = "GetEventSessionLanguages";
     public const string CreateEventSessionLanguage = "CreateEventSessionLanguage";
     public const string DeleteEventSessionLanguage = "DeleteEventSessionLanguage";
-    public const string GetEventSessionSpeakers = "GetEventSessionSpeakers";
     public const string GetEventSessionAgendaItems = "GetEventSessionAgendaItems";
     public const string GetEventRegistrations = "GetEventRegistrations";
     public const string GetEventSessionTemplateSyncDiff = "GetEventSessionTemplateSyncDiff";
@@ -94,7 +88,6 @@ public static class RouteNames
     public const string SubscribeToActor = "SubscribeToActor";
     public const string UpdateActorSubscriptionNotificationLevel = "UpdateActorSubscriptionNotificationLevel";
     public const string UnsubscribeFromActor = "UnsubscribeFromActor";
-    public const string GetActorEvents = "GetActorEvents";
     public const string GetActorKeyStores = "GetActorKeyStores";
     public const string GetActorKeyStoreById = "GetActorKeyStoreById";
     public const string CreateActorKeyStore = "CreateActorKeyStore";
@@ -124,8 +117,6 @@ public static class RouteNames
     public const string CreateCategory = "CreateCategory";
     public const string UpdateCategory = "UpdateCategory";
     public const string DeleteCategory = "DeleteCategory";
-    public const string GetCategoryChildren = "GetCategoryChildren";
-    public const string GetCategoryEvents = "GetCategoryEvents";
 
     #endregion
 
@@ -136,37 +127,21 @@ public static class RouteNames
     public const string CreateTag = "CreateTag";
     public const string UpdateTag = "UpdateTag";
     public const string DeleteTag = "DeleteTag";
-    public const string GetTagEvents = "GetTagEvents";
-    public const string GetTagTagTypes = "GetTagTagTypes";
 
     #endregion
 
     #region Registration Routes
 
-    public const string GetRegistrations = "GetRegistrations";
-    public const string GetRegistrationById = "GetRegistrationById";
-    public const string CreateRegistration = "CreateRegistration";
-    public const string UpdateRegistration = "UpdateRegistration";
-    public const string DeleteRegistration = "DeleteRegistration";
-
     #endregion
 
     #region Lookup Table Routes
 
-    public const string GetApprovalStatuses = "GetApprovalStatuses";
     public const string GetEventTypes = "GetEventTypes";
-    public const string GetEventFormats = "GetEventFormats";
     public const string GetEventStatuses = "GetEventStatuses";
-    public const string GetAudienceAges = "GetAudienceAges";
-    public const string GetAudienceGenders = "GetAudienceGenders";
     public const string GetMadhabs = "GetMadhabs";
     public const string GetLanguages = "GetLanguages";
     public const string GetTagTypes = "GetTagTypes";
     public const string GetApprovalStatusOptions = "GetApprovalStatusOptions";
-    public const string CreateApprovalStatusOption = "CreateApprovalStatusOption";
-    public const string GetApprovalStatusOptionById = "GetApprovalStatusOptionById";
-    public const string UpdateApprovalStatusOption = "UpdateApprovalStatusOption";
-    public const string DeleteApprovalStatusOption = "DeleteApprovalStatusOption";
     public const string GetAudienceAgeOptions = "GetAudienceAgeOptions";
     public const string GetAudienceAgeOptionById = "GetAudienceAgeOptionById";
     public const string GetAudienceGenderOptions = "GetAudienceGenderOptions";
@@ -194,10 +169,6 @@ public static class RouteNames
     public const string GetGroupPositionById = "GetGroupPositionById";
     public const string GetOrganizationPositions = "GetOrganizationPositions";
     public const string GetOrganizationPositionById = "GetOrganizationPositionById";
-    public const string GetEventTypeById = "GetEventTypeById";
-    public const string CreateEventType = "CreateEventType";
-    public const string UpdateEventType = "UpdateEventType";
-    public const string DeleteEventType = "DeleteEventType";
     public const string GetTagTypeById = "GetTagTypeById";
     public const string GetTagTypesWithTags = "GetTagTypesWithTags";
     public const string GetMyFeatureFlags = "GetMyFeatureFlags";
@@ -235,14 +206,8 @@ public static class RouteNames
 
     #region User Routes
 
-    public const string GetUsers = "GetUsers";
-    public const string GetUserById = "GetUserById";
     public const string GetCurrentUser = "GetCurrentUser";
-    public const string CreateUser = "CreateUser";
-    public const string UpdateUser = "UpdateUser";
-    public const string DeleteUser = "DeleteUser";
     public const string GetUserOrganizations = "GetUserOrganizations";
-    public const string GetUserRegistrations = "GetUserRegistrations";
     public const string SyncUser = "SyncUser";
     public const string GetCurrentUserAdminAuthority = "GetCurrentUserAdminAuthority";
     public const string UpdateCurrentUser = "UpdateCurrentUser";
@@ -271,7 +236,6 @@ public static class RouteNames
 
     public const string GetTenants = "GetTenants";
     public const string GetTenantById = "GetTenantById";
-    public const string GetTenantBySlug = "GetTenantBySlug";
     public const string CreateTenant = "CreateTenant";
     public const string UpdateTenant = "UpdateTenant";
     public const string DeleteTenant = "DeleteTenant";
@@ -319,8 +283,6 @@ public static class RouteNames
     public const string GetOrganizationMemberById = "GetOrganizationMemberById";
     public const string GetOrganizationMembersByOrganization = "GetOrganizationMembersByOrganization";
     public const string AddOrganizationMember = "AddOrganizationMember";
-    public const string CreateOrganizationMember = "CreateOrganizationMember";
-    public const string UpdateOrganizationMember = "UpdateOrganizationMember";
     public const string UpdateOrganizationMemberRole = "UpdateOrganizationMemberRole";
     public const string DeleteOrganizationMember = "DeleteOrganizationMember";
     public const string GetMyOrganizationInvitations = "GetMyOrganizationInvitations";
@@ -376,12 +338,9 @@ public static class RouteNames
     #region Organization Review Routes
 
     public const string GetOrganizationReviews = "GetOrganizationReviews";
-    public const string GetOrganizationReviewById = "GetOrganizationReviewById";
     public const string GetOrganizationReviewsByOrganization = "GetOrganizationReviewsByOrganization";
     public const string GetOrganizationReviewsByUser = "GetOrganizationReviewsByUser";
     public const string CreateOrganizationReview = "CreateOrganizationReview";
-    public const string UpdateOrganizationReview = "UpdateOrganizationReview";
-    public const string DeleteOrganizationReview = "DeleteOrganizationReview";
 
     #endregion
 
@@ -402,7 +361,6 @@ public static class RouteNames
     #region User Appearance Routes
 
     public const string GetCurrentUserAppearancePreferences = "GetCurrentUserAppearancePreferences";
-    public const string UpdateCurrentUserAppearancePreferences = "UpdateCurrentUserAppearancePreferences";
     public const string GetAvailableThemes = "GetAvailableThemes";
     public const string GetUserAppearanceProfiles = "GetUserAppearanceProfiles";
     public const string ClonePresetToProfile = "ClonePresetToProfile";
@@ -428,11 +386,6 @@ public static class RouteNames
 
     #region ATProto Routes
 
-    public const string GetAtprotoRecords = "GetAtprotoRecords";
-    public const string GetAtprotoRecordById = "GetAtprotoRecordById";
-    public const string GetAtprotoRecordByUri = "GetAtprotoRecordByUri";
-    public const string CreateAtprotoRecord = "CreateAtprotoRecord";
-    public const string DeleteAtprotoRecord = "DeleteAtprotoRecord";
     public const string GetAtprotoRecordEntries = "GetAtprotoRecordEntries";
     public const string GetAtprotoRecordEntryById = "GetAtprotoRecordEntryById";
     public const string CreateAtprotoRecordEntry = "CreateAtprotoRecordEntry";
@@ -576,8 +529,6 @@ public static class RouteNames
     public const string GetCurrentUserEventPermissions = "GetCurrentUserEventPermissions";
     public const string AssignEventRole = "AssignEventRole";
     public const string RevokeEventRole = "RevokeEventRole";
-    public const string UpdateEventRoleAssignmentWindow = "UpdateEventRoleAssignmentWindow";
-    public const string TransferEventOwnership = "TransferEventOwnership";
 
     #endregion
 

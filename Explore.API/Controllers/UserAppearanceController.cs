@@ -33,7 +33,7 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Get Resolved Appearance")]
     [EndpointDescription("Returns the fully resolved appearance state for the authenticated user, including provenance, capabilities, and effective theme data.")]
     [ProducesResponseType(typeof(ResolvedAppearanceDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ResolvedAppearanceDto>> GetResolvedAppearance(CancellationToken cancellationToken = default)
     {
         var result = await _resolutionService.ResolveForCurrentUserAsync(cancellationToken);
@@ -44,7 +44,7 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Get Available Presets")]
     [EndpointDescription("Returns available platform and tenant theme presets for the current tenant.")]
     [ProducesResponseType(typeof(IReadOnlyList<AvailablePresetDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<IReadOnlyList<AvailablePresetDto>>> GetAvailablePresets(CancellationToken cancellationToken = default)
     {
         var presets = await _resolutionService.GetAvailablePresetsAsync(cancellationToken);
@@ -55,7 +55,7 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Get User Appearance Profiles")]
     [EndpointDescription("Returns the current user's appearance profiles for the current tenant scope.")]
     [ProducesResponseType(typeof(IReadOnlyList<UserAppearanceProfileDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<IReadOnlyList<UserAppearanceProfileDto>>> GetUserProfiles(CancellationToken cancellationToken = default)
     {
         var profiles = await _resolutionService.GetUserProfilesAsync(cancellationToken);
@@ -66,8 +66,8 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Clone Preset Into User Profile")]
     [EndpointDescription("Clones a theme preset into a user-owned appearance profile. If an existing clone exists, returns it instead.")]
     [ProducesResponseType(typeof(UserAppearanceProfileDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserAppearanceProfileDto>> ClonePreset(
         Guid presetId,
         [FromBody] ClonePresetRequestDto? request,
@@ -81,8 +81,8 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Create Custom Appearance Profile")]
     [EndpointDescription("Creates a fully custom user appearance profile from natural + brand color inputs.")]
     [ProducesResponseType(typeof(UserAppearanceProfileDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<UserAppearanceProfileDto>> CreateCustomProfile(
         [FromBody] CreateCustomProfileRequestDto request,
         CancellationToken cancellationToken = default)
@@ -95,8 +95,8 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Update User Appearance Profile")]
     [EndpointDescription("Updates a user-owned appearance profile's palette or metadata.")]
     [ProducesResponseType(typeof(UserAppearanceProfileDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserAppearanceProfileDto>> UpdateProfile(
         Guid profileId,
         [FromBody] UpdateAppearanceProfileRequestDto request,
@@ -110,8 +110,8 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Set Active Appearance Profile")]
     [EndpointDescription("Sets the active appearance profile for the current user/scope.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetActiveProfile(
         [FromBody] SetActiveProfileRequestDto request,
         CancellationToken cancellationToken = default)
@@ -124,7 +124,7 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Set Theme Mode")]
     [EndpointDescription("Sets the theme mode (light/dark/system/lighthighcontrast/darkhighcontrast/custom) without changing the active profile.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetThemeMode(
         [FromBody] SetThemeModeRequestDto request,
         CancellationToken cancellationToken = default)
@@ -137,7 +137,7 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Generate Palette From Colors")]
     [EndpointDescription("Generates a complete 18-token palette from natural and brand color inputs.")]
     [ProducesResponseType(typeof(UiThemePaletteDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public ActionResult<UiThemePaletteDto> GeneratePalette(
         [FromQuery] string naturalColor,
         [FromQuery] string brandColor,
@@ -151,8 +151,8 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Archive User Appearance Profile")]
     [EndpointDescription("Archives a user-owned profile, hiding it from the quick switcher without deletion.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ArchiveProfile(Guid profileId, CancellationToken cancellationToken = default)
     {
         await _resolutionService.ArchiveProfileAsync(profileId, cancellationToken);
@@ -163,8 +163,8 @@ public class UserAppearanceController : ControllerBase
     [EndpointSummary("Duplicate User Appearance Profile")]
     [EndpointDescription("Duplicates a user-owned profile with an optional name override.")]
     [ProducesResponseType(typeof(UserAppearanceProfileDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserAppearanceProfileDto>> DuplicateProfile(
         Guid profileId,
         [FromBody] ClonePresetRequestDto? request,

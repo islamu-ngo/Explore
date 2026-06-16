@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.Tag;
@@ -28,6 +29,20 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class TagController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "tag",
+        "Tag validation failed",
+        "Tag creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "tag",
+        "Tag validation failed",
+        "Tag update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor TagNotFoundProblem = new(
+        "Tag not found",
+        "Tag not found.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<TagController> _logger;
     private readonly IResourceAssembler<TagDto, TagListDto> _resourceAssembler;
@@ -54,7 +69,7 @@ public class TagController : ControllerBase
         "Response includes HATEOAS navigation links. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<TagListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<TagListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
@@ -85,13 +100,15 @@ public class TagController : ControllerBase
     [EndpointDescription("Get detailed information about a specific tag. " +
         "Response includes links to events with this tag.")]
     [ProducesResponseType(typeof(HalResource<TagDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<TagDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var tag = await _mediator.Send(new GetTagDetailsRequest { Id = id }, cancellationToken);
         if (tag == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(TagNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(tag, HttpContext);
         return Ok(halResource);
@@ -107,8 +124,8 @@ public class TagController : ControllerBase
     [EndpointDescription("Create a new tag for categorizing events.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTagDto tag, CancellationToken cancellationToken = default)
     {
         var command = new CreateTagCommand { TagDto = tag };
@@ -116,7 +133,7 @@ public class TagController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -135,14 +152,14 @@ public class TagController : ControllerBase
     [EndpointDescription("Update an existing tag's information.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateTagDto tag, CancellationToken cancellationToken = default)
     {
         if (id != tag.Id)
         {
-            return BadRequest(new { error = "Tag ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Tag ID mismatch.");
         }
 
         var command = new UpdateTagCommand { TagDto = tag };
@@ -150,7 +167,7 @@ public class TagController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -165,8 +182,8 @@ public class TagController : ControllerBase
     [EndpointSummary("Delete Tag")]
     [EndpointDescription("Delete a tag. Events using this tag will be unlinked.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteTagCommand { Id = id };

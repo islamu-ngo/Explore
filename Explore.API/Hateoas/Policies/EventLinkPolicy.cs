@@ -111,22 +111,6 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Events.ManageTeam, ResourceDescriptors.Event, dto);
 
-        // Categories link
-        yield return new LinkDefinition(
-            "categories",
-            RouteNames.GetEventCategories,
-            new { eventId = dto.Id },
-            "GET",
-            "Event categories");
-
-        // Tags link
-        yield return new LinkDefinition(
-            "tags",
-            RouteNames.GetEventTags,
-            new { eventId = dto.Id },
-            "GET",
-            "Event tags");
-
         // Aspect links - conditionally included based on available aspects
         if (dto.AvailableAspects?.Contains("Islamic") == true || dto.IslamicAspect != null)
         {
@@ -259,7 +243,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             {
                 yield return new LinkDefinition(
                     "register",
-                    RouteNames.CreateRegistration,
+                    RouteNames.CreateEventRegistration,
                     new { eventId = dto.Id },
                     "POST",
                     "Register for event",

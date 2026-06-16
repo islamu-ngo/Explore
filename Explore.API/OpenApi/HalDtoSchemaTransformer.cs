@@ -45,6 +45,7 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
         // GetOrCreateSchemaAsync inlines nested DTO types (e.g., EventDto.Tags = List<TagListDto>)
         // which causes NSwag to generate duplicate types with conflicting names.
         ReplaceInlineArrayItemsWithReferences(document);
+        ReplaceInlineObjectPropertiesWithReferences(document);
     }
 
     private async Task PopulateHalResourceSchemas(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -163,6 +164,64 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
             && arraySchema.Items is not OpenApiSchemaReference)
         {
             arraySchema.Items = new OpenApiSchemaReference(itemSchemaName, document);
+        }
+    }
+
+    private static void ReplaceInlineObjectPropertiesWithReferences(OpenApiDocument document)
+    {
+        var registeredDtoTypes = new HashSet<Type>(HalOpenApiSchemaCatalog.RegisteredDtoTypes);
+        var registeredDtoNames = new HashSet<string>(HalOpenApiSchemaCatalog.RegisteredDtoTypes.Select(t => t.Name));
+
+        foreach (var dtoType in HalOpenApiSchemaCatalog.RegisteredDtoTypes)
+        {
+            foreach (var prop in dtoType.GetProperties())
+            {
+                var propertyType = UnwrapNullableType(prop.PropertyType);
+
+                if (propertyType == dtoType || !registeredDtoTypes.Contains(propertyType))
+                    continue;
+
+                if (TryGetCollectionItemType(propertyType, out _))
+                    continue;
+
+                var camelCase = char.ToLowerInvariant(prop.Name[0]) + prop.Name[1..];
+
+                ReplaceInlineObjectPropertyWithReference(document, dtoType.Name, camelCase, propertyType.Name);
+
+                foreach (var halSchemaName in HalOpenApiSchemaCatalog.DetailResourceMappings
+                    .Where(mapping => mapping.Value == dtoType)
+                    .Select(mapping => mapping.Key))
+                {
+                    ReplaceInlineObjectPropertyWithReference(document, halSchemaName, camelCase, propertyType.Name);
+                }
+            }
+        }
+    }
+
+    private static Type UnwrapNullableType(Type type)
+    {
+        if (Nullable.GetUnderlyingType(type) is { } underlyingType)
+            return underlyingType;
+
+        return type;
+    }
+
+    private static void ReplaceInlineObjectPropertyWithReference(OpenApiDocument document, string schemaName, string propertyName, string targetSchemaName)
+    {
+        if (document.Components?.Schemas?.TryGetValue(schemaName, out var schemaI) != true)
+            return;
+
+        if (schemaI is not OpenApiSchema schema || schema.Properties == null)
+            return;
+
+        if (!schema.Properties.TryGetValue(propertyName, out var propertySchemaI))
+            return;
+
+        if (propertySchemaI is OpenApiSchema propertySchema
+            && propertySchema.Type == JsonSchemaType.Object
+            && propertySchema.Properties?.Count > 0)
+        {
+            schema.Properties[propertyName] = new OpenApiSchemaReference(targetSchemaName, document);
         }
     }
 

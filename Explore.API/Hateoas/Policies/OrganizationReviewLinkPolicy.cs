@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS link policies for organization review detail and collection resources.
+// ABOUTME: Emits review and organization affordances backed by registered API route names.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
@@ -16,14 +19,6 @@ public sealed class OrganizationReviewDetailLinkPolicy : ILinkPolicy<Organizatio
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetLinks(OrganizationReviewDto dto, ClaimsPrincipal? user)
     {
-        // Self link
-        yield return new LinkDefinition(
-            LinkRelations.Self,
-            RouteNames.GetOrganizationReviewById,
-            new { id = dto.Id },
-            "GET",
-            "Organization review");
-
         // Collection link
         yield return new LinkDefinition(
             LinkRelations.Collection,
@@ -40,33 +35,6 @@ public sealed class OrganizationReviewDetailLinkPolicy : ILinkPolicy<Organizatio
             "GET",
             dto.OrganizationFullName);
 
-        // Reviewer link
-        yield return new LinkDefinition(
-            "reviewer",
-            RouteNames.GetUserById,
-            new { id = dto.UserId },
-            "GET",
-            dto.UserFullName);
-
-        // Edit link - requires authentication (review owner)
-        yield return new LinkDefinition(
-            LinkRelations.Edit,
-            RouteNames.UpdateOrganizationReview,
-            new { id = dto.Id },
-            "PUT",
-            "Update review",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.OrganizationReview, dto);
-
-        // Delete link - requires authentication (review owner or admin)
-        yield return new LinkDefinition(
-            "delete",
-            RouteNames.DeleteOrganizationReview,
-            new { id = dto.Id },
-            "DELETE",
-            "Delete review",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.OrganizationReview, dto);
     }
 }
 
@@ -78,14 +46,6 @@ public sealed class OrganizationReviewCollectionLinkPolicy : ICollectionLinkPoli
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetItemLinks(OrganizationReviewDto dto, ClaimsPrincipal? user)
     {
-        // Self link for item
-        yield return new LinkDefinition(
-            LinkRelations.Self,
-            RouteNames.GetOrganizationReviewById,
-            new { id = dto.Id },
-            "GET",
-            "Organization review");
-
         // Organization link
         yield return new LinkDefinition(
             "organization",

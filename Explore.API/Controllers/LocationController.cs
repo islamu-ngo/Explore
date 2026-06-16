@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.Location;
@@ -28,6 +29,20 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class LocationController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "location",
+        "Location validation failed",
+        "Location creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "location",
+        "Location validation failed",
+        "Location update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor LocationNotFoundProblem = new(
+        "Location not found",
+        "Location not found.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<LocationController> _logger;
     private readonly IResourceAssembler<LocationDto, LocationListDto> _resourceAssembler;
@@ -54,7 +69,7 @@ public class LocationController : ControllerBase
         "Response includes HATEOAS navigation links. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
@@ -84,13 +99,15 @@ public class LocationController : ControllerBase
     [EndpointSummary("Get Location Details")]
     [EndpointDescription("Get detailed information about a specific location including coordinates.")]
     [ProducesResponseType(typeof(HalResource<LocationDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<LocationDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var location = await _mediator.Send(new GetLocationDetailsRequest { Id = id }, cancellationToken);
         if (location == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(LocationNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(location, HttpContext);
         return Ok(halResource);
@@ -150,8 +167,8 @@ public class LocationController : ControllerBase
     [EndpointDescription("Create a new location with address and optional coordinates.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateLocationDto location, CancellationToken cancellationToken = default)
     {
         var command = new CreateLocationCommand { LocationDto = location };
@@ -159,7 +176,7 @@ public class LocationController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -178,14 +195,14 @@ public class LocationController : ControllerBase
     [EndpointDescription("Update an existing location's information.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateLocationDto location, CancellationToken cancellationToken = default)
     {
         if (id != location.Id)
         {
-            return BadRequest(new { error = "Location ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Location ID mismatch.");
         }
 
         var command = new UpdateLocationCommand { LocationDto = location };
@@ -193,7 +210,7 @@ public class LocationController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -208,8 +225,8 @@ public class LocationController : ControllerBase
     [EndpointSummary("Delete Location")]
     [EndpointDescription("Delete a location.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteLocationCommand { Id = id };

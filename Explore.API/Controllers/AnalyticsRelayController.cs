@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Analytics;
 using Explore.Application.Features.PublicExperience.Requests.Commands;
@@ -19,6 +20,11 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Public)]
 public class AnalyticsRelayController : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor RelayValidationProblem = new(
+        "analyticsRelay",
+        "Analytics relay validation failed",
+        "Analytics relay rejected the submitted event.");
+
     private readonly IMediator _mediator;
 
     public AnalyticsRelayController(IMediator mediator)
@@ -32,7 +38,7 @@ public class AnalyticsRelayController : ExploreControllerBase
     [EndpointSummary("Relay Browser Analytics Event")]
     [EndpointDescription("Relays browser analytics through the server for tenants using relay transport mode.")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Relay([FromBody] RelayAnalyticsEventDto payload, CancellationToken cancellationToken)
     {
         var accepted = await _mediator.Send(new RelayAnalyticsEventCommand
@@ -41,6 +47,11 @@ public class AnalyticsRelayController : ExploreControllerBase
             Payload = payload
         }, cancellationToken);
 
-        return accepted ? Accepted() : BadRequest();
+        return accepted
+            ? Accepted()
+            : this.ToValidationProblem(
+                RelayValidationProblem,
+                "Analytics relay rejected the submitted event.",
+                ApiProblemCodes.AnalyticsRelayRejected);
     }
 }

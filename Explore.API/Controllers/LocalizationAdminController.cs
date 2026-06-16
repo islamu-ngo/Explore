@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Localization;
@@ -22,6 +23,21 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class LocalizationAdminController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor TestConnectionValidationProblem = new(
+        "localizationTmsConnection",
+        "Localization TMS connection validation failed",
+        "Localization TMS connection test failed.");
+
+    private static readonly ApiValidationProblemDescriptor GovernanceValidationProblem = new(
+        "localizationGovernance",
+        "Localization governance validation failed",
+        "Localization governance update failed.");
+
+    private static readonly ApiValidationProblemDescriptor ExportValidationProblem = new(
+        "localizationExport",
+        "Localization export validation failed",
+        "Localization export from TMS failed.");
+
     private readonly IMediator _mediator;
     private readonly ITranslationConfigResolver _configResolver;
     private readonly IBundleFileWriter _bundleFileWriter;
@@ -43,8 +59,8 @@ public class LocalizationAdminController : ControllerBase
     [EndpointSummary("Test TMS Connection")]
     [EndpointDescription("Verifies that the configured Translation Management System (Tolgee/Weblate) is reachable.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult> TestConnection(CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new TestTmsConnectionCommand(), cancellationToken);
@@ -52,7 +68,7 @@ public class LocalizationAdminController : ControllerBase
         if (result.Success)
             return Ok(result);
 
-        return BadRequest(result);
+        return this.ToCommandValidationProblem(result, TestConnectionValidationProblem);
     }
 
     /// <summary>
@@ -62,7 +78,7 @@ public class LocalizationAdminController : ControllerBase
     [EndpointSummary("Get Localization Configuration")]
     [EndpointDescription("Returns the current TMS provider settings and connection status.")]
     [ProducesResponseType(typeof(LocalizationConfigDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<LocalizationConfigDto>> GetConfiguration(CancellationToken cancellationToken = default)
     {
         var config = await _configResolver.ResolveAsync(cancellationToken);
@@ -90,7 +106,7 @@ public class LocalizationAdminController : ControllerBase
     [EndpointSummary("Check Bundle Path Health")]
     [EndpointDescription("Reports whether the offline bundle target directory is writable. Admin UI surfaces this as a health banner.")]
     [ProducesResponseType(typeof(WritablePathHealth), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<WritablePathHealth>> GetBundlePathHealth(CancellationToken cancellationToken = default)
     {
         var health = await _bundleFileWriter.CheckHealthAsync(cancellationToken);
@@ -104,8 +120,8 @@ public class LocalizationAdminController : ControllerBase
     [EndpointSummary("Update Localization Governance")]
     [EndpointDescription("Persists TMS provider configuration, enabled languages, fallback language, and kill-switches.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateGovernance(
         [FromBody] UpdateLocalizationGovernanceDto dto,
         CancellationToken cancellationToken = default)
@@ -117,7 +133,7 @@ public class LocalizationAdminController : ControllerBase
         if (result.Success)
             return Ok(result);
 
-        return BadRequest(result);
+        return this.ToCommandValidationProblem(result, GovernanceValidationProblem);
     }
 
     /// <summary>
@@ -127,8 +143,8 @@ public class LocalizationAdminController : ControllerBase
     [EndpointSummary("Export Translations from TMS")]
     [EndpointDescription("Pulls translations from the connected TMS for the specified language and refreshes the cache.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult> ExportFromTms(
         [FromQuery] string languageCode,
         CancellationToken cancellationToken = default)
@@ -140,6 +156,6 @@ public class LocalizationAdminController : ControllerBase
         if (result.Success)
             return Ok(result);
 
-        return BadRequest(result);
+        return this.ToCommandValidationProblem(result, ExportValidationProblem);
     }
 }

@@ -6,6 +6,7 @@ using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Models;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Notification;
@@ -28,6 +29,10 @@ public class NotificationController : ControllerBase
 {
     private const string NotificationRefreshEventType = "notification-refresh";
 
+    private static readonly ApiNotFoundProblemDescriptor NotificationNotFoundProblem = new(
+        "Notification not found",
+        "Notification was not found.");
+
     private readonly IMediator _mediator;
     private readonly INotificationRefreshStreamService _notificationRefreshStreamService;
 
@@ -44,8 +49,8 @@ public class NotificationController : ControllerBase
     [EndpointSummary("Get User Notifications")]
     [EndpointDescription("Retrieve a paginated list of notifications for the authenticated user. Supports filtering by read status, notification type, scope, reason, archive state, and snooze state.")]
     [ProducesResponseType(typeof(PaginatedResult<NotificationListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<PaginatedResult<NotificationListDto>>> GetAll(
         [FromQuery] NotificationListQueryRequest query,
         CancellationToken cancellationToken = default)
@@ -70,8 +75,8 @@ public class NotificationController : ControllerBase
     [EndpointSummary("Get Notification by ID")]
     [EndpointDescription("Retrieve a specific notification. Returns 404 if not found or doesn't belong to the authenticated user.")]
     [ProducesResponseType(typeof(NotificationDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<NotificationDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var notification = await _mediator.Send(new GetNotificationByIdRequest { Id = id }, cancellationToken);
@@ -84,7 +89,7 @@ public class NotificationController : ControllerBase
     [EndpointSummary("Get Unread Notification Count")]
     [EndpointDescription("Returns the number of unread notifications for the authenticated user. Supports optional scope filter (ActorType: User=1, Organization=2, Group=4, System=5). Optimized with partial index.")]
     [ProducesResponseType(typeof(UnreadCountDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<UnreadCountDto>> GetUnreadCount(
         [FromQuery] int? notificationScopeId = null,
         CancellationToken cancellationToken = default)
@@ -99,7 +104,7 @@ public class NotificationController : ControllerBase
     [EndpointDescription("Streams minimal server-sent notification refresh hints for the authenticated user. The stream is a hint only; persisted notifications and existing APIs remain the source of truth.")]
     [Produces("text/event-stream")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [DisableRequestTimeout]
     public IResult StreamRefreshHints(CancellationToken cancellationToken = default)
     {
@@ -117,8 +122,8 @@ public class NotificationController : ControllerBase
     [EndpointSummary("Mark Notification as Read")]
     [EndpointDescription("Marks a single notification as read. Idempotent — succeeds silently if already read.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> MarkAsRead(Guid id, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new MarkNotificationAsReadCommand { Id = id }, cancellationToken);
@@ -131,7 +136,7 @@ public class NotificationController : ControllerBase
     [EndpointSummary("Mark All Notifications as Read")]
     [EndpointDescription("Bulk marks all unread notifications as read (YouTube-style). Uses timestamp cutoff to prevent race conditions.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> MarkAllAsRead(CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new MarkAllNotificationsAsReadCommand(), cancellationToken);
@@ -143,14 +148,14 @@ public class NotificationController : ControllerBase
     [EndpointSummary("Archive Notification")]
     [EndpointDescription("Archives or unarchives a notification. Pass archive=true (default) to archive, archive=false to unarchive. Idempotent.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Archive(
         Guid id, [FromQuery] bool archive = true, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new ArchiveNotificationCommand { Id = id, Archive = archive }, cancellationToken);
         if (!response.Success)
-            return ToNotificationNotFoundProblem(response);
+            return this.ToNotFoundProblem(NotificationNotFoundProblem);
 
         return Ok(response);
     }
@@ -160,14 +165,14 @@ public class NotificationController : ControllerBase
     [EndpointSummary("Snooze Notification")]
     [EndpointDescription("Snoozes a notification until the specified time. Pass snoozedUntil as ISO 8601 datetime. Omit to unsnooze.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Snooze(
         Guid id, [FromQuery] DateTime? snoozedUntil = null, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new SnoozeNotificationCommand { Id = id, SnoozedUntil = snoozedUntil }, cancellationToken);
         if (!response.Success)
-            return ToNotificationNotFoundProblem(response);
+            return this.ToNotFoundProblem(NotificationNotFoundProblem);
 
         return Ok(response);
     }
@@ -177,36 +182,13 @@ public class NotificationController : ControllerBase
     [EndpointSummary("Delete Notification")]
     [EndpointDescription("Soft-deletes a notification for the authenticated user.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         await _mediator.Send(new DeleteNotificationCommand { Id = id }, cancellationToken);
 
         return NoContent();
-    }
-
-    private ActionResult ToNotificationNotFoundProblem(BaseCommandResponse<Guid> response)
-    {
-        var problemDetails = new ProblemDetails
-        {
-            Status = StatusCodes.Status404NotFound,
-            Title = "Notification not found",
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
-            Detail = response.Message ?? "Notification was not found.",
-            Instance = HttpContext.Request.Path
-        };
-
-        problemDetails.Extensions["code"] = "notification_not_found";
-        problemDetails.Extensions["traceId"] = HttpContext.TraceIdentifier;
-        problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
-        problemDetails.Extensions["correlationId"] = HttpContext.Items["CorrelationId"] as string;
-
-        return new ObjectResult(problemDetails)
-        {
-            StatusCode = StatusCodes.Status404NotFound,
-            ContentTypes = { "application/problem+json" }
-        };
     }
 
     private static async IAsyncEnumerable<SseItem<NotificationRefreshHintDto>> ToSseItems(

@@ -46,7 +46,7 @@ public class GroupPositionController : ControllerBase
     [EndpointDescription("Retrieve details of a specific group position")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(GroupPositionDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<GroupPositionDto>> GetById(int id, CancellationToken cancellationToken = default)
     {

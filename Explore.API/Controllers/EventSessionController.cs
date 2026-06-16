@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.Contracts.Infrastructure;
@@ -29,6 +30,20 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventSessionController : ControllerBase
 {
+    private static readonly ApiNotFoundProblemDescriptor EventSessionNotFoundProblem = new(
+        "Event session not found",
+        "Event session not found.");
+
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session update failed.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<EventSessionController> _logger;
     private readonly ITenantContext _tenantContext;
@@ -93,13 +108,15 @@ public class EventSessionController : ControllerBase
     [EndpointDescription("Get detailed information about a specific event session. " +
         "Response includes links to related resources (event, speakers, agenda).")]
     [ProducesResponseType(typeof(HalResource<EventSessionDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventSessionDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var session = await _mediator.Send(new GetEventSessionDetailsRequest { Id = id }, cancellationToken);
         if (session == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(EventSessionNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(session, HttpContext);
         return Ok(halResource);
@@ -138,7 +155,7 @@ public class EventSessionController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionDto session, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventSessionCommand
@@ -150,7 +167,7 @@ public class EventSessionController : ControllerBase
 
         if (!response.Success)
         {
-            return this.ToProgramValidationProblem(response, "Event session creation failed.");
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -170,17 +187,13 @@ public class EventSessionController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSessionDto session, CancellationToken cancellationToken = default)
     {
         if (id != session.Id)
         {
-            return this.ToProgramValidationProblem(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Event session ID mismatch."
-            }, "Event session update failed.");
+            return this.ToValidationProblem(UpdateValidationProblem, "Event session ID mismatch.");
         }
 
         var command = new UpdateEventSessionCommand { EventSessionDto = session };
@@ -188,7 +201,7 @@ public class EventSessionController : ControllerBase
 
         if (!response.Success)
         {
-            return this.ToProgramValidationProblem(response, "Event session update failed.");
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -203,8 +216,8 @@ public class EventSessionController : ControllerBase
     [EndpointSummary("Delete Event Session")]
     [EndpointDescription("Delete an event session.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteEventSessionCommand { Id = id };

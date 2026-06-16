@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.API.Models;
@@ -33,6 +34,15 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class StorageObjectController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "storageObject",
+        "Storage object validation failed",
+        "Storage object update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor StorageObjectNotFoundProblem = new(
+        "Storage object not found",
+        "Storage object not found.");
+
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
     private readonly IResourceAssembler<StorageObjectDto, StorageObjectListDto> _resourceAssembler;
@@ -54,7 +64,7 @@ public class StorageObjectController : ControllerBase
     [EndpointSummary("Get all Storage Objects")]
     [EndpointDescription("Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(HalCollectionResource<StorageObjectListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<StorageObjectListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
@@ -81,14 +91,14 @@ public class StorageObjectController : ControllerBase
     [EndpointSummary("Get Storage Object by ID")]
     [EndpointDescription("Retrieve details of a specific storage object")]
     [ProducesResponseType(typeof(HalResource<StorageObjectDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<StorageObjectDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var storageObject = await _mediator.Send(new GetStorageObjectDetailsRequest { Id = id }, cancellationToken);
         if (storageObject is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(StorageObjectNotFoundProblem);
         }
 
         var halResource = await _resourceAssembler.ToResource(storageObject, HttpContext);
@@ -109,7 +119,7 @@ public class StorageObjectController : ControllerBase
             new GetStorageObjectContentRequest { StorageObjectId = id },
             cancellationToken);
 
-        return result is null ? NotFound() : ToFileResult(result);
+        return result is null ? this.ToNotFoundProblem(StorageObjectNotFoundProblem) : ToFileResult(result);
     }
 
     // GET: api/storageobject/{id}/public
@@ -121,13 +131,15 @@ public class StorageObjectController : ControllerBase
         "suitable for OG image tags and social media preview cards. Images are cached for 7 days.")]
     [ResponseCache(Duration = 604800, Location = ResponseCacheLocation.Any)] // 7 days
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPublicImage(Guid id, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetPublicImageRequest { StorageObjectId = id }, cancellationToken);
 
         if (result is null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(StorageObjectNotFoundProblem);
+        }
 
         return ToFileResult(result);
     }
@@ -139,7 +151,7 @@ public class StorageObjectController : ControllerBase
     [EndpointSummary("Get Presigned Download URL")]
     [EndpointDescription("Generate a time-limited presigned URL for viewing/downloading a file from S3-compatible storage")]
     [ProducesResponseType(typeof(PresignedDownloadUrlResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<PresignedDownloadUrlResponseDto>> GetPresignedDownloadUrl(Guid id, [FromQuery] int expirationMinutes = 60, CancellationToken cancellationToken = default)
     {
@@ -159,8 +171,8 @@ public class StorageObjectController : ControllerBase
     [EndpointSummary("Generate Pre-signed Upload URL")]
     [EndpointDescription("Generate a pre-signed URL for uploading a file directly to S3-compatible storage (Hetzner Object Storage)")]
     [ProducesResponseType(typeof(UploadUrlResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<UploadUrlResponseDto>> GenerateUploadUrl([FromBody] UploadRequestDto request, CancellationToken cancellationToken = default)
     {
         var command = new GenerateUploadUrlCommand
@@ -191,7 +203,7 @@ public class StorageObjectController : ControllerBase
     {
         if (User.Identity?.IsAuthenticated != true)
         {
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new CreateStorageUploadSessionCommand
@@ -226,7 +238,7 @@ public class StorageObjectController : ControllerBase
     {
         if (User.Identity?.IsAuthenticated != true)
         {
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new FinalizeStorageUploadSessionCommand
@@ -261,7 +273,7 @@ public class StorageObjectController : ControllerBase
     {
         if (User.Identity?.IsAuthenticated != true)
         {
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new CancelStorageUploadSessionCommand
@@ -281,8 +293,8 @@ public class StorageObjectController : ControllerBase
     [EndpointSummary("Create Storage Object Record")]
     [EndpointDescription("Create a storage object record after successful file upload to S3")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateStorageObjectDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateStorageObjectCommand { StorageObjectDto = dto };
@@ -297,14 +309,14 @@ public class StorageObjectController : ControllerBase
     [EndpointSummary("Update Storage Object")]
     [EndpointDescription("Update an existing storage object")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateStorageObjectDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
         {
-            return BadRequest(new { error = "Storage Object ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Storage object ID mismatch.");
         }
 
         var command = new UpdateStorageObjectCommand { StorageObjectDto = dto };
@@ -312,7 +324,7 @@ public class StorageObjectController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -325,8 +337,8 @@ public class StorageObjectController : ControllerBase
     [EndpointSummary("Delete Storage Object")]
     [EndpointDescription("Delete a storage object")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteStorageObjectCommand { Id = id };

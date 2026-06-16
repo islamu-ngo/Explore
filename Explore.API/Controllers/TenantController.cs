@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
@@ -29,6 +30,35 @@ namespace Explore.API.Controllers;
 [ApiController]
 public class TenantController : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "tenant",
+        "Tenant validation failed",
+        "Tenant creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "tenant",
+        "Tenant validation failed",
+        "Tenant update failed.");
+
+    private static readonly ApiValidationProblemDescriptor CreateNavigationValidationProblem = new(
+        "tenantNavigationLink",
+        "Tenant navigation link validation failed",
+        "Tenant navigation link creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateNavigationValidationProblem = new(
+        "tenantNavigationLink",
+        "Tenant navigation link validation failed",
+        "Tenant navigation link update failed.");
+
+    private static readonly ApiValidationProblemDescriptor ReorderNavigationValidationProblem = new(
+        "tenantNavigationLink",
+        "Tenant navigation link validation failed",
+        "Tenant navigation link reorder failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor DeleteNavigationNotFoundProblem = new(
+        "Tenant navigation link not found",
+        "Tenant navigation link not found.");
+
     private readonly IMediator _mediator;
 
     public TenantController(IMediator mediator)
@@ -70,7 +100,7 @@ public class TenantController : ExploreControllerBase
     [EndpointSummary("Get Tenant by ID")]
     [EndpointDescription("Retrieve details of a specific tenant")]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<TenantDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
@@ -86,7 +116,7 @@ public class TenantController : ExploreControllerBase
     [EndpointSummary("Create new Tenant")]
     [EndpointDescription("Create a new tenant")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTenantDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateTenantCommand
@@ -98,7 +128,7 @@ public class TenantController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return Ok(response);
@@ -112,13 +142,13 @@ public class TenantController : ExploreControllerBase
     [EndpointSummary("Update Tenant")]
     [EndpointDescription("Update an existing tenant")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateTenantDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
         {
-            return BadRequest(new { error = "Tenant ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Tenant ID mismatch.");
         }
 
         var command = new UpdateTenantCommand { TenantDto = dto };
@@ -126,7 +156,7 @@ public class TenantController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -139,7 +169,7 @@ public class TenantController : ExploreControllerBase
     [EndpointSummary("Delete Tenant")]
     [EndpointDescription("Delete a tenant")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteTenantCommand { Id = id };
@@ -169,7 +199,7 @@ public class TenantController : ExploreControllerBase
     [EndpointSummary("Create Tenant Navigation Link")]
     [EndpointDescription("Create a new navigation link for the tenant")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateNavigation(
         [FromBody] CreateTenantNavigationLinkDto dto,
         [FromServices] IOutputCacheStore cacheStore,
@@ -180,7 +210,7 @@ public class TenantController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateNavigationValidationProblem);
         }
 
         // Invalidate cache
@@ -196,8 +226,8 @@ public class TenantController : ExploreControllerBase
     [EndpointSummary("Update Tenant Navigation Link")]
     [EndpointDescription("Update an existing navigation link")]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<bool>>> UpdateNavigation(
         Guid id,
         [FromBody] UpdateTenantNavigationLinkDto dto,
@@ -206,7 +236,7 @@ public class TenantController : ExploreControllerBase
     {
         if (id != dto.Id)
         {
-            return BadRequest(new { error = "Navigation link ID mismatch" });
+            return this.ToValidationProblem(UpdateNavigationValidationProblem, "Navigation link ID mismatch.");
         }
 
         var command = new UpdateTenantNavLinkCommand { NavigationLinkDto = dto };
@@ -214,7 +244,7 @@ public class TenantController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateNavigationValidationProblem);
         }
 
         // Invalidate cache
@@ -230,7 +260,7 @@ public class TenantController : ExploreControllerBase
     [EndpointSummary("Delete Tenant Navigation Link")]
     [EndpointDescription("Delete a navigation link")]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<bool>>> DeleteNavigation(
         Guid id,
         [FromServices] IOutputCacheStore cacheStore,
@@ -241,7 +271,7 @@ public class TenantController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return NotFound(response);
+            return this.ToNotFoundProblem(DeleteNavigationNotFoundProblem);
         }
 
         // Invalidate cache
@@ -257,7 +287,7 @@ public class TenantController : ExploreControllerBase
     [EndpointSummary("Reorder Tenant Navigation Links")]
     [EndpointDescription("Reorder multiple navigation links")]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<bool>>> ReorderNavigation(
         [FromBody] List<UpdateTenantNavigationLinkOrderDto> orders,
         [FromServices] IOutputCacheStore cacheStore,
@@ -268,7 +298,7 @@ public class TenantController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, ReorderNavigationValidationProblem);
         }
 
         // Invalidate cache

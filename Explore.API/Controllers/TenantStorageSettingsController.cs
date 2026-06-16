@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Tenant;
@@ -27,6 +28,11 @@ public sealed class TenantStorageSettingsController(
     IResourceAssembler<TenantStorageSettingsDto, TenantStorageSettingsDto> storageSettingsAssembler)
     : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "tenantStorageSettings",
+        "Tenant storage settings validation failed",
+        "Tenant storage settings update failed.");
+
     [HttpGet("", Name = RouteNames.GetTenantStorageSettings)]
     [EndpointSummary("Get Tenant Storage Settings")]
     [EndpointDescription("Returns effective tenant storage policy, usage, lock state, and redacted optional S3 override settings.")]
@@ -46,7 +52,7 @@ public sealed class TenantStorageSettingsController(
     [EndpointDescription("Updates current-tenant storage overrides when instance storage delegation allows tenant edits.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateStorageSettings(
@@ -56,11 +62,8 @@ public sealed class TenantStorageSettingsController(
         var userId = await ResolveCurrentUserIdAsync(mediator, cancellationToken);
         if (!userId.HasValue)
         {
-            return BadRequest(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Invalid user identity."
-            });
+            return this.ToAuthenticationRequiredProblem(
+                detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var response = await mediator.Send(
@@ -75,10 +78,11 @@ public sealed class TenantStorageSettingsController(
         {
             if (response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true)
             {
-                return Forbid();
+                return this.ToForbiddenProblem(
+                    detail: response.Message ?? "Tenant storage settings can only be updated by authorized administrators.");
             }
 
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

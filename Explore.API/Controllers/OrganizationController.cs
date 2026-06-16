@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.Organization;
@@ -28,6 +29,24 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class OrganizationController : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "organization",
+        "Organization validation failed",
+        "Organization creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "organization",
+        "Organization validation failed",
+        "Organization update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor DeleteNotFoundProblem = new(
+        "Organization not found",
+        "Organization not found.");
+
+    private static readonly ApiNotFoundProblemDescriptor OrganizationNotFoundProblem = new(
+        "Organization not found",
+        "Organization not found.");
+
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<OrganizationDto, OrganizationListDto> _resourceAssembler;
 
@@ -50,7 +69,7 @@ public class OrganizationController : ExploreControllerBase
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<OrganizationListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<OrganizationListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
@@ -81,8 +100,8 @@ public class OrganizationController : ExploreControllerBase
     [EndpointDescription("Get a paginated list of organizations where the current user is a member. " +
         "Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(HalCollectionResource<OrganizationListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<OrganizationListDto>>> GetMyOrganizations(
         [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
@@ -90,7 +109,7 @@ public class OrganizationController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var result = await _mediator.Send(new GetMyOrganizationsRequest
@@ -119,13 +138,15 @@ public class OrganizationController : ExploreControllerBase
     [EndpointDescription("Get full details of an organization including actor information and approval status. " +
         "Response includes links to related resources (events, members).")]
     [ProducesResponseType(typeof(HalResource<OrganizationDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<OrganizationDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var organization = await _mediator.Send(new GetOrganizationDetailsRequest { Id = id }, cancellationToken);
         if (organization == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(OrganizationNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(organization, HttpContext);
         return Ok(halResource);
@@ -141,14 +162,14 @@ public class OrganizationController : ExploreControllerBase
     [EndpointDescription("Create a new organization. The authenticated user becomes the owner.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var command = new CreateOrganizationCommand
@@ -161,7 +182,7 @@ public class OrganizationController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         // Return 201 Created with Location header pointing to the new resource
@@ -181,9 +202,9 @@ public class OrganizationController : ExploreControllerBase
     [EndpointDescription("Update an existing organization. User must be a member of the organization.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateOrganizationDto updateDto, CancellationToken cancellationToken = default)
@@ -191,7 +212,7 @@ public class OrganizationController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var command = new UpdateOrganizationDetailsCommand
@@ -205,7 +226,7 @@ public class OrganizationController : ExploreControllerBase
 
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToCommandValidationProblem(result, UpdateValidationProblem);
         }
 
         return Ok(result);
@@ -216,14 +237,14 @@ public class OrganizationController : ExploreControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("updatestatustype/{id:guid}", Name = RouteNames.UpdateOrganizationApprovalStatus)]
+    [HttpPut("{id:guid}/approval-status", Name = RouteNames.UpdateOrganizationApprovalStatus)]
     [EndpointSummary("Update Organization Approval Status")]
     [EndpointDescription("Update the approval status of an organization. Requires Admin role.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> UpdateApprovalStatus(
         Guid id,
         [FromBody] UpdateOrganizationApprovalStatusDto approvalStatus, CancellationToken cancellationToken = default)
@@ -247,15 +268,15 @@ public class OrganizationController : ExploreControllerBase
     [EndpointSummary("Delete Organization")]
     [EndpointDescription("Delete an organization. Requires ownership or Admin role.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var result = await _mediator.Send(new DeleteOrganizationCommand
@@ -266,19 +287,11 @@ public class OrganizationController : ExploreControllerBase
 
         if (!result.Success)
         {
-            return NotFound(result);
+            return this.ToNotFoundProblem(DeleteNotFoundProblem);
         }
 
         return NoContent();
     }
 
-    private ObjectResult UnauthorizedProblem()
-    {
-        return Problem(
-            title: "Unauthorized",
-            detail: "Authentication is required to access this resource.",
-            statusCode: StatusCodes.Status401Unauthorized,
-            type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
-    }
 
 }

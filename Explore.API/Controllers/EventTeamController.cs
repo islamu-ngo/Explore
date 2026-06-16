@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -70,7 +71,7 @@ public class EventTeamController : ControllerBase
     {
         var userId = await ResolveRequiredUserIdAsync(cancellationToken);
         if (userId is null)
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
 
         var result = await _mediator.Send(new GetCurrentUserEventPermissionsRequest
         {
@@ -94,7 +95,7 @@ public class EventTeamController : ControllerBase
     {
         var userId = await ResolveRequiredUserIdAsync(cancellationToken);
         if (userId is null)
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
 
         var result = await _mediator.Send(new GetAssignableEventRolePresetsRequest
         {
@@ -112,8 +113,8 @@ public class EventTeamController : ControllerBase
     [EndpointSummary("Assign Event Role")]
     [EndpointDescription("Assign an event-scoped operational role to an existing user.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> AssignRole(
         Guid eventId,
         [FromBody] AssignEventTeamRoleRequest request,
@@ -121,7 +122,7 @@ public class EventTeamController : ControllerBase
     {
         var actorUserId = await ResolveRequiredUserIdAsync(cancellationToken);
         if (actorUserId is null)
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
 
         var result = await _mediator.Send(new AssignEventRoleByEmailCommand
         {
@@ -141,7 +142,7 @@ public class EventTeamController : ControllerBase
     [EndpointSummary("Revoke Event Role")]
     [EndpointDescription("Revoke an event-scoped operational role assignment.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> RevokeRole(
         Guid eventId,
         Guid assignmentId,
@@ -149,7 +150,7 @@ public class EventTeamController : ControllerBase
     {
         var actorUserId = await ResolveRequiredUserIdAsync(cancellationToken);
         if (actorUserId is null)
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
 
         var result = await _mediator.Send(new RevokeEventRoleAssignmentCommand
         {

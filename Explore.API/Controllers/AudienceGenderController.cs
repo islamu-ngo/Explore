@@ -48,7 +48,7 @@ public class AudienceGenderController : ControllerBase
     [EndpointDescription("Retrieve details of a specific audience gender type")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(AudienceGenderDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<AudienceGenderDto>> GetById(int id, CancellationToken cancellationToken = default)
     {

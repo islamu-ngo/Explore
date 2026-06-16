@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS link policies for category detail and collection resources.
+// ABOUTME: Emits only category affordances backed by registered API route names.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
@@ -41,22 +44,6 @@ public sealed class CategoryDetailLinkPolicy : ILinkPolicy<CategoryDto>
                 "GET",
                 dto.ParentFullName ?? "Parent category");
         }
-
-        // Children categories link
-        yield return new LinkDefinition(
-            "children",
-            RouteNames.GetCategoryChildren,
-            new { parentId = dto.Id },
-            "GET",
-            "Child categories");
-
-        // Events in this category
-        yield return new LinkDefinition(
-            "events",
-            RouteNames.GetCategoryEvents,
-            new { categoryId = dto.Id },
-            "GET",
-            "Events in this category");
 
         // Edit link - requires authentication
         yield return new LinkDefinition(

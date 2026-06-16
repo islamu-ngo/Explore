@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.Application.Authentication;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
@@ -19,13 +20,17 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public sealed class AuthContextProbeController : ControllerBase
 {
+    private static readonly ApiNotFoundProblemDescriptor AuthProbeNotFoundProblem = new(
+        "Authentication context probe not found",
+        "Authentication context probe is not enabled in this environment.");
+
     [Authorize]
     [HttpGet("secure")]
     public ActionResult<AuthContextProbeResponse> GetSecure([FromServices] ITenantContextAccessor tenantContextAccessor, [FromServices] IHostEnvironment hostEnvironment, [FromServices] IConfiguration configuration)
     {
         if (!hostEnvironment.IsEnvironment("Testing") || !configuration.GetValue<bool>("Diagnostics:EnableAuthContextProbe"))
         {
-            return NotFound();
+            return this.ToNotFoundProblem(AuthProbeNotFoundProblem);
         }
 
         var apiKeyContext = User.TryGetApiKeyPrincipalContext();

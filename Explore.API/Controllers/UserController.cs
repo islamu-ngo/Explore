@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.User;
@@ -23,6 +24,16 @@ namespace Explore.API.Controllers;
 public class UserController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
+
+    private static readonly ApiValidationProblemDescriptor SyncValidationProblem = new(
+        "user",
+        "User synchronization validation failed",
+        "User synchronization failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "user",
+        "User validation failed",
+        "User update failed.");
 
     public UserController(IMediator mediator)
     {
@@ -46,12 +57,8 @@ public class UserController : ExploreControllerBase
 
         if (string.IsNullOrWhiteSpace(providerSubject))
         {
-            return BadRequest(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Invalid provider subject in token",
-                Errors = new List<string> { "Could not resolve provider identity from authentication token." }
-            });
+            return this.ToAuthenticationRequiredProblem(
+                detail: "Could not resolve provider identity from authentication token.");
         }
 
         var email = User.FindFirst("email")?.Value
@@ -95,7 +102,7 @@ public class UserController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, SyncValidationProblem);
         }
 
         return Ok(response);
@@ -108,7 +115,7 @@ public class UserController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var query = new GetUserRequest { UserId = currentUserId.Value };
@@ -130,7 +137,8 @@ public class UserController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return BadRequest("Invalid User ID in token");
+            return this.ToAuthenticationRequiredProblem(
+                detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var query = new GetAdminAuthorityRequest { UserId = currentUserId.Value };
@@ -153,14 +161,14 @@ public class UserController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         // For now, only allow users to get their own organizations
         // TODO: Add admin check for viewing other users' organizations
         if (userId != currentUserId.Value)
         {
-            return Forbid("You can only view your own organizations");
+            return this.ToForbiddenProblem(detail: "You can only view your own organizations.");
         }
 
         var query = new GetUserOrganizationsRequest { UserId = userId };
@@ -176,12 +184,12 @@ public class UserController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         if (userDto.Id != currentUserId.Value)
         {
-            return BadRequest("User ID mismatch");
+            return this.ToValidationProblem(UpdateValidationProblem, "User ID mismatch.");
         }
 
         var command = new UpdateUserCommand { UpdateUserDto = userDto };
@@ -196,7 +204,7 @@ public class UserController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new DeleteUserCommand { UserId = currentUserId.Value };
@@ -210,12 +218,4 @@ public class UserController : ExploreControllerBase
         return await base.ResolveCurrentUserIdAsync(_mediator, cancellationToken);
     }
 
-    private ObjectResult UnauthorizedProblem()
-    {
-        return Problem(
-            title: "Unauthorized",
-            detail: "Authentication is required to access this resource.",
-            statusCode: StatusCodes.Status401Unauthorized,
-            type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
-    }
 }

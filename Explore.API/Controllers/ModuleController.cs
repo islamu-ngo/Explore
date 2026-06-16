@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +20,20 @@ namespace Explore.API.Controllers;
 [ApiController]
 public class ModuleController : ControllerBase
 {
+    private static readonly ApiNotFoundProblemDescriptor ModuleSchemaNotFoundProblem = new(
+        "Module schema not found",
+        "The requested module was not found or does not expose a wizard schema.");
+
+    private static readonly ApiValidationProblemDescriptor EnableValidationProblem = new(
+        "module",
+        "Module validation failed",
+        "Module enablement failed.");
+
+    private static readonly ApiValidationProblemDescriptor DisableValidationProblem = new(
+        "module",
+        "Module validation failed",
+        "Module disablement failed.");
+
     private readonly IModuleService _moduleService;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<ModuleController> _logger;
@@ -101,7 +116,7 @@ public class ModuleController : ControllerBase
     [EndpointDescription("Returns the wizard schema URL for a module. " +
         "The schema is used to generate dynamic forms for module-specific features.")]
     [ProducesResponseType(typeof(ModuleSchemaResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ModuleSchemaResponse>> GetModuleSchemaUrl(
         string moduleKey,
         CancellationToken cancellationToken)
@@ -110,10 +125,7 @@ public class ModuleController : ControllerBase
 
         if (schemaUrl == null)
         {
-            return Problem(
-                detail: $"Module '{moduleKey}' not found or has no schema",
-                statusCode: StatusCodes.Status404NotFound,
-                title: "Resource not found");
+            return this.ToNotFoundProblem(ModuleSchemaNotFoundProblem);
         }
 
         return Ok(new ModuleSchemaResponse
@@ -133,9 +145,9 @@ public class ModuleController : ControllerBase
     [EndpointDescription("Enables a module for the current tenant. " +
         "Requires admin privileges.")]
     [ProducesResponseType(typeof(ModuleActionResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ModuleActionResponse>> EnableModule(
         string moduleKey,
         CancellationToken cancellationToken)
@@ -153,10 +165,9 @@ public class ModuleController : ControllerBase
 
         if (!success)
         {
-            return Problem(
-                detail: $"Module '{moduleKey}' not found or not active",
-                statusCode: StatusCodes.Status400BadRequest,
-                title: "Bad request");
+            return this.ToValidationProblem(
+                EnableValidationProblem,
+                $"Module '{moduleKey}' not found or not active.");
         }
 
         return Ok(new ModuleActionResponse
@@ -178,9 +189,9 @@ public class ModuleController : ControllerBase
         "Existing data using this module's features will be preserved but hidden. " +
         "Requires admin privileges.")]
     [ProducesResponseType(typeof(ModuleActionResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ModuleActionResponse>> DisableModule(
         string moduleKey,
         CancellationToken cancellationToken)
@@ -190,10 +201,9 @@ public class ModuleController : ControllerBase
 
         if (!success)
         {
-            return Problem(
-                detail: $"Module '{moduleKey}' is not enabled for this tenant",
-                statusCode: StatusCodes.Status400BadRequest,
-                title: "Bad request");
+            return this.ToValidationProblem(
+                DisableValidationProblem,
+                $"Module '{moduleKey}' is not enabled for this tenant.");
         }
 
         return Ok(new ModuleActionResponse

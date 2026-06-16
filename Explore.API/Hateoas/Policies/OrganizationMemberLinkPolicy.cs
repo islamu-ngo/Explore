@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS link policies for organization membership resources.
+// ABOUTME: Emits organization, membership edit, and removal affordances backed by registered routes.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
@@ -31,14 +34,6 @@ public sealed class OrganizationMemberDetailLinkPolicy : ILinkPolicy<Organizatio
             new { id = dto.OrganizationId },
             "GET",
             dto.OrganizationFullName);
-
-        // User link
-        yield return new LinkDefinition(
-            "user",
-            RouteNames.GetUserById,
-            new { id = dto.UserId },
-            "GET",
-            dto.UserFullName);
 
         // Edit link - requires authentication (organization admin)
         yield return new LinkDefinition(
@@ -77,14 +72,6 @@ public sealed class OrganizationMemberCollectionLinkPolicy : ICollectionLinkPoli
             new { id = dto.Id },
             "GET",
             $"{dto.UserFullName} - {dto.RoleName}");
-
-        // User link
-        yield return new LinkDefinition(
-            "user",
-            RouteNames.GetUserById,
-            new { id = dto.UserId },
-            "GET",
-            dto.UserFullName);
 
         yield return new LinkDefinition(
             LinkRelations.Edit,

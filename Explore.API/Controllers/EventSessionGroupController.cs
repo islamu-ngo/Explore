@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventSession;
@@ -28,6 +29,35 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventSessionGroupController : ControllerBase
 {
+    private static readonly ApiNotFoundProblemDescriptor EventSessionGroupNotFoundProblem = new(
+        "Event session group not found",
+        "Event session group not found.");
+
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session group creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session group update failed.");
+
+    private static readonly ApiValidationProblemDescriptor DeleteValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session group deletion failed.");
+
+    private static readonly ApiValidationProblemDescriptor AssignmentValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session assignment failed.");
+
+    private static readonly ApiValidationProblemDescriptor UnassignmentValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session unassignment failed.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<EventSessionGroupController> _logger;
     private readonly ITenantContext _tenantContext;
@@ -82,7 +112,7 @@ public class EventSessionGroupController : ControllerBase
     [EndpointSummary("Get Event Session Group Details")]
     [EndpointDescription("Get detailed information about a specific track, devroom, stage, or program section.")]
     [ProducesResponseType(typeof(HalResource<EventSessionGroupDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventSessionGroupDto>>> GetById(
         Guid id,
@@ -91,7 +121,7 @@ public class EventSessionGroupController : ControllerBase
         var group = await _mediator.Send(new GetEventSessionGroupDetailRequest { Id = id }, cancellationToken);
         if (group is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(EventSessionGroupNotFoundProblem);
         }
 
         var halResource = await _resourceAssembler.ToResource(group, HttpContext);
@@ -136,7 +166,7 @@ public class EventSessionGroupController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create(
         [FromBody] CreateEventSessionGroupRequestDto group,
         CancellationToken cancellationToken = default)
@@ -151,7 +181,7 @@ public class EventSessionGroupController : ControllerBase
 
         if (!response.Success)
         {
-            return this.ToProgramValidationProblem(response, "Event session group creation failed.");
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -171,8 +201,8 @@ public class EventSessionGroupController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateEventSessionGroupRequestDto group,
@@ -180,11 +210,7 @@ public class EventSessionGroupController : ControllerBase
     {
         if (id != group.Id)
         {
-            return this.ToProgramValidationProblem(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Event session group ID mismatch."
-            }, "Event session group update failed.");
+            return this.ToValidationProblem(UpdateValidationProblem, "Event session group ID mismatch.");
         }
 
         var response = await _mediator.Send(
@@ -197,7 +223,7 @@ public class EventSessionGroupController : ControllerBase
 
         if (!response.Success)
         {
-            return this.ToProgramValidationProblem(response, "Event session group update failed.");
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -213,8 +239,8 @@ public class EventSessionGroupController : ControllerBase
     [EndpointDescription("Delete a track, devroom, stage, or program section. Sessions remain intact.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(
         Guid id,
         [FromQuery] Guid eventId,
@@ -230,7 +256,7 @@ public class EventSessionGroupController : ControllerBase
             cancellationToken);
         if (!response.Success)
         {
-            return this.ToProgramValidationProblem(response, "Event session group deletion failed.");
+            return this.ToCommandValidationProblem(response, DeleteValidationProblem);
         }
 
         return NoContent();
@@ -247,8 +273,8 @@ public class EventSessionGroupController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> AssignSession(
         Guid id,
         [FromBody] AssignSessionToGroupRequestDto assignment,
@@ -256,11 +282,7 @@ public class EventSessionGroupController : ControllerBase
     {
         if (id != assignment.EventSessionGroupId)
         {
-            return this.ToProgramValidationProblem(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Event session group ID mismatch."
-            }, "Event session assignment failed.");
+            return this.ToValidationProblem(AssignmentValidationProblem, "Event session group ID mismatch.");
         }
 
         var response = await _mediator.Send(
@@ -273,7 +295,7 @@ public class EventSessionGroupController : ControllerBase
 
         if (!response.Success)
         {
-            return this.ToProgramValidationProblem(response, "Event session assignment failed.");
+            return this.ToCommandValidationProblem(response, AssignmentValidationProblem);
         }
 
         return Ok(response);
@@ -289,8 +311,8 @@ public class EventSessionGroupController : ControllerBase
     [EndpointDescription("Remove a talk, workshop, panel, or activity from a program section without deleting the session.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> UnassignSession(
         Guid id,
         Guid sessionId,
@@ -309,7 +331,7 @@ public class EventSessionGroupController : ControllerBase
 
         if (!response.Success)
         {
-            return this.ToProgramValidationProblem(response, "Event session unassignment failed.");
+            return this.ToCommandValidationProblem(response, UnassignmentValidationProblem);
         }
 
         return NoContent();

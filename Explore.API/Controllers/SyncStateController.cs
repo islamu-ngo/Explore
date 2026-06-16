@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.SyncState;
 using Explore.Application.Features.SyncStates.Requests.Commands;
@@ -21,6 +22,11 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class SyncStateController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "syncState",
+        "SyncState validation failed",
+        "SyncState update failed.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<SyncStateController> _logger;
 
@@ -70,7 +76,7 @@ public class SyncStateController : ControllerBase
     {
         if (id != dto.Id)
         {
-            return BadRequest(new { error = "SyncState ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "SyncState ID mismatch.");
         }
 
         var command = new UpdateSyncStateCommand { SyncStateDto = dto };
@@ -78,7 +84,7 @@ public class SyncStateController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

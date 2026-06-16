@@ -8,7 +8,6 @@ namespace Explore.API.ExceptionHandling;
 
 internal static class ApiValidationProblemDetailsFactory
 {
-    private const string BadRequestType = "https://tools.ietf.org/html/rfc9110#section-15.5.1";
     private const string BodyKey = "body";
 
     public static IActionResult CreateInvalidModelStateResponse(ActionContext context)
@@ -17,7 +16,7 @@ internal static class ApiValidationProblemDetailsFactory
             context.HttpContext,
             StatusCodes.Status400BadRequest,
             "Validation failed",
-            BadRequestType,
+            ApiProblemTypes.BadRequest,
             "One or more validation errors occurred.");
 
         problemDetails.Extensions["errors"] = NormalizeErrors(context.ModelState);
@@ -35,7 +34,7 @@ internal static class ApiValidationProblemDetailsFactory
             httpContext,
             StatusCodes.Status415UnsupportedMediaType,
             "Unsupported media type",
-            "https://tools.ietf.org/html/rfc9110#section-15.5.16",
+            ApiProblemTypes.UnsupportedMediaType,
             "The request content type is not supported for this endpoint.");
     }
 
@@ -55,6 +54,7 @@ internal static class ApiValidationProblemDetailsFactory
             Instance = httpContext.Request.Path
         };
 
+        problemDetails.Extensions["code"] = ApiProblemCodes.ValidationFailed;
         problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
         problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
         problemDetails.Extensions["correlationId"] =

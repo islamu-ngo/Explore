@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
@@ -31,12 +32,21 @@ public sealed class TenantSettingsDocumentsController(
     IResourceAssembler<TenantBrandingSettingsDocumentDto, TenantBrandingSettingsDocumentDto> resourceAssembler)
     : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor ReplaceBrandingValidationProblem = new(
+        "tenantBrandingSettingsDocument",
+        "Tenant branding settings document validation failed",
+        "Tenant branding settings document replacement failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor BrandingDocumentNotFoundProblem = new(
+        "Tenant branding settings document not found",
+        "Tenant branding settings document not found.");
+
     [HttpGet("branding", Name = RouteNames.GetTenantBrandingSettingsDocument)]
     [EndpointSummary("Get Tenant Branding Settings Document")]
     [EndpointDescription("Returns the current tenant branding typed settings document, provisioning the default typed row when it is missing.")]
     [ProducesResponseType(typeof(HalResource<TenantBrandingSettingsDocumentDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<TenantBrandingSettingsDocumentDto>>> GetBranding(
         CancellationToken cancellationToken = default)
     {
@@ -44,7 +54,7 @@ public sealed class TenantSettingsDocumentsController(
 
         if (document is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(BrandingDocumentNotFoundProblem);
         }
 
         var resource = await resourceAssembler.ToResource(document, HttpContext);
@@ -56,11 +66,11 @@ public sealed class TenantSettingsDocumentsController(
     [EndpointDescription("Fully replaces the current tenant branding typed settings document. Uses optimistic concurrency and writes only tenant JSONB settings documents.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(HalResource<TenantBrandingSettingsDocumentDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<TenantBrandingSettingsDocumentDto>>> ReplaceBranding(
         [FromBody] ReplaceTenantBrandingSettingsDocumentDto document,
         [FromServices] IOutputCacheStore cacheStore,
@@ -80,10 +90,10 @@ public sealed class TenantSettingsDocumentsController(
         {
             if (response.Message == "Tenant branding settings document not found.")
             {
-                return NotFound(response);
+                return this.ToNotFoundProblem(BrandingDocumentNotFoundProblem);
             }
 
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, ReplaceBrandingValidationProblem);
         }
 
         await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
@@ -91,7 +101,7 @@ public sealed class TenantSettingsDocumentsController(
         var updated = await mediator.Send(new GetTenantBrandingSettingsDocumentQuery(), cancellationToken);
         if (updated is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(BrandingDocumentNotFoundProblem);
         }
 
         var resource = await resourceAssembler.ToResource(updated, HttpContext);

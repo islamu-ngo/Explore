@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.UserExternalLogin;
 using Explore.Application.Features.UserExternalLogins.Requests.Commands;
@@ -24,8 +25,19 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class UserExternalLoginController : ControllerBase
 {
-    private const string ValidationFailedCode = "validation_failed";
-    private const string ResourceNotFoundCode = "resource_not_found";
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "userExternalLogin",
+        "User external login validation failed",
+        "User external login creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "userExternalLogin",
+        "User external login validation failed",
+        "User external login update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor UserExternalLoginNotFoundProblem = new(
+        "User external login not found",
+        "User external login not found.");
 
     private readonly IMediator _mediator;
 
@@ -53,7 +65,7 @@ public class UserExternalLoginController : ControllerBase
     [EndpointDescription("Retrieve details of a specific user external login")]
     [Authorize]
     [ProducesResponseType(typeof(UserExternalLoginDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<UserExternalLoginDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
@@ -68,7 +80,7 @@ public class UserExternalLoginController : ControllerBase
     [EndpointDescription("Create a new user external login")]
     [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateUserExternalLoginDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateUserExternalLoginCommand { UserExternalLoginDto = dto };
@@ -76,7 +88,7 @@ public class UserExternalLoginController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return Ok(response);
@@ -94,15 +106,7 @@ public class UserExternalLoginController : ControllerBase
     {
         if (id != dto.Id)
         {
-            return ToValidationProblem(
-                new BaseCommandResponse<Guid>
-                {
-                    Success = false,
-                    Message = "User external login ID mismatch.",
-                    FailureCode = ValidationFailedCode,
-                    Errors = ["User external login ID mismatch."]
-                },
-                "User external login ID mismatch.");
+            return this.ToValidationProblem(UpdateValidationProblem, "User external login ID mismatch.");
         }
 
         var command = new UpdateUserExternalLoginCommand { UserExternalLoginDto = dto };
@@ -111,8 +115,8 @@ public class UserExternalLoginController : ControllerBase
         if (!response.Success)
         {
             return string.Equals(response.Message, "User External Login not found.", StringComparison.Ordinal)
-                ? ToNotFoundProblem(response, "User external login not found.")
-                : ToValidationProblem(response, "User external login update failed.");
+                ? this.ToNotFoundProblem(UserExternalLoginNotFoundProblem)
+                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -124,76 +128,12 @@ public class UserExternalLoginController : ControllerBase
     [EndpointDescription("Delete a user external login")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteUserExternalLoginCommand { Id = id };
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
-    }
-
-    private ActionResult ToValidationProblem<TKey>(BaseCommandResponse<TKey> response, string fallbackDetail)
-    {
-        var errors = response.Errors is { Count: > 0 }
-            ? response.Errors.ToArray()
-            : [response.Message ?? fallbackDetail];
-
-        var problemDetails = new ValidationProblemDetails(new Dictionary<string, string[]>
-        {
-            ["userExternalLogin"] = errors
-        })
-        {
-            Status = StatusCodes.Status400BadRequest,
-            Title = "User external login validation failed",
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-            Detail = response.Message ?? fallbackDetail,
-            Instance = HttpContext.Request.Path
-        };
-
-        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(response.FailureCode)
-            ? ValidationFailedCode
-            : response.FailureCode;
-        AddProblemDetailsExtensions(problemDetails);
-
-        return new ObjectResult(problemDetails)
-        {
-            StatusCode = StatusCodes.Status400BadRequest,
-            ContentTypes = { "application/problem+json" }
-        };
-    }
-
-    private ActionResult ToNotFoundProblem<TKey>(BaseCommandResponse<TKey> response, string fallbackDetail)
-    {
-        var problemDetails = new ProblemDetails
-        {
-            Status = StatusCodes.Status404NotFound,
-            Title = "User external login not found",
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
-            Detail = response.Message ?? fallbackDetail,
-            Instance = HttpContext.Request.Path
-        };
-
-        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(response.FailureCode)
-            ? ResourceNotFoundCode
-            : response.FailureCode;
-        AddProblemDetailsExtensions(problemDetails);
-
-        return new ObjectResult(problemDetails)
-        {
-            StatusCode = StatusCodes.Status404NotFound,
-            ContentTypes = { "application/problem+json" }
-        };
-    }
-
-    private void AddProblemDetailsExtensions(ProblemDetails problemDetails)
-    {
-        problemDetails.Extensions["traceId"] = HttpContext.TraceIdentifier;
-        problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
-
-        if (HttpContext.Items["CorrelationId"] is string correlationId)
-        {
-            problemDetails.Extensions["correlationId"] = correlationId;
-        }
     }
 }

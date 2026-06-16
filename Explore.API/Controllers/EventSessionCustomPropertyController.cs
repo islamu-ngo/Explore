@@ -30,6 +30,24 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventSessionCustomPropertyController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "eventSessionCustomPropertyDefinition",
+        "Event session custom property definition validation failed",
+        "Event session custom property definition update failed.");
+
+    private static readonly ApiValidationProblemDescriptor PurgeValidationProblem = new(
+        "eventSessionCustomPropertyDefinition",
+        "Event session custom property definition purge failed",
+        "Event session custom property definition purge failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor PurgeNotFoundProblem = new(
+        "Event session custom property definition not found",
+        "Session custom-property definition not found.");
+
+    private static readonly ApiNotFoundProblemDescriptor DefinitionNotFoundProblem = new(
+        "Event session custom property definition not found",
+        "Event session custom property definition not found.");
+
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<EventSessionCustomPropertyDefinitionDto, EventSessionCustomPropertyDefinitionListDto> _resourceAssembler;
 
@@ -54,7 +72,7 @@ public class EventSessionCustomPropertyController : ControllerBase
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionCustomPropertyDefinitionListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionCustomPropertyDefinitionListDto>>> GetAll(
         [FromQuery] EventSessionCustomPropertyDefinitionListQueryRequest query,
@@ -86,13 +104,15 @@ public class EventSessionCustomPropertyController : ControllerBase
     [EndpointDescription("Get full details of an event-session-local custom property definition including its options and provenance information. " +
         "Response includes links to related resources.")]
     [ProducesResponseType(typeof(HalResource<EventSessionCustomPropertyDefinitionDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventSessionCustomPropertyDefinitionDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var definition = await _mediator.Send(new GetEventSessionCustomPropertyDefinitionDetailsRequest { Id = id }, cancellationToken);
         if (definition == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(DefinitionNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(definition, HttpContext);
         return Ok(halResource);
@@ -109,9 +129,9 @@ public class EventSessionCustomPropertyController : ControllerBase
         "For template-based definitions, use the event session creation endpoint with a sessionTemplateId instead.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionCustomPropertyDefinitionDto definition, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventSessionCustomPropertyDefinitionCommand
@@ -143,18 +163,18 @@ public class EventSessionCustomPropertyController : ControllerBase
         "Provenance fields (source template information) are read-only and preserved.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateEventSessionCustomPropertyDefinitionDto updateDto, CancellationToken cancellationToken = default)
     {
         if (id != updateDto.Id)
         {
-            return BadRequest(new { error = "EventSessionCustomPropertyDefinition ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Event session custom property definition ID mismatch.");
         }
 
         var command = new UpdateEventSessionCustomPropertyDefinitionCommand
@@ -179,8 +199,8 @@ public class EventSessionCustomPropertyController : ControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventSessionCustomPropertyDefinition)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteEventSessionCustomPropertyDefinitionCommand { Id = id };
@@ -197,10 +217,10 @@ public class EventSessionCustomPropertyController : ControllerBase
     [HttpDelete("{id:guid}/purge", Name = RouteNames.PurgeEventSessionCustomPropertyDefinition)]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<CustomPropertyPurgeResultDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<CustomPropertyPurgeResultDto>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<CustomPropertyPurgeResultDto>>> Purge(
         Guid id,
         [FromBody] PurgeCustomPropertyDefinitionDto purgeDto,
@@ -218,8 +238,8 @@ public class EventSessionCustomPropertyController : ControllerBase
         }
 
         return string.Equals(result.Message, "Session custom-property definition not found.", StringComparison.Ordinal)
-            ? NotFound(result)
-            : BadRequest(result);
+            ? this.ToNotFoundProblem(PurgeNotFoundProblem)
+            : this.ToCommandValidationProblem(result, PurgeValidationProblem);
     }
 
     /// <summary>
@@ -254,9 +274,9 @@ public class EventSessionCustomPropertyController : ControllerBase
         "Uses upsert semantics based on definition ID, event session ID, and ordinal.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SetValue(
         [FromBody] SetEventSessionCustomPropertyValueDto valueDto, CancellationToken cancellationToken = default)
     {
@@ -286,9 +306,9 @@ public class EventSessionCustomPropertyController : ControllerBase
         "All existing values for the definition+event session combination are removed and replaced.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SetMultiValues(
         [FromBody] SetEventSessionCustomPropertyMultiValuesDto multiValuesDto, CancellationToken cancellationToken = default)
     {

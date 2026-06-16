@@ -2,7 +2,16 @@
 // ABOUTME: Keeps public enum schemas aligned with the API's JsonStringEnumConverter contract.
 
 using System.Text.Json.Nodes;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.DTOs.CustomPropertyProjection;
+using Explore.Application.DTOs.ManagedProviderProvisioning;
+using Explore.Application.DTOs.Settings;
+using Explore.Application.Models;
+using Explore.Application.Models.PublicExperience;
+using Explore.Application.Onboarding;
+using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Enums.Analytics;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -16,7 +25,31 @@ internal static class OpenApiStringEnumSchemaCatalog
 {
     public static IReadOnlyCollection<Type> EnumTypes { get; } =
     [
+        typeof(CustomPropertyProjectionScopeType),
+        typeof(CustomPropertyProjectionState),
+        typeof(CustomPropertyFilterOperator),
+        typeof(DeclineBehavior),
+        typeof(EntityTypeName),
+        typeof(EventRoleAssignmentStatus),
+        typeof(ExposureLevel),
+        typeof(GenderSegregationMode),
+        typeof(KeycloakBootstrapMode),
+        typeof(ManagedProviderOrganizerKindDto),
+        typeof(PosthogCookielessMode),
+        typeof(PosthogPersonProfiles),
+        typeof(PrayerTime),
+        typeof(PromotionRecommendation),
+        typeof(PropertyType),
+        typeof(PublicExperienceCtaPlacement),
+        typeof(PublicExperienceCtaStyle),
+        typeof(PublicExperienceHomeBlockKind),
+        typeof(PublicExperienceMode),
+        typeof(PublicExperiencePrimaryOrganizationState),
         typeof(RoleEnum),
+        typeof(SessionStartTimeType),
+        typeof(SettingSource),
+        typeof(SkillLevel),
+        typeof(BatchUpdateMode),
         typeof(DeploymentMode)
     ];
 

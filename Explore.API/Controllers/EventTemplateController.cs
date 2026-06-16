@@ -29,6 +29,15 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventTemplateController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "eventTemplate",
+        "Event template validation failed",
+        "Event template update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor EventTemplateNotFoundProblem = new(
+        "Event template not found",
+        "Event template not found.");
+
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<EventTemplateDto, EventTemplateListDto> _resourceAssembler;
 
@@ -52,7 +61,7 @@ public class EventTemplateController : ControllerBase
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventTemplateListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventTemplateListDto>>> GetAll(
         [FromQuery] EventTemplateListQueryRequest query,
@@ -84,13 +93,15 @@ public class EventTemplateController : ControllerBase
     [EndpointDescription("Get full details of an event template including its custom property definitions and options. " +
         "Response includes links to related resources.")]
     [ProducesResponseType(typeof(HalResource<EventTemplateDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventTemplateDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var template = await _mediator.Send(new GetEventTemplateDetailsRequest { Id = id }, cancellationToken);
         if (template == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(EventTemplateNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(template, HttpContext);
         return Ok(halResource);
@@ -106,9 +117,9 @@ public class EventTemplateController : ControllerBase
     [EndpointDescription("Create a new event template with optional custom property definitions.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventTemplateDto eventTemplate, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventTemplateCommand
@@ -139,17 +150,17 @@ public class EventTemplateController : ControllerBase
     [EndpointDescription("Update an existing event template and replace its definition set.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateEventTemplateDto updateDto, CancellationToken cancellationToken = default)
     {
         if (id != updateDto.Id)
         {
-            return BadRequest(new { error = "EventTemplate ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Event template ID mismatch.");
         }
 
         var command = new UpdateEventTemplateCommand
@@ -174,8 +185,8 @@ public class EventTemplateController : ControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventTemplate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteEventTemplateCommand { Id = id };

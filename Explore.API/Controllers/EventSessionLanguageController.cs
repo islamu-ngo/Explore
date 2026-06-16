@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventSession;
@@ -22,6 +23,19 @@ namespace Explore.API.Controllers;
 [ApiController]
 public class EventSessionLanguageController : ControllerBase
 {
+    private static readonly ApiNotFoundProblemDescriptor EventSessionNotFoundProblem = new(
+        "Event session not found",
+        "Event session not found.");
+
+    private static readonly ApiNotFoundProblemDescriptor EventSessionLanguageNotFoundProblem = new(
+        "Event session language not found",
+        "Event session language not found.");
+
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session language creation failed.");
+
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
 
@@ -57,7 +71,7 @@ public class EventSessionLanguageController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<int>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<int>>> Create(
         [FromBody] CreateEventSessionLanguageDto language,
         CancellationToken cancellationToken = default)
@@ -65,7 +79,7 @@ public class EventSessionLanguageController : ControllerBase
         var session = await GetSessionOrNullAsync(language.EventSessionId, cancellationToken);
         if (session is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(EventSessionNotFoundProblem);
         }
 
         var response = await _mediator.Send(new CreateEventSessionLanguageCommand
@@ -77,7 +91,7 @@ public class EventSessionLanguageController : ControllerBase
 
         if (!response.Success)
         {
-            return this.ToProgramValidationProblem(response, "Event session language creation failed.");
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -92,20 +106,20 @@ public class EventSessionLanguageController : ControllerBase
     [EndpointSummary("Remove language from event session")]
     [EndpointDescription("Remove a language assignment from an event session.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(int id, CancellationToken cancellationToken = default)
     {
         var language = await _mediator.Send(new GetEventSessionLanguageDetailsRequest { Id = id }, cancellationToken);
         if (language is null || language.Id == 0)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(EventSessionLanguageNotFoundProblem);
         }
 
         var session = await GetSessionOrNullAsync(language.EventSessionId, cancellationToken);
         if (session is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(EventSessionNotFoundProblem);
         }
 
         var deleted = await _mediator.Send(new DeleteEventSessionLanguageCommand
@@ -118,7 +132,7 @@ public class EventSessionLanguageController : ControllerBase
 
         if (!deleted)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(EventSessionLanguageNotFoundProblem);
         }
 
         return NoContent();

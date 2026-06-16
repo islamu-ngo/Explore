@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.Features.EventDays.Requests.Commands;
@@ -28,6 +29,20 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventDayController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "eventDay",
+        "Event day validation failed",
+        "Event day creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "eventDay",
+        "Event day validation failed",
+        "Event day update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor EventDayNotFoundProblem = new(
+        "Event day not found",
+        "Event day not found.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<EventDayController> _logger;
     private readonly IResourceAssembler<EventDayDto, EventDayListDto> _resourceAssembler;
@@ -74,13 +89,13 @@ public class EventDayController : ControllerBase
     [EndpointSummary("Get Event Day Details")]
     [EndpointDescription("Get detailed information about a specific event day.")]
     [ProducesResponseType(typeof(HalResource<EventDayDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventDayDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var day = await _mediator.Send(new GetEventDayDetailRequest { Id = id }, cancellationToken);
         if (day == null)
-            return NotFound();
+            return this.ToNotFoundProblem(EventDayNotFoundProblem);
 
         var halResource = await _resourceAssembler.ToResource(day, HttpContext);
         return Ok(halResource);
@@ -96,8 +111,8 @@ public class EventDayController : ControllerBase
     [EndpointDescription("Create a new event day. Must be associated with an existing event.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDayDto eventDay, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventDayCommand { EventDayDto = eventDay };
@@ -105,7 +120,7 @@ public class EventDayController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -124,14 +139,14 @@ public class EventDayController : ControllerBase
     [EndpointDescription("Update an existing event day.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDayDto eventDay, CancellationToken cancellationToken = default)
     {
         if (id != eventDay.Id)
         {
-            return BadRequest(new { error = "Event day ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Event day ID mismatch.");
         }
 
         var command = new UpdateEventDayCommand { EventDayDto = eventDay };
@@ -139,7 +154,7 @@ public class EventDayController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -154,8 +169,8 @@ public class EventDayController : ControllerBase
     [EndpointSummary("Delete Event Day")]
     [EndpointDescription("Delete an event day.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteEventDayCommand { Id = id };

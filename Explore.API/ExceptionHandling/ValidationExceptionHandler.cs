@@ -45,12 +45,20 @@ internal sealed class ValidationExceptionHandler(
         {
             Status = StatusCodes.Status400BadRequest,
             Title = "Validation failed",
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+            Type = ApiProblemTypes.BadRequest,
             Detail = "One or more validation errors occurred.",
             Instance = httpContext.Request.Path
         };
 
+        problemDetails.Extensions["code"] = ApiProblemCodes.ValidationFailed;
         problemDetails.Extensions["errors"] = errors;
+        problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
+        problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+
+        if (httpContext.Items["CorrelationId"] is string correlationId)
+        {
+            problemDetails.Extensions["correlationId"] = correlationId;
+        }
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {

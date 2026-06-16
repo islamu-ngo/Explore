@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS link policies for event session detail and collection resources.
+// ABOUTME: Emits only event session affordances backed by registered API route names.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
@@ -41,14 +44,6 @@ public sealed class EventSessionDetailLinkPolicy : ILinkPolicy<EventSessionDto>
                 "GET",
                 dto.LocationFullName);
         }
-
-        // Speakers link
-        yield return new LinkDefinition(
-            "speakers",
-            RouteNames.GetEventSessionSpeakers,
-            new { sessionId = dto.Id },
-            "GET",
-            "Session speakers");
 
         // Agenda items link
         yield return new LinkDefinition(

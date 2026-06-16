@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS link policies for event registration detail and collection resources.
+// ABOUTME: Emits registration, event/session, and ATProto affordances backed by registered route names.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
@@ -19,7 +22,7 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
         // Self link
         yield return new LinkDefinition(
             LinkRelations.Self,
-            RouteNames.GetRegistrationById,
+            RouteNames.GetEventRegistrationById,
             new { id = dto.Id },
             "GET",
             $"Registration: {dto.UserFullName}");
@@ -27,18 +30,10 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
         // Collection link
         yield return new LinkDefinition(
             LinkRelations.Collection,
-            RouteNames.GetRegistrations,
+            RouteNames.GetEventRegistrations,
             null,
             "GET",
             "All registrations");
-
-        // User link
-        yield return new LinkDefinition(
-            "user",
-            RouteNames.GetUserById,
-            new { id = dto.UserId },
-            "GET",
-            dto.UserFullName);
 
         // Event session link
         yield return new LinkDefinition(
@@ -53,7 +48,7 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
         {
             yield return new LinkDefinition(
                 "atproto-record",
-                RouteNames.GetAtprotoRecordById,
+                RouteNames.GetAtprotoRecordEntryById,
                 new { id = dto.AtprotoRecordId },
                 "GET",
                 "ATProto record");
@@ -62,7 +57,7 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
         // Edit link - requires authentication
         yield return new LinkDefinition(
             LinkRelations.Edit,
-            RouteNames.UpdateRegistration,
+            RouteNames.UpdateEventRegistration,
             new { id = dto.Id },
             "PUT",
             "Update registration",
@@ -72,7 +67,7 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
         // Delete link - requires authentication
         yield return new LinkDefinition(
             "delete",
-            RouteNames.DeleteRegistration,
+            RouteNames.DeleteEventRegistration,
             new { id = dto.Id },
             "DELETE",
             "Cancel registration",
@@ -92,18 +87,10 @@ public sealed class EventRegistrationCollectionLinkPolicy : ICollectionLinkPolic
         // Self link for item
         yield return new LinkDefinition(
             LinkRelations.Self,
-            RouteNames.GetRegistrationById,
+            RouteNames.GetEventRegistrationById,
             new { id = dto.Id },
             "GET",
             $"Registration: {dto.UserFullName}");
-
-        // User link
-        yield return new LinkDefinition(
-            "user",
-            RouteNames.GetUserById,
-            new { id = dto.UserId },
-            "GET",
-            dto.UserFullName);
 
         // Event session link
         yield return new LinkDefinition(
@@ -128,7 +115,7 @@ public sealed class EventRegistrationCollectionLinkPolicy : ICollectionLinkPolic
         // Create link - requires authentication
         yield return new LinkDefinition(
             "create",
-            RouteNames.CreateRegistration,
+            RouteNames.CreateEventRegistration,
             null,
             "POST",
             "Register for event",

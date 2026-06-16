@@ -40,7 +40,7 @@ public class CustomPropertyGovernanceController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(PaginatedResult<CustomPropertyGovernanceRowDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PaginatedResult<CustomPropertyGovernanceRowDto>>> GetGovernanceReport(
         [FromQuery] CustomPropertyGovernanceReportQueryRequest query,
         CancellationToken cancellationToken = default)

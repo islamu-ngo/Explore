@@ -42,6 +42,14 @@ public class EventAgendaItemController : ControllerBase
         "Event agenda item validation failed",
         "Event agenda item update failed.");
 
+    private static readonly ApiNotFoundProblemDescriptor AgendaItemNotFoundProblem = new(
+        "Event agenda item not found",
+        "Event agenda item not found.");
+
+    private static readonly ApiNotFoundProblemDescriptor AgendaProjectionNotFoundProblem = new(
+        "Event agenda projection not found",
+        "Event agenda projection not found.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<EventAgendaItemController> _logger;
     private readonly IResourceAssembler<EventAgendaItemDto, EventAgendaItemListDto> _resourceAssembler;
@@ -88,13 +96,13 @@ public class EventAgendaItemController : ControllerBase
     [EndpointSummary("Get Agenda Item Details")]
     [EndpointDescription("Get detailed information about a specific agenda item.")]
     [ProducesResponseType(typeof(HalResource<EventAgendaItemDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventAgendaItemDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var item = await _mediator.Send(new GetEventAgendaItemDetailRequest { Id = id }, cancellationToken);
         if (item == null)
-            return NotFound();
+            return this.ToNotFoundProblem(AgendaItemNotFoundProblem);
 
         var halResource = await _resourceAssembler.ToResource(item, HttpContext);
         return Ok(halResource);
@@ -110,13 +118,13 @@ public class EventAgendaItemController : ControllerBase
     [EndpointDescription("Get a merged view of all sessions and agenda items for an event, " +
         "grouped by local day and room with local time projections.")]
     [ProducesResponseType(typeof(EventAgendaProjectionDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventAgendaProjectionDto>> GetAgendaProjection(Guid eventId, CancellationToken cancellationToken = default)
     {
         var projection = await _mediator.Send(new GetEventAgendaProjectionRequest { EventId = eventId }, cancellationToken);
         if (projection == null)
-            return NotFound();
+            return this.ToNotFoundProblem(AgendaProjectionNotFoundProblem);
 
         return Ok(projection);
     }
@@ -132,7 +140,7 @@ public class EventAgendaItemController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventAgendaItemCommand { EventAgendaItemDto = agendaItem };
@@ -160,8 +168,8 @@ public class EventAgendaItemController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
     {
         if (id != agendaItem.Id)
@@ -189,8 +197,8 @@ public class EventAgendaItemController : ControllerBase
     [EndpointSummary("Delete Agenda Item")]
     [EndpointDescription("Delete an event agenda item.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteEventAgendaItemCommand { Id = id };

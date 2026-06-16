@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.Features.Settings.Requests.Commands;
@@ -22,6 +23,11 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class SettingsController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor SettingsValidationProblem = new(
+        "settings",
+        "Settings validation failed",
+        "Settings update failed.");
+
     private readonly IMediator _mediator;
 
     public SettingsController(IMediator mediator)
@@ -35,7 +41,7 @@ public class SettingsController : ControllerBase
     [EndpointSummary("Get User Settings")]
     [EndpointDescription("Returns effective settings for the given category, resolved through the full hierarchy for the authenticated user.")]
     [ProducesResponseType(typeof(SettingGroupResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<SettingGroupResponseDto>> GetUserSettings(
         string category, CancellationToken cancellationToken = default)
     {
@@ -52,8 +58,8 @@ public class SettingsController : ControllerBase
     [EndpointSummary("Batch Update User Settings")]
     [EndpointDescription("Applies multiple user preference updates for a category. Defaults to best-effort mode (skips locked settings, applies rest).")]
     [ProducesResponseType(typeof(BatchUpdateResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BatchUpdateResponseDto), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BatchUpdateResponseDto>> UpdateUserSettingsBatch(
         string category,
         [FromBody] UpdateSettingBatchDto body,
@@ -67,7 +73,12 @@ public class SettingsController : ControllerBase
             Mode = body.Mode ?? BatchUpdateMode.BestEffort
         }, cancellationToken);
 
-        if (!result.Success) return BadRequest(result);
+        if (!result.Success)
+        {
+            return this.ToValidationProblem(
+                SettingsValidationProblem,
+                result.Message ?? "User settings batch update failed.");
+        }
         return Ok(result);
     }
 
@@ -75,8 +86,8 @@ public class SettingsController : ControllerBase
     [EndpointSummary("Update Single User Setting")]
     [EndpointDescription("Updates a single user preference by key. Key must be a registered setting key.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateUserSetting(
         string key,
         [FromBody] UpdateSettingValueDto body,
@@ -96,8 +107,8 @@ public class SettingsController : ControllerBase
     [EndpointSummary("Reset User Setting")]
     [EndpointDescription("Removes the user's override for a setting, restoring it to the next higher scope's value.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> ResetUserSetting(
         string key, CancellationToken cancellationToken = default)
     {
@@ -116,8 +127,8 @@ public class SettingsController : ControllerBase
     [EndpointSummary("Get Tenant Settings")]
     [EndpointDescription("Returns effective settings for the given category at tenant scope. Requires tenant administrator.")]
     [ProducesResponseType(typeof(SettingGroupResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<SettingGroupResponseDto>> GetTenantSettings(
         string category, CancellationToken cancellationToken = default)
     {
@@ -134,9 +145,9 @@ public class SettingsController : ControllerBase
     [EndpointSummary("Batch Update Tenant Settings")]
     [EndpointDescription("Applies multiple tenant setting updates for a category. Defaults to strict mode (rejects entire batch if any setting is locked). Requires tenant administrator.")]
     [ProducesResponseType(typeof(BatchUpdateResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BatchUpdateResponseDto), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BatchUpdateResponseDto>> UpdateTenantSettingsBatch(
         string category,
         [FromBody] UpdateSettingBatchDto body,
@@ -150,7 +161,12 @@ public class SettingsController : ControllerBase
             Mode = body.Mode ?? BatchUpdateMode.Strict
         }, cancellationToken);
 
-        if (!result.Success) return BadRequest(result);
+        if (!result.Success)
+        {
+            return this.ToValidationProblem(
+                SettingsValidationProblem,
+                result.Message ?? "Tenant settings batch update failed.");
+        }
         return Ok(result);
     }
 
@@ -158,9 +174,9 @@ public class SettingsController : ControllerBase
     [EndpointSummary("Update Single Tenant Setting")]
     [EndpointDescription("Updates a single tenant setting by key. Requires tenant administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateTenantSetting(
         string key,
         [FromBody] UpdateSettingValueDto body,
@@ -180,9 +196,9 @@ public class SettingsController : ControllerBase
     [EndpointSummary("Lock Tenant Setting")]
     [EndpointDescription("Locks a setting at tenant scope, preventing lower-scope overrides from taking effect. Requires tenant administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> LockTenantSetting(
         string key, CancellationToken cancellationToken = default)
     {
@@ -199,9 +215,9 @@ public class SettingsController : ControllerBase
     [EndpointSummary("Unlock Tenant Setting")]
     [EndpointDescription("Unlocks a setting at tenant scope, restoring the normal hierarchical cascade. Requires tenant administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UnlockTenantSetting(
         string key, CancellationToken cancellationToken = default)
     {
@@ -221,8 +237,10 @@ public class SettingsController : ControllerBase
         if (response.Success) return Ok(response);
 
         if (response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true)
-            return Forbid();
+        {
+            return this.ToForbiddenProblem(detail: response.Message);
+        }
 
-        return BadRequest(response);
+        return this.ToCommandValidationProblem(response, SettingsValidationProblem);
     }
 }

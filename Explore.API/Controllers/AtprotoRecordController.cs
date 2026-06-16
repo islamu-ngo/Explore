@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.Features.AtprotoRecords.Requests.Commands;
@@ -21,7 +22,10 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class AtprotoRecordController : ControllerBase
 {
-    private const string ValidationFailedCode = "validation_failed";
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "atprotoRecord",
+        "AT Protocol record validation failed",
+        "AT Protocol record update failed.");
 
     private readonly IMediator _mediator;
     private readonly ILogger<AtprotoRecordController> _logger;
@@ -74,15 +78,7 @@ public class AtprotoRecordController : ControllerBase
     {
         if (id != dto.Id)
         {
-            return ToValidationProblem(
-                new BaseCommandResponse<Guid>
-                {
-                    Success = false,
-                    Message = "AT Protocol record ID mismatch.",
-                    FailureCode = ValidationFailedCode,
-                    Errors = ["AT Protocol record ID mismatch."]
-                },
-                "AT Protocol record ID mismatch.");
+            return this.ToValidationProblem(UpdateValidationProblem, "AT Protocol record ID mismatch.");
         }
 
         var command = new UpdateAtprotoRecordCommand { AtprotoRecordDto = dto };
@@ -90,7 +86,7 @@ public class AtprotoRecordController : ControllerBase
 
         if (!response.Success)
         {
-            return ToValidationProblem(response, "AT Protocol record update failed.");
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -105,41 +101,5 @@ public class AtprotoRecordController : ControllerBase
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
-    }
-
-    private ActionResult ToValidationProblem<TKey>(BaseCommandResponse<TKey> response, string fallbackDetail)
-    {
-        var errors = response.Errors is { Count: > 0 }
-            ? response.Errors.ToArray()
-            : [response.Message ?? fallbackDetail];
-
-        var problemDetails = new ValidationProblemDetails(new Dictionary<string, string[]>
-        {
-            ["atprotoRecord"] = errors
-        })
-        {
-            Status = StatusCodes.Status400BadRequest,
-            Title = "AT Protocol record validation failed",
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-            Detail = response.Message ?? fallbackDetail,
-            Instance = HttpContext.Request.Path
-        };
-
-        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(response.FailureCode)
-            ? ValidationFailedCode
-            : response.FailureCode;
-        problemDetails.Extensions["traceId"] = HttpContext.TraceIdentifier;
-        problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
-
-        if (HttpContext.Items["CorrelationId"] is string correlationId)
-        {
-            problemDetails.Extensions["correlationId"] = correlationId;
-        }
-
-        return new ObjectResult(problemDetails)
-        {
-            StatusCode = StatusCodes.Status400BadRequest,
-            ContentTypes = { "application/problem+json" }
-        };
     }
 }

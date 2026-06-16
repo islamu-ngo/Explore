@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Onboarding;
@@ -24,6 +25,21 @@ namespace Explore.API.Controllers;
 [RequireMultiTenant]
 public class TenantOnboardingController : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CompleteValidationProblem = new(
+        "tenantOnboarding",
+        "Tenant onboarding validation failed",
+        "Tenant onboarding completion failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateSettingsValidationProblem = new(
+        "tenantOnboarding",
+        "Tenant onboarding validation failed",
+        "Tenant onboarding settings update failed.");
+
+    private static readonly ApiValidationProblemDescriptor SaveStepValidationProblem = new(
+        "tenantOnboarding",
+        "Tenant onboarding validation failed",
+        "Tenant onboarding step progress save failed.");
+
     private readonly IMediator _mediator;
 
     public TenantOnboardingController(IMediator mediator)
@@ -58,8 +74,8 @@ public class TenantOnboardingController : ExploreControllerBase
     [EndpointSummary("Complete Tenant Onboarding")]
     [EndpointDescription("Completes tenant onboarding and persists tenant policy answers.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete(
         [FromBody] UpdateTenantPolicyRequest settings,
         [FromServices] IOutputCacheStore cacheStore,
@@ -68,11 +84,8 @@ public class TenantOnboardingController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return BadRequest(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Invalid user identity."
-            });
+            return this.ToAuthenticationRequiredProblem(
+                detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var response = await _mediator.Send(new CompleteTenantOnboardingCommand
@@ -85,10 +98,10 @@ public class TenantOnboardingController : ExploreControllerBase
         {
             if (response.Message?.Contains("Only tenant administrators", StringComparison.OrdinalIgnoreCase) == true)
             {
-                return Forbid();
+                return this.ToForbiddenProblem(detail: response.Message);
             }
 
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CompleteValidationProblem);
         }
 
         await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
@@ -100,8 +113,8 @@ public class TenantOnboardingController : ExploreControllerBase
     [EndpointSummary("Update Tenant Policy Settings")]
     [EndpointDescription("Updates tenant policy settings after onboarding.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings(
         [FromBody] UpdateTenantPolicyRequest settings,
         [FromServices] IOutputCacheStore cacheStore,
@@ -110,11 +123,8 @@ public class TenantOnboardingController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return BadRequest(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Invalid user identity."
-            });
+            return this.ToAuthenticationRequiredProblem(
+                detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var response = await _mediator.Send(new UpdateTenantPolicySettingsCommand
@@ -127,10 +137,10 @@ public class TenantOnboardingController : ExploreControllerBase
         {
             if (response.Message?.Contains("Only tenant administrators", StringComparison.OrdinalIgnoreCase) == true)
             {
-                return Forbid();
+                return this.ToForbiddenProblem(detail: response.Message);
             }
 
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateSettingsValidationProblem);
         }
 
         await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
@@ -142,17 +152,14 @@ public class TenantOnboardingController : ExploreControllerBase
     [EndpointSummary("Save Tenant Onboarding Step Progress")]
     [EndpointDescription("Persists tenant onboarding step progress without completing onboarding.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveStep([FromBody] SaveTenantOnboardingStepDto dto, CancellationToken cancellationToken = default)
     {
         var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return BadRequest(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Invalid user identity."
-            });
+            return this.ToAuthenticationRequiredProblem(
+                detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var command = new SaveTenantOnboardingStepCommand
@@ -166,7 +173,7 @@ public class TenantOnboardingController : ExploreControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, SaveStepValidationProblem);
         }
 
         return Ok(response);

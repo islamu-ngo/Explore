@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.Category;
@@ -28,6 +29,20 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class CategoryController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "category",
+        "Category validation failed",
+        "Category creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "category",
+        "Category validation failed",
+        "Category update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor CategoryNotFoundProblem = new(
+        "Category not found",
+        "Category not found.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<CategoryController> _logger;
     private readonly IResourceAssembler<CategoryDto, CategoryListDto> _resourceAssembler;
@@ -54,7 +69,7 @@ public class CategoryController : ControllerBase
         "Response includes HATEOAS navigation links. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<CategoryListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<CategoryListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
@@ -85,13 +100,15 @@ public class CategoryController : ControllerBase
     [EndpointDescription("Get detailed information about a specific category. " +
         "Response includes links to parent category, children, and events.")]
     [ProducesResponseType(typeof(HalResource<CategoryDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<CategoryDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var category = await _mediator.Send(new GetCategoryDetailsRequest { Id = id }, cancellationToken);
         if (category == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(CategoryNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(category, HttpContext);
         return Ok(halResource);
@@ -107,8 +124,8 @@ public class CategoryController : ControllerBase
     [EndpointDescription("Create a new event category. Categories can be nested with parent_id.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateCategoryDto category, CancellationToken cancellationToken = default)
     {
         var command = new CreateCategoryCommand { CategoryDto = category };
@@ -116,7 +133,7 @@ public class CategoryController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -135,14 +152,14 @@ public class CategoryController : ControllerBase
     [EndpointDescription("Update an existing category's information.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateCategoryDto category, CancellationToken cancellationToken = default)
     {
         if (id != category.Id)
         {
-            return BadRequest(new { error = "Category ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Category ID mismatch.");
         }
 
         var command = new UpdateCategoryCommand { CategoryDto = category };
@@ -150,7 +167,7 @@ public class CategoryController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -165,8 +182,8 @@ public class CategoryController : ControllerBase
     [EndpointSummary("Delete Category")]
     [EndpointDescription("Delete a category. Will fail if category has child categories.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteCategoryCommand { Id = id };

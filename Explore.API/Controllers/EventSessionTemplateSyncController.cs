@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Resources;
@@ -25,10 +26,15 @@ namespace Explore.API.Controllers;
 [Route("api/event-sessions")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-[Authorize(Policy = "template_admin")]
+[Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
 public sealed class EventSessionTemplateSyncController : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor DiffValidationProblem = new(
+        "eventSessionTemplateSync",
+        "Event session template sync validation failed",
+        "Event session template diff computation failed.");
+
     private readonly IMediator _mediator;
     private readonly IHateoasAuthorizationEvaluator _authorizationEvaluator;
     private readonly IHateoasLinkGenerator _linkGenerator;
@@ -54,8 +60,8 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<HalResource<TemplateDiffDto>>> GetDiff(
         Guid sessionId,
         [FromQuery(Name = "templateVersion")] int templateVersion,
@@ -65,8 +71,15 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
             new GetEventSessionTemplateDiffQuery(sessionId, templateVersion),
             cancellationToken);
 
-        if (!response.Success || response.Id is null)
-            return BadRequest(response);
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, DiffValidationProblem);
+        }
+
+        if (response.Id is null)
+        {
+            return this.ToValidationProblem(DiffValidationProblem, "Event session template diff was not returned.");
+        }
 
         var diff = response.Id;
         var hasChanges =
@@ -110,8 +123,8 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<TemplateSyncOutcomeDto>>> Apply(
         Guid sessionId,
         [FromBody] EventSessionTemplateSyncApplyRequest request,
@@ -132,8 +145,8 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<PaginatedResult<EventSessionTemplateSyncHistoryItemDto>>> GetHistory(
         Guid sessionId,
         [FromQuery] TemplateSyncHistoryQueryRequest query,

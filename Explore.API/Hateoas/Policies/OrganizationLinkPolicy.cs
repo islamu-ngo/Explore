@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS link policies for organization detail and collection resources.
+// ABOUTME: Emits only organization affordances backed by registered API route names.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
@@ -23,16 +26,10 @@ public sealed class OrganizationDetailLinkPolicy : ILinkPolicy<OrganizationDto>
         // Collection link
         yield return LinkDefinition.Collection(RouteNames.GetOrganizations);
 
-        // Related resources - always included
-        yield return LinkDefinition.Related(
-            LinkRelations.Events,
-            RouteNames.GetOrganizationEvents,
-            new { id = dto.Id });
-
         yield return LinkDefinition.Related(
             LinkRelations.Members,
-            RouteNames.GetOrganizationMembers,
-            new { id = dto.Id });
+            RouteNames.GetOrganizationMembersByOrganization,
+            new { organizationId = dto.Id });
 
         // Actor link (if organization has an actor)
         if (dto.ActorId.HasValue)
@@ -70,17 +67,11 @@ public sealed class OrganizationCollectionLinkPolicy : ICollectionLinkPolicy<Org
             RouteNames.GetOrganizationById,
             new { id = dto.Id });
 
-        // Events link
-        yield return LinkDefinition.Related(
-            LinkRelations.Events,
-            RouteNames.GetOrganizationEvents,
-            new { id = dto.Id });
-
         // Members link
         yield return LinkDefinition.Related(
             LinkRelations.Members,
-            RouteNames.GetOrganizationMembers,
-            new { id = dto.Id });
+            RouteNames.GetOrganizationMembersByOrganization,
+            new { organizationId = dto.Id });
 
         // Edit link - requires authorization
         yield return LinkDefinition.Edit(

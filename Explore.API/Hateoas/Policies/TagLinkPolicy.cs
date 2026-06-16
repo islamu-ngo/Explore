@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS link policies for tag detail and collection resources.
+// ABOUTME: Emits only tag affordances backed by registered API route names.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
@@ -30,22 +33,6 @@ public sealed class TagDetailLinkPolicy : ILinkPolicy<TagDto>
             null,
             "GET",
             "All tags");
-
-        // Events with this tag
-        yield return new LinkDefinition(
-            "events",
-            RouteNames.GetTagEvents,
-            new { tagId = dto.Id },
-            "GET",
-            "Events with this tag");
-
-        // Tag types link (pure join table - embedded here per enterprise pattern)
-        yield return new LinkDefinition(
-            "tag-types",
-            RouteNames.GetTagTagTypes,
-            new { tagId = dto.Id },
-            "GET",
-            "Tag type classifications");
 
         // Edit link - requires authentication
         yield return new LinkDefinition(

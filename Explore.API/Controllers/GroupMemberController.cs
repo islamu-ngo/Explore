@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.Features.GroupMembers.Requests.Commands;
@@ -23,6 +24,25 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class GroupMemberController : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor AddValidationProblem = new(
+        "groupMember",
+        "Group member validation failed",
+        "Group member creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "groupMember",
+        "Group member validation failed",
+        "Group member update failed.");
+
+    private static readonly ApiValidationProblemDescriptor DeleteValidationProblem = new(
+        "groupMember",
+        "Group member validation failed",
+        "Group member deletion failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor GroupMemberNotFoundProblem = new(
+        "Group member not found",
+        "Group member not found.");
+
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<GroupMemberDto, GroupMemberDto> _resourceAssembler;
 
@@ -56,13 +76,13 @@ public class GroupMemberController : ExploreControllerBase
     [HttpGet("member/{id:guid}", Name = RouteNames.GetGroupMemberById)]
     [OutputCache(PolicyName = "DetailData")]
     [ProducesResponseType(typeof(HalResource<GroupMemberDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<GroupMemberDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var member = await _mediator.Send(new GetGroupMemberDetailsRequest { Id = id }, cancellationToken);
         if (member is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(GroupMemberNotFoundProblem);
         }
 
         var halResource = await _resourceAssembler.ToResource(member, HttpContext);
@@ -72,13 +92,13 @@ public class GroupMemberController : ExploreControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateGroupMember)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] AddGroupMemberDto dto, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized("User ID not found in token");
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new AddGroupMemberCommand
@@ -90,7 +110,7 @@ public class GroupMemberController : ExploreControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, AddValidationProblem);
         }
 
         return Ok(response);
@@ -99,13 +119,13 @@ public class GroupMemberController : ExploreControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("role", Name = RouteNames.UpdateGroupMember)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateRole([FromBody] UpdateGroupMemberRoleDto dto, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized("User ID not found in token");
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new UpdateGroupMemberRoleCommand
@@ -117,7 +137,7 @@ public class GroupMemberController : ExploreControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -126,13 +146,13 @@ public class GroupMemberController : ExploreControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteGroupMember)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized("User ID not found in token");
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new DeleteGroupMemberCommand
@@ -144,7 +164,7 @@ public class GroupMemberController : ExploreControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, DeleteValidationProblem);
         }
 
         return Ok(response);

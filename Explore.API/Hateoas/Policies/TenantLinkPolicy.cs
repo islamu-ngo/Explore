@@ -81,13 +81,6 @@ public sealed class TenantCollectionLinkPolicy : ICollectionLinkPolicy<TenantLis
             "GET",
             dto.FullName);
 
-        // By slug link
-        yield return new LinkDefinition(
-            "by-slug",
-            RouteNames.GetTenantBySlug,
-            new { slug = dto.Slug },
-            "GET",
-            $"Tenant by slug: {dto.Slug}");
     }
 
     /// <inheritdoc />

@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Features.OrganizationMembers.Requests.Commands;
@@ -12,7 +13,6 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -23,6 +23,10 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class OrganizationMemberController : ExploreControllerBase
 {
+    private static readonly ApiNotFoundProblemDescriptor OrganizationMemberNotFoundProblem = new(
+        "Organization member not found",
+        "Organization member not found.");
+
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<OrganizationMemberDto, OrganizationMemberDto> _resourceAssembler;
 
@@ -35,9 +39,7 @@ public class OrganizationMemberController : ExploreControllerBase
     }
 
     [HttpGet("{organizationId:guid}", Name = RouteNames.GetOrganizationMembersByOrganization)]
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
-    [OutputCache(PolicyName = "ListData")]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [ProducesResponseType(typeof(HalCollectionResource<OrganizationMemberDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<HalCollectionResource<OrganizationMemberDto>>> Get(Guid organizationId, CancellationToken cancellationToken = default)
     {
@@ -52,17 +54,15 @@ public class OrganizationMemberController : ExploreControllerBase
     }
 
     [HttpGet("member/{id:guid}", Name = RouteNames.GetOrganizationMemberById)]
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
-    [OutputCache(PolicyName = "DetailData")]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [ProducesResponseType(typeof(HalResource<OrganizationMemberDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<OrganizationMemberDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var member = await _mediator.Send(new GetOrganizationMemberDetailsRequest { Id = id }, cancellationToken);
         if (member is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(OrganizationMemberNotFoundProblem);
         }
 
         var halResource = await _resourceAssembler.ToResource(member, HttpContext);
@@ -76,7 +76,7 @@ public class OrganizationMemberController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new AddOrganizationMemberCommand { AddOrganizationMemberDto = dto, RequesterUserId = userId };
@@ -91,7 +91,7 @@ public class OrganizationMemberController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new UpdateOrganizationMemberRoleCommand { UpdateOrganizationMemberRoleDto = dto, RequesterUserId = userId };
@@ -106,11 +106,9 @@ public class OrganizationMemberController : ExploreControllerBase
         var email = UserContext.Email;
         if (string.IsNullOrEmpty(email))
         {
-            return Problem(
+            return this.ToAuthenticationRequiredProblem(
                 title: "Email claim not found",
-                detail: "The authenticated principal does not include an email claim required to list invitations.",
-                statusCode: StatusCodes.Status401Unauthorized,
-                type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
+                detail: "The authenticated principal does not include an email claim required to list invitations.");
         }
 
         var response = await _mediator.Send(new GetMyInvitationsRequest { Email = email }, cancellationToken);
@@ -124,7 +122,7 @@ public class OrganizationMemberController : ExploreControllerBase
         var userGuid = CurrentUserId;
         if (!userGuid.HasValue)
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new AcceptInvitationCommand { InvitationId = id, UserId = userGuid.Value };
@@ -139,7 +137,7 @@ public class OrganizationMemberController : ExploreControllerBase
         var userGuid = CurrentUserId;
         if (!userGuid.HasValue)
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem();
         }
         var command = new DeclineInvitationCommand { InvitationId = id, UserId = userGuid.Value };
         var response = await _mediator.Send(command, cancellationToken);
@@ -153,7 +151,7 @@ public class OrganizationMemberController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            return UnauthorizedProblem();
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new DeleteOrganizationMemberCommand { MemberId = id, RequesterUserId = userId };
@@ -161,12 +159,4 @@ public class OrganizationMemberController : ExploreControllerBase
         return Ok(response);
     }
 
-    private ObjectResult UnauthorizedProblem()
-    {
-        return Problem(
-            title: "User ID not found in token",
-            detail: "The authenticated principal does not include a supported user identifier claim.",
-            statusCode: StatusCodes.Status401Unauthorized,
-            type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
-    }
 }

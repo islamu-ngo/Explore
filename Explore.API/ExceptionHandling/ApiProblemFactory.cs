@@ -36,6 +36,70 @@ internal static class ApiProblemFactory
         return problemDetails;
     }
 
+
+    public static ProblemDetails CreateAuthenticationRequiredProblem(
+        HttpContext httpContext,
+        string title = "Authentication required",
+        string detail = "The request requires an authenticated principal with a supported user identifier claim.")
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status401Unauthorized,
+            Title = title,
+            Type = ApiProblemTypes.Unauthorized,
+            Detail = detail,
+            Instance = httpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = ApiProblemCodes.AuthenticationRequired;
+        AddStandardExtensions(httpContext, problemDetails);
+
+        return problemDetails;
+    }
+
+    public static ProblemDetails CreateForbiddenProblem(
+        HttpContext httpContext,
+        string title = "Forbidden",
+        string detail = "The authenticated principal is not authorized to perform this operation.")
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status403Forbidden,
+            Title = title,
+            Type = ApiProblemTypes.Forbidden,
+            Detail = detail,
+            Instance = httpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = ApiProblemCodes.Forbidden;
+        AddStandardExtensions(httpContext, problemDetails);
+
+        return problemDetails;
+    }
+
+    public static ProblemDetails CreateConflictProblem(
+        HttpContext httpContext,
+        string title,
+        string detail,
+        string code = ApiProblemCodes.ResourceConflict)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status409Conflict,
+            Title = title,
+            Type = ApiProblemTypes.Conflict,
+            Detail = detail,
+            Instance = httpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(code)
+            ? ApiProblemCodes.ResourceConflict
+            : code;
+        AddStandardExtensions(httpContext, problemDetails);
+
+        return problemDetails;
+    }
+
     public static ProblemDetails CreateNotFoundProblem(
         HttpContext httpContext,
         ApiNotFoundProblemDescriptor descriptor)
@@ -50,6 +114,100 @@ internal static class ApiProblemFactory
         };
 
         problemDetails.Extensions["code"] = descriptor.Code;
+        AddStandardExtensions(httpContext, problemDetails);
+
+        return problemDetails;
+    }
+
+    public static ProblemDetails CreateGoneProblem(
+        HttpContext httpContext,
+        string title,
+        string detail,
+        string code = ApiProblemCodes.ResourceConflict)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status410Gone,
+            Title = title,
+            Type = ApiProblemTypes.Gone,
+            Detail = detail,
+            Instance = httpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(code)
+            ? ApiProblemCodes.ResourceConflict
+            : code;
+        AddStandardExtensions(httpContext, problemDetails);
+
+        return problemDetails;
+    }
+
+    public static ProblemDetails CreateBadGatewayProblem(
+        HttpContext httpContext,
+        string title,
+        string detail,
+        string code = ApiProblemCodes.ProviderGateway)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status502BadGateway,
+            Title = title,
+            Type = ApiProblemTypes.BadGateway,
+            Detail = detail,
+            Instance = httpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(code)
+            ? ApiProblemCodes.ProviderGateway
+            : code;
+        AddStandardExtensions(httpContext, problemDetails);
+
+        return problemDetails;
+    }
+
+    public static ProblemDetails CreateServiceUnavailableProblem(
+        HttpContext httpContext,
+        string title,
+        string detail,
+        string code = ApiProblemCodes.UnexpectedError)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status503ServiceUnavailable,
+            Title = title,
+            Type = ApiProblemTypes.ServiceUnavailable,
+            Detail = detail,
+            Instance = httpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(code)
+            ? ApiProblemCodes.UnexpectedError
+            : code;
+        AddStandardExtensions(httpContext, problemDetails);
+
+        return problemDetails;
+    }
+
+    public static ProblemDetails CreateProblem(
+        HttpContext httpContext,
+        int statusCode,
+        string title,
+        string type,
+        string detail,
+        string code)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = statusCode,
+            Title = title,
+            Type = type,
+            Detail = detail,
+            Instance = httpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(code)
+            ? ApiProblemCodes.UnexpectedError
+            : code;
         AddStandardExtensions(httpContext, problemDetails);
 
         return problemDetails;

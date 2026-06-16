@@ -48,7 +48,7 @@ public class RoleController : ControllerBase
     [EndpointDescription("Retrieve details of a specific role including scope and system flag.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<RoleDto>> GetById(int id, CancellationToken cancellationToken = default)
     {

@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Models;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
@@ -22,6 +23,15 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class ContactShareConsentController : ExploreControllerBase
 {
+    private static readonly ApiNotFoundProblemDescriptor OrganizationNotFoundProblem = new(
+        "Contact share recipient organization not found",
+        "The requested contact-share recipient organization could not be resolved.");
+
+    private static readonly ApiValidationProblemDescriptor ExportValidationProblem = new(
+        "contactShareExport",
+        "Contact share export validation failed",
+        "Shared contact export failed.");
+
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
     private readonly IContactShareConsentService _consentService;
@@ -49,7 +59,7 @@ public class ContactShareConsentController : ExploreControllerBase
     {
         var userId = CurrentUserId;
         if (userId == null)
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
 
         var result = await _mediator.Send(new GetUserContactShareConsentsQuery
         {
@@ -70,7 +80,7 @@ public class ContactShareConsentController : ExploreControllerBase
     {
         var userId = CurrentUserId;
         if (userId == null)
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
 
         var hasConsent = await _consentService.HasGrantedConsentForOrganizer(
             _tenantContext.TenantId, userId.Value, recipientActorId);
@@ -84,12 +94,12 @@ public class ContactShareConsentController : ExploreControllerBase
     [EndpointDescription("Withdraw a previously granted contact sharing consent. The consent is marked as withdrawn, not deleted.")]
     [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> WithdrawConsent(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId;
         if (userId == null)
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
 
         var result = await _mediator.Send(new WithdrawContactShareConsentCommand
         {
@@ -107,7 +117,7 @@ public class ContactShareConsentController : ExploreControllerBase
     [EndpointDescription("Retrieve paginated list of shared contacts for an organization. Requires ViewSharedContacts permission.")]
     [Authorize]
     [ProducesResponseType(typeof(PaginatedResult<SharedContactDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PaginatedResult<SharedContactDto>>> GetOrganizationSharedContacts(
         Guid recipientActorId,
         [FromQuery] ContactShareConsentListQueryRequest query,
@@ -115,7 +125,7 @@ public class ContactShareConsentController : ExploreControllerBase
     {
         var organizationId = await ResolveOrganizationId(recipientActorId);
         if (organizationId is null)
-            return NotFound();
+            return this.ToNotFoundProblem(OrganizationNotFoundProblem);
 
         var result = await _mediator.Send(new GetOrganizationSharedContactsQuery
         {
@@ -137,7 +147,7 @@ public class ContactShareConsentController : ExploreControllerBase
     [EndpointDescription("Export shared contacts as CSV or TSV. Records an audit trail of the export.")]
     [Authorize]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> ExportSharedContacts(
         Guid recipientActorId,
         [FromQuery] string format = "csv",
@@ -146,11 +156,11 @@ public class ContactShareConsentController : ExploreControllerBase
     {
         var userId = CurrentUserId;
         if (userId == null)
-            return Unauthorized();
+            return this.ToAuthenticationRequiredProblem();
 
         var organizationId = await ResolveOrganizationId(recipientActorId);
         if (organizationId is null)
-            return NotFound();
+            return this.ToNotFoundProblem(OrganizationNotFoundProblem);
 
         var result = await _mediator.Send(new ExportSharedContactsCommand
         {
@@ -163,7 +173,7 @@ public class ContactShareConsentController : ExploreControllerBase
         }, cancellationToken);
 
         if (!result.Success || result.Id == null)
-            return BadRequest(result);
+            return this.ToCommandValidationProblem(result, ExportValidationProblem);
 
         return File(result.Id.FileContent, result.Id.ContentType, result.Id.FileName);
     }

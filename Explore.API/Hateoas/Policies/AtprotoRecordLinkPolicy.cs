@@ -18,7 +18,7 @@ public sealed class AtprotoRecordDetailLinkPolicy : ILinkPolicy<AtprotoRecordDto
         // Self link
         yield return new LinkDefinition(
             LinkRelations.Self,
-            RouteNames.GetAtprotoRecordById,
+            RouteNames.GetAtprotoRecordEntryById,
             new { id = dto.Id },
             "GET",
             $"ATProto record: {dto.Collection}");
@@ -26,21 +26,10 @@ public sealed class AtprotoRecordDetailLinkPolicy : ILinkPolicy<AtprotoRecordDto
         // Collection link
         yield return new LinkDefinition(
             LinkRelations.Collection,
-            RouteNames.GetAtprotoRecords,
+            RouteNames.GetAtprotoRecordEntries,
             null,
             "GET",
             "All ATProto records");
-
-        // By URI link (ATProto canonical link)
-        if (!string.IsNullOrEmpty(dto.Uri))
-        {
-            yield return new LinkDefinition(
-                "by-uri",
-                RouteNames.GetAtprotoRecordByUri,
-                new { uri = dto.Uri },
-                "GET",
-                "Record by AT URI");
-        }
 
         // DID link (indexed DID reference)
         yield return new LinkDefinition(
@@ -53,7 +42,7 @@ public sealed class AtprotoRecordDetailLinkPolicy : ILinkPolicy<AtprotoRecordDto
         // Delete link - requires authentication
         yield return new LinkDefinition(
             "delete",
-            RouteNames.DeleteAtprotoRecord,
+            RouteNames.DeleteAtprotoRecordEntry,
             new { id = dto.Id },
             "DELETE",
             "Delete record",
@@ -73,7 +62,7 @@ public sealed class AtprotoRecordCollectionLinkPolicy : ICollectionLinkPolicy<At
         // Self link for item
         yield return new LinkDefinition(
             LinkRelations.Self,
-            RouteNames.GetAtprotoRecordById,
+            RouteNames.GetAtprotoRecordEntryById,
             new { id = dto.Id },
             "GET",
             $"ATProto record: {dto.Collection}");
@@ -93,7 +82,7 @@ public sealed class AtprotoRecordCollectionLinkPolicy : ICollectionLinkPolicy<At
         // Create link - requires authentication
         yield return new LinkDefinition(
             "create",
-            RouteNames.CreateAtprotoRecord,
+            RouteNames.CreateAtprotoRecordEntry,
             null,
             "POST",
             "Create ATProto record",

@@ -61,7 +61,7 @@ public class UserAuthenticationTokenController : ControllerBase
     [EndpointDescription("Retrieve details of a specific user authentication token")]
     [Authorize]
     [ProducesResponseType(typeof(UserAuthenticationTokenDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<UserAuthenticationTokenDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
@@ -122,7 +122,7 @@ public class UserAuthenticationTokenController : ControllerBase
     [EndpointDescription("Delete a user authentication token")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteUserAuthenticationTokenCommand { Id = id };

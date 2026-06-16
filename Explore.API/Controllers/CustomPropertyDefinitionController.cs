@@ -30,6 +30,24 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class CustomPropertyDefinitionController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "customPropertyDefinition",
+        "Custom property definition validation failed",
+        "Custom property definition update failed.");
+
+    private static readonly ApiValidationProblemDescriptor PurgeValidationProblem = new(
+        "customPropertyDefinition",
+        "Custom property definition purge failed",
+        "Custom property definition purge failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor PurgeNotFoundProblem = new(
+        "Custom property definition not found",
+        "Custom-property definition not found.");
+
+    private static readonly ApiNotFoundProblemDescriptor DefinitionNotFoundProblem = new(
+        "Custom property definition not found",
+        "Custom property definition not found.");
+
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<CustomPropertyDefinitionDto, CustomPropertyDefinitionListDto> _resourceAssembler;
 
@@ -52,7 +70,7 @@ public class CustomPropertyDefinitionController : ControllerBase
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<CustomPropertyDefinitionListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<CustomPropertyDefinitionListDto>>> GetAll(
         [FromQuery] CustomPropertyDefinitionListQueryRequest query,
@@ -85,13 +103,15 @@ public class CustomPropertyDefinitionController : ControllerBase
     [EndpointDescription("Get full details of a custom property definition including its options. " +
         "Response includes links to related resources (events, members).")]
     [ProducesResponseType(typeof(HalResource<CustomPropertyDefinitionDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<CustomPropertyDefinitionDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var definition = await _mediator.Send(new GetCustomPropertyDefinitionDetailsRequest { Id = id }, cancellationToken);
         if (definition == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(DefinitionNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(definition, HttpContext);
         return Ok(halResource);
@@ -107,9 +127,9 @@ public class CustomPropertyDefinitionController : ControllerBase
     [EndpointDescription("Create a new shared custom-property definition for Organization or Group scope.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateCustomPropertyDefinitionDto customPropertyDefinition, CancellationToken cancellationToken = default)
     {
         var command = new CreateCustomPropertyDefinitionCommand
@@ -140,18 +160,18 @@ public class CustomPropertyDefinitionController : ControllerBase
     [EndpointDescription("Update an existing shared custom-property definition and replace its option set.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateCustomPropertyDefinitionDto updateDto, CancellationToken cancellationToken = default)
     {
         if (id != updateDto.Id)
         {
-            return BadRequest(new { error = "CustomPropertyDefinition ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Custom property definition ID mismatch.");
         }
 
         var command = new UpdateCustomPropertyDefinitionCommand
@@ -176,8 +196,8 @@ public class CustomPropertyDefinitionController : ControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteCustomPropertyDefinition)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteCustomPropertyDefinitionCommand { Id = id };
@@ -194,10 +214,10 @@ public class CustomPropertyDefinitionController : ControllerBase
     [HttpDelete("{id:guid}/purge", Name = RouteNames.PurgeCustomPropertyDefinition)]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<CustomPropertyPurgeResultDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<CustomPropertyPurgeResultDto>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<CustomPropertyPurgeResultDto>>> Purge(
         Guid id,
         [FromBody] PurgeCustomPropertyDefinitionDto purgeDto,
@@ -215,7 +235,7 @@ public class CustomPropertyDefinitionController : ControllerBase
         }
 
         return string.Equals(result.Message, "Custom-property definition not found.", StringComparison.Ordinal)
-            ? NotFound(result)
-            : BadRequest(result);
+            ? this.ToNotFoundProblem(PurgeNotFoundProblem)
+            : this.ToCommandValidationProblem(result, PurgeValidationProblem);
     }
 }

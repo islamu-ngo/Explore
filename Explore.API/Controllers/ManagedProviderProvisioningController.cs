@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
@@ -21,6 +22,11 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Admin)]
 public class ManagedProviderProvisioningController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor ProvisioningValidationProblem = new(
+        "managedProviderProvisioning",
+        "Managed provider provisioning validation failed",
+        "Managed provider client provisioning failed.");
+
     private readonly IMediator _mediator;
     private readonly IAdminContext _adminContext;
 
@@ -34,15 +40,15 @@ public class ManagedProviderProvisioningController : ControllerBase
     [EndpointSummary("Ensure managed provider client provisioning")]
     [EndpointDescription("Creates or rehydrates a provider-customer tenant, external admin user, tenant-admin membership, and optional organizer actor. Requires instance administrator authority.")]
     [ProducesResponseType(typeof(BaseCommandResponse<ManagedProviderClientProvisioningResultDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<ManagedProviderClientProvisioningResultDto>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<ManagedProviderClientProvisioningResultDto>>> EnsureClientProvisioned(
         [FromBody] ManagedProviderClientProvisioningDto provisioningDto,
         CancellationToken cancellationToken = default)
     {
         if (!await _adminContext.IsInstanceAdminAsync(cancellationToken))
         {
-            return Forbid();
+            return this.ToForbiddenProblem(detail: "Instance administrator authority is required to provision managed provider clients.");
         }
 
         var response = await _mediator.Send(
@@ -51,7 +57,7 @@ public class ManagedProviderProvisioningController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, ProvisioningValidationProblem);
         }
 
         return Ok(response);

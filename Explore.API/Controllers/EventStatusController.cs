@@ -48,7 +48,7 @@ public class EventStatusController : ControllerBase
     [EndpointDescription("Retrieve details of a specific event lifecycle status")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(EventStatusDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventStatusDto>> GetById(int id, CancellationToken cancellationToken = default)
     {

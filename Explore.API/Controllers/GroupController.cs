@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.Group;
@@ -28,6 +29,30 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class GroupController : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "group",
+        "Group validation failed",
+        "Group creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "group",
+        "Group validation failed",
+        "Group update failed.");
+
+    private static readonly ApiValidationProblemDescriptor ApprovalValidationProblem = new(
+        "group",
+        "Group validation failed",
+        "Group approval status update failed.");
+
+    private static readonly ApiValidationProblemDescriptor DeleteValidationProblem = new(
+        "group",
+        "Group validation failed",
+        "Group deletion failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor GroupNotFoundProblem = new(
+        "Group not found",
+        "Group not found.");
+
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<GroupDto, GroupListDto> _resourceAssembler;
 
@@ -45,7 +70,7 @@ public class GroupController : ExploreControllerBase
     [EndpointSummary("Get all Groups")]
     [EndpointDescription("Get a paginated list of all Groups. Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(HalCollectionResource<GroupListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<GroupListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
@@ -72,8 +97,8 @@ public class GroupController : ExploreControllerBase
     [EndpointSummary("Get my Groups")]
     [EndpointDescription("Get a paginated list of groups where the current user is a member.")]
     [ProducesResponseType(typeof(HalCollectionResource<GroupListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<GroupListDto>>> GetMyGroups(
         [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
@@ -81,7 +106,7 @@ public class GroupController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized("User ID not found in token");
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var result = await _mediator.Send(new GetMyGroupsRequest
@@ -106,14 +131,16 @@ public class GroupController : ExploreControllerBase
     [EndpointSummary("Get Group Details")]
     [EndpointDescription("Get full details of a group.")]
     [ProducesResponseType(typeof(HalResource<GroupDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<GroupDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var group = await _mediator.Send(new GetGroupDetailsRequest { Id = id }, cancellationToken);
 
         if (group == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(GroupNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(group, HttpContext);
         return Ok(halResource);
@@ -126,15 +153,15 @@ public class GroupController : ExploreControllerBase
     [EndpointDescription("Create a new group. The authenticated user becomes the creator.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateGroupDto group, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new CreateGroupCommand { GroupDto = group }, cancellationToken);
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(RouteNames.GetGroupById, new { id = response.Id }, response);
@@ -147,8 +174,8 @@ public class GroupController : ExploreControllerBase
     [EndpointDescription("Update an existing group. User must have group management permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateGroupDto updateDto,
@@ -157,7 +184,7 @@ public class GroupController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized("User ID not found in token");
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new UpdateGroupCommand
@@ -171,7 +198,7 @@ public class GroupController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -179,15 +206,15 @@ public class GroupController : ExploreControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("updatestatustype/{id:guid}", Name = RouteNames.UpdateGroupApprovalStatus)]
+    [HttpPut("{id:guid}/approval-status", Name = RouteNames.UpdateGroupApprovalStatus)]
     [EndpointSummary("Update Group Approval Status")]
     [EndpointDescription("Update the approval status of a group. Requires group update authorization.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateApprovalStatus(
         Guid id,
         [FromBody] UpdateGroupApprovalStatusDto approvalStatus,
@@ -201,7 +228,7 @@ public class GroupController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, ApprovalValidationProblem);
         }
 
         return Ok(response);
@@ -212,14 +239,14 @@ public class GroupController : ExploreControllerBase
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteGroup)]
     [EndpointSummary("Delete Group")]
     [EndpointDescription("Delete a group. User must have group deletion permission.")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized("User ID not found in token");
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var response = await _mediator.Send(new DeleteGroupCommand
@@ -230,7 +257,7 @@ public class GroupController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, DeleteValidationProblem);
         }
 
         return Ok(response);

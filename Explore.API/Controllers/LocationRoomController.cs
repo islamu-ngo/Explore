@@ -39,6 +39,10 @@ public class LocationRoomController : ControllerBase
         "Location room validation failed",
         "Location room update failed.");
 
+    private static readonly ApiNotFoundProblemDescriptor LocationRoomNotFoundProblem = new(
+        "Location room not found",
+        "Location room not found.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<LocationRoomController> _logger;
     private readonly IResourceAssembler<LocationRoomDto, LocationRoomListDto> _resourceAssembler;
@@ -85,13 +89,15 @@ public class LocationRoomController : ControllerBase
     [EndpointSummary("Get Room Details")]
     [EndpointDescription("Get detailed information about a specific location room.")]
     [ProducesResponseType(typeof(HalResource<LocationRoomDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<LocationRoomDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var room = await _mediator.Send(new GetLocationRoomDetailRequest { Id = id }, cancellationToken);
         if (room == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(LocationRoomNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(room, HttpContext);
         return Ok(halResource);
@@ -108,7 +114,7 @@ public class LocationRoomController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateLocationRoomDto room, CancellationToken cancellationToken = default)
     {
         var command = new CreateLocationRoomCommand { LocationRoomDto = room };
@@ -136,8 +142,8 @@ public class LocationRoomController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateLocationRoomDto room, CancellationToken cancellationToken = default)
     {
         if (id != room.Id)
@@ -165,8 +171,8 @@ public class LocationRoomController : ControllerBase
     [EndpointSummary("Delete Room")]
     [EndpointDescription("Delete a location room.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteLocationRoomCommand { Id = id };

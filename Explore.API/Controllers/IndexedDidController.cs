@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.Features.IndexedDids.Requests.Commands;
@@ -22,6 +23,15 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class IndexedDidController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "indexedDid",
+        "IndexedDid validation failed",
+        "IndexedDid update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor IndexedDidNotFoundProblem = new(
+        "Indexed DID not found",
+        "Indexed DID not found.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<IndexedDidController> _logger;
     private readonly IResourceAssembler<IndexedDidDto, IndexedDidListDto> _resourceAssembler;
@@ -60,7 +70,9 @@ public class IndexedDidController : ControllerBase
     {
         var indexedDid = await _mediator.Send(new GetIndexedDidDetailsRequest { Did = did }, cancellationToken);
         if (indexedDid == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(IndexedDidNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(indexedDid, HttpContext);
         return Ok(halResource);
@@ -85,7 +97,7 @@ public class IndexedDidController : ControllerBase
     {
         if (did != dto.Did)
         {
-            return BadRequest(new { error = "IndexedDid DID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "IndexedDid DID mismatch.");
         }
 
         var command = new UpdateIndexedDidCommand { IndexedDidDto = dto };
@@ -93,7 +105,7 @@ public class IndexedDidController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.API.Services.Calendar;
@@ -37,6 +38,40 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventController : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "event",
+        "Event validation failed",
+        "Event creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor PublishValidationProblem = new(
+        "event",
+        "Event validation failed",
+        "Event publishing failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "event",
+        "Event validation failed",
+        "Event update failed.");
+
+    private static readonly ApiValidationProblemDescriptor StatusValidationProblem = new(
+        "event",
+        "Event validation failed",
+        "Event status update failed.");
+
+    private static readonly ApiValidationProblemDescriptor IslamicAspectValidationProblem = new(
+        "eventIslamicAspect",
+        "Event Islamic aspect validation failed",
+        "Event Islamic aspect update failed.");
+
+    private static readonly ApiValidationProblemDescriptor TechAspectValidationProblem = new(
+        "eventTechAspect",
+        "Event tech aspect validation failed",
+        "Event tech aspect update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor EventNotFoundProblem = new(
+        "Event not found",
+        "Event not found.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<EventController> _logger;
     private readonly IResourceAssembler<EventDto, EventListDto> _resourceAssembler;
@@ -151,8 +186,8 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Get a paginated list of events created by the current user's organizations. " +
         "Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetMyEvents(
         [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
@@ -160,7 +195,9 @@ public class EventController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
 
         if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
+        {
+            return this.ToAuthenticationRequiredProblem();
+        }
 
         var result = await _mediator.Send(new GetMyEventsRequest
         {
@@ -187,7 +224,7 @@ public class EventController : ExploreControllerBase
     [EndpointSummary("Get Event Creation Context")]
     [EndpointDescription("Returns tenant event publishing policy and the personal, organization, and group publisher options available to the current user.")]
     [ProducesResponseType(typeof(EventCreationContextDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<EventCreationContextDto>> GetCreationContext(CancellationToken cancellationToken = default)
     {
         var context = await _mediator.Send(new GetEventCreationContextRequest(), cancellationToken);
@@ -203,13 +240,13 @@ public class EventController : ExploreControllerBase
     [EndpointSummary("Get Event Session Create Context")]
     [EndpointDescription("Returns inherited event defaults, location options, room options, and program sections for the dedicated program item composer.")]
     [ProducesResponseType(typeof(EventSessionCreateContextDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventSessionCreateContextDto>> GetSessionCreateContext(Guid id, CancellationToken cancellationToken = default)
     {
         var context = await _mediator.Send(new GetEventSessionCreateContextRequest { EventId = id }, cancellationToken);
         if (context is null)
-            return NotFound();
+            return this.ToNotFoundProblem(EventNotFoundProblem);
 
         return Ok(context);
     }
@@ -223,13 +260,13 @@ public class EventController : ExploreControllerBase
     [EndpointSummary("Get Event Program Summary")]
     [EndpointDescription("Returns program sections, local-day groupings, program items, and server-generated readiness warnings for the event program.")]
     [ProducesResponseType(typeof(EventProgramSummaryDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventProgramSummaryDto>> GetProgramSummary(Guid id, CancellationToken cancellationToken = default)
     {
         var summary = await _mediator.Send(new GetEventProgramSummaryRequest { EventId = id }, cancellationToken);
         if (summary is null)
-            return NotFound();
+            return this.ToNotFoundProblem(EventNotFoundProblem);
 
         return Ok(summary);
     }
@@ -244,13 +281,13 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Get full details of an event including actor information, sessions, and related resources. " +
         "Response includes links to related resources (sessions, categories, tags).")]
     [ProducesResponseType(typeof(HalResource<EventDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id }, cancellationToken);
         if (@event == null)
-            return NotFound();
+            return this.ToNotFoundProblem(EventNotFoundProblem);
 
         var halResource = await _resourceAssembler.ToResource(@event, HttpContext);
         return Ok(halResource);
@@ -266,14 +303,14 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Downloads a published public event as an RFC 5545 iCalendar file.")]
     [Produces("text/calendar")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<IActionResult> GetCalendar(Guid id, CancellationToken cancellationToken = default)
     {
         var export = await _mediator.Send(new GetEventCalendarExportRequest(id), cancellationToken);
         if (export is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(EventNotFoundProblem);
         }
 
         Uri canonicalUrl = new(_publicUrlBuilder.GetEventUrl(export.EventId));
@@ -298,8 +335,8 @@ public class EventController : ExploreControllerBase
         "If neither is provided, the event is created under the user's personal actor when tenant policy allows user-reported publishing.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDraftRequestDto draft, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventCommand { Request = draft.ToCreateEventRequest() };
@@ -307,7 +344,7 @@ public class EventController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -325,12 +362,12 @@ public class EventController : ExploreControllerBase
     [EndpointSummary("Get Event Publish Readiness")]
     [EndpointDescription("Returns machine-readable readiness errors that block publishing an event.")]
     [ProducesResponseType(typeof(EventPublishReadinessDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventPublishReadinessDto>> GetPublishReadiness(Guid id, CancellationToken cancellationToken = default)
     {
         var readiness = await _mediator.Send(new GetEventPublishReadinessRequest { Id = id }, cancellationToken);
-        return readiness is null ? NotFound() : Ok(readiness);
+        return readiness is null ? this.ToNotFoundProblem(EventNotFoundProblem) : Ok(readiness);
     }
 
     /// <summary>
@@ -343,9 +380,9 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Publishes a draft event after readiness and concurrency validation. Side effects are written to the transactional outbox.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Publish(Guid id, [FromBody] PublishEventRequestDto request, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new PublishEventCommand
@@ -357,8 +394,8 @@ public class EventController : ExploreControllerBase
         if (!response.Success)
         {
             return response.FailureCode == "event_publish_concurrency_conflict"
-                ? Conflict(response)
-                : BadRequest(response);
+                ? this.ToCommandConflictProblem(response, "Event publish conflict", "Event publishing conflict.")
+                : this.ToCommandValidationProblem(response, PublishValidationProblem);
         }
 
         return Ok(response);
@@ -374,10 +411,10 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Update scalar event draft fields. Lifecycle status and session-derived program projection fields are server-owned and are not accepted by this contract.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDraftRequestDto draft, CancellationToken cancellationToken = default)
     {
         var command = new UpdateEventDraftCommand
@@ -389,7 +426,7 @@ public class EventController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -405,9 +442,9 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Update an event lifecycle status through a dedicated contract. Draft metadata updates must use the scalar draft update endpoint.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateStatus(Guid id, [FromBody] UpdateEventStatusDto dto, CancellationToken cancellationToken = default)
     {
         var command = new UpdateEventCommand
@@ -419,7 +456,7 @@ public class EventController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, StatusValidationProblem);
         }
 
         return Ok(response);
@@ -434,20 +471,16 @@ public class EventController : ExploreControllerBase
     [EndpointSummary("Delete Event")]
     [EndpointDescription("Delete an event. User must be a member of the organization that owns the event.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
 
         if (string.IsNullOrEmpty(userId))
         {
-            return Problem(
-                title: "Unauthorized",
-                detail: "Authentication is required to access this resource.",
-                statusCode: StatusCodes.Status401Unauthorized,
-                type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
+            return this.ToAuthenticationRequiredProblem();
         }
 
         var command = new DeleteEventCommand { Id = id, UserId = userId };
@@ -468,7 +501,7 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Get the Islamic-specific characteristics of an event (Madhab, prayer timing, gender mode). " +
         "Returns 404 if the event doesn't have an Islamic aspect configured.")]
     [ProducesResponseType(typeof(EventIslamicAspectDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventIslamicAspectDto>> GetIslamicAspect(Guid id, CancellationToken cancellationToken = default)
     {
@@ -488,9 +521,9 @@ public class EventController : ExploreControllerBase
         "Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpsertIslamicAspect(
         Guid id,
         [FromBody] CreateUpdateIslamicAspectDto aspectDto, CancellationToken cancellationToken = default)
@@ -507,9 +540,10 @@ public class EventController : ExploreControllerBase
         {
             if (response.Message == "Event not found.")
             {
-                return NotFound(response);
+                return this.ToNotFoundProblem(EventNotFoundProblem);
             }
-            return BadRequest(response);
+
+            return this.ToCommandValidationProblem(response, IslamicAspectValidationProblem);
         }
 
         return Ok(response);
@@ -525,8 +559,8 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Removes the Islamic-specific characteristics from an event. " +
         "The event itself is not deleted.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteIslamicAspect(Guid id, CancellationToken cancellationToken = default)
     {
         await _mediator.Send(new DeleteEventIslamicAspectCommand { EventId = id }, cancellationToken);
@@ -544,7 +578,7 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Get the tech/developer-specific characteristics of an event (skill level, hackathon details, tech stack). " +
         "Returns 404 if the event doesn't have a Tech aspect configured.")]
     [ProducesResponseType(typeof(EventTechAspectDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventTechAspectDto>> GetTechAspect(Guid id, CancellationToken cancellationToken = default)
     {
@@ -564,9 +598,9 @@ public class EventController : ExploreControllerBase
         "Includes skill level requirements, hackathon track, tech stack tags, and competition details.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpsertTechAspect(
         Guid id,
         [FromBody] CreateUpdateTechAspectDto aspectDto, CancellationToken cancellationToken = default)
@@ -583,9 +617,10 @@ public class EventController : ExploreControllerBase
         {
             if (response.Message == "Event not found.")
             {
-                return NotFound(response);
+                return this.ToNotFoundProblem(EventNotFoundProblem);
             }
-            return BadRequest(response);
+
+            return this.ToCommandValidationProblem(response, TechAspectValidationProblem);
         }
 
         return Ok(response);
@@ -601,8 +636,8 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Removes the tech/developer-specific characteristics from an event. " +
         "The event itself is not deleted.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteTechAspect(Guid id, CancellationToken cancellationToken = default)
     {
         await _mediator.Send(new DeleteEventTechAspectCommand { EventId = id }, cancellationToken);

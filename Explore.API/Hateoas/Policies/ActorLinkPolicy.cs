@@ -35,14 +35,6 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
             "GET",
             "All actors");
 
-        // Events by actor link
-        yield return new LinkDefinition(
-            "events",
-            RouteNames.GetActorEvents,
-            new { actorId = dto.Id },
-            "GET",
-            "Events by this actor");
-
         // Organization link (if organization actor)
         if (dto.OrganizationId.HasValue)
         {
@@ -105,14 +97,6 @@ public sealed class ActorCollectionLinkPolicy : ICollectionLinkPolicy<ActorListD
             new { id = dto.Id },
             "GET",
             dto.DisplayName);
-
-        // Events by actor
-        yield return new LinkDefinition(
-            "events",
-            RouteNames.GetActorEvents,
-            new { actorId = dto.Id },
-            "GET",
-            "Events");
 
         if (CanSubscribe(dto.ActorTypeId))
         {

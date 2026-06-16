@@ -18,13 +18,13 @@ internal sealed class GlobalExceptionHandler(
     private static readonly IReadOnlyDictionary<int, string> ProblemTypeUris =
         new Dictionary<int, string>
         {
-            [StatusCodes.Status400BadRequest] = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-            [StatusCodes.Status401Unauthorized] = "https://tools.ietf.org/html/rfc9110#section-15.5.2",
-            [StatusCodes.Status403Forbidden] = "https://tools.ietf.org/html/rfc9110#section-15.5.4",
-            [StatusCodes.Status404NotFound] = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
-            [StatusCodes.Status409Conflict] = "https://tools.ietf.org/html/rfc9110#section-15.5.10",
-            [StatusCodes.Status422UnprocessableEntity] = "https://tools.ietf.org/html/rfc9110#section-15.5.21",
-            [StatusCodes.Status500InternalServerError] = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+            [StatusCodes.Status400BadRequest] = ApiProblemTypes.BadRequest,
+            [StatusCodes.Status401Unauthorized] = ApiProblemTypes.Unauthorized,
+            [StatusCodes.Status403Forbidden] = ApiProblemTypes.Forbidden,
+            [StatusCodes.Status404NotFound] = ApiProblemTypes.NotFound,
+            [StatusCodes.Status409Conflict] = ApiProblemTypes.Conflict,
+            [StatusCodes.Status422UnprocessableEntity] = ApiProblemTypes.UnprocessableEntity,
+            [StatusCodes.Status500InternalServerError] = ApiProblemTypes.InternalServerError,
         };
 
     public async ValueTask<bool> TryHandleAsync(
@@ -32,36 +32,43 @@ internal sealed class GlobalExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
-        var (statusCode, title, detail) = exception switch
+        var (statusCode, title, detail, code) = exception switch
         {
             BadRequestException badRequestException => (
                 StatusCodes.Status400BadRequest,
                 "Bad request",
-                badRequestException.Message),
+                badRequestException.Message,
+                ApiProblemCodes.ValidationFailed),
             NotFoundException notFoundException => (
                 StatusCodes.Status404NotFound,
                 "Resource not found",
-                notFoundException.Message),
+                notFoundException.Message,
+                ApiProblemCodes.ResourceNotFound),
             UnauthorizedAccessException => (
                 StatusCodes.Status401Unauthorized,
                 "Unauthorized",
-                "Authentication is required to access this resource."),
+                "Authentication is required to access this resource.",
+                ApiProblemCodes.AuthenticationRequired),
             AuthorizationException => (
                 StatusCodes.Status403Forbidden,
                 "Forbidden",
-                "You do not have permission to perform this action."),
+                "You do not have permission to perform this action.",
+                ApiProblemCodes.Forbidden),
             ConcurrencyConflictException concurrencyConflictException => (
                 StatusCodes.Status409Conflict,
                 "Concurrency conflict",
-                concurrencyConflictException.Message),
+                concurrencyConflictException.Message,
+                ApiProblemCodes.ConcurrencyConflict),
             QuotaExceededException quotaExceededException => (
                 QuotaProblemDetailsFactory.StatusCode,
                 QuotaProblemDetailsFactory.Title,
-                quotaExceededException.Message),
+                quotaExceededException.Message,
+                "quota_exceeded"),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "Internal server error",
-                hostEnvironment.IsDevelopment() ? exception.Message : "An unexpected error occurred.")
+                hostEnvironment.IsDevelopment() ? exception.Message : "An unexpected error occurred.",
+                ApiProblemCodes.UnexpectedError)
         };
 
         if (statusCode >= StatusCodes.Status500InternalServerError)
@@ -98,6 +105,11 @@ internal sealed class GlobalExceptionHandler(
             Type = typeUri,
             Instance = httpContext.Request.Path
         };
+
+        if (exception is not ConcurrencyConflictException and not QuotaExceededException)
+        {
+            problemDetails.Extensions["code"] = code;
+        }
 
         if (exception is ConcurrencyConflictException concurrencyConflict)
         {

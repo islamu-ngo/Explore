@@ -1,5 +1,5 @@
 // ABOUTME: HATEOAS link policies for tenant user role grant detail and collection views.
-// ABOUTME: Provides self, user, tenant, create, and revoke links with permission checks.
+// ABOUTME: Provides self, tenant, create, and revoke links with permission checks.
 
 namespace Explore.API.Hateoas.Policies;
 
@@ -24,13 +24,6 @@ public sealed class TenantUserRoleGrantDetailLinkPolicy : ILinkPolicy<TenantUser
             new { id = dto.Id },
             "GET",
             $"{dto.UserFullName} - {dto.RoleName}");
-
-        yield return new LinkDefinition(
-            "user",
-            RouteNames.GetUserById,
-            new { id = dto.UserId },
-            "GET",
-            dto.UserFullName);
 
         yield return new LinkDefinition(
             "tenant",
@@ -64,12 +57,6 @@ public sealed class TenantUserRoleGrantCollectionLinkPolicy : ICollectionLinkPol
             "GET",
             $"{dto.UserFullName} - {dto.RoleName}");
 
-        yield return new LinkDefinition(
-            "user",
-            RouteNames.GetUserById,
-            new { id = dto.UserId },
-            "GET",
-            dto.UserFullName);
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)

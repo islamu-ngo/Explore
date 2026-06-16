@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.ActorSubscription;
@@ -24,6 +25,25 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public sealed class ActorSubscriptionController : ExploreControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor SubscribeValidationProblem = new(
+        "actorSubscription",
+        "Actor subscription validation failed",
+        "Actor subscription creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "actorSubscription",
+        "Actor subscription validation failed",
+        "Actor subscription update failed.");
+
+    private static readonly ApiValidationProblemDescriptor UnsubscribeValidationProblem = new(
+        "actorSubscription",
+        "Actor subscription validation failed",
+        "Actor subscription removal failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor ActorSubscriptionNotFoundProblem = new(
+        "Actor subscription not found",
+        "Actor subscription not found.");
+
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<ActorSubscriptionDto, ActorSubscriptionListDto> _resourceAssembler;
 
@@ -76,7 +96,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
 
         if (subscription is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(ActorSubscriptionNotFoundProblem);
         }
 
         var halResource = await _resourceAssembler.ToResource(subscription, HttpContext);
@@ -88,7 +108,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
     [EndpointDescription("Subscribe the authenticated tenant user to an organization or group actor.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Subscribe([FromBody] SubscribeToActorDto dto, CancellationToken cancellationToken = default)
@@ -97,7 +117,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, SubscribeValidationProblem);
         }
 
         return Ok(response);
@@ -108,7 +128,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
     [EndpointDescription("Update notification delivery level for the authenticated tenant user's actor subscription.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -123,7 +143,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -133,7 +153,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
     [EndpointSummary("Unsubscribe from actor")]
     [EndpointDescription("Unsubscribe the authenticated tenant user from an actor while preserving subscription history.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -148,7 +168,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UnsubscribeValidationProblem);
         }
 
         return Ok(response);

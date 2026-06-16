@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Appearance;
 using Explore.Application.Features.Appearance.Requests.Commands;
@@ -22,6 +23,20 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class UiThemeAdminController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "uiTheme",
+        "UI theme validation failed",
+        "UI theme creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "uiTheme",
+        "UI theme validation failed",
+        "UI theme update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor UiThemeNotFoundProblem = new(
+        "UI theme not found",
+        "UI theme not found.");
+
     private readonly IMediator _mediator;
 
     public UiThemeAdminController(IMediator mediator)
@@ -33,7 +48,7 @@ public class UiThemeAdminController : ControllerBase
     [EndpointSummary("Get UI Theme Catalog")]
     [EndpointDescription("Returns the platform or tenant-owned UI theme catalog. Scope is controlled by the isPlatformCatalog query parameter.")]
     [ProducesResponseType(typeof(IReadOnlyList<UiThemeListItemDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<IReadOnlyList<UiThemeListItemDto>>> GetCatalog(
         [FromQuery] bool isPlatformCatalog = false,
         [FromQuery] bool activeOnly = false,
@@ -52,8 +67,8 @@ public class UiThemeAdminController : ControllerBase
     [EndpointSummary("Get UI Theme Details")]
     [EndpointDescription("Returns full UI theme details including light/dark palettes for administrative editing.")]
     [ProducesResponseType(typeof(UiThemeDetailsDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<UiThemeDetailsDto>> GetDetails(
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
@@ -61,7 +76,7 @@ public class UiThemeAdminController : ControllerBase
         var theme = await _mediator.Send(new GetUiThemeDetailsQuery { Id = id }, cancellationToken);
         if (theme is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(UiThemeNotFoundProblem);
         }
 
         return Ok(theme);
@@ -71,8 +86,8 @@ public class UiThemeAdminController : ControllerBase
     [EndpointSummary("Create UI Theme")]
     [EndpointDescription("Creates a platform or tenant-owned UI theme. Platform themes require instance admin privileges.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create(
         [FromBody] CreateUiThemeDto dto,
         CancellationToken cancellationToken = default)
@@ -86,19 +101,19 @@ public class UiThemeAdminController : ControllerBase
 
         if (response.Errors?.Count > 0)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
-        return Unauthorized(response);
+        return this.ToForbiddenProblem(detail: response.Message ?? "UI theme creation is not authorized for the current principal.");
     }
 
     [HttpPut("{id:guid}", Name = RouteNames.UpdateUiTheme)]
     [EndpointSummary("Update UI Theme")]
     [EndpointDescription("Updates an existing UI theme. The caller must match the theme's scope (platform or tenant) authorization.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         [FromRoute] Guid id,
         [FromBody] UpdateUiThemeDto dto,
@@ -106,12 +121,7 @@ public class UiThemeAdminController : ControllerBase
     {
         if (id != dto.Id)
         {
-            return BadRequest(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Route id does not match payload id.",
-                Errors = ["The theme id in the URL must match the id in the request body."]
-            });
+            return this.ToValidationProblem(UpdateValidationProblem, "The theme id in the URL must match the id in the request body.");
         }
 
         var response = await _mediator.Send(new UpdateUiThemeCommand { UiThemeDto = dto }, cancellationToken);
@@ -123,20 +133,20 @@ public class UiThemeAdminController : ControllerBase
 
         if (response.Errors?.Count > 0)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
-        return Unauthorized(response);
+        return this.ToForbiddenProblem(detail: response.Message ?? "UI theme update is not authorized for the current principal.");
     }
 
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteUiTheme)]
     [EndpointSummary("Delete UI Theme")]
     [EndpointDescription("Deletes a UI theme. The theme must not be marked as default for its scope; promote another theme first.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
@@ -144,7 +154,7 @@ public class UiThemeAdminController : ControllerBase
         var deleted = await _mediator.Send(new DeleteUiThemeCommand { Id = id }, cancellationToken);
         if (!deleted)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(UiThemeNotFoundProblem);
         }
 
         return NoContent();

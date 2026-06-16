@@ -1,5 +1,5 @@
 // ABOUTME: HATEOAS link policies for GroupMember detail and collection views.
-// ABOUTME: Mirrors OrganizationMemberLinkPolicy — provides self, group, user, edit, delete links.
+// ABOUTME: Mirrors OrganizationMemberLinkPolicy — provides self, group, edit, delete links.
 
 namespace Explore.API.Hateoas.Policies;
 
@@ -27,13 +27,6 @@ public sealed class GroupMemberDetailLinkPolicy : ILinkPolicy<GroupMemberDto>
             new { id = dto.GroupId },
             "GET",
             dto.GroupFullName);
-
-        yield return new LinkDefinition(
-            "user",
-            RouteNames.GetUserById,
-            new { id = dto.UserId },
-            "GET",
-            dto.UserFullName);
 
         yield return new LinkDefinition(
             LinkRelations.Edit,
@@ -65,13 +58,6 @@ public sealed class GroupMemberCollectionLinkPolicy : ICollectionLinkPolicy<Grou
             new { id = dto.Id },
             "GET",
             $"{dto.UserFullName} - {dto.RoleName}");
-
-        yield return new LinkDefinition(
-            "user",
-            RouteNames.GetUserById,
-            new { id = dto.UserId },
-            "GET",
-            dto.UserFullName);
 
         yield return new LinkDefinition(
             LinkRelations.Edit,

@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
@@ -27,6 +28,31 @@ namespace Explore.API.Controllers;
 public class InstanceOnboardingController : ExploreControllerBase
 {
     private const string PreflightBlockedMessage = "Instance cannot be launched because critical launch requirements are not met. Please review the blocking issues and try again.";
+
+    private static readonly ApiValidationProblemDescriptor CompleteValidationProblem = new(
+        "instanceOnboarding",
+        "Instance onboarding validation failed",
+        "Instance onboarding completion failed.");
+
+    private static readonly ApiValidationProblemDescriptor AuthProviderValidationProblem = new(
+        "instanceAuthProviderConfiguration",
+        "Instance auth-provider configuration validation failed",
+        "Instance auth-provider configuration update failed.");
+
+    private static readonly ApiValidationProblemDescriptor AuthorizationProviderValidationProblem = new(
+        "instanceAuthorizationProviderConfiguration",
+        "Instance authorization-provider configuration validation failed",
+        "Instance authorization-provider configuration update failed.");
+
+    private static readonly ApiValidationProblemDescriptor AuthorizationPolicySyncValidationProblem = new(
+        "instanceAuthorizationPolicyPackage",
+        "Instance authorization policy package validation failed",
+        "Instance authorization policy package sync failed.");
+
+    private static readonly ApiValidationProblemDescriptor AuthorizationProviderVerifyValidationProblem = new(
+        "instanceAuthorizationProviderVerification",
+        "Instance authorization-provider verification failed",
+        "Instance authorization-provider endpoint verification failed.");
 
     private readonly IMediator _mediator;
     private readonly ISetupSecretProvider _setupSecretProvider;
@@ -61,7 +87,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [EndpointSummary("Complete Instance Onboarding")]
     [EndpointDescription("Completes first-run onboarding, assigns the current user as instance admin, and persists deployment mode.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] CompleteInstanceOnboardingRequest settings, CancellationToken cancellationToken = default)
     {
         var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
@@ -74,21 +100,13 @@ public class InstanceOnboardingController : ExploreControllerBase
                 User.FindFirst("sub")?.Value,
                 User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
                 User.FindFirst("sid")?.Value);
-            return Unauthorized(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Session expired. Please sign in again."
-            });
+            return this.ToAuthenticationRequiredProblem(detail: "Session expired. Please sign in again.");
         }
 
         var preflight = await _mediator.Send(new GetOnboardingPreflightQuery(), cancellationToken);
         if (!preflight.IsReadyToLaunch)
         {
-            return BadRequest(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = PreflightBlockedMessage
-            });
+            return this.ToValidationProblem(CompleteValidationProblem, PreflightBlockedMessage);
         }
 
         var providerSubject = ResolveProviderSubject() ?? currentUserId.Value.ToString();
@@ -114,7 +132,7 @@ public class InstanceOnboardingController : ExploreControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CompleteValidationProblem);
         }
 
         _logger.LogWarning(
@@ -136,7 +154,10 @@ public class InstanceOnboardingController : ExploreControllerBase
     public ActionResult ValidateSecret([FromBody] ValidateSetupSecretRequest request)
     {
         if (!_setupSecretProvider.IsSetupModeActive)
-            return StatusCode(StatusCodes.Status410Gone, new { valid = false, error = "Setup already completed." });
+            return this.ToGoneProblem(
+                "Setup already completed",
+                "Setup mode is no longer active for this instance.",
+                ApiProblemCodes.SetupAlreadyCompleted);
 
         var isValid = _setupSecretProvider.ValidateSecret(request.Secret);
         return Ok(new { valid = isValid });
@@ -177,7 +198,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [EndpointDescription("Saves auth provider configuration during instance setup. Protected by setup token. At least one provider must be enabled.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveAuthProviderConfiguration([FromBody] AuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
         var command = new SaveAuthProviderConfigurationCommand
@@ -188,7 +209,7 @@ public class InstanceOnboardingController : ExploreControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, AuthProviderValidationProblem);
         }
 
         return Ok(response);
@@ -206,7 +227,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [Consumes("application/json")]
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(object), StatusCodes.Status410Gone)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> BootstrapKeycloakRealm([FromBody] KeycloakBootstrapRequestDto request, CancellationToken cancellationToken = default)
@@ -217,7 +238,7 @@ public class InstanceOnboardingController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, AuthProviderValidationProblem);
         }
 
         return Ok(response);
@@ -244,7 +265,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [EndpointDescription("Saves authorization provider configuration during instance setup. Protected by setup token.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveAuthorizationProviderConfiguration([FromBody] AuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(
@@ -253,7 +274,7 @@ public class InstanceOnboardingController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, AuthorizationProviderValidationProblem);
         }
 
         return Ok(response);
@@ -266,13 +287,13 @@ public class InstanceOnboardingController : ExploreControllerBase
     [EndpointSummary("Sync Authorization Policy Package (Setup)")]
     [EndpointDescription("Publishes the authorization policy package during instance setup. Protected by setup token.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new SyncAuthorizationPolicyPackageCommand(), cancellationToken);
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, AuthorizationPolicySyncValidationProblem);
         }
 
         return Ok(response);
@@ -308,7 +329,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [EndpointDescription("Verifies a Cerbos gRPC endpoint by calling its gRPC health service. Protected by setup token.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> VerifyAuthorizationProviderEndpoint(
         [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] VerifyCerbosEndpointRequest? request,
         CancellationToken cancellationToken = default)
@@ -321,18 +342,18 @@ public class InstanceOnboardingController : ExploreControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, AuthorizationProviderVerifyValidationProblem);
         }
 
         return Ok(response);
     }
 
 
-    private ObjectResult AuthorizationPolicyPackageUnavailableProblem() =>
-        Problem(
-            title: "Authorization policy package unavailable",
-            detail: "The bundled Cerbos policy package is not available to this API deployment. Mount or bundle the package directory and retry the download.",
-            statusCode: StatusCodes.Status503ServiceUnavailable);
+    private ActionResult AuthorizationPolicyPackageUnavailableProblem() =>
+        this.ToServiceUnavailableProblem(
+            "Authorization policy package unavailable",
+            "The bundled Cerbos policy package is not available to this API deployment. Mount or bundle the package directory and retry the download.",
+            ApiProblemCodes.AuthorizationPolicyPackageUnavailable);
 }
 
 public class ValidateSetupSecretRequest

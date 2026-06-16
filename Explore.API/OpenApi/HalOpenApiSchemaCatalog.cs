@@ -78,6 +78,7 @@ internal static class HalOpenApiSchemaCatalog
 
         // EventAspects DTOs
         typeof(Explore.Application.DTOs.EventAspects.EventIslamicAspectDto),
+        typeof(Explore.Application.DTOs.EventSession.EventSessionIslamicAspectDto),
         typeof(Explore.Application.DTOs.EventAspects.EventTechAspectDto),
 
         // Template sync DTOs exposed through HAL diff resources

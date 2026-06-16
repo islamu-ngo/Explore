@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS link policies for current-user profile resources.
+// ABOUTME: Emits only links backed by registered user and actor API routes.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
@@ -16,22 +19,6 @@ public sealed class UserDetailLinkPolicy : ILinkPolicy<UserDto>
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetLinks(UserDto dto, ClaimsPrincipal? user)
     {
-        // Self link
-        yield return new LinkDefinition(
-            LinkRelations.Self,
-            RouteNames.GetUserById,
-            new { id = dto.Id },
-            "GET",
-            $"{dto.FirstName} {dto.LastName}");
-
-        // Collection link
-        yield return new LinkDefinition(
-            LinkRelations.Collection,
-            RouteNames.GetUsers,
-            null,
-            "GET",
-            "All users");
-
         // Actor link (user's actor profile)
         if (dto.ActorId != Guid.Empty)
         {
@@ -55,21 +42,12 @@ public sealed class UserDetailLinkPolicy : ILinkPolicy<UserDto>
         // Registrations link
         yield return new LinkDefinition(
             "registrations",
-            RouteNames.GetUserRegistrations,
+            RouteNames.GetRegistrationsByUser,
             new { userId = dto.Id },
             "GET",
             "User's event registrations",
             RequiresAuth: true);
 
-        // Edit link - requires authentication (self-edit or admin)
-        yield return new LinkDefinition(
-            LinkRelations.Edit,
-            RouteNames.UpdateUser,
-            new { id = dto.Id },
-            "PUT",
-            "Update user",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.User, dto);
     }
 }
 
@@ -81,14 +59,6 @@ public sealed class UserCollectionLinkPolicy : ICollectionLinkPolicy<UserDto>
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetItemLinks(UserDto dto, ClaimsPrincipal? user)
     {
-        // Self link for item
-        yield return new LinkDefinition(
-            LinkRelations.Self,
-            RouteNames.GetUserById,
-            new { id = dto.Id },
-            "GET",
-            $"{dto.FirstName} {dto.LastName}");
-
         // Actor link
         if (dto.ActorId != Guid.Empty)
         {

@@ -48,7 +48,7 @@ public class EventFormatController : ControllerBase
     [EndpointDescription("Retrieve details of a specific event delivery format")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(EventFormatDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventFormatDto>> GetById(int id, CancellationToken cancellationToken = default)
     {

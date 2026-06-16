@@ -49,6 +49,10 @@ public sealed class EventSessionTemplateSyncLinkPolicy : ILinkPolicy<EventSessio
             RouteNames.GetEventSessionTemplateSyncHistory,
             new { sessionId = dto.SessionId },
             HttpMethods.Get,
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.CustomPropertyTemplates.View,
+                ResourceKinds.CustomPropertyTemplate,
+                dto.SessionId.ToString(),
+                attributes);
     }
 }

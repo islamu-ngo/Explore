@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.Actor;
@@ -29,6 +30,20 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Public)]
 public class ActorController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "actor",
+        "Actor validation failed",
+        "Actor creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "actor",
+        "Actor validation failed",
+        "Actor update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor ActorNotFoundProblem = new(
+        "Actor not found",
+        "Actor not found.");
+
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<ActorDto, ActorListDto> _resourceAssembler;
 
@@ -51,7 +66,7 @@ public class ActorController : ControllerBase
         "Send 'Prefer: return=minimal' header to strip links.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<ActorListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<ActorListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
@@ -81,13 +96,15 @@ public class ActorController : ControllerBase
         "Response includes links to related resources (events, organization).")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<ActorDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<ActorDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var actor = await _mediator.Send(new GetActorDetailsRequest { Id = id }, cancellationToken);
         if (actor == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(ActorNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(actor, HttpContext);
         return Ok(halResource);
@@ -101,13 +118,15 @@ public class ActorController : ControllerBase
     [EndpointDescription("Get actor details using their decentralized identifier (DID).")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<ActorDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<ActorDto>>> GetByDid(string did, CancellationToken cancellationToken = default)
     {
         var actor = await _mediator.Send(new GetActorByDidRequest { Did = did }, cancellationToken);
         if (actor == null)
-            return NotFound();
+        {
+            return this.ToNotFoundProblem(ActorNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(actor, HttpContext);
         return Ok(halResource);
@@ -121,7 +140,7 @@ public class ActorController : ControllerBase
     [EndpointDescription("Get all actors belonging to a specific tenant.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<ActorListDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<ActorListDto>>> GetByTenant(
         Guid tenantId,
@@ -153,8 +172,8 @@ public class ActorController : ControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateActorDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateActorCommand { ActorDto = dto };
@@ -162,7 +181,7 @@ public class ActorController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -182,9 +201,9 @@ public class ActorController : ControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorRequestDto dto, CancellationToken cancellationToken = default)
     {
         var command = new UpdateActorCommand
@@ -197,7 +216,7 @@ public class ActorController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -212,9 +231,9 @@ public class ActorController : ControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteActorCommand { Id = id };

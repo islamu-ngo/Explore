@@ -5,6 +5,7 @@ using System.Text.Json;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.BackgroundServices;
+using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
@@ -36,6 +37,19 @@ public sealed class AiAssistantController : ControllerBase
     private const string IdempotencyKeyHeader = "Idempotency-Key";
     private const int DefaultReferenceLimit = 10;
     private const int MaxReferenceLimit = 20;
+
+    private static readonly ApiValidationProblemDescriptor ModelDiscoveryValidationProblem = new(
+        "aiAssistantModelDiscovery",
+        "AI assistant model discovery validation failed",
+        "AI assistant model discovery failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor ConversationNotFoundProblem = new(
+        "AI conversation not found",
+        "AI conversation not found.");
+
+    private static readonly ApiNotFoundProblemDescriptor RunNotFoundProblem = new(
+        "AI run not found",
+        "AI run not found.");
 
     private readonly IMediator _mediator;
     private readonly IHateoasLinkGenerator _linkGenerator;
@@ -96,12 +110,14 @@ public sealed class AiAssistantController : ControllerBase
         var status = await _mediator.Send(new GetTenantOnboardingStatusQuery(), cancellationToken);
         if (!status.IsCurrentUserTenantAdministrator && !status.IsCurrentUserPlatformAdministrator)
         {
-            return Forbid();
+            return this.ToForbiddenProblem(detail: "Tenant or platform administrator authority is required to discover AI assistant models.");
         }
 
         if (string.IsNullOrWhiteSpace(request.EndpointUrl))
         {
-            return BadRequest(CreateProblem("Missing endpoint URL", "Enter an OpenAI-compatible endpoint URL before fetching models."));
+            return this.ToValidationProblem(
+                ModelDiscoveryValidationProblem,
+                "Enter an OpenAI-compatible endpoint URL before fetching models.");
         }
 
         var settings = new AiProviderSettings
@@ -123,7 +139,9 @@ public sealed class AiAssistantController : ControllerBase
         var validation = settingsValidator.Validate(null, settings);
         if (!validation.Succeeded)
         {
-            return BadRequest(CreateProblem("Invalid provider endpoint", string.Join(" ", validation.Failures)));
+            return this.ToValidationProblem(
+                ModelDiscoveryValidationProblem,
+                string.Join(" ", validation.Failures));
         }
 
         try
@@ -154,19 +172,25 @@ public sealed class AiAssistantController : ControllerBase
         }
         catch (UriFormatException)
         {
-            return BadRequest(CreateProblem("Invalid provider endpoint", "The endpoint URL must be an absolute HTTP or HTTPS URL."));
+            return this.ToValidationProblem(
+                ModelDiscoveryValidationProblem,
+                "The endpoint URL must be an absolute HTTP or HTTPS URL.");
         }
         catch (JsonException)
         {
-            return StatusCode(StatusCodes.Status502BadGateway, CreateProblem("Invalid model response", "The provider did not return a valid OpenAI-compatible models response."));
+            return this.ToBadGatewayProblem(
+                "Invalid model response",
+                "The provider did not return a valid OpenAI-compatible models response.");
         }
         catch (HttpRequestException ex)
         {
-            return StatusCode(StatusCodes.Status502BadGateway, CreateProblem("Model discovery failed", ex.Message));
+            return this.ToBadGatewayProblem("Model discovery failed", ex.Message);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return StatusCode(StatusCodes.Status502BadGateway, CreateProblem("Model discovery timed out", "The provider did not respond before the request timed out."));
+            return this.ToBadGatewayProblem(
+                "Model discovery timed out",
+                "The provider did not respond before the request timed out.");
         }
     }
 
@@ -228,7 +252,7 @@ public sealed class AiAssistantController : ControllerBase
 
         if (conversation is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(ConversationNotFoundProblem);
         }
 
         return Ok(await _conversationAssembler.ToResource(conversation, HttpContext));
@@ -400,7 +424,7 @@ public sealed class AiAssistantController : ControllerBase
 
         if (run is null)
         {
-            return NotFound();
+            return this.ToNotFoundProblem(RunNotFoundProblem);
         }
 
         var resource = new HalResource<AiRunDto>(run);
@@ -478,13 +502,6 @@ public sealed class AiAssistantController : ControllerBase
             links[rel] = method is null ? HalLink.Create(path) : HalLink.CreateAction(path, method);
         }
     }
-
-    private static ProblemDetails CreateProblem(string title, string detail) =>
-        new()
-        {
-            Title = title,
-            Detail = detail
-        };
 
     private static int NormalizeReferenceLimit(int limit)
     {

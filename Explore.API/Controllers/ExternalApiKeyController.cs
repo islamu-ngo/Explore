@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
@@ -22,8 +23,19 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class ExternalApiKeyController : ControllerBase
 {
-    private const string ValidationFailedCode = "validation_failed";
-    private const string ResourceNotFoundCode = "resource_not_found";
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "externalApiKey",
+        "External API key validation failed",
+        "External API key creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "externalApiKey",
+        "External API key validation failed",
+        "External API key update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor ExternalApiKeyNotFoundProblem = new(
+        "External API key not found",
+        "External API key not found.");
 
     private readonly IMediator _mediator;
 
@@ -47,13 +59,13 @@ public class ExternalApiKeyController : ControllerBase
     [EndpointSummary("Get external API key details")]
     [EndpointDescription("Retrieve metadata for a specific external API key visible to the current caller.")]
     [ProducesResponseType(typeof(ExternalApiKeyListDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<ExternalApiKeyListDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var key = await _mediator.Send(new GetExternalApiKeyDetailsRequest { Id = id }, cancellationToken);
         if (key == null)
-            return NotFound();
+            return this.ToNotFoundProblem(ExternalApiKeyNotFoundProblem);
 
         return Ok(key);
     }
@@ -70,7 +82,7 @@ public class ExternalApiKeyController : ControllerBase
 
         if (!response.Success)
         {
-            return ToValidationProblem(response, "External API key creation failed.");
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return Ok(response);
@@ -86,15 +98,7 @@ public class ExternalApiKeyController : ControllerBase
     {
         if (id != dto.Id)
         {
-            return ToValidationProblem(
-                new BaseCommandResponse<Guid>
-                {
-                    Success = false,
-                    Message = "External API key ID mismatch.",
-                    Errors = ["External API key ID mismatch."],
-                    FailureCode = ValidationFailedCode
-                },
-                "External API key ID mismatch.");
+            return this.ToValidationProblem(UpdateValidationProblem, "External API key ID mismatch.");
         }
 
         var command = new UpdateExternalApiKeyPolicyCommand { ExternalApiKeyPolicyDto = dto };
@@ -104,84 +108,20 @@ public class ExternalApiKeyController : ControllerBase
         {
             if (response.Message == "External API key not found.")
             {
-                return ToNotFoundProblem(response, "External API key not found.");
+                return this.ToNotFoundProblem(ExternalApiKeyNotFoundProblem);
             }
 
-            return ToValidationProblem(response, "External API key update failed.");
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
-    }
-
-    private ActionResult ToValidationProblem<TKey>(BaseCommandResponse<TKey> response, string fallbackDetail)
-    {
-        var errors = response.Errors is { Count: > 0 }
-            ? response.Errors
-            : [response.Message ?? fallbackDetail];
-
-        var problemDetails = new ValidationProblemDetails(new Dictionary<string, string[]>
-        {
-            ["externalApiKey"] = errors.ToArray()
-        })
-        {
-            Status = StatusCodes.Status400BadRequest,
-            Title = "External API key validation failed",
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-            Detail = response.Message ?? fallbackDetail,
-            Instance = HttpContext.Request.Path
-        };
-
-        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(response.FailureCode)
-            ? ValidationFailedCode
-            : response.FailureCode;
-        AddProblemDetailsExtensions(problemDetails);
-
-        return new ObjectResult(problemDetails)
-        {
-            StatusCode = StatusCodes.Status400BadRequest,
-            ContentTypes = { "application/problem+json" }
-        };
-    }
-
-    private ActionResult ToNotFoundProblem<TKey>(BaseCommandResponse<TKey> response, string fallbackDetail)
-    {
-        var problemDetails = new ProblemDetails
-        {
-            Status = StatusCodes.Status404NotFound,
-            Title = "External API key not found",
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
-            Detail = response.Message ?? fallbackDetail,
-            Instance = HttpContext.Request.Path
-        };
-
-        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(response.FailureCode)
-            ? ResourceNotFoundCode
-            : response.FailureCode;
-        AddProblemDetailsExtensions(problemDetails);
-
-        return new ObjectResult(problemDetails)
-        {
-            StatusCode = StatusCodes.Status404NotFound,
-            ContentTypes = { "application/problem+json" }
-        };
-    }
-
-    private void AddProblemDetailsExtensions(ProblemDetails problemDetails)
-    {
-        problemDetails.Extensions["traceId"] = HttpContext.TraceIdentifier;
-        problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
-
-        if (HttpContext.Items["CorrelationId"] is string correlationId)
-        {
-            problemDetails.Extensions["correlationId"] = correlationId;
-        }
     }
 
     [HttpDelete("{id}", Name = RouteNames.DeleteExternalApiKey)]
     [EndpointSummary("Revoke an external API key")]
     [EndpointDescription("Revoke an external API key visible to the current caller.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         await _mediator.Send(new RevokeExternalApiKeyCommand { Id = id }, cancellationToken);

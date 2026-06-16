@@ -49,6 +49,10 @@ public sealed class EventTemplateSyncLinkPolicy : ILinkPolicy<EventTemplateSyncR
             RouteNames.GetEventTemplateSyncHistory,
             new { eventId = dto.EventId },
             HttpMethods.Get,
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.CustomPropertyTemplates.View,
+                ResourceKinds.CustomPropertyTemplate,
+                dto.EventId.ToString(),
+                attributes);
     }
 }

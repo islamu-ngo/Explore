@@ -48,7 +48,7 @@ public class RegistrationModeController : ControllerBase
     [EndpointDescription("Retrieve details of a specific registration mode")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(RegistrationModeDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<RegistrationModeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
