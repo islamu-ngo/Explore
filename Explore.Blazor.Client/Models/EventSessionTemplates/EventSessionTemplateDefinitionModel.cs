@@ -1,7 +1,7 @@
 // ABOUTME: Model representing a property definition within an event session template.
 // ABOUTME: Mirrors event-template definition models for drawer preview rendering.
 
-using Explore.Domain.Enums;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Models.EventSessionTemplates;
 

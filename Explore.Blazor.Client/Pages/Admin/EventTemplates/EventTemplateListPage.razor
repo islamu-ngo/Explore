@@ -90,7 +90,7 @@
         var result = await TemplateService.GetTemplatesAsync(null, pageNumber, state.PageSize);
         
         // Gate global create button based on HAL link
-        _canCreate = result.Items.Any() ? result.Items.First().Links?.ContainsKey("create") == true : true; // Fallback or strict
+        _canCreate = result.Items.Any() && result.Items.First().Links?.ContainsKey("create") == true;
 
         return new GridData<EventTemplateListModel>
         {

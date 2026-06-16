@@ -1,7 +1,7 @@
 // ABOUTME: Model representing a property definition within an event template.
 // ABOUTME: Maps to CreateEventTemplateDefinitionDto for the UI.
 
-using Explore.Domain.Enums;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Models.EventTemplates;
 
