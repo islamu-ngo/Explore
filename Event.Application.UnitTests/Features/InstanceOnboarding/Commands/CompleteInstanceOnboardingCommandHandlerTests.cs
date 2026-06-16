@@ -194,6 +194,52 @@ public class CompleteInstanceOnboardingCommandHandlerTests
         _setupSecretProvider.Received(1).Lock();
     }
 
+    [Test]
+    public async Task Handle_MultiTenant_AssignsPlatformAdminWithoutDefaultTenantAdmin()
+    {
+        _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.MultiTenant);
+
+        var command = new CompleteInstanceOnboardingCommand
+        {
+            UserId = TestUserId,
+            Settings = new CompleteInstanceOnboardingRequest
+            {
+                DeploymentMode = DeploymentMode.SingleTenant,
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = "Multi Tenant Events",
+                    SupportEmail = "support@example.org",
+                    CanonicalUrl = "https://events.example.org/start",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _platformUserRoleRepository.Received(1).Create(Arg.Is<PlatformUserRole>(role =>
+            role.UserId == TestUserId
+            && role.RoleId == (int)RoleEnum.Admin
+            && role.GrantedBy == TestUserId));
+        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+            setting.SettingKey == GovernanceSettingKeys.Deployment.Mode
+            && setting.Value == JsonSerializer.Serialize(DeploymentMode.MultiTenant.ToString())));
+
+        _ = _tenantRepository.DidNotReceive().GetById(Arg.Any<Guid>());
+        _ = _tenantRepository.DidNotReceive().Create(Arg.Any<Tenant>());
+        _ = _tenantUserRepository.DidNotReceive().Create(Arg.Any<TenantUser>());
+        _ = _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
+        _ = _tenantBrandingProvisioningService.DidNotReceive().EnsureTenantBrandingDocumentAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        _ = _systemSettingRepository.DidNotReceive().Create(Arg.Is<SystemSetting>(setting =>
+            setting.SettingKey == GovernanceSettingKeys.PublicExperience.Mode));
+        _setupSecretProvider.Received(1).Lock();
+    }
+
     private static bool ContainsDefaultHomeBlock(string value, string expectedTitle)
     {
         var config = JsonSerializer.Deserialize<PublicExperienceHomeBlocksConfig>(value);

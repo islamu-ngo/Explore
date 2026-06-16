@@ -131,6 +131,44 @@ public sealed class AiProposedActionCommandHandlerTests
     }
 
     [Test]
+    public async Task Confirm_WhenCreateEventDraftContainsFabricatedReferences_DropsReferencesBeforeCreateCommand()
+    {
+        var categoryId = Guid.CreateVersion7();
+        var tagId = Guid.CreateVersion7();
+        AiProposedAction action = CreateProposedAction(
+            payloadJson: $$"""
+              {
+                "title": "Community Dinner",
+                "eventTypeId": 999,
+                "audienceGenderId": 999,
+                "audienceAgeId": 999,
+                "visibilityTypeId": 999,
+                "eventFormatId": 999,
+                "madhabId": 999,
+                "categoryIds": ["{{categoryId}}"],
+                "tagIds": ["{{tagId}}"]
+              }
+              """);
+        CreateEventCommand? sentCommand = null;
+        _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
+        _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+
+        BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(sentCommand).IsNotNull();
+        await Assert.That(sentCommand!.Request.EventTypeId).IsNull();
+        await Assert.That(sentCommand.Request.AudienceGenderId).IsNull();
+        await Assert.That(sentCommand.Request.AudienceAgeId).IsNull();
+        await Assert.That(sentCommand.Request.VisibilityTypeId).IsEqualTo(1);
+        await Assert.That(sentCommand.Request.EventFormatId).IsEqualTo(1);
+        await Assert.That(sentCommand.Request.MadhabId).IsNull();
+        await Assert.That(sentCommand.Request.CategoryIds).IsEmpty();
+        await Assert.That(sentCommand.Request.TagIds).IsEmpty();
+    }
+
+    [Test]
     public async Task Confirm_WhenConversationHasSelectedOrganizationActor_OverwritesAiOwnerScope()
     {
         var selectedActorId = Guid.CreateVersion7();

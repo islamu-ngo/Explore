@@ -10,8 +10,7 @@ public sealed class CreateEventDraftAiActionMapperTests
     [Test]
     public async Task Map_WhenPayloadIsMinimal_ReturnsDraftRequestWithoutProgramGraph()
     {
-        var categoryId1 = Guid.CreateVersion7();
-        var categoryId2 = Guid.CreateVersion7();
+        var categoryId = Guid.CreateVersion7();
         var tagId = Guid.CreateVersion7();
 
         var result = new CreateEventDraftAiActionMapper().Map(
@@ -19,7 +18,13 @@ public sealed class CreateEventDraftAiActionMapperTests
               {
                 "title": "  Community Iftar  ",
                 "description": "Evening meal",
-                "categoryIds": ["{{categoryId1}}", "{{categoryId1}}", "{{categoryId2}}"],
+                "eventTypeId": 999,
+                "audienceGenderId": 999,
+                "audienceAgeId": 999,
+                "visibilityTypeId": 999,
+                "eventFormatId": 999,
+                "madhabId": 999,
+                "categoryIds": ["{{categoryId}}"],
                 "tagIds": ["{{tagId}}", "{{tagId}}"]
               }
               """);
@@ -28,8 +33,14 @@ public sealed class CreateEventDraftAiActionMapperTests
         await Assert.That(result.Draft).IsNotNull();
         await Assert.That(result.Draft!.Title).IsEqualTo("Community Iftar");
         await Assert.That(result.Draft.Description).IsEqualTo("Evening meal");
-        await Assert.That(result.Draft.CategoryIds).IsEquivalentTo([categoryId1, categoryId2]);
-        await Assert.That(result.Draft.TagIds).IsEquivalentTo([tagId]);
+        await Assert.That(result.Draft.EventTypeId).IsNull();
+        await Assert.That(result.Draft.AudienceGenderId).IsNull();
+        await Assert.That(result.Draft.AudienceAgeId).IsNull();
+        await Assert.That(result.Draft.VisibilityTypeId).IsEqualTo(1);
+        await Assert.That(result.Draft.EventFormatId).IsEqualTo(1);
+        await Assert.That(result.Draft.MadhabId).IsNull();
+        await Assert.That(result.Draft.CategoryIds).IsEmpty();
+        await Assert.That(result.Draft.TagIds).IsEmpty();
 
         var createRequest = result.Draft.ToCreateEventRequest();
         await Assert.That(createRequest.EventStatusId).IsEqualTo(1);

@@ -126,20 +126,42 @@ public sealed class CreateEventDraftAiToolDefinitionTests
     }
 
     [Test]
-    public async Task Registry_WhenProviderNormalizationEnabled_DropsInventedReferenceIds()
+    public async Task Registry_WhenProviderNormalizationEnabled_DropsUntrustedLookupAndReferenceIds()
     {
         var registry = AiToolContractRegistry.CreateDefault();
+        var categoryId = Guid.CreateVersion7();
+        var tagId = Guid.CreateVersion7();
 
         var result = registry.ValidatePayload(
             AiProposedActionKind.CreateEventDraft,
-            "{\"title\":\"Community Dinner\",\"organizationId\":\"example-org\",\"categoryIds\":[\"community\"]}",
+            $$"""
+              {
+                "title": "Community Dinner",
+                "organizationId": "example-org",
+                "eventTypeId": 999,
+                "audienceGenderId": 999,
+                "audienceAgeId": 999,
+                "visibilityTypeId": 999,
+                "eventFormatId": 999,
+                "madhabId": 999,
+                "categoryIds": ["{{categoryId}}"],
+                "tagIds": ["{{tagId}}"]
+              }
+              """,
             allowProviderNormalization: true);
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.NormalizedPayloadJson).IsNotNull();
         await Assert.That(result.NormalizedPayloadJson!).Contains("Community Dinner");
         await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("organizationId");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("eventTypeId");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("audienceGenderId");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("audienceAgeId");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("visibilityTypeId");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("eventFormatId");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("madhabId");
         await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("categoryIds");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("tagIds");
     }
 
     private static HashSet<string> GetSchemaPropertyNames()

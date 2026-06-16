@@ -301,8 +301,64 @@ public class GetPublicExperienceSettingsQueryHandlerTests
 
         var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
 
+        await Assert.That(result.IsAiAssistantEnabled).IsTrue();
         await Assert.That(result.IsAiAssistantAvailable).IsTrue();
         await Assert.That(result.AiAssistantAllowAnonymousAccess).IsTrue();
+    }
+
+    [Test]
+    public async Task Handle_WithAiAssistantDisabled_DoesNotExposeAvailability()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+
+        var aiSettings = new AiAssistantSettingGroup();
+        aiSettings.Populate(new Dictionary<string, ResolvedSetting>
+        {
+            [GovernanceSettingKeys.AiAssistant.Enabled] = new() { Value = "false" }
+        });
+
+        _hierarchicalSettingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
+                Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(aiSettings);
+
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        await Assert.That(result.IsAiAssistantEnabled).IsFalse();
+        await Assert.That(result.IsAiAssistantAvailable).IsFalse();
+        await Assert.That(result.AiAssistantAllowAnonymousAccess).IsFalse();
+    }
+
+    [Test]
+    public async Task Handle_WithAiAssistantEnabledButNotConfigured_ExposesEnabledWithoutAvailability()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+
+        var aiSettings = new AiAssistantSettingGroup();
+        aiSettings.Populate(new Dictionary<string, ResolvedSetting>
+        {
+            [GovernanceSettingKeys.AiAssistant.Enabled] = new() { Value = "true" },
+            [GovernanceSettingKeys.AiAssistant.Provider] = new() { Value = "\"openai-compatible\"" }
+            // Missing endpoint URL and model ID => not configured
+        });
+
+        _hierarchicalSettingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
+                Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(aiSettings);
+
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        await Assert.That(result.IsAiAssistantEnabled).IsTrue();
+        await Assert.That(result.IsAiAssistantAvailable).IsFalse();
     }
 
     [Test]

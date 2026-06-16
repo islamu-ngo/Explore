@@ -42,20 +42,22 @@ public sealed class AiStructuredActionParserTests
     }
 
     [Test]
-    public async Task Parse_WhenCreateEventDraftContainsMixedCategoryIds_DropsOnlyInvalidIds()
+    public async Task Parse_WhenCreateEventDraftContainsValidButUntrustedReferenceIds_DropsThoseIds()
     {
         var validCategoryId = Guid.CreateVersion7();
+        var validTagId = Guid.CreateVersion7();
         var result = new AiStructuredActionParser().Parse(
         [
             new AiProposedActionCandidate(
                 AiProposedActionKind.CreateEventDraft,
-                $"{{\"title\":\"Community Dinner\",\"categoryIds\":[\"{validCategoryId}\",\"community\"]}}",
+                $"{{\"title\":\"Community Dinner\",\"eventTypeId\":999,\"categoryIds\":[\"{validCategoryId}\"],\"tagIds\":[\"{validTagId}\"]}}",
                 "Create draft")
         ]);
 
         await Assert.That(result.Succeeded).IsTrue();
-        await Assert.That(result.Actions[0].PayloadJson).Contains(validCategoryId.ToString());
-        await Assert.That(result.Actions[0].PayloadJson).DoesNotContain("community");
+        await Assert.That(result.Actions[0].PayloadJson).DoesNotContain("eventTypeId");
+        await Assert.That(result.Actions[0].PayloadJson).DoesNotContain("categoryIds");
+        await Assert.That(result.Actions[0].PayloadJson).DoesNotContain("tagIds");
     }
 
     [Test]
