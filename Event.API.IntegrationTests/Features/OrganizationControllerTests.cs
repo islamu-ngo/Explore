@@ -144,7 +144,7 @@ public class OrganizationControllerTests
         };
 
         // Act
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/updatestatustype/{id}", updateDto);
+        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}/approval-status", updateDto);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);

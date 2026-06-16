@@ -139,6 +139,60 @@ public class SetupSecretFlowTests
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }
 
+    [Test]
+    public async Task Complete_WithValidSecretButNoAuthentication_ShouldReturnUnauthorized()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/complete");
+        request.Headers.Add("X-Setup-Secret", SetupSecret);
+        request.Content = JsonContent.Create(CreateValidSettings());
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task Complete_WithAuthenticationButMissingSetupSecret_ShouldReturnForbidden()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Post, $"{BaseUrl}/complete", userId, CreateValidSettings(), includeSetupSecret: false);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
+    public async Task SetupProtectedInternalEndpoint_AfterBootstrapComplete_ShouldReturn410Gone()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+
+        using var completeRequest = CreateInstanceAdminRequest(
+            HttpMethod.Post, $"{BaseUrl}/complete", userId, CreateValidSettings(), includeSetupSecret: true);
+        var completeResponse = await client.SendAsync(completeRequest);
+        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var internalRequest = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/auth-provider-configuration/internal");
+        internalRequest.Headers.Add("X-Setup-Secret", SetupSecret);
+
+        var response = await client.SendAsync(internalRequest);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Gone);
+    }
+
     #region Helpers
 
     private static AuthenticatedWebApplicationFactory CreateFactoryWithSetupSecret()

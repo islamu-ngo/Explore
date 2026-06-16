@@ -377,6 +377,39 @@ public class ContractInvariantsTests
     }
 
     [Test]
+    public async Task OpenApiDocument_EndpointPostureExtensionsExposeRateCacheAndTenantMetadata()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var operations = EnumerateOperations(document).ToList();
+
+        var rateLimitPolicies = operations
+            .Select(operation => GetStringProperty(operation.Operation, "x-rate-limit-policy"))
+            .Where(policy => !string.IsNullOrWhiteSpace(policy))
+            .Distinct()
+            .ToList();
+        var cachePolicies = operations
+            .Select(operation => GetStringProperty(operation.Operation, "x-output-cache-policy"))
+            .Where(policy => !string.IsNullOrWhiteSpace(policy))
+            .Distinct()
+            .ToList();
+        var tenantModes = operations
+            .Select(operation => GetStringProperty(operation.Operation, "x-tenant-mode"))
+            .Where(mode => !string.IsNullOrWhiteSpace(mode))
+            .Distinct()
+            .ToList();
+
+        await Assert.That(rateLimitPolicies)
+            .Contains("AiAssistant")
+            .Because("Endpoints decorated with [EnableRateLimiting] must expose their policy in OpenAPI for client and governance review.");
+        await Assert.That(cachePolicies)
+            .Contains("ListData")
+            .Because("Endpoints decorated with [OutputCache] must expose their cache policy in OpenAPI for contract inventory review.");
+        await Assert.That(tenantModes)
+            .Contains("multi-tenant-required")
+            .Because("Endpoints decorated with [RequireMultiTenant] must expose tenant-mode posture in OpenAPI.");
+    }
+
+    [Test]
     public async Task OpenApiDocument_RepresentativeNullablePropertiesIncludeNull()
     {
         using var document = await GetOpenApiDocumentAsync();
@@ -449,7 +482,7 @@ public class ContractInvariantsTests
                     operationId = opIdElement.GetString();
                 }
 
-                yield return new OperationRef(pathEntry.Name, operationEntry.Name, operationId);
+                yield return new OperationRef(pathEntry.Name, operationEntry.Name, operationId, operationEntry.Value);
             }
         }
     }
@@ -526,5 +559,5 @@ public class ContractInvariantsTests
             .FirstOrDefault(reference => !string.IsNullOrWhiteSpace(reference));
     }
 
-    private readonly record struct OperationRef(string Path, string Method, string? OperationId);
+    private readonly record struct OperationRef(string Path, string Method, string? OperationId, JsonElement Operation);
 }

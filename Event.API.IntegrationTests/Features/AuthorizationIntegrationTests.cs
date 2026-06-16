@@ -178,7 +178,7 @@ public class AuthorizationIntegrationTests
         var dto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 1 };
 
         using var request = new HttpRequestMessage(HttpMethod.Put,
-            $"/api/organization/updatestatustype/{Guid.NewGuid()}")
+            $"/api/organization/{Guid.NewGuid()}/approval-status")
         {
             Content = JsonContent.Create(dto)
         };
@@ -199,7 +199,7 @@ public class AuthorizationIntegrationTests
         var dto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 1 };
 
         using var request = new HttpRequestMessage(HttpMethod.Put,
-            $"/api/organization/updatestatustype/{Guid.NewGuid()}")
+            $"/api/organization/{Guid.NewGuid()}/approval-status")
         {
             Content = JsonContent.Create(dto)
         };

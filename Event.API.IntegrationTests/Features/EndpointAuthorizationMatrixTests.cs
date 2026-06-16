@@ -271,6 +271,54 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task Matrix_Auth_EventRegistrations_ListAnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/eventregistration");
+    }
+
+    [Test]
+    public async Task Matrix_Auth_EventRegistrations_DetailAnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/eventregistration/00000000-0000-0000-0000-000000000001");
+    }
+
+    [Test]
+    public async Task Matrix_Auth_EventRegistrations_BySessionAnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/eventregistration/by-session/00000000-0000-0000-0000-000000000001");
+    }
+
+    [Test]
+    public async Task Matrix_Auth_EventRegistrations_ByUserAnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/eventregistration/by-user/00000000-0000-0000-0000-000000000001");
+    }
+
+    [Test]
+    public async Task Matrix_Auth_TenantUserRoleGrants_ListAnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/tenant-user-role-grants");
+    }
+
+    [Test]
+    public async Task Matrix_Auth_TenantUserRoleGrants_DetailAnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/tenant-user-role-grants/00000000-0000-0000-0000-000000000001");
+    }
+
+    [Test]
+    public async Task Matrix_Auth_OrganizationMembers_ListAnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/OrganizationMember/00000000-0000-0000-0000-000000000001");
+    }
+
+    [Test]
+    public async Task Matrix_Auth_OrganizationMembers_DetailAnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/OrganizationMember/member/00000000-0000-0000-0000-000000000001");
+    }
+
+    [Test]
     public async Task Matrix_Auth_UserAppearance_AnonymousDenied()
     {
         await AssertAnonymousUnauthorized("/api/user/appearance");

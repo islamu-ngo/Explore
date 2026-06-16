@@ -291,6 +291,38 @@ public sealed class AiAssistantControllerTests
     }
 
     [Test]
+    public async Task ConfirmProposedAction_WhenToolFailureIsBadRequest_ReturnsUnderlyingFailureDetail()
+    {
+        const string underlyingError = "Selected AI actor context is not allowed to create events.";
+        _mediator.Send(Arg.Any<ConfirmAiProposedActionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Id = Guid.Empty,
+                Success = false,
+                Message = "AI proposed action confirmation failed.",
+                FailureCode = "actor_context_not_allowed",
+                Errors = [underlyingError]
+            });
+        var controller = CreateController();
+
+        var actionResult = await controller.ConfirmProposedAction(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            "confirm-key",
+            CancellationToken.None);
+
+        var result = actionResult.Result as ObjectResult;
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
+        await Assert.That(result.ContentTypes).Contains("application/problem+json");
+        var problem = result.Value as ValidationProblemDetails;
+        await Assert.That(problem).IsNotNull();
+        await Assert.That(problem!.Extensions["code"]).IsEqualTo("actor_context_not_allowed");
+        await Assert.That(problem.Detail).IsEqualTo(underlyingError);
+        await Assert.That(problem.Errors["aiAssistant"]).Contains(underlyingError);
+    }
+
+    [Test]
     public async Task RejectProposedAction_DispatchesCommandAndReturnsOk()
     {
         var conversationId = Guid.CreateVersion7();

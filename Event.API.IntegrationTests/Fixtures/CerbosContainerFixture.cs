@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Fixtures;
 public sealed class CerbosContainerFixture : IAsyncInitializer, IAsyncDisposable
 {
     /// <summary>Pinned Cerbos version for reproducible test results.</summary>
-    private const string CerbosImage = "ghcr.io/cerbos/cerbos:0.51.0";
+    private const string CerbosImage = "ghcr.io/cerbos/cerbos:0.53.0";
 
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(2);
 

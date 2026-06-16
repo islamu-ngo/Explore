@@ -238,11 +238,11 @@ public class LinkTableControllerTests
     #region OrganizationMember Controller
 
     [Test]
-    public async Task OrganizationMember_GetByOrganizationId_ShouldReturnOk()
+    public async Task OrganizationMember_GetByOrganizationId_WithoutAuth_ShouldReturnUnauthorized()
     {
-        // OrganizationMember controller only has [HttpGet("{organizationId}")] - no parameterless GetAll
+        // Organization member reads expose identity and role metadata, so anonymous access must fail closed.
         var response = await _fixture.Client.GetAsync($"/api/organizationmember/{Guid.NewGuid()}");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -314,10 +314,10 @@ public class LinkTableControllerTests
     #region EventRegistration Controller
 
     [Test]
-    public async Task EventRegistration_GetAll_ShouldReturnOk()
+    public async Task EventRegistration_GetAll_WithoutAuth_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/eventregistration");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]

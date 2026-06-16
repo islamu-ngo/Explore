@@ -1,5 +1,5 @@
 // ABOUTME: Enforces endpoint route-name coverage against the Explore.API.Hateoas.RouteNames registry.
-// ABOUTME: Keeps controller route names catalog-backed while legacy orphaned constants are pruned separately.
+// ABOUTME: Keeps controller route names catalog-backed and verifies constants resolve to registered endpoints.
 
 using System.Reflection;
 
@@ -12,18 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Event.Api.IntegrationTests.Features;
 
-/// <summary>
-/// Catches RouteNames drift at test time instead of at runtime. Every endpoint that carries a
-/// <see cref="RouteNameMetadata"/> must have a matching <see cref="RouteNames"/> constant so controllers
-/// cannot invent names outside the HATEOAS single source of truth. The reverse constant-to-endpoint
-/// coverage test remains documented as Phase 2 cleanup until legacy orphaned constants are pruned.
-/// </summary>
 [ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public sealed class RouteNameCoverageTests(ContractApiFixture fixture)
 {
     private readonly ContractApiFixture _fixture = fixture;
 
-    [Skip("Category: API contract. Removal: enable after legacy orphaned RouteNames constants are pruned or reattached; tracked by dev/active/backend-api-health-refactor Phase 2 route-name cleanup.")]
     [Test]
     public async Task RouteNames_EveryConstantResolvesToExactlyOneEndpoint()
     {

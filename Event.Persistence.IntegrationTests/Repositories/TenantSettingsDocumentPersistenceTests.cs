@@ -132,6 +132,32 @@ public class TenantSettingsDocumentPersistenceTests(PostgreSqlContainerFixture f
     }
 
     [Test]
+    public async Task TenantSettingsDocumentRepository_WhenAmbientTenantDiffers_ReturnsOnlyExplicitTenantDocument()
+    {
+        await fixture.ResetAsync();
+        using var seedContext = fixture.CreateDbContext();
+        var tenantA = await SeedTenantAsync(seedContext, "semantic-bypass-a");
+        var tenantB = await SeedTenantAsync(seedContext, "semantic-bypass-b");
+        var tenantADocument = NewDocument(tenantA.Id, SettingsDocumentKeys.Tenant.Branding, "{\"displayName\":\"Tenant A\"}");
+        var tenantBDocument = NewDocument(tenantB.Id, SettingsDocumentKeys.Tenant.Branding, "{\"displayName\":\"Tenant B\"}");
+        seedContext.TenantSettingsDocuments.AddRange(tenantADocument, tenantBDocument);
+        await seedContext.SaveChangesAsync();
+
+        using var tenantBContext = fixture.CreateDbContext();
+        tenantBContext.TenantContext = new TestTenantContext(tenantB.Id);
+        var repository = new TenantSettingsDocumentRepository(tenantBContext);
+
+        var result = await repository.GetByTenantAndDocumentKey(
+            tenantA.Id,
+            SettingsDocumentKeys.Tenant.Branding);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Id).IsEqualTo(tenantADocument.Id);
+        await Assert.That(result.TenantId).IsEqualTo(tenantA.Id);
+        await Assert.That(result.Id).IsNotEqualTo(tenantBDocument.Id);
+    }
+
+    [Test]
     public async Task TenantSettingsDocumentRepository_GetManyForTenant_ReturnsOnlyRequestedTenantDocuments()
     {
         await fixture.ResetAsync();
