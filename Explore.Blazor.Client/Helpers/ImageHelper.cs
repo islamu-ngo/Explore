@@ -66,7 +66,7 @@ public static class ImageHelper
         var fontSize = Math.Clamp(Math.Min(safeWidth, safeHeight) / 7, 18, 34);
         var encodedText = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(text) ? "Event" : text.Trim());
 
-        var svg = $"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{safeWidth}\" height=\"{safeHeight}\" viewBox=\"0 0 {safeWidth} {safeHeight}\" role=\"img\" aria-label=\"{encodedText}\"><rect width=\"100%\" height=\"100%\" fill=\"#{backgroundColor}\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"#{textColor}\" font-family=\"Inter, Segoe UI, Arial, sans-serif\" font-size=\"{fontSize}\" font-weight=\"600\">{encodedText}</text></svg>";
+        var svg = $"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{safeWidth}\" height=\"{safeHeight}\" viewBox=\"0 0 {safeWidth} {safeHeight}\" role=\"img\" aria-label=\"{encodedText}\"><rect width=\"100%\" height=\"100%\" fill=\"#{backgroundColor}\"/><foreignObject width=\"100%\" height=\"100%\"><div xmlns=\"http://www.w3.org/1999/xhtml\" style=\"width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:#{textColor};font-family:Inter,Segoe UI,Arial,sans-serif;font-size:{fontSize}px;font-weight:600;padding:24px;box-sizing:border-box;overflow:hidden;word-break:break-word;line-height:1.3;\">{encodedText}</div></foreignObject></svg>";
         return $"data:image/svg+xml;utf8,{Uri.EscapeDataString(svg)}";
     }
 

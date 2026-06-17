@@ -55,6 +55,11 @@ public partial class EventCard : ComponentBase
         }
     }
 
+    private bool _imageLoadFailed;
+    private Guid? _lastRenderedEventId;
+
+    private bool HasActualImage => !string.IsNullOrEmpty(Event.FeaturedImageUri) && !_imageLoadFailed;
+
     private string ImageSource
     {
         get
@@ -62,12 +67,40 @@ public partial class EventCard : ComponentBase
             if (!string.IsNullOrEmpty(Event.FeaturedImageUri))
                 return Event.FeaturedImageUri;
 
-            var color = EventColorHelper.GetColorByTypeId(Event.EventTypeId);
-            if (color == EventColorHelper.DefaultColor)
-                color = EventColorHelper.GetColorByHash(Event.Title);
-            return ImageHelper.GetEventImageUrl(Event.FeaturedImageUri, Event.Title, color);
+            return GetFallbackImageSource();
         }
     }
+
+    private string DisplayImageSource => _imageLoadFailed ? GetFallbackImageSource() : ImageSource;
+
+    private string ImageFitStyle => HasActualImage
+        ? "object-fit: contain; object-position: left top;"
+        : "object-fit: cover !important; object-position: center !important;";
+
+    private string GetFallbackImageSource()
+    {
+        var color = GetEventColor();
+        return ImageHelper.GetEventImageUrl(null, Event.Title, color, width: 300, height: 400);
+    }
+
+    private string GetEventColor()
+    {
+        var color = EventColorHelper.GetColorByTypeId(Event.EventTypeId);
+        if (color == EventColorHelper.DefaultColor)
+            color = EventColorHelper.GetColorByHash(Event.Title);
+        return color;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_lastRenderedEventId != Event.Id)
+        {
+            _lastRenderedEventId = Event.Id;
+            _imageLoadFailed = false;
+        }
+    }
+
+    private void HandleImageError() => _imageLoadFailed = true;
 
     private string EventTypeName =>
         !string.IsNullOrEmpty(Event.EventTypeFullName) ? Event.EventTypeFullName : "Event";

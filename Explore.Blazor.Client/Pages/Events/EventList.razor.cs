@@ -58,6 +58,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     // Detail preview state (rendered through workspace dock inspector)
     private bool _detailDrawerOpen;
     private EventListDto? _selectedEvent;
+    private bool _detailImageLoadFailed;
     private EventDto? _selectedEventDetail;
     private ICollection<EventSessionListDto>? _selectedEventSessions;
     private bool _isLoadingDetail;
@@ -721,6 +722,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
 
         _selectedEvent = evt;
+        _detailImageLoadFailed = false;
         _selectedEventDetail = null;
         _selectedEventSessions = null;
         _detailDrawerOpen = true;
@@ -744,6 +746,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         {
             _isLoadingDetail = false;
             StateHasChanged();
+            DockLayoutState.Refresh();
         }
     }
 
@@ -1335,6 +1338,25 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         return ImageHelper.GetEventImageUrl(eventItem.FeaturedImageUri, eventItem.Title, GetEventColorForEvent(eventItem));
     }
+
+    private string GetDetailImageSrc()
+    {
+        if (_selectedEvent == null) return string.Empty;
+        if (_detailImageLoadFailed || string.IsNullOrEmpty(_selectedEvent.FeaturedImageUri))
+            return GetFallbackEventImage(_selectedEvent);
+        return _selectedEvent.FeaturedImageUri;
+    }
+
+    private bool HasDetailActualImage => _selectedEvent != null
+        && !string.IsNullOrEmpty(_selectedEvent.FeaturedImageUri)
+        && !_detailImageLoadFailed;
+
+    private string GetFallbackEventImage(EventListDto eventItem)
+    {
+        return ImageHelper.GetEventImageUrl(null, eventItem.Title, GetEventColorForEvent(eventItem), width: 300, height: 400);
+    }
+
+    private void HandleDetailImageError() => _detailImageLoadFailed = true;
 
     private string GetEventColorForEvent(EventListDto eventItem)
     {

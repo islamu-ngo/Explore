@@ -35,8 +35,12 @@
                         }
                     </div>
                 }
-                <div class="event-card__image-blur" style="background-image: url('@ImageSource');"></div>
-                <MudImage Src="@ImageSource" ObjectFit="ObjectFit.Contain" Class="event-card__image" />
+                @if (HasActualImage)
+                {
+                    <div class="event-card__image-blur" style="background-image: url('@DisplayImageSource');"></div>
+                    <img src="@GetFallbackImageSource()" alt="" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0;" />
+                }
+                <img src="@DisplayImageSource" @onerror="HandleImageError" class="event-card__image" style="@ImageFitStyle" />
 
                 @* Icon badges (top-left) — always visible *@
                 <div class="event-card__icon-badges event-card__icon-badges--compact">
@@ -129,8 +133,12 @@
         <MudCard @onclick="HandleClick" Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
             <div class="event-card__horizontal">
                 <div class="event-card__horizontal-image">
-                    <div class="event-card__image-blur" style="background-image: url('@ImageSource');"></div>
-                    <MudImage Src="@ImageSource" ObjectFit="ObjectFit.Contain" Class="event-card__image-foreground" />
+                    @if (HasActualImage)
+                    {
+                        <div class="event-card__image-blur" style="background-image: url('@DisplayImageSource');"></div>
+                        <img src="@GetFallbackImageSource()" alt="" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0;" />
+                    }
+                    <img src="@DisplayImageSource" @onerror="HandleImageError" class="event-card__image-foreground" style="@ImageFitStyle" />
                 </div>
                 <div class="event-card__horizontal-content">
                     @* Header: Title + icon badges + Actions *@
@@ -252,8 +260,12 @@
         <MudCard @onclick="HandleClick" Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
             <div class="event-card__full-row">
                 <div class="event-card__full-row-image">
-                    <div class="event-card__image-blur" style="background-image: url('@ImageSource');"></div>
-                    <MudImage Src="@ImageSource" ObjectFit="ObjectFit.Contain" Class="event-card__image-foreground" />
+                    @if (HasActualImage)
+                    {
+                        <div class="event-card__image-blur" style="background-image: url('@DisplayImageSource');"></div>
+                        <img src="@GetFallbackImageSource()" alt="" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0;" />
+                    }
+                    <img src="@DisplayImageSource" @onerror="HandleImageError" class="event-card__image-foreground" style="@ImageFitStyle" />
                 </div>
                 <div class="event-card__full-row-content">
                     @* Header: Title + subtitle + actions *@

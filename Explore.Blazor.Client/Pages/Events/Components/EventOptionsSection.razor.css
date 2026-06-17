@@ -27,4 +27,5 @@
     border-radius: var(--isl-radius-md);
     overflow: hidden;
     background: var(--mud-palette-surface);
+    container-type: inline-size;
 }

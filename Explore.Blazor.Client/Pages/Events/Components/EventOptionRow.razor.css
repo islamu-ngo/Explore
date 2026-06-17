@@ -1,14 +1,14 @@
 /* ABOUTME: Scoped CSS for compact event option summary rows. */
-/* ABOUTME: Avoids tables/accordions and keeps controls responsive with logical spacing. */
+/* ABOUTME: Keeps helper copy in info tooltips so rows stay short on desktop and mobile. */
 
 .event-option-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(11rem, auto);
+    grid-template-columns: minmax(12rem, 0.36fr) minmax(0, 1fr);
     align-items: center;
-    gap: var(--isl-space-3);
-    padding-block: var(--isl-space-3);
+    gap: var(--isl-space-1) var(--isl-space-3);
+    padding-block: 0.5rem;
     padding-inline: var(--isl-space-4);
-    min-block-size: 4.5rem;
+    min-block-size: 3rem;
     border-block-end: 1px solid var(--mud-palette-lines-default);
 }
 
@@ -22,8 +22,8 @@
 
 .event-option-row__summary {
     display: flex;
-    align-items: flex-start;
-    gap: var(--isl-space-3);
+    align-items: center;
+    gap: var(--isl-space-2);
     min-inline-size: 0;
 }
 
@@ -31,8 +31,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    inline-size: var(--isl-space-8);
-    block-size: var(--isl-space-8);
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
     border-radius: var(--isl-radius-pill);
     background: var(--mud-palette-background-gray);
     flex: 0 0 auto;
@@ -40,27 +40,39 @@
 
 .event-option-row__text {
     min-inline-size: 0;
+    max-inline-size: 23rem;
 }
 
 .event-option-row__title-line {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--isl-space-2);
+    gap: var(--isl-space-1);
 }
 
 .event-option-row__title {
     font-weight: 600;
 }
 
-.event-option-row__value,
-.event-option-row__description {
-    display: block;
-    overflow-wrap: anywhere;
+.event-option-row__info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--isl-radius-pill);
+    background: transparent;
+    color: var(--mud-palette-text-secondary);
+    cursor: help;
 }
 
-.event-option-row__description {
-    margin-block-start: var(--isl-space-1);
+.event-option-row__info:hover,
+.event-option-row__info:focus-visible {
+    background: color-mix(in oklch, var(--mud-palette-primary) 10%, transparent);
+    color: var(--mud-palette-primary);
+    outline: none;
 }
 
 .event-option-row__badge {
@@ -68,20 +80,41 @@
 }
 
 .event-option-row__editor {
-    display: flex;
+    display: grid;
     align-items: center;
-    justify-content: flex-end;
+    justify-items: end;
     gap: var(--isl-space-2);
+    inline-size: 100%;
     min-inline-size: 0;
 }
 
-@media (max-width: 37.4375em) {
+@container (max-width: 44rem) {
+    .event-option-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        gap: var(--isl-space-2);
+    }
+
+    .event-option-row__editor {
+        justify-items: stretch;
+    }
+
+    .event-option-row__text {
+        max-inline-size: none;
+    }
+}
+
+@media (max-width: 56.25em) {
     .event-option-row {
         grid-template-columns: 1fr;
         align-items: stretch;
     }
 
     .event-option-row__editor {
-        justify-content: flex-start;
+        justify-items: stretch;
+    }
+
+    .event-option-row__text {
+        max-inline-size: none;
     }
 }

@@ -322,9 +322,16 @@
 
                     @* ── Event Image (3:4 ratio, centered) ── *@
                     <div class="event-list__detail-image-wrapper">
-                        <MudImage Src="@(string.IsNullOrEmpty(_selectedEvent.FeaturedImageUri) ? GetEventImage(_selectedEvent) : _selectedEvent.FeaturedImageUri)"
-                                  ObjectFit="ObjectFit.Cover"
-                                  Style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+                        @if (HasDetailActualImage)
+                        {
+                            <img src="@GetFallbackEventImage(_selectedEvent)"
+                                 alt=""
+                                 style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;" />
+                        }
+                        <img src="@GetDetailImageSrc()"
+                             @onerror="HandleDetailImageError"
+                             style="position:relative; width:100%; height:100%; object-fit:cover; display:block;"
+                             alt="@_selectedEvent?.Title" />
                     </div>
 
                     @* ── Status & Type Chips ── *@

@@ -1,5 +1,5 @@
-@* ABOUTME: Reusable summary row for normal event creation settings. *@
-@* ABOUTME: Shows the selected value first and keeps the edit control compact without table-like layout. *@
+@* ABOUTME: Reusable compact row for normal event creation settings. *@
+@* ABOUTME: Keeps only the title visible while moving helper copy behind an accessible info tooltip. *@
 
 @using MudBlazor
 
@@ -17,16 +17,15 @@
                         Required
                     </MudChip>
                 }
+                @if (!string.IsNullOrWhiteSpace(Description))
+                {
+                    <MudTooltip Text="@Description" Placement="Placement.Top" Arrow="true">
+                        <button type="button" class="event-option-row__info" aria-label="@($"{Title} information")">
+                            <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+                        </button>
+                    </MudTooltip>
+                }
             </div>
-            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="event-option-row__value">
-                @Summary
-            </MudText>
-            @if (!string.IsNullOrWhiteSpace(Description))
-            {
-                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="event-option-row__description">
-                    @Description
-                </MudText>
-            }
         </div>
     </div>
     <div class="event-option-row__editor">
