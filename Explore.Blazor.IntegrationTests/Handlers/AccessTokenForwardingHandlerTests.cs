@@ -2,6 +2,7 @@
 // ABOUTME: Verifies Bearer authorization behavior for present token, absent token, and pre-existing Authorization headers.
 
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
@@ -157,6 +158,140 @@ public class AccessTokenForwardingHandlerTests
     }
 
     [Test]
+    public async Task SendAsync_WithMissingHttpContextToken_AndCookieRefreshReturnsUsableToken_UsesRefreshedToken()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var freshRefreshedToken = CreateUnsignedJwt(userId);
+        var httpContext = CreateHttpContext(userId, token: null, freshRefreshedToken);
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+
+        var innerHandler = new CapturingHandler();
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/protected");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Authorization).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Scheme).IsEqualTo("Bearer");
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization.Parameter).IsEqualTo(freshRefreshedToken);
+        circuitTokenService.Received(1).SetToken(freshRefreshedToken);
+    }
+
+    [Test]
+    public async Task SendAsync_WithExpiredHttpContextToken_AndCookieRefreshReturnsUsableToken_UsesRefreshedToken()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var expiredContextToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddMinutes(-5));
+        var freshRefreshedToken = CreateUnsignedJwt(userId);
+        var httpContext = CreateHttpContext(userId, expiredContextToken, freshRefreshedToken);
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+
+        var innerHandler = new CapturingHandler();
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/protected");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Authorization).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Scheme).IsEqualTo("Bearer");
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization.Parameter).IsEqualTo(freshRefreshedToken);
+        circuitTokenService.Received(1).SetToken(freshRefreshedToken);
+    }
+
+    [Test]
+    public async Task SendAsync_WithExpiredHttpContextToken_AndCookieRefreshFails_UsesFreshStoredToken()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var expiredContextToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddMinutes(-5));
+        var freshStoredToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddMinutes(30));
+        var httpContext = CreateHttpContext(userId, expiredContextToken, null);
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+
+        var tokenStoreService = new CircuitAccessTokenService(
+            _tokenStore,
+            httpContextAccessor,
+            NullLogger<CircuitAccessTokenService>.Instance);
+        tokenStoreService.SetToken(freshStoredToken);
+
+        var innerHandler = new CapturingHandler();
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/protected");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Authorization).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Scheme).IsEqualTo("Bearer");
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization.Parameter).IsEqualTo(freshStoredToken);
+        circuitTokenService.DidNotReceive().SetToken(Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task SendAsync_WithExpiredHttpContextToken_AndCookieRefreshStillExpired_UsesBffSelfRefreshToken()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var expiredContextToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddMinutes(-5));
+        var freshRefreshedToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddMinutes(30));
+        var httpContext = CreateHttpContext(userId, expiredContextToken, expiredContextToken);
+        httpContext.Request.Scheme = "https";
+        httpContext.Request.Host = new HostString("localhost:5001");
+        httpContext.Request.Headers.Cookie = ".AspNetCore.Cookies=test-cookie";
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+
+        var refreshHandler = new BffSelfRefreshHandler(() => _tokenStore.Store(userId, sessionId: null, freshRefreshedToken));
+        var selfClientFactory = new TestHttpClientFactory(refreshHandler);
+        var innerHandler = new CapturingHandler();
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance,
+            selfClientFactory)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.com/api/event");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(refreshHandler.Called).IsTrue();
+        await Assert.That(refreshHandler.CapturedRequest).IsNotNull();
+        await Assert.That(refreshHandler.CapturedRequest!.RequestUri!.AbsolutePath).IsEqualTo("/bff/auth/refresh-session/internal");
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Authorization).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Scheme).IsEqualTo("Bearer");
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization.Parameter).IsEqualTo(freshRefreshedToken);
+        circuitTokenService.Received(1).SetToken(freshRefreshedToken);
+    }
+
+    [Test]
     public async Task SendAsync_WithinCircuitActivityScope_UsesCircuitUserContextTokenStore()
     {
         var userId = Guid.NewGuid().ToString();
@@ -209,18 +344,9 @@ public class AccessTokenForwardingHandlerTests
         return new JwtSecurityTokenHandler().WriteToken(jwt);
     }
 
-    private static HttpContext CreateHttpContext(string userId, string? token)
+    private static HttpContext CreateHttpContext(string userId, string? token, params string?[] additionalTokens)
     {
         var authService = Substitute.For<IAuthenticationService>();
-        var authProperties = new AuthenticationProperties();
-
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            authProperties.StoreTokens(
-            [
-                new AuthenticationToken { Name = "access_token", Value = token }
-            ]);
-        }
 
         var principal = new ClaimsPrincipal(
             new ClaimsIdentity(
@@ -230,9 +356,23 @@ public class AccessTokenForwardingHandlerTests
             ],
             authenticationType: "Test"));
 
-        var ticket = new AuthenticationTicket(principal, authProperties, TestAuthHandler.SchemeName);
+        var tokens = new[] { token }.Concat(additionalTokens ?? Array.Empty<string?>());
+        var results = tokens.Select(t =>
+        {
+            var authProperties = new AuthenticationProperties();
+            if (!string.IsNullOrWhiteSpace(t))
+            {
+                authProperties.StoreTokens(
+                [
+                    new AuthenticationToken { Name = "access_token", Value = t }
+                ]);
+            }
+
+            return AuthenticateResult.Success(new AuthenticationTicket(principal, authProperties, TestAuthHandler.SchemeName));
+        }).ToArray();
+
         authService.AuthenticateAsync(Arg.Any<HttpContext>(), Arg.Any<string?>())
-            .Returns(AuthenticateResult.Success(ticket));
+            .Returns(results[0], results.Skip(1).ToArray());
 
         var services = new ServiceCollection();
         services.AddSingleton(authService);
@@ -243,5 +383,27 @@ public class AccessTokenForwardingHandlerTests
         };
         httpContext.User = principal;
         return httpContext;
+    }
+
+    private sealed class TestHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
+    }
+
+    private sealed class BffSelfRefreshHandler(Action onRefresh) : HttpMessageHandler
+    {
+        public bool Called { get; private set; }
+        public HttpRequestMessage? CapturedRequest { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Called = true;
+            CapturedRequest = request;
+            onRefresh();
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                RequestMessage = request
+            });
+        }
     }
 }

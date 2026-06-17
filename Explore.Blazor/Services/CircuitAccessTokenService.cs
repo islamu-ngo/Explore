@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 
 namespace Explore.Blazor.Services;
@@ -337,24 +338,30 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 /// </summary>
 public class AccessTokenForwardingHandler : DelegatingHandler
 {
+    private const string BffSelfClientName = "BffSelfClient";
+    private const string InternalRefreshPath = "/bff/auth/refresh-session/internal";
+
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ICircuitAccessTokenService _circuitAccessTokenService;
     private readonly ICircuitUserContext _circuitUserContext;
     private readonly ICircuitTokenStore _tokenStore;
     private readonly ILogger<AccessTokenForwardingHandler> _logger;
+    private readonly IHttpClientFactory? _bffSelfClientFactory;
 
     public AccessTokenForwardingHandler(
         IHttpContextAccessor httpContextAccessor,
         ICircuitAccessTokenService circuitAccessTokenService,
         ICircuitUserContext circuitUserContext,
         ICircuitTokenStore tokenStore,
-        ILogger<AccessTokenForwardingHandler> logger)
+        ILogger<AccessTokenForwardingHandler> logger,
+        IHttpClientFactory? bffSelfClientFactory = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _circuitAccessTokenService = circuitAccessTokenService;
         _circuitUserContext = circuitUserContext;
         _tokenStore = tokenStore;
         _logger = logger;
+        _bffSelfClientFactory = bffSelfClientFactory;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -403,6 +410,42 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "[AccessTokenForwardingHandler] Could not get token from HttpContext");
+            }
+        }
+
+        // Strategy 1b: If the HttpContext token was missing or not usable, try to refresh
+        // the cookie session explicitly. This runs CookieAuthenticationEvents.ValidatePrincipal,
+        // which can exchange the stored refresh_token for a new access_token and re-issue the
+        // cookie. The refreshed token is also pushed into the circuit token store so later
+        // SignalR/circuit-dispatched requests can reuse it.
+        if (string.IsNullOrEmpty(token) && isAuthenticated && httpContext is not null)
+        {
+            try
+            {
+                var authResult = await httpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                if (authResult.Succeeded && authResult.Properties is not null)
+                {
+                    var refreshedToken = authResult.Properties.GetTokenValue("access_token");
+                    if (!string.IsNullOrEmpty(refreshedToken) && CircuitTokenStore.IsTokenUsable(refreshedToken))
+                    {
+                        _circuitAccessTokenService.SetToken(refreshedToken);
+                        token = refreshedToken;
+                        source = "HttpContextRefreshed";
+                        _logger.LogInformation(
+                            "[AccessTokenForwardingHandler] Refreshed access token from cookie authentication for {Path}",
+                            request.RequestUri?.PathAndQuery);
+                    }
+                    else if (!string.IsNullOrEmpty(refreshedToken))
+                    {
+                        _logger.LogInformation(
+                            "[AccessTokenForwardingHandler] Cookie authentication returned an unusable access token for {Path}; trying circuit and BFF refresh fallbacks",
+                            request.RequestUri?.PathAndQuery);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[AccessTokenForwardingHandler] Could not refresh access token via cookie authentication");
             }
         }
 
@@ -486,6 +529,15 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             }
         }
 
+        if (string.IsNullOrEmpty(token) && isAuthenticated && httpContext is not null)
+        {
+            token = await TryRefreshViaBffSelfEndpointAsync(httpContext, request, cancellationToken);
+            if (!string.IsNullOrEmpty(token))
+            {
+                source = "BffSelfRefresh";
+            }
+        }
+
         // Strategy 5: If the only token available is still valid but inside the persistence
         // safety buffer, forward it for this short request instead of dropping auth entirely.
         if (string.IsNullOrEmpty(token) && !string.IsNullOrEmpty(nearExpiryHttpContextToken))
@@ -528,6 +580,83 @@ public class AccessTokenForwardingHandler : DelegatingHandler
         }
 
         return await base.SendAsync(request, cancellationToken);
+    }
+
+    private async Task<string?> TryRefreshViaBffSelfEndpointAsync(
+        HttpContext httpContext,
+        HttpRequestMessage outboundRequest,
+        CancellationToken cancellationToken)
+    {
+        if (_bffSelfClientFactory is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var selfClient = _bffSelfClientFactory.CreateClient(BffSelfClientName);
+            using var refreshRequest = new HttpRequestMessage(HttpMethod.Post, BuildInternalRefreshUri(httpContext));
+            using var response = await selfClient.SendAsync(refreshRequest, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "[AccessTokenForwardingHandler] BFF self refresh returned {StatusCode} before forwarding {Path}",
+                    (int)response.StatusCode,
+                    outboundRequest.RequestUri?.PathAndQuery);
+                return null;
+            }
+
+            var userId = TryResolveUserId(httpContext.User) ?? _circuitUserContext.UserId;
+            var sessionId = CircuitAccessTokenService.TryResolveSessionId(httpContext.User?.Claims)
+                ?? _circuitUserContext.SessionId;
+            var refreshedToken = ResolveTokenFromStore(userId, sessionId);
+            if (!string.IsNullOrEmpty(refreshedToken))
+            {
+                _circuitAccessTokenService.SetToken(refreshedToken);
+                _logger.LogInformation(
+                    "[AccessTokenForwardingHandler] Refreshed access token through BFF self endpoint for {Path}",
+                    outboundRequest.RequestUri?.PathAndQuery);
+                return refreshedToken;
+            }
+
+            _logger.LogWarning(
+                "[AccessTokenForwardingHandler] BFF self refresh succeeded before forwarding {Path}, but no usable token was available in the circuit token store",
+                outboundRequest.RequestUri?.PathAndQuery);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "[AccessTokenForwardingHandler] Could not refresh access token through BFF self endpoint before forwarding {Path}",
+                outboundRequest.RequestUri?.PathAndQuery);
+            return null;
+        }
+    }
+
+    private string? ResolveTokenFromStore(string? userId, string? sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return null;
+        }
+
+        var resolution = _tokenStore.Resolve(userId, sessionId);
+        if (!resolution.Found && string.IsNullOrWhiteSpace(sessionId))
+        {
+            resolution = _tokenStore.ResolveByUserId(userId);
+        }
+
+        return resolution.Found ? resolution.Token : null;
+    }
+
+    private static Uri BuildInternalRefreshUri(HttpContext httpContext)
+    {
+        var request = httpContext.Request;
+        var pathBase = request.PathBase.HasValue ? request.PathBase.Value : string.Empty;
+        var refreshPath = string.Concat(pathBase, InternalRefreshPath);
+
+        return new UriBuilder(request.Scheme, request.Host.Host, request.Host.Port ?? -1, refreshPath).Uri;
     }
 
     private static bool IsAnonymousAllowedPath(string pathAndQuery)
