@@ -122,7 +122,12 @@ public sealed class StoragePolicyResolver : IStoragePolicyResolver
         SettingSource providerSource,
         CancellationToken cancellationToken)
     {
-        if (configuredProvider != StorageProviders.Local || providerSource != SettingSource.SystemDefault || _s3ConfigResolver is null)
+        if (configuredProvider != StorageProviders.Local || _s3ConfigResolver is null)
+        {
+            return configuredProvider;
+        }
+
+        if (providerSource != SettingSource.SystemDefault && providerSource != SettingSource.SystemLocked)
         {
             return configuredProvider;
         }

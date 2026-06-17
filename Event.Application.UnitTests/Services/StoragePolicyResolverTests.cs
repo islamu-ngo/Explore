@@ -127,6 +127,29 @@ public sealed class StoragePolicyResolverTests
     }
 
     [Test]
+    public async Task ResolveAsync_WhenProviderIsSystemLevelLocalAndS3Configured_UsesS3CompatibleProvider()
+    {
+        var settings = CreateSettings(provider: StorageProviders.Local).ToList();
+        var providerSettingIndex = settings.FindIndex(s => s.Key == GovernanceSettingKeys.Storage.Provider);
+        settings[providerSettingIndex] = new ResolvedSetting
+        {
+            Key = GovernanceSettingKeys.Storage.Provider,
+            Value = SettingValueSerializer.Serialize(StorageProviders.Local),
+            ValueType = SettingValueType.String,
+            Source = SettingSource.SystemLocked,
+            IsLocked = true
+        };
+
+        SetupInstanceSettings(settings);
+        _s3ConfigResolver.IsConfiguredAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var resolver = CreateResolver();
+
+        var policy = await resolver.ResolveAsync(null);
+
+        await Assert.That(policy.Provider).IsEqualTo(StorageProviders.S3Compatible);
+    }
+
+    [Test]
     public async Task ResolveAsync_WhenProviderIsDefaultLocalAndS3Missing_KeepsLocalProvider()
     {
         SetupInstanceSettings(CreateSettings(provider: StorageProviders.Local));
