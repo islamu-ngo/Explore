@@ -34,22 +34,6 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 
 ![Event List Screenshot][event-list-image]
 
-## Quick Start
-
-Use this README as the entry point. Pick the path that matches your task; each path links to the canonical doc instead of repeating the same instructions in multiple places.
-
-| I want to... | Start here | Then read |
-|---|---|---|
-| Understand what this project is | [Project](docs/PROJECT.md) | [Architecture](docs/ARCHITECTURE.md), [Security Model](docs/SECURITY-MODEL.md) |
-| Run it locally for development | [Getting Started](docs/GETTING_STARTED.md) | [Testing](docs/TESTING.md), [Troubleshooting](docs/TROUBLESHOOTING.md) |
-| Self-host it | [Self-Hosting](docs/SELF_HOSTING.md) | [Configuration](docs/CONFIGURATION.md), [Operations](docs/OPERATIONS.md), [Backup/Restore/Upgrade](docs/BACKUP_RESTORE_UPGRADE.md) |
-| Configure tenants, branding, or admin behavior | [Admin Guide](docs/ADMIN_GUIDE.md) | [Deployment Modes](docs/DEPLOYMENT_MODES.md), [Multi-Tenancy](docs/MULTI_TENANCY.md), [Admin Hierarchy](docs/ADMIN_HIERARCHY.md) |
-| Integrate with the API | [API Cookbook](docs/API_COOKBOOK.md) | [API Reference](docs/API.md), [API Changelog](docs/API_CHANGELOG.md) |
-| Make a first contribution | [First Contribution](docs/FIRST_CONTRIBUTION.md) | [Contributing](docs/CONTRIBUTING.md), [Quick Reference](docs/QUICK_REFERENCE.md) |
-| Use AI-assisted development | [AGENTS.md](AGENTS.md) | [Contract Intents](.claude/contract/intents.yaml), [Quick Reference](docs/QUICK_REFERENCE.md) |
-
-For the complete documentation inventory, use [docs/index.md](docs/index.md). If a page gives task steps and another page gives exact keys/contracts, treat the task page as the workflow and the reference page as the source of truth.
-
 ## ✨ Who It Serves
 
 ### Event Seekers
@@ -120,7 +104,7 @@ ISLAMU Event is used by:
 
 ---
 
-Using ISLAMU Event and want to add your project/organization to this list? [Open a pull request!](https://github.com/islamu-ngo/Event/edit/main/README.md)
+Using ISLAMU Event and want to add your project/organization to this list? [Open a pull request!](https://github.com/islamu-ngo/Event/edit/develop/README.md)
 
 ## Roadmap
 
@@ -152,19 +136,25 @@ AI-assisted contributors should follow [`AGENTS.md`](AGENTS.md).
 
 Please read [Contribution Guidelines][contribution-guidelines] for details on the process for submitting pull requests to us.
 
+### ✍️ Contributor License Agreement
+
+Before your pull request can be reviewed or merged, every non-bot contributor must sign the [ISLAMU Contributor License Agreement][cla-link]. Signing is done in-PR: a bot posts instructions when the PR opens, and you reply with the exact sign phrase. The signature is recorded in `signatures/v1/cla.json` together with your GitHub username, user ID, pull request number, signing comment ID, and timestamp. See the CLA document for the current version and the full legal text.
+
 ## 📚 Documentation
 
 The README is the entrypoint for new readers. [docs/index.md](docs/index.md) is the full documentation map once you know the area you need.
 
 | Reader | Best first page | Use when |
 |---|---|---|
-| Evaluator | [Project](docs/PROJECT.md) | You want product scope, status, and architecture context. |
-| Local developer | [Getting Started](docs/GETTING_STARTED.md) | You want to build, run, and validate the app locally. |
-| Self-hoster/operator | [Self-Hosting](docs/SELF_HOSTING.md) | You want Docker Compose, infrastructure, secrets, health checks, and upgrades. |
-| Contributor | [First Contribution](docs/FIRST_CONTRIBUTION.md) | You want the shortest safe path to a docs-only or small-bug PR. |
-| API integrator | [API Cookbook](docs/API_COOKBOOK.md) | You want task-first API examples before the full API reference. |
+| Evaluator | [Project](docs/PROJECT.md), [Architecture](docs/ARCHITECTURE.md), [Security Model](docs/SECURITY-MODEL.md) | You want product scope, status, and architecture context. |
+| Local developer | [Getting Started](docs/GETTING_STARTED.md), [Testing](docs/TESTING.md), [Troubleshooting](docs/TROUBLESHOOTING.md) | You want to build, run, and validate the app locally. |
+| Self-hoster/operator | [Self-Hosting](docs/SELF_HOSTING.md), [Configuration](docs/CONFIGURATION.md), [Operations](docs/OPERATIONS.md), [Backup/Restore/Upgrade](docs/BACKUP_RESTORE_UPGRADE.md) | You want Docker Compose, infrastructure, secrets, health checks, and upgrades. |
+| Contributor | [First Contribution](docs/FIRST_CONTRIBUTION.md), [Contributing](docs/CONTRIBUTING.md), [Quick Reference](docs/QUICK_REFERENCE.md) | You want the shortest safe path to a docs-only or small-bug PR. |
+| API integrator | [API Cookbook](docs/API_COOKBOOK.md), [API Reference](docs/API.md), [API Changelog](docs/API_CHANGELOG.md) | You want task-first API examples before the full API reference. |
 | Frontend contributor | [Blazor](docs/BLAZOR.md) | You want client architecture, render policies, and UI conventions. |
-| AI-assisted contributor | [AGENTS.md](AGENTS.md) | You need the repository contribution contract and required context-loading rules. |
+| AI-assisted contributor | [AGENTS.md](AGENTS.md), [Contract Intents](.claude/contract/intents.yaml), [Quick Reference](docs/QUICK_REFERENCE.md) | You need the repository contribution contract and required context-loading rules. |
+
+For the complete documentation inventory, use [docs/index.md](docs/index.md). If a page gives task steps and another page gives exact keys/contracts, treat the task page as the workflow and the reference page as the source of truth.
 
 ## 🏗️ Technology Stack (v0.1.0)
 
@@ -172,7 +162,7 @@ The README is the entrypoint for new readers. [docs/index.md](docs/index.md) is 
 |---|---|
 | Runtime | .NET 10 |
 | Architecture | Clean Architecture, CQRS, MediatR |
-| UI | Blazor Server with InteractiveServer, MudBlazor |
+| UI | Blazor, MudBlazor |
 | API | ASP.NET Core, REST/HAL, OpenAPI, Swagger, Scalar |
 | Data | PostgreSQL, EF Core |
 | Auth | Keycloak OIDC/OAuth2 |
@@ -247,6 +237,14 @@ You can find details [here][privacy-policy].
 
 This project is licensed under the terms of [GNU AGPL v3][license-link].
 
+### Contributor License Agreement
+
+ISLAMU Event inbound contributions are governed by the [ISLAMU Contributor License Agreement][cla-link] (CLA). Every non-bot contributor must sign the CLA before a pull request can be merged.
+
+**Why a CLA alongside AGPL v3?** ISLAMU Event itself remains AGPL v3 — that license does not change. The CLA gives ISLAMU nonprofit (and the ISLAMU Event maintainer of record, Amir Akrari) the ability to also offer ISLAMU Event under alternative terms for organizations and deployers that cannot use AGPL v3 due to compliance, procurement, or sector-specific licensing constraints. The goal is to remove adoption barriers so ISLAMU Event can reach any audience — humanitarian, public-sector, nonprofit, or enterprise — without forcing adopters to accept terms they are not permitted to use.
+
+The CLA is versioned. The current version and full legal text live in [`docs/legal/CLA.md`][cla-link]. Signed contributor records (who, when, CLA version, pull request, comment) are stored in `signatures/v1/cla.json` on the `develop` branch and are committed automatically by the CLA workflow.
+
 <div align="right">
 
 [![][back-to-top]][back-to-top-link]
@@ -289,7 +287,7 @@ This project is licensed under the terms of [GNU AGPL v3][license-link].
 [github-discussions-link]: https://github.com/islamu-ngo/Event/discussions
 [github-contributors-link]: https://github.com/islamu-ngo/Event/graphs/contributors
 
-[github-workflow-status-shield]: https://img.shields.io/github/actions/workflow/status/islamu-ngo/Event/test.yml?branch=main&logo=github&style=flat-square
+[github-workflow-status-shield]: https://img.shields.io/github/actions/workflow/status/islamu-ngo/Event/test.yml?branch=develop&logo=github&style=flat-square
 [github-stars-shield]: https://img.shields.io/github/stars/islamu-ngo/Event?color=594ae2&style=flat-square&logo=github
 [github-stars-link]: https://github.com/islamu-ngo/Event/stargazers
 [github-license-shield]: https://img.shields.io/github/license/islamu-ngo/Event?color=594ae2&logo=github&style=flat-square
@@ -323,3 +321,4 @@ This project is licensed under the terms of [GNU AGPL v3][license-link].
 [support-palestine-banner-source]: https://github.com/Safouene1/support-palestine-banner/
 
 [contribution-guidelines]: docs/CONTRIBUTING.md
+[cla-link]: docs/legal/CLA.md

@@ -44,11 +44,13 @@ Details:
 
 ## Contributor Legal Status
 
-- [ ] I have read and agree to the ISLAMU Contributor License Agreement in docs/legal/CLA.md.
+A bot will post signing instructions on this pull request as soon as it is opened. Every non-bot contributor must sign the [ISLAMU Contributor License Agreement](https://github.com/islamu-ngo/Event/blob/main/docs/legal/CLA.md) by posting a comment on this pull request with the exact text:
 
-CLA Signature: @github-username
+```text
+I have read the CLA Document and I hereby sign the CLA
+```
 
-If this PR has multiple contributors, add one `CLA Signature: @github-username` line for every non-bot contributor.
+To re-run the CLA check after signing, post a comment with `recheck`.
 
 Details:
 

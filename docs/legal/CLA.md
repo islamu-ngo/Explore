@@ -3,9 +3,13 @@
 
 # ISLAMU Event Contributor License Agreement
 
+> **Version:** 1.0  
 > **Status:** Active pending legal review refinement  
 > **Owner:** ISLAMU nonprofit | Platform/Ops  
-> **Purpose:** Preserve ISLAMU nonprofit's ability to provide, sell, sublicense, or relicense ISLAMU Event under alternative terms when the default project license would prevent a legitimate social-impact deployment.
+> **Maintainer of record:** Amir Akrari  
+> **Purpose:** Preserve ISLAMU nonprofit's ability to provide, sell, sublicense, or relicense ISLAMU Event under alternative terms when the default project license would prevent a legitimate social-impact deployment.  
+
+A new CLA version is published by bumping the `Version` line above and updating the `path-to-signatures` version segment in `.github/workflows/cla.yml` (e.g. `signatures/v2/cla.json`). Earlier signatures remain valid only for the CLA version under which they were recorded; a contributor must re-sign when the version changes.
 
 This Contributor License Agreement (CLA) applies to contributions submitted to ISLAMU Event, including API, Blazor, infrastructure, workflow, documentation, configuration, generated artifacts, tests, and related project materials.
 
@@ -13,7 +17,7 @@ This document is not personal legal advice. Contributors should only sign if the
 
 ## Agreement
 
-By submitting a pull request with the required CLA signature statement, you agree to the terms below.
+By posting the CLA signature comment on a pull request, you and ISLAMU agree to the terms below.
 
 ## Definitions
 
@@ -21,19 +25,23 @@ By submitting a pull request with the required CLA signature statement, you agre
 
 **You** means the individual contributor and, if applicable, the organization on whose behalf the contribution is submitted.
 
-**ISLAMU** means the ISLAMU nonprofit organization and its authorized successors, affiliates, sublicensees, and distribution partners acting for ISLAMU Event.
+**ISLAMU** means the ISLAMU nonprofit organization, its authorized successors, affiliates, sublicensees, distribution partners, and the ISLAMU Event maintainer of record acting for ISLAMU Event.
+
+**Amir Akrari** means the ISLAMU Event maintainer of record, acting jointly with ISLAMU as the recipient of the rights granted below.
 
 ## Copyright License Grant
 
-You grant ISLAMU a worldwide, perpetual, irrevocable, non-exclusive, royalty-free, transferable, and sublicensable license to use your Contributions in any way needed for ISLAMU Event.
+You and ISLAMU agree: you grant ISLAMU and Amir Akrari the ability to use the Contributions in any way. You hereby grant a perpetual, non-exclusive, worldwide, fully paid-up, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, and distribute your Contribution and such derivative works. You are able to grant these rights. You represent that you are legally entitled to grant the above license. The Contributions are your original work. You represent that the Contributions are your original works of authorship.
+
+In addition to the grant above, you grant ISLAMU and Amir Akrari a worldwide, perpetual, irrevocable, non-exclusive, royalty-free, transferable, and sublicensable license to use your Contributions in any way needed for ISLAMU Event.
 
 This includes the rights to copy, modify, prepare derivative works, publish, distribute, publicly perform, publicly display, host, operate, provide as a service, sell, offer for sale, sublicense, relicense, and otherwise exploit the Contributions as part of ISLAMU Event or related offerings.
 
-This grant explicitly allows ISLAMU to provide ISLAMU Event, including its API, Blazor applications, infrastructure, documentation, deployment assets, and related components, under any license or commercial terms chosen by ISLAMU. That includes open-source, source-available, proprietary, commercial, nonprofit, humanitarian, public-sector, and special social-impact licensing arrangements.
+This grant explicitly allows ISLAMU and Amir Akrari to provide ISLAMU Event, including its API, Blazor applications, infrastructure, documentation, deployment assets, and related components, under any license or commercial terms chosen by ISLAMU. That includes open-source, source-available, proprietary, commercial, nonprofit, humanitarian, public-sector, and special social-impact licensing arrangements.
 
 ## Patent License Grant
 
-If your Contribution would otherwise be covered by patent claims that you can license, you grant ISLAMU and downstream recipients a worldwide, perpetual, royalty-free patent license to make, have made, use, sell, offer for sale, import, and otherwise transfer the Contribution as part of ISLAMU Event.
+If your Contribution would otherwise be covered by patent claims that you can license, you grant ISLAMU, Amir Akrari, and downstream recipients a worldwide, perpetual, royalty-free patent license to make, have made, use, sell, offer for sale, import, and otherwise transfer the Contribution as part of ISLAMU Event.
 
 ## Contributor Ownership
 
@@ -59,18 +67,18 @@ Contributions are provided as-is, without warranties or conditions of any kind, 
 
 ## How To Sign
 
-Every non-bot contributor to a pull request must add a checked CLA confirmation and signature line to the pull request body.
+Every non-bot contributor to a pull request must sign this CLA by posting the following exact comment on the pull request:
 
-Required checkbox:
-
-```markdown
-- [x] I have read and agree to the ISLAMU Contributor License Agreement in docs/legal/CLA.md.
+```text
+I have read the CLA Document and I hereby sign the CLA
 ```
 
-Required signature line for each contributor:
+The ISLAMU CLA workflow (powered by [cla-assistant/github-action][cla-action-link], pinned at `contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1`) records each signature in `signatures/v1/cla.json` on the `main` branch. The recorded entry stores the contributor's GitHub username, user ID, the pull request number, the signing comment ID and body, and an ISO-8601 timestamp.
 
-```markdown
-CLA Signature: @github-username
-```
+If the CLA version changes, the workflow switches the signatures file to a new version segment (for example `signatures/v2/cla.json`) and contributors must re-sign the new version.
 
-The CLA workflow checks pull request metadata only. It does not checkout, build, test, or execute pull-request head code.
+To re-run the CLA check after signing, post a comment containing only `recheck`.
+
+The CLA workflow runs on `pull_request_target` and `issue_comment` events only. It does not checkout, build, test, or execute pull-request head code.
+
+[cla-action-link]: https://github.com/contributor-assistant/github-action
