@@ -99,11 +99,11 @@ public class S3ConfigResolver : IS3ConfigResolver
             GovernanceSettingKeys.Storage.Endpoint,
             tenantId,
             cancellationToken,
-            "S3Settings:Endpoint",
-            "Storage:S3Endpoint",
-            "Storage:S3:Endpoint",
+            "STORAGE_S3_ENDPOINT",
             "storage.s3.endpoint",
-            "STORAGE_S3_ENDPOINT");
+            "Storage:S3:Endpoint",
+            "Storage:S3Endpoint",
+            "S3Settings:Endpoint");
         if (string.IsNullOrWhiteSpace(endpoint))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: endpoint is empty", tenantId);
@@ -114,11 +114,11 @@ public class S3ConfigResolver : IS3ConfigResolver
             GovernanceSettingKeys.Storage.BucketName,
             tenantId,
             cancellationToken,
-            "S3Settings:BucketName",
-            "Storage:S3BucketName",
-            "Storage:S3:BucketName",
+            "STORAGE_S3_BUCKET_NAME",
             "storage.s3.bucket_name",
-            "STORAGE_S3_BUCKET_NAME");
+            "Storage:S3:BucketName",
+            "Storage:S3BucketName",
+            "S3Settings:BucketName");
         if (string.IsNullOrWhiteSpace(bucketName))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: bucket_name is empty", tenantId);
@@ -129,11 +129,11 @@ public class S3ConfigResolver : IS3ConfigResolver
             InfrastructureSecretSettingKeys.Storage.AccessKeyId,
             tenantId,
             cancellationToken,
-            "S3Settings:AccessKeyId",
-            "Storage:S3AccessKeyId",
-            "Storage:S3:AccessKeyId",
+            "STORAGE_S3_ACCESS_KEY_ID",
             "storage.s3.access_key_id",
-            "STORAGE_S3_ACCESS_KEY_ID");
+            "Storage:S3:AccessKeyId",
+            "Storage:S3AccessKeyId",
+            "S3Settings:AccessKeyId");
         if (string.IsNullOrWhiteSpace(accessKeyId))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: access_key_id is empty", tenantId);
@@ -144,11 +144,11 @@ public class S3ConfigResolver : IS3ConfigResolver
             InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
             tenantId,
             cancellationToken,
-            "S3Settings:SecretAccessKey",
-            "Storage:S3SecretAccessKey",
-            "Storage:S3:SecretAccessKey",
+            "STORAGE_S3_SECRET_ACCESS_KEY",
             "storage.s3.secret_access_key",
-            "STORAGE_S3_SECRET_ACCESS_KEY");
+            "Storage:S3:SecretAccessKey",
+            "Storage:S3SecretAccessKey",
+            "S3Settings:SecretAccessKey");
         if (string.IsNullOrWhiteSpace(secretAccessKey))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: secret_access_key is empty", tenantId);
@@ -162,20 +162,20 @@ public class S3ConfigResolver : IS3ConfigResolver
             GovernanceSettingKeys.Storage.Region,
             tenantId,
             cancellationToken,
-            "S3Settings:Region",
-            "Storage:S3Region",
-            "Storage:S3:Region",
+            "STORAGE_S3_REGION",
             "storage.s3.region",
-            "STORAGE_S3_REGION");
+            "Storage:S3:Region",
+            "Storage:S3Region",
+            "S3Settings:Region");
         var publicEndpoint = await ResolveStringAsync(
             GovernanceSettingKeys.Storage.PublicEndpoint,
             tenantId,
             cancellationToken,
-            "S3Settings:PublicEndpoint",
-            "Storage:S3PublicEndpoint",
-            "Storage:S3:PublicEndpoint",
+            "STORAGE_S3_PUBLIC_ENDPOINT",
             "storage.s3.public_endpoint",
-            "STORAGE_S3_PUBLIC_ENDPOINT");
+            "Storage:S3:PublicEndpoint",
+            "Storage:S3PublicEndpoint",
+            "S3Settings:PublicEndpoint");
 
         return new S3Configuration
         {
