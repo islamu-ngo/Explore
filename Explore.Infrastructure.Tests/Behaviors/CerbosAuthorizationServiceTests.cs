@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
+using Explore.Domain.Constants;
 using Explore.Infrastructure.Services;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
@@ -122,6 +123,76 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(result).IsTrue();
         await Assert.That(capturedRequest).IsNotNull();
         await Assert.That(capturedRequest!.Principal.Id).IsEqualTo(resolvedUserId.ToString());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_EventResourceAttributes_EnrichesPrincipalWithEventAssignments()
+    {
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var eventAuthoritySnapshotService = Substitute.For<IEventAuthoritySnapshotService>();
+
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _tenantContext.TenantId.Returns(tenantId);
+
+        eventAuthoritySnapshotService.GetForUserAndEventsAsync(
+                tenantId,
+                userId,
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(eventId)),
+                Arg.Any<CancellationToken>())
+            .Returns(new EventAuthoritySnapshot(
+                tenantId,
+                userId,
+                new Dictionary<Guid, EventAuthorityForUser>
+                {
+                    [eventId] = new(
+                        new HashSet<string>(StringComparer.Ordinal) { "event.owner" },
+                        new HashSet<string>(StringComparer.Ordinal)
+                        {
+                            PermissionCodes.EventUpdate,
+                            PermissionCodes.EventPublish
+                        },
+                        IsOwner: true,
+                        IsManager: false)
+                }));
+
+        Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
+        var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        protoResponse.Results.Add(CreateResultEntry(eventId.ToString(), "islamuevent_event", "update", Effect.Allow));
+
+        _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(call =>
+            {
+                capturedRequest = call.ArgAt<CheckResourcesRequest>(0).ToCheckResourcesRequest();
+                return new CheckResourcesResponse(protoResponse);
+            });
+
+        var service = CreateService(eventAuthoritySnapshotService: eventAuthoritySnapshotService);
+        var allowed = await service.IsAllowedAsync(
+            "islamuevent_event",
+            eventId.ToString(),
+            "update",
+            new Dictionary<string, object> { ["eventId"] = eventId });
+
+        await Assert.That(allowed).IsTrue();
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.Principal.Attr.ContainsKey("eventAssignments")).IsTrue();
+        await Assert.That(capturedRequest.Principal.Attr.ContainsKey("nowUtc")).IsTrue();
+
+        var assignmentFields = capturedRequest.Principal.Attr["eventAssignments"]
+            .StructValue.Fields[eventId.ToString()]
+            .StructValue.Fields;
+        var roles = assignmentFields["roles"].ListValue.Values.Select(value => value.StringValue).ToArray();
+        var permissions = assignmentFields["permissions"].ListValue.Values.Select(value => value.StringValue).ToArray();
+
+        await Assert.That(assignmentFields["tenantId"].StringValue).IsEqualTo(tenantId.ToString());
+        await Assert.That(roles).Contains("event.owner");
+        await Assert.That(permissions).Contains(PermissionCodes.EventUpdate);
+        await Assert.That(permissions).Contains(PermissionCodes.EventPublish);
     }
 
     [Test]
@@ -284,11 +355,16 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(intVal).IsNotNull();
     }
 
-    private CerbosAuthorizationService CreateService(string grpcEndpoint = "http://localhost:3593")
+    private CerbosAuthorizationService CreateService(
+        string grpcEndpoint = "http://localhost:3593",
+        IEventAuthoritySnapshotService? eventAuthoritySnapshotService = null)
     {
         return new CerbosAuthorizationService(
             _cerbosClient,
-            new CerbosPrincipalBuilder(_adminContext, _machinePrincipalAccessor, Substitute.For<IEventAuthoritySnapshotService>()),
+            new CerbosPrincipalBuilder(
+                _adminContext,
+                _machinePrincipalAccessor,
+                eventAuthoritySnapshotService ?? Substitute.For<IEventAuthoritySnapshotService>()),
             _adminContext,
             _machinePrincipalAccessor,
             _settingsResolver,

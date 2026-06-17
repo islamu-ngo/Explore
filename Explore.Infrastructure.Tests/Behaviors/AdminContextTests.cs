@@ -124,6 +124,149 @@ public class AdminContextTests
     }
 
     [Test]
+    public async Task ResolveUserIdAsync_WithGoogleIdpAlias_UsesNormalizedExternalLoginProvider()
+    {
+        var userId = Guid.NewGuid();
+        const string subject = "sXzmb2sFh0rG8tVveiNrP3td";
+
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        externalLoginRepository
+            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), subject)
+            .Returns(NewExternalLogin(userId, AuthSchemeNames.Google.ToLowerInvariant(), subject));
+
+        var sut = CreateSut(
+            CreateHttpContextAccessor(CreateExternalPrincipal(subject, idp: "google-oauth2")),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository);
+
+        var result = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(result).IsEqualTo(userId);
+        await externalLoginRepository.Received(1)
+            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), subject);
+    }
+
+    [Test]
+    public async Task ResolveUserIdAsync_WithAtprotoDidClaim_UsesDidProviderKey()
+    {
+        var userId = Guid.NewGuid();
+        const string subject = "handle.example.com";
+        const string did = "did:plc:example";
+
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        externalLoginRepository
+            .GetByProviderAndKey(AuthSchemeNames.Atproto.ToLowerInvariant(), did)
+            .Returns(NewExternalLogin(userId, AuthSchemeNames.Atproto.ToLowerInvariant(), did));
+
+        var sut = CreateSut(
+            CreateHttpContextAccessor(CreateExternalPrincipal(subject, idp: "atproto", did: did)),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository);
+
+        var result = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(result).IsEqualTo(userId);
+        await externalLoginRepository.Received(1)
+            .GetByProviderAndKey(AuthSchemeNames.Atproto.ToLowerInvariant(), did);
+    }
+
+    [Test]
+    public async Task ResolveUserIdAsync_WithNoProviderHints_DefaultsToKeycloakExternalLogin()
+    {
+        var userId = Guid.NewGuid();
+        const string subject = "keycloak-subject";
+
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        externalLoginRepository
+            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), subject)
+            .Returns(NewExternalLogin(userId, AuthSchemeNames.Keycloak.ToLowerInvariant(), subject));
+
+        var sut = CreateSut(
+            CreateHttpContextAccessor(CreateExternalPrincipal(subject)),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository);
+
+        var result = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(result).IsEqualTo(userId);
+        await externalLoginRepository.Received(1)
+            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), subject);
+    }
+
+    [Test]
+    public async Task ResolveUserIdAsync_WithVerifiedGoogleEmail_UsesEmailFallbackWhenExternalLoginMissing()
+    {
+        var userId = Guid.NewGuid();
+        const string subject = "google-subject";
+        const string email = "USER@Example.COM";
+
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        externalLoginRepository
+            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), subject)
+            .Returns((UserExternalLogin?)null);
+
+        var userRepository = Substitute.For<IUserRepository>();
+        userRepository.GetUserByEmail("user@example.com").Returns(NewUser(userId, "user@example.com"));
+
+        var sut = CreateSut(
+            CreateHttpContextAccessor(CreateExternalPrincipal(
+                subject,
+                issuer: "https://accounts.google.com",
+                email: email,
+                emailVerified: "true")),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository,
+            userRepository: userRepository);
+
+        var result = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(result).IsEqualTo(userId);
+        await userRepository.Received(1).GetUserByEmail("user@example.com");
+    }
+
+    [Test]
+    public async Task ResolveUserIdAsync_WithUnverifiedGoogleEmail_DoesNotUseEmailFallback()
+    {
+        const string subject = "google-subject";
+
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        externalLoginRepository
+            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), subject)
+            .Returns((UserExternalLogin?)null);
+
+        var userRepository = Substitute.For<IUserRepository>();
+        var sut = CreateSut(
+            CreateHttpContextAccessor(CreateExternalPrincipal(
+                subject,
+                idp: "google",
+                email: "user@example.com",
+                emailVerified: "false")),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository,
+            userRepository: userRepository);
+
+        var result = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await userRepository.DidNotReceive().GetUserByEmail(Arg.Any<string>());
+    }
+
+    [Test]
     public async Task IsGroupAdminAsync_WhenMembershipHasGroupAdminRole_ReturnsTrue()
     {
         // Arrange
@@ -414,11 +557,11 @@ public class AdminContextTests
         IPlatformUserRoleRepository platformUserRoleRepository,
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         ITenantUserRoleGrantRepository tenantUserRoleGrantRepository,
-        IOrganizationMemberRepository organizationMemberRepository)
+        IOrganizationMemberRepository organizationMemberRepository,
+        IUserExternalLoginRepository? userExternalLoginRepository = null,
+        IUserRepository? userRepository = null)
     {
         var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
-        var userExternalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
-        var userRepository = Substitute.For<IUserRepository>();
         var cache = new MemoryCache(new MemoryCacheOptions());
         var deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
         var logger = Substitute.For<ILogger<AdminContext>>();
@@ -430,23 +573,28 @@ public class AdminContextTests
             tenantUserRoleGrantRepository,
             organizationMemberRepository,
             groupMemberRepository,
-            userExternalLoginRepository,
-            userRepository,
+            userExternalLoginRepository ?? Substitute.For<IUserExternalLoginRepository>(),
+            userRepository ?? Substitute.For<IUserRepository>(),
             cache,
             deploymentModeProvider,
             logger);
     }
 
-    private static IHttpContextAccessor CreateHttpContextAccessor(Guid userId)
+    private static IHttpContextAccessor CreateHttpContextAccessor(ClaimsPrincipal principal)
     {
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext
         {
-            User = CreatePrincipal(userId)
+            User = principal
         };
 
         httpContextAccessor.HttpContext.Returns(httpContext);
         return httpContextAccessor;
+    }
+
+    private static IHttpContextAccessor CreateHttpContextAccessor(Guid userId)
+    {
+        return CreateHttpContextAccessor(CreatePrincipal(userId));
     }
 
     private static ClaimsPrincipal CreatePrincipal(Guid userId)
@@ -458,5 +606,62 @@ public class AdminContextTests
         ], "TestAuth");
 
         return new ClaimsPrincipal(identity);
+    }
+
+    private static ClaimsPrincipal CreateExternalPrincipal(
+        string subject,
+        string? idp = null,
+        string? issuer = null,
+        string? did = null,
+        string? email = null,
+        string? emailVerified = null)
+    {
+        var claims = new List<Claim> { new("sub", subject) };
+        if (!string.IsNullOrWhiteSpace(idp))
+            claims.Add(new Claim("idp", idp));
+
+        if (!string.IsNullOrWhiteSpace(issuer))
+            claims.Add(new Claim("iss", issuer));
+
+        if (!string.IsNullOrWhiteSpace(did))
+            claims.Add(new Claim("did", did));
+
+        if (!string.IsNullOrWhiteSpace(email))
+            claims.Add(new Claim("email", email));
+
+        if (!string.IsNullOrWhiteSpace(emailVerified))
+            claims.Add(new Claim("email_verified", emailVerified));
+
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+    }
+
+    private static UserExternalLogin NewExternalLogin(Guid userId, string provider, string providerKey)
+    {
+        return new UserExternalLogin
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            User = NewUser(userId, "user@example.com"),
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            Provider = provider,
+            ProviderKey = providerKey,
+            ProviderDisplayName = provider
+        };
+    }
+
+    private static User NewUser(Guid userId, string email)
+    {
+        return new User
+        {
+            Id = userId,
+            Pii = new UserPii
+            {
+                UserId = userId,
+                Email = email,
+                FirstName = "Test",
+                LastName = "User"
+            }
+        };
     }
 }

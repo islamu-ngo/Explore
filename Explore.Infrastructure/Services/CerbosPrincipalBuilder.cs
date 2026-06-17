@@ -66,9 +66,9 @@ public class CerbosPrincipalBuilder
     /// </summary>
     public async Task<Principal> BuildSdkPrincipalAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
-        var adminTenantIds = await _adminContext.GetAdminTenantIdsAsync(cancellationToken);
-        var adminOrgIds = await _adminContext.GetAdminOrganizationIdsAsync(cancellationToken);
+        var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(userId, cancellationToken);
+        var adminTenantIds = await _adminContext.GetAdminTenantIdsAsync(userId, cancellationToken);
+        var adminOrgIds = await _adminContext.GetAdminOrganizationIdsAsync(userId, cancellationToken);
 
         var tenantMemberships = adminTenantIds
             .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));

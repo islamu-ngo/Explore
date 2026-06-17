@@ -70,8 +70,10 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             if (user?.Identity?.IsAuthenticated != true)
                 return null;
 
-            var sub = user.FindFirst(InternalUserIdClaimType)?.Value
-                ?? user.FindFirst("sub")?.Value
+            if (Guid.TryParse(user.FindFirst(InternalUserIdClaimType)?.Value, out var internalUserId))
+                return internalUserId;
+
+            var sub = user.FindFirst("sub")?.Value
                 ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? user.FindFirst("sid")?.Value;
 
@@ -91,33 +93,44 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         if (user?.Identity?.IsAuthenticated != true)
             return null;
 
-        var sub = user.FindFirst(InternalUserIdClaimType)?.Value
-            ?? user.FindFirst("sub")?.Value
+        var internalUserIdClaim = user.FindFirst(InternalUserIdClaimType)?.Value;
+        if (Guid.TryParse(internalUserIdClaim, out var internalUserId))
+            return internalUserId;
+
+        var subject = user.FindFirst("sub")?.Value
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? user.FindFirst("sid")?.Value;
 
-        if (string.IsNullOrWhiteSpace(sub))
+        if (string.IsNullOrWhiteSpace(subject))
             return null;
 
-        if (Guid.TryParse(sub, out var guidUserId))
+        if (Guid.TryParse(subject, out var guidUserId))
             return guidUserId;
 
-        // If sub is not a GUID, try to resolve from database (external login)
-        // Cache this resolution for the request duration
-        var cacheKey = $"{CacheKeyPrefix}ResolvedId_{sub}";
+        var provider = ResolveAuthProvider(user, subject);
+        if (string.IsNullOrWhiteSpace(provider))
+            return null;
+
+        var providerId = ResolveProviderId(user, subject, provider);
+        if (string.IsNullOrWhiteSpace(providerId))
+            return null;
+
+        var cacheKey = $"{CacheKeyPrefix}ResolvedId_{provider}_{providerId}";
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
 
-            var provider = user.FindFirst("idp")?.Value ?? "keycloak";
-            var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider.ToLowerInvariant(), sub);
+            var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerId);
             if (externalLogin != null) return externalLogin.UserId;
 
-            var email = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value;
-            if (!string.IsNullOrWhiteSpace(email))
+            if (SupportsEmailAutoMatch(provider) && ResolveEmailVerified(user))
             {
-                var dbUser = await _userRepository.GetUserByEmail(email.Trim().ToLowerInvariant());
-                return dbUser?.Id;
+                var email = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value;
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    var dbUser = await _userRepository.GetUserByEmail(email.Trim().ToLowerInvariant());
+                    return dbUser?.Id;
+                }
             }
 
             return null;
@@ -329,6 +342,61 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
     private static bool IsGroupAdminRole(int roleId)
     {
         return roleId == (int)RoleEnum.GroupAdmin;
+    }
+
+    private static string ResolveAuthProvider(ClaimsPrincipal principal, string subject)
+    {
+        var idp = principal.FindFirst("idp")?.Value;
+        if (!string.IsNullOrWhiteSpace(idp))
+        {
+            var normalizedIdp = idp.Trim().ToLowerInvariant();
+            if (normalizedIdp.Contains("google"))
+                return AuthSchemeNames.Google.ToLowerInvariant();
+
+            if (normalizedIdp.Contains("atproto"))
+                return AuthSchemeNames.Atproto.ToLowerInvariant();
+
+            if (normalizedIdp.Contains("keycloak"))
+                return AuthSchemeNames.Keycloak.ToLowerInvariant();
+        }
+
+        var issuer = principal.FindFirst("iss")?.Value;
+        if (!string.IsNullOrWhiteSpace(issuer))
+        {
+            var normalizedIssuer = issuer.Trim().ToLowerInvariant();
+            if (normalizedIssuer.Contains("accounts.google.com"))
+                return AuthSchemeNames.Google.ToLowerInvariant();
+
+            if (normalizedIssuer.Contains("keycloak") || normalizedIssuer.Contains("/realms/"))
+                return AuthSchemeNames.Keycloak.ToLowerInvariant();
+        }
+
+        return subject.StartsWith("did:", StringComparison.OrdinalIgnoreCase)
+            ? AuthSchemeNames.Atproto.ToLowerInvariant()
+            : AuthSchemeNames.Keycloak.ToLowerInvariant();
+    }
+
+    private static string ResolveProviderId(ClaimsPrincipal principal, string subject, string provider)
+    {
+        return provider == AuthSchemeNames.Atproto.ToLowerInvariant()
+            ? principal.FindFirst("did")?.Value
+                ?? principal.FindFirst("atproto_did")?.Value
+                ?? subject
+            : subject;
+    }
+
+    private static bool ResolveEmailVerified(ClaimsPrincipal principal)
+    {
+        var raw = principal.FindFirst("email_verified")?.Value;
+        return bool.TryParse(raw, out var emailVerified)
+            ? emailVerified
+            : string.Equals(raw, "1", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool SupportsEmailAutoMatch(string provider)
+    {
+        return provider == AuthSchemeNames.Keycloak.ToLowerInvariant()
+            || provider == AuthSchemeNames.Google.ToLowerInvariant();
     }
 
     /// <inheritdoc />
