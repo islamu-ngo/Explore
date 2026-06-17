@@ -4,13 +4,14 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventSessions;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Pages.Events.Sessions;
 
 internal static class EventSessionFormModelMapper
 {
     public static EventSessionCreateFormState ApplyCreateContext(
-        CreateEventSessionRequest session,
+        ComposerCreateEventSessionRequest session,
         EventSessionCreateContextDto context,
         int fallbackRegistrationModeId)
     {
@@ -69,7 +70,7 @@ internal static class EventSessionFormModelMapper
     }
 
     public static bool TryPrepareCreateRequest(
-        CreateEventSessionRequest session,
+        ComposerCreateEventSessionRequest session,
         Guid eventId,
         Guid? tenantId,
         DateTime? sessionDate,
@@ -164,7 +165,7 @@ internal static class EventSessionFormModelMapper
         return true;
     }
 
-    private static void ApplyNormalizedSchedule(CreateEventSessionRequest session, string title, DateTime start, DateTime end)
+    private static void ApplyNormalizedSchedule(ComposerCreateEventSessionRequest session, string title, DateTime start, DateTime end)
     {
         session.Title = title;
         session.MaxAudienceAttendees = session.MaxAudienceAttendees > 0 ? session.MaxAudienceAttendees : null;

@@ -8,6 +8,7 @@ using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Pages.Events;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Serialization;
 
@@ -47,7 +48,7 @@ namespace Explore.Blazor.Client.Serialization;
 [JsonSerializable(typeof(CreateEventRegistrationDto))]
 [JsonSerializable(typeof(CreateEventSessionAgendaItemDto))]
 [JsonSerializable(typeof(CreateEventSessionDto))]
-[JsonSerializable(typeof(CreateEventSessionRequest))]
+[JsonSerializable(typeof(ComposerCreateEventSessionRequest))]
 [JsonSerializable(typeof(CreateIndexedDidDto))]
 [JsonSerializable(typeof(CreateLocationDto))]
 [JsonSerializable(typeof(CreateOrganizationDto))]

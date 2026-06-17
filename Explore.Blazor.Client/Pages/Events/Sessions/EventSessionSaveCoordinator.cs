@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Services;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Pages.Events.Sessions;
 
@@ -11,7 +12,7 @@ internal static class EventSessionSaveCoordinator
 {
     public static async Task<EventSessionSaveResult> SaveCreateSessionAsync(
         IEventService eventService,
-        CreateEventSessionRequest session,
+        ComposerCreateEventSessionRequest session,
         Guid eventId,
         Guid? selectedSessionGroupId,
         Guid? savedSessionId)

@@ -523,7 +523,7 @@ public class CreateEventTests : IDisposable
         var newParentTemplateId = Guid.NewGuid();
         _eventTemplateService.GetTemplateByIdAsync(newParentTemplateId, Arg.Any<CancellationToken>())
             .Returns(CreateTemplateDetailModel(newParentTemplateId, "New Parent Template", eventTypeId: 1));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = Guid.NewGuid()
@@ -690,12 +690,30 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
-    public async Task HandleSubmit_WithPreUploadedImage_SendsFeaturedImageIdAndNavigatesToSessionComposer()
+    public async Task HandleSubmit_WithPreUploadedImage_SendsFeaturedImageIdAndPublishesWhenReady()
     {
         var createdEventId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var uploadedImageId = Guid.NewGuid();
         CreateEventDraftRequestDto? capturedRequest = null;
         _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto)).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
+        {
+            EventId = createdEventId,
+            IsReady = true,
+            Errors = new List<EventPublishReadinessErrorDto>()
+        });
+        _eventService.GetEventByIdAsync(createdEventId).Returns(new EventDto
+        {
+            Id = createdEventId,
+            Title = "Template Event",
+            ConcurrencyStamp = concurrencyStamp
+        });
+        _eventService.PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
@@ -713,13 +731,71 @@ public class CreateEventTests : IDisposable
 
         await Assert.That(capturedRequest).IsNotNull();
         await Assert.That(capturedRequest!.FeaturedImageId).IsEqualTo(uploadedImageId);
-        await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
+        await _eventService.Received(1).PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>());
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
-        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}/sessions/create");
+        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
     }
 
     [Test]
-    public async Task CreateEvent_WhenReviewPublishIsReady_PublishesDraftWithConcurrencyStamp()
+    public async Task HandleSubmit_WithInlineSession_PopulatesSessionsAndPublishesWhenReady()
+    {
+        var createdEventId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        CreateEventDraftRequestDto? capturedRequest = null;
+        _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto)).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
+        {
+            EventId = createdEventId,
+            IsReady = true,
+            Errors = new List<EventPublishReadinessErrorDto>()
+        });
+        _eventService.GetEventByIdAsync(createdEventId).Returns(new EventDto
+        {
+            Id = createdEventId,
+            Title = "Inline Session Event",
+            ConcurrencyStamp = concurrencyStamp
+        });
+        _eventService.PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+        PrepareValidSubmitState(cut.Instance);
+        SetPrivateField<DateTime?>(cut.Instance, "_inlineSessionDate", new DateTime(2026, 7, 10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionStartTime", TimeSpan.FromHours(10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionEndTime", TimeSpan.FromHours(12));
+        SetPrivateField<Guid?>(cut.Instance, "_inlineSessionLocationId", locationId);
+        SetPrivateField<int?>(cut.Instance, "_inlineSessionCapacity", 120);
+
+        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.Sessions).HasSingleItem();
+        var session = capturedRequest.Sessions!.Single();
+        await Assert.That(session.LocationId).IsEqualTo(locationId);
+        await Assert.That(session.MaxAudienceAttendees).IsEqualTo(120);
+        await Assert.That(session.StartTime).IsNotNull();
+        await Assert.That(session.EndTime).IsNotNull();
+        await Assert.That(session.EndTime!.Value).IsGreaterThan(session.StartTime!.Value);
+        await _eventService.Received(1).PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>());
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
+    }
+
+    [Test]
+    public async Task CreateEvent_WhenReviewPublishIsReady_PublishesDraftWithConcurrencyStampWithoutDialog()
     {
         // Arrange
         var createdEventId = Guid.NewGuid();
@@ -761,20 +837,18 @@ public class CreateEventTests : IDisposable
         await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
         await _eventService.Received(1).GetEventByIdAsync(createdEventId);
-        await _dialogService.Received(1).ShowMessageBoxAsync(
+        await _dialogService.DidNotReceive().ShowMessageBoxAsync(
             "Review and publish",
-            Arg.Is<string>(message => message.Contains("Publish 'Template Event' now?", StringComparison.OrdinalIgnoreCase)
-                && message.Contains("Program:", StringComparison.OrdinalIgnoreCase)
-                && message.Contains("Timezone:", StringComparison.OrdinalIgnoreCase)),
-            "Publish event",
             Arg.Any<string>(),
-            "Keep draft",
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
             Arg.Any<DialogOptions>());
         await _eventService.Received(1).PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task CreateEvent_WhenReviewPublishConfirmationIsCanceled_KeepsDraftWithoutPublishing()
+    public async Task CreateEvent_WhenDialogServiceWouldCancel_PublishesWithoutOpeningDialog()
     {
         // Arrange
         var createdEventId = Guid.NewGuid();
@@ -819,9 +893,14 @@ public class CreateEventTests : IDisposable
         await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
         await _eventService.Received(1).GetEventByIdAsync(createdEventId);
-        await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        var error = GetSubmitError(cut.Instance);
-        await Assert.That(error).Contains("draft was saved");
+        await _dialogService.DidNotReceive().ShowMessageBoxAsync(
+            "Review and publish",
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<DialogOptions>());
+        await _eventService.Received(1).PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -851,7 +930,7 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
-    public async Task CreateEvent_ShowsDraftSessionSetupAction()
+    public async Task CreateEvent_ShowsPublishAction()
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 
@@ -860,10 +939,10 @@ public class CreateEventTests : IDisposable
         cut.WaitForAssertion(() =>
         {
             var buttons = cut.FindAll("button");
-            var hasDraftSessionButton = buttons.Any(b => b.TextContent.Contains("Save draft and add sessions", StringComparison.OrdinalIgnoreCase));
-            if (!hasDraftSessionButton)
+            var hasPublishButton = buttons.Any(b => b.TextContent.Contains("Publish", StringComparison.OrdinalIgnoreCase));
+            if (!hasPublishButton)
             {
-                throw new InvalidOperationException("Draft session setup action was not rendered.");
+                throw new InvalidOperationException("Publish action was not rendered.");
             }
         }, TimeSpan.FromSeconds(3));
     }
@@ -877,8 +956,9 @@ public class CreateEventTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Program summary", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Program items", StringComparison.OrdinalIgnoreCase)
+            if (!cut.Markup.Contains("Event schedule", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Date and time", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Set up multiple sessions", StringComparison.OrdinalIgnoreCase)
                 || !cut.Markup.Contains("Event settings", StringComparison.OrdinalIgnoreCase)
                 || !cut.Markup.Contains("Template and custom fields", StringComparison.OrdinalIgnoreCase))
             {
@@ -1007,7 +1087,7 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
-    public async Task CreateEvent_RendersProgramSummaryBeforeEventSettings()
+    public async Task CreateEvent_RendersEventScheduleBeforeEventSettings()
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 
@@ -1015,14 +1095,12 @@ public class CreateEventTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Program summary", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Program items", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Talks, workshops, panels, classes, and activities are saved as sessions", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Breaks, rooms, and day details stay in logistics", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Add session", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Add section/track", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Event schedule", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("A single scheduled session is created with the event by default.", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Set up multiple sessions", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Date and time information", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Program Summary section was not rendered with the expected session-first guidance.");
+                throw new InvalidOperationException("Event schedule section was not rendered with the expected single-session guidance.");
             }
 
             if (cut.Markup.Contains("child event", StringComparison.OrdinalIgnoreCase)
@@ -1032,7 +1110,7 @@ public class CreateEventTests : IDisposable
             }
         }, TimeSpan.FromSeconds(3));
 
-        await Assert.That(cut.Markup.IndexOf("Program summary", StringComparison.OrdinalIgnoreCase))
+        await Assert.That(cut.Markup.IndexOf("Event schedule", StringComparison.OrdinalIgnoreCase))
             .IsLessThan(cut.Markup.IndexOf("Event settings", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -1045,10 +1123,10 @@ public class CreateEventTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Program summary", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Add session", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Event schedule", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Set up multiple sessions", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Program summary was not rendered after removing the schedule composer.");
+                throw new InvalidOperationException("Inline event schedule was not rendered after removing the schedule composer.");
             }
 
             var forbiddenCopies = new[]
@@ -1058,7 +1136,6 @@ public class CreateEventTests : IDisposable
                 "Add to this day",
                 "Add another session",
                 "Scheduling (Days, Rooms & Agenda)",
-                "Multiple sessions",
                 "Day labels",
                 "Room setup",
                 "Agenda builder",

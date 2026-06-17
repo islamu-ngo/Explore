@@ -258,6 +258,11 @@ public partial class CreateEvent : IDisposable
     private static string? GetLookupName(IEnumerable<MadhabListDto>? items, int? selectedId) =>
         items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
 
+    private static string? GetLookupName(IEnumerable<LocationListDto>? items, Guid? selectedId) =>
+        selectedId.HasValue
+            ? items?.FirstOrDefault(item => item.Id == selectedId.Value)?.FullName
+            : null;
+
     private static List<string> GetSelectedNames(IEnumerable<CategoryListDto>? items, IReadOnlyCollection<Guid> selectedIds) =>
         items?
             .Where(item => item.Id.HasValue && selectedIds.Contains(item.Id.Value))
@@ -1154,6 +1159,7 @@ public partial class CreateEvent : IDisposable
             createDto.IsRegistrationRequired = createDto.RegistrationPolicyId.HasValue;
             createDto.VisibilityTypeId ??= 1;
             createDto.EventFormatId ??= 1;
+            createDto.EventStatusId = (intent == CreateEventSubmitIntent.ReviewAndPublish) ? 2 : 1;
             createDto.Timezone = _selectedTimezone.Id;
             createDto.BackgroundColor = string.IsNullOrWhiteSpace(_bgColor) ? null : _bgColor;
             createDto.BackgroundEffect = string.IsNullOrWhiteSpace(_bgEffect) || _bgEffect == "None" ? null : _bgEffect;
@@ -1189,7 +1195,7 @@ public partial class CreateEvent : IDisposable
                     return;
                 }
 
-                await ReviewAndPublishDraftAsync(createdEventId);
+                Navigation.NavigateTo($"/events/{createdEventId}");
             }
             else
             {
@@ -1269,78 +1275,6 @@ public partial class CreateEvent : IDisposable
         await SubmitEventAsync(CreateEventSubmitIntent.SaveDraft);
     }
 
-    private async Task ReviewAndPublishDraftAsync(Guid eventId)
-    {
-        var readiness = await EventService.GetEventPublishReadinessAsync(eventId);
-        if (readiness is null)
-        {
-            _submitState.Fail("The draft was saved, but publish readiness could not be checked. Open the draft to continue.");
-            return;
-        }
-
-        _publishReadinessErrors = readiness.Errors?.ToList() ?? new List<EventPublishReadinessErrorDto>();
-        if (readiness.IsReady != true)
-        {
-            await ShowPublishReadinessErrorsAsync();
-            _submitState.Fail("The draft was saved, but it is not ready to publish yet.");
-            return;
-        }
-
-        var draft = await EventService.GetEventByIdAsync(eventId);
-        var concurrencyStamp = draft?.ConcurrencyStamp;
-        if (concurrencyStamp is null || concurrencyStamp == Guid.Empty)
-        {
-            _submitState.Fail("The draft was saved, but its publish token could not be loaded. Open the draft to continue.");
-            return;
-        }
-
-        var confirmed = await ConfirmPublishDraftAsync(draft);
-        if (confirmed != true)
-        {
-            _submitState.Fail("The draft was saved. Review it again when you're ready to publish.");
-            return;
-        }
-
-        var publishResponse = await EventService.PublishEventAsync(eventId, concurrencyStamp.Value);
-        if (publishResponse?.Success == true)
-        {
-            Navigation.NavigateTo($"/events/{eventId}");
-            return;
-        }
-
-        var errorMsg = publishResponse?.Message ?? "The draft was saved, but publishing failed.";
-        if (publishResponse?.Errors?.Any() == true)
-        {
-            errorMsg += " Errors: " + string.Join(", ", publishResponse.Errors);
-        }
-        _submitState.Fail(errorMsg);
-    }
-
-    private async Task<bool?> ConfirmPublishDraftAsync(EventDto? draft)
-    {
-        var title = string.IsNullOrWhiteSpace(draft?.Title) ? createDto.Title : draft.Title;
-        var message = string.Join(Environment.NewLine, new[]
-        {
-            $"Publish '{title}' now?",
-            GetPublisherDescription(),
-            $"Program: {ProgramSummary}",
-            $"Timezone: {_selectedTimezoneDisplay}",
-            _creationContext?.RequiresApproval == true
-                ? "This publisher requires approval before the event goes live."
-                : "This event will become visible according to its visibility settings."
-        });
-
-        await AccessibilityFocusService.SaveFocusAsync();
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Review and publish",
-            message,
-            yesText: "Publish event",
-            cancelText: "Keep draft",
-            options: DialogOptionsFactory.Confirmation());
-        await AccessibilityFocusService.RestoreFocusAsync();
-
-        return confirmed;
-    }
 
     private async Task ShowPublishReadinessErrorsAsync()
     {

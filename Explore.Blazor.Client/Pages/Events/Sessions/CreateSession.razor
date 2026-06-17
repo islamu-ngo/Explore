@@ -149,7 +149,7 @@
     private ICollection<EventSessionCreateRoomOptionDto> _rooms = new List<EventSessionCreateRoomOptionDto>();
     private ICollection<EventSessionCreateGroupOptionDto> _sessionGroups = new List<EventSessionCreateGroupOptionDto>();
     private ICollection<RegistrationModeListDto> _registrationModes = new List<RegistrationModeListDto>();
-    private readonly CreateEventSessionRequest _session = new()
+    private readonly Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest _session = new()
     {
         RegistrationModeId = FallbackRegistrationModeId,
         Title = string.Empty

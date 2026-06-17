@@ -5,6 +5,7 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -13,7 +14,7 @@ public sealed class EventSessionFormModelMapperTests
     [Test]
     public async Task ApplyCreateContext_UsesDefaultsAndSelectorOptions()
     {
-        var session = new CreateEventSessionRequest();
+        var session = new ComposerCreateEventSessionRequest();
         var locationId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var context = new EventSessionCreateContextDto
@@ -44,7 +45,7 @@ public sealed class EventSessionFormModelMapperTests
     {
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
-        var session = new CreateEventSessionRequest
+        var session = new ComposerCreateEventSessionRequest
         {
             Title = "  Opening talk  ",
             MaxAudienceAttendees = 0

@@ -5,6 +5,7 @@ using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -102,14 +103,14 @@ public sealed class CreateSessionTests : IDisposable
                 new EventSessionCreateRoomOptionDto { Id = roomId, LocationId = locationId, Name = "Auditorium", Capacity = 120 }
             ]));
 
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
         });
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         session.Description = "A focused opening session.";
         session.LocationId = locationId;
@@ -123,7 +124,7 @@ public sealed class CreateSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Is<CreateEventSessionRequest>(dto =>
+        await _eventService.Received(1).CreateSessionAsync(Arg.Is<ComposerCreateEventSessionRequest>(dto =>
             dto.EventId == eventId
             && dto.TenantId == tenantId
             && dto.Title == "Opening talk"
@@ -152,7 +153,7 @@ public sealed class CreateSessionTests : IDisposable
             eventId,
             tenantId,
             groups: [new EventSessionCreateGroupOptionDto { Id = groupId, Name = "Main track", SortOrder = 1 }]));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -164,7 +165,7 @@ public sealed class CreateSessionTests : IDisposable
         });
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
 
@@ -186,7 +187,7 @@ public sealed class CreateSessionTests : IDisposable
             eventId,
             tenantId,
             groups: [new EventSessionCreateGroupOptionDto { Id = groupId, Name = "Main track", SortOrder = 1 }]));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -197,14 +198,14 @@ public sealed class CreateSessionTests : IDisposable
                 new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
+        await _eventService.Received(1).CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
         await _eventService.Received(2).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
@@ -216,14 +217,14 @@ public sealed class CreateSessionTests : IDisposable
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         SetPrivateField(cut.Instance, "_startTime", new TimeSpan(11, 0, 0));
         SetPrivateField(cut.Instance, "_endTime", new TimeSpan(10, 0, 0));
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
+        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
         var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("End time must be after start time.");
     }
@@ -233,14 +234,14 @@ public sealed class CreateSessionTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = false,
             Message = "Program item could not be saved."
         });
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
@@ -255,19 +256,19 @@ public sealed class CreateSessionTests : IDisposable
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
         });
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         session.LanguageIds = [1];
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Is<CreateEventSessionRequest>(dto =>
+        await _eventService.Received(1).CreateSessionAsync(Arg.Is<ComposerCreateEventSessionRequest>(dto =>
             dto.LanguageIds.Single() == 1));
     }
 
@@ -277,20 +278,20 @@ public sealed class CreateSessionTests : IDisposable
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = Guid.NewGuid()
         });
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         session.MaxAudienceAttendees = 0;
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Is<CreateEventSessionRequest>(dto => dto.MaxAudienceAttendees == null));
+        await _eventService.Received(1).CreateSessionAsync(Arg.Is<ComposerCreateEventSessionRequest>(dto => dto.MaxAudienceAttendees == null));
     }
 
     [Test]
@@ -300,12 +301,12 @@ public sealed class CreateSessionTests : IDisposable
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid(), canAddSession: false));
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
+        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
         var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to add program items to this event draft.");
     }
@@ -325,7 +326,7 @@ public sealed class CreateSessionTests : IDisposable
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
         await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", locationId);
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         session.RoomId = roomId;
 
         await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", new object?[] { null });
@@ -349,7 +350,7 @@ public sealed class CreateSessionTests : IDisposable
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
         cut.WaitForState(() => !cut.Markup.Contains("Loading event draft", StringComparison.Ordinal));
 
-        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
         await Assert.That(session.RegistrationModeId).IsEqualTo(3);
     }
 

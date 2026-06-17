@@ -7,6 +7,7 @@
     color: var(--event-theme-text-color, var(--mud-palette-text-primary));
     padding-block: var(--isl-space-5);
     transition: color 180ms ease;
+    container-type: inline-size;
 }
 
 .create-event ::deep .mud-typography:not(.mud-input-helper-text):not(.mud-input-error) {
@@ -156,8 +157,40 @@
     gap: var(--isl-space-3);
 }
 
+::deep .create-event__schedule-grid {
+    display: grid;
+    grid-template-columns: minmax(8rem, 1fr) repeat(2, minmax(6rem, 0.72fr));
+    gap: var(--isl-space-2);
+    inline-size: 100%;
+    max-inline-size: 27rem;
+    justify-self: end;
+}
+
+::deep .create-event__schedule-grid > * {
+    min-inline-size: 0;
+}
+
+::deep .create-event__schedule-grid .mud-input-control {
+    min-inline-size: 0;
+    margin-block: 0;
+}
+
+::deep .create-event__schedule-grid .mud-input-slot {
+    min-block-size: 2rem;
+    padding-block: 0.25rem !important;
+}
+
+@container (max-width: 44rem) {
+    ::deep .create-event__schedule-grid {
+        grid-template-columns: 1fr;
+        max-inline-size: none;
+        justify-self: stretch;
+    }
+}
+
 @media (max-width: 48em) {
-    ::deep .create-event__seed-session-times {
+    ::deep .create-event__seed-session-times,
+    ::deep .create-event__schedule-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -199,11 +232,12 @@
 }
 
 ::deep .create-event__option-row {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(12rem, 0.36fr) minmax(0, 1fr);
     align-items: center;
-    padding: var(--isl-space-2) var(--isl-space-4);
-    min-height: 2.75rem;
+    gap: var(--isl-space-1) var(--isl-space-3);
+    padding: 0.5rem var(--isl-space-4);
+    min-height: 3rem;
     border-bottom: 1px solid var(--mud-palette-lines-default);
 
     &:last-child {
@@ -212,8 +246,9 @@
 }
 
 ::deep .create-event__option-select {
-    max-width: 11.25rem;
+    max-width: 10rem;
     text-align: end;
+    justify-self: end;
 }
 
 ::deep .create-event__option-select .mud-input-slot {
@@ -249,7 +284,7 @@
 }
 
 ::deep .create-event__template-select {
-    max-width: 18rem;
+    max-width: 16rem;
 }
 
 ::deep .create-event__price-input {
@@ -302,12 +337,74 @@
     flex-shrink: 0;
 }
 
-/* --- Submit Button --- */
+::deep .create-event__submit-actions {
+    display: flex;
+    gap: var(--isl-space-3);
+    inline-size: 100%;
+}
+
+::deep .create-event__draft-button {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    padding: 0.875rem var(--isl-space-5) !important;
+    border-radius: var(--isl-radius-md) !important;
+    white-space: nowrap;
+}
+
 ::deep .create-event__submit-button {
+    flex: 1 1 auto;
     font-size: 1.1rem !important;
     font-weight: 600 !important;
     padding: 0.875rem 0 !important;
     border-radius: var(--isl-radius-md) !important;
+}
+
+@container (max-width: 44rem) {
+    ::deep .create-event__submit-actions {
+        flex-direction: column-reverse;
+    }
+
+    ::deep .create-event__draft-button,
+    ::deep .create-event__submit-button {
+        inline-size: 100%;
+    }
+}
+
+@container (max-width: 62.5rem) {
+    ::deep .create-event__col-left,
+    ::deep .create-event__col-right {
+        flex-basis: 100% !important;
+        max-width: 100% !important;
+    }
+
+    ::deep .create-event__col-left {
+        order: 2;
+    }
+
+    ::deep .create-event__col-right {
+        order: 1;
+    }
+
+    ::deep .create-event__image-area,
+    ::deep .theme-quick-bar {
+        max-inline-size: 34rem;
+        margin-inline: auto;
+    }
+}
+
+@container (max-width: 44rem) {
+    ::deep .create-event__option-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    ::deep .create-event__option-select,
+    ::deep .create-event__template-select {
+        max-width: unset;
+        inline-size: 100%;
+        text-align: start;
+        justify-self: stretch;
+    }
 }
 
 /* ===== Responsive: Mobile (single column) ===== */
@@ -335,13 +432,6 @@
 
     ::deep .create-event__inline-add-row {
         flex-direction: column;
-    }
-
-    ::deep .create-event__option-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--isl-space-1);
-        padding: 0.625rem var(--isl-space-4);
     }
 
     ::deep .create-event__option-select {

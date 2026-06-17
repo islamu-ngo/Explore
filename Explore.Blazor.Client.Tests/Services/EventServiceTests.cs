@@ -746,7 +746,7 @@ public class EventServiceTests
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var request = new CreateEventSessionRequest
+        var request = new Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest
         {
             EventId = eventId,
             TenantId = tenantId,

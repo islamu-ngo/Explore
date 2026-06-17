@@ -54778,6 +54778,10 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? EventFormatId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("eventStatusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EventStatusId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("madhabId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MadhabId { get; set; } = default!;

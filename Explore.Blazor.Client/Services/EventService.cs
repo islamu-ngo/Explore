@@ -5,6 +5,7 @@ using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.EventSessions;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -71,7 +72,7 @@ public interface IEventService
     Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
     Task<ICollection<EventSessionListDto>> GetAllSessionsAsync();
     Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(Guid eventId);
-    Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionRequest session);
+    Task<BaseCommandResponseOfGuid> CreateSessionAsync(ComposerCreateEventSessionRequest session);
     Task<BaseCommandResponseOfGuid> UpdateSessionAsync(UpdateEventSessionRequest session);
     Task<bool> DeleteSessionAsync(Guid sessionId);
     Task<ICollection<EventSessionGroupListModel>> GetSessionGroupsByEventAsync(Guid eventId);
@@ -491,7 +492,7 @@ public partial class EventService : IEventService
         return result?.GetItems() ?? new List<EventSessionListDto>();
     }
 
-    public Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionRequest session)
+    public Task<BaseCommandResponseOfGuid> CreateSessionAsync(ComposerCreateEventSessionRequest session)
         => _apiClient.CreateEventSessionAsync(new CreateEventSessionDto
         {
             EventId = session.EventId,

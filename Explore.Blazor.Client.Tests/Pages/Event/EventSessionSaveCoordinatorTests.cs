@@ -6,6 +6,7 @@ using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
 using Explore.Blazor.Client.Services;
 using NSubstitute;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -18,7 +19,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        var request = new CreateEventSessionRequest { Title = "Workshop" };
+        var request = new ComposerCreateEventSessionRequest { Title = "Workshop" };
         eventService.CreateSessionAsync(request).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
@@ -50,7 +51,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        var request = new CreateEventSessionRequest { Title = "Workshop" };
+        var request = new ComposerCreateEventSessionRequest { Title = "Workshop" };
         eventService.AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
@@ -66,7 +67,7 @@ public sealed class EventSessionSaveCoordinatorTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.SessionId).IsEqualTo(sessionId);
-        await eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
+        await eventService.DidNotReceive().CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
         await eventService.Received(1).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
     }
 
@@ -141,7 +142,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        var request = new CreateEventSessionRequest { Title = "Workshop" };
+        var request = new ComposerCreateEventSessionRequest { Title = "Workshop" };
         eventService.CreateSessionAsync(request).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
