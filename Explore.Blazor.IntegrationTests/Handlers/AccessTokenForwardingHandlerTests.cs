@@ -292,6 +292,43 @@ public class AccessTokenForwardingHandlerTests
     }
 
     [Test]
+    public async Task SendAsync_WithExpiredHttpContextToken_AndSelfRefreshStoresDifferentSession_UsesUserFallbackToken()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var expiredContextToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddMinutes(-5));
+        var freshRefreshedToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddMinutes(30));
+        var httpContext = CreateHttpContextWithSession(userId, sessionId: "old-session", expiredContextToken, expiredContextToken);
+        httpContext.Request.Scheme = "https";
+        httpContext.Request.Host = new HostString("localhost:5001");
+        httpContext.Request.Headers.Cookie = ".AspNetCore.Cookies=test-cookie";
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+
+        var refreshHandler = new BffSelfRefreshHandler(() => _tokenStore.Store(userId, sessionId: "new-session", freshRefreshedToken));
+        var selfClientFactory = new TestHttpClientFactory(refreshHandler);
+        var innerHandler = new CapturingHandler();
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance,
+            selfClientFactory)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.com/api/event");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(refreshHandler.Called).IsTrue();
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Authorization).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Scheme).IsEqualTo("Bearer");
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization.Parameter).IsEqualTo(freshRefreshedToken);
+        circuitTokenService.Received(1).SetToken(freshRefreshedToken);
+    }
+
+    [Test]
     public async Task SendAsync_WithinCircuitActivityScope_UsesCircuitUserContextTokenStore()
     {
         var userId = Guid.NewGuid().ToString();
@@ -346,15 +383,30 @@ public class AccessTokenForwardingHandlerTests
 
     private static HttpContext CreateHttpContext(string userId, string? token, params string?[] additionalTokens)
     {
+        return CreateHttpContextCore(userId, sessionId: null, token, additionalTokens);
+    }
+
+    private static HttpContext CreateHttpContextWithSession(string userId, string sessionId, string? token, params string?[] additionalTokens)
+    {
+        return CreateHttpContextCore(userId, sessionId, token, additionalTokens);
+    }
+
+    private static HttpContext CreateHttpContextCore(string userId, string? sessionId, string? token, params string?[] additionalTokens)
+    {
         var authService = Substitute.For<IAuthenticationService>();
 
-        var principal = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim("sub", userId),
-                new Claim(ClaimTypes.NameIdentifier, userId)
-            ],
-            authenticationType: "Test"));
+        var claims = new List<Claim>
+        {
+            new("sub", userId),
+            new(ClaimTypes.NameIdentifier, userId)
+        };
+
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            claims.Add(new Claim("sid", sessionId));
+        }
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType: "Test"));
 
         var tokens = new[] { token }.Concat(additionalTokens ?? Array.Empty<string?>());
         var results = tokens.Select(t =>

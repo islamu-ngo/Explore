@@ -146,7 +146,7 @@ public class CircuitAccessTokenServiceTests
     }
 
     [Test]
-    public async Task AccessTokenForwardingHandler_WithHttpContextUserSession_UsesOnlyMatchingSessionStoredToken()
+    public async Task AccessTokenForwardingHandler_WithHttpContextUserSession_FallsBackToUserStoredToken()
     {
         var userId = Guid.NewGuid().ToString();
         var sessionA = Guid.NewGuid().ToString();
@@ -172,7 +172,7 @@ public class CircuitAccessTokenServiceTests
         var response = await handler.InvokeAsync(new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/protected"));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(terminal.Request?.Headers.Authorization).IsNull();
+        await Assert.That(terminal.Request?.Headers.Authorization?.Parameter).IsEqualTo(tokenA);
     }
 
     [Test]
@@ -317,7 +317,7 @@ public class CircuitAccessTokenServiceTests
     }
 
     [Test]
-    public async Task CircuitAccessTokenService_AccessToken_DoesNotUseTokenFromDifferentSessionForSameUser()
+    public async Task CircuitAccessTokenService_AccessToken_FallsBackToUserTokenFromDifferentSession()
     {
         var userId = Guid.NewGuid().ToString();
         var sessionA = Guid.NewGuid().ToString();
@@ -335,7 +335,7 @@ public class CircuitAccessTokenServiceTests
             new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionB) },
             NullLogger<CircuitAccessTokenService>.Instance);
 
-        await Assert.That(requesterService.AccessToken).IsNull();
+        await Assert.That(requesterService.AccessToken).IsEqualTo(tokenA);
     }
 
     [Test]

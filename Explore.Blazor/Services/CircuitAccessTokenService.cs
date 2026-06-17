@@ -172,7 +172,7 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
             if (!string.IsNullOrEmpty(userId))
             {
                 var resolution = _tokenStore.Resolve(userId, sessionId);
-                if (!resolution.Found && string.IsNullOrWhiteSpace(sessionId))
+                if (!resolution.Found)
                 {
                     resolution = _tokenStore.ResolveByUserId(userId);
                 }
@@ -463,7 +463,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                     token = resolution.Token;
                     source = "TokenStore(userId)";
                 }
-                else if (string.IsNullOrWhiteSpace(sessionId))
+                else
                 {
                     resolution = _tokenStore.ResolveByUserId(userId);
                     if (resolution.Found)
@@ -471,7 +471,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                         token = resolution.Token;
                         source = "TokenStore(userId-only)";
                         _logger.LogInformation(
-                            "[AccessTokenForwardingHandler] Session-keyed lookup failed for {UserId}; resolved token via user-only fallback",
+                            "[AccessTokenForwardingHandler] Session-keyed lookup missed for {UserId}; resolved token via user-only fallback",
                             userId);
                     }
                 }
@@ -514,7 +514,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                     source = "CircuitUserContext";
                     _logger.LogDebug("[AccessTokenForwardingHandler] Got token from store via CircuitUserContext");
                 }
-                else if (string.IsNullOrWhiteSpace(_circuitUserContext.SessionId))
+                else
                 {
                     resolution = _tokenStore.ResolveByUserId(userId);
                     if (resolution.Found)
@@ -522,7 +522,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                         token = resolution.Token;
                         source = "CircuitUserContext(userId-only)";
                         _logger.LogInformation(
-                            "[AccessTokenForwardingHandler] CircuitUserContext session-keyed lookup failed for {UserId}; resolved via user-only fallback",
+                            "[AccessTokenForwardingHandler] CircuitUserContext session-keyed lookup missed for {UserId}; resolved via user-only fallback",
                             userId);
                     }
                 }
@@ -642,7 +642,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
         }
 
         var resolution = _tokenStore.Resolve(userId, sessionId);
-        if (!resolution.Found && string.IsNullOrWhiteSpace(sessionId))
+        if (!resolution.Found)
         {
             resolution = _tokenStore.ResolveByUserId(userId);
         }
