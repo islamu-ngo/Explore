@@ -1,3 +1,6 @@
+// ABOUTME: Handler for publishing an existing draft Event.
+// ABOUTME: Validates concurrency stamp and publish readiness, transitions status to Published, and creates outbox messages.
+
 using System.Text.Json;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
@@ -63,65 +66,14 @@ public class PublishEventCommandHandler(
             await eventRepository.Update(@event);
 
             var publishedAt = DateTimeOffset.UtcNow;
-            await outboxRepository.Create(CreatePublishedOutboxMessage(@event));
-            await outboxRepository.Create(CreateNotificationFanoutOutboxMessage(@event, publishedAt));
+            await outboxRepository.Create(EventPublishedOutboxMessageFactory.CreatePublishedOutboxMessage(@event));
+            await outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(@event, publishedAt));
 
             await cache.RemoveAsync($"event:detail:{@event.Id}", token);
             await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
 
             return Success(@event.Id, "Event published successfully.");
         }, cancellationToken);
-    }
-
-    private static OutboxMessage CreatePublishedOutboxMessage(Event @event)
-    {
-        var payload = new EventPublishedIntegrationEvent
-        {
-            TenantId = @event.TenantId,
-            EventId = @event.Id,
-            Title = @event.Title,
-            StartDate = @event.FirstSessionStartUtc!.Value,
-            EndDate = @event.LastSessionStartUtc,
-            IsDeleted = false
-        };
-
-        return new OutboxMessage
-        {
-            Id = Guid.NewGuid(),
-            AggregateType = EventAggregateType,
-            AggregateId = @event.Id,
-            EventType = EventPublishedEventType,
-            Payload = JsonSerializer.Serialize(payload),
-            Status = OutboxMessageStatus.Pending,
-            CreatedAt = DateTime.UtcNow,
-            MaxRetries = 5
-        };
-    }
-
-    private static OutboxMessage CreateNotificationFanoutOutboxMessage(Event @event, DateTimeOffset publishedAt)
-    {
-        var payload = new EventPublishedNotificationFanoutRequested
-        {
-            TenantId = @event.TenantId,
-            EventId = @event.Id,
-            EventTitle = @event.Title,
-            SourceActorId = @event.ActorId,
-            StartDate = @event.FirstSessionStartUtc!.Value,
-            EndDate = @event.LastSessionStartUtc,
-            PublishedAt = publishedAt
-        };
-
-        return new OutboxMessage
-        {
-            Id = Guid.NewGuid(),
-            AggregateType = EventAggregateType,
-            AggregateId = @event.Id,
-            EventType = EventPublishedNotificationFanoutRequestedEventType,
-            Payload = JsonSerializer.Serialize(payload),
-            Status = OutboxMessageStatus.Pending,
-            CreatedAt = publishedAt.UtcDateTime,
-            MaxRetries = 5
-        };
     }
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()

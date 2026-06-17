@@ -67,6 +67,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly HybridCache _cache;
     private readonly BusinessMetrics _metrics;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IOutboxRepository _outboxRepository;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
@@ -107,7 +108,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         ITenantContext tenantContext,
         HybridCache cache,
         BusinessMetrics metrics,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IOutboxRepository outboxRepository)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
@@ -148,6 +150,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _cache = cache;
         _metrics = metrics;
         _unitOfWork = unitOfWork;
+        _outboxRepository = outboxRepository;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
@@ -178,6 +181,19 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         var createdAt = DateTimeOffset.UtcNow;
         var eventEntity = BuildEventEntity(dto, actorResult, timezoneId);
 
+        if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
+        {
+            var readiness = EventPublishReadinessEvaluator.Evaluate(eventEntity);
+            if (!readiness.IsReady)
+            {
+                response.Success = false;
+                response.Message = "Event creation failed because the event is not ready to publish.";
+                response.Errors = readiness.Errors.Select(error => error.Message).ToList();
+                response.FailureCode = "event_publish_readiness_failed";
+                return response;
+            }
+        }
+
         try
         {
             var eventId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
@@ -192,6 +208,13 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 await CreateEventAgendaItemsAsync(dto, eventEntity, dayMaps, roomMap, timezoneId, ct);
                 await CreateCategoryAndTagAssignmentsAsync(dto, eventEntity, ct);
                 await InstantiateTemplatePropertiesAsync(dto, eventEntity, currentUserId, createdAt, ct);
+
+                if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
+                {
+                    var publishedAt = DateTimeOffset.UtcNow;
+                    await _outboxRepository.Create(EventPublishedOutboxMessageFactory.CreatePublishedOutboxMessage(eventEntity));
+                    await _outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(eventEntity, publishedAt));
+                }
 
                 return eventEntity.Id;
             }, cancellationToken);

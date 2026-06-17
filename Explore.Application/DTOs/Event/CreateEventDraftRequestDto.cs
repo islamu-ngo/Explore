@@ -22,6 +22,7 @@ public sealed class CreateEventDraftRequestDto
     public string? ExternalRegistrationUrl { get; set; }
     public int VisibilityTypeId { get; set; } = 1;
     public int EventFormatId { get; set; } = 1;
+    public int EventStatusId { get; set; } = 1;
     public int? MadhabId { get; set; }
     public string? Timezone { get; set; }
     public string? EventTimeZoneId { get; set; }
@@ -54,7 +55,7 @@ public sealed class CreateEventDraftRequestDto
         FeaturedImageId = FeaturedImageId,
         IsRegistrationRequired = IsRegistrationRequired,
         ExternalRegistrationUrl = ExternalRegistrationUrl,
-        EventStatusId = 1,
+        EventStatusId = EventStatusId == 0 ? 1 : EventStatusId,
         VisibilityTypeId = VisibilityTypeId,
         EventFormatId = EventFormatId,
         MadhabId = MadhabId,

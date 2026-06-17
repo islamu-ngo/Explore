@@ -42994,6 +42994,14 @@
             ],
             "format": "int32"
           },
+          "eventStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "madhabId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [

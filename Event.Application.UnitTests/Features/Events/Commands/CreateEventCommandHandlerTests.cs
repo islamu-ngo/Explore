@@ -64,6 +64,7 @@ public class CreateEventCommandHandlerTests
     private readonly ITenantContext _tenantContext;
     private readonly HybridCache _cache;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IOutboxRepository _outboxRepository;
     private readonly CreateEventCommandHandler _handler;
 
     public CreateEventCommandHandlerTests()
@@ -106,6 +107,7 @@ public class CreateEventCommandHandlerTests
         _tenantContext = Substitute.For<ITenantContext>();
         _cache = Substitute.For<HybridCache>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
+        _outboxRepository = Substitute.For<IOutboxRepository>();
 
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(callInfo =>
         {
@@ -166,7 +168,8 @@ public class CreateEventCommandHandlerTests
             _tenantContext,
             _cache,
             new BusinessMetrics(meterFactory),
-            _unitOfWork
+            _unitOfWork,
+            _outboxRepository
         );
     }
 
@@ -410,6 +413,81 @@ public class CreateEventCommandHandlerTests
             && a.EventId == result.Id
             && a.TenantId == tenantId
             && a.ExpiresAtUtc == null));
+    }
+
+    [Test]
+    public async Task Handle_WithPublishedStatus_ValidatesReadinessAndEmitsOutboxMessages()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Published Event",
+                Subtitle = "Test Subtitle",
+                Description = "Description",
+                EventTypeId = 1,
+                AudienceGenderId = 1,
+                AudienceAgeId = 1,
+                EventStatusId = (int)EventStatusEnum.Published,
+                Sessions = [CreateSessionRequest()]
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+
+        _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
+        _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
+        _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(e => e.EventStatusId == (int)EventStatusEnum.Published));
+        await _outboxRepository.Received(2).Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task Handle_WithPublishedStatusButNotReady_ReturnsReadinessFailureAndDoesNotCreateEvent()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Published Event",
+                Subtitle = "Test Subtitle",
+                Description = "Description",
+                EventTypeId = 1,
+                AudienceGenderId = 1,
+                AudienceAgeId = 1,
+                EventStatusId = (int)EventStatusEnum.Published,
+                Sessions = [] // Empty sessions makes it not ready to publish
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+
+        _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
+        _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
+        _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_publish_readiness_failed");
+        await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
 
     private static CreateEventSessionRequest CreateSessionRequest() => new()

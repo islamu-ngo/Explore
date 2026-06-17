@@ -1,3 +1,6 @@
+// ABOUTME: MediatR command for publishing a draft event.
+// ABOUTME: Supplies event resource context for authorization before the publish handler runs.
+
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Responses;
@@ -13,4 +16,9 @@ public class PublishEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureR
     public required PublishEventRequestDto Request { get; set; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["eventId"] = Id.ToString()
+    };
 }

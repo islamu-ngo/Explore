@@ -256,6 +256,41 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
+    public async Task Handle_WithPublishEventCommand_PassesEventIdResourceAttribute()
+    {
+        var secureBehavior = new AuthorizationBehavior<PublishEventCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<PublishEventCommand, BaseCommandResponse<Guid>>>>());
+        var eventId = Guid.NewGuid();
+        var command = new PublishEventCommand
+        {
+            Id = eventId,
+            Request = new PublishEventRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
+        };
+        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+
+        _authService.IsAllowedAsync(
+                ResourceKinds.Event,
+                eventId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null && attributes["eventId"].Equals(eventId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _authService.Received(1).IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Update,
+            Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes != null && attributes["eventId"].Equals(eventId.ToString())),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WithAuthorizeResourceAndISecureRequest_NullResourceId_FallsBackToTypeName()
     {
         // Arrange
