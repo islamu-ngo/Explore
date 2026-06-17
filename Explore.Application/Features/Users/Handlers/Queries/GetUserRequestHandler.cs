@@ -88,11 +88,24 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
 
         try
         {
+            // Check if it's a relative path (local API endpoint)
+            if (objectKeyOrUri.StartsWith("/", StringComparison.OrdinalIgnoreCase))
+            {
+                return objectKeyOrUri;
+            }
+
             // Handle legacy full URLs (https://bucket.endpoint/key)
-            if (objectKeyOrUri.StartsWith("http://") || objectKeyOrUri.StartsWith("https://"))
+            if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
                 if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
                 {
+                    // If it is a local API endpoint, return it as-is
+                    if (uri.AbsolutePath.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return objectKeyOrUri;
+                    }
+
                     // Extract the object key from the URL path
                     var objectKey = uri.AbsolutePath.TrimStart('/');
                     return await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);

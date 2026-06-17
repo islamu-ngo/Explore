@@ -355,7 +355,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
 
     /// <summary>
     /// Resolves an image object key to a presigned URL for viewing.
-    /// If the value is already a full external URL, returns it unchanged.
+    /// If the value is already a full external URL or local API endpoint, returns it unchanged.
     /// </summary>
     private async Task<string?> ResolveImageUrl(string? objectKeyOrUri)
     {
@@ -364,10 +364,24 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
 
         try
         {
-            // Check if it's already a full URL (legacy data from before this change)
+            // Check if it's a relative path (local API endpoint)
+            if (objectKeyOrUri.StartsWith("/", StringComparison.OrdinalIgnoreCase))
+            {
+                return objectKeyOrUri;
+            }
+
+            // Check if it's already a full URL (legacy data or absolute local API path)
             if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
+                if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
+                {
+                    // If it is a local API endpoint, return it as-is
+                    if (uri.AbsolutePath.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return objectKeyOrUri;
+                    }
+                }
                 return objectKeyOrUri;
             }
 

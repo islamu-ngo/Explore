@@ -53,12 +53,24 @@ public class GetActorDetailsRequestHandler : IRequestHandler<GetActorDetailsRequ
 
         try
         {
-            // Check if it's already a full URL (legacy data)
+            // Check if it's a relative path (local API endpoint)
+            if (objectKeyOrUri.StartsWith("/", StringComparison.OrdinalIgnoreCase))
+            {
+                return objectKeyOrUri;
+            }
+
+            // Check if it's already a full URL (legacy data or absolute local API path)
             if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
                 if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
                 {
+                    // If it is a local API endpoint, return it as-is
+                    if (uri.AbsolutePath.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return objectKeyOrUri;
+                    }
+
                     var objectKey = uri.AbsolutePath.TrimStart('/');
                     return await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
                 }
