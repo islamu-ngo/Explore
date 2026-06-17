@@ -8,6 +8,6 @@
     "Domain": "Active (DDD)",
     "Infra": "Active (EF Core)"
   },
-  "RecentFocus": "Frontend (EventList.razor.cs)",
-  "LastUpdate": "2026-06-16 22:31:00"
+  "RecentFocus": "Frontend (CreateEventTests.cs)",
+  "LastUpdate": "2026-06-18 00:14:27"
 }
