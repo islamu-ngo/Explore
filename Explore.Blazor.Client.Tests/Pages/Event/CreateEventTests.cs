@@ -617,26 +617,11 @@ public class CreateEventTests : IDisposable
     public async Task CreateEvent_WhenReviewPublishFindsReadinessErrors_SavesDraftAndShowsErrors()
     {
         // Arrange
-        var createdEventId = Guid.NewGuid();
+        var readinessError = "At least one scheduled session is required before publishing.";
         _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
-            Success = true,
-            Id = createdEventId
-        });
-        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
-        {
-            EventId = createdEventId,
-            IsReady = false,
-            Errors = new List<EventPublishReadinessErrorDto>
-            {
-                new()
-                {
-                    Code = "schedule_session_required",
-                    FieldPath = "schedule.sessions",
-                    Message = "At least one scheduled session is required before publishing.",
-                    Severity = "error"
-                }
-            }
+            Success = false,
+            Errors = new List<string> { readinessError }
         });
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 
@@ -645,20 +630,19 @@ public class CreateEventTests : IDisposable
                               || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
             TimeSpan.FromSeconds(3));
         PrepareValidSubmitState(cut.Instance);
+        SetPrivateField<DateTime?>(cut.Instance, "_inlineSessionDate", new DateTime(2026, 7, 10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionStartTime", TimeSpan.FromHours(10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionEndTime", TimeSpan.FromHours(12));
 
         // Act
         await SubmitReviewAndPublishAsync(cut.Instance);
 
         // Assert
         await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
-        await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
+        await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var error = GetSubmitError(cut.Instance);
-        var readinessErrors = GetPrivateField<IReadOnlyList<EventPublishReadinessErrorDto>>(cut.Instance, "_publishReadinessErrors");
-        await Assert.That(error).Contains("not ready to publish");
-        await Assert.That(readinessErrors.Count).IsEqualTo(1);
-        await Assert.That(readinessErrors[0].FieldPath).IsEqualTo("schedule.sessions");
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_isMoreOptionsExpanded")).IsTrue();
+        await Assert.That(error).Contains(readinessError);
     }
 
     [Test]
@@ -693,27 +677,9 @@ public class CreateEventTests : IDisposable
     public async Task HandleSubmit_WithPreUploadedImage_SendsFeaturedImageIdAndPublishesWhenReady()
     {
         var createdEventId = Guid.NewGuid();
-        var concurrencyStamp = Guid.NewGuid();
         var uploadedImageId = Guid.NewGuid();
         CreateEventDraftRequestDto? capturedRequest = null;
         _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto)).Returns(new BaseCommandResponseOfGuid
-        {
-            Success = true,
-            Id = createdEventId
-        });
-        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
-        {
-            EventId = createdEventId,
-            IsReady = true,
-            Errors = new List<EventPublishReadinessErrorDto>()
-        });
-        _eventService.GetEventByIdAsync(createdEventId).Returns(new EventDto
-        {
-            Id = createdEventId,
-            Title = "Template Event",
-            ConcurrencyStamp = concurrencyStamp
-        });
-        _eventService.PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
@@ -726,13 +692,17 @@ public class CreateEventTests : IDisposable
             TimeSpan.FromSeconds(3));
         PrepareValidSubmitState(cut.Instance);
         SetPrivateField<Guid?>(cut.Instance, "_uploadedImageStorageObjectId", uploadedImageId);
+        SetPrivateField<DateTime?>(cut.Instance, "_inlineSessionDate", new DateTime(2026, 7, 10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionStartTime", TimeSpan.FromHours(10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionEndTime", TimeSpan.FromHours(12));
 
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         await Assert.That(capturedRequest).IsNotNull();
         await Assert.That(capturedRequest!.FeaturedImageId).IsEqualTo(uploadedImageId);
-        await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
-        await _eventService.Received(1).PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>());
+        await Assert.That(capturedRequest.EventStatusId).IsEqualTo(2);
+        await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
         await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
     }
@@ -741,27 +711,9 @@ public class CreateEventTests : IDisposable
     public async Task HandleSubmit_WithInlineSession_PopulatesSessionsAndPublishesWhenReady()
     {
         var createdEventId = Guid.NewGuid();
-        var concurrencyStamp = Guid.NewGuid();
         var locationId = Guid.NewGuid();
         CreateEventDraftRequestDto? capturedRequest = null;
         _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto)).Returns(new BaseCommandResponseOfGuid
-        {
-            Success = true,
-            Id = createdEventId
-        });
-        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
-        {
-            EventId = createdEventId,
-            IsReady = true,
-            Errors = new List<EventPublishReadinessErrorDto>()
-        });
-        _eventService.GetEventByIdAsync(createdEventId).Returns(new EventDto
-        {
-            Id = createdEventId,
-            Title = "Inline Session Event",
-            ConcurrencyStamp = concurrencyStamp
-        });
-        _eventService.PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
@@ -782,14 +734,16 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         await Assert.That(capturedRequest).IsNotNull();
-        await Assert.That(capturedRequest!.Sessions).HasSingleItem();
+        await Assert.That(capturedRequest!.EventStatusId).IsEqualTo(2);
+        await Assert.That(capturedRequest.Sessions).HasSingleItem();
         var session = capturedRequest.Sessions!.Single();
         await Assert.That(session.LocationId).IsEqualTo(locationId);
         await Assert.That(session.MaxAudienceAttendees).IsEqualTo(120);
         await Assert.That(session.StartTime).IsNotNull();
         await Assert.That(session.EndTime).IsNotNull();
         await Assert.That(session.EndTime!.Value).IsGreaterThan(session.StartTime!.Value);
-        await _eventService.Received(1).PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>());
+        await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
         await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
     }
@@ -799,25 +753,8 @@ public class CreateEventTests : IDisposable
     {
         // Arrange
         var createdEventId = Guid.NewGuid();
-        var concurrencyStamp = Guid.NewGuid();
-        _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
-        {
-            Success = true,
-            Id = createdEventId
-        });
-        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
-        {
-            EventId = createdEventId,
-            IsReady = true,
-            Errors = new List<EventPublishReadinessErrorDto>()
-        });
-        _eventService.GetEventByIdAsync(createdEventId).Returns(new EventDto
-        {
-            Id = createdEventId,
-            Title = "Template Event",
-            ConcurrencyStamp = concurrencyStamp
-        });
-        _eventService.PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>()).Returns(new BaseCommandResponseOfGuid
+        CreateEventDraftRequestDto? capturedRequest = null;
+        _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto)).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
@@ -829,14 +766,17 @@ public class CreateEventTests : IDisposable
                               || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
             TimeSpan.FromSeconds(3));
         PrepareValidSubmitState(cut.Instance);
+        SetPrivateField<DateTime?>(cut.Instance, "_inlineSessionDate", new DateTime(2026, 7, 10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionStartTime", TimeSpan.FromHours(10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionEndTime", TimeSpan.FromHours(12));
 
         // Act
         await SubmitReviewAndPublishAsync(cut.Instance);
 
         // Assert
         await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
-        await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
-        await _eventService.Received(1).GetEventByIdAsync(createdEventId);
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.EventStatusId).IsEqualTo(2);
         await _dialogService.DidNotReceive().ShowMessageBoxAsync(
             "Review and publish",
             Arg.Any<string>(),
@@ -844,7 +784,10 @@ public class CreateEventTests : IDisposable
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<DialogOptions>());
-        await _eventService.Received(1).PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>());
+        await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
     }
 
     [Test]
@@ -852,23 +795,11 @@ public class CreateEventTests : IDisposable
     {
         // Arrange
         var createdEventId = Guid.NewGuid();
-        var concurrencyStamp = Guid.NewGuid();
-        _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
+        CreateEventDraftRequestDto? capturedRequest = null;
+        _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto)).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
-        });
-        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
-        {
-            EventId = createdEventId,
-            IsReady = true,
-            Errors = new List<EventPublishReadinessErrorDto>()
-        });
-        _eventService.GetEventByIdAsync(createdEventId).Returns(new EventDto
-        {
-            Id = createdEventId,
-            Title = "Template Event",
-            ConcurrencyStamp = concurrencyStamp
         });
         _dialogService.ShowMessageBoxAsync(
                 Arg.Any<string>(),
@@ -885,14 +816,19 @@ public class CreateEventTests : IDisposable
                               || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
             TimeSpan.FromSeconds(3));
         PrepareValidSubmitState(cut.Instance);
+        SetPrivateField<DateTime?>(cut.Instance, "_inlineSessionDate", new DateTime(2026, 7, 10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionStartTime", TimeSpan.FromHours(10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionEndTime", TimeSpan.FromHours(12));
 
         // Act
         await SubmitReviewAndPublishAsync(cut.Instance);
 
         // Assert
         await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
-        await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
-        await _eventService.Received(1).GetEventByIdAsync(createdEventId);
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.EventStatusId).IsEqualTo(2);
+        await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventService.DidNotReceive().GetEventByIdAsync(Arg.Any<Guid>());
         await _dialogService.DidNotReceive().ShowMessageBoxAsync(
             "Review and publish",
             Arg.Any<string>(),
@@ -900,7 +836,9 @@ public class CreateEventTests : IDisposable
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<DialogOptions>());
-        await _eventService.Received(1).PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>());
+        await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
     }
 
     [Test]
