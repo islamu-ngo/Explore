@@ -111,6 +111,36 @@ public sealed class DockHostTests : IDisposable
     }
 
     [Test]
+    public async Task DockLayoutHost_SevenHundredSixtyPixelViewport_RoutesDockedPanelsThroughOverlayChrome()
+    {
+        var dockedPanelId = new DockPanelId("shell.left-nav");
+        var scrollManager = Substitute.For<IScrollManager>();
+        ConfigureScrollManager(scrollManager);
+        _ctx.Services.AddSingleton(scrollManager);
+        ConfigureViewport(Breakpoint.Sm, width: 760);
+        _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Shell, DockSide.Start, DockMode.Docked, order: 10), CreateContent("Shell nav"));
+        _dockLayoutState.Open(dockedPanelId);
+
+        var cut = _ctx.Render<DockLayoutHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Shell)
+            .AddChildContent("Shell body"));
+
+        cut.WaitForAssertion(() =>
+        {
+            var layoutHost = cut.Find("[data-testid='dock-layout-host']");
+            if (layoutHost.GetAttribute("style")?.Contains("--dock-layout-start-width: 0px;", StringComparison.Ordinal) != true)
+            {
+                throw new InvalidOperationException("Shell dock layout did not collapse the start track at 760px.");
+            }
+
+            if (cut.Find("[data-dock-panel-id='shell.left-nav']").GetAttribute("data-dock-mode") != "temporary")
+            {
+                throw new InvalidOperationException("Shell docked panel was not projected as a temporary overlay at 760px.");
+            }
+        }, timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Test]
     public async Task DockSideHost_EndSideWithMultiplePanels_RendersSideBySideStack()
     {
         var secondPanelId = new DockPanelId("workspace.second");
@@ -921,7 +951,7 @@ public sealed class DockHostTests : IDisposable
 #pragma warning restore CA2012
     }
 
-    private void ConfigureViewport(Breakpoint breakpoint)
+    private void ConfigureViewport(Breakpoint breakpoint, int? width = null)
     {
         var viewportService = Substitute.For<IBrowserViewportService>();
         viewportService.SubscribeAsync(Arg.Any<IBrowserViewportObserver>(), Arg.Any<bool>())
@@ -935,7 +965,7 @@ public sealed class DockHostTests : IDisposable
 
                 return observer.NotifyBrowserViewportChangeAsync(new BrowserViewportEventArgs(
                     Guid.NewGuid(),
-                    new BrowserWindowSize { Width = breakpoint is Breakpoint.Xs or Breakpoint.Sm ? 390 : 1280, Height = 844 },
+                    new BrowserWindowSize { Width = width ?? (breakpoint is Breakpoint.Xs or Breakpoint.Sm ? 390 : 1280), Height = 844 },
                     breakpoint,
                     isImmediate: true));
             });

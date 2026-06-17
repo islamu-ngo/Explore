@@ -37,6 +37,7 @@
     public IDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string ScopeName => Scope.ToString().ToLowerInvariant();
+    private const int MobileDockOverlayBreakpointPx = 760;
     private bool _isMobile;
     private bool _viewportSubscribed;
 
@@ -125,7 +126,7 @@
 
     Task IBrowserViewportObserver.NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
     {
-        var isMobile = args.Breakpoint is Breakpoint.Xs;
+        var isMobile = args.BrowserWindowSize.Width <= MobileDockOverlayBreakpointPx;
         DockLayoutState.UpdateViewport(args.BrowserWindowSize.Width, isMobile);
 
         if (_isMobile == isMobile)
