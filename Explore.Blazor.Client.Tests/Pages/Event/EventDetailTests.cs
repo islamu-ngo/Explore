@@ -26,7 +26,7 @@ public sealed class EventDetailTests : IDisposable
         var imageUrl = InvokePrivate<string?>(component, "GetImageUrl");
 
         await Assert.That(imageUrl).IsNotNull();
-        await Assert.That(imageUrl!).EndsWith($"/api/storageobject/{imageId}/public");
+        await Assert.That(imageUrl!).EndsWith($"/api/storageobject/{imageId}/content");
     }
 
     public void Dispose() => _ctx.Dispose();

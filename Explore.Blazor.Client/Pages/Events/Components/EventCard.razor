@@ -38,7 +38,6 @@
                 @if (HasActualImage)
                 {
                     <div class="event-card__image-blur" style="background-image: url('@DisplayImageSource');"></div>
-                    <img src="@GetFallbackImageSource()" alt="" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0;" />
                 }
                 <img src="@DisplayImageSource" @onerror="HandleImageError" class="event-card__image" style="@ImageFitStyle" />
 
@@ -136,7 +135,6 @@
                     @if (HasActualImage)
                     {
                         <div class="event-card__image-blur" style="background-image: url('@DisplayImageSource');"></div>
-                        <img src="@GetFallbackImageSource()" alt="" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0;" />
                     }
                     <img src="@DisplayImageSource" @onerror="HandleImageError" class="event-card__image-foreground" style="@ImageFitStyle" />
                 </div>
@@ -263,7 +261,6 @@
                     @if (HasActualImage)
                     {
                         <div class="event-card__image-blur" style="background-image: url('@DisplayImageSource');"></div>
-                        <img src="@GetFallbackImageSource()" alt="" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0;" />
                     }
                     <img src="@DisplayImageSource" @onerror="HandleImageError" class="event-card__image-foreground" style="@ImageFitStyle" />
                 </div>

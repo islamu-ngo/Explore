@@ -1231,6 +1231,8 @@ public partial class EventDetail : ComponentBase, IDisposable
             : AppearanceStyleBuilder.BuildSurfaceStyle(_appearance, $"#{GetEventColor()}");
     }
 
+    private bool HasActualCoverImage => !_imageLoadFailed && !string.IsNullOrEmpty(GetImageUrl());
+
     private string? GetImageUrl()
     {
         if (!string.IsNullOrEmpty(_eventDetails?.FeaturedImageUri))
@@ -1259,7 +1261,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         }
 
         var baseUri = Navigation.BaseUri.TrimEnd('/');
-        return $"{baseUri}/api/storageobject/{imageId}/public";
+        return $"{baseUri}/api/storageobject/{imageId}/content";
     }
 
     private string GetFallbackSvgDataUri()

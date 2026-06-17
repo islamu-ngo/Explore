@@ -324,13 +324,11 @@
                     <div class="event-list__detail-image-wrapper">
                         @if (HasDetailActualImage)
                         {
-                            <img src="@GetFallbackEventImage(_selectedEvent)"
-                                 alt=""
-                                 style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;" />
+                            <div class="event-list__detail-image-blur" style="background-image: url('@GetDetailImageSrc()');"></div>
                         }
                         <img src="@GetDetailImageSrc()"
                              @onerror="HandleDetailImageError"
-                             style="position:relative; width:100%; height:100%; object-fit:cover; display:block;"
+                             class="@(HasDetailActualImage ? "event-list__detail-image-actual" : "event-list__detail-image-fallback")"
                              alt="@_selectedEvent?.Title" />
                     </div>
 

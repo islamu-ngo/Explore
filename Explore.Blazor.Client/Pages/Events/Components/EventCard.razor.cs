@@ -74,7 +74,7 @@ public partial class EventCard : ComponentBase
     private string DisplayImageSource => _imageLoadFailed ? GetFallbackImageSource() : ImageSource;
 
     private string ImageFitStyle => HasActualImage
-        ? "object-fit: contain; object-position: left top;"
+        ? "object-fit: contain; object-position: center;"
         : "object-fit: cover !important; object-position: center !important;";
 
     private string GetFallbackImageSource()

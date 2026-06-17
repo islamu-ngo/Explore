@@ -308,6 +308,7 @@
    ══════════════════════════════════════════════ */
 
 ::deep .event-list__detail-image-wrapper {
+    position: relative;
     width: 100%;
     aspect-ratio: 3 / 4;
     overflow: hidden;
@@ -319,7 +320,36 @@
     background: var(--mud-palette-background-gray);
 }
 
-::deep .event-list__detail-image-wrapper img,
+::deep .event-list__detail-image-blur {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: blur(20px);
+    transform: scale(1.1);
+    z-index: 0;
+}
+
+::deep .event-list__detail-image-actual {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+}
+
+::deep .event-list__detail-image-fallback {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 ::deep .event-list__detail-image-wrapper .mud-image {
     width: 100%;
     height: 100%;

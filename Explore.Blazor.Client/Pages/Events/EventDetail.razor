@@ -37,10 +37,14 @@
             <MudGrid Spacing="8">
                 @* ── Left Column: Image & Organizer Info ── *@
                 <MudItem xs="12" md="5" lg="4">
-                    <div style="position: relative;">
+                    <div class="event-cover-image-wrapper mb-6">
+                        @if (HasActualCoverImage)
+                        {
+                            <div class="event-cover-image-blur" style="background-image: url('@GetImageUrl()');"></div>
+                        }
                         <img src="@(_imageLoadFailed ? GetFallbackSvgDataUri() : (GetImageUrl() ?? GetFallbackSvgDataUri()))"
                              alt="@_eventDetails.Title"
-                             class="event-cover-image mb-6"
+                             class="event-cover-image @(HasActualCoverImage ? "event-cover-image--actual" : "event-cover-image--fallback")"
                              @onerror="HandleImageError" />
 
                         @* Admin controls — 3-dot action menu *@
