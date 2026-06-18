@@ -4,7 +4,7 @@
 
 var failures = new List<string>();
 
-ValidateActionContract(".github/actions/deploy-coolify/action.yml", failures);
+ValidateActionContract(".ci/actions/deploy-coolify/action.yml", failures);
 ValidateDeployWorkflow(
     ".github/workflows/deploy-coolify.yml",
     environmentName: "production",
@@ -82,8 +82,8 @@ static void ValidateDeployWorkflow(string path, string environmentName, string i
     RequireContains(text, "pattern: container-build-*", path, "must download all container-build evidence artifacts", failures);
     RequireContains(text, $"resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-api {immutablePrefix}", path, "must resolve API immutable tag/digest evidence", failures);
     RequireContains(text, $"resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-ui {immutablePrefix}", path, "must resolve UI immutable tag/digest evidence", failures);
-    RequireContains(text, "uses: ./.github/actions/deploy-coolify", path, "must call the shared local Coolify deploy action", failures);
-    RequireCount(text, "uses: ./.github/actions/deploy-coolify", 2, path, "must call deploy action for API and UI", failures);
+    RequireContains(text, "uses: ./.ci/actions/deploy-coolify", path, "must call the shared local Coolify deploy action", failures);
+    RequireCount(text, "uses: ./.ci/actions/deploy-coolify", 2, path, "must call deploy action for API and UI", failures);
     RequireContains(text, $"environment-name: {environmentName}", path, "must pass environment name to deploy action", failures);
     RequireContains(text, "expected-image-digest: ${{ steps.api-evidence.outputs.expected-image-digest }}", path, "API deploy must receive resolved expected digest", failures);
     RequireContains(text, "expected-image-digest: ${{ steps.ui-evidence.outputs.expected-image-digest }}", path, "UI deploy must receive resolved expected digest", failures);

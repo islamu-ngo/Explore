@@ -26,6 +26,10 @@ on:
       - ".repomix/**"
       - ".sisyphus/**"
       - ".taskmaster/**"
+      - ".ci/**"
+      - ".forgejo/**"
+      - ".woodpecker/**"
+      - ".tangled/**"
       # BMAD framework
       - "_bmad/**"
       - "_bmad-output/**"
@@ -229,16 +233,16 @@ jobs:
       - name: Resolve API deploy image evidence
         id: api-evidence
         if: ${{ needs.detect-changes.outputs.api == 'true' || github.ref_type == 'tag' }}
-        run: dotnet run .github/scripts/resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-api sha-
+        run: dotnet run .ci/scripts/resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-api sha-
 
       - name: Resolve UI deploy image evidence
         id: ui-evidence
         if: ${{ needs.detect-changes.outputs.ui == 'true' || github.ref_type == 'tag' }}
-        run: dotnet run .github/scripts/resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-ui sha-
+        run: dotnet run .ci/scripts/resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-ui sha-
 
       - name: Trigger Coolify Deployment (API)
         if: ${{ needs.detect-changes.outputs.api == 'true' || github.ref_type == 'tag' }}
-        uses: ./.github/actions/deploy-coolify
+        uses: ./.ci/actions/deploy-coolify
         with:
           environment-name: production
           component: API
@@ -257,7 +261,7 @@ jobs:
 
       - name: Trigger Coolify Deployment (UI)
         if: ${{ needs.detect-changes.outputs.ui == 'true' || github.ref_type == 'tag' }}
-        uses: ./.github/actions/deploy-coolify
+        uses: ./.ci/actions/deploy-coolify
         with:
           environment-name: production
           component: UI

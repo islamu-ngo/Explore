@@ -60,7 +60,7 @@ jobs:
           fi
 
           changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
-          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(Explore\.API/.*\.(cs|csproj|json)$|Explore\.Application/.*\.cs$|Explore\.Domain/.*\.cs$|Event\.API\.IntegrationTests/.*\.(cs|csproj)$|Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|schemas/openapi\.json$|docs/API_CONTRACT_INVENTORY\.md$|docs/API_CONTRACT_TEST_DEBT\.md$|docs/API_CHANGELOG\.md$|Directory\.Packages\.props$|global\.json$|\.github/spectral\.yaml$|\.github/scripts/validate-api-contract-skip-inventory\.cs$|\.github/workflows/openapi-contract\.yml$)' || true)"
+          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(Explore\.API/.*\.(cs|csproj|json)$|Explore\.Application/.*\.cs$|Explore\.Domain/.*\.cs$|Event\.API\.IntegrationTests/.*\.(cs|csproj)$|Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|schemas/openapi\.json$|docs/API_CONTRACT_INVENTORY\.md$|docs/API_CONTRACT_TEST_DEBT\.md$|docs/API_CHANGELOG\.md$|Directory\.Packages\.props$|global\.json$|\.ci/spectral\.yaml$|\.ci/scripts/validate-api-contract-skip-inventory\.cs$|\.github/workflows/openapi-contract\.yml$)' || true)"
 
           if [ -n "$relevant_files" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
@@ -103,8 +103,8 @@ jobs:
         env:
           RestorePackagesWithLockFile: "false"
         run: |
-          rm -f .github/scripts/packages.lock.json
-          dotnet run .github/scripts/validate-api-contract-skip-inventory.cs -- .
+          rm -f .ci/scripts/packages.lock.json
+          dotnet run .ci/scripts/validate-api-contract-skip-inventory.cs -- .
 
       - name: Generate OpenAPI Document
         if: steps.changes.outputs.relevant == 'true'
@@ -274,7 +274,7 @@ jobs:
           npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint \
             schemas/openapi.json \
             --quiet \
-            --ruleset .github/spectral.yaml \
+            --ruleset .ci/spectral.yaml \
             --format json \
             --output artifacts/openapi-contract/spectral-openapi.json
           json_exit=$?
@@ -282,7 +282,7 @@ jobs:
           npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint \
             schemas/openapi.json \
             --quiet \
-            --ruleset .github/spectral.yaml \
+            --ruleset .ci/spectral.yaml \
             --format markdown \
             --output artifacts/openapi-contract/spectral-openapi.md
           markdown_exit=$?
@@ -293,7 +293,7 @@ jobs:
             echo
             echo "Generated advisory Spectral reports using \`@stoplight/spectral-cli@${SPECTRAL_VERSION}\`."
             echo
-            echo "- Ruleset: \`.github/spectral.yaml\`"
+            echo "- Ruleset: \`.ci/spectral.yaml\`"
             echo "- JSON: \`artifacts/openapi-contract/spectral-openapi.json\` (exit ${json_exit})"
             echo "- Markdown: \`artifacts/openapi-contract/spectral-openapi.md\` (exit ${markdown_exit})"
             echo

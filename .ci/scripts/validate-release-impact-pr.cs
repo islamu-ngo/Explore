@@ -193,7 +193,7 @@ static HashSet<string> ClassifyRequiredCategories(IEnumerable<string> changedFil
             || path.EndsWith("dockerfile", StringComparison.Ordinal)
             || path.Contains("docker-compose", StringComparison.Ordinal)
             || path.Contains(".github/workflows/deploy", StringComparison.Ordinal)
-            || path.Contains(".github/actions/deploy", StringComparison.Ordinal))
+            || path.Contains(".ci/actions/deploy", StringComparison.Ordinal))
         {
             categories.Add("configuration");
         }

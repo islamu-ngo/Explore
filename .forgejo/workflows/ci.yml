@@ -1,0 +1,23 @@
+# ABOUTME: Forgejo Actions CI adapter for mirrored repositories with self-hosted Forgejo runners.
+# ABOUTME: Runs the repository build and architecture smoke test without owning deployment authority.
+
+name: Build & Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v6
+      - name: Restore
+        run: dotnet restore --locked-mode
+      - name: Build
+        run: dotnet build --configuration Release --no-restore --verbosity minimal
+      - name: Architecture Tests
+        run: dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity minimal

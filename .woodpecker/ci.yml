@@ -1,0 +1,14 @@
+# ABOUTME: Codeberg Woodpecker CI adapter for mirrored repositories.
+# ABOUTME: Runs restore, Release build, and architecture smoke tests on Codeberg-compatible CI.
+
+when:
+  - event: [push, pull_request, manual]
+    branch: [main, develop]
+
+steps:
+  - name: build-and-test
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    commands:
+      - dotnet restore --locked-mode
+      - dotnet build --configuration Release --no-restore --verbosity minimal
+      - dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity minimal

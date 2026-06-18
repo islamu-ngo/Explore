@@ -25,6 +25,10 @@ on:
       - ".repomix/**"
       - ".sisyphus/**"
       - ".taskmaster/**"
+      - ".ci/**"
+      - ".forgejo/**"
+      - ".woodpecker/**"
+      - ".tangled/**"
       # BMAD framework
       - "_bmad/**"
       - "_bmad-output/**"
@@ -223,16 +227,16 @@ jobs:
       - name: Resolve API deploy image evidence
         id: api-evidence
         if: ${{ needs.detect-changes.outputs.api == 'true' }}
-        run: dotnet run .github/scripts/resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-api dev-
+        run: dotnet run .ci/scripts/resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-api dev-
 
       - name: Resolve UI deploy image evidence
         id: ui-evidence
         if: ${{ needs.detect-changes.outputs.ui == 'true' }}
-        run: dotnet run .github/scripts/resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-ui dev-
+        run: dotnet run .ci/scripts/resolve-deploy-image-evidence.cs -- artifacts/container-build islamu-event-ui dev-
 
       - name: Trigger Coolify Deployment (API - Staging)
         if: ${{ needs.detect-changes.outputs.api == 'true' }}
-        uses: ./.github/actions/deploy-coolify
+        uses: ./.ci/actions/deploy-coolify
         with:
           environment-name: staging
           component: API
@@ -250,7 +254,7 @@ jobs:
 
       - name: Trigger Coolify Deployment (UI - Staging)
         if: ${{ needs.detect-changes.outputs.ui == 'true' }}
-        uses: ./.github/actions/deploy-coolify
+        uses: ./.ci/actions/deploy-coolify
         with:
           environment-name: staging
           component: UI

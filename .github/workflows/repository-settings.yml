@@ -39,7 +39,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           RestorePackagesWithLockFile: "false"
-        run: dotnet run .github/scripts/validate-repository-settings.cs -- "${GITHUB_REPOSITORY}" artifacts/repository-settings
+        run: dotnet run .ci/scripts/validate-repository-settings.cs -- "${GITHUB_REPOSITORY}" artifacts/repository-settings
 
       - name: Upload repository settings evidence
         if: always()

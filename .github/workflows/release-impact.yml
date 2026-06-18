@@ -36,4 +36,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           RestorePackagesWithLockFile: "false"
-        run: dotnet run .github/scripts/validate-release-impact-pr.cs -- "$GITHUB_EVENT_PATH"
+        run: dotnet run .ci/scripts/validate-release-impact-pr.cs -- "$GITHUB_EVENT_PATH"

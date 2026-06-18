@@ -7,9 +7,15 @@ ABOUTME: Separates repository settings from workflow YAML so required gates stay
 > **Status:** Implemented + repository-settings required
 > **Owner:** Platform/Ops
 > **Last Verified:** 2026-05-07
-> **Source Anchors:** `.github/workflows/`, `.github/dependabot.yml`, `docs/TESTING.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `docs/RELEASE_CHECKLIST.md`
+> **Source Anchors:** `.ci/`, `.github/workflows/`, `.forgejo/workflows/`, `.woodpecker/`, `.tangled/workflows/`, `.github/dependabot.yml`, `docs/TESTING.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `docs/RELEASE_CHECKLIST.md`
 
-This page is the source of truth for GitHub Actions governance. Workflow YAML defines what runs; GitHub repository settings define which checks are required, which environments require approval, and which organization security features are enabled.
+This page is the source of truth for CI/CD governance. `.ci/` owns shared CI/CD implementation such as reusable scripts, policy validators, evidence writers, the OpenAPI Spectral ruleset, and local composite actions. Provider-native workflow discovery files stay in the directories required by each forge: `.github/workflows/` for GitHub Actions, `.forgejo/workflows/` for Forgejo Actions, `.woodpecker/` for Codeberg Woodpecker, and `.tangled/workflows/` for Tangled Spindle.
+
+GitHub remains the authoritative deployment surface for production and staging because the current release evidence model depends on GitHub environments, retained artifacts, GHCR/GitHub attestation verification, and Coolify deployment evidence. Codeberg and Tangled adapters are CI validation lanes for mirrored repositories until equivalent deployment evidence and secret-governance contracts are implemented there.
+
+Do not symlink `.github` to `.ci`. GitHub discovers workflows from `.github/workflows`, local reusable workflow calls require `.github/workflows/{filename}`, and reusable workflow subdirectories are not supported.
+
+Workflow YAML defines what runs; repository settings define which checks are required, which environments require approval, and which organization security features are enabled.
 
 ## Required Repository Settings
 
@@ -55,7 +61,7 @@ Record evidence for these settings before treating the repository as enterprise-
 
 ### Repository Settings Drift Check
 
-`.github/workflows/repository-settings.yml` runs scheduled/manual repository-settings drift checks through `.github/scripts/validate-repository-settings.cs`. The workflow reads GitHub repository metadata, branch protection, rulesets, environments, Actions policy, security features, code scanning access, and CODEOWNERS owner resolution, then retains redacted JSON/Markdown evidence in `repository-settings-evidence`.
+`.github/workflows/repository-settings.yml` runs scheduled/manual repository-settings drift checks through `.ci/scripts/validate-repository-settings.cs`. The workflow reads GitHub repository metadata, branch protection, rulesets, environments, Actions policy, security features, code scanning access, and CODEOWNERS owner resolution, then retains redacted JSON/Markdown evidence in `repository-settings-evidence`.
 
 The lane is expected to fail until the release-blocking settings above are configured. Do not suppress it or remove findings without either fixing the GitHub setting or recording an owner, date, compensating control, and removal condition in the release evidence package.
 
@@ -90,7 +96,7 @@ The decision record in [CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANC
 
 ### Release Impact PR Metadata Gate
 
-Release-impacting pull requests must document operator-visible risk before merge. `.github/workflows/release-impact.yml` runs as a metadata-only `pull_request_target` check, checks out the trusted base commit only, and runs repository-owned `.github/scripts/validate-release-impact-pr.cs` against the pull request body and changed-file metadata. It uses read-only `contents` and `pull-requests` permissions and must not checkout, build, test, cache, or execute pull-request head code.
+Release-impacting pull requests must document operator-visible risk before merge. `.github/workflows/release-impact.yml` runs as a metadata-only `pull_request_target` check, checks out the trusted base commit only, and runs repository-owned `.ci/scripts/validate-release-impact-pr.cs` against the pull request body and changed-file metadata. It uses read-only `contents` and `pull-requests` permissions and must not checkout, build, test, cache, or execute pull-request head code.
 
 The check requires the `## Release Impact` section in `.github/PULL_REQUEST_TEMPLATE.md` to match the changed files. Security/auth, migration/data/rollback, configuration/secrets/deployment, OpenAPI/client contract, and operator/self-hosting/release-note path changes must select the corresponding checkbox and provide non-empty `Details:`. `Not applicable` is only valid when the changed files do not imply one of those release-impact categories.
 
@@ -100,19 +106,30 @@ External `uses:` references in `.github/workflows/*.yml` are pinned to full-leng
 
 Local reusable workflows remain path-based (`./.github/workflows/...`) because they are controlled by this repository's review history. Dependabot's `github-actions` ecosystem in `.github/dependabot.yml` keeps external SHA pins maintainable through a weekly grouped update lane with conventional `ci` commit messages.
 
-`Workflow Security` enforces this policy with `.github/scripts/validate-action-pins.cs` and `.github/scripts/validate-dependabot-policy.cs`, both run as file-based C# scripts with `dotnet run <script>.cs -- <args>`. The check always reports a status, scans workflow-security inputs when `.github/workflows/**`, `.github/actions/**`, `.github/scripts/**`, `.github/dependabot.yml`, deployable Dockerfiles, or this governance document changes, and intentionally no-ops for unrelated changes. Do not add external actions without a full SHA and a same-line version comment, and do not remove the `github-actions` Dependabot update lane without replacing it with an equivalent pinned-action maintenance process.
+`Workflow Security` enforces this policy with `.ci/scripts/validate-action-pins.cs` and `.ci/scripts/validate-dependabot-policy.cs`, both run as file-based C# scripts with `dotnet run <script>.cs -- <args>`. The check always reports a status, scans workflow-security inputs when `.github/workflows/**`, `.ci/actions/**`, `.ci/scripts/**`, `.ci/spectral.yaml`, `.github/dependabot.yml`, `.forgejo/workflows/**`, `.woodpecker/**`, `.tangled/workflows/**`, deployable Dockerfiles, or this governance document changes, and intentionally no-ops for unrelated changes. Do not add external GitHub Actions without a full SHA and a same-line version comment, and do not remove the `github-actions` Dependabot update lane without replacing it with an equivalent pinned-action maintenance process.
 
-Deployable Dockerfiles must use tag-plus-digest base image references, for example `mcr.microsoft.com/dotnet/aspnet:10.0@sha256:<digest>`. The human-readable tag preserves maintainer intent while the digest fixes the resolved image. `Workflow Security` enforces this with `.github/scripts/validate-dockerfile-base-images.cs` for `Explore.API/Dockerfile` and `Explore.Blazor/Dockerfile`. Dependabot's `docker` ecosystem entries update those digests weekly through grouped `docker-base-images` PRs.
+Deployable Dockerfiles must use tag-plus-digest base image references, for example `mcr.microsoft.com/dotnet/aspnet:10.0@sha256:<digest>`. The human-readable tag preserves maintainer intent while the digest fixes the resolved image. `Workflow Security` enforces this with `.ci/scripts/validate-dockerfile-base-images.cs` for `Explore.API/Dockerfile` and `Explore.Blazor/Dockerfile`. Dependabot's `docker` ecosystem entries update those digests weekly through grouped `docker-base-images` PRs.
 
-Repository-owned helper scripts under `.github/scripts/` must be file-based C# scripts (`*.cs`) unless a future change documents why C# is not viable. Keep shell blocks in workflows for orchestration only; policy, JSON parsing, and evidence-generation logic belongs in C# so it uses the repository's pinned .NET SDK and remains reviewable by the same maintainers as the application code. Each helper script declares `#:property RestorePackagesWithLockFile=false` so ad hoc `dotnet run <script>.cs -- <args>` execution does not create transient `.github/scripts/packages.lock.json` files. Third-party tools can still use their required runtime, such as `zizmor` running from an isolated Python virtual environment.
+Repository-owned helper scripts under `.ci/scripts/` must be file-based C# scripts (`*.cs`) unless a future change documents why C# is not viable. Keep shell blocks in workflows for orchestration only; policy, JSON parsing, and evidence-generation logic belongs in C# so it uses the repository's pinned .NET SDK and remains reviewable by the same maintainers as the application code. Each helper script declares `#:property RestorePackagesWithLockFile=false` so ad hoc `dotnet run <script>.cs -- <args>` execution does not create transient `.ci/scripts/packages.lock.json` files. Third-party tools can still use their required runtime, such as `zizmor` running from an isolated Python virtual environment.
+
+### Multi-Forge Adapter Policy
+
+Provider-native adapter files must stay thin and must not duplicate deployment policy:
+
+- `.github/workflows/` owns GitHub required checks, deployment environments, container publication, retained evidence, and Coolify deployment calls.
+- `.forgejo/workflows/ci.yml` provides a Forgejo Actions CI smoke lane for mirrors with a self-hosted runner labelled `docker`.
+- `.woodpecker/ci.yml` provides a Codeberg Woodpecker CI smoke lane using the .NET SDK container image.
+- `.tangled/workflows/ci.yaml` provides a Tangled Spindle CI smoke lane through Nixery with `dotnet-sdk_10`.
+
+Non-GitHub adapters currently run restore, Release build, and `Event.Architecture.Tests` as a portable confidence gate. Do not add deploy secrets, registry publish credentials, Coolify webhooks, or environment promotion behavior to those adapters until this document defines equivalent secret isolation, artifact retention, immutable image evidence, smoke-check evidence, and rollback evidence for that provider.
 
 ### Workflow Static Analysis Policy
 
 `Workflow Security` treats workflow definitions as security-sensitive code. For workflow-governance changes it:
 
 - sets up the pinned .NET SDK from `global.json`, then runs the local C# validators for action pins and Dependabot `github-actions` update coverage;
-- runs `.github/scripts/validate-workflow-cache-policy.cs` so privileged deploy, container, and release workflows cannot consume unreviewed GitHub Actions caches;
-- runs `.github/scripts/validate-deploy-workflow-contract.cs` so production and staging deploy callers continue to pass expected digest, promotion evidence, deployment-freeze, smoke-check, and immutable-tag inputs into `.github/actions/deploy-coolify`;
+- runs `.ci/scripts/validate-workflow-cache-policy.cs` so privileged deploy, container, and release workflows cannot consume unreviewed GitHub Actions caches;
+- runs `.ci/scripts/validate-deploy-workflow-contract.cs` so production and staging deploy callers continue to pass expected digest, promotion evidence, deployment-freeze, smoke-check, and immutable-tag inputs into `.ci/actions/deploy-coolify`;
 - installs `actionlint` `1.7.12` from the upstream release archive after checking the expected SHA-256 digest, then blocks on workflow syntax, expression, and shell-in-workflow lint findings;
 - installs `zizmor` `1.25.2` in an isolated Python virtual environment, runs it offline, exports SARIF/text evidence, and blocks on medium-or-higher severity findings;
 - uploads `workflow-security-evidence` for 30 days.
@@ -121,7 +138,7 @@ If future `zizmor` findings must be temporarily accepted, document each exceptio
 
 ### Workflow Cache Poisoning Policy
 
-Fork pull requests and untrusted contribution events must not write caches that are later consumed by trusted deployment, release, or publish workflows. `Workflow Security` enforces this with `.github/scripts/validate-workflow-cache-policy.cs`.
+Fork pull requests and untrusted contribution events must not write caches that are later consumed by trusted deployment, release, or publish workflows. `Workflow Security` enforces this with `.ci/scripts/validate-workflow-cache-policy.cs`.
 
 Current policy:
 
@@ -148,7 +165,7 @@ Dockerfiles must copy the root restore inputs (`global.json`, `Directory.Build.p
 
 ### NuGet Vulnerability Audit Policy
 
-Fast CI runs `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` after locked restore, then parses the report with `.github/scripts/validate-nuget-vulnerabilities.cs`. The parser writes retained JSON and markdown summary evidence under `artifacts/dependencies/`, splitting findings by direct/transitive package relationship and advisory severity. Any vulnerable direct or transitive package reported by NuGet fails the `Build & Test` lane; temporary advisory exceptions require an owner, date, advisory URL, affected package/version, package relationship, severity, compensating control, and removal condition recorded in this document before the workflow may be weakened.
+Fast CI runs `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` after locked restore, then parses the report with `.ci/scripts/validate-nuget-vulnerabilities.cs`. The parser writes retained JSON and markdown summary evidence under `artifacts/dependencies/`, splitting findings by direct/transitive package relationship and advisory severity. Any vulnerable direct or transitive package reported by NuGet fails the `Build & Test` lane; temporary advisory exceptions require an owner, date, advisory URL, affected package/version, package relationship, severity, compensating control, and removal condition recorded in this document before the workflow may be weakened.
 
 The current policy is remediation-first. `MailKit` was upgraded from `4.15.1` to `4.16.0` to clear GitHub Advisory `GHSA-9j88-vvj5-vhgr` / `CVE-2026-41319` rather than making the audit advisory.
 
@@ -156,9 +173,9 @@ The current policy is remediation-first. `MailKit` was upgraded from `4.15.1` to
 
 ISLAMU Event is licensed under AGPL-3.0-or-later, and the ISLAMU CLA grants the ISLAMU project steward broad inbound rights for contributor work. That inbound CLA does not override third-party dependency licenses, so CI must keep runtime, build, and test dependency license risk explicit before alternative-license, commercial, nonprofit, public-sector, procurement-restricted, hosted-service, or special social-impact distribution is offered.
 
-`Build & Test` runs `.github/scripts/validate-dependency-license-policy.cs` after locked restore and the NuGet vulnerability audit. The validator scans product `packages.lock.json` files, reads restored NuGet package metadata from the local package cache, rejects denied or unknown license metadata unless a package-specific exception is encoded in the policy script, and guards future product npm or container OS package dependency surfaces until dedicated license scanning exists for those ecosystems.
+`Build & Test` runs `.ci/scripts/validate-dependency-license-policy.cs` after locked restore and the NuGet vulnerability audit. The validator scans product `packages.lock.json` files, reads restored NuGet package metadata from the local package cache, rejects denied or unknown license metadata unless a package-specific exception is encoded in the policy script, and guards future product npm or container OS package dependency surfaces until dedicated license scanning exists for those ecosystems.
 
-Reviewed license identifiers currently allowed by policy are `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `CC0-1.0`, `ISC`, `MIT`, `MPL-2.0`, `PostgreSQL`, `Unicode-DFS-2016`, `Unlicense`, and `Zlib`. Strong reciprocal, copyleft, source-available, and business-source families such as AGPL, GPL, LGPL, BUSL, Commons Clause, RPL, and SSPL are denied unless an explicit temporary exception is recorded in `.github/scripts/validate-dependency-license-policy.cs`.
+Reviewed license identifiers currently allowed by policy are `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `CC0-1.0`, `ISC`, `MIT`, `MPL-2.0`, `PostgreSQL`, `Unicode-DFS-2016`, `Unlicense`, and `Zlib`. Strong reciprocal, copyleft, source-available, and business-source families such as AGPL, GPL, LGPL, BUSL, Commons Clause, RPL, and SSPL are denied unless an explicit temporary exception is recorded in `.ci/scripts/validate-dependency-license-policy.cs`.
 
 Current visible exceptions are intentional debt, not blanket approvals:
 
@@ -188,13 +205,13 @@ Do not promote E2E, stress, security, or runtime lanes to required status while 
 
 `OpenAPI Contract Guard` blocks stale generated contract artifacts and verifies deterministic second-run regeneration for `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
 
-The guard also runs `.github/scripts/validate-api-contract-skip-inventory.cs` against [API_CONTRACT_TEST_DEBT.md](API_CONTRACT_TEST_DEBT.md). Any skipped integration test whose code skip reason includes `Category: API contract` must be listed in that inventory with a source file, owner, and removal condition. This keeps deferred route-name/HATEOAS contract enforcement visible while the owning `api-contract-stabilization` work finishes.
+The guard also runs `.ci/scripts/validate-api-contract-skip-inventory.cs` against [API_CONTRACT_TEST_DEBT.md](API_CONTRACT_TEST_DEBT.md). Any skipped integration test whose code skip reason includes `Category: API contract` must be listed in that inventory with a source file, owner, and removal condition. This keeps deferred route-name/HATEOAS contract enforcement visible while the owning `api-contract-stabilization` work finishes.
 
 Intentional breaking API changes must also update [API_CHANGELOG.md](API_CHANGELOG.md#breaking-change-evidence) in the same pull request. The changelog entry must identify the affected route, operation, schema, or generated client method; explain old and new behavior; identify affected clients or operator workflows; provide migration guidance or a compatibility window; name the release or target milestone; and link retained `openapi-contract-guard` evidence when available.
 
 `OpenAPI Contract Guard` also emits `oasdiff` markdown and JSON breaking-change reports against the base branch when OpenAPI-relevant paths change. For PR, push, and merge-queue runs, detected breaking changes fail the workflow unless `docs/API_CHANGELOG.md` changed in the same diff. Weekly scheduled and manual runs still execute the full guard as evidence-only runs so maintainers get recurring contract drift and breaking-change evidence even when no PR touched OpenAPI paths.
 
-OpenAPI linting uses the project-owned `.github/spectral.yaml` ruleset, not the full built-in Spectral OpenAPI ruleset. The current low-noise advisory rules cover invariants already expected by generated-client and inventory tooling: API title, API version, operation IDs, operation tags, and response descriptions. `OpenAPI Contract Guard` runs checksum-independent version-pinned `@stoplight/spectral-cli@6.16.0` through `npx`, retains JSON and Markdown reports in `openapi-contract-guard`, and keeps findings advisory until the ruleset has stable signal over multiple PRs.
+OpenAPI linting uses the project-owned `.ci/spectral.yaml` ruleset, not the full built-in Spectral OpenAPI ruleset. The current low-noise advisory rules cover invariants already expected by generated-client and inventory tooling: API title, API version, operation IDs, operation tags, and response descriptions. `OpenAPI Contract Guard` runs checksum-independent version-pinned `@stoplight/spectral-cli@6.16.0` through `npx`, retains JSON and Markdown reports in `openapi-contract-guard`, and keeps findings advisory until the ruleset has stable signal over multiple PRs.
 
 This is now a missing-evidence gate for breaking OpenAPI changes, not full automated release approval. `oasdiff` findings with a same-diff changelog update remain reviewer evidence that must be checked against the changelog and release notes. Blocking Spectral remains future work until its rules are documented, low-noise, and ready for promotion.
 
@@ -211,7 +228,7 @@ This is now a missing-evidence gate for breaking OpenAPI changes, not full autom
 | OpenAPI breaking-change changelog evidence | Yes | Scheduled/manual evidence | `OpenAPI Contract Guard` fails PR/push/merge-queue runs when `oasdiff` detects breaking changes without a same-diff `docs/API_CHANGELOG.md` update. Breaking changes with changelog evidence remain reviewer/release evidence. |
 | Release-impact PR metadata | Yes | No | `Release Impact Check` blocks PRs whose security, migration, configuration, OpenAPI, or operator-impact paths lack matching PR-template evidence. |
 | `oasdiff` breaking-change report | Changelog gate | Yes | PR/push/merge-queue runs fail on detected breaking changes unless `docs/API_CHANGELOG.md` changes in the same diff. Scheduled/manual reports remain evidence-only. |
-| Spectral/OpenAPI lint | No | Yes | `OpenAPI Contract Guard` retains advisory JSON/Markdown reports from the low-noise `.github/spectral.yaml` ruleset; keep non-blocking until rules have stable signal. |
+| Spectral/OpenAPI lint | No | Yes | `OpenAPI Contract Guard` retains advisory JSON/Markdown reports from the low-noise `.ci/spectral.yaml` ruleset; keep non-blocking until rules have stable signal. |
 | Security/Cerbos path workflows | Conditional | Yes | Always-present wrappers intentionally no-op for unrelated changes; nightly schedule covers drift outside path-relevant PRs. |
 | OpenSSF Scorecard | No | Yes | Scheduled/manual supply-chain posture evidence. Uploads SARIF to code scanning and retains `scorecard-evidence`; keep advisory until repository permissions and signal quality are proven. |
 | Local secret scanning | New findings only | Yes | `gitleaks` blocks on PR/push/merge-queue ranges for newly introduced leaks and keeps scheduled/manual history scans advisory until legacy findings are triaged or baselined. |
@@ -228,11 +245,11 @@ The reusable container build must also record immutable primary-registry promoti
 
 ATCR currently uses a scoped environment secret (`ATCR_PASSWORD`) with the fixed registry user configured in the deploy workflows. Public ATCR docs describe ATProto OAuth with DPoP, a Docker credential helper/device authorization flow, short-lived registry JWTs behind that helper, and fallback `docker login` with an ATProto app password; they do not document a GitHub Actions OIDC federation flow for non-interactive image pushes. Treat `ATCR_PASSWORD` as a deployment credential: scope it only to `staging` and `production`, rotate it at least every 90 days and after every suspected exposure or maintainer access change, and verify it only grants the package push/pull permissions required for `atcr.io/amirakrari.bsky.social/islamu-event-*`. If ATCR later documents GitHub OIDC or another non-interactive short-lived token exchange for CI pushes, replace the static secret with the short-lived path in the same PR that updates this section and the workflows.
 
-Coolify deploy workflows use the local composite action `.github/actions/deploy-coolify` for webhook triggering, smoke checks, redacted failure summaries, and retained deployment evidence. Before invoking Coolify, deploy jobs download the retained `container-build-*` evidence, resolve the component's full-commit immutable tag and digest with `.github/scripts/resolve-deploy-image-evidence.cs`, and pass that digest into the deploy action. The production workflow publishes and records full-commit `sha-${{ github.sha }}` immutable tags; staging publishes and records full-commit `dev-${{ github.sha }}` immutable tags. Production calls set `require-smoke-check: "true"`, so missing production smoke URLs block the webhook call and both `/alive` and `/health` must return `200` for the deployed component. Staging keeps smoke URLs optional but uses the same `/alive` and `/health` checks when configured. This centralizes deploy behavior while keeping environment-scoped secrets and approvals on the caller jobs. Coolify-side proof that the platform consumed that exact digest or full-commit tag remains required before final release readiness.
+Coolify deploy workflows use the local composite action `.ci/actions/deploy-coolify` for webhook triggering, smoke checks, redacted failure summaries, and retained deployment evidence. Before invoking Coolify, deploy jobs download the retained `container-build-*` evidence, resolve the component's full-commit immutable tag and digest with `.ci/scripts/resolve-deploy-image-evidence.cs`, and pass that digest into the deploy action. The production workflow publishes and records full-commit `sha-${{ github.sha }}` immutable tags; staging publishes and records full-commit `dev-${{ github.sha }}` immutable tags. Production calls set `require-smoke-check: "true"`, so missing production smoke URLs block the webhook call and both `/alive` and `/health` must return `200` for the deployed component. Staging keeps smoke URLs optional but uses the same `/alive` and `/health` checks when configured. This centralizes deploy behavior while keeping environment-scoped secrets and approvals on the caller jobs. Coolify-side proof that the platform consumed that exact digest or full-commit tag remains required before final release readiness.
 
-`Workflow Security` validates this deploy-caller contract with `.github/scripts/validate-deploy-workflow-contract.cs`. If a deploy workflow stops downloading retained container build evidence, resolving component digest evidence, passing freeze/override inputs, requiring production smoke checks, or calling the shared local action for both API and UI, workflow security fails before the deploy workflow can merge.
+`Workflow Security` validates this deploy-caller contract with `.ci/scripts/validate-deploy-workflow-contract.cs`. If a deploy workflow stops downloading retained container build evidence, resolving component digest evidence, passing freeze/override inputs, requiring production smoke checks, or calling the shared local action for both API and UI, workflow security fails before the deploy workflow can merge.
 
-Deployment freeze control is an operator-owned GitHub Environment/Repository variable named `DEPLOYMENT_FREEZE`. When it is set to `true`, `.github/actions/deploy-coolify` refuses to call the Coolify webhook unless a manual `workflow_dispatch` run supplies `override_reason`. The override reason is written to the retained deployment summary so urgent security releases are auditable without weakening environment approvals.
+Deployment freeze control is an operator-owned GitHub Environment/Repository variable named `DEPLOYMENT_FREEZE`. When it is set to `true`, `.ci/actions/deploy-coolify` refuses to call the Coolify webhook unless a manual `workflow_dispatch` run supplies `override_reason`. The override reason is written to the retained deployment summary so urgent security releases are auditable without weakening environment approvals.
 
 ## Fork Pull Request Policy
 
@@ -251,14 +268,14 @@ Generated files are reviewed product artifacts, not disposable output.
 |---|---|---|
 | `schemas/openapi.json` | `OpenAPI Contract Guard` / `Explore.API` build-time OpenAPI generation | Routes, verbs, response types, auth metadata, endpoint classification, schema shape. |
 | `Explore.Blazor.Client/Clients/EventApiClient.g.cs` | NSwag target in `Explore.Blazor.Client.csproj` | Method names, renamed/removed operations, optional API-version parameters, generated client ergonomics. |
-| Container digest JSON | `_container-build.yml` via `.github/scripts/write-container-digest-evidence.cs` | Image name, digest, commit SHA, tags, workflow run, scan evidence. |
-| Docker base image pins | `Workflow Security` via `.github/scripts/validate-dockerfile-base-images.cs` | Deployable Dockerfiles keep explicit tag-plus-digest base references and Dependabot Docker update coverage. |
+| Container digest JSON | `_container-build.yml` via `.ci/scripts/write-container-digest-evidence.cs` | Image name, digest, commit SHA, tags, workflow run, scan evidence. |
+| Docker base image pins | `Workflow Security` via `.ci/scripts/validate-dockerfile-base-images.cs` | Deployable Dockerfiles keep explicit tag-plus-digest base references and Dependabot Docker update coverage. |
 | Container OCI inspect/index evidence | `_container-build.yml` via `docker buildx imagetools inspect` | Downloadable registry evidence for the digest that carries Buildx SBOM/provenance attestations. |
-| Container immutable promotion evidence | `_container-build.yml` via `.github/scripts/write-image-promotion-evidence.cs` and `docker buildx imagetools inspect` | Primary-registry `sha-*` / `dev-*` tag references and proof that each resolves to the built digest. |
+| Container immutable promotion evidence | `_container-build.yml` via `.ci/scripts/write-image-promotion-evidence.cs` and `docker buildx imagetools inspect` | Primary-registry `sha-*` / `dev-*` tag references and proof that each resolves to the built digest. |
 | Container Trivy SARIF | `_container-build.yml` via `aquasecurity/trivy-action` | Critical/high vulnerability evidence in a machine-readable retained artifact. |
 | Container attestation verification JSON | `_container-build.yml` via `gh attestation verify` | Verification evidence for the pushed GHCR digest, constrained to the repository, reusable signer workflow, source ref/digest, SLSA provenance predicate, and GitHub-hosted runner trust boundary. |
-| Container evidence checksum manifest | `_container-build.yml` via `.github/scripts/write-artifact-checksums.cs` | SHA-256 integrity manifest for retained digest, OCI, Trivy, and related container evidence artifacts. |
-| Deployment summaries | `.github/actions/deploy-coolify` via Coolify deploy jobs | Environment, component, commit SHA, expected immutable image tag, expected image digest, promotion evidence path, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason, workflow run, rollback note. |
+| Container evidence checksum manifest | `_container-build.yml` via `.ci/scripts/write-artifact-checksums.cs` | SHA-256 integrity manifest for retained digest, OCI, Trivy, and related container evidence artifacts. |
+| Deployment summaries | `.ci/actions/deploy-coolify` via Coolify deploy jobs | Environment, component, commit SHA, expected immutable image tag, expected image digest, promotion evidence path, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason, workflow run, rollback note. |
 
 Never hand-edit OpenAPI or NSwag generated client artifacts. Regenerate them through the workflow-compatible commands in [TROUBLESHOOTING.md](TROUBLESHOOTING.md#openapi--nswag-drift).
 
@@ -284,7 +301,7 @@ Release notes must copy or link long-lived evidence that GitHub artifact retenti
 For manual releases, generate the durable release evidence manifest after downloading retained CI/CD artifacts:
 
 ```bash
-dotnet run .github/scripts/generate-release-evidence-bundle.cs -- artifacts release-evidence
+dotnet run .ci/scripts/generate-release-evidence-bundle.cs -- artifacts release-evidence
 ```
 
 The generated JSON, markdown summary, release-notes evidence section, and SHA-256 checksum manifest are the bridge between expiring GitHub Actions artifacts and the manually authored GitHub Release. Attach them to the release or copy them to durable release storage. Paste `release-evidence-release-notes.md` into the GitHub Release body so the release keeps durable evidence pointers even after workflow artifacts expire.

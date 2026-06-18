@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 
 if (args.Length < 3)
 {
-    Console.Error.WriteLine("Usage: dotnet run .github/scripts/resolve-deploy-image-evidence.cs -- <artifact-root> <image-name> <immutable-tag-prefix>");
+    Console.Error.WriteLine("Usage: dotnet run .ci/scripts/resolve-deploy-image-evidence.cs -- <artifact-root> <image-name> <immutable-tag-prefix>");
     return 1;
 }
 

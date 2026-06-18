@@ -307,7 +307,7 @@ static bool IsProductDependencyFile(string root, string path)
         return false;
     }
 
-    return !relative.StartsWith(".github/scripts/", StringComparison.OrdinalIgnoreCase);
+    return !relative.StartsWith(".ci/scripts/", StringComparison.OrdinalIgnoreCase);
 }
 
 static void WriteStepSummary(int packageCount, IReadOnlyCollection<string> followUps)

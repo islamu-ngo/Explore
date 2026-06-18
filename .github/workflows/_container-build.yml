@@ -116,7 +116,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/container
-          dotnet run .github/scripts/write-container-digest-evidence.cs
+          dotnet run .ci/scripts/write-container-digest-evidence.cs
 
           {
             echo "## Container image digest"
@@ -169,7 +169,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/container
 
-          dotnet run .github/scripts/write-image-promotion-evidence.cs
+          dotnet run .ci/scripts/write-image-promotion-evidence.cs
 
           promotion_tags_file="artifacts/container/${IMAGE_NAME}-promotion-tags.txt"
           while IFS= read -r tag_ref; do
@@ -267,7 +267,7 @@ jobs:
           IMAGE_NAME: ${{ inputs.image-name }}
         run: |
           set -euo pipefail
-          dotnet run .github/scripts/write-artifact-checksums.cs -- artifacts/container "artifacts/container/${IMAGE_NAME}-checksums.sha256"
+          dotnet run .ci/scripts/write-artifact-checksums.cs -- artifacts/container "artifacts/container/${IMAGE_NAME}-checksums.sha256"
 
           {
             echo "## Container evidence checksums"

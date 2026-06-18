@@ -22,7 +22,7 @@ Do not add or require `.github/workflows/release.yml`, Release Drafter, or autom
 Before publishing a GitHub Release, download the retained CI/CD artifacts listed in this checklist into a local evidence directory and generate the durable bundle:
 
 ```bash
-dotnet run .github/scripts/generate-release-evidence-bundle.cs -- artifacts release-evidence
+dotnet run .ci/scripts/generate-release-evidence-bundle.cs -- artifacts release-evidence
 ```
 
 Set `RELEASE_VERSION`, `GITHUB_SHA`, `GITHUB_REF`, `GITHUB_REPOSITORY`, `GITHUB_RUN_ID`, `GITHUB_RUN_ATTEMPT`, and `CLA_STATUS` when generating the bundle outside GitHub Actions so the manifest records the release metadata. The script writes:

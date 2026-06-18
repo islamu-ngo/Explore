@@ -3,6 +3,10 @@
 
 # GitHub Actions, issue templates, PR templates, CODEOWNERS, and Dependabot configuration.
 .github/** @amirakrari
+.ci/** @amirakrari
+.forgejo/** @amirakrari
+.woodpecker/** @amirakrari
+.tangled/** @amirakrari
 
 # Deployable images and deterministic dependency inputs.
 **/Dockerfile @amirakrari
