@@ -1,6 +1,6 @@
 ## Summary
 
-- 
+-
 
 ## Linked Issue / Context
 
@@ -44,10 +44,10 @@ Details:
 
 ## Contributor Legal Status
 
-A bot will post signing instructions on this pull request as soon as it is opened. Every non-bot contributor must sign the [ISLAMU Contributor License Agreement](https://github.com/islamu-ngo/Event/blob/main/docs/legal/CLA.md) by posting a comment on this pull request with the exact text:
+A bot will post signing instructions on this pull request as soon as it is opened. Every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement v1.0](https://github.com/islamu-ngo/Event/blob/develop/legal/CLA.md) by posting a comment on this pull request with the exact text:
 
 ```text
-I have read the CLA Document and I hereby sign the CLA
+I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it.
 ```
 
 To re-run the CLA check after signing, post a comment with `recheck`.

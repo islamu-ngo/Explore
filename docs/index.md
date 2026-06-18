@@ -57,7 +57,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [GOVERNANCE.md](GOVERNANCE.md) - design and code governance.
 - [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) - GitHub Actions gates, branch protection, deployment environments, and CI/CD evidence policy.
 - [CI_CD_RUNBOOKS.md](CI_CD_RUNBOOKS.md) - maintainer runbooks for rerunning CI/CD gates without bypassing controls.
-- [legal/CLA.md](legal/CLA.md) - active ISLAMU Event contributor license agreement.
+- [legal/CLA.md](../legal/CLA.md) - active ISLAMU Event contributor license agreement.
 - [legal/CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANCE.md) - CLA legal contribution decision record and automation threat model.
 - [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) - naming rules for entities, CQRS, services, tests.
 - [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md) - placeholder syntax used in generic templates.

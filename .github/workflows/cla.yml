@@ -7,8 +7,8 @@ on:
   issue_comment: # zizmor: ignore[dangerous-triggers] Comment-driven signing only: the action matches the fixed sign phrase and `recheck`; it does not execute comment-supplied code.
     types: [created]
 permissions:
-  actions: write
   contents: write
+  issues: write
   pull-requests: write
   statuses: write
 concurrency:
@@ -21,22 +21,22 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: CLA Assistant
-        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA') || github.event_name == 'pull_request_target'
-        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # zizmor: ignore[archived-uses] v2.6.1 — Upstream action repo archived but underlying CLA Assistant service remains functional and the SHA pin prevents silent drift; migrating to a maintained CLA backend is tracked as a separate effort.
+        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it.') || github.event_name == 'pull_request_target'
+        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1 — zizmor: ignore[archived-uses] Upstream action repo archived but underlying CLA Assistant service remains functional and the SHA pin prevents silent drift; migrating to a maintained CLA backend is tracked as a separate effort.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # PERSONAL_ACCESS_TOKEN is optional and only needed when storing signatures
           # in a different (e.g. private) repository. Leave unset to store signatures
           # in this repository on the branch configured below.
         with:
-          path-to-signatures: "signatures/v1/cla.json"
-          path-to-document: "https://github.com/islamu-ngo/Event/blob/develop/docs/legal/CLA.md"
+          path-to-signatures: "signatures/v1.0/cla.json"
+          path-to-document: "https://github.com/islamu-ngo/Event/blob/develop/legal/CLA.md"
           branch: "develop"
-          allowlist: "amirakrari,dependabot[bot],github-actions[bot]"
-          custom-notsigned-prcomment: "Thank you for your contribution to ISLAMU Event. Before we can review or merge this pull request, every non-bot contributor must sign the [ISLAMU Contributor License Agreement](https://github.com/islamu-ngo/Event/blob/develop/docs/legal/CLA.md).<br><br>To sign, post a new comment on this pull request with the exact text:<br><br>```<br>I have read the CLA Document and I hereby sign the CLA<br>```<br><br>To re-run the check after signing, post a comment with `recheck`."
+          allowlist: "dependabot[bot],github-actions[bot]"
+          custom-notsigned-prcomment: "Thank you for your contribution to ISLAMU Event. Before we can review or merge this pull request, every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement v1.0](https://github.com/islamu-ngo/Event/blob/develop/legal/CLA.md).<br><br>To sign, post a new comment on this pull request with the exact text:<br><br>```<br>I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it.<br>```<br><br>To re-run the check after signing, post a comment with `recheck`."
           custom-allsigned-prcomment: "All contributors have signed the ISLAMU Contributor License Agreement. Thank you!"
-          custom-pr-sign-comment: "I have read the CLA Document and I hereby sign the CLA"
-          create-file-commit-message: "chore(cla): create signatures file v1"
+          custom-pr-sign-comment: "I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it."
+          create-file-commit-message: "chore(cla): create signatures file v1.0"
           signed-commit-message: "chore(cla): $contributorName signed the CLA in PR #$pullRequestNo"
           signed-empty-commit-message: "chore(cla): $contributorName re-signed the CLA in PR #$pullRequestNo"
           lock-pullrequest-aftermerge: true

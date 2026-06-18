@@ -82,11 +82,11 @@ Confirm these GitHub security features at repository or organization level:
 
 ### Contributor Legal Governance
 
-The repository uses a CLA-only contribution posture. Every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement](legal/CLA.md), which grants ISLAMU nonprofit broad rights to provide, sell, sublicense, and relicense ISLAMU Event under alternative terms when social-impact or operational needs require it.
+The repository uses a CLA-only contribution posture. Every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement](../legal/CLA.md), which grants the ISLAMU project steward broad inbound rights to maintain, provide, sell, sublicense, and relicense ISLAMU Event under alternative terms when sustainability, enterprise, nonprofit, humanitarian, public-sector, procurement-restricted, hosted-service, or social-impact needs require it.
 
 The decision record in [CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANCE.md) captures the legal posture, inbound copyright/patent scope, signature storage model, bot allowlist, archived CLA Assistant risk decision, and `pull_request_target` threat model.
 
-`.github/workflows/cla.yml` is metadata-only. It uses `pull_request_target`, checks out the trusted base commit only, runs repository-owned `.github/scripts/validate-cla-pr.cs`, and never checks out or executes pull-request head code. It uses read-only `GITHUB_TOKEN` scopes and stores signature evidence in the pull request body plus GitHub PR audit trail.
+`.github/workflows/cla.yml` is metadata-only. It uses `pull_request_target` and `issue_comment` events with `contributor-assistant/github-action`, pinned to a full commit SHA. It never checks out, builds, tests, caches, restores packages, or executes pull-request head code. It uses explicit `GITHUB_TOKEN` permissions for same-repository signature storage, pull-request comments, issue comments, and commit statuses: `contents: write`, `pull-requests: write`, `issues: write`, and `statuses: write`. Signature evidence for CLA v1.0 is stored in `signatures/v1.0/cla.json` on the `develop` branch plus the GitHub PR/comment audit trail.
 
 ### Release Impact PR Metadata Gate
 
@@ -154,7 +154,7 @@ The current policy is remediation-first. `MailKit` was upgraded from `4.15.1` to
 
 ### Dependency License Policy
 
-ISLAMU Event is licensed under AGPL-3.0, and the ISLAMU CLA grants ISLAMU broad inbound rights for contributor work. That inbound CLA does not override third-party dependency licenses, so CI must keep runtime, build, and test dependency license risk explicit before alternative-license, commercial, nonprofit, public-sector, or special social-impact distribution is offered.
+ISLAMU Event is licensed under AGPL-3.0-or-later, and the ISLAMU CLA grants the ISLAMU project steward broad inbound rights for contributor work. That inbound CLA does not override third-party dependency licenses, so CI must keep runtime, build, and test dependency license risk explicit before alternative-license, commercial, nonprofit, public-sector, procurement-restricted, hosted-service, or special social-impact distribution is offered.
 
 `Build & Test` runs `.github/scripts/validate-dependency-license-policy.cs` after locked restore and the NuGet vulnerability audit. The validator scans product `packages.lock.json` files, reads restored NuGet package metadata from the local package cache, rejects denied or unknown license metadata unless a package-specific exception is encoded in the policy script, and guards future product npm or container OS package dependency surfaces until dedicated license scanning exists for those ecosystems.
 

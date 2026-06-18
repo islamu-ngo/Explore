@@ -138,7 +138,7 @@ Please read [Contribution Guidelines][contribution-guidelines] for details on th
 
 ### ✍️ Contributor License Agreement
 
-Before your pull request can be reviewed or merged, every non-bot contributor must sign the [ISLAMU Contributor License Agreement][cla-link]. Signing is done in-PR: a bot posts instructions when the PR opens, and you reply with the exact sign phrase. The signature is recorded in `signatures/v1/cla.json` together with your GitHub username, user ID, pull request number, signing comment ID, and timestamp. See the CLA document for the current version and the full legal text.
+Before your pull request can be reviewed or merged, every non-bot contributor must sign the [ISLAMU Contributor License Agreement][cla-link]. Signing is done in-PR: a bot posts instructions when the PR opens, and you reply with the exact sign phrase for the current CLA version. The v1.0 signature is recorded in `signatures/v1.0/cla.json` together with your GitHub username, user ID, pull request number, signing comment ID, comment body, and timestamp. See the CLA document for the current version and the full legal text.
 
 ## 📚 Documentation
 
@@ -235,15 +235,15 @@ You can find details [here][privacy-policy].
 
 ## 📄 License
 
-This project is licensed under the terms of [GNU AGPL v3][license-link].
+This project is licensed under the terms of [GNU AGPL-3.0-or-later][license-link].
 
 ### Contributor License Agreement
 
 ISLAMU Event inbound contributions are governed by the [ISLAMU Contributor License Agreement][cla-link] (CLA). Every non-bot contributor must sign the CLA before a pull request can be merged.
 
-**Why a CLA alongside AGPL v3?** ISLAMU Event itself remains AGPL v3 — that license does not change. The CLA gives ISLAMU nonprofit (and the ISLAMU Event maintainer of record, Amir Akrari) the ability to also offer ISLAMU Event under alternative terms for organizations and deployers that cannot use AGPL v3 due to compliance, procurement, or sector-specific licensing constraints. The goal is to remove adoption barriers so ISLAMU Event can reach any audience — humanitarian, public-sector, nonprofit, or enterprise — without forcing adopters to accept terms they are not permitted to use.
+**Why a CLA alongside AGPL-3.0-or-later?** ISLAMU Event remains publicly available under AGPL-3.0-or-later. The CLA gives the ISLAMU project steward an additional inbound license from contributors so the future nonprofit can also offer ISLAMU Event under alternative terms for sustainability, enterprise adoption, public-sector procurement, hosted-service, nonprofit, humanitarian, or special social-impact deployments.
 
-The CLA is versioned. The current version and full legal text live in [`docs/legal/CLA.md`][cla-link]. Signed contributor records (who, when, CLA version, pull request, comment) are stored in `signatures/v1/cla.json` on the `develop` branch and are committed automatically by the CLA workflow.
+The CLA is versioned. The current version and full legal text live in [`legal/CLA.md`][cla-link]. Signed contributor records (who, when, CLA version, pull request, comment) are stored in `signatures/v1.0/cla.json` on the `develop` branch and are committed automatically by the CLA workflow.
 
 <div align="right">
 
@@ -321,4 +321,4 @@ The CLA is versioned. The current version and full legal text live in [`docs/leg
 [support-palestine-banner-source]: https://github.com/Safouene1/support-palestine-banner/
 
 [contribution-guidelines]: docs/CONTRIBUTING.md
-[cla-link]: docs/legal/CLA.md
+[cla-link]: legal/CLA.md

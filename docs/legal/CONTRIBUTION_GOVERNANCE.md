@@ -4,7 +4,7 @@ ABOUTME: Summarizes CLA research, owner decisions, and unsafe workflow patterns 
 # Contribution Legal Governance Decision
 
 > **Audience:** Maintainers | Legal reviewers | Contributors | AI agents
-> **Status:** CLA-only decision implemented; pending legal text refinement and repository settings verification
+> **Status:** CLA-only decision implemented; operational draft pending legal review and repository settings verification
 > **Owner:** Platform/Ops | Contributor Experience | Legal reviewer
 > **Last Verified:** 2026-05-31
 > **Source Anchors:** `docs/CI_CD_GOVERNANCE.md`, `docs/CONTRIBUTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `dev/active/enterprise-ci-cd-hardening/enterprise-ci-cd-hardening-tasks.md`
@@ -16,11 +16,11 @@ This document records the legal contribution gate decision and automation threat
 | Question | Current Answer |
 |---|---|
 | Legal posture | CLA only. Every non-bot contributor must sign the ISLAMU Event CLA. |
-| Inbound scope | Broad copyright and patent license grant to ISLAMU nonprofit so ISLAMU Event can be provided, sold, sublicensed, or relicensed under alternative terms when social-impact or operational needs require it. |
-| Enforcing workflow | `.github/workflows/cla.yml` validates pull request metadata with the repository-owned `.github/scripts/validate-cla-pr.cs` C# helper. |
-| Approved legal document | `docs/legal/CLA.md` is the active project CLA, pending final legal refinement. |
-| Signature storage | Pull request body and GitHub PR audit trail. Contributors sign each PR with a checked CLA statement and `CLA Signature: @github-username` line. |
-| Token model | Default `GITHUB_TOKEN` with `contents: read` and `pull-requests: read`; no signature writes. |
+| Inbound scope | Broad copyright and patent license grant to the ISLAMU project steward so ISLAMU Event can be maintained, provided, sold, sublicensed, or relicensed under alternative terms when sustainability, enterprise, nonprofit, humanitarian, public-sector, procurement-restricted, hosted-service, or social-impact needs require it. |
+| Enforcing workflow | `.github/workflows/cla.yml` validates pull request and issue-comment metadata with `contributor-assistant/github-action`, pinned to a full commit SHA. |
+| Approved legal document | `legal/CLA.md` is the active CLA v1.0 operational draft, pending final legal review. |
+| Signature storage | Same-repository signature JSON at `signatures/v1.0/cla.json` on `develop`, plus GitHub PR/comment audit trail. |
+| Token model | Default `GITHUB_TOKEN` with explicit write scopes for same-repository signature storage, pull-request comments, issue comments, and statuses. |
 | Bot allowlist | Explicit only: `dependabot[bot]` and `github-actions[bot]`. Broad patterns such as `bot*` are not approved. |
 
 ## Research Summary
@@ -87,12 +87,12 @@ Repository rule:
 ## Required Approval Checklist
 
 - [x] Project owner chooses CLA only.
-- [x] Inbound copyright and patent scope is documented in `docs/legal/CLA.md`.
-- [x] Actual agreement text exists at `docs/legal/CLA.md`.
-- [x] Signature storage location, access model, retention period, and privacy note are documented as PR metadata and GitHub PR audit trail.
-- [x] Automation token model is read-only `GITHUB_TOKEN`.
+- [x] Inbound copyright and patent scope is documented in `legal/CLA.md`.
+- [x] Actual agreement text exists at `legal/CLA.md`.
+- [x] Signature storage location, access model, retention period, and privacy note are documented as repository signature JSON plus GitHub PR/comment audit trail.
+- [x] Automation token model is explicit `GITHUB_TOKEN` permissions scoped to the CLA Assistant workflow's signature, comment, and status operations.
 - [x] Bot allowlist is explicit and contains only known trusted bots.
-- [x] Archived-action risk is avoided by using a repository-owned C# validator instead of `contributor-assistant/github-action`.
+- [x] Archived-action risk is accepted only for the pinned `contributor-assistant/github-action` CLA workflow and tracked as a migration risk; the SHA pin prevents silent action drift.
 - [x] `pull_request_target` threat model is implemented as metadata-only validation of the trusted base branch.
 - [ ] Branch protection status-check requirement is added only after the workflow is stable.
 
@@ -104,23 +104,17 @@ Repository rule:
 - Do not checkout repository code from the pull request head.
 - Do not run build, test, restore, cache, package, or script commands from untrusted contributions.
 - Use least-privilege permissions; raise `contents` only if approved signature storage requires it.
-- Do not write signatures to repository branches in the current implementation; PR body metadata and GitHub's PR audit trail are the approved signature evidence.
+- Do not write signatures outside the approved `signatures/<cla-version>/cla.json` path on the configured signature branch.
 - Pin every external action to a full commit SHA with same-line version comment.
 - Avoid wildcard bot allowlists.
 - Write a clear PR status/check named `Contributor License Agreement` that can later be required by branch protection.
 
 ## Current Contributor Instructions
 
-Every non-bot contributor must sign the ISLAMU Event CLA in [CLA.md](CLA.md) from the pull request body.
+Every non-bot contributor must sign the ISLAMU Event CLA in [CLA.md](CLA.md) by posting the exact CLA v1.0 signature comment on the pull request.
 
-Required checkbox:
+Required pull request comment:
 
-```markdown
-- [x] I have read and agree to the ISLAMU Contributor License Agreement in docs/legal/CLA.md.
-```
-
-Required signature line for each contributor:
-
-```markdown
-CLA Signature: @github-username
+```text
+I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it.
 ```
