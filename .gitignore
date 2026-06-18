@@ -43,6 +43,9 @@ schemas/archive/
 
 .codex/config.toml
 
+# ci artifacts
+.tools/
+
 # contains mcp secrets
 .gemini/settings.json
 .copilot/mcp-config.json
