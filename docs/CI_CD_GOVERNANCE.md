@@ -7,11 +7,11 @@ ABOUTME: Separates repository settings from workflow YAML so required gates stay
 > **Status:** Implemented + repository-settings required
 > **Owner:** Platform/Ops
 > **Last Verified:** 2026-05-07
-> **Source Anchors:** `.ci/`, `.github/workflows/`, `.forgejo/workflows/`, `.woodpecker/`, `.tangled/workflows/`, `.github/dependabot.yml`, `docs/TESTING.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `docs/RELEASE_CHECKLIST.md`
+> **Source Anchors:** `.ci/`, `.github/workflows/`, `.github/dependabot.yml`, `docs/TESTING.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `docs/RELEASE_CHECKLIST.md`
 
-This page is the source of truth for CI/CD governance. `.ci/` owns shared CI/CD implementation such as reusable scripts, policy validators, evidence writers, the OpenAPI Spectral ruleset, and local composite actions. Provider-native workflow discovery files stay in the directories required by each forge: `.github/workflows/` for GitHub Actions, `.forgejo/workflows/` for Forgejo Actions, `.woodpecker/` for Codeberg Woodpecker, and `.tangled/workflows/` for Tangled Spindle.
+This page is the source of truth for CI/CD governance. `.ci/` owns shared CI/CD implementation such as reusable scripts, policy validators, evidence writers, the OpenAPI Spectral ruleset, local composite actions, and mirror-provider CI/CD definitions. GitHub-native workflow discovery files stay in `.github/workflows/` because GitHub Actions requires that path.
 
-GitHub remains the authoritative deployment surface for production and staging because the current release evidence model depends on GitHub environments, retained artifacts, GHCR/GitHub attestation verification, and Coolify deployment evidence. Codeberg and Tangled adapters are CI validation lanes for mirrored repositories until equivalent deployment evidence and secret-governance contracts are implemented there.
+GitHub remains the authoritative deployment surface for production and staging because the current release evidence model depends on GitHub environments, retained artifacts, GHCR/GitHub attestation verification, and Coolify deployment evidence. Codeberg and other mirrors should be configured provider-side to read CI/CD definitions from `.ci/`; do not add root-level provider adapter folders unless this governance document is updated with a reviewed provider contract.
 
 Do not symlink `.github` to `.ci`. GitHub discovers workflows from `.github/workflows`, local reusable workflow calls require `.github/workflows/{filename}`, and reusable workflow subdirectories are not supported.
 
@@ -106,22 +106,20 @@ External `uses:` references in `.github/workflows/*.yml` are pinned to full-leng
 
 Local reusable workflows remain path-based (`./.github/workflows/...`) because they are controlled by this repository's review history. Dependabot's `github-actions` ecosystem in `.github/dependabot.yml` keeps external SHA pins maintainable through a weekly grouped update lane with conventional `ci` commit messages.
 
-`Workflow Security` enforces this policy with `.ci/scripts/validate-action-pins.cs` and `.ci/scripts/validate-dependabot-policy.cs`, both run as file-based C# scripts with `dotnet run <script>.cs -- <args>`. The check always reports a status, scans workflow-security inputs when `.github/workflows/**`, `.ci/actions/**`, `.ci/scripts/**`, `.ci/spectral.yaml`, `.github/dependabot.yml`, `.forgejo/workflows/**`, `.woodpecker/**`, `.tangled/workflows/**`, deployable Dockerfiles, or this governance document changes, and intentionally no-ops for unrelated changes. Do not add external GitHub Actions without a full SHA and a same-line version comment, and do not remove the `github-actions` Dependabot update lane without replacing it with an equivalent pinned-action maintenance process.
+`Workflow Security` enforces this policy with `.ci/scripts/validate-action-pins.cs` and `.ci/scripts/validate-dependabot-policy.cs`, both run as file-based C# scripts with `dotnet run <script>.cs -- <args>`. The check always reports a status, scans workflow-security inputs when `.github/workflows/**`, `.ci/**`, `.github/dependabot.yml`, deployable Dockerfiles, or this governance document changes, and intentionally no-ops for unrelated changes. Do not add external GitHub Actions without a full SHA and a same-line version comment, and do not remove the `github-actions` Dependabot update lane without replacing it with an equivalent pinned-action maintenance process.
 
 Deployable Dockerfiles must use tag-plus-digest base image references, for example `mcr.microsoft.com/dotnet/aspnet:10.0@sha256:<digest>`. The human-readable tag preserves maintainer intent while the digest fixes the resolved image. `Workflow Security` enforces this with `.ci/scripts/validate-dockerfile-base-images.cs` for `Explore.API/Dockerfile` and `Explore.Blazor/Dockerfile`. Dependabot's `docker` ecosystem entries update those digests weekly through grouped `docker-base-images` PRs.
 
 Repository-owned helper scripts under `.ci/scripts/` must be file-based C# scripts (`*.cs`) unless a future change documents why C# is not viable. Keep shell blocks in workflows for orchestration only; policy, JSON parsing, and evidence-generation logic belongs in C# so it uses the repository's pinned .NET SDK and remains reviewable by the same maintainers as the application code. Each helper script declares `#:property RestorePackagesWithLockFile=false` so ad hoc `dotnet run <script>.cs -- <args>` execution does not create transient `.ci/scripts/packages.lock.json` files. Third-party tools can still use their required runtime, such as `zizmor` running from an isolated Python virtual environment.
 
-### Multi-Forge Adapter Policy
+### Multi-Forge CI/CD Policy
 
-Provider-native adapter files must stay thin and must not duplicate deployment policy:
+The repository should expose only two CI/CD directories by default:
 
-- `.github/workflows/` owns GitHub required checks, deployment environments, container publication, retained evidence, and Coolify deployment calls.
-- `.forgejo/workflows/ci.yml` provides a Forgejo Actions CI smoke lane for mirrors with a self-hosted runner labelled `docker`.
-- `.woodpecker/ci.yml` provides a Codeberg Woodpecker CI smoke lane using the .NET SDK container image.
-- `.tangled/workflows/ci.yaml` provides a Tangled Spindle CI smoke lane through Nixery with `dotnet-sdk_10`.
+- `.github/` for GitHub-required metadata, GitHub Actions discovery, issue templates, PR templates, CODEOWNERS, and Dependabot.
+- `.ci/` for shared CI/CD implementation and mirror-provider CI/CD definitions.
 
-Non-GitHub adapters currently run restore, Release build, and `Event.Architecture.Tests` as a portable confidence gate. Do not add deploy secrets, registry publish credentials, Coolify webhooks, or environment promotion behavior to those adapters until this document defines equivalent secret isolation, artifact retention, immutable image evidence, smoke-check evidence, and rollback evidence for that provider.
+Provider-specific root directories such as `.forgejo/`, `.woodpecker/`, or `.tangled/` are intentionally not used. Configure Codeberg or other mirrors to load CI/CD from `.ci/` when the provider supports a custom pipeline path. Do not add deploy secrets, registry publish credentials, Coolify webhooks, or environment promotion behavior to non-GitHub mirrors until this document defines equivalent secret isolation, artifact retention, immutable image evidence, smoke-check evidence, and rollback evidence for that provider.
 
 ### Workflow Static Analysis Policy
 

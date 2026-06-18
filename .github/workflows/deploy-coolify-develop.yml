@@ -26,9 +26,6 @@ on:
       - ".sisyphus/**"
       - ".taskmaster/**"
       - ".ci/**"
-      - ".forgejo/**"
-      - ".woodpecker/**"
-      - ".tangled/**"
       # BMAD framework
       - "_bmad/**"
       - "_bmad-output/**"

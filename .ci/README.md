@@ -1,18 +1,15 @@
 <!-- ABOUTME: Documents the shared CI/CD implementation surface used by forge-native adapters. -->
-<!-- ABOUTME: Keeps GitHub, Forgejo, Codeberg, and Tangled entrypoints aligned with one reviewed implementation home. -->
+<!-- ABOUTME: Keeps GitHub and mirror-provider CI/CD aligned with one reviewed implementation home. -->
 
 # CI/CD Implementation
 
-`.ci` is the repository-owned implementation layer for CI/CD helpers that can be reused across forges.
+`.ci` is the repository-owned CI/CD implementation layer that can be reused across forges.
 
-Provider-native discovery files stay in their required locations:
+GitHub-native discovery files stay in their required location:
 
 - GitHub Actions: `.github/workflows/`
-- Forgejo Actions: `.forgejo/workflows/`
-- Codeberg Woodpecker: `.woodpecker/`
-- Tangled Spindle: `.tangled/workflows/`
 
-The provider files should stay thin. Shared scripts, policy validators, evidence writers, and local composite actions live here so they are reviewed and owned as one CI/CD surface.
+All shared scripts, policy validators, evidence writers, local composite actions, and cross-forge CI/CD definitions live here so they are reviewed and owned as one CI/CD surface. Codeberg and other mirrors should point their CI/CD settings at this folder when the provider supports custom pipeline locations.
 
 Current layout:
 
