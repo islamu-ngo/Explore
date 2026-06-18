@@ -16,6 +16,8 @@
     <PackageReference Include="Npgsql" />
     <PackageReference Include="Respawn" />
     <PackageReference Include="Testcontainers.PostgreSql" />
+    <!-- MessagePack explicit override: forces patched 2.5.301 over transitive 2.5.192 (GHSA-hv8m-jj95-wg3x via KubernetesClient) -->
+    <PackageReference Include="MessagePack" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Explore.AppHost\Explore.AppHost.csproj">
