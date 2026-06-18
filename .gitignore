@@ -547,6 +547,9 @@ $RECYCLE.BIN/
 .claude/hooks/.claude/build-cache/
 .claude/build-cache/
 
+# claude config
+.claude/context-state.json
+
 dev/archive/*
 
 inbox
