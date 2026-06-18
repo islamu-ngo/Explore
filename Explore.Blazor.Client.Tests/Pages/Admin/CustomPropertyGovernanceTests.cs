@@ -1,11 +1,11 @@
 // ABOUTME: Component tests for Phase 9.7 + 9.9 custom-property governance admin UI sections.
 // ABOUTME: Verifies exposure grid, governance report, and projection status loading/error/success states.
 
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 

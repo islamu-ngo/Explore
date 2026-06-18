@@ -824,8 +824,8 @@ public class EventServiceTests
             EventSessionKindId = 2,
             IslamicAspect = new EventSessionIslamicAspectDto
             {
-            StartTimeType = (SessionStartTimeType)2,
-            ReferencePrayer = (PrayerTime)3,
+                StartTimeType = (SessionStartTimeType)2,
+                ReferencePrayer = (PrayerTime)3,
                 OffsetMinutes = 20,
                 RequiresWudu = false,
                 RitualRequirementsJson = "{\"note\":\"Update\"}"
