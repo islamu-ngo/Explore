@@ -131,9 +131,9 @@ jobs:
           UI_CHANGED: ${{ steps.filter.outputs.ui }}
         run: |
           if [ "$API_CHANGED" == "true" ] && [ "$UI_CHANGED" == "true" ]; then
-            echo "both_changed=true" >> $GITHUB_OUTPUT
+            echo "both_changed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "both_changed=false" >> $GITHUB_OUTPUT
+            echo "both_changed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate Dynamic Build Matrix
@@ -145,14 +145,14 @@ jobs:
           MATRIX_JSON="[]"
 
           if [ "$API_CHANGED" == "true" ]; then
-            MATRIX_JSON=$(echo $MATRIX_JSON | jq '. + [{"image-name": "islamu-event-api", "dockerfile": "Explore.API/Dockerfile", "context": "."}]')
+            MATRIX_JSON=$(echo "$MATRIX_JSON" | jq '. + [{"image-name": "islamu-event-api", "dockerfile": "Explore.API/Dockerfile", "context": "."}]')
           fi
 
           if [ "$UI_CHANGED" == "true" ]; then
-            MATRIX_JSON=$(echo $MATRIX_JSON | jq '. + [{"image-name": "islamu-event-ui", "dockerfile": "Explore.Blazor/Dockerfile", "context": "."}]')
+            MATRIX_JSON=$(echo "$MATRIX_JSON" | jq '. + [{"image-name": "islamu-event-ui", "dockerfile": "Explore.Blazor/Dockerfile", "context": "."}]')
           fi
 
-          echo "matrix=$(echo $MATRIX_JSON | tr -d '\n')" >> $GITHUB_OUTPUT
+          echo "matrix=$(echo "$MATRIX_JSON" | tr -d '\n')" >> "$GITHUB_OUTPUT"
 
   # JOB 2: Run Tests (Unified)
   run-tests:
