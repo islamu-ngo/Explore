@@ -9,7 +9,7 @@ ISLAMU Event (solution: `Explore`) is an open-source event discovery and managem
 ## Organization And Repository
 - Organization: ISLAMU NGO
 - Repository: `https://github.com/islamu-ngo/Event`
-- License: AGPL-3.0
+- License: AGPL-3.0-or-later
 - Public instance: `https://event.openislamu.org`
 
 ## Current Scope (Implemented)
