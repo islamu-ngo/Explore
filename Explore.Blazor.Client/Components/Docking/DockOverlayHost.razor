@@ -78,6 +78,8 @@
 
     private IReadOnlyList<DockPanelEntry> RenderedEntries => _renderedEntries;
 
+    private bool ShouldLockScroll => ActiveOverlayEntries.Count > 0;
+
     private string ScopeName => Scope.ToString().ToLowerInvariant();
 
     private string RootClass => string.Join(' ', new[]
@@ -109,6 +111,17 @@
     {
         var activeOverlayOpen = ActiveOverlayEntries.Count > 0;
         var renderedOverlayOpen = RenderedEntries.Count > 0;
+
+        if (ShouldLockScroll && !_scrollLocked)
+        {
+            await ScrollManager.LockScrollAsync(BodyElementId, ScrollLockClass);
+            _scrollLocked = true;
+        }
+        else if (!ShouldLockScroll && _scrollLocked)
+        {
+            await ScrollManager.UnlockScrollAsync(BodyElementId, ScrollLockClass);
+            _scrollLocked = false;
+        }
 
         if (activeOverlayOpen && !_overlayLifecycleActive)
         {
@@ -235,12 +248,6 @@
         {
             await AccessibilityFocusService.SaveFocusAsync();
             _focusSaved = true;
-        }
-
-        if (!_scrollLocked)
-        {
-            await ScrollManager.LockScrollAsync(BodyElementId, ScrollLockClass);
-            _scrollLocked = true;
         }
 
         await AccessibilityFocusService.FocusAsync($"[data-testid='{DataTestId}'][data-dock-scope='{ScopeName}'] [data-testid='dock-panel-host']", preventScroll: true);

@@ -10,19 +10,10 @@
         "start content end"
         "bottom bottom bottom";
     min-inline-size: 0;
-    min-block-size: 0;
-    transition: grid-template-columns var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)),
-        grid-template-rows var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .dock-layout-host__content {
     grid-area: content;
     min-inline-size: 0;
     min-block-size: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .dock-layout-host {
-        transition-duration: 1ms;
-    }
 }

@@ -7,7 +7,7 @@
    Outermost wrapper — flex column for sticky-footer behaviour.
    The footer lives OUTSIDE MudLayout so the drawer system cannot push it.
    NOTE: overflow-x is NOT set here — it breaks Blazor Virtualize's
-   IntersectionObserver. Horizontal overflow is handled on <html> in StyleGlobal.css.
+   IntersectionObserver. Horizontal overflow is handled on <html> in base.css (loaded via layers.css).
    -------------------------------------------------------------------------- */
 .main-layout-root {
     display: flex;
@@ -63,7 +63,7 @@
    DockLayoutHost owns shell panel tracks, so this wrapper only manages
    content gutters inside the central grid region.
    NOTE: overflow-x is NOT set here — it breaks sticky positioning and
-   Blazor Virtualize. Horizontal overflow is handled on <html> in StyleGlobal.css.
+   Blazor Virtualize. Horizontal overflow is handled on <html> in base.css (loaded via layers.css).
    -------------------------------------------------------------------------- */
 .main-layout__content-wrapper {
     --layout-padding-inline: 8%;
