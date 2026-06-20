@@ -19,14 +19,14 @@ public sealed class AiAssistantStateTests
     }
 
     [Test]
-    public async Task SetPolicy_WhenTenantEnabledButNotAvailable_ButtonVisibleButNotAvailable()
+    public async Task SetPolicy_WhenTenantEnabledButNotAvailable_NeitherButtonVisibleNorAvailable()
     {
         var state = new AiAssistantState();
 
         state.SetPolicy(tenantEnabled: true, tenantAvailable: false, allowAnonymousAccess: false, isAuthenticated: true);
 
         await Assert.That(state.IsAvailable).IsFalse();
-        await Assert.That(state.IsButtonVisible).IsTrue();
+        await Assert.That(state.IsButtonVisible).IsFalse();
     }
 
     [Test]

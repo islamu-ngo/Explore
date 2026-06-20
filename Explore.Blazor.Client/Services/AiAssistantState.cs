@@ -60,7 +60,7 @@ public sealed class AiAssistantState
     {
         var audienceAllowed = (_isAuthenticated || _allowAnonymousAccess) && _showNavbarButton;
         var available = _tenantEnabled && _tenantAvailable && audienceAllowed;
-        var buttonVisible = _tenantEnabled && audienceAllowed;
+        var buttonVisible = available;
 
         if (IsAvailable == available && IsButtonVisible == buttonVisible)
         {

@@ -233,9 +233,10 @@ public sealed class PublicExperienceSettingsBuilder
 
     // ── AI Assistant ────────────────────────────────────────────────────
 
-    /// <summary>Sets AI assistant availability.</summary>
+    /// <summary>Sets AI assistant enabled flag and availability (configured state).</summary>
     public PublicExperienceSettingsBuilder WithAiAssistant(bool available = true)
     {
+        _model.IsAiAssistantEnabled = true;
         _model.IsAiAssistantAvailable = available;
         return this;
     }

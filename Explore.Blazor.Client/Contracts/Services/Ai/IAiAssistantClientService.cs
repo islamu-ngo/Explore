@@ -33,6 +33,7 @@ public interface IAiAssistantClientService
         string? idempotencyKey = null,
         string? mode = null,
         Guid? actorId = null,
+        IReadOnlyList<AiMessageImageInputDto>? images = null,
         CancellationToken cancellationToken = default);
 
     Task<AiRunStatusResult> GetRunStatusAsync(

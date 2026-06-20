@@ -90,6 +90,16 @@ public sealed class AiAssistantClientServiceTests
     public async Task SendMessageAsync_PropagatesIdempotencyKeyInBodyAndHeader()
     {
         var conversationId = Guid.CreateVersion7();
+        var images = new List<AiMessageImageInputDto>
+        {
+            new()
+            {
+                MediaType = "image/png",
+                Data = "aW1hZ2U=",
+                FileName = "diagram.png",
+                SizeBytes = 5
+            }
+        };
         _apiClient.SendAiMessageAsync(
                 conversationId,
                 Arg.Any<SendAiMessageRequestDto>(),
@@ -101,7 +111,7 @@ public sealed class AiAssistantClientServiceTests
 
         var service = CreateService();
 
-        var result = await service.SendMessageAsync(conversationId, "Plan an iftar", idempotencyKey: "send-key");
+        var result = await service.SendMessageAsync(conversationId, "Plan an iftar", idempotencyKey: "send-key", images: images);
 
         await Assert.That(result.Success).IsTrue();
         await _apiClient.Received(1).SendAiMessageAsync(
@@ -109,7 +119,11 @@ public sealed class AiAssistantClientServiceTests
             Arg.Is<SendAiMessageRequestDto>(request =>
                 request.Content == "Plan an iftar"
                 && request.ModelId == null
-                && request.IdempotencyKey == "send-key"),
+                && request.IdempotencyKey == "send-key"
+                && request.Images != null
+                && request.Images.Count == 1
+                && request.Images.Single().MediaType == "image/png"
+                && request.Images.Single().Data == "aW1hZ2U="),
             "send-key",
             null,
             null,

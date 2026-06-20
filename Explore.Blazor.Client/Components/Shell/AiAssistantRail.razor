@@ -3,6 +3,7 @@
 @using Explore.Blazor.Client.Contracts.Services.Ai
 @using Explore.Blazor.Client.Components.Shell.AiAssistant
 @using Explore.Blazor.Client.Services.Ai
+@using Microsoft.AspNetCore.Components.Forms
 @implements IDisposable
 
 @if (AiAssistantState.IsAvailable)
@@ -102,7 +103,17 @@
                             {
                                 <article @key="item.Key" class="@GetMessageClass(item.Message.Role)" data-testid="ai-rail-message">
                                     <span class="ai-rail__message-role">@item.Message.Role</span>
-                                    <p>@item.Message.Content</p>
+                                    @if (!string.IsNullOrWhiteSpace(item.Message.Content))
+                                    {
+                                        <p>@item.Message.Content</p>
+                                    }
+                                    @if (GetMessageImageCount(item.Message) > 0)
+                                    {
+                                        <span class="ai-rail__message-attachments" data-testid="ai-rail-message-images">
+                                            <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />
+                                            @FormatImageAttachmentCount(GetMessageImageCount(item.Message))
+                                        </span>
+                                    }
                                 </article>
                             }
                             else if (item.Action is not null)
@@ -196,7 +207,33 @@
                             }
                         </select>
                     </div>
-                    <InputFile id="ai-file-picker" OnChange="OnFilesSelected" Multiple="true" style="display: none;" />
+                    @if (_selectedImages.Count > 0)
+                    {
+                        <div class="ai-rail__image-chip-list" role="list" aria-label="Selected image attachments">
+                            @foreach (var image in _selectedImages)
+                            {
+                                <div class="ai-rail__image-chip" role="listitem" data-testid="ai-rail-image-chip">
+                                    <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />
+                                    <span class="ai-rail__image-chip-text">@image.FileName</span>
+                                    <span class="ai-rail__image-chip-size">@FormatFileSize(image.SizeBytes)</span>
+                                    <button type="button"
+                                            class="ai-rail__image-chip-remove"
+                                            aria-label="@($"Remove image {image.FileName}")"
+                                            @onclick="() => RemoveSelectedImage(image.Id)">
+                                        <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                    <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                                   @ref="_imageFileUpload"
+                                   FilesChanged="OnFilesSelectedAsync"
+                                   Accept="image/*"
+                                   MaximumFileCount="@MaxSelectedImages">
+                        <CustomContent Context="fileUpload"></CustomContent>
+                        <SelectedTemplate Context="files"></SelectedTemplate>
+                    </MudFileUpload>
                     <textarea id="ai-rail-prompt"
                               class="ai-rail__textarea"
                               rows="1"
@@ -320,9 +357,6 @@
     protected IAiAssistantClientService ClientService { get; set; } = null!;
 
     [Inject]
-    protected IJSRuntime JS { get; set; } = null!;
-
-    [Inject]
     protected ISnackbar Snackbar { get; set; } = null!;
 
     [Inject]
@@ -337,7 +371,11 @@
     [Parameter]
     public bool HostedInDock { get; set; }
 
+    private const int MaxSelectedImages = 4;
+    private const long MaxImageBytes = 5 * 1024 * 1024;
+
     private readonly HashSet<Guid> _busyActionIds = [];
+    private readonly List<AiRailImageAttachment> _selectedImages = [];
     private bool _hasLoaded;
     private bool _hasSearchedReferences;
     private bool _isCommandRunning;
@@ -351,6 +389,7 @@
     private bool _modelMenuOpen;
     private bool _referencesMenuOpen;
     private bool _capabilitiesMenuOpen;
+    private MudFileUpload<IReadOnlyList<IBrowserFile>>? _imageFileUpload;
 
     private IReadOnlyList<AiRailModelOption> _modelOptions = [];
     private IReadOnlyList<AiRailActorOption> _actorOptions = [];
@@ -391,7 +430,7 @@
         _isCommandRunning
         || ConversationState.SelectedConversation?.Id is not Guid
         || !AiAssistantConversationState.CanSendMessage(ConversationState.SelectedConversation)
-        || string.IsNullOrWhiteSpace(_promptText);
+        || (string.IsNullOrWhiteSpace(_promptText) && _selectedImages.Count == 0);
 
     protected override void OnInitialized()
     {
@@ -509,7 +548,8 @@
 
     private async Task SendMessageAsync()
     {
-        if (ConversationState.SelectedConversation?.Id is not Guid conversationId || string.IsNullOrWhiteSpace(_promptText))
+        if (ConversationState.SelectedConversation?.Id is not Guid conversationId
+            || (string.IsNullOrWhiteSpace(_promptText) && _selectedImages.Count == 0))
         {
             return;
         }
@@ -521,11 +561,13 @@
         }
 
         var content = _promptText.Trim();
+        var images = _selectedImages.ToList();
         var idempotencyKey = $"blazor-ai-send-{Guid.CreateVersion7()}";
 
         await RunCommandAsync(async () =>
         {
             _promptText = string.Empty;
+            _selectedImages.Clear();
             ConversationState.SetError(null);
 
             var result = await ClientService.SendMessageAsync(
@@ -534,10 +576,12 @@
                 _selectedModelId,
                 idempotencyKey,
                 mode: SelectedInteractionMode,
-                actorId: _selectedActorId);
+                actorId: _selectedActorId,
+                images: images.Select(ToImageInputDto).ToList());
             if (!result.Success)
             {
                 _promptText = content;
+                _selectedImages.AddRange(images);
                 await RefreshSelectedConversationAsync(conversationId);
                 ConversationState.SetError(result.Message ?? "The AI assistant message could not be sent.");
                 return;
@@ -998,14 +1042,127 @@
             ? Icons.Material.Filled.AutoFixHigh
             : Icons.Material.Filled.HelpOutline;
 
-    private async Task OpenFilePickerAsync()
+    private async Task OnFilesSelectedAsync(IReadOnlyList<IBrowserFile>? files)
     {
-        await JS.InvokeVoidAsync("eval", "document.getElementById('ai-file-picker')?.click()");
+        if (files is null || files.Count == 0)
+        {
+            return;
+        }
+
+        var remainingSlots = MaxSelectedImages - _selectedImages.Count;
+        if (remainingSlots <= 0)
+        {
+            Snackbar.Add($"You can attach at most {MaxSelectedImages} images.", Severity.Warning);
+            return;
+        }
+
+        var addedCount = 0;
+        foreach (var file in files.Take(remainingSlots))
+        {
+            var mediaType = ResolveImageMediaType(file);
+            if (!IsImageMediaType(mediaType))
+            {
+                Snackbar.Add($"{file.Name} is not a supported image file.", Severity.Warning);
+                continue;
+            }
+
+            try
+            {
+                await using var stream = file.OpenReadStream(MaxImageBytes);
+                using var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream);
+
+                var bytes = memoryStream.ToArray();
+                if (bytes.Length == 0)
+                {
+                    Snackbar.Add($"{file.Name} is empty and was not attached.", Severity.Warning);
+                    continue;
+                }
+
+                _selectedImages.Add(new AiRailImageAttachment(
+                    Guid.CreateVersion7(),
+                    file.Name,
+                    mediaType,
+                    bytes.LongLength,
+                    Convert.ToBase64String(bytes)));
+                addedCount++;
+            }
+            catch (IOException)
+            {
+                Snackbar.Add($"{file.Name} could not be attached. Images must be {FormatFileSize(MaxImageBytes)} or smaller.", Severity.Error);
+            }
+            catch (InvalidOperationException)
+            {
+                Snackbar.Add($"{file.Name} could not be attached. Images must be {FormatFileSize(MaxImageBytes)} or smaller.", Severity.Error);
+            }
+        }
+
+        if (files.Count > remainingSlots)
+        {
+            Snackbar.Add($"Only {remainingSlots} image(s) were attached because the limit is {MaxSelectedImages}.", Severity.Info);
+        }
+
+        if (addedCount > 0)
+        {
+            Snackbar.Add($"{addedCount} image(s) attached.", Severity.Success);
+        }
     }
 
-    private void OnFilesSelected(InputFileChangeEventArgs e)
+    private void RemoveSelectedImage(Guid imageId)
     {
-        Snackbar.Add($"{e.FileCount} file(s) selected successfully.", Severity.Info);
+        var removed = _selectedImages.RemoveAll(image => image.Id == imageId);
+        if (removed > 0)
+        {
+            Snackbar.Add("Image removed.", Severity.Info);
+        }
+    }
+
+    private static AiMessageImageInputDto ToImageInputDto(AiRailImageAttachment image) => new()
+    {
+        MediaType = image.MediaType,
+        Data = image.Data,
+        FileName = image.FileName,
+        SizeBytes = image.SizeBytes
+    };
+
+    private static string ResolveImageMediaType(IBrowserFile file)
+    {
+        var contentType = file.ContentType?.Trim();
+        if (IsImageMediaType(contentType))
+        {
+            return contentType!.ToLowerInvariant();
+        }
+
+        return System.IO.Path.GetExtension(file.Name).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".bmp" => "image/bmp",
+            ".svg" => "image/svg+xml",
+            _ => string.Empty
+        };
+    }
+
+    private static bool IsImageMediaType(string? mediaType) =>
+        !string.IsNullOrWhiteSpace(mediaType)
+        && mediaType.Trim().StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+
+    private static int GetMessageImageCount(Messages2 message) => message.Images?.Count ?? 0;
+
+    private static string FormatImageAttachmentCount(int count) =>
+        count == 1 ? "1 image attached" : $"{count} images attached";
+
+    private static string FormatFileSize(long bytes)
+    {
+        const decimal oneMegabyte = 1024m * 1024m;
+        if (bytes >= oneMegabyte)
+        {
+            return $"{bytes / oneMegabyte:0.#} MB";
+        }
+
+        return $"{Math.Max(1, bytes / 1024)} KB";
     }
 
     private async Task DeleteCurrentChatAsync()
@@ -1065,8 +1222,12 @@
 
     private async Task OpenFilePickerAndCloseMenu()
     {
+        if (_imageFileUpload is not null)
+        {
+            await _imageFileUpload.OpenFilePickerAsync();
+        }
+
         _referencesMenuOpen = false;
-        await OpenFilePickerAsync();
     }
 
     private void OnPromptInput(ChangeEventArgs e)
@@ -1094,6 +1255,7 @@
 
     private sealed record AiRailModelOption(string Id, string DisplayName);
     private sealed record AiRailActorOption(Guid ActorId, string ActorType, string ActorDisplayName);
+    private sealed record AiRailImageAttachment(Guid Id, string FileName, string MediaType, long SizeBytes, string Data);
 
     private sealed record AiRailTimelineItem(
         string Key,

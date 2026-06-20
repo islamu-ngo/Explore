@@ -80,6 +80,30 @@ public class NavMenuAdminTests : IDisposable
     }
 
     [Test]
+    public async Task NavMenu_AuthenticatedUser_RendersAiAssistantToggleBeforeProfileDropdown()
+    {
+        // Arrange
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.DefaultUserId, "Regular User");
+        var settings = new PublicExperienceSettingsBuilder()
+            .WithAiAssistant()
+            .Build();
+        SetupNavMenuServices(publicExperienceSettings: settings);
+
+        // Act
+        var cut = RenderNavMenu();
+
+        // Assert
+        cut.WaitForElement("[data-testid='shell-ai-toggle']");
+        var markup = cut.Markup;
+        var aiToggleIndex = markup.IndexOf("data-testid=\"shell-ai-toggle\"", StringComparison.Ordinal);
+        var userDropdownIndex = markup.IndexOf("navbar__user-dropdown", StringComparison.Ordinal);
+
+        await Assert.That(aiToggleIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(userDropdownIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(aiToggleIndex).IsLessThan(userDropdownIndex);
+    }
+
+    [Test]
     public async Task NavMenu_InstanceAdminClaimOnly_DoesNotShowAdminLinks()
     {
         // Arrange
@@ -327,12 +351,14 @@ public class NavMenuAdminTests : IDisposable
     }
 
     private void SetupNavMenuServices(
+        PublicExperienceSettingsModel? publicExperienceSettings = null,
         string deploymentMode = "MultiTenant",
         bool isCurrentUserInstanceAdmin = false,
         bool isCurrentUserTenantAdmin = false)
     {
         NavMenuTestServices.Register(
             _ctx,
+            publicExperienceSettings: publicExperienceSettings,
             deploymentMode: deploymentMode,
             isCurrentUserInstanceAdmin: isCurrentUserInstanceAdmin,
             isCurrentUserTenantAdmin: isCurrentUserTenantAdmin);

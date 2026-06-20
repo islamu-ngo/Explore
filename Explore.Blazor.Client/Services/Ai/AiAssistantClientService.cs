@@ -96,6 +96,7 @@ public sealed class AiAssistantClientService(
         string? idempotencyKey = null,
         string? mode = null,
         Guid? actorId = null,
+        IReadOnlyList<AiMessageImageInputDto>? images = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -106,7 +107,8 @@ public sealed class AiAssistantClientService(
                 IdempotencyKey = idempotencyKey,
                 ActorId = actorId,
                 ModelId = modelId,
-                Mode = mode
+                Mode = mode,
+                Images = images?.ToList() ?? []
             };
 
             var response = await apiClient.SendAiMessageAsync(

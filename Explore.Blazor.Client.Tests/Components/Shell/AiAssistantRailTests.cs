@@ -4,6 +4,8 @@
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Services.Ai;
+using Microsoft.AspNetCore.Components.Forms;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Components.Shell;
 
@@ -282,6 +284,7 @@ public sealed class AiAssistantRailTests : IDisposable
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<Guid?>(),
+                Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(true, Guid.CreateVersion7(), "Sent", null, [])));
         _clientService.GetRunStatusAsync(conversationId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -317,6 +320,92 @@ public sealed class AiAssistantRailTests : IDisposable
             Arg.Is<string?>(value => value != null && value.StartsWith("blazor-ai-send-", StringComparison.Ordinal)),
             Arg.Is<string?>(value => value == "build"),
             Arg.Is<Guid?>(value => value == actorId),
+            Arg.Is<IReadOnlyList<AiMessageImageInputDto>?>(value => value != null && value.Count == 0),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Render_AddFilesAction_UsesMudFileUploadPicker()
+    {
+        var conversationId = Guid.CreateVersion7();
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Image picker test"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        cut.WaitForElement("[data-testid='ai-rail-prompt']");
+
+        await Assert.That(cut.FindComponents<MudFileUpload<IReadOnlyList<IBrowserFile>>>().Count).IsEqualTo(1);
+        await Assert.That(cut.Markup).DoesNotContain("Browse files");
+        await Assert.That(cut.Markup).DoesNotContain("mud-file-upload-files-default-template");
+    }
+
+    [Test]
+    public async Task SendMessage_WhenImageIsSelected_ConvertsImageToPlainBase64()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var imageBytes = new byte[] { 1, 2, 3, 4 };
+        var expectedBase64 = Convert.ToBase64String(imageBytes);
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Image send test"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _clientService.SendMessageAsync(
+                conversationId,
+                "Describe this picture:",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiAssistantCommandResult(true, Guid.CreateVersion7(), "Sent", null, [])));
+        _clientService.GetRunStatusAsync(conversationId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(AiRunStatusResult.Ok(new HalResourceOfAiRunDto
+            {
+                Status = "Succeeded"
+            })));
+        _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "Image send test")));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromBinary(
+            imageBytes,
+            "csharp.png",
+            contentType: "image/png"));
+        await cut.Find("[data-testid='ai-rail-prompt']").ChangeAsync(new ChangeEventArgs { Value = "Describe this picture:" });
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("csharp.png", StringComparison.Ordinal)
+                || cut.FindAll("[data-testid='ai-rail-image-chip']").Count != 1
+                || cut.Markup.Contains("Browse files", StringComparison.Ordinal)
+                || cut.Markup.Contains("mud-file-upload-files-default-template", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected only the selected image chip list to render before sending.");
+            }
+        });
+
+        await cut.Find("[data-testid='ai-rail-send']").ClickAsync(new MouseEventArgs());
+
+        await _clientService.Received(1).SendMessageAsync(
+            conversationId,
+            "Describe this picture:",
+            Arg.Any<string?>(),
+            Arg.Is<string?>(value => value != null && value.StartsWith("blazor-ai-send-", StringComparison.Ordinal)),
+            Arg.Is<string?>(value => value == "build"),
+            Arg.Any<Guid?>(),
+            Arg.Is<IReadOnlyList<AiMessageImageInputDto>?>(images =>
+                images != null
+                && images.Count == 1
+                && images.Single().MediaType == "image/png"
+                && images.Single().FileName == "csharp.png"
+                && images.Single().SizeBytes == imageBytes.Length
+                && images.Single().Data == expectedBase64
+                && !images.Single().Data.StartsWith("data:", StringComparison.OrdinalIgnoreCase)),
             Arg.Any<CancellationToken>());
     }
 
@@ -360,6 +449,7 @@ public sealed class AiAssistantRailTests : IDisposable
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<Guid?>(),
+                Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(
                 false,
