@@ -26,6 +26,18 @@ namespace Explore.Blazor.Client.Pages.Events;
 public partial class EventDetail : ComponentBase, IDisposable
 {
     private const string MainContentAppearanceOwner = "EventDetail";
+    private const string DraftStatusMasterCode = "DRAFT";
+    private const string PublishedStatusMasterCode = "PUBLISHED";
+    private const string CancelledStatusMasterCode = "CANCELLED";
+    private const string CompletedStatusMasterCode = "COMPLETED";
+    private const string EditLinkRelation = "edit";
+    private const string DeleteLinkRelation = "delete";
+    private const string TeamLinkRelation = "team";
+    private const string PublishLinkRelation = "publish";
+    private const string CancelLinkRelation = "cancel";
+    private const string ArchiveLinkRelation = "archive";
+    private const int CancelledEventStatusId = 3;
+    private const int ArchivedEventStatusId = 5;
 
     [Inject] private MainContentAppearanceState MainContentAppearanceState { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
@@ -63,6 +75,10 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool _canDelete = false;
     private bool _canEdit = false;
     private bool _canManageTeam = false;
+    private bool _canPublish = false;
+    private bool _canCancel = false;
+    private bool _canArchive = false;
+    private bool _isProcessingEventAction = false;
     private bool _isAuthenticated = false;
     private bool _isCheckingAuth = true;
     private string? _errorMessage;
@@ -83,6 +99,11 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool _showDetailTagCatPopup;
     private TagCategoryMode _detailTagCatMode;
     private IReadOnlyCollection<Guid> _detailTagCatInitialIds = Array.Empty<Guid>();
+
+    private bool HasManagementTopBar =>
+        _eventDetails != null &&
+        !_isCheckingAuth &&
+        (_canEdit || _canPublish || _canCancel || _canArchive);
 
     /// <summary>
     /// Initializes the component and loads event data.
@@ -229,12 +250,43 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         _ = InvokeAsync(async () =>
         {
-            await CheckRegistrationStatusAsync();
+            var registrationTask = CheckRegistrationStatusAsync();
+
+            await RefreshRestoredEventDetailsAsync();
+            StateHasChanged();
+
+            await registrationTask;
             _isCheckingRegistration = false;
             StateHasChanged();
         });
 
         return true;
+    }
+
+    private async Task RefreshRestoredEventDetailsAsync()
+    {
+        try
+        {
+            var refreshedEvent = await EventService.GetEventByIdAsync(EventId);
+            if (refreshedEvent == null)
+                return;
+
+            _eventDetails = refreshedEvent;
+            _appearance = new AppearanceSettings
+            {
+                BackgroundColor = _eventDetails.BackgroundColor ?? string.Empty,
+                ImageUri = _eventDetails.BackgroundImageUri ?? string.Empty,
+                BackgroundEffect = _eventDetails.BackgroundEffect ?? "None"
+            };
+
+            PublishMainContentAppearance();
+            CheckAuthorizationFromHalLinks();
+            PersistState();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to refresh event {EventId} after prerender state restore", EventId);
+        }
     }
 
     private void PersistState()
@@ -431,13 +483,27 @@ public partial class EventDetail : ComponentBase, IDisposable
             _canEdit = false;
             _canDelete = false;
             _canManageTeam = false;
+            _canPublish = false;
+            _canCancel = false;
+            _canArchive = false;
             return;
         }
 
-        _canEdit = _eventDetails.HasHalLink("edit");
-        _canDelete = _eventDetails.HasHalLink("delete");
-        _canManageTeam = _eventDetails.HasHalLink("team");
-        Logger.LogDebug("HAL link authorization for event {EventId}: CanEdit={CanEdit}, CanDelete={CanDelete}, CanManageTeam={CanManageTeam}", EventId, _canEdit, _canDelete, _canManageTeam);
+        _canEdit = _eventDetails.HasHalLink(EditLinkRelation);
+        _canDelete = _eventDetails.HasHalLink(DeleteLinkRelation);
+        _canManageTeam = _eventDetails.HasHalLink(TeamLinkRelation);
+        _canPublish = _eventDetails.HasHalLink(PublishLinkRelation);
+        _canCancel = _eventDetails.HasHalLink(CancelLinkRelation);
+        _canArchive = _eventDetails.HasHalLink(ArchiveLinkRelation);
+        Logger.LogDebug(
+            "HAL link authorization for event {EventId}: CanEdit={CanEdit}, CanDelete={CanDelete}, CanManageTeam={CanManageTeam}, CanPublish={CanPublish}, CanCancel={CanCancel}, CanArchive={CanArchive}",
+            EventId,
+            _canEdit,
+            _canDelete,
+            _canManageTeam,
+            _canPublish,
+            _canCancel,
+            _canArchive);
     }
 
     /// <summary>
@@ -453,16 +519,16 @@ public partial class EventDetail : ComponentBase, IDisposable
     /// </summary>
     private Color GetStatusChipColor() => _eventDetails?.EventStatusMasterCode switch
     {
-        "PUBLISHED" => Color.Success,
-        "DRAFT" => Color.Default,
-        "CANCELLED" => Color.Error,
-        "COMPLETED" => Color.Info,
+        PublishedStatusMasterCode => Color.Success,
+        DraftStatusMasterCode => Color.Default,
+        CancelledStatusMasterCode => Color.Error,
+        CompletedStatusMasterCode => Color.Info,
         "POSTPONED" => Color.Warning,
         _ => Color.Default
     };
 
     private bool IsCancelledEvent() =>
-        _eventDetails?.EventStatusMasterCode == "CANCELLED";
+        _eventDetails?.EventStatusMasterCode == CancelledStatusMasterCode;
 
     /// <summary>
     /// Gets the formatted date display string.
@@ -952,6 +1018,124 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     #endregion
 
+    private async Task PublishEventAsync()
+    {
+        if (!_canPublish || _eventDetails is null || _isProcessingEventAction)
+            return;
+
+        if (_eventDetails.ConcurrencyStamp is not Guid expectedConcurrencyStamp || expectedConcurrencyStamp == Guid.Empty)
+        {
+            Snackbar.Add("Refresh the event before publishing.", Severity.Warning);
+            return;
+        }
+
+        _isProcessingEventAction = true;
+
+        try
+        {
+            var response = await EventService.PublishEventAsync(EventId, expectedConcurrencyStamp);
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Event published.", Severity.Success);
+                await LoadEventDataAsync();
+                return;
+            }
+
+            Snackbar.Add(response?.Message ?? "Event could not be published.", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error publishing event {EventId}", EventId);
+            Snackbar.Add("Event could not be published.", Severity.Error);
+        }
+        finally
+        {
+            _isProcessingEventAction = false;
+        }
+    }
+
+    private Task CancelEventAsync() =>
+        UpdateEventStatusWithConfirmationAsync(
+            CancelledEventStatusId,
+            "Cancel Event",
+            $"Cancel \"{_eventDetails?.Title}\"? Registrations and public calls to action will stop being available.",
+            "Cancel Event",
+            "Event cancelled.");
+
+    private Task ArchiveEventAsync() =>
+        UpdateEventStatusWithConfirmationAsync(
+            ArchivedEventStatusId,
+            "Archive Event",
+            $"Archive \"{_eventDetails?.Title}\"? Archived events are removed from public event discovery.",
+            "Archive Event",
+            "Event archived.",
+            navigateToEvents: true);
+
+    private async Task UpdateEventStatusWithConfirmationAsync(
+        int eventStatusId,
+        string title,
+        string message,
+        string yesText,
+        string successMessage,
+        bool navigateToEvents = false)
+    {
+        if (_eventDetails is null || _isProcessingEventAction)
+            return;
+
+        await AccessibilityFocusService.SaveFocusAsync();
+        bool? confirmed;
+        try
+        {
+            confirmed = await DialogService.ShowMessageBoxAsync(
+                title,
+                message,
+                yesText: yesText,
+                cancelText: "Keep Event");
+        }
+        finally
+        {
+            await AccessibilityFocusService.RestoreFocusAsync();
+        }
+
+        if (confirmed != true)
+            return;
+
+        _isProcessingEventAction = true;
+
+        try
+        {
+            var success = await EventService.UpdateEventStatusAsync(EventId, eventStatusId);
+            if (!success)
+            {
+                Snackbar.Add("Event status could not be updated.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add(successMessage, Severity.Success);
+            if (navigateToEvents)
+            {
+                Navigation.NavigateTo("/events");
+                return;
+            }
+
+            await LoadEventDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating event {EventId} to status {EventStatusId}", EventId, eventStatusId);
+            Snackbar.Add("Event status could not be updated.", Severity.Error);
+        }
+        finally
+        {
+            _isProcessingEventAction = false;
+        }
+    }
+
+    private string GetEditActionLabel() =>
+        string.Equals(_eventDetails?.EventStatusMasterCode, DraftStatusMasterCode, StringComparison.OrdinalIgnoreCase)
+            ? "Return to Edit"
+            : "Edit";
+
     /// <summary>
     /// Opens the delete confirmation dialog.
     /// </summary>
@@ -978,9 +1162,9 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         if (result != null && !result.Canceled)
         {
-            // Dialog already handled deletion and snackbar notification
-            // Navigate to My Events page
-            Navigation.NavigateTo("/my/events");
+            // Dialog already handled deletion and snackbar notification.
+            // Return to the public event catalog because the legacy My Events page was removed.
+            Navigation.NavigateTo("/events");
         }
     }
 

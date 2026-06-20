@@ -25,6 +25,7 @@ public partial class EventTeamManager
     [Inject] private ISnackbar Snackbar { get; set; } = null!;
 
     private List<EventTeamMemberDto> _members = [];
+    private List<EventRolePresetDto> _assignablePresets = [];
     private bool _loading = true;
     private bool _canManageTeam;
     private string? _errorMessage;
@@ -39,17 +40,20 @@ public partial class EventTeamManager
                         (x.UserEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false))
             .Where(x => _roleFilter == null || x.RoleId == _roleFilter);
 
+    private bool CanWriteTeam => _canManageTeam && _assignablePresets.Count > 0;
+
     private bool HasAnyMemberActions => _members.Any(m => CanRevokeMember(m));
 
     protected override async Task OnParametersSetAsync()
     {
         _canManageTeam = CanManageTeam;
         await LoadTeamMembers();
+        await LoadAssignablePresets();
     }
 
     private bool CanRevokeMember(EventTeamMemberDto member)
     {
-        if (!_canManageTeam) return false;
+        if (!CanWriteTeam) return false;
         if (member.RoleId == RoleHelper.EventOwner) return false;
         return member.IsEffective == true;
     }
@@ -74,15 +78,34 @@ public partial class EventTeamManager
         }
     }
 
+    private async Task LoadAssignablePresets()
+    {
+        _assignablePresets = [];
+
+        if (!_canManageTeam)
+        {
+            return;
+        }
+
+        try
+        {
+            var presets = await EventTeamService.GetAssignablePresetsAsync(EventId);
+            _assignablePresets = presets.ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error loading assignable event team roles for event {EventId}", EventId);
+        }
+    }
+
     private async Task OpenAssignDialog()
     {
-        if (!_canManageTeam) return;
+        if (!CanWriteTeam) return;
 
-        var presets = await EventTeamService.GetAssignablePresetsAsync(EventId);
         var parameters = new DialogParameters
         {
             ["EventId"] = EventId,
-            ["Presets"] = presets.ToList()
+            ["Presets"] = _assignablePresets
         };
 
         await AccessibilityFocusService.SaveFocusAsync();

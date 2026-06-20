@@ -1,3 +1,5 @@
+@* ABOUTME: Dedicated page for editing a saved program item within an event draft. *@
+@* ABOUTME: Preserves event and session route ids from Blazouter URLs before loading edit context. *@
 @page "/events/{EventId:guid}/sessions/{SessionId:guid}/edit"
 @rendermode InteractiveServer
 @attribute [Authorize]
@@ -166,6 +168,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        ApplyRouteParametersFromCurrentUri();
+
         _editContext = new EditContext(_session);
         _errorStore.Init(_editContext);
         var eventTask = EventService.GetEventByIdAsync(EventId);
@@ -203,6 +207,38 @@
         }
 
         _isLoading = false;
+    }
+
+    private void ApplyRouteParametersFromCurrentUri()
+    {
+        var segments = Navigation
+            .ToAbsoluteUri(Navigation.Uri)
+            .AbsolutePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var eventSegmentIndex = Array.FindIndex(
+            segments,
+            segment => string.Equals(segment, "events", StringComparison.OrdinalIgnoreCase));
+
+        if (eventSegmentIndex < 0 || eventSegmentIndex + 5 != segments.Length)
+        {
+            return;
+        }
+
+        if (!string.Equals(segments[eventSegmentIndex + 2], "sessions", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(segments[eventSegmentIndex + 4], "edit", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (Guid.TryParse(segments[eventSegmentIndex + 1], out var eventId))
+        {
+            EventId = eventId;
+        }
+
+        if (Guid.TryParse(segments[eventSegmentIndex + 3], out var sessionId))
+        {
+            SessionId = sessionId;
+        }
     }
 
     private async Task OnLocationChangedAsync(Guid? locationId)

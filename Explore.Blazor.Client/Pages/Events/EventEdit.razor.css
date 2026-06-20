@@ -3,6 +3,28 @@
 
 /* ===== Block: edit-event ===== */
 
+.edit-event {
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
+    padding-block: var(--isl-space-5);
+    transition: color 180ms ease;
+    container-type: inline-size;
+}
+
+.edit-event ::deep .mud-typography:not(.mud-input-helper-text):not(.mud-input-error) {
+    color: inherit;
+}
+
+.edit-event ::deep .mud-typography.mud-typography-subtitle2,
+.edit-event ::deep .mud-typography.mud-typography-body2 {
+    color: var(--event-theme-muted-color, var(--mud-palette-text-secondary));
+}
+
+.edit-event ::deep .mud-paper,
+.edit-event ::deep .mud-input-control,
+.edit-event ::deep .mud-alert {
+    color: var(--mud-palette-text-primary);
+}
+
 /* --- Image Area --- */
 ::deep .edit-event__image-area {
     position: relative;
@@ -35,7 +57,7 @@
 ::deep .edit-event__upload-trigger {
     position: absolute !important;
     bottom: var(--isl-space-3);
-    right: var(--isl-space-3);
+    inset-inline-end: var(--isl-space-3);
     z-index: 1;
 }
 
@@ -45,7 +67,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.45);
+    background: oklch(0 0 0 / 0.45);
     z-index: 2;
     border-radius: var(--isl-radius-lg);
 }
@@ -55,7 +77,7 @@
     font-size: 2rem;
     font-weight: 700;
     line-height: 1.2;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
 }
 
 ::deep .edit-event__title-input .mud-input-slot::placeholder {
@@ -63,7 +85,14 @@
     opacity: 0.5;
 }
 
+::deep .edit-event__subtitle-input .mud-input-slot {
+    font-size: 1rem;
+    color: var(--mud-palette-text-secondary);
+}
+
 ::deep .edit-event__timezone-btn {
+    position: static !important;
+    margin-bottom: var(--isl-space-2);
     text-transform: none !important;
     font-size: 0.75rem !important;
     padding: 0.125rem var(--isl-space-2) !important;
@@ -114,12 +143,35 @@
 
 ::deep .edit-event__option-select {
     max-width: 11.25rem;
-    text-align: right;
+    text-align: end;
+    justify-self: end;
 }
 
 ::deep .edit-event__option-select .mud-input-slot {
     font-size: 0.875rem;
-    text-align: right;
+    text-align: end;
+}
+
+::deep .edit-event__option-editor-group,
+::deep .edit-event__option-chip-editor {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--isl-space-2);
+    flex-wrap: wrap;
+    min-inline-size: 0;
+}
+
+::deep .edit-event__option-chip-editor {
+    max-inline-size: 18rem;
+}
+
+::deep .edit-event__price-input {
+    max-width: 7rem;
+}
+
+::deep .edit-event__currency-input {
+    max-width: 5rem;
 }
 
 /* --- Submit Button --- */
@@ -158,6 +210,13 @@
     ::deep .edit-event__option-select {
         max-width: unset;
         width: 100%;
-        text-align: left;
+        text-align: start;
+        justify-self: stretch;
+    }
+
+    ::deep .edit-event__option-editor-group,
+    ::deep .edit-event__option-chip-editor {
+        justify-content: flex-start;
+        max-inline-size: none;
     }
 }

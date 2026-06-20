@@ -31,7 +31,64 @@
         <link rel="canonical" href="@GetCanonicalUrl()" />
     </HeadContent>
 
-    <div class="event-detail-wrapper" style="@GetWrapperStyle()">
+    <div class="event-detail-wrapper @(HasManagementTopBar ? "event-detail-wrapper--with-action-bar" : null)" style="@GetWrapperStyle()">
+        @if (HasManagementTopBar)
+        {
+            <div class="event-detail-action-bar" role="region" aria-label="Event management actions">
+                <div class="event-detail-action-bar__inner">
+                    <div class="event-detail-action-bar__primary">
+                        @if (_canEdit)
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       Href="@($"/events/{EventId}/edit")"
+                                       StartIcon="@Icons.Material.Filled.Edit"
+                                       Class="event-detail-action-bar__edit-link">
+                                @GetEditActionLabel()
+                            </MudButton>
+                        }
+                    </div>
+
+                    <div class="event-detail-action-bar__actions" aria-label="Event lifecycle actions">
+                        @if (_canPublish)
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Disabled="_isProcessingEventAction"
+                                       OnClick="PublishEventAsync"
+                                       StartIcon="@Icons.Material.Filled.Publish">
+                                Publish
+                            </MudButton>
+                        }
+                        @if (_canCancel)
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Warning"
+                                       Disabled="_isProcessingEventAction"
+                                       OnClick="CancelEventAsync"
+                                       StartIcon="@Icons.Material.Filled.Cancel">
+                                Cancel
+                            </MudButton>
+                        }
+                        @if (_canArchive)
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Default"
+                                       Disabled="_isProcessingEventAction"
+                                       OnClick="ArchiveEventAsync"
+                                       StartIcon="@Icons.Material.Filled.Archive">
+                                Archive
+                            </MudButton>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
         <MudContainer MaxWidth="MaxWidth.Large" Class="event-detail-container">
             
             <MudGrid Spacing="8">

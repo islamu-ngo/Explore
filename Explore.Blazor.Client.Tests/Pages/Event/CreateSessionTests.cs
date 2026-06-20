@@ -1,3 +1,6 @@
+// ABOUTME: Component tests for the dedicated CreateSession page and Blazouter route-id handling.
+// ABOUTME: Verifies program-item creation preserves the parent event id through navigation and save flows.
+
 using System.Reflection;
 using System.Text.Json;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
@@ -42,6 +45,26 @@ public sealed class CreateSessionTests : IDisposable
             .Returns(call => CreateSessionContext(call.ArgAt<Guid>(0), Guid.NewGuid()));
         _eventService.AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+    }
+
+    [Test]
+    public async Task OnInitializedAsync_WhenRenderedFromBlazouterUrl_UsesEventIdFromCurrentUri()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/events/{eventId}/sessions/create");
+
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
+        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(CreateSessionContext(eventId, tenantId));
+
+        var cut = _ctx.Render<CreateSession>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading event draft", StringComparison.Ordinal));
+
+        await _eventService.Received(1).GetEventByIdAsync(eventId);
+        await _eventService.Received(1).GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>());
+        await Assert.That(cut.Markup).DoesNotContain("The event draft could not be loaded.");
     }
 
     [Test]

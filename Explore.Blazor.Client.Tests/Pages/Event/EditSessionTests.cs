@@ -1,3 +1,6 @@
+// ABOUTME: Component tests for the dedicated EditSession page and Blazouter route-id handling.
+// ABOUTME: Verifies program-item edits preserve event and session ids through navigation and save flows.
+
 using System.Reflection;
 using System.Text.Json;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
@@ -45,6 +48,25 @@ public sealed class EditSessionTests : IDisposable
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
         _eventService.UnassignSessionFromGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+    }
+
+    [Test]
+    public async Task OnInitializedAsync_WhenRenderedFromBlazouterUrl_UsesEventAndSessionIdsFromCurrentUri()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/events/{eventId}/sessions/{sessionId}/edit");
+
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
+
+        var cut = _ctx.Render<EditSession>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading session", StringComparison.Ordinal));
+
+        await _eventService.Received(1).GetEventByIdAsync(eventId);
+        await _eventService.Received(1).GetSessionByIdAsync(sessionId);
+        await Assert.That(cut.Markup).DoesNotContain("The program item could not be loaded.");
     }
 
     [Test]

@@ -116,8 +116,8 @@
                           OnClick="@(() => Navigation.NavigateTo("/events/create"))">
                     Create Another Event
                 </MudButton>
-                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => Navigation.NavigateTo("/my/events"))">
-                    View My Events
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => Navigation.NavigateTo("/my/profile"))">
+                    View Profile Posts
                 </MudButton>
             </div>
         </MudPaper>
@@ -128,8 +128,8 @@
             <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
             <MudText Typo="Typo.h6" Class="mt-4">Event not found</MudText>
             <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="mt-4"
-                      OnClick="@(() => Navigation.NavigateTo("/my/events"))">
-                Go to My Events
+                      OnClick="@(() => Navigation.NavigateTo("/events"))">
+                Go to Events
             </MudButton>
         </MudPaper>
     }

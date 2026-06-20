@@ -24,8 +24,10 @@ using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
-public partial class EventEdit
+public partial class EventEdit : IDisposable
 {
+    private const string MainContentAppearanceOwner = nameof(EventEdit);
+
     [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected IAdminService AdminService { get; set; } = null!;
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
@@ -40,6 +42,7 @@ public partial class EventEdit
     [Inject] private IAccessibilityAnnouncerService AccessibilityAnnouncerService { get; set; } = default!;
     [Inject] private IEventRegistrationPolicyService RegistrationPolicyService { get; set; } = default!;
     [Inject] private ICustomPropertyDefinitionService CustomPropertyDefinitionService { get; set; } = default!;
+    [Inject] private MainContentAppearanceState MainContentAppearanceState { get; set; } = default!;
 
     private Guid EventId { get; set; }
 
@@ -210,6 +213,59 @@ public partial class EventEdit
             : registrationModes?.FirstOrDefault(mode => mode.Id == registrationModeId)?.FullName;
     }
 
+    private string BuildAudienceSummary()
+    {
+        var gender = GetLookupName(audienceGenders, updateDto?.AudienceGenderId) ?? "Any gender";
+        var age = GetLookupName(audienceAges, updateDto?.AudienceAgeId) ?? "Any age";
+        return $"{gender} · {age}";
+    }
+
+    private string BuildRegistrationSummary()
+    {
+        var policy = GetLookupName(registrationPolicies, updateDto?.RegistrationPolicyId) ?? "Default open registration";
+        return $"{policy} · Capacity set per session";
+    }
+
+    private string BuildPricingSummary()
+    {
+        if (updateDto?.Price is > 0)
+        {
+            return $"{updateDto.CurrencyCode ?? "EUR"} {updateDto.Price:0.##}";
+        }
+
+        return "Free event";
+    }
+
+    private static string? GetLookupName(IEnumerable<VisibilityTypeListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<AudienceGenderListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<AudienceAgeListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<EventRegistrationPolicyListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<EventTypeListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<MadhabListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static List<string> GetSelectedNames(IEnumerable<CategoryListDto>? items, IReadOnlyCollection<Guid> selectedIds) =>
+        items?
+            .Where(item => item.Id.HasValue && selectedIds.Contains(item.Id.Value))
+            .Select(item => item.FullName)
+            .ToList() ?? [];
+
+    private static List<string> GetSelectedNames(IEnumerable<TagListDto>? items, IReadOnlyCollection<Guid> selectedIds) =>
+        items?
+            .Where(item => item.Id.HasValue && selectedIds.Contains(item.Id.Value))
+            .Select(item => item.FullName)
+            .ToList() ?? [];
+
     private static string FormatCapacity(int? capacity)
     {
         return capacity.HasValue
@@ -270,6 +326,18 @@ public partial class EventEdit
     // UI toggles
     private bool _showTimezoneSelector = false;
     private bool _programUpdatedOnReturn;
+    private bool _isThemeStudioOpen;
+    private string EventSettingsSummary => "Visibility, audience, registration, classification, categories, and tags.";
+    private string VisibilitySummary => GetLookupName(visibilityTypes, updateDto?.VisibilityTypeId) ?? "Select visibility";
+    private string AudienceSummary => BuildAudienceSummary();
+    private string RegistrationSummary => BuildRegistrationSummary();
+    private string EventTypeSummary => GetLookupName(eventTypes, updateDto?.EventTypeId) ?? "Select event type";
+    private string PricingSummary => BuildPricingSummary();
+    private string MadhabSummary => GetLookupName(madhabs, updateDto?.MadhabId) ?? "No madhab set";
+    private List<string> SelectedCategoryNames => GetSelectedNames(allCategories, selectedCategoryIds);
+    private List<string> SelectedTagNames => GetSelectedNames(allTags, selectedTagIds);
+    private string CategoriesSummary => SelectedCategoryNames.Count == 0 ? "No categories selected" : string.Join(", ", SelectedCategoryNames);
+    private string TagsSummary => SelectedTagNames.Count == 0 ? "No tags selected" : string.Join(", ", SelectedTagNames);
 
     // Timezone
     private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Local;
@@ -279,6 +347,8 @@ public partial class EventEdit
 
     protected override async Task OnInitializedAsync()
     {
+        MainContentAppearanceState?.Set(MainContentAppearanceOwner, string.Empty);
+
         var eventIdStr = RouterState.GetParam("eventId");
         if (Guid.TryParse(eventIdStr, out var id))
         {
@@ -364,12 +434,14 @@ public partial class EventEdit
             else
             {
                 _submitState.Fail("Event not found");
+                PublishMainContentAppearance();
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading event data for editing");
             _submitState.Fail($"Error loading event: {ex.Message}");
+            PublishMainContentAppearance();
         }
         finally
         {
@@ -395,12 +467,13 @@ public partial class EventEdit
             FeaturedImageId = currentEvent.FeaturedImageId,
             IsRegistrationRequired = currentEvent.IsRegistrationRequired,
             RegistrationPolicyId = currentEvent.RegistrationPolicyId,
-            ExternalRegistrationUrl = currentEvent.EventUrl,
+            ExternalRegistrationUrl = currentEvent.ExternalRegistrationUrl,
             EventTypeId = currentEvent.EventTypeId,
             EventFormatId = currentEvent.EventFormatId,
             VisibilityTypeId = currentEvent.VisibilityTypeId,
             MadhabId = currentEvent.MadhabId,
             Timezone = currentEvent.Timezone,
+            EventUrl = currentEvent.EventUrl,
             BackgroundColor = currentEvent.BackgroundColor,
             BackgroundImageId = currentEvent.BackgroundImageId,
             BackgroundEffect = currentEvent.BackgroundEffect
@@ -413,6 +486,7 @@ public partial class EventEdit
             BackgroundEffect = currentEvent.BackgroundEffect ?? "None"
         };
         imagePreviewUrl = BuildFeaturedImagePreviewUrl(currentEvent);
+        PublishMainContentAppearance();
 
         if (!string.IsNullOrEmpty(currentEvent.Timezone))
         {
@@ -428,6 +502,64 @@ public partial class EventEdit
 
         _editContext = new EditContext(updateDto);
         _errorStore.Init(_editContext);
+    }
+
+    private async Task OpenThemeStudioAsync()
+    {
+        await AccessibilityFocusService.SaveFocusAsync();
+        _isThemeStudioOpen = true;
+        await AccessibilityAnnouncerService.AnnouncePoliteAsync("Theme studio opened.");
+    }
+
+    private async Task CloseThemeStudioAsync()
+    {
+        _isThemeStudioOpen = false;
+        await AccessibilityFocusService.RestoreFocusAsync(".create-event__theme-advanced-button");
+        await AccessibilityAnnouncerService.AnnouncePoliteAsync("Theme studio closed.");
+    }
+
+    private Task SetBackgroundColorAsync(string value)
+    {
+        _appearance.BackgroundColor = value;
+        if (updateDto is not null)
+        {
+            updateDto.BackgroundColor = string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        PublishMainContentAppearance();
+        return Task.CompletedTask;
+    }
+
+    private Task SetBackgroundEffectAsync(string value)
+    {
+        var normalized = string.IsNullOrWhiteSpace(value) ? "None" : value;
+        _appearance.BackgroundEffect = normalized;
+        if (updateDto is not null)
+        {
+            updateDto.BackgroundEffect = normalized == "None" ? null : normalized;
+        }
+
+        PublishMainContentAppearance();
+        return Task.CompletedTask;
+    }
+
+    private string BuildEventEditPreviewStyle()
+    {
+        var settings = new AppearanceSettings
+        {
+            BackgroundColor = _appearance.BackgroundColor,
+            BackgroundEffect = _appearance.BackgroundEffect,
+            ImageUri = string.Empty
+        };
+
+        return settings.IsEmpty
+            ? string.Empty
+            : AppearanceStyleBuilder.BuildSurfaceStyle(settings, "#F8FAFC");
+    }
+
+    private void PublishMainContentAppearance()
+    {
+        MainContentAppearanceState?.Set(MainContentAppearanceOwner, BuildEventEditPreviewStyle());
     }
 
     private string? BuildFeaturedImagePreviewUrl(EventDto? eventDto)
@@ -749,8 +881,9 @@ public partial class EventEdit
             }
 
             updateDto.IsRegistrationRequired = sessions.Any(s => s.RegistrationModeId is > 0);
-            updateDto.BackgroundColor = _appearance.BackgroundColor;
-            updateDto.BackgroundEffect = _appearance.BackgroundEffect;
+            updateDto.BackgroundColor = string.IsNullOrWhiteSpace(_appearance.BackgroundColor) ? null : _appearance.BackgroundColor;
+            updateDto.BackgroundEffect = string.IsNullOrWhiteSpace(_appearance.BackgroundEffect) || _appearance.BackgroundEffect == "None" ? null : _appearance.BackgroundEffect;
+            updateDto.Timezone = _selectedTimezone.Id;
 
             if (EventId == Guid.Empty)
             {
@@ -843,6 +976,20 @@ public partial class EventEdit
         return $"GMT{sign}{abs.Hours}:{abs.Minutes:D2} {tz.StandardName}";
     }
 
+    private void OpenCategoryManager()
+    {
+        _editTagCatMode = TagCategoryMode.Categories;
+        _editTagCatInitialIds = selectedCategoryIds.ToList().AsReadOnly();
+        _showEditTagCatPopup = true;
+    }
+
+    private void OpenTagManager()
+    {
+        _editTagCatMode = TagCategoryMode.Tags;
+        _editTagCatInitialIds = selectedTagIds.ToList().AsReadOnly();
+        _showEditTagCatPopup = true;
+    }
+
     private void HandleEditTagCatSaved(IReadOnlyCollection<Guid> newIds)
     {
         if (_editTagCatMode == TagCategoryMode.Tags)
@@ -851,6 +998,11 @@ public partial class EventEdit
             selectedCategoryIds = new HashSet<Guid>(newIds);
 
         StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        MainContentAppearanceState?.Clear(MainContentAppearanceOwner);
     }
 
 }

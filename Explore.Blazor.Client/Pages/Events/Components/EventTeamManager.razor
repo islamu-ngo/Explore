@@ -22,7 +22,7 @@
             </div>
         </MudStack>
 
-        @if (_canManageTeam)
+        @if (CanWriteTeam)
         {
             <MudButton Color="Color.Primary" Variant="Variant.Filled"
                         OnClick="OpenAssignDialog" StartIcon="@Icons.Material.Filled.PersonAdd"
@@ -131,7 +131,7 @@
                 <MudIcon Icon="@Icons.Material.Filled.PeopleOutline" Size="Size.Large" Color="Color.Default" />
                 <MudText Typo="Typo.h6" Class="mt-2" Style="font-weight: 700;">No team members found</MudText>
                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-                    @if (_canManageTeam)
+                    @if (CanWriteTeam)
                     {
                         <span>Assign roles to invite team members.</span>
                     }

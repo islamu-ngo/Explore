@@ -1,3 +1,5 @@
+@* ABOUTME: Dedicated page for adding a program item to an existing event draft. *@
+@* ABOUTME: Preserves the parent event id from Blazouter URLs before loading draft context. *@
 @page "/events/{EventId:guid}/sessions/create"
 @rendermode InteractiveServer
 @attribute [Authorize]
@@ -169,6 +171,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        ApplyRouteParametersFromCurrentUri();
+
         _editContext = new EditContext(_session);
         _errorStore.Init(_editContext);
         var eventTask = EventService.GetEventByIdAsync(EventId);
@@ -196,6 +200,33 @@
         }
 
         _isLoading = false;
+    }
+
+    private void ApplyRouteParametersFromCurrentUri()
+    {
+        var segments = Navigation
+            .ToAbsoluteUri(Navigation.Uri)
+            .AbsolutePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var eventSegmentIndex = Array.FindIndex(
+            segments,
+            segment => string.Equals(segment, "events", StringComparison.OrdinalIgnoreCase));
+
+        if (eventSegmentIndex < 0 || eventSegmentIndex + 4 != segments.Length)
+        {
+            return;
+        }
+
+        if (!string.Equals(segments[eventSegmentIndex + 2], "sessions", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(segments[eventSegmentIndex + 3], "create", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (Guid.TryParse(segments[eventSegmentIndex + 1], out var eventId))
+        {
+            EventId = eventId;
+        }
     }
 
     private void ApplyCreateContext(EventSessionCreateContextDto context)

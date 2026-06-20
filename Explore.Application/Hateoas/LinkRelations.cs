@@ -250,6 +250,11 @@ public static class LinkRelations
     public const string Cancel = "cancel";
 
     /// <summary>
+    /// Archive action for lifecycle-managed resources.
+    /// </summary>
+    public const string Archive = "archive";
+
+    /// <summary>
     /// Revoke action for grants, invitations, or other auditable authority records.
     /// </summary>
     public const string Revoke = "revoke";
