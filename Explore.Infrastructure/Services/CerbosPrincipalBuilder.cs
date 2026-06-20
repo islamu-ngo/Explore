@@ -77,6 +77,7 @@ public class CerbosPrincipalBuilder
 
         return Principal
             .NewInstance(userId.ToString(), "islamuevent_authenticated_user")
+            .WithAttribute("userId", AttributeValue.StringValue(userId.ToString()))
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(isInstanceAdmin))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(tenantMemberships))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(orgMemberships));

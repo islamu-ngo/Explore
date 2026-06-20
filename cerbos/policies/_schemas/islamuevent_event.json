@@ -15,6 +15,10 @@
       "type": "string",
       "description": "Actor (creator/owner) identifier."
     },
+    "userId": {
+      "type": "string",
+      "description": "Owning user identifier for events published under a user actor."
+    },
     "organizationId": {
       "type": "string",
       "description": "Owning organization identifier. Used by islamuevent_org_admin derived role."

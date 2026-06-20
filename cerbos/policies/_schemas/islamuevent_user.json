@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Resource attributes for user resources. Populated by ResourceDescriptors.User.",
+  "description": "Resource attributes for user resources. Populated by ResourceDescriptors.User and user self-service commands.",
   "type": "object",
   "properties": {
     "tenantId": {
@@ -9,8 +9,8 @@
     },
     "actorId": {
       "type": "string",
-      "description": "Associated actor identifier."
+      "description": "Associated actor identifier when the profile DTO or HAL link context has already loaded the actor. Optional for self-service update commands."
     }
   },
-  "required": ["tenantId", "actorId"]
+  "required": ["tenantId"]
 }

@@ -87,11 +87,18 @@ The API uses a Hypermedia as the Engine of Application State (HATEOAS) model. HA
 -   **Description**: A powerful, open-source, stateless authorization service that allows policies to be defined in human-readable YAML files.
 -   **Layering**: Application owns provider-neutral catalogs and checks (`AuthorizationActions`, `ResourceKinds`, `AuthorizationCheck`, `ResourceDescriptors`). Infrastructure owns Cerbos gRPC, Admin API, ZIP package export, client caching, and package publishing details.
 -   **Usage**: When configured, the `CerbosAuthorizationService` translates the application's authorization request into a Cerbos `CheckResources` API call. Cerbos policy resource kinds are namespaced, for example `islamuevent_custom_property_template` and `islamuevent_custom_property_projection`.
+-   **Scoped checks**: Resource descriptors always send tenant context as resource attributes. The shared instance PDP does not send a Cerbos resource `scope` by default, so bundled root policies work without tenant-scoped policy files. Set `Cerbos:UsePolicyScope=true` only when the target PDP has a complete scoped-policy chain and `engine.lenientScopeSearch=true`.
 -   **BYO (Bring Your Own) Cerbos**: The platform supports a multi-tenant model where each tenant can optionally provide their own Cerbos PDP and Admin API configuration.
 
-### 4.1.1 Manual Cerbos Package Upload
+Event-session creation uses the `islamuevent_event_session` Cerbos resource even before a session row exists. The create check authorizes against the parent event id with `tenantId`, `eventId`, and `authorizationPhase=pre_create` attributes. Instance admins can always create sessions; tenant admins can create sessions within their tenant; event owners/managers can create sessions for their assigned event; authenticated users remain view-only. In the shared instance-provider path, pre-create session checks are evaluated through the local parity provider even when they appear inside mixed HATEOAS batches, while tenant BYO Cerbos remains authoritative when configured.
 
-When Admin API sync is unavailable, operators can push local policy and schema files with `cerbosctl` directly:
+User profile updates use the `islamuevent_user` resource with the target domain user id as the resource id. The static Cerbos policy mirrors local fallback RBAC: instance admins can manage all users, tenant admins can manage users in their tenant, and an authenticated human user can `update` only the resource whose id matches either the Cerbos principal id or `principal.attr.userId`. That `userId` attribute carries the internal domain user id so self-service account settings still work when the OIDC subject is an external provider identifier. The `actorId` user-resource attribute is optional because self-service account settings updates authorize before the actor/profile-picture context has to be loaded. In the shared instance-provider path, `islamuevent_user:update` checks are evaluated through local parity so a stale shared PDP package cannot block the canonical self-service user handler; tenant BYO Cerbos remains authoritative when configured.
+
+### 4.1.1 Cerbos Package Upload
+
+For the hosted production path, `.github/workflows/cerbos-policy-check.yml` publishes schemas and policies to the Cerbos Admin API only after `Cerbos Policy Validation` succeeds on a `push` to `main`. The publish job uses the protected `production` GitHub Environment approval gate and the repository secrets documented in [CONFIGURATION.md](CONFIGURATION.md#deployment-cicd-secrets).
+
+When CI/CD publishing or Admin API sync is unavailable, operators can still push local policy and schema files with `cerbosctl` directly:
 
 ```bash
 docker run --rm -it -v "/home/{user}/ISLAMU/Github/Event/cerbos/policies/_schemas:/schemas:ro" ghcr.io/cerbos/cerbosctl:0.53.0 --server={cerbos.example.com:443} --username={username} --password={password} put schema -R /schemas

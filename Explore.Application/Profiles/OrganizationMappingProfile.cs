@@ -90,7 +90,13 @@ public class OrganizationMappingProfile : Profile
             .ForMember(dest => dest.ActorBannerPictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.BannerPicture != null ? src.Actor.BannerPicture.Uri : null))
             .ForMember(dest => dest.ActorBackgroundImageId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundImageId : null))
             .ForMember(dest => dest.ActorBackgroundImageUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.BackgroundImage != null ? src.Actor.BackgroundImage.Uri : null));
-        CreateMap<CreateOrganizationDto, Organization>();
+        CreateMap<CreateOrganizationDto, Organization>()
+            .ConstructUsing(src => new Organization
+            {
+                Pii = new OrganizationPii { FullName = src.FullName },
+                ApprovalStatus = null!,
+                Tenant = null!
+            });
         CreateMap<UpdateOrganizationDto, Organization>();
         CreateMap<UpdateOrganizationApprovalStatusDto, Organization>();
 

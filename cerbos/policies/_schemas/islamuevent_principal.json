@@ -3,6 +3,14 @@
   "description": "Principal attributes built by CerbosPrincipalBuilder. Validated on every Cerbos check request.",
   "type": "object",
   "properties": {
+    "userId": {
+      "type": "string",
+      "description": "Internal domain user identifier for human principals. Allows policies to compare platform user ownership even when an external subject is used as the principal id."
+    },
+    "is_machine": {
+      "type": "boolean",
+      "description": "Whether the principal represents an API-key machine caller instead of an interactive human user."
+    },
     "isInstanceAdmin": {
       "type": "boolean",
       "description": "Whether the principal is an instance-level administrator."

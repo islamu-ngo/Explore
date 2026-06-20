@@ -56,24 +56,14 @@ public static class ResourceDescriptors
     public static readonly ResourceDescriptor<EventDto> Event = new(
         ResourceKinds.Event,
         dto => dto.Id.ToString(),
-        dto => new Dictionary<string, object>
-        {
-            ["eventId"] = dto.Id.ToString(),
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["actorId"] = dto.ActorId.ToString()
-        },
+        EventAttributes,
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
     /// <summary>List DTO variant for collection item-level permission checks.</summary>
     public static readonly ResourceDescriptor<EventListDto> EventList = new(
         ResourceKinds.Event,
         dto => dto.Id.ToString(),
-        dto => new Dictionary<string, object>
-        {
-            ["eventId"] = dto.Id.ToString(),
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["actorId"] = dto.ActorId.ToString()
-        },
+        EventListAttributes,
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
     public static readonly ResourceDescriptor<OrganizationDto> Organization = new(
@@ -429,4 +419,35 @@ public static class ResourceDescriptors
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
     #endregion
+
+    private static Dictionary<string, object> EventAttributes(EventDto dto)
+    {
+        var attributes = BaseEventAttributes(dto.Id, dto.TenantId, dto.ActorId);
+        AddIfPresent(attributes, "userId", dto.ActorUserId);
+        AddIfPresent(attributes, "organizationId", dto.ActorOrganizationId);
+        AddIfPresent(attributes, "groupId", dto.ActorGroupId);
+        return attributes;
+    }
+
+    private static Dictionary<string, object> EventListAttributes(EventListDto dto)
+    {
+        var attributes = BaseEventAttributes(dto.Id, dto.TenantId, dto.ActorId);
+        AddIfPresent(attributes, "userId", dto.ActorUserId);
+        AddIfPresent(attributes, "organizationId", dto.ActorOrganizationId);
+        AddIfPresent(attributes, "groupId", dto.ActorGroupId);
+        return attributes;
+    }
+
+    private static Dictionary<string, object> BaseEventAttributes(Guid eventId, Guid tenantId, Guid actorId) => new()
+    {
+        ["eventId"] = eventId.ToString(),
+        ["tenantId"] = tenantId.ToString(),
+        ["actorId"] = actorId.ToString()
+    };
+
+    private static void AddIfPresent(Dictionary<string, object> attributes, string key, Guid? value)
+    {
+        if (value.HasValue && value.Value != Guid.Empty)
+            attributes[key] = value.Value.ToString();
+    }
 }

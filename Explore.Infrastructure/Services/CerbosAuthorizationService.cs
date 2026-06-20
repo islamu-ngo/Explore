@@ -228,9 +228,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                     .NewInstance(check.ResourceKind, check.ResourceId)
                     .WithActions(check.Action);
 
-                // Scope enables per-tenant policy overrides. When a tenant has custom policies,
-                // Cerbos resolves the most specific scoped policy and falls back to root.
-                if (effectiveTenantId is not null)
+                if (_settings.UsePolicyScope && effectiveTenantId is not null)
                     entry = entry.WithScope(effectiveTenantId);
 
                 // Map resource attributes to Cerbos AttributeValue types
@@ -379,6 +377,13 @@ public class CerbosSettings
     /// and leave this false.
     /// </summary>
     public bool PlaintextMode { get; set; } = true;
+
+    /// <summary>
+    /// When true, sends the tenant id as the Cerbos resource scope for scoped policy
+    /// overrides. Leave false for the shared bundled policies; tenant isolation is
+    /// still enforced through resource attributes.
+    /// </summary>
+    public bool UsePolicyScope { get; set; }
 }
 
 /// <summary>

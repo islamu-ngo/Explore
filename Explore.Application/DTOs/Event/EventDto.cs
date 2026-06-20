@@ -42,6 +42,9 @@ public class EventDto
     public string? ActorDid { get; set; }
     public int ActorTypeId { get; set; }
     public required string ActorTypeFullName { get; set; }
+    public Guid? ActorUserId { get; set; }
+    public Guid? ActorOrganizationId { get; set; }
+    public Guid? ActorGroupId { get; set; }
     public Guid? ActorProfilePictureId { get; set; }
     public string? ActorProfilePictureUri { get; set; }
 

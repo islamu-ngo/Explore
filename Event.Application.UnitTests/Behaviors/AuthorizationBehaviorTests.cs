@@ -6,10 +6,13 @@
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -256,6 +259,49 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
+    public async Task Handle_WithCreateOrganizationCommand_UsesPreCreateResourceContext()
+    {
+        var secureBehavior = new AuthorizationBehavior<CreateOrganizationCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<CreateOrganizationCommand, BaseCommandResponse<Guid>>>>());
+        var command = new CreateOrganizationCommand
+        {
+            OrganizationDto = new()
+            {
+                FullName = "Community Organization",
+                Email = "org@example.com",
+                Address = "1 Main Street",
+                City = "Brussels",
+                Country = "Belgium",
+                Postcode = 1000
+            }
+        };
+        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+
+        _authService.IsAllowedAsync(
+                ResourceKinds.Organization,
+                CreateOrganizationCommand.PreCreateResourceId,
+                AuthorizationActions.Create,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["authorizationPhase"].Equals(CreateOrganizationCommand.PreCreateAuthorizationPhase)),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _authService.Received(1).IsAllowedAsync(
+            ResourceKinds.Organization,
+            CreateOrganizationCommand.PreCreateResourceId,
+            AuthorizationActions.Create,
+            Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes != null
+                && attributes["authorizationPhase"].Equals(CreateOrganizationCommand.PreCreateAuthorizationPhase)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WithPublishEventCommand_PassesEventIdResourceAttribute()
     {
         var secureBehavior = new AuthorizationBehavior<PublishEventCommand, BaseCommandResponse<Guid>>(
@@ -288,6 +334,65 @@ public class AuthorizationBehaviorTests
             Arg.Is<IDictionary<string, object>?>(attributes =>
                 attributes != null && attributes["eventId"].Equals(eventId.ToString())),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WithEventResource_EnrichesMissingEventAuthorizationContext()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var secureBehavior = new AuthorizationBehavior<UpdateEventCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventCommand, BaseCommandResponse<Guid>>>>(),
+            eventRepository);
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        var command = new UpdateEventCommand
+        {
+            Id = eventId,
+            EventStatusDto = new UpdateEventStatusDto { EventStatusId = 3 }
+        };
+        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+
+        eventRepository.GetEventWithDetails(eventId).Returns(new Explore.Domain.Event
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            Title = "Community Program",
+            ActorId = actorId,
+            Actor = new Actor
+            {
+                Id = actorId,
+                TenantId = tenantId,
+                OrganizationId = organizationId,
+                ActorTypeId = 2,
+                ActorType = null!,
+                Tenant = null!,
+                Pii = new ActorPii { DisplayName = "ISLAMU" }
+            },
+            Tenant = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            VisibilityType = null!
+        });
+        _authService.IsAllowedAsync(
+                ResourceKinds.Event,
+                eventId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["eventId"].Equals(eventId.ToString())
+                    && attributes["tenantId"].Equals(tenantId.ToString())
+                    && attributes["actorId"].Equals(actorId.ToString())
+                    && attributes["organizationId"].Equals(organizationId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventRepository.Received(1).GetEventWithDetails(eventId);
     }
 
     [Test]

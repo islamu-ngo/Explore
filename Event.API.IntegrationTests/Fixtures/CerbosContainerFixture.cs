@@ -94,6 +94,8 @@ public sealed class CerbosContainerFixture : IAsyncInitializer, IAsyncDisposable
                 watchForChanges: false
             schema:
               enforcement: warn
+            engine:
+              lenientScopeSearch: true
             """;
 
         return System.Text.Encoding.UTF8.GetBytes(config);

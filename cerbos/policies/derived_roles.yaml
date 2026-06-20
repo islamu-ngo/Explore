@@ -44,6 +44,17 @@ derivedRoles:
             has(request.resource.attr.organizationId) &&
             request.resource.attr.organizationId in request.principal.attr.orgMemberships
 
+    - name: islamuevent_actor_user_owner
+      parentRoles: ["islamuevent_authenticated_user"]
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.userId) &&
+            has(request.principal.attr.userId) &&
+            request.resource.attr.userId == request.principal.attr.userId &&
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true)
+
     # ========================================
     # EVENT-SCOPED DERIVED ROLES
     # ========================================

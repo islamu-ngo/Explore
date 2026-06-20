@@ -10,7 +10,11 @@
     "organizationId": {
       "type": "string",
       "description": "Organization identifier (same as resource ID). Used by islamuevent_org_admin derived role."
+    },
+    "authorizationPhase": {
+      "type": "string",
+      "description": "Authorization phase marker. Organization create checks use pre_create before an organization ID exists."
     }
   },
-  "required": ["tenantId", "organizationId"]
+  "required": ["tenantId"]
 }

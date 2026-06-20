@@ -116,6 +116,38 @@ public class CerbosGrpcSdkTests : IDisposable
     }
 
     [Test]
+    public async Task GrpcSdk_ScopedUserOwnedEvent_ShouldFallbackToBundledRootPolicy()
+    {
+        const string tenantId = "tenant-1";
+        const string userId = "user-owned-event-owner";
+        const string eventId = "event-grpc-user-owned-scoped";
+
+        var principal = Principal
+            .NewInstance(userId, "islamuevent_authenticated_user")
+            .WithAttribute("userId", AttributeValue.StringValue(userId))
+            .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(false))
+            .WithAttribute("tenantMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()))
+            .WithAttribute("orgMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()));
+
+        var resource = ResourceEntry
+            .NewInstance("islamuevent_event", eventId)
+            .WithScope(tenantId)
+            .WithAttribute("tenantId", AttributeValue.StringValue(tenantId))
+            .WithAttribute("eventId", AttributeValue.StringValue(eventId))
+            .WithAttribute("actorId", AttributeValue.StringValue("actor-user-owned-event"))
+            .WithAttribute("userId", AttributeValue.StringValue(userId))
+            .WithActions("update", "delete", "publish");
+
+        var response = await SendCheckResourcesAsync(principal, resource);
+        var result = response.Find(eventId);
+
+        result.Should().NotBeNull("tenant-scoped HATEOAS event checks must still use the bundled root policy when no tenant override exists");
+        AssertEffect(result!, "update", Effect.Allow);
+        AssertEffect(result!, "delete", Effect.Allow);
+        AssertEffect(result!, "publish", Effect.Allow);
+    }
+
+    [Test]
     public async Task GrpcSdk_MachineCaller_ShouldNotPassHumanEventPreCreateGate()
     {
         var principal = BuildMachinePrincipal();

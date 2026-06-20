@@ -1,6 +1,7 @@
 // ABOUTME: Batch evaluation optimization for FallbackAuthorizationService.
 // ABOUTME: Pre-resolves admin authority once per batch to eliminate repeated async overhead.
 
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 
@@ -64,7 +65,8 @@ public partial class FallbackAuthorizationService
             ? (IReadOnlySet<Guid>)new HashSet<Guid>()
             : (await _adminContext.GetAdminOrganizationIdsAsync(cancellationToken)).ToHashSet();
 
-        return new AuthorityProfile(isInstanceAdmin, isTenantAdmin, tenantId, adminOrgIds, _adminContext.UserId);
+        var userId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        return new AuthorityProfile(isInstanceAdmin, isTenantAdmin, tenantId, adminOrgIds, userId);
     }
 
     private bool EvaluateWithProfile(
@@ -101,6 +103,8 @@ public partial class FallbackAuthorizationService
             "islamuevent_custom_property_projection" or "islamuevent_custom_property_governance"
                 => profile.IsTenantAdmin,
             "islamuevent_platform_namespace" => action is "view",
+            "islamuevent_organization" when action is "create" && HasAuthorizationPhase(resourceAttributes, AuthorizationPhases.PreCreate)
+                => IsOrganizationCreateAllowedForProfile(profile, resourceAttributes),
             "islamuevent_organization" => profile.IsTenantAdmin || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId),
             "islamuevent_organization_member" => IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "islamuevent_organization_review" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
@@ -111,6 +115,7 @@ public partial class FallbackAuthorizationService
                 => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                     && (IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
                         || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId)
+                        || IsActorUserOwnerFromProfile(profile, resourceAttributes)
                         || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
             "islamuevent_event_registration" => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                 && (action is "create" or "view"
@@ -165,6 +170,22 @@ public partial class FallbackAuthorizationService
         return tenantId == profile.TenantId && profile.UserId.HasValue;
     }
 
+    private bool IsOrganizationCreateAllowedForProfile(
+        AuthorityProfile profile,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        var tenantId = ResolveTenantId(resourceAttributes);
+        return tenantId == profile.TenantId && profile.UserId.HasValue;
+    }
+
+    private static bool HasAuthorizationPhase(
+        IDictionary<string, object>? resourceAttributes,
+        string phase)
+    {
+        return resourceAttributes?.TryGetValue("authorizationPhase", out var value) == true
+            && string.Equals(value?.ToString(), phase, StringComparison.Ordinal);
+    }
+
     private static bool IsOrgAdminFromProfile(
         AuthorityProfile profile,
         IDictionary<string, object>? resourceAttributes,
@@ -172,6 +193,15 @@ public partial class FallbackAuthorizationService
     {
         var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
         return orgId.HasValue && profile.AdminOrgIds.Contains(orgId.Value);
+    }
+
+    private static bool IsActorUserOwnerFromProfile(
+        AuthorityProfile profile,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        return profile.UserId.HasValue
+            && TryResolveGuidAttribute(resourceAttributes, "userId", out var ownerUserId)
+            && ownerUserId == profile.UserId.Value;
     }
 
     private static bool IsAdminForOrgScope(

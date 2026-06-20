@@ -25,6 +25,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IUserContext _userContext;
+    private readonly IAdminContext _adminContext;
     private readonly IMapper _mapper;
     private readonly ITenantContext _tenantContext;
     private readonly HybridCache _cache;
@@ -36,6 +37,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         IActorRepository actorRepository,
         IStorageObjectRepository storageObjectRepository,
         IUserContext userContext,
+        IAdminContext adminContext,
         IMapper mapper,
         ITenantContext tenantContext,
         HybridCache cache,
@@ -46,6 +48,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         _actorRepository = actorRepository;
         _storageObjectRepository = storageObjectRepository;
         _userContext = userContext;
+        _adminContext = adminContext;
         _mapper = mapper;
         _tenantContext = tenantContext;
         _cache = cache;
@@ -70,11 +73,17 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         var currentUserId = _userContext.GetRequiredUserId();
 
         var organization = _mapper.Map<Organization>(request.OrganizationDto);
+        var tenantId = _tenantContext.TenantId;
+        var createdAt = DateTime.UtcNow;
+        var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
 
-        // Set required fields
-        organization.ApprovalStatusId = (int)ApprovalStatusEnum.Pending;
-        organization.TenantId = _tenantContext.TenantId;
-        organization.CreatedAt = DateTime.UtcNow;
+        organization.ApprovalStatusId = isTenantAdmin
+            ? (int)ApprovalStatusEnum.Approved
+            : (int)ApprovalStatusEnum.Pending;
+        organization.TenantId = tenantId;
+        organization.CreatedAt = createdAt;
+        organization.ApprovedAt = isTenantAdmin ? createdAt : null;
+        organization.ApprovedBy = isTenantAdmin ? currentUserId : null;
 
         // Create the Organization first (without ActorId)
         organization = await _organizationRepository.Create(organization);

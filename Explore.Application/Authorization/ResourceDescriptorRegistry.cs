@@ -11,6 +11,8 @@ using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventAgendaItem;
+using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -57,6 +59,12 @@ public static class ResourceDescriptorRegistry
         // Event
         [typeof(EventDto)] = global::Explore.Application.Authorization.ResourceKinds.Event,
         [typeof(EventListDto)] = global::Explore.Application.Authorization.ResourceKinds.Event,
+
+        [typeof(EventAgendaItemDto)] = global::Explore.Application.Authorization.ResourceKinds.EventAgendaItem,
+        [typeof(EventAgendaItemListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventAgendaItem,
+
+        [typeof(EventDayDto)] = global::Explore.Application.Authorization.ResourceKinds.EventDay,
+        [typeof(EventDayListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventDay,
 
         // Tenant
         [typeof(TenantDto)] = global::Explore.Application.Authorization.ResourceKinds.Tenant,

@@ -5,6 +5,7 @@ using Cerbos.Api.V1.Effect;
 using Cerbos.Sdk;
 using Cerbos.Sdk.Builder;
 using Cerbos.Sdk.Response;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
@@ -196,6 +197,90 @@ public class CerbosAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowedBatchAsync_ScopedCheck_DefaultsToTenantAttributeWithoutCerbosPolicyScope()
+    {
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid().ToString();
+        const string eventId = "event-policy-scope-default";
+
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+
+        Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
+        var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        protoResponse.Results.Add(CreateResultEntry(eventId, ResourceKinds.Event, AuthorizationActions.Update, Effect.Allow));
+
+        _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(call =>
+            {
+                capturedRequest = call.ArgAt<CheckResourcesRequest>(0).ToCheckResourcesRequest();
+                return new CheckResourcesResponse(protoResponse);
+            });
+
+        var service = CreateService();
+        var checks = new List<AuthorizationCheck>
+        {
+            new(
+                ResourceKinds.Event,
+                eventId,
+                AuthorizationActions.Update,
+                new Dictionary<string, object> { ["eventId"] = eventId },
+                new AuthorizationScope(TenantId: tenantId))
+        };
+
+        var result = await service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(result.Single()).IsTrue();
+        await Assert.That(capturedRequest).IsNotNull();
+        var resource = capturedRequest!.Resources[0].Resource;
+        await Assert.That(resource.Scope).IsEqualTo(string.Empty);
+        await Assert.That(resource.Attr["tenantId"].StringValue).IsEqualTo(tenantId);
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WhenPolicyScopeEnabled_SendsTenantAsCerbosResourceScope()
+    {
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid().ToString();
+        const string eventId = "event-policy-scope-enabled";
+
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+
+        Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
+        var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        protoResponse.Results.Add(CreateResultEntry(eventId, ResourceKinds.Event, AuthorizationActions.Update, Effect.Allow));
+
+        _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(call =>
+            {
+                capturedRequest = call.ArgAt<CheckResourcesRequest>(0).ToCheckResourcesRequest();
+                return new CheckResourcesResponse(protoResponse);
+            });
+
+        var service = CreateService(usePolicyScope: true);
+        var checks = new List<AuthorizationCheck>
+        {
+            new(
+                ResourceKinds.Event,
+                eventId,
+                AuthorizationActions.Update,
+                new Dictionary<string, object> { ["eventId"] = eventId },
+                new AuthorizationScope(TenantId: tenantId))
+        };
+
+        var result = await service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(result.Single()).IsTrue();
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.Resources[0].Resource.Scope).IsEqualTo(tenantId);
+    }
+
+    [Test]
     public async Task IsAllowedBatchAsync_WithSameResourceIdAcrossKinds_MapsDecisionByKindAndId()
     {
         var userId = Guid.NewGuid();
@@ -357,7 +442,8 @@ public class CerbosAuthorizationServiceTests
 
     private CerbosAuthorizationService CreateService(
         string grpcEndpoint = "http://localhost:3593",
-        IEventAuthoritySnapshotService? eventAuthoritySnapshotService = null)
+        IEventAuthoritySnapshotService? eventAuthoritySnapshotService = null,
+        bool usePolicyScope = false)
     {
         return new CerbosAuthorizationService(
             _cerbosClient,
@@ -370,7 +456,12 @@ public class CerbosAuthorizationServiceTests
             _settingsResolver,
             _tenantContext,
             _clientFactory,
-            Options.Create(new CerbosSettings { GrpcEndpoint = grpcEndpoint, PlaintextMode = true }),
+            Options.Create(new CerbosSettings
+            {
+                GrpcEndpoint = grpcEndpoint,
+                PlaintextMode = true,
+                UsePolicyScope = usePolicyScope
+            }),
             _logger);
     }
 

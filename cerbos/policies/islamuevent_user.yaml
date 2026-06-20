@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for user resources.
-# Users: instance admins manage all, tenant admins manage users in their tenant.
+# ABOUTME: Allows admins to manage users and signed-in users to update their own profile.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -24,6 +24,19 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
+
+    # Users can update their own account profile
+    - actions: ["update"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            request.principal.id == request.resource.id ||
+            (has(request.principal.attr.userId) &&
+             request.principal.attr.userId == request.resource.id &&
+             (!has(request.principal.attr.is_machine) || request.principal.attr.is_machine == false))
 
     # All authenticated users can view user profiles
     - actions: ["view"]

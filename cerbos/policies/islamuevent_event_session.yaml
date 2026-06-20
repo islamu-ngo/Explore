@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for event_session resources.
-# Event sessions are org-scoped: org admins manage their event sessions.
+# ABOUTME: Allows tenant/event administrators to manage sessions, including parent-event pre-create checks.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -24,6 +24,20 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
+
+    # Session creation is a pre-create check: the session row does not exist yet,
+    # so the API authorizes against the parent event id plus tenant/event attrs.
+    - actions: ["create"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+        - islamuevent_event_owner
+        - islamuevent_event_manager
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.authorizationPhase) &&
+            request.resource.attr.authorizationPhase == "pre_create"
 
     # Org admins can manage event sessions for their organization
     - actions: ["view", "create", "update", "delete"]

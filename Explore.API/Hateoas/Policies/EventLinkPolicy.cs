@@ -74,6 +74,11 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             ["tenantId"] = dto.TenantId.ToString(),
             ["eventId"] = dto.Id.ToString()
         };
+        var eventSessionPreCreateResourceAttributes = new Dictionary<string, object>(eventScopedResourceAttributes)
+        {
+            ["authorizationPhase"] = AuthorizationPhases.PreCreate
+        };
+        var eventAuthorizationScope = new AuthorizationScope(TenantId: dto.TenantId.ToString());
 
         yield return new LinkDefinition(
             LinkRelations.AddSession,
@@ -82,7 +87,11 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             "POST",
             "Add session",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Create, typeof(EventSessionDto), dto.Id.ToString(), eventScopedResourceAttributes);
+            .RequirePermission(AuthorizationActions.Create,
+                typeof(EventSessionDto),
+                dto.Id.ToString(),
+                eventSessionPreCreateResourceAttributes,
+                eventAuthorizationScope);
 
         yield return new LinkDefinition(
             LinkRelations.SessionCreateContext,
@@ -91,7 +100,11 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             "GET",
             "Program item defaults",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Create, typeof(EventSessionDto), dto.Id.ToString(), eventScopedResourceAttributes);
+            .RequirePermission(AuthorizationActions.Create,
+                typeof(EventSessionDto),
+                dto.Id.ToString(),
+                eventSessionPreCreateResourceAttributes,
+                eventAuthorizationScope);
 
         yield return new LinkDefinition(
             LinkRelations.AddSessionGroup,
@@ -100,7 +113,11 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             "POST",
             "Add program section",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Create, typeof(EventSessionGroupDto), dto.Id.ToString(), eventScopedResourceAttributes);
+            .RequirePermission(AuthorizationActions.Create,
+                typeof(EventSessionGroupDto),
+                dto.Id.ToString(),
+                eventScopedResourceAttributes,
+                eventAuthorizationScope);
 
         yield return new LinkDefinition(
             LinkRelations.Team,
@@ -220,6 +237,17 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 "Publish event",
                 RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
+
+            yield return CreateLifecycleStatusLink(LinkRelations.Cancel, dto, "Cancel event");
+            yield return CreateLifecycleStatusLink(LinkRelations.Archive, dto, "Archive event");
+        }
+        else if (dto.EventStatusId == (int)EventStatusEnum.Published)
+        {
+            yield return CreateLifecycleStatusLink(LinkRelations.Cancel, dto, "Cancel event");
+        }
+        else if (dto.EventStatusId is (int)EventStatusEnum.Cancelled or (int)EventStatusEnum.Completed)
+        {
+            yield return CreateLifecycleStatusLink(LinkRelations.Archive, dto, "Archive event");
         }
 
         // Delete link - requires authentication
@@ -254,6 +282,16 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
     }
 
     private static bool CanSubscribeToOrganizer(int actorTypeId) => actorTypeId is (int)ActorTypeEnum.Organization or (int)ActorTypeEnum.Group;
+
+    private static LinkDefinition CreateLifecycleStatusLink(string relation, EventDto dto, string title) =>
+        new LinkDefinition(
+            relation,
+            RouteNames.UpdateEventStatus,
+            new { id = dto.Id },
+            "PUT",
+            title,
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
 
     private static IReadOnlyDictionary<string, object> SubscriptionAttributes(Guid targetActorId) => new Dictionary<string, object>
     {

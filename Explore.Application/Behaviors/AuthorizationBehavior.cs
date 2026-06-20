@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -26,13 +27,16 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
 
     private readonly IAuthorizationProvider _authorizationProvider;
     private readonly ILogger<AuthorizationBehavior<TRequest, TResponse>> _logger;
+    private readonly IEventRepository? _eventRepository;
 
     public AuthorizationBehavior(
         IAuthorizationProvider authorizationProvider,
-        ILogger<AuthorizationBehavior<TRequest, TResponse>> logger)
+        ILogger<AuthorizationBehavior<TRequest, TResponse>> logger,
+        IEventRepository? eventRepository = null)
     {
         _authorizationProvider = authorizationProvider;
         _logger = logger;
+        _eventRepository = eventRepository;
     }
 
     public async Task<TResponse> Handle(
@@ -71,6 +75,11 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             var resourceAttributes = (request is ISecureRequest sr)
                 ? sr.ResourceAttributes
                 : null;
+            resourceAttributes = await EnrichResourceAttributesAsync(
+                attribute.Resource,
+                resourceId,
+                resourceAttributes,
+                cancellationToken);
 
             await EnforceAuthorizationAsync(
                 attribute.Resource,
@@ -85,6 +94,57 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
 
         // No authorization requirements — pass through
         return await next(cancellationToken);
+    }
+
+    private async Task<IDictionary<string, object>?> EnrichResourceAttributesAsync(
+        string resourceKind,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (_eventRepository is null ||
+            resourceKind != ResourceKinds.Event ||
+            !Guid.TryParse(resourceId, out var eventId))
+        {
+            return resourceAttributes;
+        }
+
+        if (HasEventAuthorizationContext(resourceAttributes))
+            return resourceAttributes;
+
+        var eventEntity = await _eventRepository.GetEventWithDetails(eventId);
+        if (eventEntity is null)
+            return resourceAttributes;
+
+        var enriched = resourceAttributes is null
+            ? new Dictionary<string, object>()
+            : new Dictionary<string, object>(resourceAttributes);
+
+        AddIfMissing(enriched, "eventId", eventEntity.Id.ToString());
+        AddIfMissing(enriched, "tenantId", eventEntity.TenantId.ToString());
+        AddIfMissing(enriched, "actorId", eventEntity.ActorId.ToString());
+        AddIfMissing(enriched, "userId", eventEntity.Actor?.UserId);
+        AddIfMissing(enriched, "organizationId", eventEntity.Actor?.OrganizationId);
+        AddIfMissing(enriched, "groupId", eventEntity.Actor?.GroupId);
+
+        return enriched;
+    }
+
+    private static bool HasEventAuthorizationContext(IDictionary<string, object>? attributes) =>
+        attributes?.ContainsKey("eventId") == true &&
+        attributes.ContainsKey("tenantId") &&
+        (attributes.ContainsKey("organizationId") || attributes.ContainsKey("userId") || attributes.ContainsKey("groupId"));
+
+    private static void AddIfMissing(IDictionary<string, object> attributes, string key, string value)
+    {
+        if (!attributes.ContainsKey(key))
+            attributes[key] = value;
+    }
+
+    private static void AddIfMissing(IDictionary<string, object> attributes, string key, Guid? value)
+    {
+        if (value.HasValue && value.Value != Guid.Empty && !attributes.ContainsKey(key))
+            attributes[key] = value.Value.ToString();
     }
 
     private async Task EnforceAuthorizationAsync(

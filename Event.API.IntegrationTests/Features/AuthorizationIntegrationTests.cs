@@ -1,6 +1,5 @@
 // ABOUTME: End-to-end integration tests verifying endpoint-level authorization.
-// Tests that protected endpoints return 401 for anonymous users and allow authenticated users through.
-// Auth state is per-request via X-Test-Auth header — no shared static state, safe for parallel execution.
+// ABOUTME: Tests anonymous denials, authenticated access, and tenant-admin organization creation.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -8,6 +7,13 @@ using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.Organization;
+using Explore.Application.Responses;
+using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Persistence;
+using Explore.Persistence.Seed;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -150,6 +156,86 @@ public class AuthorizationIntegrationTests
 
         // Assert — should NOT be 401; could be 201, 400, or 403 depending on auth provider
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task CreateOrganization_WithTenantAdmin_CreatesApprovedOrganization()
+    {
+        var tenantId = SeedIds.DefaultTenantId;
+        var adminUserId = Guid.NewGuid();
+        await SeedTenantAdminGrantAsync(tenantId, adminUserId);
+
+        var dto = new CreateOrganizationDto
+        {
+            FullName = $"Tenant Admin Org {Guid.NewGuid():N}",
+            Email = "tenant-admin-org@example.com",
+            Country = "Belgium",
+            City = "Brussels",
+            Address = "Admin Street 1",
+            Postcode = 1000
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
+        {
+            Content = JsonContent.Create(dto)
+        };
+        request.Headers.Add(TestAuthHandler.AuthHeaderName,
+            TestAuthHandler.CreateAuthHeaderValue(adminUserId, "Tenant Admin"));
+
+        var response = await _fixture.Client.SendAsync(request);
+        var responseContent = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+
+        var body = JsonSerializer.Deserialize<BaseCommandResponse<Guid>>(
+            responseContent,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await Assert.That(body).IsNotNull();
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var organization = await db.Organizations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleAsync(o => o.Id == body!.Id);
+
+        await Assert.That(organization.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Approved);
+        await Assert.That(organization.ApprovedBy).IsEqualTo(adminUserId);
+        await Assert.That(organization.ApprovedAt).IsNotNull();
+    }
+
+    private async Task SeedTenantAdminGrantAsync(Guid tenantId, Guid userId)
+    {
+        var createdAt = DateTime.UtcNow;
+        var tenantUser = new TenantUser
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Tenant = null!,
+            UserId = userId,
+            User = null!,
+            StatusId = (int)TenantUserStatusEnum.Active,
+            JoinedAt = createdAt,
+            CreatedAt = createdAt
+        };
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        db.TenantUsers.Add(tenantUser);
+        db.TenantUserRoleGrants.Add(new TenantUserRoleGrant
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Tenant = null!,
+            TenantUserId = tenantUser.Id,
+            TenantUser = tenantUser,
+            RoleId = (int)RoleEnum.TenantAdmin,
+            Role = null!,
+            RoleScopeId = (int)RoleScopeEnum.Tenant,
+            GrantedAt = createdAt,
+            CreatedAt = createdAt
+        });
+        await db.SaveChangesAsync();
     }
 
     [Test]

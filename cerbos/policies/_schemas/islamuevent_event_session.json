@@ -14,6 +14,10 @@
     "organizationId": {
       "type": "string",
       "description": "Owning organization identifier. Used by islamuevent_org_admin derived role."
+    },
+    "authorizationPhase": {
+      "type": "string",
+      "description": "Optional lifecycle marker. Event session create checks use pre_create before a session row exists."
     }
   },
   "required": ["tenantId", "eventId"]

@@ -1,8 +1,6 @@
 // ABOUTME: MediatR command for creating a new organization.
-// ABOUTME: Carries the CreateOrganizationDto payload.
-using System;
+// ABOUTME: Carries the CreateOrganizationDto payload and pre-create authorization context.
 using System.Collections.Generic;
-using System.Text;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Responses;
@@ -13,8 +11,16 @@ namespace Explore.Application.Features.Organizations.Requests.Commands;
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Create)]
 public class CreateOrganizationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public const string PreCreateResourceId = "create";
+    public const string PreCreateAuthorizationPhase = AuthorizationPhases.PreCreate;
+
     public required CreateOrganizationDto OrganizationDto { get; set; }
     public string? UserId { get; set; }
 
-    string? ISecureRequest.ResourceId => null;
+    string? ISecureRequest.ResourceId => PreCreateResourceId;
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["authorizationPhase"] = PreCreateAuthorizationPhase
+    };
 }

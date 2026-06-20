@@ -31,6 +31,11 @@ resourcePolicy:
       derivedRoles:
         - islamuevent_org_admin
 
+    - actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_actor_user_owner
+
     # Event creation is a pre-create check: the event actor does not exist yet.
     # The CreateEventCommand handler still enforces tenant user-submission policy
     # and organization/group EventCreate membership before persisting the event.

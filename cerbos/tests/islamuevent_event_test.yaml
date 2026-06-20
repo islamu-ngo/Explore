@@ -35,6 +35,16 @@ principals:
     id: "user-regular"
     roles: ["islamuevent_authenticated_user"]
     attr:
+      userId: "user-regular"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  owning_user:
+    id: "user-owner"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-owner"
       isInstanceAdmin: false
       tenantMemberships: {}
       orgMemberships: {}
@@ -74,6 +84,15 @@ resources:
       tenantId: "tenant-1"
       actorId: "actor-1"
       organizationId: "org-1"
+
+  event_user_owned:
+    kind: "islamuevent_event"
+    id: "event-user-owned"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-user-owned"
+      actorId: "actor-user-owned"
+      userId: "user-owner"
 
   event_pre_create:
     kind: "islamuevent_event"
@@ -138,6 +157,27 @@ tests:
           create: EFFECT_DENY
           update: EFFECT_DENY
           delete: EFFECT_DENY
+
+  - name: "Owning user can manage user-owned events"
+    input:
+      principals: ["owning_user", "regular_user"]
+      resources: ["event_user_owned"]
+      actions: ["view", "update", "delete", "publish"]
+    expected:
+      - principal: "owning_user"
+        resource: "event_user_owned"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+          publish: EFFECT_ALLOW
+      - principal: "regular_user"
+        resource: "event_user_owned"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+          publish: EFFECT_DENY
 
   - name: "Regular user can pass event pre-create gate but machine caller cannot"
     input:

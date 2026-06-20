@@ -131,6 +131,50 @@ public class CerbosPolicyContractTests : IDisposable
     }
 
     [Test]
+    public async Task UserOwnedEvent_ShouldExposeOwnerLifecycleAuthorityOnlyToOwningUser()
+    {
+        var ownerResult = await _cerbos.CheckResourceAsync(
+            principalId: "user-owner",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                userId = "user-owner",
+                isInstanceAdmin = false,
+                tenantMemberships = new { },
+                orgMemberships = new { }
+            },
+            resourceKind: "islamuevent_event",
+            resourceId: "event-user-owned",
+            resourceAttrs: new { tenantId = "tenant-1", eventId = "event-user-owned", userId = "user-owner" },
+            actions: ["view", "update", "delete", "publish"]);
+
+        ownerResult.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        ownerResult.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
+        ownerResult.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
+        ownerResult.Should().ContainKey("publish").WhoseValue.Should().Be("EFFECT_ALLOW");
+
+        var otherResult = await _cerbos.CheckResourceAsync(
+            principalId: "user-other",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                userId = "user-other",
+                isInstanceAdmin = false,
+                tenantMemberships = new { },
+                orgMemberships = new { }
+            },
+            resourceKind: "islamuevent_event",
+            resourceId: "event-user-owned",
+            resourceAttrs: new { tenantId = "tenant-1", eventId = "event-user-owned", userId = "user-owner" },
+            actions: ["view", "update", "delete", "publish"]);
+
+        otherResult.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        otherResult.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
+        otherResult.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        otherResult.Should().ContainKey("publish").WhoseValue.Should().Be("EFFECT_DENY");
+    }
+
+    [Test]
     public async Task TenantAdmin_ShouldBeAllowed_ManageOrganizationsInOwnTenant()
     {
         var result = await _cerbos.CheckResourceAsync(
@@ -145,9 +189,10 @@ public class CerbosPolicyContractTests : IDisposable
             resourceKind: "islamuevent_organization",
             resourceId: "org-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
-            actions: ["view", "update", "delete", "manage_members"]);
+            actions: ["view", "create", "update", "delete", "manage_members"]);
 
         result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
         result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
         result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
         result.Should().ContainKey("manage_members").WhoseValue.Should().Be("EFFECT_ALLOW");
@@ -480,6 +525,38 @@ public class CerbosPolicyContractTests : IDisposable
     }
 
     [Test]
+    public async Task RegularUser_ShouldBeAllowed_OrganizationPreCreateGate()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-regular",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_organization",
+            resourceId: "create",
+            resourceAttrs: new { tenantId = "tenant-1", authorizationPhase = "pre_create" },
+            actions: ["create"]);
+
+        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW",
+            "pre-create organization checks only decide whether the authenticated human request can reach CreateOrganizationCommandHandler");
+    }
+
+    [Test]
+    public async Task MachineCaller_ShouldBeDenied_OrganizationPreCreateGate()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "api-key-machine",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { }, is_machine = true },
+            resourceKind: "islamuevent_organization",
+            resourceId: "create",
+            resourceAttrs: new { tenantId = "tenant-1", authorizationPhase = "pre_create" },
+            actions: ["create"]);
+
+        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY",
+            "machine/API-key organization creation cannot use the human self-registration pre-create gate");
+    }
+
+    [Test]
     public async Task RegularUser_ShouldBeAllowed_EventPreCreateGate()
     {
         var result = await _cerbos.CheckResourceAsync(
@@ -557,6 +634,41 @@ public class CerbosPolicyContractTests : IDisposable
 
         result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
         result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
+    }
+
+    [Test]
+    public async Task RegularUser_ShouldBeAllowed_UpdateOwnUserProfile()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "external-subject-self",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { userId = "user-self", isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_user",
+            resourceId: "user-self",
+            resourceAttrs: new { tenantId = "tenant-1" },
+            actions: ["view", "update", "delete"]);
+
+        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW",
+            "a signed-in user must be able to save their own account settings profile even when the auth subject differs from the domain user id");
+        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY",
+            "self-service profile editing must not imply self-service hard deletion");
+    }
+
+    [Test]
+    public async Task RegularUser_ShouldBeDenied_UpdateAnotherUserProfile()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "external-subject-self",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { userId = "user-self", isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_user",
+            resourceId: "user-other",
+            resourceAttrs: new { tenantId = "tenant-1" },
+            actions: ["update", "delete"]);
+
+        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
     }
 
     public static IEnumerable<string> GetAllViewableResources()

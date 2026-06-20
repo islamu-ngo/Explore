@@ -1,0 +1,117 @@
+# ABOUTME: Cerbos policy test suite for event_session creation and tenant isolation.
+# ABOUTME: Covers parent-event pre-create checks used before a session row exists.
+
+name: EventSessionPolicyTests
+description: "Validates event-session create permissions for admins and event-team roles"
+
+principals:
+  islamuevent_instance_admin:
+    id: "user-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  islamuevent_tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  unrelated_islamuevent_tenant_admin:
+    id: "user-other-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-other": "admin"
+      orgMemberships: {}
+
+  event_manager:
+    id: "user-event-manager"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-1":
+          tenantId: "tenant-1"
+          roles: ["event.manager"]
+          permissions:
+            - "event_session:create"
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  event_session_pre_create:
+    kind: "islamuevent_event_session"
+    id: "event-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      authorizationPhase: "pre_create"
+
+  event_session_other_tenant:
+    kind: "islamuevent_event_session"
+    id: "event-1-tenant-2"
+    attr:
+      tenantId: "tenant-2"
+      eventId: "event-1"
+      authorizationPhase: "pre_create"
+
+tests:
+  - name: "Instance admin tenant admin and event manager can create sessions for the parent event"
+    input:
+      principals: ["islamuevent_instance_admin", "islamuevent_tenant_admin", "event_manager"]
+      resources: ["event_session_pre_create"]
+      actions: ["create"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "event_session_pre_create"
+        actions:
+          create: EFFECT_ALLOW
+      - principal: "islamuevent_tenant_admin"
+        resource: "event_session_pre_create"
+        actions:
+          create: EFFECT_ALLOW
+      - principal: "event_manager"
+        resource: "event_session_pre_create"
+        actions:
+          create: EFFECT_ALLOW
+
+  - name: "Unrelated tenant admin and regular user cannot create sessions"
+    input:
+      principals: ["unrelated_islamuevent_tenant_admin", "regular_user"]
+      resources: ["event_session_pre_create"]
+      actions: ["create"]
+    expected:
+      - principal: "unrelated_islamuevent_tenant_admin"
+        resource: "event_session_pre_create"
+        actions:
+          create: EFFECT_DENY
+      - principal: "regular_user"
+        resource: "event_session_pre_create"
+        actions:
+          create: EFFECT_DENY
+
+  - name: "Event manager cannot create sessions for another tenant"
+    input:
+      principals: ["event_manager"]
+      resources: ["event_session_other_tenant"]
+      actions: ["create"]
+    expected:
+      - principal: "event_manager"
+        resource: "event_session_other_tenant"
+        actions:
+          create: EFFECT_DENY

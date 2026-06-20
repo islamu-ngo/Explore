@@ -1,3 +1,5 @@
+# ABOUTME: Cerbos PDP runtime configuration for local and self-hosted authorization.
+# ABOUTME: Enables policy storage, audit logging, schema validation, and tenant-scope fallback.
 # ============================================================================
 # Cerbos Policy Decision Point (PDP) Configuration
 # ============================================================================
@@ -70,6 +72,12 @@ schema:
   # 'warn' logs validation errors without denying access (safe for rollout).
   # Switch to 'reject' in production to enforce schema compliance.
   enforcement: warn
+
+engine:
+  # Required only when the API is configured with Cerbos:UsePolicyScope=true for
+  # tenant-specific policy overrides. Keeping it enabled is harmless for root
+  # bundled policies and protects opt-in scoped deployments from missing links.
+  lenientScopeSearch: true
 
 compile:
   # Cache compiled policies for 60 seconds (production performance)

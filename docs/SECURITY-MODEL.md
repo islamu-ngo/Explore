@@ -233,7 +233,9 @@ Authorization checks carry explicit scope context via `AuthorizationCheck.Scope`
 
 1. **Check scope** — `AuthorizationCheck.Scope?.TenantId` is preferred when set by a resource descriptor.
 2. **Ambient context** — `ITenantContext.TenantId` is used as fallback when check scope is null.
-3. **Cerbos scope field** — The effective tenant ID populates the Cerbos resource `scope` field, enabling per-tenant policy overrides within a shared PDP.
+3. **Cerbos scope field** — The effective tenant ID populates the Cerbos resource `scope` field only when `Cerbos:UsePolicyScope=true`, enabling per-tenant policy overrides within a shared PDP.
+
+By default, runtime HATEOAS checks keep tenant context in resource attributes and do not set Cerbos resource scope. If `Cerbos:UsePolicyScope=true` is enabled, the instance Cerbos PDP must run with `engine.lenientScopeSearch=true` and have a complete scoped-policy chain; otherwise Cerbos can return missing decisions and permission-bound HAL links fail closed.
 
 ### Override Strategy
 

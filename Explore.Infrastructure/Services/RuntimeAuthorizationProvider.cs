@@ -5,6 +5,7 @@ using System.Text.Json;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Models;
 using Explore.Domain.Constants;
@@ -112,18 +113,54 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         if (byoConfig is not null)
             return await ExecuteByoAsync(byoConfig, checks, cancellationToken);
 
-        // These are handler-owned self-service resources: the Application handlers enforce
-        // the resource-specific policy after the coarse authorization gate. Keep them local
-        // in instance-Cerbos mode so stale PDP policy packages cannot block canonical handlers.
-        if (UsesHandlerOwnedAiConversationAuthorization(checks)
-            || UsesHandlerOwnedEventCreateAuthorization(checks)
-            || UsesHandlerOwnedStorageUploadSessionAuthorization(checks))
-        {
+        // These checks have canonical local parity because handlers or pre-create flows enforce
+        // the resource-specific policy after the coarse authorization gate. Keep them local in
+        // instance-Cerbos mode so stale PDP policy packages cannot block canonical handlers.
+        var localCheckIndexes = GetHandlerOwnedLocalCheckIndexes(checks);
+        if (localCheckIndexes.Count == checks.Count)
             return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
-        }
+
+        if (localCheckIndexes.Count > 0)
+            return await ExecuteMixedLocalAndInstanceAsync(checks, localCheckIndexes, cancellationToken);
 
         // Step 2: Fall back to instance-level provider resolution (Cerbos or Local)
         return await ExecuteInstanceProviderAsync(checks, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<bool>> ExecuteMixedLocalAndInstanceAsync(
+        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<int> localCheckIndexes,
+        CancellationToken cancellationToken)
+    {
+        var results = new bool[checks.Count];
+
+        var localChecks = localCheckIndexes
+            .Select(index => checks[index])
+            .ToArray();
+        var localResults = await _localProvider.IsAllowedBatchAsync(localChecks, cancellationToken);
+        for (var i = 0; i < localCheckIndexes.Count; i++)
+        {
+            results[localCheckIndexes[i]] = i < localResults.Count && localResults[i];
+        }
+
+        var localIndexSet = localCheckIndexes.ToHashSet();
+        var instanceCheckIndexes = Enumerable.Range(0, checks.Count)
+            .Where(index => !localIndexSet.Contains(index))
+            .ToArray();
+
+        if (instanceCheckIndexes.Length == 0)
+            return results;
+
+        var instanceChecks = instanceCheckIndexes
+            .Select(index => checks[index])
+            .ToArray();
+        var instanceResults = await ExecuteInstanceProviderAsync(instanceChecks, cancellationToken);
+        for (var i = 0; i < instanceCheckIndexes.Length; i++)
+        {
+            results[instanceCheckIndexes[i]] = i < instanceResults.Count && instanceResults[i];
+        }
+
+        return results;
     }
 
     private async Task<IReadOnlyList<bool>> ExecuteInstanceProviderAsync(
@@ -280,25 +317,55 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         return mode == "cerbos" ? _cerbosProvider : _localProvider;
     }
 
-    private static bool UsesHandlerOwnedAiConversationAuthorization(IReadOnlyList<AuthorizationCheck> checks)
+    private static IReadOnlyList<int> GetHandlerOwnedLocalCheckIndexes(IReadOnlyList<AuthorizationCheck> checks)
     {
-        return checks.Count > 0
-            && checks.All(check => check.ResourceKind == ResourceKinds.AiConversation);
+        var indexes = new List<int>();
+        for (var i = 0; i < checks.Count; i++)
+        {
+            if (IsHandlerOwnedLocalCheck(checks[i]))
+                indexes.Add(i);
+        }
+
+        return indexes;
     }
 
-    private static bool UsesHandlerOwnedEventCreateAuthorization(IReadOnlyList<AuthorizationCheck> checks)
+    private static bool IsHandlerOwnedLocalCheck(AuthorizationCheck check)
     {
-        return checks.Count > 0
-            && checks.All(check =>
-                check.ResourceKind == ResourceKinds.Event
-                && check.Action == AuthorizationActions.Create
-                && string.Equals(check.ResourceId, "create", StringComparison.Ordinal));
+        return check.ResourceKind == ResourceKinds.AiConversation
+            || IsHandlerOwnedUserProfileUpdateCheck(check)
+            || IsHandlerOwnedEventCreateCheck(check)
+            || IsHandlerOwnedOrganizationCreateCheck(check)
+            || IsHandlerOwnedEventSessionPreCreateCheck(check)
+            || IsHandlerOwnedStorageUploadSessionCheck(check);
     }
 
-    private static bool UsesHandlerOwnedStorageUploadSessionAuthorization(IReadOnlyList<AuthorizationCheck> checks)
+    private static bool IsHandlerOwnedUserProfileUpdateCheck(AuthorizationCheck check)
     {
-        return checks.Count > 0
-            && checks.All(IsHandlerOwnedStorageUploadSessionCheck);
+        return check.ResourceKind == ResourceKinds.User
+            && check.Action == AuthorizationActions.Update
+            && Guid.TryParse(check.ResourceId, out _);
+    }
+
+    private static bool IsHandlerOwnedEventCreateCheck(AuthorizationCheck check)
+    {
+        return check.ResourceKind == ResourceKinds.Event
+            && check.Action == AuthorizationActions.Create
+            && string.Equals(check.ResourceId, "create", StringComparison.Ordinal);
+    }
+
+    private static bool IsHandlerOwnedOrganizationCreateCheck(AuthorizationCheck check)
+    {
+        return check.ResourceKind == ResourceKinds.Organization
+            && check.Action == AuthorizationActions.Create
+            && string.Equals(check.ResourceId, CreateOrganizationCommand.PreCreateResourceId, StringComparison.Ordinal)
+            && HasAuthorizationPhase(check, CreateOrganizationCommand.PreCreateAuthorizationPhase);
+    }
+
+    private static bool IsHandlerOwnedEventSessionPreCreateCheck(AuthorizationCheck check)
+    {
+        return check.ResourceKind == ResourceKinds.EventSession
+            && check.Action == AuthorizationActions.Create
+            && HasAuthorizationPhase(check, AuthorizationPhases.PreCreate);
     }
 
     private static bool IsHandlerOwnedStorageUploadSessionCheck(AuthorizationCheck check)
@@ -307,6 +374,12 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
             && check.Action == AuthorizationActions.Create
             && (string.Equals(check.ResourceId, nameof(CreateStorageUploadSessionCommand), StringComparison.Ordinal)
                 || Guid.TryParse(check.ResourceId, out _));
+    }
+
+    private static bool HasAuthorizationPhase(AuthorizationCheck check, string phase)
+    {
+        return check.ResourceAttributes?.TryGetValue("authorizationPhase", out var value) == true
+            && string.Equals(value?.ToString(), phase, StringComparison.Ordinal);
     }
 
     private static bool UsesSettingAuthorization(IReadOnlyList<AuthorizationCheck> checks)

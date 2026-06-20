@@ -1,0 +1,91 @@
+# ABOUTME: Cerbos policy test suite for user profile resources.
+# ABOUTME: Covers self-service profile updates while keeping other user mutation denied.
+
+name: UserPolicyTests
+description: "Validates user profile self-update permissions"
+
+principals:
+  self_user:
+    id: "external-subject-self"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-self"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  other_user:
+    id: "external-subject-other"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-other"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+resources:
+  own_profile:
+    kind: "islamuevent_user"
+    id: "user-self"
+    attr:
+      tenantId: "tenant-1"
+
+  other_profile:
+    kind: "islamuevent_user"
+    id: "user-other"
+    attr:
+      tenantId: "tenant-1"
+
+tests:
+  - name: "Authenticated user can update own profile"
+    input:
+      principals: ["self_user"]
+      resources: ["own_profile"]
+      actions: ["view", "update", "delete"]
+    expected:
+      - principal: "self_user"
+        resource: "own_profile"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_DENY
+
+  - name: "Authenticated user cannot update another user profile"
+    input:
+      principals: ["self_user"]
+      resources: ["other_profile"]
+      actions: ["update", "delete"]
+    expected:
+      - principal: "self_user"
+        resource: "other_profile"
+        actions:
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+
+  - name: "Tenant admin can manage tenant user profiles"
+    input:
+      principals: ["tenant_admin"]
+      resources: ["own_profile", "other_profile"]
+      actions: ["view", "update", "delete"]
+    expected:
+      - principal: "tenant_admin"
+        resource: "own_profile"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+      - principal: "tenant_admin"
+        resource: "other_profile"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW

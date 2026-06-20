@@ -1,6 +1,8 @@
 // ABOUTME: Async resource-family evaluators for FallbackAuthorizationService.
 // ABOUTME: Tenant-scoped, org-scoped, and resource-specific access evaluation methods.
 
+using Explore.Application.Authorization;
+
 namespace Explore.Infrastructure.Services;
 
 public partial class FallbackAuthorizationService
@@ -61,6 +63,21 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
+        if (IsPreCreateCheck(action, resourceAttributes))
+        {
+            var preCreateTenantId = ResolveTenantId(resourceAttributes);
+            var userId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+            var allowed = preCreateTenantId == _tenantContext.TenantId && userId.HasValue;
+
+            LogDecision(
+                allowed ? "allow" : "deny",
+                $"organization_pre_create user_present={userId.HasValue}",
+                "islamuevent_organization",
+                resourceId,
+                action);
+            return allowed;
+        }
+
         Guid orgId;
 
         if (resourceAttributes?.TryGetValue("organizationId", out var orgIdObj) != true)
@@ -105,6 +122,13 @@ public partial class FallbackAuthorizationService
             resourceId,
             action);
         return isOrgAdmin;
+    }
+
+    private static bool IsPreCreateCheck(string action, IDictionary<string, object>? resourceAttributes)
+    {
+        return action == AuthorizationActions.Create
+            && resourceAttributes?.TryGetValue("authorizationPhase", out var phase) == true
+            && string.Equals(phase?.ToString(), AuthorizationPhases.PreCreate, StringComparison.Ordinal);
     }
 
     private async Task<bool> EvaluateTenantScopedAccessAsync(
@@ -219,6 +243,12 @@ public partial class FallbackAuthorizationService
             return true;
         }
 
+        if (await IsActorUserOwnerAsync(resourceAttributes, cancellationToken))
+        {
+            LogDecision("allow", "actor_user_owner=true", resourceKind, resourceId, action);
+            return true;
+        }
+
         if (await EvaluateEventRolePermissionAsync(resourceKind, resourceId, action, tenantId, eventId, cancellationToken))
             return true;
 
@@ -249,6 +279,17 @@ public partial class FallbackAuthorizationService
 
         LogDecision("allow", "authenticated_pre_create_handler_policy", resourceKind, resourceId, action);
         return true;
+    }
+
+    private async Task<bool> IsActorUserOwnerAsync(
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (!TryResolveGuidAttribute(resourceAttributes, "userId", out var ownerUserId))
+            return false;
+
+        var currentUserId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        return currentUserId == ownerUserId;
     }
 
     private async Task<bool> EvaluateEventRolePermissionAsync(

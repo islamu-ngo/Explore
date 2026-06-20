@@ -12,7 +12,7 @@ namespace Explore.Application.Features.Events.Requests.Commands;
 public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public const string PreCreateResourceId = "create";
-    public const string PreCreateAuthorizationPhase = "pre_create";
+    public const string PreCreateAuthorizationPhase = AuthorizationPhases.PreCreate;
 
     public required CreateEventRequest Request { get; set; }
 

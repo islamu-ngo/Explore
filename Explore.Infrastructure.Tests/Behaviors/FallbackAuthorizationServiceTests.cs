@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Infrastructure.Services;
@@ -357,6 +358,50 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_OrganizationCreateForAuthenticatedUser_AllowsHandlerPolicyEvaluation()
+    {
+        var userId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId,
+            ["authorizationPhase"] = CreateOrganizationCommand.PreCreateAuthorizationPhase
+        };
+
+        var result = await _service.IsAllowedAsync(
+            "islamuevent_organization",
+            CreateOrganizationCommand.PreCreateResourceId,
+            "create",
+            attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_OrganizationCreateWithoutAuthenticatedUser_Denies()
+    {
+        _adminContext.UserId.Returns((Guid?)null);
+        _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId,
+            ["authorizationPhase"] = CreateOrganizationCommand.PreCreateAuthorizationPhase
+        };
+
+        var result = await _service.IsAllowedAsync(
+            "islamuevent_organization",
+            CreateOrganizationCommand.PreCreateResourceId,
+            "create",
+            attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
     public async Task IsAllowed_EventChildWithEventContext_AllowsTenantAdmin()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
@@ -367,6 +412,39 @@ public class FallbackAuthorizationServiceTests
         var result = await _service.IsAllowedAsync("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs);
 
         await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_UserOwnedEvent_AllowsOwningUserUpdate()
+    {
+        var userId = Guid.NewGuid();
+        var attrs = CreateEventContextAttributes();
+        attrs["userId"] = userId;
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, "update", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_UserOwnedEvent_DeniesDifferentUserUpdate()
+    {
+        var currentUserId = Guid.NewGuid();
+        var attrs = CreateEventContextAttributes();
+        attrs["userId"] = Guid.NewGuid();
+        _adminContext.UserId.Returns(currentUserId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        ConfigureEventAuthority(currentUserId, (Guid)attrs["eventId"], PermissionCodes.EventSessionUpdate);
+
+        var result = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, "update", attrs);
+
+        await Assert.That(result).IsFalse();
     }
 
     [Test]
@@ -737,6 +815,33 @@ public class FallbackAuthorizationServiceTests
         await Assert.That(results).Count().IsEqualTo(3);
         await Assert.That(results[0]).IsFalse();
         await Assert.That(results[1]).IsFalse();
+        await Assert.That(results[2]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_UserOwnedEvent_AllowsOwningUserLifecycleActions()
+    {
+        var userId = Guid.NewGuid();
+        var attrs = CreateEventContextAttributes();
+        attrs["userId"] = userId;
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
+
+        var resourceId = attrs["eventId"]!.ToString()!;
+        var checks = new List<AuthorizationCheck>
+        {
+            new("islamuevent_event", resourceId, "update", attrs),
+            new("islamuevent_event", resourceId, "delete", attrs),
+            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results).Count().IsEqualTo(3);
+        await Assert.That(results[0]).IsTrue();
+        await Assert.That(results[1]).IsTrue();
         await Assert.That(results[2]).IsTrue();
     }
 

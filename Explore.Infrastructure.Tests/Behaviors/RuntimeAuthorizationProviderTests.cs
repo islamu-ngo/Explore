@@ -13,6 +13,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Models;
 using Explore.Application.Settings;
@@ -229,6 +230,88 @@ public class RuntimeAuthorizationProviderTests
     }
 
     [Test]
+    public async Task IsAllowedBatchAsync_WithInstanceCerbosMode_UsesLocalAuthorizationForOrganizationPreCreate()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+
+        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        [
+            new AuthorizationCheck(
+                ResourceKinds.Organization,
+                CreateOrganizationCommand.PreCreateResourceId,
+                AuthorizationActions.Create,
+                new Dictionary<string, object>
+                {
+                    ["authorizationPhase"] = CreateOrganizationCommand.PreCreateAuthorizationPhase
+                })
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true]);
+        await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithInstanceCerbosMode_UsesLocalAuthorizationForEventSessionPreCreateInMixedBatch()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        var eventId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid().ToString();
+        var userId = Guid.NewGuid();
+
+        fixture.AdminContext.UserId.Returns(userId);
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.AdminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        fixture.AdminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        fixture.AdminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns([TestTenantId]);
+        fixture.AdminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+
+        var cerbosResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        cerbosResponse.Results.Add(CreateResultEntry(
+            categoryId,
+            ResourceKinds.Category,
+            AuthorizationActions.Create,
+            Effect.Deny));
+        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(new CheckResourcesResponse(cerbosResponse));
+
+        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        [
+            new AuthorizationCheck(
+                ResourceKinds.EventSession,
+                eventId.ToString(),
+                AuthorizationActions.Create,
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = TestTenantId.ToString(),
+                    ["eventId"] = eventId.ToString(),
+                    ["authorizationPhase"] = AuthorizationPhases.PreCreate
+                }),
+            new AuthorizationCheck(
+                ResourceKinds.Category,
+                categoryId,
+                AuthorizationActions.Create,
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = TestTenantId.ToString()
+                },
+                new AuthorizationScope(TenantId: TestTenantId.ToString()))
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true, false]);
+        await fixture.CerbosClient.Received(1).CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
+    [Test]
     [Arguments(nameof(CreateStorageUploadSessionCommand), true)]
     [Arguments("019ecd1d-6b34-7b05-9945-970edd3c1440", false)]
     public async Task IsAllowedBatchAsync_WithInstanceCerbosMode_UsesLocalAuthorizationForStorageUploadSessionGate(
@@ -262,6 +345,36 @@ public class RuntimeAuthorizationProviderTests
         ]);
 
         await Assert.That(results).IsEquivalentTo([true]);
+        await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithInstanceCerbosMode_UsesLocalAuthorizationForUserProfileUpdate()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+
+        fixture.AdminContext.UserId.Returns(userId);
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.AdminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+
+        var attributes = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId.ToString()
+        };
+
+        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        [
+            new AuthorizationCheck(ResourceKinds.User, userId.ToString(), AuthorizationActions.Update, attributes),
+            new AuthorizationCheck(ResourceKinds.User, otherUserId.ToString(), AuthorizationActions.Update, attributes)
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true, false]);
         await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
             Arg.Any<CheckResourcesRequest>(),
             Arg.Any<Metadata>());

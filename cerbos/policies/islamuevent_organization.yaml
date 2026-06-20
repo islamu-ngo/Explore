@@ -20,10 +20,25 @@ resourcePolicy:
         - islamuevent_instance_admin
 
     # Tenant admins can manage all organizations within their tenant
-    - actions: ["view", "update", "delete", "manage_members"]
+    - actions: ["view", "create", "update", "delete", "manage_members"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
+
+    # Organization creation is a pre-create check: the organization row does not exist yet.
+    # The CreateOrganizationCommand handler still validates the payload, binds the tenant,
+    # creates the organization actor, and adds the creator as organization admin.
+    - actions: ["create"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.authorizationPhase) &&
+            request.resource.attr.authorizationPhase == "pre_create" &&
+            (!has(request.principal.attr.is_machine) ||
+            request.principal.attr.is_machine != true)
 
     # Org admins can manage their own organization
     - actions: ["view", "update", "manage_members"]
