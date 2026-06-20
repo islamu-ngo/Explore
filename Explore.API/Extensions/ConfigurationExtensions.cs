@@ -32,7 +32,7 @@ public static class ConfigurationExtensions
     /// Canonical Infisical keys:
     ///   /api:      DEPLOYMENT_MODE (single_tenant or multi_tenant)
     ///   /keycloak: KEYCLOAK_ENDPOINT, KEYCLOAK_REALM
-    ///   /cerbos:   CERBOS_GRPC_ENDPOINT
+    ///   /cerbos:   CERBOS_GRPC_ENDPOINT, CERBOS_USE_POLICY_SCOPE
     ///   /api|/mcp: MCP_ENABLED, MCP_ENDPOINT_PATH, MCP_STATELESS, MCP_ENABLE_LEGACY_SSE
     ///   /ai:       AI_ENDPOINT, AI_MODEL_ID, AI_API_KEY, AI_PROVIDER
     ///   /storage:  STORAGE_S3_ENDPOINT, STORAGE_S3_BUCKET_NAME, STORAGE_S3_ACCESS_KEY_ID, etc.
@@ -61,6 +61,12 @@ public static class ConfigurationExtensions
         // Preserve the operator's raw input (bare host:port or full URL). Normalization happens only
         // at gRPC channel creation time so we don't surface a misleading scheme back to the UI/storage.
         var cerbosGrpcEndpoint = config["CERBOS_GRPC_ENDPOINT"]?.Trim();
+        var cerbosUsePolicyScope = NormalizeBoolean(
+            ReadFirst(
+                config,
+                "CERBOS_USE_POLICY_SCOPE",
+                "CERBOS__USE_POLICY_SCOPE",
+                "Cerbos:UsePolicyScope"));
         var deploymentMode = NormalizeDeploymentMode(config["DEPLOYMENT_MODE"]);
         var mcpEnabled = NormalizeBoolean(
             ReadFirst(
@@ -126,6 +132,7 @@ public static class ConfigurationExtensions
         {
             mappedConfig["Cerbos:GrpcEndpoint"] = cerbosGrpcEndpoint;
         }
+        TrySet(mappedConfig, config, "Cerbos:UsePolicyScope", cerbosUsePolicyScope);
 
         // Deployment
         TrySet(mappedConfig, config, "Deployment:Mode", deploymentMode);

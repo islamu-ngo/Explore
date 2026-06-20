@@ -352,8 +352,12 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         // Cascade: Instance → Tenant → Organization → Group → User
         // Lock precedence: Instance locked > Tenant locked > unlocked cascade
 
-        // Instance lock stops ALL overrides — highest precedence (bypassed in SingleTenant mode)
-        var isInstanceLocked = isMultiTenant && (systemSetting?.IsLocked ?? false);
+        // Instance lock stops ALL overrides — highest precedence.
+        // Honored in both SingleTenant and MultiTenant modes so that explicitly locked
+        // instance settings (e.g. AI provider config seeded via bootstrap worker or saved
+        // via the instance admin UI with LockTenantAiAssistant=true) cannot be shadowed
+        // by stale tenant overrides in single-tenant deployments.
+        var isInstanceLocked = systemSetting?.IsLocked ?? false;
         if (isInstanceLocked)
         {
             return new ResolvedSetting

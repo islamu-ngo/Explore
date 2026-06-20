@@ -119,6 +119,38 @@ public class HierarchicalSettingsResolverTests : IDisposable
         await Assert.That(result).IsNull();
     }
 
+    [Test]
+    public async Task ResolveAsync_InstanceLockStopsTenantOverride_InSingleTenantMode()
+    {
+        SetupSystemSettings(
+            new SystemSetting
+            {
+                SettingKey = "deployment.mode",
+                Value = "\"SingleTenant\"",
+                ValueType = SettingValueType.String,
+                IsLocked = false
+            },
+            new SystemSetting
+            {
+                SettingKey = "ai_assistant.enabled",
+                Value = "true",
+                ValueType = SettingValueType.Boolean,
+                IsLocked = true
+            });
+        var tenantId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        SetupTenantSettings(tenantId, new TenantSetting
+        {
+            TenantId = tenantId,
+            Tenant = null!,
+            SettingKey = "ai_assistant.enabled",
+            Value = "false"
+        });
+
+        var context = new SettingContext(TenantId: tenantId);
+        var result = await _resolver.ResolveAsync<bool>("ai_assistant.enabled", context);
+        await Assert.That(result).IsTrue();
+    }
+
     // --- Batch resolution ---
 
     [Test]

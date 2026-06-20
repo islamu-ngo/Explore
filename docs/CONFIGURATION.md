@@ -27,7 +27,7 @@ Do not treat environment variables as absolute authority forever. In application
 
 ## Deployment CI/CD Secrets
 
-GitHub Actions deployment secrets are **workflow environment secrets**, not runtime app settings and not `SecretProvider` keys. Configure them in GitHub repository environments so production deployments can require approval before secrets are released to the deploy job.
+GitHub Actions deployment secrets are workflow secrets, not runtime app settings and not `SecretProvider` keys. Cerbos policy publishing reads repository secrets through the `${{ secrets.* }}` context while the job remains gated by the `production` GitHub Environment. Coolify deploy credentials are environment-scoped secrets so production deployments can require approval before those secrets are released to deploy jobs.
 
 | Environment | Secret / variable | Purpose |
 |---|---|---|
@@ -37,6 +37,10 @@ GitHub Actions deployment secrets are **workflow environment secrets**, not runt
 | `production` variable | `PRODUCTION_URL` | Public environment URL shown on the GitHub deployment environment. |
 | `production` variable | `PRODUCTION_API_URL` | Required API base URL for production `/alive` and `/health` smoke checks. |
 | `production` variable | `PRODUCTION_UI_URL` | Required UI base URL for production `/alive` and `/health` smoke checks. |
+| Repository secret | `CERBOS_SERVER` | Production Cerbos Admin API gRPC address used by the main-branch policy publish job. |
+| Repository secret | `CERBOS_USERNAME` | Production Cerbos Admin API username used by `cerbosctl`. |
+| Repository secret | `CERBOS_PASSWORD` | Production Cerbos Admin API password used by `cerbosctl`. |
+| Repository secret | `CERBOS_CA_CERT_PEM` | Optional private CA certificate PEM for production Cerbos Admin API TLS verification. |
 | `staging` secret | `COOLIFY_DEPLOY_API_STAGING_WEBHOOK` | Coolify staging API application deployment webhook. |
 | `staging` secret | `COOLIFY_DEPLOY_UI_STAGING_WEBHOOK` | Coolify staging UI application deployment webhook. |
 | `staging` secret | `COOLIFY_DEPLOY_TOKEN` | Bearer token used when invoking staging Coolify webhooks. |
@@ -167,6 +171,7 @@ The `ai-provider` readiness check reports safe booleans such as `endpointConfigu
 Cerbos runtime settings are the first implemented consumer of the shared secrets ownership metadata:
 
 - `Cerbos:GrpcEndpoint` can prefill onboarding/admin forms as deployment bootstrap. Once an operator saves an application-managed endpoint, the saved setting takes precedence unless the key is explicitly deployment-managed.
+- `Cerbos:UsePolicyScope` defaults to `false`. Keep it false for bundled root policies; enable it only when the PDP has tenant-scoped policy files and `engine.lenientScopeSearch=true`.
 - `Cerbos:AdminApi:*` configures policy package sync/status operations, not runtime authorization checks. Admin API credentials are secret-bearing and must be treated as write-only/redacted in UI and API responses.
 - `Secrets:Ownership:DeploymentManagedKeys` can mark `cerbos.grpc_endpoint`, `Cerbos:AdminApi:AdminUsername`, `Cerbos:AdminApi:AdminPassword`, or `*` as deployment-managed. Deployment-managed fields are read-only in UI and ignore application-managed DB values for that field.
 - Governance settings select the active provider (`AuthorizationProvider`), whether tenant customization is enabled, and per-tenant BYO values such as `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, custom Admin API endpoint, and custom Admin API credentials.
@@ -315,6 +320,7 @@ Important safety behavior:
 - `KEYCLOAK_ENDPOINT` + `KEYCLOAK_REALM` (Infisical `/keycloak`) -> `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:AuthorizationUrl`
 - Keycloak mapper defaults -> `Keycloak:Audience=islamu-event-api`, `Keycloak:RequireHttpsMetadata=true`
 - `CERBOS_GRPC_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:GrpcEndpoint`
+- `CERBOS_USE_POLICY_SCOPE` (Infisical `/cerbos`) -> `Cerbos:UsePolicyScope` (`true`/`false`, also accepts `1`/`0`, `yes`/`no`, `on`/`off`)
 - S3 runtime values:
   - `ISLAMU_EVENT_REGION` -> `S3Settings:Region`
   - `ISLAMU_EVENT_PRIVATE_BUCKET_NAME` -> `S3Settings:BucketName`
