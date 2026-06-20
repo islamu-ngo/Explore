@@ -22,8 +22,6 @@ public interface IBffPreferenceForwardingService
 
     Task<HttpResponseMessage> UpdateProfileAsync(Guid profileId, UpdateAppearanceProfileRequestDto request, CancellationToken cancellationToken);
 
-    Task<HttpResponseMessage> SetThemeModeAsync(SetThemeModeRequestDto request, CancellationToken cancellationToken);
-
     Task<HttpResponseMessage> GeneratePaletteAsync(string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken);
 
     Task<HttpResponseMessage> ArchiveProfileAsync(Guid profileId, CancellationToken cancellationToken);
@@ -73,11 +71,6 @@ public sealed class BffPreferenceForwardingService(IHttpClientFactory clientFact
         return CreateClient().PutAsJsonAsync($"api/user/appearance/profiles/{profileId}", request, cancellationToken);
     }
 
-    public Task<HttpResponseMessage> SetThemeModeAsync(SetThemeModeRequestDto request, CancellationToken cancellationToken)
-    {
-        return CreateClient().PutAsJsonAsync("api/user/appearance/mode", request, cancellationToken);
-    }
-
     public Task<HttpResponseMessage> GeneratePaletteAsync(string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken)
     {
         var path = $"api/user/appearance/generate-palette?naturalColor={Uri.EscapeDataString(naturalColor)}&brandColor={Uri.EscapeDataString(brandColor)}&isDark={isDark}";
@@ -96,7 +89,7 @@ public sealed class BffPreferenceForwardingService(IHttpClientFactory clientFact
 
     public Task<HttpResponseMessage> GetAvailableThemesAsync(CancellationToken cancellationToken)
     {
-        return CreateClient().GetAsync("api/user/appearance/themes", cancellationToken);
+        return CreateClient().GetAsync("api/user/appearance/presets", cancellationToken);
     }
 
     public Task<HttpResponseMessage> PersistPreferencesAsync(UserAppearancePreferencesDto preferences, CancellationToken cancellationToken)

@@ -100,8 +100,67 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
         body.Should().Contain("Theme mode must be one of");
-        _ = forwarding.DidNotReceive().SetThemeModeAsync(
-            Arg.Any<SetThemeModeRequestDto>(),
+        await forwarding.DidNotReceive().PersistPreferencesAsync(
+            Arg.Any<UserAppearancePreferencesDto>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AppearanceMode_AuthenticatedValidThemeMode_PersistsThroughSparsePreferenceEndpoint()
+    {
+        var defaultThemeId = Guid.NewGuid();
+        var forwarding = Substitute.For<IBffPreferenceForwardingService>();
+        var antiforgery = Substitute.For<IAntiforgery>();
+        antiforgery.ValidateRequestAsync(Arg.Any<HttpContext>()).Returns(Task.CompletedTask);
+        forwarding.GetAppearanceAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new UserAppearancePreferencesDto
+                {
+                    ThemeMode = "system",
+                    Direction = "rtl",
+                    Language = "fr",
+                    DefaultThemeId = defaultThemeId
+                })
+            }));
+        forwarding.PersistPreferencesAsync(Arg.Any<UserAppearancePreferencesDto>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+
+        await using var factory = new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAntiforgery>();
+                services.AddSingleton(antiforgery);
+                services.RemoveAll<IBffPreferenceForwardingService>();
+                services.AddSingleton(forwarding);
+            });
+        });
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+        var authHeader = TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid());
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/appearance/mode");
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, authHeader);
+        request.Content = JsonContent.Create(new SetThemeModeRequestDto { ThemeMode = "dark" });
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<UserAppearancePreferencesDto>();
+        body.Should().NotBeNull();
+        body!.ThemeMode.Should().Be("dark");
+        body.Direction.Should().Be("rtl");
+        body.Language.Should().Be("fr");
+        body.DefaultThemeId.Should().Be(defaultThemeId);
+        await forwarding.Received(1).PersistPreferencesAsync(
+            Arg.Is<UserAppearancePreferencesDto>(preferences =>
+                preferences.ThemeMode == "dark"
+                && preferences.Direction == "rtl"
+                && preferences.Language == "fr"
+                && preferences.DefaultThemeId == defaultThemeId),
             Arg.Any<CancellationToken>());
     }
 

@@ -165,22 +165,20 @@ public static class BffPreferenceEndpoints
                 title: "Invalid theme mode");
         }
 
-        if (ctx.User.Identity?.IsAuthenticated != true)
-        {
-            GetPreferenceCookies(ctx).PersistThemeCookie(ctx, mode);
-            return Results.Ok(new { themeMode = mode });
-        }
+        var current = await ReadCurrentPreferencesAsync(ctx, cancellationToken);
+        var updated = current with { ThemeMode = mode };
 
-        var normalizedRequest = new SetThemeModeRequestDto { ThemeMode = mode };
-        using var response = await GetPreferenceForwarding(ctx).SetThemeModeAsync(normalizedRequest, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        if (ctx.User.Identity?.IsAuthenticated == true)
         {
-            return BffForwardingResults.Problem(response, "Could not set theme mode.", "Theme mode update failed");
+            var persistResult = await PersistAuthenticatedAsync(ctx, updated, "Theme mode update failed", cancellationToken);
+            if (persistResult is { } problem)
+            {
+                return problem;
+            }
         }
 
         GetPreferenceCookies(ctx).PersistThemeCookie(ctx, mode);
-        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not set theme mode.", "Theme mode update failed", cancellationToken);
+        return Results.Ok(updated);
     }
 
     private static async Task<IResult> HandleGeneratePaletteAsync(HttpContext ctx, string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken)

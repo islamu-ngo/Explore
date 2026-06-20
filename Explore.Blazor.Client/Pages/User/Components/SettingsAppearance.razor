@@ -47,7 +47,7 @@
                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
                     Override layout direction. &ldquo;Auto&rdquo; follows the language.
                 </MudText>
-                <MudToggleGroup T="string" @bind-Value="_form.Direction" Color="Color.Primary"
+                <MudToggleGroup T="string" Value="@_form.Direction" ValueChanged="@OnDirectionChanged" Color="Color.Primary"
                                 Outlined="true" Dense="true" CheckMark="true">
                     <MudToggleItem Value="@("auto")" Text="Auto" />
                     <MudToggleItem Value="@("ltr")" Text="Left to Right" />
@@ -117,7 +117,7 @@
                                 <button type="button"
                                         class="settings-appearance__preset-swatch @(s == _customNaturalColor ? "settings-appearance__preset-swatch--active" : "")"
                                         style="@($"background:{s};")"
-                                        @onclick="@(() => SelectCustomNaturalColor(s))"
+                                        @onclick="@(() => SelectCustomNaturalColorAsync(s))"
                                         aria-label="Natural color @s" />
                             }
                             <MudTextField T="string"
@@ -143,7 +143,7 @@
                                 <button type="button"
                                         class="settings-appearance__preset-swatch @(s == _customBrandColor ? "settings-appearance__preset-swatch--active" : "")"
                                         style="@($"background:{s};")"
-                                        @onclick="@(() => SelectCustomBrandColor(s))"
+                                        @onclick="@(() => SelectCustomBrandColorAsync(s))"
                                         aria-label="Brand color @s" />
                             }
                             <MudTextField T="string"
@@ -159,7 +159,7 @@
 
                     <div>
                         <MudText Typo="Typo.body2" Style="font-weight: 600;" Class="mb-2">Base Mode</MudText>
-                        <MudToggleGroup T="string" @bind-Value="_customBaseMode" Color="Color.Primary" Outlined="true" Dense="true">
+                        <MudToggleGroup T="string" Value="@_customBaseMode" ValueChanged="@OnCustomBaseModeChangedAsync" Color="Color.Primary" Outlined="true" Dense="true">
                             <MudToggleItem Value="@("light")" Text="Light" />
                             <MudToggleItem Value="@("dark")" Text="Dark" />
                         </MudToggleGroup>
@@ -322,7 +322,7 @@
         HydrateFromState(AppearanceThemeService.Current);
         _presets = state.AvailablePresets;
         _profiles = state.UserProfiles;
-        UpdateCustomPreview();
+        await UpdateCustomPreviewAsync();
         _initialized = true;
     }
 
@@ -455,47 +455,77 @@
         }
     }
 
-    private void SelectCustomNaturalColor(string color)
+    private async Task OnDirectionChanged(string direction)
+    {
+        _form = _form with { Direction = direction };
+        _saving = true;
+        try
+        {
+            await AppearanceThemeService.SetDirectionAsync(direction);
+            _serverForm = _form with { };
+            Snackbar.Add("Text direction updated.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error setting text direction");
+            Snackbar.Add("Could not change text direction.", Severity.Error);
+            _form = _serverForm with { };
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SelectCustomNaturalColorAsync(string color)
     {
         _customNaturalColor = color;
         _customNaturalColorHex = color;
-        UpdateCustomPreview();
+        await UpdateCustomPreviewAsync();
     }
 
-    private void SelectCustomBrandColor(string color)
+    private async Task SelectCustomBrandColorAsync(string color)
     {
         _customBrandColor = color;
         _customBrandColorHex = color;
-        UpdateCustomPreview();
+        await UpdateCustomPreviewAsync();
     }
 
-    private void OnCustomNaturalHexChanged(string value)
+    private async Task OnCustomNaturalHexChanged(string value)
     {
         _customNaturalColorHex = value;
         if (IsValidHex(value))
         {
             _customNaturalColor = value;
-            UpdateCustomPreview();
+            await UpdateCustomPreviewAsync();
         }
     }
 
-    private void OnCustomBrandHexChanged(string value)
+    private async Task OnCustomBrandHexChanged(string value)
     {
         _customBrandColorHex = value;
         if (IsValidHex(value))
         {
             _customBrandColor = value;
-            UpdateCustomPreview();
+            await UpdateCustomPreviewAsync();
         }
     }
 
-    private void UpdateCustomPreview()
+    private async Task OnCustomBaseModeChangedAsync(string mode)
+    {
+        _customBaseMode = mode;
+        await UpdateCustomPreviewAsync();
+    }
+
+    private async Task UpdateCustomPreviewAsync()
     {
         var natural = _customNaturalColor;
         var brand = _customBrandColor;
         if (!IsValidHex(natural) || !IsValidHex(brand)) return;
 
-        _customPreviewPalette = AppearanceThemeService.GeneratePalettePreview(natural, brand, _customBaseMode == "dark");
+        var isDark = _customBaseMode == "dark";
+        _customPreviewPalette = await AppearanceThemeService.GeneratePalettePreviewAsync(natural, brand, isDark)
+            ?? AppearanceThemeService.GeneratePalettePreview(natural, brand, isDark);
     }
 
     private async Task SaveCustomThemeAsync()

@@ -13,6 +13,7 @@ public interface IAppearanceThemeService
     Task SetActiveProfileAsync(Guid profileId, CancellationToken cancellationToken = default);
     Task ClonePresetAndActivateAsync(Guid presetId, CancellationToken cancellationToken = default);
     Task SetThemeModeAsync(string mode, CancellationToken cancellationToken = default);
+    Task SetDirectionAsync(string direction, CancellationToken cancellationToken = default);
     Task UpdateCurrentProfileAsync(UpdateAppearanceProfileRequestDto request, CancellationToken cancellationToken = default);
     Task<UserAppearanceProfileDto?> CreateCustomProfileAsync(CreateCustomProfileRequestDto request, CancellationToken cancellationToken = default);
     ClientPaletteDto GeneratePalettePreview(string naturalColor, string brandColor, bool isDark);

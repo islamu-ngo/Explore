@@ -3,10 +3,13 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Appearance;
+using Explore.Application.Features.Appearance.Requests.Commands;
 using Explore.Application.Features.Appearance.Requests.Queries;
+using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +23,11 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class UserAppearanceController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor UpdatePreferencesValidationProblem = new(
+        "appearance",
+        "Appearance preference validation failed",
+        "Appearance preference update failed.");
+
     private readonly IMediator _mediator;
     private readonly IAppearanceResolutionService _resolutionService;
 
@@ -38,6 +46,26 @@ public class UserAppearanceController : ControllerBase
     {
         var result = await _resolutionService.ResolveForCurrentUserAsync(cancellationToken);
         return Ok(result);
+    }
+
+    [HttpPut(Name = RouteNames.UpdateCurrentUserAppearancePreferences)]
+    [EndpointSummary("Update Appearance Preferences")]
+    [EndpointDescription("Updates sparse user-scoped appearance preferences such as theme mode, text direction, language, and default theme/profile reference.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdatePreferences(
+        [FromBody] UpdateUserAppearancePreferencesDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new UpdateCurrentUserAppearancePreferencesCommand
+        {
+            Preferences = request
+        }, cancellationToken);
+
+        return response.Success
+            ? Ok(response)
+            : this.ToCommandValidationProblem(response, UpdatePreferencesValidationProblem);
     }
 
     [HttpGet("presets", Name = RouteNames.GetAvailableThemes)]

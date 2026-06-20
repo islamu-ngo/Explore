@@ -166,6 +166,8 @@ public class BlazorTestContext : BunitContext
             .Returns(Task.FromResult(false));
         appearanceThemeService.SetThemeModeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
+        appearanceThemeService.SetDirectionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         appearanceThemeService.SetActiveProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         appearanceThemeService.ClonePresetAndActivateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

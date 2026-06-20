@@ -361,6 +361,7 @@ public static class RouteNames
     #region User Appearance Routes
 
     public const string GetCurrentUserAppearancePreferences = "GetCurrentUserAppearancePreferences";
+    public const string UpdateCurrentUserAppearancePreferences = "UpdateCurrentUserAppearancePreferences";
     public const string GetAvailableThemes = "GetAvailableThemes";
     public const string GetUserAppearanceProfiles = "GetUserAppearanceProfiles";
     public const string ClonePresetToProfile = "ClonePresetToProfile";

@@ -71,6 +71,20 @@ public sealed class BffPreferenceForwardingServiceTests
         request.RequestUri?.AbsoluteUri.Should().Be("https://bff.test/api/user/appearance/generate-palette?naturalColor=blue%20green&brandColor=%23ff%2F00&isDark=True");
     }
 
+    [Test]
+    public async Task GetAvailableThemesAsync_UsesCurrentPresetCatalogRoute()
+    {
+        using var handler = new CapturingHandler();
+        var service = new BffPreferenceForwardingService(new CapturingHttpClientFactory(handler));
+
+        using var response = await service.GetAvailableThemesAsync(CancellationToken.None);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var request = handler.Requests.Single();
+        request.Method.Should().Be(HttpMethod.Get);
+        request.RequestUri?.ToString().Should().Be("https://bff.test/api/user/appearance/presets");
+    }
+
     private sealed class CapturingHttpClientFactory(CapturingHandler handler) : IHttpClientFactory
     {
         public string? ClientName { get; private set; }

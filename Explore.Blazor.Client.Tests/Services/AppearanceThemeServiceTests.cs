@@ -118,6 +118,22 @@ public class AppearanceThemeServiceTests
     }
 
     [Test]
+    public async Task GeneratePalettePreview_DoesNotBlockOnHttpPreviewEndpoint()
+    {
+        var requestCount = 0;
+        var service = CreateService(_ =>
+        {
+            requestCount++;
+            return CreateJsonResponse(CreatePalette(primary: "#ABCDEF"));
+        });
+
+        var palette = service.GeneratePalettePreview("#475569", "#3B82F6", false);
+
+        await Assert.That(palette.Primary).IsEqualTo("#18181B");
+        await Assert.That(requestCount).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task CreateTheme_PreservesCustomPaletteContrastText()
     {
         var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.OK));

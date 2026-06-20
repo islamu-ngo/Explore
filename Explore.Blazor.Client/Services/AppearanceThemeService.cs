@@ -34,6 +34,11 @@ public interface IAppearanceApi
         [Body] SetThemeModeRequestDto request,
         CancellationToken cancellationToken);
 
+    [Post("/bff/direction")]
+    Task<IApiResponse> SetDirectionAsync(
+        [Query] string dir,
+        CancellationToken cancellationToken);
+
     [Put("/bff/appearance/profiles/{profileId}")]
     Task<IApiResponse> UpdateProfileAsync(
         Guid profileId,
@@ -305,6 +310,30 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         }
     }
 
+    public async Task SetDirectionAsync(string direction, CancellationToken cancellationToken = default)
+    {
+        var previousDirection = _current.Direction;
+
+        try
+        {
+            _current.Direction = direction;
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+
+            var result = await _api.SetDirectionAsync(direction, cancellationToken);
+            if (!result.IsSuccessStatusCode)
+            {
+                throw CreateResponseException(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error setting text direction.");
+            _current.Direction = previousDirection;
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+            throw;
+        }
+    }
+
     public async Task UpdateCurrentProfileAsync(UpdateAppearanceProfileRequestDto request, CancellationToken cancellationToken = default)
     {
         var activeProfileId = _current.ResolvedAppearance?.ActiveProfileId;
@@ -343,16 +372,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
     public ClientPaletteDto GeneratePalettePreview(string naturalColor, string brandColor, bool isDark)
     {
-        try
-        {
-            return GeneratePalettePreviewAsync(naturalColor, brandColor, isDark, CancellationToken.None)
-                .GetAwaiter()
-                .GetResult() ?? GetFallbackPalette(isDark);
-        }
-        catch
-        {
-            return GetFallbackPalette(isDark);
-        }
+        return GetFallbackPalette(isDark);
     }
 
     public async Task<ClientPaletteDto?> GeneratePalettePreviewAsync(string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken = default)
