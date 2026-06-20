@@ -1,3 +1,6 @@
+@* ABOUTME: Account personal-information settings form for profile details and profile image upload. *@
+@* ABOUTME: Persists profile edits through IUserService and storage-backed image upload records. *@
+
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
@@ -5,6 +8,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Explore.Blazor.Client.Components.Forms
 @inject IUserService UserService
+@inject IImageStorageService ImageStorageService
 @inject ISnackbar Snackbar
 
 <div class="settings-section">
@@ -104,6 +108,8 @@
                     <MudItem xs="12">
                         <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_user.Username" 
                                       Label="Username" 
+                                      Required="true"
+                                      HelperText="Required for saving your profile"
                                       Adornment="Adornment.Start" 
                                       AdornmentIcon="@Icons.Material.Filled.AlternateEmail" />
                     </MudItem>
@@ -148,6 +154,7 @@
     private bool _loading = true;
     private string? _successMessage;
     private string? _profileImagePreview;
+    private FileUploadData? _profileImageFileData;
     private UserDto? _user;
     private UserDto? _originalUser;
 
@@ -206,6 +213,28 @@
             if (_submitState.IsSubmitting) return;
             _submitState.Start();
             _successMessage = null;
+            _errorStore.ClearErrors();
+
+            var username = ResolveRequiredUsername(_user);
+            _user.Username = username;
+
+            Guid? profilePictureId = null;
+            if (_profileImageFileData is not null)
+            {
+                var uploadResult = await ImageStorageService.UploadAndCreateRecordFromBytesAsync(_profileImageFileData);
+                if (uploadResult is null || !uploadResult.Success || uploadResult.StorageObjectId == Guid.Empty)
+                {
+                    _submitState.Fail(uploadResult?.ErrorMessage ?? "Failed to upload profile picture.");
+                    return;
+                }
+
+                profilePictureId = uploadResult.StorageObjectId;
+                if (!string.IsNullOrWhiteSpace(uploadResult.ViewUrl))
+                {
+                    _user.ProfileImageUri = uploadResult.ViewUrl;
+                    _profileImagePreview = uploadResult.ViewUrl;
+                }
+            }
 
             var updateDto = new UpdateUserDto
             {
@@ -213,13 +242,15 @@
                 FirstName = _user.FirstName,
                 LastName = _user.LastName,
                 Email = _user.Email,
-                Username = _user.Username
+                Username = username,
+                ProfilePictureId = profilePictureId
             };
 
             var result = await UserService.UpdateUserAsync(updateDto);
             if (result?.Success == true)
             {
                 _successMessage = "Profile updated successfully!";
+                _profileImageFileData = null;
                 _originalUser = new UserDto
                 {
                     Id = _user.Id,
@@ -267,6 +298,7 @@
             _user.LastName = _originalUser.LastName;
             _user.Username = _originalUser.Username;
             _profileImagePreview = _originalUser.ProfileImageUri;
+            _profileImageFileData = null;
             _submitState.Reset();
             _successMessage = null;
         }
@@ -276,10 +308,16 @@
     {
         try
         {
-            if (_user != null && fileData != null)
+            _profileImageFileData = fileData;
+            if (fileData == null)
             {
-                var base64 = Convert.ToBase64String(fileData.Content);
-                _profileImagePreview = $"data:{fileData.ContentType};base64,{base64}";
+                _profileImagePreview = null;
+                return Task.CompletedTask;
+            }
+
+            if (_user != null)
+            {
+                _profileImagePreview = ImageStorageService.GenerateLocalPreviewFromBytes(fileData);
             }
         }
         catch (Exception ex)
@@ -288,5 +326,32 @@
         }
 
         return Task.CompletedTask;
+    }
+
+    private static string ResolveRequiredUsername(UserDto user)
+    {
+        if (!string.IsNullOrWhiteSpace(user.Username))
+        {
+            return NormalizeUsername(user.Username);
+        }
+
+        var email = user.Email;
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var atIndex = email.IndexOf('@', StringComparison.Ordinal);
+            var localPart = atIndex > 0 ? email[..atIndex] : email;
+            if (!string.IsNullOrWhiteSpace(localPart))
+            {
+                return NormalizeUsername(localPart);
+            }
+        }
+
+        return user.Id?.ToString("N") ?? "user";
+    }
+
+    private static string NormalizeUsername(string value)
+    {
+        var trimmed = value.Trim();
+        return trimmed.Length <= 50 ? trimmed : trimmed[..50];
     }
 }
