@@ -127,6 +127,69 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         await Assert.That(result.Message).IsEqualTo("Event Registration added to the waitlist.");
     }
 
+    [Test]
+    public async Task HandleWhenEventScopeOmitsSelectedSessionsCreatesRowsForEveryEventSession()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var firstSessionId = Guid.NewGuid();
+        var secondSessionId = Guid.NewGuid();
+        var command = new CreateEventRegistrationCommand
+        {
+            EventRegistrationDto = new CreateEventRegistrationDto
+            {
+                EventId = eventId,
+                UserId = userId,
+                RegistrationScopeId = (int)RegistrationScopeEnum.Event,
+                SelectedSessionIds = null
+            }
+        };
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _eventRepository.Exists(eventId).Returns(true);
+        _userRepository.Exists(userId).Returns(true);
+        _userRepository.GetById(userId).Returns(CreateUser(userId));
+        _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId, EventRegistrationPolicyEnum.WholeEventOnly));
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([
+            CreateEventSession(eventId, tenantId, firstSessionId),
+            CreateEventSession(eventId, tenantId, secondSessionId)
+        ]);
+        _intentRepository.FindExistingAsync(
+                eventId,
+                userId,
+                (int)RegistrationScopeEnum.Event,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns((EventRegistrationIntent?)null);
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>())
+            .Returns(callInfo =>
+            {
+                var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
+                return new EventRegistrationIntentCreationResult(intent, []);
+            });
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _intentRepository.Received(1).CreateWithChildrenAndCapacityAsync(
+            Arg.Any<EventRegistrationIntent>(),
+            Arg.Is<IReadOnlyList<EventRegistration>>(children =>
+                children != null
+                && children.Count == 2
+                && children.Select(child => child.EventSessionId).ToHashSet().SetEquals(new[] { firstSessionId, secondSessionId })),
+            (int)ApprovalStatusEnum.Approved,
+            (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<EmailDispatchOutbox?>());
+    }
+
     private void SetupValidRegistration(Guid tenantId, Guid eventId, Guid userId, Guid sessionId)
     {
         _tenantContext.TenantId.Returns(tenantId);
@@ -158,7 +221,10 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         };
     }
 
-    private static Explore.Domain.Event CreateEvent(Guid eventId, Guid tenantId)
+    private static Explore.Domain.Event CreateEvent(
+        Guid eventId,
+        Guid tenantId,
+        EventRegistrationPolicyEnum policy = EventRegistrationPolicyEnum.SessionSelectionOnly)
     {
         return new Explore.Domain.Event
         {
@@ -173,7 +239,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
-            RegistrationPolicyId = (int)EventRegistrationPolicyEnum.SessionSelectionOnly
+            RegistrationPolicyId = (int)policy
         };
     }
 

@@ -216,7 +216,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
 
         if (scope == RegistrationScopeEnum.SessionSelection)
         {
-            return dto.SelectedSessionIds.Distinct().ToList();
+            return dto.SelectedSessionIds?.Distinct().ToList() ?? [];
         }
 
         var allSessions = await _eventSessionRepository.GetSessionsByEvent(dto.EventId);

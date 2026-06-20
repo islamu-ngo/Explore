@@ -1,3 +1,6 @@
+// ABOUTME: EF Core repository for event registration reads and cancellation writes.
+// ABOUTME: Keeps cancellation and capacity release atomic under Npgsql retry execution strategies.
+
 using System.Data;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
@@ -91,15 +94,38 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
 
     public async Task<bool> CancelAndReleaseCapacityAsync(Guid registrationId, CancellationToken cancellationToken)
     {
-        await using var tx = await _dbContext.Database
-            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        if (_dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            return await CancelAndReleaseCapacityCoreAsync(registrationId, cancellationToken);
+        }
 
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _dbContext.Database
+                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+            try
+            {
+                var result = await CancelAndReleaseCapacityCoreAsync(registrationId, cancellationToken);
+                await tx.CommitAsync(cancellationToken);
+                return result;
+            }
+            catch
+            {
+                await tx.RollbackAsync(cancellationToken);
+                throw;
+            }
+        });
+    }
+
+    private async Task<bool> CancelAndReleaseCapacityCoreAsync(Guid registrationId, CancellationToken cancellationToken)
+    {
         var registration = await _dbContext.EventRegistrations
             .FirstOrDefaultAsync(r => r.Id == registrationId, cancellationToken);
 
         if (registration is null)
         {
-            await tx.RollbackAsync(cancellationToken);
             return false;
         }
 
@@ -118,7 +144,6 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
                 """, cancellationToken);
         }
 
-        await tx.CommitAsync(cancellationToken);
         return true;
     }
 }

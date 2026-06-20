@@ -41,6 +41,32 @@ public sealed class CreateEventRegistrationDtoValidatorTests
     }
 
     [Test]
+    public async Task Validate_WithEventScopeAndNullSelectedSessionIds_ReturnsValid()
+    {
+        var dto = CreateDto(RegistrationScopeEnum.Event);
+        dto.SelectedSessionIds = null;
+        SetupValidBaseLookups(dto, EventRegistrationPolicyEnum.WholeEventOnly);
+
+        var result = await _validator.ValidateAsync(dto);
+
+        await Assert.That(result.IsValid).IsTrue();
+    }
+
+    [Test]
+    public async Task Validate_WithSessionScopeAndNullSelectedSessionIds_ReturnsSessionSelectionError()
+    {
+        var dto = CreateDto(RegistrationScopeEnum.SessionSelection);
+        dto.SelectedSessionIds = null;
+        SetupValidBaseLookups(dto, EventRegistrationPolicyEnum.SessionSelectionOnly);
+
+        var result = await _validator.ValidateAsync(dto);
+
+        await Assert.That(result.IsValid).IsFalse();
+        await Assert.That(result.Errors.Select(error => error.ErrorMessage))
+            .Contains("SelectedSessionIds must contain at least one session when scope is SessionSelection.");
+    }
+
+    [Test]
     public async Task Validate_WhenScopeIsNotAllowedByEventPolicy_ReturnsPolicyError()
     {
         var dto = CreateDto(RegistrationScopeEnum.SessionSelection);

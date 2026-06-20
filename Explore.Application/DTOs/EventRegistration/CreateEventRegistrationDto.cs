@@ -24,11 +24,11 @@ public class CreateEventRegistrationDto
     public Guid? SelectedEventDayId { get; set; }
 
     /// <summary>
-    /// Required (non-empty) when <see cref="RegistrationScopeId"/> maps to
+    /// Optional for event/day registrations. Required (non-empty) when <see cref="RegistrationScopeId"/> maps to
     /// <see cref="Explore.Domain.Enums.RegistrationScopeEnum.SessionSelection"/>. All ids must reference sessions
     /// belonging to <see cref="EventId"/>.
     /// </summary>
-    public IReadOnlyList<Guid> SelectedSessionIds { get; set; } = Array.Empty<Guid>();
+    public IReadOnlyList<Guid>? SelectedSessionIds { get; set; } = Array.Empty<Guid>();
 
     public int? ApprovalStatusId { get; set; }
 

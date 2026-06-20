@@ -1,6 +1,9 @@
+@* ABOUTME: Registration dialog that captures event/day/session intent and optional organizer email-share consent. *@
+@* ABOUTME: Uses the registration service boundary so API failures become user-safe validation feedback. *@
+
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Contracts.Services
-@inject IEventService EventService
+@inject IEventRegistrationService RegistrationService
 @inject IUserService UserService
 @inject IContactShareConsentService ConsentService
 @inject ISnackbar Snackbar
@@ -427,7 +430,7 @@
 
         try
         {
-            var response = await EventService.RegisterForEventSessionAsync(registrationModel);
+            var response = await RegistrationService.RegisterForSessionAsync(registrationModel);
 
             if (response?.Success == true)
             {
@@ -441,7 +444,7 @@
             }
             else
             {
-                Snackbar.Add(response?.Message ?? "Something went wrong. Please try again later.", Severity.Error);
+                Snackbar.Add(GetRegistrationFailureMessage(response), Severity.Error);
             }
         }
         catch (Exception ex)
@@ -452,6 +455,13 @@
         {
             isSubmitting = false;
         }
+    }
+
+    private static string GetRegistrationFailureMessage(BaseCommandResponseOfGuid? response)
+    {
+        return response?.Errors?.FirstOrDefault(error => !string.IsNullOrWhiteSpace(error))
+            ?? response?.Message
+            ?? "Something went wrong. Please try again later.";
     }
 
     private void Cancel()

@@ -76,7 +76,7 @@ public class CreateEventRegistrationDtoValidator : AbstractValidator<CreateEvent
 
         RuleFor(p => p)
             .MustAsync(AllSelectedSessionsBelongToEvent)
-            .When(p => p.RegistrationScopeId == (int)RegistrationScopeEnum.SessionSelection && p.SelectedSessionIds.Count > 0)
+            .When(p => p.RegistrationScopeId == (int)RegistrationScopeEnum.SessionSelection && p.SelectedSessionIds?.Count > 0)
             .WithMessage("All SelectedSessionIds must belong to the supplied EventId.");
 
         // Organizer policy enforcement (fail-fast).
@@ -89,7 +89,7 @@ public class CreateEventRegistrationDtoValidator : AbstractValidator<CreateEvent
     {
         var sessions = await _eventSessionRepository.GetSessionsByEvent(dto.EventId);
         var validSessionIds = sessions.Select(s => s.Id).ToHashSet();
-        return dto.SelectedSessionIds.All(validSessionIds.Contains);
+        return (dto.SelectedSessionIds ?? Array.Empty<Guid>()).All(validSessionIds.Contains);
     }
 
     private async Task<bool> ScopeAllowedByPolicy(CreateEventRegistrationDto dto, CancellationToken ct)

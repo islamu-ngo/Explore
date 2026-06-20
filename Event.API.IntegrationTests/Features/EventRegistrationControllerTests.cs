@@ -21,6 +21,41 @@ namespace Event.Api.IntegrationTests.Features;
 public sealed class EventRegistrationControllerTests
 {
     [Test]
+    public async Task Create_WhenEventScopeOmitsSelectedSessions_ReachesCommandHandler()
+    {
+        var eventId = Guid.NewGuid();
+        var authenticatedUserId = Guid.NewGuid();
+        using var mediator = new EventRegistrationMediatorStub(_ => new BaseCommandResponse<Guid>
+        {
+            Success = true,
+            Id = Guid.NewGuid(),
+            Message = "Event Registration created successfully."
+        });
+        await using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedJsonRequest(
+            HttpMethod.Post,
+            "/api/eventregistration",
+            new CreateEventRegistrationDto
+            {
+                EventId = eventId,
+                UserId = Guid.NewGuid(),
+                RegistrationScopeId = 1,
+                SelectedSessionIds = null
+            },
+            authenticatedUserId);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var command = mediator.LastRequest as CreateEventRegistrationCommand;
+        await Assert.That(command).IsNotNull();
+        await Assert.That(command!.EventRegistrationDto.EventId).IsEqualTo(eventId);
+        await Assert.That(command.EventRegistrationDto.UserId).IsEqualTo(authenticatedUserId);
+        await Assert.That(command.EventRegistrationDto.SelectedSessionIds).IsNull();
+    }
+
+    [Test]
     public async Task Update_WhenRouteAndBodyIdsDiffer_ReturnsValidationProblemDetails()
     {
         var routeId = Guid.NewGuid();
@@ -110,13 +145,17 @@ public sealed class EventRegistrationControllerTests
         });
     }
 
-    private static HttpRequestMessage CreateAuthenticatedJsonRequest<TValue>(HttpMethod method, string url, TValue body)
+    private static HttpRequestMessage CreateAuthenticatedJsonRequest<TValue>(
+        HttpMethod method,
+        string url,
+        TValue body,
+        Guid? userId = null)
     {
         var request = new HttpRequestMessage(method, url)
         {
             Content = JsonContent.Create(body)
         };
-        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId ?? Guid.NewGuid()));
         return request;
     }
 

@@ -2,12 +2,12 @@
 // ABOUTME: Keeps DTO construction and session-selection decisions out of the EventList component body.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
 internal static class EventListRegistrationWorkflow
 {
-    private const int SessionSelectionRegistrationScopeId = 3;
     private const string ContactShareConsentUiVersion = "v1";
 
     public static EventListRegistrationLookup BuildRegistrationLookup(IEnumerable<EventRegistrationListDto>? registrations)
@@ -39,7 +39,7 @@ internal static class EventListRegistrationWorkflow
         ArgumentNullException.ThrowIfNull(selectedSessionIds);
 
         var selectableSessionIds = GetSelectableSessionIds(availableSessions);
-        return selectableSessionIds.Count > 0 && selectedSessionIds.Count == selectableSessionIds.Count;
+        return selectableSessionIds.Count > 0 && selectableSessionIds.SetEquals(selectedSessionIds);
     }
 
     public static HashSet<Guid> GetSelectableSessionIds(ICollection<EventSessionListDto>? availableSessions)
@@ -88,18 +88,51 @@ internal static class EventListRegistrationWorkflow
         {
             EventId = eventId,
             UserId = userId,
-            RegistrationScopeId = SessionSelectionRegistrationScopeId,
+            RegistrationScopeId = RegistrationPolicyHelper.ScopeSessionSelection,
             SelectedSessionIds = selectedSessionIds.ToList()
         };
 
-        if (shareEmailWithOrganizer)
+        ApplyConsent(request, shareEmailWithOrganizer, organizerName);
+        return request;
+    }
+
+    public static CreateEventRegistrationDto BuildRegistrationRequest(
+        Guid eventId,
+        Guid? userId,
+        ICollection<EventSessionListDto>? availableSessions,
+        IReadOnlyCollection<Guid> selectedSessionIds,
+        int? registrationPolicyId,
+        bool shareEmailWithOrganizer,
+        string organizerName)
+    {
+        ArgumentNullException.ThrowIfNull(selectedSessionIds);
+
+        var allowedScopes = RegistrationPolicyHelper.GetAllowedScopes(registrationPolicyId);
+        var selectedSessionIdSet = selectedSessionIds.ToHashSet();
+
+        if (!allowedScopes.Contains(RegistrationPolicyHelper.ScopeSessionSelection)
+            && allowedScopes.Contains(RegistrationPolicyHelper.ScopeEvent)
+            && AreAllSessionsSelected(availableSessions, selectedSessionIdSet))
         {
-            request.ShareEmailWithOrganizer = true;
-            request.ConsentTextAcknowledged = BuildContactShareConsentText(organizerName);
-            request.ConsentUiVersion = ContactShareConsentUiVersion;
+            var eventRequest = new CreateEventRegistrationDto
+            {
+                EventId = eventId,
+                UserId = userId,
+                RegistrationScopeId = RegistrationPolicyHelper.ScopeEvent,
+                SelectedSessionIds = null,
+                SelectedEventDayId = null
+            };
+
+            ApplyConsent(eventRequest, shareEmailWithOrganizer, organizerName);
+            return eventRequest;
         }
 
-        return request;
+        return BuildSessionRegistrationRequest(
+            eventId,
+            userId,
+            selectedSessionIds,
+            shareEmailWithOrganizer,
+            organizerName);
     }
 
     public static string BuildContactShareConsentText(string organizerName)
@@ -109,6 +142,22 @@ internal static class EventListRegistrationWorkflow
             : organizerName.Trim();
 
         return $"Share my email address with {displayName} so they can contact me about future events and related updates.";
+    }
+
+    private static void ApplyConsent(
+        CreateEventRegistrationDto request,
+        bool shareEmailWithOrganizer,
+        string organizerName)
+    {
+        request.ShareEmailWithOrganizer = shareEmailWithOrganizer;
+
+        if (!shareEmailWithOrganizer)
+        {
+            return;
+        }
+
+        request.ConsentTextAcknowledged = BuildContactShareConsentText(organizerName);
+        request.ConsentUiVersion = ContactShareConsentUiVersion;
     }
 
     public static bool IsWaitlistResponse(string? message)
