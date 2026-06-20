@@ -445,6 +445,7 @@ Package delivery paths:
 
 | Path | Trigger | Notes |
 |---|---|---|
+| GitHub Actions production publish | `Cerbos Policy Validation` on `push` to `main` after policy validation succeeds | Production CI/CD path. Uses the `production` GitHub Environment approval gate, digest-pinned `cerbosctl`, and repository secrets `CERBOS_SERVER`, `CERBOS_USERNAME`, `CERBOS_PASSWORD`, plus optional `CERBOS_CA_CERT_PEM`. Uploads `_schemas` before policies and retains `cerbos-policy-publish-evidence`. |
 | Docker Compose one-shot sync | `docker compose --profile authz run --rm cerbos-policy-sync` | Recommended self-hosting path. Starts the `authz` profile with `cerbos-db`, uses server-side `CERBOS_ADMIN_USER` / `CERBOS_ADMIN_PASSWORD`, recursively uploads policies and `_schemas`, then requests store reload. Set `CERBOS_ADMIN_PASSWORD_HASH` to the hash matching `CERBOS_ADMIN_PASSWORD` before using Admin API sync. |
 | Zero-touch boot sync | API startup when complete instance Admin API config exists | Skips safely when endpoint or credentials are incomplete. |
 | Setup/Admin UI sync | Operator-triggered setup or admin action | Advanced path shown only when server-side Admin API credentials are already configured; the browser does not collect Cerbos Admin API passwords. Returns safe issue codes for missing config, auth failure, unavailable/rejected package, reload failure, or unknown package status. |

@@ -76,6 +76,8 @@ Configure environment secrets and variables as described in [CONFIGURATION.md](C
 
 Workflow YAML references the environments, but reviewers, branch restrictions, wait timers, and environment-scoped secrets are GitHub settings.
 
+`Cerbos Policy Validation` also owns production policy-store publishing. The validation job remains always-present for pull requests, merge queue, schedules, manual runs, `develop`, and `main`; the publish job starts only after that validation job succeeds on a `push` to `refs/heads/main` and only when Cerbos-relevant files were compiled. The publish job uses the `production` environment approval gate, read-only repository contents, the digest-pinned `ghcr.io/cerbos/cerbosctl:0.53.0` container, repository secrets `CERBOS_SERVER` / `CERBOS_USERNAME` / `CERBOS_PASSWORD`, and optional repository secret `CERBOS_CA_CERT_PEM`. Do not expose these Cerbos Admin API secrets to pull requests, merge queue, schedules, manual validation, `develop`, or non-production workflows without a separate threat model and environment contract.
+
 ### Security Features
 
 Confirm these GitHub security features at repository or organization level:

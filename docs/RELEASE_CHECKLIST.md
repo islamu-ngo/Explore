@@ -113,6 +113,7 @@ Expected artifact names:
 - `openapi-contract-guard`
 - `security-test-evidence`
 - `cerbos-policy-evidence`
+- `cerbos-policy-publish-evidence`
 - `container-build-*`
 - `deployment-production-evidence` / `deployment-staging-evidence`
 - `e2e-runtime-evidence`
