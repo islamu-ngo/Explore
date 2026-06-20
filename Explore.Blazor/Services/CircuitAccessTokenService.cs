@@ -217,8 +217,15 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 
         _localToken = token;
 
-        var userId = ExtractUserIdFromToken(token, _logger) ?? GetUserIdFromHttpContext();
-        var sessionId = ExtractSessionIdFromToken(token, _logger) ?? GetSessionIdFromHttpContext();
+        // The forwarding handler resolves by the authenticated BFF principal. That id can
+        // differ from the JWT subject after local-user/admin enrichment.
+        var principalUserId = GetUserIdFromHttpContext();
+        var tokenUserId = ExtractUserIdFromToken(token, _logger);
+        var userId = principalUserId ?? tokenUserId;
+
+        var principalSessionId = GetSessionIdFromHttpContext();
+        var tokenSessionId = ExtractSessionIdFromToken(token, _logger);
+        var sessionId = tokenSessionId ?? principalSessionId;
 
         if (!string.IsNullOrEmpty(userId))
         {
