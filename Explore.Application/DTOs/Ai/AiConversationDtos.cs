@@ -15,10 +15,26 @@ public sealed class CreateAiConversationRequestDto
 public sealed class SendAiMessageRequestDto
 {
     public string Content { get; set; } = string.Empty;
+    public IReadOnlyList<AiMessageImageInputDto> Images { get; set; } = [];
     public string IdempotencyKey { get; set; } = string.Empty;
     public Guid? ActorId { get; set; }
     public string? ModelId { get; set; }
     public string Mode { get; set; } = AiAssistantInteractionModes.Build;
+}
+
+public sealed class AiMessageImageInputDto
+{
+    public string MediaType { get; set; } = string.Empty;
+    public string Data { get; set; } = string.Empty;
+    public string? FileName { get; set; }
+    public long? SizeBytes { get; set; }
+}
+
+public sealed class AiMessageImageDto
+{
+    public string MediaType { get; set; } = string.Empty;
+    public string? FileName { get; set; }
+    public long? SizeBytes { get; set; }
 }
 
 public class AiConversationSummaryDto
@@ -51,6 +67,7 @@ public sealed class AiMessageDto
     public long Sequence { get; set; }
     public string Role { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
+    public IReadOnlyList<AiMessageImageDto> Images { get; set; } = [];
     public DateTime CreatedAt { get; set; }
 }
 

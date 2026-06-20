@@ -322,12 +322,26 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
             {
                 case AiMessageRole.System:
                 case AiMessageRole.User:
-                    builtMessages.Add(AnthropicApiMessage.Text("user", message.Content));
+                    builtMessages.Add(MapUserMessage(message));
                     break;
                 case AiMessageRole.Assistant:
+                    if (message.Images.Count > 0)
+                    {
+                        messages = [];
+                        failure = RecordFailure("unsupported_image_role", "Image input blocks are only supported for user messages.");
+                        return false;
+                    }
+
                     builtMessages.Add(AnthropicApiMessage.Text("assistant", message.Content));
                     break;
                 case AiMessageRole.Tool:
+                    if (message.Images.Count > 0)
+                    {
+                        messages = [];
+                        failure = RecordFailure("unsupported_image_role", "Image input blocks are not supported on tool result messages.");
+                        return false;
+                    }
+
                     if (string.IsNullOrWhiteSpace(message.Name))
                     {
                         messages = [];
@@ -342,6 +356,27 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
 
         messages = builtMessages;
         return true;
+    }
+
+    private static AnthropicApiMessage MapUserMessage(AiChatMessage message)
+    {
+        if (message.Images.Count == 0)
+        {
+            return AnthropicApiMessage.Text("user", message.Content);
+        }
+
+        var blocks = new List<AnthropicApiContentBlock>();
+        if (!string.IsNullOrWhiteSpace(message.Content))
+        {
+            blocks.Add(AnthropicApiContentBlock.FromText(message.Content));
+        }
+
+        foreach (var image in message.Images)
+        {
+            blocks.Add(AnthropicApiContentBlock.FromImage(image.MediaType.Trim(), image.Data.Trim()));
+        }
+
+        return AnthropicApiMessage.WithContentBlocks("user", blocks);
     }
 
     private static AnthropicApiMessage MapToolResultMessage(AiChatMessage message)

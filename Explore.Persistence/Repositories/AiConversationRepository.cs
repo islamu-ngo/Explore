@@ -298,6 +298,8 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
     {
         return await _dbContext.AiProposedActions
             .Include(action => action.Conversation)
+                .ThenInclude(conversation => conversation!.Messages)
+            .Include(action => action.Message)
             .FirstOrDefaultAsync(action => action.Id == proposedActionId, cancellationToken);
     }
 

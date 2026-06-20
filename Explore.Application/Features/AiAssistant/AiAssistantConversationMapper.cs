@@ -86,6 +86,7 @@ internal static class AiAssistantConversationMapper
             Sequence = message.Sequence,
             Role = message.Role.ToString(),
             Content = message.Content,
+            Images = AiMessageImageAttachmentSerializer.DeserializeMetadata(message.ImageAttachmentsJson),
             CreatedAt = message.CreatedAt
         };
 

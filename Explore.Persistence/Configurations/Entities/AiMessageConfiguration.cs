@@ -14,6 +14,7 @@ public class AiMessageConfiguration : IEntityTypeConfiguration<AiMessage>
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.RoleId).IsRequired();
         builder.Property(e => e.Content).HasMaxLength(16000).IsRequired();
+        builder.Property(e => e.ImageAttachmentsJson).HasColumnType("jsonb");
 
         builder.HasOne(e => e.RoleLookup)
             .WithMany()

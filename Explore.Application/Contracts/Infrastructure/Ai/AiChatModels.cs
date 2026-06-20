@@ -20,10 +20,27 @@ public sealed record AiChatProviderConfiguration(
     string ApiKey,
     string ModelId);
 
-public sealed record AiChatMessage(
-    AiMessageRole Role,
-    string Content,
-    string? Name = null);
+public sealed record AiChatImage(string MediaType, string Data);
+
+public sealed record AiChatMessage
+{
+    public AiChatMessage(
+        AiMessageRole role,
+        string content,
+        string? name = null,
+        IReadOnlyList<AiChatImage>? images = null)
+    {
+        Role = role;
+        Content = content;
+        Name = name;
+        Images = images ?? [];
+    }
+
+    public AiMessageRole Role { get; init; }
+    public string Content { get; init; }
+    public string? Name { get; init; }
+    public IReadOnlyList<AiChatImage> Images { get; init; }
+}
 
 public sealed record AiChatOptions(
     int MaxInputTokens,

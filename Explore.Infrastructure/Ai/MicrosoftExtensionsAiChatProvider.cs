@@ -93,6 +93,15 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
                 telemetryActivity);
         }
 
+        if (request.Messages.Any(message => message.Images.Count > 0))
+        {
+            return CompleteFailure(
+                RecordFailure(providerName, "unsupported_image_input", "Image inputs are only supported by the Anthropic-compatible adapter."),
+                providerName,
+                startedAt,
+                telemetryActivity);
+        }
+
         var structuredOutputFailure = AiStructuredOutputResponseMapper.ValidateRequest(request);
         if (structuredOutputFailure is not null)
         {

@@ -80,6 +80,53 @@ public sealed class AnthropicCompatibleChatProviderTests
         await Assert.That(toolResult.GetProperty("content").GetString()).IsEqualTo("{\"draftId\":\"draft_1\"}");
     }
 
+    [Test]
+    public async Task SendAsync_WhenUserMessageHasImage_PostsAnthropicBase64ImageBlock()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "id": "msg_test",
+              "type": "message",
+              "role": "assistant",
+              "content": [
+                { "type": "text", "text": "This is a C# code image." }
+              ],
+              "model": "claude-test",
+              "stop_reason": "end_turn",
+              "usage": { "input_tokens": 20, "output_tokens": 8 }
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+        const string imageData = "aW1hZ2UtYnl0ZXM=";
+
+        var result = await provider.SendAsync(CreateRequest(messages:
+        [
+            new AiChatMessage(
+                AiMessageRole.User,
+                "Describe this picture:",
+                images:
+                [
+                    new AiChatImage("image/jpeg", imageData)
+                ])
+        ]));
+
+        await Assert.That(result.Succeeded).IsTrue();
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        var content = document.RootElement.GetProperty("messages")[0].GetProperty("content");
+        await Assert.That(content.ValueKind).IsEqualTo(JsonValueKind.Array);
+        await Assert.That(content[0].GetProperty("type").GetString()).IsEqualTo("text");
+        await Assert.That(content[0].GetProperty("text").GetString()).IsEqualTo("Describe this picture:");
+
+        var imageBlock = content[1];
+        await Assert.That(imageBlock.GetProperty("type").GetString()).IsEqualTo("image");
+        var source = imageBlock.GetProperty("source");
+        await Assert.That(source.GetProperty("type").GetString()).IsEqualTo("base64");
+        await Assert.That(source.GetProperty("media_type").GetString()).IsEqualTo("image/jpeg");
+        await Assert.That(source.GetProperty("data").GetString()).IsEqualTo(imageData);
+        await Assert.That(source.GetProperty("data").GetString()).DoesNotContain("data:image");
+    }
+
     private static AnthropicCompatibleChatProvider CreateProvider(
         HttpMessageHandler handler,
         AiProviderSettings settings)

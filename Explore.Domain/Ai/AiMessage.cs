@@ -1,5 +1,5 @@
 // ABOUTME: Persists an ordered message in an AI assistant conversation.
-// ABOUTME: Stores bounded role/content metadata without provider SDK dependencies.
+// ABOUTME: Stores bounded role/content and image attachment metadata without provider SDK dependencies.
 
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
@@ -22,6 +22,7 @@ public class AiMessage : ITenantEntity
         set => RoleId = (int)value;
     }
     public required string Content { get; set; }
+    public string? ImageAttachmentsJson { get; set; }
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
 }

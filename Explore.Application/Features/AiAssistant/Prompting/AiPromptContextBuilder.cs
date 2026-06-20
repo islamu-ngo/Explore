@@ -2,6 +2,7 @@
 // ABOUTME: Keeps provider prompt packing separate from send orchestration and persistence updates.
 
 using Explore.Application.Contracts.Infrastructure.Ai;
+using Explore.Application.DTOs.Ai;
 using Explore.Application.Features.AiAssistant;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Ai;
@@ -91,10 +92,16 @@ public sealed class AiPromptContextBuilder
 
         foreach (AiMessage message in candidateMessages)
         {
-            string wrappedContent = WrapMessageContent(message.Role, message.Content);
+            var images = AiMessageImageAttachmentSerializer.DeserializeForProvider(message.ImageAttachmentsJson);
+            string wrappedContent = WrapMessageContent(
+                message.Role,
+                string.IsNullOrWhiteSpace(message.Content) && images.Count > 0
+                    ? "[Image attached]"
+                    : message.Content);
+
             if (budget.TryConsume(wrappedContent, _tokenEstimator))
             {
-                selectedMessages.Add(new AiChatMessage(message.Role, wrappedContent));
+                selectedMessages.Add(new AiChatMessage(message.Role, wrappedContent, images: images));
                 continue;
             }
 
@@ -103,7 +110,7 @@ public sealed class AiPromptContextBuilder
                 string truncatedContent = CreateTruncatedWrappedMessage(message.Role, message.Content, budget.RemainingTokens);
                 if (truncatedContent.Length > 0 && budget.TryConsume(truncatedContent, _tokenEstimator))
                 {
-                    selectedMessages.Add(new AiChatMessage(message.Role, truncatedContent));
+                    selectedMessages.Add(new AiChatMessage(message.Role, truncatedContent, images: images));
                 }
             }
 

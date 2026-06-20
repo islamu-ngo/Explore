@@ -75,6 +75,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(AiAssistantLimitsDto))]
 [JsonSerializable(typeof(CreateAiConversationRequestDto))]
 [JsonSerializable(typeof(SendAiMessageRequestDto))]
+[JsonSerializable(typeof(AiMessageImageInputDto))]
+[JsonSerializable(typeof(AiMessageImageDto))]
 [JsonSerializable(typeof(AiConversationSummaryDto))]
 [JsonSerializable(typeof(AiConversationDto))]
 [JsonSerializable(typeof(AiMessageDto))]

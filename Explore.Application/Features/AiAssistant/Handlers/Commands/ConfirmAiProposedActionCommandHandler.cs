@@ -3,8 +3,11 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Ai;
+using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.AiAssistant.Actions;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
+using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Ai;
@@ -113,7 +116,206 @@ public sealed class ConfirmAiProposedActionCommandHandler(
         }
 
         var executor = new CreateEventDraftAiToolExecutor(mediator);
-        return await executor.ExecuteAsync(action.PayloadJson, mappingContext.Context, cancellationToken);
+        return await executor.ExecuteAsync(
+            action.PayloadJson,
+            mappingContext.Context,
+            ct => ResolveFeaturedImageAsync(action, ct),
+            cancellationToken);
+    }
+
+    private async Task<CreateEventDraftAiFeaturedImageResolutionResult> ResolveFeaturedImageAsync(
+        AiProposedAction action,
+        CancellationToken cancellationToken)
+    {
+        AiMessage? imageMessage = FindSourceImageMessage(action);
+        if (imageMessage is null)
+        {
+            return CreateEventDraftAiFeaturedImageResolutionResult.Success(null);
+        }
+
+        StoredAiMessageImageAttachmentDto? image = AiMessageImageAttachmentSerializer
+            .DeserializeForStorage(imageMessage.ImageAttachmentsJson)
+            .FirstOrDefault();
+        if (image is null)
+        {
+            return CreateEventDraftAiFeaturedImageResolutionResult.Success(null);
+        }
+
+        var mediaType = image.MediaType.Trim();
+        if (!mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
+                "invalid_ai_image_attachment",
+                "AI event draft image attachment must be an image.");
+        }
+
+        if (!TryDecodeBase64Image(image.Data, out var imageBytes))
+        {
+            return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
+                "invalid_ai_image_attachment",
+                "AI event draft image attachment contains invalid base64 data.");
+        }
+
+        if (imageBytes.Length == 0 || imageBytes.Length > AiMessageImageAttachmentSerializer.MaxImageBytes)
+        {
+            return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
+                "invalid_ai_image_attachment",
+                "AI event draft image attachment size is not allowed.");
+        }
+
+        var fileName = ResolveImageFileName(image);
+        var extension = ResolveImageExtension(mediaType, fileName);
+        var uploadSession = await mediator.Send(new CreateStorageUploadSessionCommand
+        {
+            TenantId = action.TenantId,
+            UploadSessionDto = new CreateStorageUploadSessionDto
+            {
+                ExpectedSizeBytes = imageBytes.LongLength,
+                ContentType = mediaType,
+                OriginalFileName = fileName,
+                SafeDisplayName = fileName,
+                Extension = extension,
+                Purpose = StorageObjectPurposes.EventImage,
+                Visibility = StorageObjectVisibilities.PublicImage,
+                IdempotencyKey = $"ai-action:{action.Id}:featured-image"
+            }
+        }, cancellationToken);
+
+        if (!uploadSession.Success || uploadSession.Id is null || uploadSession.Id.Id == Guid.Empty)
+        {
+            return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
+                uploadSession.FailureCode ?? "ai_image_upload_session_failed",
+                uploadSession.Message ?? "AI event draft image upload session could not be created.");
+        }
+
+        await using var content = new MemoryStream(imageBytes, writable: false);
+        var finalizeResult = await mediator.Send(new FinalizeStorageUploadSessionCommand
+        {
+            UploadSessionId = uploadSession.Id.Id,
+            Content = content,
+            ContentType = mediaType,
+            ContentLength = imageBytes.LongLength,
+            TenantId = action.TenantId
+        }, cancellationToken);
+
+        if (!finalizeResult.Success || finalizeResult.Id?.StorageObjectId is not { } storageObjectId || storageObjectId == Guid.Empty)
+        {
+            return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
+                finalizeResult.FailureCode ?? "ai_image_upload_failed",
+                finalizeResult.Message ?? "AI event draft image could not be stored.");
+        }
+
+        return CreateEventDraftAiFeaturedImageResolutionResult.Success(storageObjectId);
+    }
+
+    private static AiMessage? FindSourceImageMessage(AiProposedAction action)
+    {
+        if (action.Message?.Role == AiMessageRole.User && !string.IsNullOrWhiteSpace(action.Message.ImageAttachmentsJson))
+        {
+            return action.Message;
+        }
+
+        if (action.MessageId is null || action.Conversation is null)
+        {
+            return null;
+        }
+
+        var actionMessageSequence = action.Message?.Sequence ?? long.MaxValue;
+        return action.Conversation.Messages
+            .Where(message =>
+                message.Role == AiMessageRole.User
+                && message.Sequence < actionMessageSequence
+                && !string.IsNullOrWhiteSpace(message.ImageAttachmentsJson))
+            .OrderByDescending(message => message.Sequence)
+            .FirstOrDefault();
+    }
+
+    private static bool TryDecodeBase64Image(string data, out byte[] imageBytes)
+    {
+        var normalizedData = NormalizeBase64Data(data);
+        try
+        {
+            imageBytes = Convert.FromBase64String(normalizedData);
+            return true;
+        }
+        catch (FormatException)
+        {
+            imageBytes = [];
+            return false;
+        }
+    }
+
+    private static string NormalizeBase64Data(string data)
+    {
+        var trimmed = data.Trim();
+        if (!trimmed.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed;
+        }
+
+        var commaIndex = trimmed.IndexOf(',', StringComparison.Ordinal);
+        return commaIndex >= 0 && commaIndex < trimmed.Length - 1
+            ? trimmed[(commaIndex + 1)..].Trim()
+            : trimmed;
+    }
+
+    private static string ResolveImageFileName(StoredAiMessageImageAttachmentDto image)
+    {
+        var fileName = string.IsNullOrWhiteSpace(image.FileName)
+            ? "ai-event-poster"
+            : Path.GetFileName(image.FileName.Trim());
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            fileName = "ai-event-poster";
+        }
+
+        fileName = new string(fileName
+            .Select(character => character is '/' or '\\' || char.IsControl(character) ? '_' : character)
+            .ToArray());
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            fileName = "ai-event-poster";
+        }
+
+        if (!Path.HasExtension(fileName))
+        {
+            fileName = $"{fileName}.{ResolveImageExtension(image.MediaType, fileName)}";
+        }
+
+        return fileName.Length <= 500 ? fileName : fileName[..500];
+    }
+
+    private static string ResolveImageExtension(string mediaType, string fileName)
+    {
+        var extension = Path.GetExtension(fileName);
+        if (!string.IsNullOrWhiteSpace(extension))
+        {
+            return extension.TrimStart('.').ToLowerInvariant();
+        }
+
+        var normalizedMediaType = mediaType.Split(';', 2)[0].Trim().ToLowerInvariant();
+        return normalizedMediaType switch
+        {
+            "image/jpeg" => "jpg",
+            "image/png" => "png",
+            "image/webp" => "webp",
+            "image/gif" => "gif",
+            "image/bmp" => "bmp",
+            "image/svg+xml" => "svg",
+            _ when normalizedMediaType.StartsWith("image/", StringComparison.Ordinal)
+                => NormalizeImageSubtypeExtension(normalizedMediaType["image/".Length..]),
+            _ => "img"
+        };
+    }
+
+    private static string NormalizeImageSubtypeExtension(string subtype)
+    {
+        var extension = new string(subtype
+            .Split('+', 2)[0]
+            .Where(char.IsLetterOrDigit)
+            .Take(50)
+            .ToArray());
+        return string.IsNullOrWhiteSpace(extension) ? "img" : extension;
     }
 
     private async Task<ActorMappingContextResult> CreateMappingContextAsync(

@@ -3,9 +3,11 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.AiAssistant.Handlers.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Ai;
@@ -108,6 +110,66 @@ public sealed class AiProposedActionCommandHandlerTests
                 && execution.FailureMessage == null),
             Arg.Any<CancellationToken>());
         await _conversationRepository.Received(1).UpdateProposedActionAsync(action, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Confirm_WhenCreateEventDraftHasImageInput_StoresPosterAndSetsFeaturedImageId()
+    {
+        var uploadSessionId = Guid.CreateVersion7();
+        var storageObjectId = Guid.CreateVersion7();
+        var imageBytes = new byte[] { 1, 2, 3, 4 };
+        var imageAttachmentsJson = "[{\"mediaType\":\"image/png\",\"data\":\""
+            + Convert.ToBase64String(imageBytes)
+            + "\",\"fileName\":\"poster.png\",\"sizeBytes\":4}]";
+        AiProposedAction action = CreateProposedAction(
+            payloadJson: "{\"title\":\"Poster Event\"}",
+            sourceImageAttachmentsJson: imageAttachmentsJson);
+        CreateStorageUploadSessionCommand? uploadCommand = null;
+        FinalizeStorageUploadSessionCommand? finalizeCommand = null;
+        CreateEventCommand? sentCommand = null;
+        byte[]? finalizedBytes = null;
+
+        _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
+        _mediator.Send(Arg.Do<CreateStorageUploadSessionCommand>(command => uploadCommand = command), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<StorageUploadSessionDto>
+            {
+                Success = true,
+                Id = CreateUploadSessionDto(uploadSessionId)
+            });
+        _mediator.Send(Arg.Do<FinalizeStorageUploadSessionCommand>(command =>
+            {
+                finalizeCommand = command;
+                using var copy = new MemoryStream();
+                command.Content.CopyTo(copy);
+                finalizedBytes = copy.ToArray();
+                if (command.Content.CanSeek)
+                {
+                    command.Content.Position = 0;
+                }
+            }), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<StorageUploadSessionDto>
+            {
+                Success = true,
+                Id = CreateUploadSessionDto(uploadSessionId, storageObjectId)
+            });
+        _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+
+        BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(uploadCommand).IsNotNull();
+        await Assert.That(uploadCommand!.UploadSessionDto.ContentType).IsEqualTo("image/png");
+        await Assert.That(uploadCommand.UploadSessionDto.OriginalFileName).IsEqualTo("poster.png");
+        await Assert.That(uploadCommand.UploadSessionDto.Purpose).IsEqualTo(StorageObjectPurposes.EventImage);
+        await Assert.That(uploadCommand.UploadSessionDto.Visibility).IsEqualTo(StorageObjectVisibilities.PublicImage);
+        await Assert.That(finalizeCommand).IsNotNull();
+        await Assert.That(finalizeCommand!.UploadSessionId).IsEqualTo(uploadSessionId);
+        await Assert.That(finalizeCommand.ContentType).IsEqualTo("image/png");
+        await Assert.That(finalizedBytes).IsEquivalentTo(imageBytes);
+        await Assert.That(sentCommand).IsNotNull();
+        await Assert.That(sentCommand!.Request.FeaturedImageId).IsEqualTo(storageObjectId);
+        await Assert.That(sentCommand.Request.Title).IsEqualTo("Poster Event");
     }
 
     [Test]
@@ -368,7 +430,8 @@ public sealed class AiProposedActionCommandHandlerTests
         Guid? tenantId = null,
         Guid? userId = null,
         Guid? actorId = null,
-        string payloadJson = "{\"title\":\"Draft\"}")
+        string payloadJson = "{\"title\":\"Draft\"}",
+        string? sourceImageAttachmentsJson = null)
     {
         Guid actionTenantId = tenantId ?? _tenantId;
         var conversation = new AiConversation
@@ -380,12 +443,31 @@ public sealed class AiProposedActionCommandHandlerTests
             Status = AiConversationStatus.Active
         };
 
+        AiMessage? assistantMessage = null;
+        if (!string.IsNullOrWhiteSpace(sourceImageAttachmentsJson))
+        {
+            var utcNow = DateTime.UtcNow;
+            conversation.AddMessage(
+                AiMessageRole.User,
+                "Create an event draft from this poster.",
+                userId ?? _userId,
+                utcNow,
+                sourceImageAttachmentsJson);
+            assistantMessage = conversation.AddMessage(
+                AiMessageRole.Assistant,
+                "I prepared a proposed action for your review.",
+                null,
+                utcNow.AddMilliseconds(1));
+        }
+
         return new AiProposedAction
         {
             Id = _actionId,
             TenantId = actionTenantId,
             ConversationId = _conversationId,
             Conversation = conversation,
+            MessageId = assistantMessage?.Id,
+            Message = assistantMessage,
             Kind = AiProposedActionKind.CreateEventDraft,
             Status = AiProposedActionStatus.Proposed,
             PayloadJson = payloadJson,
@@ -418,4 +500,29 @@ public sealed class AiProposedActionCommandHandlerTests
             },
             Pii = new ActorPii { ActorId = actorId, DisplayName = actorType.ToString() }
         };
+
+    private StorageUploadSessionDto CreateUploadSessionDto(Guid uploadSessionId, Guid? storageObjectId = null)
+        => new()
+        {
+            Id = uploadSessionId,
+            TenantId = _tenantId,
+            Provider = StorageProviders.Local,
+            ExpectedSizeBytes = 4,
+            ReservedBytes = 4,
+            ContentType = "image/png",
+            SafeDisplayName = "poster.png",
+            Purpose = StorageObjectPurposes.EventImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            Status = storageObjectId.HasValue
+                ? StorageUploadSessionStates.Finalized
+                : StorageUploadSessionStates.Reserved,
+            StorageObjectId = storageObjectId,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            MaxUploadBytes = AiMessageImageMaxBytes,
+            TenantQuotaBytes = AiMessageImageMaxBytes,
+            UsedBytes = storageObjectId.HasValue ? 4 : 0,
+            TotalReservedBytes = storageObjectId.HasValue ? 0 : 4
+        };
+
+    private const long AiMessageImageMaxBytes = 5 * 1024 * 1024;
 }

@@ -74,7 +74,8 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         }
 
         var tenantId = _tenantContext.TenantId;
-        var content = request.Message.Content.Trim();
+        var content = request.Message.Content?.Trim() ?? string.Empty;
+        var imageAttachmentsJson = AiMessageImageAttachmentSerializer.SerializeForStorage(request.Message.Images);
         var idempotencyKey = request.Message.IdempotencyKey.Trim();
         var interactionMode = AiAssistantInteractionModes.Normalize(request.Message.Mode);
         var requestTarget = $"ai/conversations/{request.ConversationId:N}/messages";
@@ -105,7 +106,13 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         var modelId = string.IsNullOrWhiteSpace(requestedModelId)
             ? AiAssistantAvailability.ResolveModelId(settings)
             : requestedModelId;
-        var requestBodyHash = ComputeBodyHash(request.ConversationId, content, modelId, interactionMode, request.Message.ActorId);
+        var requestBodyHash = ComputeBodyHash(
+            request.ConversationId,
+            content,
+            imageAttachmentsJson,
+            modelId,
+            interactionMode,
+            request.Message.ActorId);
         var replay = await TryReplayIdempotencyAsync(
             idempotencyKey,
             tenantId,
@@ -219,7 +226,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         }
 
         conversation.ActorId = request.Message.ActorId ?? conversation.ActorId;
-        conversation.AddMessage(AiMessageRole.User, content, userId, utcNow);
+        conversation.AddMessage(AiMessageRole.User, content, userId, utcNow, imageAttachmentsJson);
         var run = conversation.QueueRun(provider, modelId, utcNow);
         await _conversationRepository.Update(conversation);
         await SaveIdempotencyAsync(
@@ -314,9 +321,15 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         }, cancellationToken);
     }
 
-    private static string ComputeBodyHash(Guid conversationId, string content, string modelId, string mode, Guid? actorId)
+    private static string ComputeBodyHash(
+        Guid conversationId,
+        string content,
+        string? imageAttachmentsJson,
+        string modelId,
+        string mode,
+        Guid? actorId)
     {
-        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}";
+        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}:{imageAttachmentsJson}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     }
 

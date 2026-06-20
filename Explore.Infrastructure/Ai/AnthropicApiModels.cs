@@ -1,5 +1,5 @@
 // ABOUTME: Anthropic Messages API contract models for typed HTTP communication via Refit.
-// ABOUTME: Supports text, tool_use, and tool_result content blocks for multi-turn tool calling.
+// ABOUTME: Supports text, image, tool_use, and tool_result content blocks for multi-turn tool calling.
 
 using System.Text.Json.Serialization;
 
@@ -54,6 +54,11 @@ public sealed record AnthropicApiTool(
     [property: JsonPropertyName("description")] string Description,
     [property: JsonPropertyName("input_schema")] System.Text.Json.JsonElement InputSchema);
 
+public sealed record AnthropicApiImageSource(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("media_type")] string MediaType,
+    [property: JsonPropertyName("data")] string Data);
+
 public sealed record AnthropicApiContentBlock
 {
     [JsonPropertyName("type")]
@@ -66,6 +71,10 @@ public sealed record AnthropicApiContentBlock
     [JsonPropertyName("thinking")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Thinking { get; init; }
+
+    [JsonPropertyName("source")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AnthropicApiImageSource? Source { get; init; }
 
     [JsonPropertyName("id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -95,6 +104,12 @@ public sealed record AnthropicApiContentBlock
     {
         Type = "text",
         Text = text
+    };
+
+    public static AnthropicApiContentBlock FromImage(string mediaType, string data) => new()
+    {
+        Type = "image",
+        Source = new AnthropicApiImageSource("base64", mediaType, data)
     };
 
     public static AnthropicApiContentBlock FromToolUse(string id, string name, System.Text.Json.JsonElement input) => new()

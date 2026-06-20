@@ -602,6 +602,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("conversation_id");
 
+                    b.Property<string>("ImageAttachmentsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("image_attachments_json");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");

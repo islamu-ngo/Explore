@@ -4,6 +4,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
@@ -219,8 +220,77 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(savedIdempotency).IsNotNull();
         await Assert.That(savedIdempotency!.ResponseBody).IsEqualTo(result.Id.ToString("D", CultureInfo.InvariantCulture));
         await Assert.That(savedIdempotency.RequestBodyHash).IsEqualTo(
-            ComputeBodyHash(_conversationId, "Plan the event", AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Build, actorId));
+            ComputeBodyHash(_conversationId, "Plan the event", null, AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Build, actorId));
         await _conversationRepository.Received(1).Update(conversation);
+    }
+
+    [Test]
+    public async Task Handle_WhenImagesAreProvided_PersistsAttachmentsAndHashesPayload()
+    {
+        var conversation = CreateConversation();
+        IdempotencyRecord? savedIdempotency = null;
+        var imageData = Convert.ToBase64String(new byte[] { 1, 2, 3 });
+        var images = new List<AiMessageImageInputDto>
+        {
+            new()
+            {
+                MediaType = "image/jpeg",
+                Data = imageData,
+                FileName = "csharp.jpg",
+                SizeBytes = 3
+            }
+        };
+
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _idempotencyRepository.SaveAsync(Arg.Do<IdempotencyRecord>(record => savedIdempotency = record), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateHandler().Handle(CreateCommand(content: "Describe this picture:", images: images), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        var message = conversation.Messages.Single();
+        await Assert.That(message.Content).IsEqualTo("Describe this picture:");
+        await Assert.That(message.ImageAttachmentsJson).IsNotNull();
+        await Assert.That(message.ImageAttachmentsJson!).Contains("\"mediaType\":\"image/jpeg\"");
+        await Assert.That(message.ImageAttachmentsJson!).Contains($"\"data\":\"{imageData}\"");
+        await Assert.That(savedIdempotency).IsNotNull();
+        await Assert.That(savedIdempotency!.RequestBodyHash).IsEqualTo(
+            ComputeBodyHash(
+                _conversationId,
+                "Describe this picture:",
+                CreateImageAttachmentsJson(images),
+                AiProviderDefaults.FakeModelId,
+                AiAssistantInteractionModes.Build));
+    }
+
+    [Test]
+    public async Task Handle_WhenImageOnlyRequestHasNullContent_QueuesImageOnlyMessage()
+    {
+        var conversation = CreateConversation();
+        var images = new List<AiMessageImageInputDto>
+        {
+            new()
+            {
+                MediaType = "image/png",
+                Data = Convert.ToBase64String(new byte[] { 9, 8, 7 }),
+                FileName = "diagram.png",
+                SizeBytes = 3
+            }
+        };
+
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+
+        var command = CreateCommand(content: string.Empty, images: images);
+        command.Message.Content = null!;
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        var message = conversation.Messages.Single();
+        await Assert.That(message.Content).IsEqualTo(string.Empty);
+        await Assert.That(message.ImageAttachmentsJson).IsNotNull();
+        await Assert.That(message.ImageAttachmentsJson!).Contains("\"mediaType\":\"image/png\"");
     }
 
     [Test]
@@ -240,7 +310,7 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(savedIdempotency).IsNotNull();
         await Assert.That(savedIdempotency!.RequestBodyHash).IsEqualTo(
-            ComputeBodyHash(_conversationId, "Just answer", AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Ask));
+            ComputeBodyHash(_conversationId, "Just answer", null, AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Ask));
     }
 
     private SendAiMessageCommandHandler CreateHandler()
@@ -256,13 +326,15 @@ public sealed class SendAiMessageCommandHandlerTests
         string content = "Please help plan this event.",
         string idempotencyKey = "idem-ai-send",
         string mode = AiAssistantInteractionModes.Build,
-        Guid? actorId = null)
+        Guid? actorId = null,
+        IReadOnlyList<AiMessageImageInputDto>? images = null)
         => new()
         {
             ConversationId = _conversationId,
             Message = new SendAiMessageRequestDto
             {
                 Content = content,
+                Images = images ?? [],
                 IdempotencyKey = idempotencyKey,
                 Mode = mode,
                 ActorId = actorId
@@ -287,6 +359,7 @@ public sealed class SendAiMessageCommandHandlerTests
     {
         var content = command.Message.Content.Trim();
         var mode = AiAssistantInteractionModes.Normalize(command.Message.Mode);
+        var imageAttachmentsJson = CreateImageAttachmentsJson(command.Message.Images);
         return new IdempotencyRecord
         {
             Id = Guid.CreateVersion7(),
@@ -296,7 +369,7 @@ public sealed class SendAiMessageCommandHandlerTests
             RequestMethod = "AI_SEND",
             RequestTarget = $"ai/conversations/{command.ConversationId:N}/messages",
             RequestContentType = "application/json",
-            RequestBodyHash = ComputeBodyHash(command.ConversationId, content, AiProviderDefaults.FakeModelId, mode, command.Message.ActorId),
+            RequestBodyHash = ComputeBodyHash(command.ConversationId, content, imageAttachmentsJson, AiProviderDefaults.FakeModelId, mode, command.Message.ActorId),
             PrincipalFingerprint = ComputePrincipalFingerprint(_userId),
             StatusCode = 202,
             ResponseBody = runId.ToString("D", CultureInfo.InvariantCulture),
@@ -347,10 +420,32 @@ public sealed class SendAiMessageCommandHandlerTests
         IsLocked = false
     };
 
-    private static string ComputeBodyHash(Guid conversationId, string content, string modelId, string mode, Guid? actorId = null)
+    private static string ComputeBodyHash(
+        Guid conversationId,
+        string content,
+        string? imageAttachmentsJson,
+        string modelId,
+        string mode,
+        Guid? actorId = null)
     {
-        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}";
+        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}:{imageAttachmentsJson}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+    }
+
+    private static string? CreateImageAttachmentsJson(IReadOnlyList<AiMessageImageInputDto>? images)
+    {
+        if (images is null || images.Count == 0)
+        {
+            return null;
+        }
+
+        return JsonSerializer.Serialize(images.Select(image => new
+        {
+            mediaType = image.MediaType.Trim(),
+            data = image.Data.Trim(),
+            fileName = string.IsNullOrWhiteSpace(image.FileName) ? null : image.FileName.Trim(),
+            sizeBytes = image.SizeBytes
+        }), new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 
     private static string ComputePrincipalFingerprint(Guid userId)

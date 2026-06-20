@@ -154,6 +154,14 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
                 telemetryActivity);
         }
 
+        if (request.Messages.Any(message => message.Images.Count > 0))
+        {
+            return CompleteFailure(
+                RecordFailure("unsupported_image_input", "Image inputs are only supported by the Anthropic-compatible adapter."),
+                startedAt,
+                telemetryActivity);
+        }
+
         if (request.Messages.Any(message => message.Role == AiMessageRole.Tool))
         {
             return CompleteFailure(

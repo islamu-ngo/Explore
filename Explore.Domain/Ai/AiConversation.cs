@@ -41,7 +41,12 @@ public class AiConversation : ITenantEntity, IAuditableEntity, ISoftDeletable, I
     public Guid? DeletedBy { get; set; }
     public Guid ConcurrencyStamp { get; set; }
 
-    public AiMessage AddMessage(AiMessageRole role, string content, Guid? userId, DateTime utcNow)
+    public AiMessage AddMessage(
+        AiMessageRole role,
+        string content,
+        Guid? userId,
+        DateTime utcNow,
+        string? imageAttachmentsJson = null)
     {
         if (Status == AiConversationStatus.Blocked)
         {
@@ -53,9 +58,14 @@ public class AiConversation : ITenantEntity, IAuditableEntity, ISoftDeletable, I
             throw new InvalidOperationException("Archived AI conversations cannot accept new messages.");
         }
 
-        if (string.IsNullOrWhiteSpace(content))
+        var normalizedContent = content.Trim();
+        var normalizedImageAttachmentsJson = string.IsNullOrWhiteSpace(imageAttachmentsJson)
+            ? null
+            : imageAttachmentsJson.Trim();
+
+        if (string.IsNullOrWhiteSpace(normalizedContent) && string.IsNullOrWhiteSpace(normalizedImageAttachmentsJson))
         {
-            throw new ArgumentException("AI messages require content.", nameof(content));
+            throw new ArgumentException("AI messages require content or image attachments.", nameof(content));
         }
 
         var message = new AiMessage
@@ -65,7 +75,8 @@ public class AiConversation : ITenantEntity, IAuditableEntity, ISoftDeletable, I
             ConversationId = Id,
             Sequence = ++LastMessageSequence,
             Role = role,
-            Content = content.Trim(),
+            Content = normalizedContent,
+            ImageAttachmentsJson = normalizedImageAttachmentsJson,
             CreatedAt = utcNow,
             CreatedBy = userId
         };
