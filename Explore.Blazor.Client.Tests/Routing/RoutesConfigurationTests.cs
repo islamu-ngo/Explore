@@ -35,6 +35,16 @@ public class RoutesConfigurationTests
     }
 
     [Test]
+    public async Task Routes_ShouldNotInclude_RemovedMyEvents_Path()
+    {
+        var routesFilePath = FindRoutesFilePath();
+        var routesContent = await File.ReadAllTextAsync(routesFilePath);
+
+        await Assert.That(routesContent).DoesNotContain("Path = \"/my/events\"");
+        await Assert.That(routesContent).DoesNotContain("typeof(MyEvents)");
+    }
+
+    [Test]
     public async Task Routes_ShouldInclude_OrganizationCreate_Path_AndNoStaleSingularCreatePath()
     {
         var routesFilePath = FindRoutesFilePath();

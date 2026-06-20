@@ -1,6 +1,7 @@
 // ABOUTME: Code-behind for the MangaDex-style advanced search filter bar component.
 // ABOUTME: Manages filter state, collapse/drawer toggle, and search invocation for the event list.
 
+using System.Globalization;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Microsoft.AspNetCore.Components;
@@ -39,7 +40,6 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     [Parameter] public ICollection<TagListDto> Tags { get; set; } = new List<TagListDto>();
     [Parameter] public ICollection<AudienceGenderListDto> AudienceGenders { get; set; } = new List<AudienceGenderListDto>();
     [Parameter] public ICollection<AudienceAgeListDto> AudienceAges { get; set; } = new List<AudienceAgeListDto>();
-    [Parameter] public ICollection<EventStatusListDto> EventStatuses { get; set; } = new List<EventStatusListDto>();
     [Parameter] public ICollection<TagTypeWithTagsDto> TagGroups { get; set; } = new List<TagTypeWithTagsDto>();
 
     // Collapse State
@@ -58,7 +58,6 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     public IReadOnlyCollection<int> SelectedEventTypeIds { get; set; } = new HashSet<int>();
     public IReadOnlyCollection<int> SelectedAudienceGenderIds { get; set; } = new HashSet<int>();
     public IReadOnlyCollection<int> SelectedAudienceAgeIds { get; set; } = new HashSet<int>();
-    public IReadOnlyCollection<int> SelectedEventStatusIds { get; set; } = new HashSet<int>();
     public string SelectedSortBy { get; set; } = "date";
     public bool SortDescending { get; set; } = true;
 
@@ -111,7 +110,6 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
         SelectedEventTypeIds = new HashSet<int>();
         SelectedAudienceGenderIds = new HashSet<int>();
         SelectedAudienceAgeIds = new HashSet<int>();
-        SelectedEventStatusIds = new HashSet<int>();
         SelectedSortBy = "date";
         SortDescending = true;
 
@@ -140,7 +138,6 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
         if (SelectedEventTypeIds.Any()) count++;
         if (SelectedAudienceGenderIds.Any()) count++;
         if (SelectedAudienceAgeIds.Any()) count++;
-        if (SelectedEventStatusIds.Any()) count++;
 
         if (SelectedGenderModeIds.Any()) count++;
         if (SelectedReferencePrayerIds.Any()) count++;
@@ -155,6 +152,104 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
         count += categoryFilter.IncludedCategoryIds.Count + categoryFilter.ExcludedCategoryIds.Count;
 
         return count;
+    }
+
+    private string FormatSelectedLocations(IReadOnlyList<string> selectedValues) => FormatSelectedGuidLookup(
+        selectedValues,
+        Locations,
+        location => location.Id,
+        location => location.FullName);
+
+    private string FormatSelectedFormats(IReadOnlyList<string> selectedValues) => FormatSelectedIntLookup(
+        selectedValues,
+        EventFormats,
+        format => format.Id,
+        format => format.FullName);
+
+    private string FormatSelectedEventTypes(IReadOnlyList<string> selectedValues) => FormatSelectedIntLookup(
+        selectedValues,
+        EventTypes,
+        eventType => eventType.Id,
+        eventType => eventType.FullName);
+
+    private string FormatSelectedMadhabs(IReadOnlyList<string> selectedValues) => FormatSelectedIntLookup(
+        selectedValues,
+        Madhabs,
+        madhab => madhab.Id,
+        madhab => madhab.FullName);
+
+    private string FormatSelectedRegistrationModes(IReadOnlyList<string> selectedValues) => FormatSelectedIntLookup(
+        selectedValues,
+        RegistrationModes,
+        mode => mode.Id,
+        mode => mode.FullName);
+
+    private string FormatSelectedLanguages(IReadOnlyList<string> selectedValues) => FormatSelectedIntLookup(
+        selectedValues,
+        Languages,
+        language => language.Id,
+        language => language.FullName);
+
+    private string FormatSelectedAudienceGenders(IReadOnlyList<string> selectedValues) => FormatSelectedIntLookup(
+        selectedValues,
+        AudienceGenders,
+        gender => gender.Id,
+        gender => gender.FullName);
+
+    private string FormatSelectedAudienceAges(IReadOnlyList<string> selectedValues) => FormatSelectedIntLookup(
+        selectedValues,
+        AudienceAges,
+        age => age.Id,
+        age => age.FullName);
+
+    private static string FormatSelectedGenderModes(IReadOnlyList<string> selectedValues) => FormatSelectedEnum<GenderSegregationMode>(selectedValues);
+
+    private static string FormatSelectedPrayerTimes(IReadOnlyList<string> selectedValues) => FormatSelectedEnum<PrayerTime>(selectedValues);
+
+    private static string FormatSelectedIntLookup<TLookup>(
+        IEnumerable<string> selectedValues,
+        IEnumerable<TLookup> lookupItems,
+        Func<TLookup, int?> idSelector,
+        Func<TLookup, string?> labelSelector)
+    {
+        var labelById = lookupItems
+            .Where(item => idSelector(item).HasValue)
+            .ToDictionary(item => idSelector(item)!.Value, item => labelSelector(item));
+
+        return string.Join(", ", selectedValues.Select(value =>
+            int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) &&
+            labelById.TryGetValue(id, out var label) &&
+            !string.IsNullOrWhiteSpace(label)
+                ? label
+                : value));
+    }
+
+    private static string FormatSelectedGuidLookup<TLookup>(
+        IEnumerable<string> selectedValues,
+        IEnumerable<TLookup> lookupItems,
+        Func<TLookup, Guid?> idSelector,
+        Func<TLookup, string?> labelSelector)
+    {
+        var labelById = lookupItems
+            .Where(item => idSelector(item).HasValue)
+            .ToDictionary(item => idSelector(item)!.Value, item => labelSelector(item));
+
+        return string.Join(", ", selectedValues.Select(value =>
+            Guid.TryParse(value, out var id) &&
+            labelById.TryGetValue(id, out var label) &&
+            !string.IsNullOrWhiteSpace(label)
+                ? label
+                : value));
+    }
+
+    private static string FormatSelectedEnum<TEnum>(IEnumerable<string> selectedValues)
+        where TEnum : struct, Enum
+    {
+        return string.Join(", ", selectedValues.Select(value =>
+            int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) &&
+            Enum.IsDefined(typeof(TEnum), id)
+                ? Enum.ToObject(typeof(TEnum), id).ToString()
+                : value));
     }
 
     // ── IBrowserViewportObserver ──

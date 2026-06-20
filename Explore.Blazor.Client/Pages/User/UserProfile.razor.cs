@@ -1,5 +1,8 @@
-using System.Security.Claims;
+// ABOUTME: Code-behind for the authenticated user profile page.
+// ABOUTME: Loads profile stats and delegates post-event card actions to the reusable preview workspace.
+
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Events;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
@@ -110,6 +113,7 @@ public partial class UserProfile : ComponentBase
 
     private ICollection<EventListDto> _posts = new List<EventListDto>();
     private ICollection<EventRegistrationListDto> _history = new List<EventRegistrationListDto>();
+    private EventPreviewWorkspace? _eventPreviewWorkspace;
 
     private async Task LoadStatisticsAsync(Guid userId)
     {
@@ -178,35 +182,24 @@ public partial class UserProfile : ComponentBase
         }
     }
 
-    private static string GetEventImage(EventListDto evt)
-    {
-        var color = EventColorHelper.GetColorByTypeId(evt.EventTypeId);
-        if (color == EventColorHelper.DefaultColor)
-        {
-            color = EventColorHelper.GetColorByHash(evt.Title);
-        }
+    private Task HandleEventSelected(EventListDto evt) =>
+        _eventPreviewWorkspace?.SelectEventAsync(evt) ?? Task.CompletedTask;
 
-        return ImageHelper.GetEventImageUrl(evt.FeaturedImageUri, evt.Title, color);
+    private void HandleEventEdit(EventListDto evt)
+    {
+        _eventPreviewWorkspace?.NavigateToEdit(evt);
     }
 
-    private static string FormatEventDate(EventListDto evt)
+    private Task HandleEventDelete(EventListDto evt) =>
+        _eventPreviewWorkspace?.OpenDeleteDialogAsync(evt) ?? Task.CompletedTask;
+
+    private Task HandleEventShare(EventListDto evt) =>
+        _eventPreviewWorkspace?.ShareEventAsync(evt) ?? Task.CompletedTask;
+
+    private Task HandlePostDeleted(EventListDto evt)
     {
-        if (evt.FirstSessionDate == null) return "TBD";
-
-        var start = evt.FirstSessionDate.Value;
-        if (evt.LastSessionDate != null && evt.LastSessionDate.Value.Date != start.Date)
-        {
-            return $"{start:MMM dd} — {evt.LastSessionDate.Value:MMM dd, yyyy}";
-        }
-
-        return start.ToString("MMM dd, yyyy");
-    }
-
-    private static string GetLocationText(EventListDto evt)
-    {
-        if (evt.EventFormatId == 2) return "Online";
-        if (!string.IsNullOrEmpty(evt.EventFormatFullName)) return evt.EventFormatFullName;
-        return "Location TBD";
+        _posts = _posts.Where(post => post.Id != evt.Id).ToList();
+        return Task.CompletedTask;
     }
 
     private static string GetHistoryImage(EventRegistrationListDto reg)

@@ -3,6 +3,7 @@
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Events;
 using Explore.Blazor.Client.Components.Forms;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
@@ -31,6 +32,7 @@ public partial class OrganizationDetails
     private string? successMessage;
 
     private ICollection<EventListDto> _orgEvents = new List<EventListDto>();
+    private EventPreviewWorkspace? _eventPreviewWorkspace;
 
     private UpdateOrganizationDto editModel = new();
     private AppearanceSettings _appearance = new();
@@ -216,5 +218,25 @@ public partial class OrganizationDetails
             3 => Color.Error,    // Rejected
             _ => Color.Default
         };
+    }
+
+    private Task HandleEventSelected(EventListDto evt) =>
+        _eventPreviewWorkspace?.SelectEventAsync(evt) ?? Task.CompletedTask;
+
+    private void HandleEventEdit(EventListDto evt)
+    {
+        _eventPreviewWorkspace?.NavigateToEdit(evt);
+    }
+
+    private Task HandleEventDelete(EventListDto evt) =>
+        _eventPreviewWorkspace?.OpenDeleteDialogAsync(evt) ?? Task.CompletedTask;
+
+    private Task HandleEventShare(EventListDto evt) =>
+        _eventPreviewWorkspace?.ShareEventAsync(evt) ?? Task.CompletedTask;
+
+    private Task HandleEventDeleted(EventListDto evt)
+    {
+        _orgEvents = _orgEvents.Where(orgEvent => orgEvent.Id != evt.Id).ToList();
+        return Task.CompletedTask;
     }
 }

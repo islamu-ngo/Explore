@@ -1,7 +1,10 @@
+@* ABOUTME: Authenticated user profile page with identity, stats, posts, history, and reviews. *@
+@* ABOUTME: Reuses shared EventList card and preview workspace components for user-owned event posts. *@
 @page "/my/profile"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Events
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Authorization
 @rendermode InteractiveServer
@@ -113,36 +116,17 @@
                             }
                             else if (_posts.Any())
                             {
-                                <MudGrid Spacing="4">
-                                    @foreach (var evt in _posts)
-                                    {
-                                        <MudItem xs="12" sm="6" md="4">
-                                            <MudCard Elevation="0" Class="org-profile__event-card cursor-pointer" @onclick="@(() => NavigateToEvent(evt.Id))">
-                                                <div class="org-profile__event-card-image">
-                                                    <MudImage Src="@GetEventImage(evt)" ObjectFit="ObjectFit.Cover" Style="width: 100%; height: 100%; display: block;" />
-                                                </div>
-                                                <MudCardContent Class="pa-3">
-                                                    <div class="d-flex align-center gap-2 mb-2">
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold px-1">@evt.EventTypeFullName</MudChip>
-                                                        @if ((evt.Price ?? 0) == 0)
-                                                        {
-                                                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">Free</MudChip>
-                                                        }
-                                                    </div>
-                                                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">@evt.Title</MudText>
-                                                    <div class="d-flex align-center gap-1 mt-2">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
-                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatEventDate(evt)</MudText>
-                                                    </div>
-                                                    <div class="d-flex align-center gap-1 mt-1">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" Color="Color.Secondary" />
-                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@GetLocationText(evt)</MudText>
-                                                    </div>
-                                                </MudCardContent>
-                                            </MudCard>
-                                        </MudItem>
-                                    }
-                                </MudGrid>
+                                <EventPreviewWorkspace @ref="_eventPreviewWorkspace"
+                                                       NavigationEvents="_posts"
+                                                       OnEventDeleted="HandlePostDeleted">
+                                    <EventCardList Events="@_posts"
+                                                   SelectedEventId="@(_eventPreviewWorkspace?.SelectedEventId)"
+                                                   AriaLabel="Your posted events"
+                                                   OnEventSelected="HandleEventSelected"
+                                                   OnEditRequested="HandleEventEdit"
+                                                   OnDeleteRequested="HandleEventDelete"
+                                                   OnShareRequested="HandleEventShare" />
+                                </EventPreviewWorkspace>
                             }
                             else
                             {

@@ -59,6 +59,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private bool _detailDrawerOpen;
     private EventListDto? _selectedEvent;
     private bool _detailImageLoadFailed;
+    private bool _isDetailImageLoading;
     private EventDto? _selectedEventDetail;
     private ICollection<EventSessionListDto>? _selectedEventSessions;
     private bool _isLoadingDetail;
@@ -102,7 +103,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private ICollection<EventTypeListDto> eventTypes = new List<EventTypeListDto>();
     private ICollection<AudienceGenderListDto> audienceGenders = new List<AudienceGenderListDto>();
     private ICollection<AudienceAgeListDto> audienceAges = new List<AudienceAgeListDto>();
-    private ICollection<EventStatusListDto> eventStatuses = new List<EventStatusListDto>();
     private ICollection<EventFormatListDto> eventFormats = new List<EventFormatListDto>();
     private ICollection<CategoryListDto> categories = new List<CategoryListDto>();
     private ICollection<TagListDto> tags = new List<TagListDto>();
@@ -341,7 +341,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         eventTypes = PersistedState.EventTypes;
         audienceGenders = PersistedState.AudienceGenders;
         audienceAges = PersistedState.AudienceAges;
-        eventStatuses = PersistedState.EventStatuses;
         eventFormats = PersistedState.EventFormats;
         categories = PersistedState.Categories;
         tags = PersistedState.Tags;
@@ -423,7 +422,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             var eventTypesTask = AdminService.GetEventTypesAsync();
             var audienceGendersTask = AdminService.GetAudienceGendersAsync();
             var audienceAgesTask = AdminService.GetAudienceAgesAsync();
-            var eventStatusesTask = AdminService.GetEventStatusesAsync();
             var eventFormatsTask = EventService.GetEventFormatsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
@@ -434,12 +432,11 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             var tagGroupsTask = TagService.GetTagsGroupedByTagTypeAsync();
             var categoryGroupsTask = CategoryService.GetCategoriesGroupedByCategoryTypeAsync();
 
-            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventStatusesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask, tagGroupsTask, categoryGroupsTask);
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask, tagGroupsTask, categoryGroupsTask);
 
             eventTypes = await eventTypesTask ?? new List<EventTypeListDto>();
             audienceGenders = await audienceGendersTask ?? new List<AudienceGenderListDto>();
             audienceAges = await audienceAgesTask ?? new List<AudienceAgeListDto>();
-            eventStatuses = await eventStatusesTask ?? new List<EventStatusListDto>();
             eventFormats = await eventFormatsTask ?? new List<EventFormatListDto>();
             categories = await categoriesTask ?? new List<CategoryListDto>();
             tags = await tagsTask ?? new List<TagListDto>();
@@ -650,7 +647,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             EventTypes = eventTypes.ToList(),
             AudienceGenders = audienceGenders.ToList(),
             AudienceAges = audienceAges.ToList(),
-            EventStatuses = eventStatuses.ToList(),
             EventFormats = eventFormats.ToList(),
             Categories = categories.ToList(),
             Tags = tags.ToList(),
@@ -723,6 +719,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
         _selectedEvent = evt;
         _detailImageLoadFailed = false;
+        _isDetailImageLoading = HasUsableFeaturedImage(evt);
         _selectedEventDetail = null;
         _selectedEventSessions = null;
         _detailDrawerOpen = true;
@@ -745,8 +742,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         finally
         {
             _isLoadingDetail = false;
-            StateHasChanged();
-            DockLayoutState.Refresh();
+            await RefreshDetailPreviewAsync();
         }
     }
 
@@ -778,6 +774,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         _selectedEventDetail = null;
         _selectedEventSessions = null;
+        _isDetailImageLoading = false;
         _showInlineRegistration = false;
         _showTagCatPopup = false;
     }
@@ -1038,6 +1035,26 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         {
             CloseDetailDrawer();
         }
+    }
+
+    private void NavigateToSelectedEventPage()
+    {
+        if (_selectedEvent?.Id is Guid eventId && eventId != Guid.Empty)
+        {
+            Navigation.NavigateTo($"/events/{eventId}");
+        }
+    }
+
+    private async Task SetRegShareEmailAsync(bool value)
+    {
+        _regShareEmail = value;
+        await RefreshDetailPreviewAsync();
+    }
+
+    private async Task SetTagCategoryPopupVisibleAsync(bool value)
+    {
+        _showTagCatPopup = value;
+        await RefreshDetailPreviewAsync();
     }
 
     private async Task CopyEventLinkAsync()
@@ -1342,21 +1359,59 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private string GetDetailImageSrc()
     {
         if (_selectedEvent == null) return string.Empty;
-        if (_detailImageLoadFailed || string.IsNullOrEmpty(_selectedEvent.FeaturedImageUri))
+        if (_detailImageLoadFailed || string.IsNullOrWhiteSpace(_selectedEvent.FeaturedImageUri))
             return GetFallbackEventImage(_selectedEvent);
         return _selectedEvent.FeaturedImageUri;
     }
 
     private bool HasDetailActualImage => _selectedEvent != null
-        && !string.IsNullOrEmpty(_selectedEvent.FeaturedImageUri)
+        && HasUsableFeaturedImage(_selectedEvent)
         && !_detailImageLoadFailed;
+
+    private bool ShouldShowDetailImageSkeleton => _isLoadingDetail || _isDetailImageLoading;
+
+    private string GetDetailImageCssClass(bool hasDetailActualImage, bool showDetailImageSkeleton)
+    {
+        var cssClass = hasDetailActualImage
+            ? "event-list__detail-image-actual"
+            : "event-list__detail-image-fallback";
+
+        return showDetailImageSkeleton
+            ? $"{cssClass} event-list__detail-image--loading"
+            : cssClass;
+    }
 
     private string GetFallbackEventImage(EventListDto eventItem)
     {
         return ImageHelper.GetEventImageUrl(null, eventItem.Title, GetEventColorForEvent(eventItem), width: 300, height: 400);
     }
 
-    private void HandleDetailImageError() => _detailImageLoadFailed = true;
+    private async Task HandleDetailImageLoaded()
+    {
+        if (!_isDetailImageLoading && !_isLoadingDetail)
+        {
+            return;
+        }
+
+        _isDetailImageLoading = false;
+        await RefreshDetailPreviewAsync();
+    }
+
+    private async Task HandleDetailImageError()
+    {
+        _detailImageLoadFailed = true;
+        _isDetailImageLoading = false;
+        await RefreshDetailPreviewAsync();
+    }
+
+    private static bool HasUsableFeaturedImage(EventListDto eventItem) =>
+        !string.IsNullOrWhiteSpace(eventItem.FeaturedImageUri);
+
+    private async Task RefreshDetailPreviewAsync()
+    {
+        await InvokeAsync(StateHasChanged);
+        DockLayoutState.Refresh();
+    }
 
     private string GetEventColorForEvent(EventListDto eventItem)
     {
@@ -1490,6 +1545,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _regShareEmail = false;
         _regShowConsentOption = false;
         _regSelectedSessionIds.Clear();
+        await RefreshDetailPreviewAsync();
 
         try
         {
@@ -1532,15 +1588,17 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         finally
         {
             _regIsLoading = false;
+            await RefreshDetailPreviewAsync();
         }
     }
 
-    private void CloseInlineRegistration()
+    private async Task CloseInlineRegistration()
     {
         _showInlineRegistration = false;
         _regIsComplete = false;
         _regIsAlreadyRegistered = false;
         _regIsWaitlisted = false;
+        await RefreshDetailPreviewAsync();
     }
 
     private void ToggleRegSession(Guid sessionId)
@@ -1557,25 +1615,28 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private async Task HandleInlineRegistrationSubmit()
     {
-        if (_regCurrentUser == null || !_regSelectedSessionIds.Any()) return;
+        if (_selectedEvent?.Id is not { } eventId || _regCurrentUser == null || !_regSelectedSessionIds.Any()) return;
 
         _regIsSubmitting = true;
+        await RefreshDetailPreviewAsync();
 
         try
         {
-            var dto = EventListRegistrationWorkflow.BuildSessionRegistrationRequest(
-                _selectedEvent!.Id!.Value,
+            var dto = EventListRegistrationWorkflow.BuildRegistrationRequest(
+                eventId,
                 _regCurrentUser.Id,
+                _regAvailableSessions,
                 _regSelectedSessionIds,
+                _selectedEventDetail?.RegistrationPolicyId,
                 _regShareEmail,
                 _regOrganizerName);
 
             bool allSucceeded = true;
-            var response = await EventService.RegisterForEventSessionAsync(dto);
+            var response = await RegistrationService.RegisterForSessionAsync(dto);
             if (response?.Success != true)
             {
                 allSucceeded = false;
-                Snackbar.Add(response?.Message ?? "Registration failed.", Severity.Warning);
+                Snackbar.Add(GetRegistrationFailureMessage(response), Severity.Warning);
             }
 
             if (allSucceeded)
@@ -1598,7 +1659,15 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         finally
         {
             _regIsSubmitting = false;
+            await RefreshDetailPreviewAsync();
         }
+    }
+
+    private static string GetRegistrationFailureMessage(BaseCommandResponseOfGuid? response)
+    {
+        return response?.Errors?.FirstOrDefault(error => !string.IsNullOrWhiteSpace(error))
+            ?? response?.Message
+            ?? "Registration failed.";
     }
 
     // ── Tag/Category management ──
@@ -1768,7 +1837,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         public List<EventTypeListDto> EventTypes { get; init; } = new();
         public List<AudienceGenderListDto> AudienceGenders { get; init; } = new();
         public List<AudienceAgeListDto> AudienceAges { get; init; } = new();
-        public List<EventStatusListDto> EventStatuses { get; init; } = new();
         public List<EventFormatListDto> EventFormats { get; init; } = new();
         public List<CategoryListDto> Categories { get; init; } = new();
         public List<TagListDto> Tags { get; init; } = new();

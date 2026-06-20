@@ -109,6 +109,21 @@
                     <!-- Notification Bell -->
                     <NotificationBell />
 
+                    @* AI Assistant toggle follows tenant audience policy and the current user's preference. *@
+                    @if (AiAssistantState.IsButtonVisible)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
+                                       Color="Color.Inherit"
+                                       Size="Size.Medium"
+                                       OnClick="ToggleAiAssistantPanel"
+                                       Title="AI Assistant"
+                                       Class="@($"navbar__ai-toggle {(AiAssistantState.IsOpen ? "navbar__ai-toggle--active" : "")}")"
+                                       data-testid="shell-ai-toggle"
+                                       aria-label="Toggle AI Assistant"
+                                       aria-expanded="@(AiAssistantState.IsOpen ? "true" : "false")"
+                                       aria-controls="ai-assistant-rail" />
+                    }
+
                     <!-- User Dropdown -->
                     <div class="navbar__user-dropdown">
                         <button type="button" class="navbar__user-btn" @onclick="ToggleDropdown" @onclick:stopPropagation
@@ -250,10 +265,6 @@
                                     </div>
                                 }
 
-                                <a href="/my/events" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                    <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
-                                    My Events
-                                </a>
                                 <a href="/my/registrations" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" />
                                     My Registrations
@@ -327,23 +338,23 @@
                                 OnClick="StartLogin">
                         Login
                     </MudButton>
+
+                    @* AI Assistant toggle follows tenant audience policy and the current user's preference. *@
+                    @if (AiAssistantState.IsButtonVisible)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
+                                       Color="Color.Inherit"
+                                       Size="Size.Medium"
+                                       OnClick="ToggleAiAssistantPanel"
+                                       Title="AI Assistant"
+                                       Class="@($"navbar__ai-toggle {(AiAssistantState.IsOpen ? "navbar__ai-toggle--active" : "")}")"
+                                       data-testid="shell-ai-toggle"
+                                       aria-label="Toggle AI Assistant"
+                                       aria-expanded="@(AiAssistantState.IsOpen ? "true" : "false")"
+                                       aria-controls="ai-assistant-rail" />
+                    }
                 </NotAuthorized>
             </AuthorizeView>
-
-            @* AI Assistant toggle follows tenant audience policy and the current user's preference. *@
-            @if (AiAssistantState.IsButtonVisible)
-            {
-                <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
-                               Color="Color.Inherit"
-                               Size="Size.Medium"
-                               OnClick="ToggleAiAssistantPanel"
-                               Title="AI Assistant"
-                               Class="@($"navbar__ai-toggle {(AiAssistantState.IsOpen ? "navbar__ai-toggle--active" : "")}")"
-                               data-testid="shell-ai-toggle"
-                               aria-label="Toggle AI Assistant"
-                               aria-expanded="@(AiAssistantState.IsOpen ? "true" : "false")"
-                               aria-controls="ai-assistant-rail" />
-            }
         </div>
     </div>
 </div>

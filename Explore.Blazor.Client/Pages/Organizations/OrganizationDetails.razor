@@ -1,5 +1,8 @@
+@* ABOUTME: Authenticated organization management/details page with HAL-gated edit affordances. *@
+@* ABOUTME: Reuses shared EventList cards and preview workspace for organization-owned event sections. *@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Components.Events
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using MudBlazor
@@ -295,65 +298,38 @@
         @if (_orgEvents.Any())
         {
             <MudDivider Class="my-8" />
-            <section>
-                <MudText Typo="Typo.h5" Style="font-weight: 800;" Class="mb-6">Events</MudText>
+            <EventPreviewWorkspace @ref="_eventPreviewWorkspace"
+                                   NavigationEvents="@_orgEvents"
+                                   OnEventDeleted="HandleEventDeleted">
+                <section>
+                    <MudText Typo="Typo.h5" Style="font-weight: 800;" Class="mb-6">Events</MudText>
 
-                @if (UpcomingEvents.Any())
-                {
-                    <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Color="Color.Primary" Class="mb-3">Upcoming</MudText>
-                    <MudGrid Spacing="4" Class="mb-6">
-                        @foreach (var evt in UpcomingEvents)
-                        {
-                            <MudItem xs="12" sm="6" md="4" @key="evt.Id">
-                                <MudCard Elevation="1" Class="rounded-xl h-100" Style="cursor: pointer;"
-                                         @onclick="@(() => NavigationManager.NavigateTo($"/events/{evt.Id}"))">
-                                    @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
-                                    {
-                                        <MudCardMedia Image="@evt.FeaturedImageUri" Height="140" />
-                                    }
-                                    <MudCardContent Class="pa-4">
-                                        <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight: 700; text-transform: uppercase;">
-                                            @(evt.FirstSessionDate?.LocalDateTime.ToString("MMM dd, yyyy") ?? "Date TBD")
-                                        </MudText>
-                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mt-1">@evt.Title</MudText>
-                                        @if (!string.IsNullOrEmpty(evt.EventFormatFullName))
-                                        {
-                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Class="mt-2">
-                                                @evt.EventFormatFullName
-                                            </MudChip>
-                                        }
-                                    </MudCardContent>
-                                </MudCard>
-                            </MudItem>
-                        }
-                    </MudGrid>
-                }
+                    @if (UpcomingEvents.Any())
+                    {
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Color="Color.Primary" Class="mb-3">Upcoming</MudText>
+                        <EventCardList Events="@UpcomingEvents"
+                                       SelectedEventId="@(_eventPreviewWorkspace?.SelectedEventId)"
+                                       Class="mb-6"
+                                       AriaLabel="Upcoming organization events"
+                                       OnEventSelected="HandleEventSelected"
+                                       OnEditRequested="HandleEventEdit"
+                                       OnDeleteRequested="HandleEventDelete"
+                                       OnShareRequested="HandleEventShare" />
+                    }
 
-                @if (PastEvents.Any())
-                {
-                    <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Color="Color.Secondary" Class="mb-3">Past Events</MudText>
-                    <MudGrid Spacing="4">
-                        @foreach (var evt in PastEvents.Take(6))
-                        {
-                            <MudItem xs="12" sm="6" md="4" @key="evt.Id">
-                                <MudCard Elevation="1" Class="rounded-xl h-100" Style="cursor: pointer; opacity: 0.8;"
-                                         @onclick="@(() => NavigationManager.NavigateTo($"/events/{evt.Id}"))">
-                                    @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
-                                    {
-                                        <MudCardMedia Image="@evt.FeaturedImageUri" Height="140" />
-                                    }
-                                    <MudCardContent Class="pa-4">
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 700; text-transform: uppercase;">
-                                            @(evt.FirstSessionDate?.LocalDateTime.ToString("MMM dd, yyyy") ?? "")
-                                        </MudText>
-                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mt-1">@evt.Title</MudText>
-                                    </MudCardContent>
-                                </MudCard>
-                            </MudItem>
-                        }
-                    </MudGrid>
-                }
-            </section>
+                    @if (PastEvents.Any())
+                    {
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Color="Color.Secondary" Class="mb-3">Past Events</MudText>
+                        <EventCardList Events="@PastEvents.Take(6)"
+                                       SelectedEventId="@(_eventPreviewWorkspace?.SelectedEventId)"
+                                       AriaLabel="Past organization events"
+                                       OnEventSelected="HandleEventSelected"
+                                       OnEditRequested="HandleEventEdit"
+                                       OnDeleteRequested="HandleEventDelete"
+                                       OnShareRequested="HandleEventShare" />
+                    }
+                </section>
+            </EventPreviewWorkspace>
         }
     }
 </MudContainer>

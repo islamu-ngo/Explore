@@ -117,10 +117,10 @@ public partial class EventCard : ComponentBase
 
     private string TruncatedDescription => StringHelper.TruncateDescription(Event.Description);
 
-    private bool HasManagementMenu => Event.HasManagementLinks();
+    private bool HasManagementMenu => CanEdit || CanDelete;
     private bool HasCardActions => HasManagementMenu || OnShareRequested.HasDelegate;
-    private bool CanEdit => Event.HasHalLink("edit");
-    private bool CanDelete => Event.HasHalLink("delete");
+    private bool CanEdit => Event.HasHalLink("edit") && OnEditRequested.HasDelegate;
+    private bool CanDelete => Event.HasHalLink("delete") && OnDeleteRequested.HasDelegate;
     private string ShareButtonLabel => $"Share event: {Event.Title}";
 
     // ── Icon Mapping Helpers ──

@@ -95,6 +95,25 @@ public class EventFilterBarTests : IDisposable
     }
 
     [Test]
+    public async Task MultiSelectionText_UsesLookupFullNamesSeparatedByComma()
+    {
+        var cut = _ctx.RenderMudComponent<EventFilterBarComponent>(p => p
+            .Add(x => x.EventFormats, new List<EventFormatListDto>
+            {
+                new() { Id = 1, FullName = "Online" },
+                new() { Id = 2, FullName = "In Person" }
+            }));
+        var formatter = typeof(EventFilterBarComponent).GetMethod(
+            "FormatSelectedFormats",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("FormatSelectedFormats was not found.");
+
+        var text = (string)formatter.Invoke(cut.Instance, [new List<string> { "1", "2" }])!;
+
+        await Assert.That(text).IsEqualTo("Online, In Person");
+    }
+
+    [Test]
     public async Task MobileFilterDrawer_UsesBoundedWidthAndScrollableRegions()
     {
         var cut = _ctx.RenderMudComponent<EventFilterBarComponent>();

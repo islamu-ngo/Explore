@@ -702,6 +702,55 @@ public class EventListTests : IDisposable
     }
 
     [Test]
+    public async Task SelectingEvent_WithBlankFeaturedImage_DisplaysFallbackAfterDetailLoads()
+    {
+        var eventId = Guid.NewGuid();
+        SetupEventDetailResponses(eventId);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Fallback Preview Event",
+            FeaturedImageUri = "   "
+        });
+
+        var image = cut.Find("img.event-list__detail-image-fallback");
+
+        await Assert.That(cut.FindAll(".event-list__detail-image-skeleton")).IsEmpty();
+        await Assert.That(image.GetAttribute("class")).DoesNotContain("event-list__detail-image--loading");
+        await Assert.That(image.GetAttribute("src")).StartsWith("data:image/svg+xml;utf8,");
+        await Assert.That(cut.FindAll("img.event-list__detail-image-actual")).IsEmpty();
+    }
+
+    [Test]
+    public async Task DetailImageLoaded_ClearsSidebarImageSkeleton()
+    {
+        var eventId = Guid.NewGuid();
+        SetupEventDetailResponses(eventId);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Image Preview Event",
+            FeaturedImageUri = "https://cdn.example.test/event.jpg"
+        });
+
+        var loadingImage = cut.Find("img.event-list__detail-image-actual");
+        await Assert.That(cut.FindAll(".event-list__detail-image-skeleton")).Count().IsEqualTo(1);
+        await Assert.That(loadingImage.GetAttribute("class")).Contains("event-list__detail-image--loading");
+
+        await InvokePrivateTaskAsync(cut, "HandleDetailImageLoaded");
+
+        var loadedImage = cut.Find("img.event-list__detail-image-actual");
+        await Assert.That(cut.FindAll(".event-list__detail-image-skeleton")).IsEmpty();
+        await Assert.That(loadedImage.GetAttribute("class")).DoesNotContain("event-list__detail-image--loading");
+    }
+
+    [Test]
     public async Task OpeningCustomizationDrawer_PreservesOpenDetailDrawer()
     {
         var eventId = Guid.NewGuid();
@@ -873,6 +922,113 @@ public class EventListTests : IDisposable
     }
 
     [Test]
+    public async Task InlineRegistrationSubmit_UsesRegistrationServiceWithConsentSnapshot()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        _registrationService.RegisterForSessionAsync(Arg.Any<CreateEventRegistrationDto>())
+            .Returns(Task.FromResult<BaseCommandResponseOfGuid?>(new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Message = "Event Registration created successfully."
+            }));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Registration Service Event"
+        });
+        SetPrivateField(cut.Instance, "_regCurrentUser", new UserDto
+        {
+            Id = userId,
+            Email = "registrant@example.com",
+            FirstName = "Test",
+            LastName = "Registrant"
+        });
+        SetPrivateField(cut.Instance, "_regSelectedSessionIds", new HashSet<Guid> { sessionId });
+        SetPrivateField(cut.Instance, "_regShareEmail", true);
+        SetPrivateField(cut.Instance, "_regOrganizerName", "Community Organizer");
+
+        await InvokePrivateTaskAsync(cut, "HandleInlineRegistrationSubmit");
+
+        await _registrationService.Received(1).RegisterForSessionAsync(Arg.Is<CreateEventRegistrationDto>(dto =>
+            dto != null
+            && dto.EventId == eventId
+            && dto.UserId == userId
+            && dto.RegistrationScopeId == 3
+            && dto.SelectedSessionIds != null
+            && dto.SelectedSessionIds.SequenceEqual(new[] { sessionId })
+            && dto.ShareEmailWithOrganizer == true
+            && dto.ConsentTextAcknowledged != null
+            && dto.ConsentTextAcknowledged.Contains("Community Organizer", StringComparison.Ordinal)
+            && dto.ConsentUiVersion == "v1"));
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_regIsComplete")).IsTrue();
+    }
+
+    [Test]
+    public async Task InlineRegistrationSubmit_WhenWholeEventPolicyAndAllSessionsSelected_UsesEventScope()
+    {
+        var eventId = Guid.NewGuid();
+        var firstSessionId = Guid.NewGuid();
+        var secondSessionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        _registrationService.RegisterForSessionAsync(Arg.Any<CreateEventRegistrationDto>())
+            .Returns(Task.FromResult<BaseCommandResponseOfGuid?>(new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Message = "Event Registration created successfully."
+            }));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Whole Event Registration"
+        });
+        SetPrivateField(cut.Instance, "_selectedEventDetail", new EventDto
+        {
+            Id = eventId,
+            Title = "Whole Event Registration",
+            Description = "Event that only permits whole-event registration.",
+            RegistrationPolicyId = 1
+        });
+        SetPrivateField<ICollection<EventSessionListDto>>(cut.Instance, "_regAvailableSessions",
+        [
+            new EventSessionListDto { Id = firstSessionId },
+            new EventSessionListDto { Id = secondSessionId }
+        ]);
+        SetPrivateField(cut.Instance, "_regCurrentUser", new UserDto
+        {
+            Id = userId,
+            Email = "registrant@example.com",
+            FirstName = "Test",
+            LastName = "Registrant"
+        });
+        SetPrivateField(cut.Instance, "_regSelectedSessionIds", new HashSet<Guid> { firstSessionId, secondSessionId });
+        SetPrivateField(cut.Instance, "_regShareEmail", true);
+        SetPrivateField(cut.Instance, "_regOrganizerName", "Community Organizer");
+
+        await InvokePrivateTaskAsync(cut, "HandleInlineRegistrationSubmit");
+
+        await _registrationService.Received(1).RegisterForSessionAsync(Arg.Is<CreateEventRegistrationDto>(dto =>
+            dto != null
+            && dto.EventId == eventId
+            && dto.UserId == userId
+            && dto.RegistrationScopeId == 1
+            && dto.SelectedSessionIds == null
+            && dto.SelectedEventDayId == null
+            && dto.ShareEmailWithOrganizer == true
+            && dto.ConsentTextAcknowledged != null
+            && dto.ConsentTextAcknowledged.Contains("Community Organizer", StringComparison.Ordinal)
+            && dto.ConsentUiVersion == "v1"));
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_regIsComplete")).IsTrue();
+    }
+
+    [Test]
     public async Task InlineRegistrationSubmit_WhenRegistrationThrows_ShowsGenericErrorOnly()
     {
         var eventId = Guid.NewGuid();
@@ -880,8 +1036,8 @@ public class EventListTests : IDisposable
         var userId = Guid.NewGuid();
         var snackbar = _ctx.Services.GetRequiredService<ISnackbar>();
         SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-        _eventService.RegisterForEventSessionAsync(Arg.Any<CreateEventRegistrationDto>())
-            .Returns(_ => Task.FromException<BaseCommandResponseOfGuid>(new InvalidOperationException("database exploded")));
+        _registrationService.RegisterForSessionAsync(Arg.Any<CreateEventRegistrationDto>())
+            .Returns(_ => Task.FromException<BaseCommandResponseOfGuid?>(new InvalidOperationException("database exploded")));
 
         var cut = _ctx.RenderMudComponent<EventList>();
         SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto

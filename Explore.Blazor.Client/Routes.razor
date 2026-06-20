@@ -88,7 +88,6 @@
             new RouteConfig { Path = "/my/reviews", Component = typeof(MyReviews), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/settings", Component = typeof(Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/my/registrations", Component = typeof(MyRegistrations), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
-            new RouteConfig { Path = "/my/events", Component = typeof(MyEvents), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
 
             // Organization management routes
             new RouteConfig { Path = "/my/organizations", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },

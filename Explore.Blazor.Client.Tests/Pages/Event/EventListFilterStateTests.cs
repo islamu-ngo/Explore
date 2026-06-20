@@ -51,7 +51,6 @@ public sealed class EventListFilterStateTests
             SelectedEventTypeIds = new HashSet<int> { 6 },
             SelectedAudienceGenderIds = new HashSet<int> { 7 },
             SelectedAudienceAgeIds = new HashSet<int> { 8 },
-            SelectedEventStatusIds = new HashSet<int> { 9 },
             SelectedGenderModeIds = new HashSet<int> { 10 },
             SelectedReferencePrayerIds = new HashSet<int> { 11 },
             SelectedSkillLevel = SkillLevel.Intermediate,
@@ -72,7 +71,6 @@ public sealed class EventListFilterStateTests
         await Assert.That(state.EventTypeIds!.SequenceEqual([6])).IsTrue();
         await Assert.That(state.AudienceGenderIds!.SequenceEqual([7])).IsTrue();
         await Assert.That(state.AudienceAgeIds!.SequenceEqual([8])).IsTrue();
-        await Assert.That(state.EventStatusIds!.SequenceEqual([9])).IsTrue();
         await Assert.That(state.GenderModeIds!.SequenceEqual([10])).IsTrue();
         await Assert.That(state.ReferencePrayerIds!.SequenceEqual([11])).IsTrue();
         await Assert.That(state.SkillLevelId).IsEqualTo((int)SkillLevel.Intermediate);
@@ -162,7 +160,6 @@ public sealed class EventListFilterStateTests
             EventTypeIds: null,
             AudienceGenderIds: null,
             AudienceAgeIds: null,
-            EventStatusIds: null,
             GenderModeIds: null,
             ReferencePrayerIds: null,
             SkillLevelId: null,
@@ -187,6 +184,7 @@ public sealed class EventListFilterStateTests
             inclusionMode: "all",
             exclusionMode: "any",
             includesQuranRecitation: null,
+            eventStatusIds: null,
             islamicPrimaryLanguageIds: null,
             hasIslamicAspect: null,
             isCodingCompetition: null,

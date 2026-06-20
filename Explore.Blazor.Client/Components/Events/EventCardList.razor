@@ -1,0 +1,40 @@
+@* ABOUTME: Reusable single-row event card list for profiles and actor-owned event sections. *@
+@* ABOUTME: Delegates click, share, edit, and delete behavior to an event preview workspace or parent page. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Models
+@using Explore.Blazor.Client.Pages.Events.Components
+
+<div class="@RootClass" role="list" aria-label="@AriaLabel">
+    @foreach (var evt in Events)
+    {
+        <div @key="evt.Id" class="event-card-list__item" role="listitem">
+            <EventCard Event="@evt"
+                       Layout="LayoutMode.SingleRow"
+                       IsSelected="@(SelectedEventId.HasValue && SelectedEventId == evt.Id)"
+                       CardFieldVisibility="CardFieldVisibility"
+                       OnClick="OnEventSelected"
+                       OnEditRequested="OnEditRequested"
+                       OnDeleteRequested="OnDeleteRequested"
+                       OnShareRequested="OnShareRequested" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<EventListDto> Events { get; set; } = [];
+    [Parameter] public Guid? SelectedEventId { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string AriaLabel { get; set; } = "Events";
+    [Parameter] public IReadOnlyDictionary<string, bool>? CardFieldVisibility { get; set; }
+    [Parameter] public EventCallback<EventListDto> OnEventSelected { get; set; }
+    [Parameter] public EventCallback<EventListDto> OnEditRequested { get; set; }
+    [Parameter] public EventCallback<EventListDto> OnDeleteRequested { get; set; }
+    [Parameter] public EventCallback<EventListDto> OnShareRequested { get; set; }
+
+    private string RootClass => string.Join(' ', new[]
+    {
+        "event-card-list",
+        Class
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+}

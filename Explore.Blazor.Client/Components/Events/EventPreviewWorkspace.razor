@@ -1,0 +1,66 @@
+@* ABOUTME: Reusable workspace wrapper for EventList-style event detail side previews. *@
+@* ABOUTME: Applies tenant event-card click settings before choosing sidebar preview or detail-page navigation. *@
+
+@namespace Explore.Blazor.Client.Components.Events
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Docking
+@using Explore.Blazor.Client.Pages.Events
+@using Explore.Blazor.Client.Services.Docking
+@using MudBlazor
+@implements IDisposable
+
+<DockLayoutHost Scope="@DockScope.Workspace"
+                Class="@RootClass"
+                DataTestId="@DataTestId"
+                ContentDataTestId="@ContentDataTestId">
+    @ChildContent
+</DockLayoutHost>
+
+@code {
+    private RenderFragment RenderEventPreviewPanel => @<text>
+        <EventDetailsSidebar SelectedEvent="@_selectedEvent"
+                             EventDetail="@_selectedEventDetail"
+                             EventSessions="@_selectedEventSessions"
+                             IsLoadingDetail="@_isLoadingDetail"
+                             DetailImageLoadFailed="@_detailImageLoadFailed"
+                             IsDetailImageLoading="@_isDetailImageLoading"
+                             CanNavigatePrevious="@CanNavigatePreviousEvent"
+                             CanNavigateNext="@CanNavigateNextEvent"
+                             IsUserRegistered="@IsUserRegistered(_selectedEvent?.Id ?? Guid.Empty)"
+                             ShowInlineRegistration="@_showInlineRegistration"
+                             RegIsLoading="@_regIsLoading"
+                             RegIsSubmitting="@_regIsSubmitting"
+                             RegIsComplete="@_regIsComplete"
+                             RegIsAlreadyRegistered="@_regIsAlreadyRegistered"
+                             RegIsWaitlisted="@_regIsWaitlisted"
+                             RegShowConsentOption="@_regShowConsentOption"
+                             RegShareEmail="@_regShareEmail"
+                             RegShareEmailChanged="SetRegShareEmailAsync"
+                             RegOrganizerName="@_regOrganizerName"
+                             RegAvailableSessions="@_regAvailableSessions"
+                             RegSelectedSessionIds="@_regSelectedSessionIds"
+                             RegAllSessionsSelected="@_regAllSessionsSelected"
+                             TagCategoryPopupVisible="@_showTagCatPopup"
+                             TagCategoryMode="@_tagCatMode"
+                             TagCategoryInitialAppliedIds="@_tagCatInitialIds"
+                             TagCategoryPopupVisibleChanged="SetTagCategoryPopupVisibleAsync"
+                             OnTagCategorySaved="HandleTagCatSaved"
+                             OnClose="CloseDetailPanelAsync"
+                             OnNavigatePrevious="NavigatePreviousEventAsync"
+                             OnNavigateNext="NavigateNextEventAsync"
+                             OnOpenEventPage="NavigateToSelectedEventPage"
+                             OnCopyEventLink="CopySelectedEventLinkAsync"
+                             OnDetailImageLoaded="HandleDetailImageLoadedAsync"
+                             OnDetailImageError="HandleDetailImageErrorAsync"
+                             OnEditRequested="NavigateToEdit"
+                             OnDeleteRequested="OpenDeleteDialogAsync"
+                             OnOpenInlineRegistration="OpenInlineRegistrationAsync"
+                             OnCloseInlineRegistration="CloseInlineRegistrationAsync"
+                             OnSubmitInlineRegistration="HandleInlineRegistrationSubmitAsync"
+                             OnShareSelectedEvent="ShareSelectedEventAsync"
+                             OnToggleRegAllSessions="ToggleRegAllSessionsAsync"
+                             OnToggleRegSession="ToggleRegSessionAsync"
+                             OnOpenTagManagement="OpenTagManagementAsync"
+                             OnOpenCategoryManagement="OpenCategoryManagementAsync" />
+    </text>;
+}

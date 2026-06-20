@@ -3,6 +3,7 @@
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Events;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
@@ -28,10 +29,13 @@ public partial class OrganizationProfile
     private List<EventListDto> _upcomingEvents = new();
     private List<EventListDto> _pastEvents = new();
     private List<KeyValuePair<DateTime, List<EventListDto>>> _pastEventsByDate = new();
+    private EventPreviewWorkspace? _eventPreviewWorkspace;
     private AppearanceSettings _appearance = new();
     private string _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(new AppearanceSettings(), "#1f6feb");
 
     private string? _errorMessage;
+
+    private IReadOnlyList<EventListDto> ProfileEvents => _upcomingEvents.Concat(_pastEvents).ToList();
 
     [PersistentState]
     public OrganizationProfileState? PersistedState { get; set; }
@@ -139,13 +143,11 @@ public partial class OrganizationProfile
         Navigation.NavigateTo($"/organization/reviews/{Id}");
     }
 
-    private void NavigateToEvent(EventListDto evt)
-    {
-        if (evt.Id.HasValue)
-        {
-            Navigation.NavigateTo($"/events/{evt.Id}");
-        }
-    }
+    private Task HandleEventSelected(EventListDto evt) =>
+        _eventPreviewWorkspace?.SelectEventAsync(evt) ?? Task.CompletedTask;
+
+    private Task HandleEventShare(EventListDto evt) =>
+        _eventPreviewWorkspace?.ShareEventAsync(evt) ?? Task.CompletedTask;
 
     private string GetOrganizationPlaceholder()
     {
@@ -163,37 +165,6 @@ public partial class OrganizationProfile
         }
 
         return null;
-    }
-
-    private static string GetEventImage(EventListDto evt)
-    {
-        var color = EventColorHelper.GetColorByTypeId(evt.EventTypeId);
-        if (color == EventColorHelper.DefaultColor)
-        {
-            color = EventColorHelper.GetColorByHash(evt.Title);
-        }
-
-        return ImageHelper.GetEventImageUrl(evt.FeaturedImageUri, evt.Title, color);
-    }
-
-    private static string FormatEventDate(EventListDto evt)
-    {
-        if (evt.FirstSessionDate == null) return "TBD";
-
-        var start = evt.FirstSessionDate.Value;
-        if (evt.LastSessionDate != null && evt.LastSessionDate.Value.Date != start.Date)
-        {
-            return $"{start:MMM dd} — {evt.LastSessionDate.Value:MMM dd, yyyy}";
-        }
-
-        return start.ToString("MMM dd, yyyy");
-    }
-
-    private static string GetLocationText(EventListDto evt)
-    {
-        if (evt.EventFormatId == 2) return "Online";
-        if (!string.IsNullOrEmpty(evt.EventFormatFullName)) return evt.EventFormatFullName;
-        return "Location TBD";
     }
 
     private int GetAverageRating()
