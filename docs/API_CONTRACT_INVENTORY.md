@@ -12,12 +12,12 @@
 ## Summary
 
 - Total paths: **315**
-- Total operations: **451**
+- Total operations: **452**
 - Operations missing `operationId`: **0**
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **0**
 - Operations missing `x-endpoint-class` extension: **0**
-- Classification breakdown: `Admin`=13, `Authenticated`=321, `Public`=117
+- Classification breakdown: `Admin`=13, `Authenticated`=322, `Public`=117
 
 ## Operations
 
@@ -449,31 +449,32 @@
 | 424 | `/api/user` | `DELETE` | `DeleteCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
 | 425 | `/api/user/admin-authority` | `GET` | `GetCurrentUserAdminAuthority` | Get current user's admin authority | User | _(Phase 1.4)_ | `Authenticated` | no |
 | 426 | `/api/user/appearance` | `GET` | `GetCurrentUserAppearancePreferences` | Get Resolved Appearance | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 427 | `/api/user/appearance/active-profile` | `PUT` | `SetActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 428 | `/api/user/appearance/generate-palette` | `GET` | `GenerateAppearancePalette` | Generate Palette From Colors | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 429 | `/api/user/appearance/mode` | `PUT` | `SetAppearanceThemeMode` | Set Theme Mode | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 430 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 431 | `/api/user/appearance/profiles` | `GET` | `GetUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 432 | `/api/user/appearance/profiles` | `POST` | `CreateCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 433 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `ClonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 434 | `/api/user/appearance/profiles/{profileId}` | `PUT` | `UpdateAppearanceProfile` | Update User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 435 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `ArchiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 436 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `DuplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 437 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 438 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 439 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 440 | `/api/userauthenticationtoken` | `POST` | `CreateUserAuthenticationToken` | Create new User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 441 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 442 | `/api/userauthenticationtoken/{id}` | `PUT` | `UpdateUserAuthenticationToken` | Update User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 443 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 444 | `/api/userexternallogin` | `GET` | `GetUserExternalLogins` | Get all User External Logins | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 445 | `/api/userexternallogin` | `POST` | `CreateUserExternalLogin` | Create new User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 446 | `/api/userexternallogin/{id}` | `GET` | `GetUserExternalLoginById` | Get User External Login by ID | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 447 | `/api/userexternallogin/{id}` | `PUT` | `UpdateUserExternalLogin` | Update User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 448 | `/api/userexternallogin/{id}` | `DELETE` | `DeleteUserExternalLogin` | Delete User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 449 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | _(Phase 1.4)_ | `Public` | no |
-| 450 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | _(Phase 1.4)_ | `Public` | no |
-| 451 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | _(Phase 1.4)_ | `Public` | no |
+| 427 | `/api/user/appearance` | `PUT` | `UpdateCurrentUserAppearancePreferences` | Update Appearance Preferences | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 428 | `/api/user/appearance/active-profile` | `PUT` | `SetActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 429 | `/api/user/appearance/generate-palette` | `GET` | `GenerateAppearancePalette` | Generate Palette From Colors | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 430 | `/api/user/appearance/mode` | `PUT` | `SetAppearanceThemeMode` | Set Theme Mode | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 431 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 432 | `/api/user/appearance/profiles` | `GET` | `GetUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 433 | `/api/user/appearance/profiles` | `POST` | `CreateCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 434 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `ClonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 435 | `/api/user/appearance/profiles/{profileId}` | `PUT` | `UpdateAppearanceProfile` | Update User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 436 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `ArchiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 437 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `DuplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 438 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 439 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 440 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 441 | `/api/userauthenticationtoken` | `POST` | `CreateUserAuthenticationToken` | Create new User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 442 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 443 | `/api/userauthenticationtoken/{id}` | `PUT` | `UpdateUserAuthenticationToken` | Update User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 444 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 445 | `/api/userexternallogin` | `GET` | `GetUserExternalLogins` | Get all User External Logins | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 446 | `/api/userexternallogin` | `POST` | `CreateUserExternalLogin` | Create new User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 447 | `/api/userexternallogin/{id}` | `GET` | `GetUserExternalLoginById` | Get User External Login by ID | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 448 | `/api/userexternallogin/{id}` | `PUT` | `UpdateUserExternalLogin` | Update User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 449 | `/api/userexternallogin/{id}` | `DELETE` | `DeleteUserExternalLogin` | Delete User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 450 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | _(Phase 1.4)_ | `Public` | no |
+| 451 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | _(Phase 1.4)_ | `Public` | no |
+| 452 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | _(Phase 1.4)_ | `Public` | no |
 
 ## Columns
 

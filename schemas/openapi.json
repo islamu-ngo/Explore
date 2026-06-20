@@ -36820,6 +36820,113 @@
           }
         },
         "x-endpoint-class": "Authenticated"
+      },
+      "put": {
+        "tags": [
+          "UserAppearance"
+        ],
+        "summary": "Update Appearance Preferences",
+        "description": "Updates sparse user-scoped appearance preferences such as theme mode, text direction, language, and default theme/profile reference.",
+        "operationId": "UpdateCurrentUserAppearancePreferences",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserAppearancePreferencesDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserAppearancePreferencesDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserAppearancePreferencesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/user/appearance/presets": {
@@ -40435,6 +40542,32 @@
                 "content": {
                   "type": "string"
                 },
+                "images": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "mediaType": {
+                        "type": "string"
+                      },
+                      "fileName": {
+                        "type": [
+                          "null",
+                          "string"
+                        ]
+                      },
+                      "sizeBytes": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "type": [
+                          "null",
+                          "integer",
+                          "string"
+                        ],
+                        "format": "int64"
+                      }
+                    }
+                  }
+                },
                 "createdAt": {
                   "type": "string",
                   "format": "date-time"
@@ -40746,6 +40879,32 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "AiMessageImageInputDto": {
+        "type": "object",
+        "properties": {
+          "mediaType": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -43129,7 +43288,10 @@
             "format": "uuid"
           },
           "selectedSessionIds": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string",
               "format": "uuid"
@@ -47107,6 +47269,27 @@
           "actorTypeFullName": {
             "type": "string"
           },
+          "actorUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorOrganizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "actorProfilePictureId": {
             "type": [
               "null",
@@ -47589,6 +47772,27 @@
           },
           "actorTypeFullName": {
             "type": "string"
+          },
+          "actorUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorOrganizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "actorProfilePictureId": {
             "type": [
@@ -54795,6 +54999,32 @@
                 "content": {
                   "type": "string"
                 },
+                "images": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "mediaType": {
+                        "type": "string"
+                      },
+                      "fileName": {
+                        "type": [
+                          "null",
+                          "string"
+                        ]
+                      },
+                      "sizeBytes": {
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "type": [
+                          "null",
+                          "integer",
+                          "string"
+                        ],
+                        "format": "int64"
+                      }
+                    }
+                  }
+                },
                 "createdAt": {
                   "type": "string",
                   "format": "date-time"
@@ -56901,6 +57131,27 @@
           "actorTypeFullName": {
             "type": "string"
           },
+          "actorUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorOrganizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "actorProfilePictureId": {
             "type": [
               "null",
@@ -57290,6 +57541,27 @@
           },
           "actorTypeFullName": {
             "type": "string"
+          },
+          "actorUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorOrganizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "actorProfilePictureId": {
             "type": [
@@ -66808,6 +67080,12 @@
           "content": {
             "type": "string"
           },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiMessageImageInputDto"
+            }
+          },
           "idempotencyKey": {
             "type": "string"
           },
@@ -71521,6 +71799,27 @@
           },
           "darkPalette": {
             "$ref": "#/components/schemas/UiThemePaletteDto"
+          }
+        }
+      },
+      "UpdateUserAppearancePreferencesDto": {
+        "type": "object",
+        "properties": {
+          "themeMode": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "defaultThemeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
