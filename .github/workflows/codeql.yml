@@ -29,7 +29,7 @@ jobs:
       run-analysis: ${{ steps.changes.outputs.run-analysis }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -148,13 +148,13 @@ jobs:
 
       - name: Checkout repository
         if: ${{ needs.detect-codeql-changes.outputs.run-analysis == 'true' }}
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: Setup .NET
         if: ${{ needs.detect-codeql-changes.outputs.run-analysis == 'true' && matrix.language == 'csharp' }}
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
         with:
           global-json-file: global.json
           cache: true
@@ -162,7 +162,7 @@ jobs:
 
       - name: Initialize CodeQL
         if: ${{ needs.detect-codeql-changes.outputs.run-analysis == 'true' }}
-        uses: github/codeql-action/init@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
+        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -177,6 +177,6 @@ jobs:
 
       - name: Perform CodeQL Analysis
         if: ${{ needs.detect-codeql-changes.outputs.run-analysis == 'true' }}
-        uses: github/codeql-action/analyze@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
+        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
           category: "/language:${{matrix.language}}"
