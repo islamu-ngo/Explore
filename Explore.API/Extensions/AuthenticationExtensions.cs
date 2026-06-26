@@ -201,6 +201,9 @@ public static class AuthenticationExtensions
                     context.User,
                     ExternalApiKeyScopes.McpRead,
                     ExternalApiKeyScopes.McpPropose)))
+            .AddPolicy(McpAuthorizationPolicies.EventManagementRead, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireAssertion(context => ApiKeyCallerHasMcpReadAndEventReadAuthorityOrIsUser(context.User)))
             .AddPolicy(McpAuthorizationPolicies.Propose, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireAssertion(context => ApiKeyCallerHasAnyScopeOrIsUser(
@@ -212,6 +215,13 @@ public static class AuthenticationExtensions
 
         return services;
     }
+
+    private static bool ApiKeyCallerHasMcpReadAndEventReadAuthorityOrIsUser(ClaimsPrincipal principal)
+        => ApiKeyCallerHasAnyScopeOrIsUser(principal, ExternalApiKeyScopes.McpRead)
+           && ApiKeyCallerPassesScopeGateOrIsUser(principal, scopes => MachineScopeMapping.ScopesPermit(
+               scopes,
+               ResourceKinds.Event,
+               AuthorizationActions.View));
 
     private static bool ApiKeyCallerHasAnyScopeOrIsUser(ClaimsPrincipal principal, params string[] scopes)
     {
@@ -230,6 +240,30 @@ public static class AuthenticationExtensions
         return principal
             .FindAll(ApiAuthenticationClaimTypes.Scope)
             .Any(claim => scopeSet.Contains(claim.Value));
+    }
+
+    private static bool ApiKeyCallerPassesScopeGateOrIsUser(
+        ClaimsPrincipal principal,
+        Func<IReadOnlyList<string>, bool> scopeGate)
+    {
+        if (principal.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        var apiKeyId = principal.FindFirst(ApiAuthenticationClaimTypes.ApiKeyId)?.Value;
+        if (string.IsNullOrWhiteSpace(apiKeyId))
+        {
+            return true;
+        }
+
+        var apiKeyScopes = principal
+            .FindAll(ApiAuthenticationClaimTypes.Scope)
+            .Select(claim => claim.Value)
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .ToArray();
+
+        return scopeGate(apiKeyScopes);
     }
 
     private static bool IsAllowedDevelopmentCertificate(object? sender, SslPolicyErrors errors, IWebHostEnvironment environment)

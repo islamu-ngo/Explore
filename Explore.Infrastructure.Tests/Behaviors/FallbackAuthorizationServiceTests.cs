@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for FallbackAuthorizationService verifying DB-driven authorization logic.
 // Tests the Instance > Tenant > Organization hierarchy and lock semantics.
 
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
@@ -431,6 +432,116 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_InstanceAdmin_CanModerateEventButCannotEditWithoutEventAuthority()
+    {
+        var attrs = CreateEventContextAttributes();
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+
+        var updateResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, "update", attrs);
+        var managementViewResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.ViewManagement, attrs);
+        var lightModerationResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.ModerateLight, attrs);
+        var heavyModerationResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.ModerateHeavy, attrs);
+        var unmoderationResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.Unmoderate, attrs);
+
+        await Assert.That(updateResult).IsFalse();
+        await Assert.That(managementViewResult).IsTrue();
+        await Assert.That(lightModerationResult).IsTrue();
+        await Assert.That(heavyModerationResult).IsTrue();
+        await Assert.That(unmoderationResult).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_TenantAdmin_CanModerateEventButCannotEditWithoutEventAuthority()
+    {
+        var attrs = CreateEventContextAttributes();
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var updateResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, "update", attrs);
+        var managementViewResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.ViewManagement, attrs);
+        var lightModerationResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.ModerateLight, attrs);
+        var heavyModerationResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.ModerateHeavy, attrs);
+        var unmoderationResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.Unmoderate, attrs);
+
+        await Assert.That(updateResult).IsFalse();
+        await Assert.That(managementViewResult).IsTrue();
+        await Assert.That(lightModerationResult).IsTrue();
+        await Assert.That(heavyModerationResult).IsTrue();
+        await Assert.That(unmoderationResult).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_TenantAdminWithOrganizationAdminMembership_CanEditOrganizationEvent()
+    {
+        var attrs = CreateEventContextAttributes();
+        attrs["organizationId"] = TestOrgId;
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, "update", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_OrganizationAdmin_CanEditButCannotModerateEvent()
+    {
+        var attrs = CreateEventContextAttributes();
+        attrs["organizationId"] = TestOrgId;
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var updateResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, "update", attrs);
+        var managementViewResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.ViewManagement, attrs);
+        var lightModerationResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.ModerateLight, attrs);
+        var heavyModerationResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.ModerateHeavy, attrs);
+        var unmoderationResult = await _service.IsAllowedAsync("islamuevent_event", attrs["eventId"]!.ToString()!, AuthorizationActions.Events.Unmoderate, attrs);
+
+        await Assert.That(updateResult).IsTrue();
+        await Assert.That(managementViewResult).IsTrue();
+        await Assert.That(lightModerationResult).IsFalse();
+        await Assert.That(heavyModerationResult).IsFalse();
+        await Assert.That(unmoderationResult).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventRoleViewPermission_AllowsManagementView()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var attrs = CreateEventContextAttributes(eventId);
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        ConfigureEventAuthority(userId, eventId, PermissionCodes.EventView);
+
+        var result = await _service.IsAllowedAsync("islamuevent_event", eventId.ToString(), AuthorizationActions.Events.ViewManagement, attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_RegularUserWithoutEventAuthority_DeniesManagementView()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var attrs = CreateEventContextAttributes(eventId);
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        ConfigureEventAuthority(userId, eventId);
+
+        var result = await _service.IsAllowedAsync("islamuevent_event", eventId.ToString(), AuthorizationActions.Events.ViewManagement, attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
     public async Task IsAllowed_UserOwnedEvent_DeniesDifferentUserUpdate()
     {
         var currentUserId = Guid.NewGuid();
@@ -843,6 +954,96 @@ public class FallbackAuthorizationServiceTests
         await Assert.That(results[0]).IsTrue();
         await Assert.That(results[1]).IsTrue();
         await Assert.That(results[2]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_InstanceAdmin_CanModerateEventButCannotEditWithoutEventAuthority()
+    {
+        var attrs = CreateEventContextAttributes();
+        var resourceId = attrs["eventId"]!.ToString()!;
+        _adminContext.UserId.Returns((Guid?)null);
+        _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
+
+        var checks = new List<AuthorizationCheck>
+        {
+            new("islamuevent_event", resourceId, "update", attrs),
+            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
+            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
+            new("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
+            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results).Count().IsEqualTo(5);
+        await Assert.That(results[0]).IsFalse();
+        await Assert.That(results[1]).IsTrue();
+        await Assert.That(results[2]).IsTrue();
+        await Assert.That(results[3]).IsTrue();
+        await Assert.That(results[4]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_TenantAdmin_CanModerateEventButCannotEditWithoutEventAuthority()
+    {
+        var attrs = CreateEventContextAttributes();
+        var resourceId = attrs["eventId"]!.ToString()!;
+        _adminContext.UserId.Returns((Guid?)null);
+        _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
+
+        var checks = new List<AuthorizationCheck>
+        {
+            new("islamuevent_event", resourceId, "update", attrs),
+            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
+            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
+            new("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
+            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results).Count().IsEqualTo(5);
+        await Assert.That(results[0]).IsFalse();
+        await Assert.That(results[1]).IsTrue();
+        await Assert.That(results[2]).IsTrue();
+        await Assert.That(results[3]).IsTrue();
+        await Assert.That(results[4]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_OrganizationAdmin_CanEditButCannotModerateEvent()
+    {
+        var attrs = CreateEventContextAttributes();
+        attrs["organizationId"] = TestOrgId;
+        var resourceId = attrs["eventId"]!.ToString()!;
+        _adminContext.UserId.Returns((Guid?)null);
+        _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([TestOrgId]);
+
+        var checks = new List<AuthorizationCheck>
+        {
+            new("islamuevent_event", resourceId, "update", attrs),
+            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
+            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
+            new("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
+            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results).Count().IsEqualTo(5);
+        await Assert.That(results[0]).IsTrue();
+        await Assert.That(results[1]).IsFalse();
+        await Assert.That(results[2]).IsFalse();
+        await Assert.That(results[3]).IsFalse();
+        await Assert.That(results[4]).IsTrue();
     }
 
     [Test]

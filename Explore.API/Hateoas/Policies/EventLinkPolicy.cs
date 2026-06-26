@@ -82,10 +82,23 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
 
         yield return new LinkDefinition(
             LinkRelations.AddSession,
-            RouteNames.CreateEventSession,
+            RouteNames.CreateDraftEventSession,
             null,
             "POST",
             "Add session",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Create,
+                typeof(EventSessionDto),
+                dto.Id.ToString(),
+                eventSessionPreCreateResourceAttributes,
+                eventAuthorizationScope);
+
+        yield return new LinkDefinition(
+            LinkRelations.CreateSessionDraft,
+            RouteNames.CreateDraftEventSession,
+            null,
+            "POST",
+            "Create draft session",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Create,
                 typeof(EventSessionDto),
@@ -127,6 +140,15 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             "Event team",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Events.ManageTeam, ResourceDescriptors.Event, dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.ModerationHistory,
+            RouteNames.GetEventModerationHistory,
+            new { id = dto.Id },
+            "GET",
+            "Moderation history",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Events.ViewManagement, ResourceDescriptors.Event, dto);
 
         // Aspect links - conditionally included based on available aspects
         if (dto.AvailableAspects?.Contains("Islamic") == true || dto.IslamicAspect != null)
@@ -238,16 +260,52 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
 
-            yield return CreateLifecycleStatusLink(LinkRelations.Cancel, dto, "Cancel event");
-            yield return CreateLifecycleStatusLink(LinkRelations.Archive, dto, "Archive event");
+            yield return CreateExplicitLifecycleLink(LinkRelations.Cancel, dto, "Cancel event", RouteNames.CancelEvent);
+            yield return CreateExplicitLifecycleLink(LinkRelations.Archive, dto, "Archive event", RouteNames.ArchiveEvent);
         }
         else if (dto.EventStatusId == (int)EventStatusEnum.Published)
         {
-            yield return CreateLifecycleStatusLink(LinkRelations.Cancel, dto, "Cancel event");
+            yield return CreateExplicitLifecycleLink(LinkRelations.Cancel, dto, "Cancel event", RouteNames.CancelEvent);
         }
         else if (dto.EventStatusId is (int)EventStatusEnum.Cancelled or (int)EventStatusEnum.Completed)
         {
-            yield return CreateLifecycleStatusLink(LinkRelations.Archive, dto, "Archive event");
+            yield return CreateExplicitLifecycleLink(LinkRelations.Archive, dto, "Archive event", RouteNames.ArchiveEvent);
+        }
+
+        if (dto.EventStatusId == (int)EventStatusEnum.Published)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.ModerateLight,
+                RouteNames.ModerateEventLight,
+                new { id = dto.Id },
+                "POST",
+                "Light moderate event",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.ModerateLight, ResourceDescriptors.Event, dto);
+        }
+
+        if (CanAdvertiseHeavyModeration(dto))
+        {
+            yield return new LinkDefinition(
+                LinkRelations.ModerateHeavy,
+                RouteNames.ModerateEventHeavy,
+                new { id = dto.Id },
+                "POST",
+                "Heavy redact event",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.ModerateHeavy, ResourceDescriptors.Event, dto);
+        }
+
+        if (dto.EventStatusId == (int)EventStatusEnum.Moderated && dto.IsUnmoderationEligible)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Unmoderate,
+                RouteNames.UnmoderateEvent,
+                new { id = dto.Id },
+                "POST",
+                "Unmoderate event",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.Unmoderate, ResourceDescriptors.Event, dto);
         }
 
         // Delete link - requires authentication
@@ -283,12 +341,15 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
 
     private static bool CanSubscribeToOrganizer(int actorTypeId) => actorTypeId is (int)ActorTypeEnum.Organization or (int)ActorTypeEnum.Group;
 
-    private static LinkDefinition CreateLifecycleStatusLink(string relation, EventDto dto, string title) =>
+    private static bool CanAdvertiseHeavyModeration(EventDto dto) =>
+        dto.EventStatusId != (int)EventStatusEnum.Moderated || dto.IsUnmoderationEligible;
+
+    private static LinkDefinition CreateExplicitLifecycleLink(string relation, EventDto dto, string title, string routeName) =>
         new LinkDefinition(
             relation,
-            RouteNames.UpdateEventStatus,
+            routeName,
             new { id = dto.Id },
-            "PUT",
+            "POST",
             title,
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);

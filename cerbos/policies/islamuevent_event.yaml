@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for event resources.
-# Events are org-scoped: org admins manage their events, tenant admins manage all events in their tenant.
+# Events are org-scoped: owners, event teams, and org admins edit; platform admins moderate.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -13,25 +13,23 @@ resourcePolicy:
     resourceSchema:
       ref: cerbos:///islamuevent_event.json
   rules:
-    # Instance admins can do everything
-    - actions: ["*"]
+    - actions: ["view", "view-management", "moderate-light", "moderate-heavy", "unmoderate"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_instance_admin
 
-    # Tenant admins can manage all events within their tenant
-    - actions: ["view", "create", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
+    - actions: ["view", "view-management", "moderate-light", "moderate-heavy", "unmoderate"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
 
     # Org admins can manage events for their organization
-    - actions: ["view", "create", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
+    - actions: ["view", "view-management", "create", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_org_admin
 
-    - actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
+    - actions: ["view", "view-management", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_actor_user_owner
@@ -52,13 +50,13 @@ resourcePolicy:
             request.principal.attr.is_machine != true)
 
     # Event owners have full control over their event
-    - actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
+    - actions: ["view", "view-management", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_event_owner
 
     # Event managers can edit and publish their event
-    - actions: ["view", "update", "publish"]
+    - actions: ["view", "view-management", "update", "publish"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_event_manager

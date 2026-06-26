@@ -74,6 +74,7 @@ public sealed class TestDatabaseReset
         new("event_formats"),
         new("event_registration_policies"),
         new("event_session_kinds"),
+        new("event_session_statuses"),
         new("event_statuses"),
         new("event_types"),
         new("external_api_key_credit_periods"),

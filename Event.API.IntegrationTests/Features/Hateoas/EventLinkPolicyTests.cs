@@ -4,6 +4,7 @@
 namespace Event.Api.IntegrationTests.Features.Hateoas;
 
 using System.Security.Claims;
+using Explore.API.Hateoas;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
@@ -85,6 +86,147 @@ public sealed class EventLinkPolicyTests
         await Assert.That(publish.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
         await Assert.That(publish.PermissionResourceAttributes["userId"]).IsEqualTo(userId.ToString());
         await Assert.That(publish.PermissionResourceAttributes.ContainsKey("organizationId")).IsFalse();
+    }
+
+    [Test]
+    public async Task LightModerationLink_UsesLightModerationAuthorizationAction()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        var dto = CreateEventDto(
+            eventId,
+            tenantId,
+            organizationId,
+            status: EventStatusEnum.Published,
+            statusName: "Published",
+            statusCode: "PUBLISHED");
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        var moderate = links.Single(definition => definition.Rel == LinkRelations.ModerateLight);
+
+        await Assert.That(moderate.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(moderate.RouteName).IsEqualTo(RouteNames.ModerateEventLight);
+        await Assert.That(moderate.PermissionAction).IsEqualTo(AuthorizationActions.Events.ModerateLight);
+        await Assert.That(moderate.PermissionResourceId).IsEqualTo(eventId.ToString());
+        await Assert.That(moderate.PermissionResourceAttributes).IsNotNull();
+        await Assert.That(moderate.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(moderate.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
+    }
+
+    [Test]
+    public async Task PublishedEvent_AdvertisesHeavyModerationAuthorizationAction()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        var dto = CreateEventDto(
+            eventId,
+            tenantId,
+            organizationId,
+            status: EventStatusEnum.Published,
+            statusName: "Published",
+            statusCode: "PUBLISHED");
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        var moderate = links.Single(definition => definition.Rel == LinkRelations.ModerateHeavy);
+
+        await Assert.That(moderate.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(moderate.RouteName).IsEqualTo(RouteNames.ModerateEventHeavy);
+        await Assert.That(moderate.PermissionAction).IsEqualTo(AuthorizationActions.Events.ModerateHeavy);
+        await Assert.That(moderate.PermissionResourceId).IsEqualTo(eventId.ToString());
+        await Assert.That(moderate.PermissionResourceAttributes).IsNotNull();
+        await Assert.That(moderate.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(moderate.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
+    }
+
+    [Test]
+    public async Task DraftEvent_DoesNotAdvertiseLightOrUnmoderate()
+    {
+        var dto = CreateEventDto(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        await Assert.That(links.Any(definition => definition.Rel == LinkRelations.ModerateLight)).IsFalse();
+        await Assert.That(links.Any(definition => definition.Rel == LinkRelations.Unmoderate)).IsFalse();
+    }
+
+    [Test]
+    public async Task ModeratedEligibleEvent_AdvertisesUnmoderateAuthorizationAction()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        var dto = CreateEventDto(
+            eventId,
+            tenantId,
+            organizationId,
+            status: EventStatusEnum.Moderated,
+            statusName: "Moderated",
+            statusCode: "MODERATED");
+        dto.IsUnmoderationEligible = true;
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        var unmoderate = links.Single(definition => definition.Rel == LinkRelations.Unmoderate);
+
+        await Assert.That(unmoderate.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(unmoderate.RouteName).IsEqualTo(RouteNames.UnmoderateEvent);
+        await Assert.That(unmoderate.PermissionAction).IsEqualTo(AuthorizationActions.Events.Unmoderate);
+        await Assert.That(unmoderate.PermissionResourceId).IsEqualTo(eventId.ToString());
+        await Assert.That(unmoderate.PermissionResourceAttributes).IsNotNull();
+        await Assert.That(unmoderate.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(unmoderate.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
+    }
+
+    [Test]
+    public async Task ModeratedIneligibleEvent_DoesNotAdvertiseUnmoderate()
+    {
+        var dto = CreateEventDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            status: EventStatusEnum.Moderated,
+            statusName: "Moderated",
+            statusCode: "MODERATED");
+        dto.IsUnmoderationEligible = false;
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        await Assert.That(links.Any(definition => definition.Rel == LinkRelations.Unmoderate)).IsFalse();
+    }
+
+    [Test]
+    public async Task IrreversiblyModeratedEvent_DoesNotAdvertiseModerationActions()
+    {
+        var dto = CreateEventDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            status: EventStatusEnum.Moderated,
+            statusName: "Moderated",
+            statusCode: "MODERATED");
+        dto.IsUnmoderationEligible = false;
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        await Assert.That(links.Any(definition => definition.Rel == LinkRelations.ModerateLight)).IsFalse();
+        await Assert.That(links.Any(definition => definition.Rel == LinkRelations.ModerateHeavy)).IsFalse();
+        await Assert.That(links.Any(definition => definition.Rel == LinkRelations.Unmoderate)).IsFalse();
     }
 
     [Test]

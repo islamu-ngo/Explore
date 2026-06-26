@@ -1,7 +1,21 @@
+// ABOUTME: API integration and route contract tests for event session controller endpoints.
+// ABOUTME: Verifies public session reads stay anonymous while management session reads require authorization.
+
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Attributes;
+using Explore.API.Controllers;
+using Explore.API.Hateoas;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSession;
+using Explore.Application.Features.EventSessions.Requests.Commands;
+using Explore.Application.Features.EventSessions.Requests.Queries;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -83,6 +97,46 @@ public class EventSessionControllerTests
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
+    [Test]
+    public async Task GetManagedByEvent_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+
+        // Act
+        var response = await _fixture.Client.GetAsync($"{BaseUrl}/management/by-event/{eventId}");
+
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task GetManagedByEventRoute_UsesExplicitAuthenticatedManagementContract()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var action = typeof(EventSessionController).GetMethod(nameof(EventSessionController.GetManagedByEvent))!;
+        var route = action.GetCustomAttribute<HttpGetAttribute>()!;
+        var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
+
+        // Assert
+        await Assert.That(route.Template).IsEqualTo("management/by-event/{eventId:guid}");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.GetManagedEventSessionsByEvent);
+        await Assert.That(classification.Class).IsEqualTo(EndpointClass.Authenticated);
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+        await Assert.That(action.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
+
+        var requestAuthorization = typeof(GetManagedSessionsByEventRequest).GetCustomAttribute<AuthorizeResourceAttribute>()!;
+        await Assert.That(requestAuthorization.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(requestAuthorization.Action).IsEqualTo(AuthorizationActions.Events.ViewManagement);
+
+        var secureRequest = (ISecureRequest)new GetManagedSessionsByEventRequest { EventId = eventId };
+        await Assert.That(secureRequest.ResourceId).IsEqualTo(eventId.ToString());
+        await Assert.That(action.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Any(attribute => attribute.StatusCode == StatusCodes.Status403Forbidden && attribute.Type == typeof(ProblemDetails))).IsTrue();
+    }
+
     #endregion
 
     #region POST Endpoints
@@ -104,6 +158,81 @@ public class EventSessionControllerTests
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task CreateDraft_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        var createDto = new CreateDraftEventSessionRequestDto
+        {
+            EventId = Guid.NewGuid(),
+            Title = "Draft Session"
+        };
+
+        var response = await _fixture.Client.PostAsJsonAsync($"{BaseUrl}/drafts", createDto);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task Schedule_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        var id = Guid.NewGuid();
+        var scheduleDto = new ScheduleEventSessionRequestDto
+        {
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            StartTime = DateTimeOffset.UtcNow.AddDays(1),
+            EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(1)
+        };
+
+        var response = await _fixture.Client.PostAsJsonAsync($"{BaseUrl}/{id}/schedule", scheduleDto);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task Publish_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        var id = Guid.NewGuid();
+        var publishDto = new PublishEventSessionRequestDto
+        {
+            ExpectedConcurrencyStamp = Guid.NewGuid()
+        };
+
+        var response = await _fixture.Client.PostAsJsonAsync($"{BaseUrl}/{id}/publish", publishDto);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task LifecycleRoutes_UseExplicitAuthenticatedContracts()
+    {
+        await AssertLifecyclePostRoute(
+            nameof(EventSessionController.CreateDraft),
+            "drafts",
+            RouteNames.CreateDraftEventSession,
+            typeof(CreateDraftEventSessionCommand),
+            AuthorizationActions.Create,
+            ResourceKinds.EventSession,
+            expectsConflict: false);
+
+        await AssertLifecyclePostRoute(
+            nameof(EventSessionController.Schedule),
+            "{id:guid}/schedule",
+            RouteNames.ScheduleEventSession,
+            typeof(ScheduleEventSessionCommand),
+            AuthorizationActions.Update,
+            ResourceKinds.EventSession,
+            expectsConflict: true);
+
+        await AssertLifecyclePostRoute(
+            nameof(EventSessionController.Publish),
+            "{id:guid}/publish",
+            RouteNames.PublishEventSession,
+            typeof(PublishEventSessionCommand),
+            AuthorizationActions.Update,
+            ResourceKinds.EventSession,
+            expectsConflict: true);
     }
 
     #endregion
@@ -146,4 +275,42 @@ public class EventSessionControllerTests
     }
 
     #endregion
+
+    private static async Task AssertLifecyclePostRoute(
+        string actionName,
+        string template,
+        string routeName,
+        Type commandType,
+        string authorizationAction,
+        string resourceKind,
+        bool expectsConflict)
+    {
+        var action = typeof(EventSessionController).GetMethod(actionName)!;
+        var route = action.GetCustomAttribute<HttpPostAttribute>()!;
+        var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
+
+        await Assert.That(route.Template).IsEqualTo(template);
+        await Assert.That(route.Name).IsEqualTo(routeName);
+        await Assert.That(classification.Class).IsEqualTo(EndpointClass.Authenticated);
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+        await Assert.That(action.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
+
+        var commandAuthorization = commandType.GetCustomAttribute<AuthorizeResourceAttribute>()!;
+        await Assert.That(commandAuthorization.Resource).IsEqualTo(resourceKind);
+        await Assert.That(commandAuthorization.Action).IsEqualTo(authorizationAction);
+        await AssertProducesProblem(action, StatusCodes.Status403Forbidden);
+        await AssertProducesProblem(action, StatusCodes.Status404NotFound);
+
+        if (expectsConflict)
+        {
+            await AssertProducesProblem(action, StatusCodes.Status409Conflict);
+        }
+    }
+
+    private static async Task AssertProducesProblem(MethodInfo action, int statusCode)
+    {
+        await Assert.That(action.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Any(attribute => attribute.StatusCode == statusCode && attribute.Type == typeof(ProblemDetails))).IsTrue();
+    }
 }

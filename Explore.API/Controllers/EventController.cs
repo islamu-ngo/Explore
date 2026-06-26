@@ -14,6 +14,7 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventAspects.Requests.Commands;
 using Explore.Application.Features.EventAspects.Requests.Queries;
 using Explore.Application.Features.EventPrograms.Requests.Queries;
+using Explore.Application.Features.Events.Moderation;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Features.EventSessions.Requests.Queries;
@@ -43,6 +44,11 @@ public class EventController : ExploreControllerBase
         "Event validation failed",
         "Event creation failed.");
 
+    private static readonly ApiValidationProblemDescriptor ImportValidationProblem = new(
+        "event",
+        "Event validation failed",
+        "Event import failed.");
+
     private static readonly ApiValidationProblemDescriptor PublishValidationProblem = new(
         "event",
         "Event validation failed",
@@ -57,6 +63,16 @@ public class EventController : ExploreControllerBase
         "event",
         "Event validation failed",
         "Event status update failed.");
+
+    private static readonly ApiValidationProblemDescriptor ArchiveValidationProblem = new(
+        "event",
+        "Event validation failed",
+        "Event archive failed.");
+
+    private static readonly ApiValidationProblemDescriptor CancelValidationProblem = new(
+        "event",
+        "Event validation failed",
+        "Event cancel failed.");
 
     private static readonly ApiValidationProblemDescriptor IslamicAspectValidationProblem = new(
         "eventIslamicAspect",
@@ -216,6 +232,37 @@ public class EventController : ExploreControllerBase
     }
 
     /// <summary>
+    /// Get actor-owned events visible to the current principal for management/profile contexts.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("management/by-actor/{actorId:guid}", Name = RouteNames.GetManagedEventsByActor)]
+    [EndpointSummary("Get Managed Events By Actor")]
+    [EndpointDescription("Returns actor-owned events that the current principal is authorized to view in management contexts, including drafts and moderated events hidden from public discovery.")]
+    [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetManagedByActor(
+        Guid actorId,
+        [FromQuery] PaginationQueryRequest query,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new GetManagedEventsByActorRequest
+        {
+            ActorId = actorId,
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
+        }, cancellationToken);
+
+        var halResource = await _resourceAssembler.ToCollectionResource(
+            result,
+            RouteNames.GetManagedEventsByActor,
+            additionalRouteValues: new { actorId },
+            HttpContext);
+
+        return Ok(halResource);
+    }
+
+    /// <summary>
     /// Get the current user's event creation context.
     /// </summary>
     [Authorize]
@@ -294,6 +341,46 @@ public class EventController : ExploreControllerBase
     }
 
     /// <summary>
+    /// Get authorized management event details by ID, including moderated events.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("{id:guid}/management-detail", Name = RouteNames.GetEventManagementDetails)]
+    [EndpointSummary("Get Event Management Details")]
+    [EndpointDescription("Returns full event details for authorized management views, including moderated events that public detail routes intentionally hide.")]
+    [ProducesResponseType(typeof(HalResource<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<EventDto>>> GetManagementDetails(Guid id, CancellationToken cancellationToken = default)
+    {
+        var @event = await _mediator.Send(new GetEventManagementDetailsRequest { Id = id }, cancellationToken);
+        if (@event == null)
+            return this.ToNotFoundProblem(EventNotFoundProblem);
+
+        var halResource = await _resourceAssembler.ToResource(@event, HttpContext);
+        return Ok(halResource);
+    }
+
+    /// <summary>
+    /// Get authorized moderation audit history for an event.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("{id:guid}/moderation/history", Name = RouteNames.GetEventModerationHistory)]
+    [EndpointSummary("Get Event Moderation History")]
+    [EndpointDescription("Returns safe moderation audit metadata for authorized management views. Event text, slugs, URLs, image identifiers, and storage object paths are never included.")]
+    [ProducesResponseType(typeof(IReadOnlyList<EventModerationHistoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<EventModerationHistoryDto>>> GetModerationHistory(Guid id, CancellationToken cancellationToken = default)
+    {
+        var history = await _mediator.Send(new GetEventModerationHistoryRequest { Id = id }, cancellationToken);
+        return history is null ? this.ToNotFoundProblem(EventNotFoundProblem) : Ok(history);
+    }
+
+    /// <summary>
     /// Download an event as an iCalendar (.ics) file.
     /// </summary>
     [AllowAnonymous]
@@ -337,6 +424,7 @@ public class EventController : ExploreControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDraftRequestDto draft, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventCommand { Request = draft.ToCreateEventRequest() };
@@ -353,6 +441,34 @@ public class EventController : ExploreControllerBase
             response);
     }
 
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("import", Name = RouteNames.ImportEvent)]
+    [EndpointSummary("Import Event")]
+    [EndpointDescription("Imports an event from an external source or backfill path with provenance metadata.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Import([FromBody] ImportEventRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new ImportEventCommand
+        {
+            Request = request
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, ImportValidationProblem);
+        }
+
+        return CreatedAtRoute(
+            RouteNames.GetEventManagementDetails,
+            new { id = response.Id },
+            response);
+    }
+
     /// <summary>
     /// Review whether an event is ready to publish.
     /// </summary>
@@ -363,6 +479,7 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Returns machine-readable readiness errors that block publishing an event.")]
     [ProducesResponseType(typeof(EventPublishReadinessDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventPublishReadinessDto>> GetPublishReadiness(Guid id, CancellationToken cancellationToken = default)
     {
@@ -383,6 +500,8 @@ public class EventController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Publish(Guid id, [FromBody] PublishEventRequestDto request, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new PublishEventCommand
@@ -396,6 +515,132 @@ public class EventController : ExploreControllerBase
             return response.FailureCode == "event_publish_concurrency_conflict"
                 ? this.ToCommandConflictProblem(response, "Event publish conflict", "Event publishing conflict.")
                 : this.ToCommandValidationProblem(response, PublishValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Hide an event after reversible administrative moderation.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/moderation/light", Name = RouteNames.ModerateEventLight)]
+    [EndpointSummary("Light Moderate Event")]
+    [EndpointDescription("Moves an event to the Moderated status using the reversible light-moderation authorization action.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ModerateLight(
+        Guid id,
+        [FromBody] EventModerationRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryNormalizeLightModerationMetadata(id, request, out var metadata, out var problem))
+        {
+            return problem!;
+        }
+
+        var response = await _mediator.Send(new ModerateEventCommand
+        {
+            Id = id,
+            ReasonCode = metadata!.ReasonCode,
+            CorrelationId = metadata.CorrelationId
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, StatusValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Irreversibly redact unsafe event content after administrative moderation.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/moderation/heavy", Name = RouteNames.ModerateEventHeavy)]
+    [EndpointSummary("Heavy Redact Event")]
+    [EndpointDescription("Redacts event-owned text, detaches event images, queues provider-backed image deletion, and moves the event to the Moderated status using the heavy-moderation authorization action.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ModerateHeavy(
+        Guid id,
+        [FromBody] EventModerationRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryNormalizeHeavyModerationMetadata(id, request, out var metadata, out var problem))
+        {
+            return problem!;
+        }
+
+        var response = await _mediator.Send(new HeavyRedactEventCommand
+        {
+            Id = id,
+            ReasonCode = metadata!.ReasonCode,
+            CorrelationId = metadata.CorrelationId
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.FailureCode == HeavyRedactEventCommand.StorageDeletionPendingFailureCode
+                ? this.ToServiceUnavailableProblem(
+                    "Event heavy redaction image deletion pending",
+                    response.Message ?? "Event heavy redaction completed, but image deletion is pending retry.",
+                    response.FailureCode)
+                : this.ToCommandValidationProblem(response, StatusValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Restore a reversibly moderated event to the published lifecycle state.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/moderation/unmoderate", Name = RouteNames.UnmoderateEvent)]
+    [EndpointSummary("Unmoderate Event")]
+    [EndpointDescription("Returns a reversibly light-moderated event to Published. Irreversible heavy redactions cannot be unmoderated.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Unmoderate(
+        Guid id,
+        [FromBody] EventModerationRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryNormalizeUnmoderationMetadata(id, request, out var metadata, out var problem))
+        {
+            return problem!;
+        }
+
+        var response = await _mediator.Send(new UnmoderateEventCommand
+        {
+            Id = id,
+            ReasonCode = metadata!.ReasonCode,
+            CorrelationId = metadata.CorrelationId
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, StatusValidationProblem);
         }
 
         return Ok(response);
@@ -433,30 +678,66 @@ public class EventController : ExploreControllerBase
     }
 
     /// <summary>
-    /// Update an event lifecycle status through an explicit status contract.
+    /// Archive an event. Tolerant lifecycle transition — no public outbox events.
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}/status", Name = RouteNames.UpdateEventStatus)]
-    [EndpointSummary("Update Event Status")]
-    [EndpointDescription("Update an event lifecycle status through a dedicated contract. Draft metadata updates must use the scalar draft update endpoint.")]
+    [HttpPost("{id:guid}/archive", Name = RouteNames.ArchiveEvent)]
+    [EndpointSummary("Archive Event")]
+    [EndpointDescription("Archives an event after concurrency validation. Archived events are removed from public discovery. No public outbox events are emitted.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateStatus(Guid id, [FromBody] UpdateEventStatusDto dto, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Archive(Guid id, [FromBody] ArchiveEventRequestDto request, CancellationToken cancellationToken = default)
     {
-        var command = new UpdateEventCommand
+        var response = await _mediator.Send(new ArchiveEventCommand
         {
             Id = id,
-            EventStatusDto = dto
-        };
-        var response = await _mediator.Send(command, cancellationToken);
+            Request = request
+        }, cancellationToken);
 
         if (!response.Success)
         {
-            return this.ToCommandValidationProblem(response, StatusValidationProblem);
+            return response.FailureCode == "event_archive_concurrency_conflict"
+                ? this.ToCommandConflictProblem(response, "Event archive conflict", "Event archive conflict.")
+                : this.ToCommandValidationProblem(response, ArchiveValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Cancel an event. Tolerant lifecycle transition — no public outbox events.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/cancel", Name = RouteNames.CancelEvent)]
+    [EndpointSummary("Cancel Event")]
+    [EndpointDescription("Cancels an event after concurrency validation. Registrations and public calls to action stop being available. No public outbox events are emitted.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Cancel(Guid id, [FromBody] CancelEventRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new CancelEventCommand
+        {
+            Id = id,
+            Request = request
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.FailureCode == "event_cancel_concurrency_conflict"
+                ? this.ToCommandConflictProblem(response, "Event cancel conflict", "Event cancel conflict.")
+                : this.ToCommandValidationProblem(response, CancelValidationProblem);
         }
 
         return Ok(response);
@@ -655,6 +936,75 @@ public class EventController : ExploreControllerBase
             _ => defaultValue
         };
 
+    private bool TryNormalizeLightModerationMetadata(
+        Guid eventId,
+        EventModerationRequestDto request,
+        out EventModerationReasonMetadata? metadata,
+        out ActionResult<BaseCommandResponse<Guid>>? problem)
+        => TryNormalizeModerationMetadata(
+            eventId,
+            request,
+            EventModerationReasonCodePolicy.TryNormalizeLight,
+            out metadata,
+            out problem);
+
+    private bool TryNormalizeHeavyModerationMetadata(
+        Guid eventId,
+        EventModerationRequestDto request,
+        out EventModerationReasonMetadata? metadata,
+        out ActionResult<BaseCommandResponse<Guid>>? problem)
+        => TryNormalizeModerationMetadata(
+            eventId,
+            request,
+            EventModerationReasonCodePolicy.TryNormalizeHeavy,
+            out metadata,
+            out problem);
+
+    private bool TryNormalizeUnmoderationMetadata(
+        Guid eventId,
+        EventModerationRequestDto request,
+        out EventModerationReasonMetadata? metadata,
+        out ActionResult<BaseCommandResponse<Guid>>? problem)
+        => TryNormalizeModerationMetadata(
+            eventId,
+            request,
+            EventModerationReasonCodePolicy.TryNormalizeUnmoderation,
+            out metadata,
+            out problem);
+
+    private bool TryNormalizeModerationMetadata(
+        Guid eventId,
+        EventModerationRequestDto request,
+        ModerationMetadataNormalizer normalize,
+        out EventModerationReasonMetadata? metadata,
+        out ActionResult<BaseCommandResponse<Guid>>? problem)
+    {
+        if (normalize(request.ReasonCode, request.CorrelationId, out var normalized, out var failureCode, out var error))
+        {
+            metadata = normalized;
+            problem = null;
+            return true;
+        }
+
+        metadata = null;
+        problem = this.ToCommandValidationProblem(new BaseCommandResponse<Guid>
+        {
+            Id = eventId,
+            Success = false,
+            Message = error,
+            Errors = [error ?? "Moderation metadata is invalid."],
+            FailureCode = failureCode
+        }, StatusValidationProblem);
+        return false;
+    }
+
+    private delegate bool ModerationMetadataNormalizer(
+        string? reasonCode,
+        string? correlationId,
+        out EventModerationReasonMetadata metadata,
+        out string? failureCode,
+        out string? error);
+
     private static string SanitizeCalendarFileName(string value)
     {
         string sanitized = string.Concat(value
@@ -670,5 +1020,5 @@ public class EventController : ExploreControllerBase
             : sanitized.ToLowerInvariant();
     }
 
-    public sealed record UpdateEventRequestDto(UpdateEventDto? EventDto, UpdateEventStatusDto? EventStatusDto);
+    public sealed record UpdateEventRequestDto(UpdateEventDto? EventDto);
 }

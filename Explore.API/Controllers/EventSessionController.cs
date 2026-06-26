@@ -39,6 +39,36 @@ public class EventSessionController : ControllerBase
         "Program validation failed",
         "Event session creation failed.");
 
+    private static readonly ApiValidationProblemDescriptor CreateDraftValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session draft creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor ScheduleValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session schedule failed.");
+
+    private static readonly ApiValidationProblemDescriptor PublishValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session publish failed.");
+
+    private static readonly ApiValidationProblemDescriptor ArchiveValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session archive failed.");
+
+    private static readonly ApiValidationProblemDescriptor CancelValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session cancel failed.");
+
+    private static readonly ApiValidationProblemDescriptor CompleteValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session complete failed.");
+
     private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
         "program",
         "Program validation failed",
@@ -144,6 +174,28 @@ public class EventSessionController : ControllerBase
         return Ok(halResource);
     }
 
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("management/by-event/{eventId:guid}", Name = RouteNames.GetManagedEventSessionsByEvent)]
+    [EndpointSummary("Get Managed Sessions by Event")]
+    [EndpointDescription("Returns all sessions for an event in management contexts, including draft/internal sessions hidden from public program routes.")]
+    [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetManagedByEvent(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var sessions = await _mediator.Send(new GetManagedSessionsByEventRequest { EventId = eventId }, cancellationToken);
+
+        var halResource = await _resourceAssembler.ToCollectionResource(
+            sessions,
+            RouteNames.GetManagedEventSessionsByEvent,
+            HttpContext);
+
+        return Ok(halResource);
+    }
+
     /// <summary>
     /// Create a new event session.
     /// </summary>
@@ -156,6 +208,7 @@ public class EventSessionController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionDto session, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventSessionCommand
@@ -174,6 +227,203 @@ public class EventSessionController : ControllerBase
             RouteNames.GetEventSessionById,
             new { id = response.Id },
             response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("drafts", Name = RouteNames.CreateDraftEventSession)]
+    [EndpointSummary("Create Draft Event Session")]
+    [EndpointDescription("Creates an unscheduled draft session under an existing event.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateDraft(
+        [FromBody] CreateDraftEventSessionRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new CreateDraftEventSessionCommand
+        {
+            TenantId = _tenantContext.TenantId,
+            Request = request
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, CreateDraftValidationProblem);
+        }
+
+        return CreatedAtRoute(
+            RouteNames.GetManagedEventSessionsByEvent,
+            new { eventId = request.EventId },
+            response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/schedule", Name = RouteNames.ScheduleEventSession)]
+    [EndpointSummary("Schedule Event Session")]
+    [EndpointDescription("Schedules or reschedules an event session after readiness and concurrency validation.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Schedule(
+        Guid id,
+        [FromBody] ScheduleEventSessionRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new ScheduleEventSessionCommand
+        {
+            Id = id,
+            Request = request
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.FailureCode is "event_session_schedule_concurrency_conflict" or "room_schedule_conflict"
+                ? this.ToCommandConflictProblem(response, "Event session schedule conflict", "Event session schedule conflict.")
+                : this.ToCommandValidationProblem(response, ScheduleValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/publish", Name = RouteNames.PublishEventSession)]
+    [EndpointSummary("Publish Event Session")]
+    [EndpointDescription("Publishes a scheduled event session after readiness and concurrency validation.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Publish(
+        Guid id,
+        [FromBody] PublishEventSessionRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new PublishEventSessionCommand
+        {
+            Id = id,
+            Request = request
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.FailureCode == "event_session_publish_concurrency_conflict"
+                ? this.ToCommandConflictProblem(response, "Event session publish conflict", "Event session publish conflict.")
+                : this.ToCommandValidationProblem(response, PublishValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/archive", Name = RouteNames.ArchiveEventSession)]
+    [EndpointSummary("Archive Event Session")]
+    [EndpointDescription("Archives an event session after concurrency and lifecycle validation.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Archive(
+        Guid id,
+        [FromBody] EventSessionLifecycleRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new ArchiveEventSessionCommand
+        {
+            Id = id,
+            Request = request
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.FailureCode == "event_session_archive_concurrency_conflict"
+                ? this.ToCommandConflictProblem(response, "Event session archive conflict", "Event session archive conflict.")
+                : this.ToCommandValidationProblem(response, ArchiveValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/cancel", Name = RouteNames.CancelEventSession)]
+    [EndpointSummary("Cancel Event Session")]
+    [EndpointDescription("Cancels an event session after concurrency and lifecycle validation.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Cancel(
+        Guid id,
+        [FromBody] EventSessionLifecycleRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new CancelEventSessionCommand
+        {
+            Id = id,
+            Request = request
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.FailureCode == "event_session_cancel_concurrency_conflict"
+                ? this.ToCommandConflictProblem(response, "Event session cancel conflict", "Event session cancel conflict.")
+                : this.ToCommandValidationProblem(response, CancelValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/complete", Name = RouteNames.CompleteEventSession)]
+    [EndpointSummary("Complete Event Session")]
+    [EndpointDescription("Completes a published event session after concurrency and lifecycle validation.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete(
+        Guid id,
+        [FromBody] EventSessionLifecycleRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new CompleteEventSessionCommand
+        {
+            Id = id,
+            Request = request
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.FailureCode == "event_session_complete_concurrency_conflict"
+                ? this.ToCommandConflictProblem(response, "Event session complete conflict", "Event session complete conflict.")
+                : this.ToCommandValidationProblem(response, CompleteValidationProblem);
+        }
+
+        return Ok(response);
     }
 
     /// <summary>

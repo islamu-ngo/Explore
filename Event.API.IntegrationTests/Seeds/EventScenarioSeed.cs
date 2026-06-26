@@ -2,7 +2,9 @@
 // ABOUTME: Creates events within an established tenant context for test scenarios.
 
 using Event.Api.IntegrationTests.Builders;
+using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
 
 namespace Event.Api.IntegrationTests.Seeds;
@@ -37,6 +39,7 @@ public static class EventScenarioSeed
             .Build();
 
         context.Events.Add(@event);
+        context.EventSessions.Add(CreatePublishedSession(@event, tenantId, DateTimeOffset.UtcNow.AddDays(7), sortOrder: 1));
         await context.SaveChangesAsync();
 
         return new EventScenarioResult(@event.Id, @event.Title);
@@ -77,19 +80,49 @@ public static class EventScenarioSeed
 
         for (var i = 0; i < count; i++)
         {
+            var sessionStart = DateTimeOffset.UtcNow.AddDays(7 + i);
             var @event = new EventBuilder()
                 .WithTitle($"Event {i + 1}")
                 .WithActorId(actorId)
                 .WithTenantId(tenantId)
                 .WithStatus(EventStatusEnum.Published)
                 .WithVisibility(VisibilityTypeEnum.Public)
+                .WithSessionDates(
+                    DateOnly.FromDateTime(sessionStart.UtcDateTime),
+                    DateOnly.FromDateTime(sessionStart.UtcDateTime))
                 .Build();
 
             context.Events.Add(@event);
+            context.EventSessions.Add(CreatePublishedSession(@event, tenantId, sessionStart, sortOrder: i + 1));
             results.Add(new EventScenarioResult(@event.Id, @event.Title));
         }
 
         await context.SaveChangesAsync();
         return results;
+    }
+
+    private static EventSession CreatePublishedSession(
+        Explore.Domain.Event @event,
+        Guid tenantId,
+        DateTimeOffset startUtc,
+        int sortOrder)
+    {
+        var session = new EventSession
+        {
+            Id = Guid.NewGuid(),
+            EventId = @event.Id,
+            Event = @event,
+            TenantId = tenantId,
+            Tenant = null!,
+            Title = @event.Title,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
+            SortOrder = sortOrder,
+            EventSessionKindId = (int)EventSessionKindEnum.Talk,
+            RegistrationModeId = 1,
+            ConcurrencyStamp = Guid.NewGuid()
+        };
+
+        session.Reschedule(startUtc, startUtc.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+        return session;
     }
 }

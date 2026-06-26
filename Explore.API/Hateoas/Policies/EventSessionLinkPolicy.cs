@@ -9,6 +9,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
 
 /// <summary>
 /// Link policy for EventSessionDto (detail view).
@@ -73,6 +74,45 @@ public sealed class EventSessionDetailLinkPolicy : ILinkPolicy<EventSessionDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSession, dto);
 
+        if (EventSessionLifecycleAffordancePolicy.CanSchedule(dto.EventSessionStatusId))
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Schedule,
+                RouteNames.ScheduleEventSession,
+                new { id = dto.Id },
+                "POST",
+                "Schedule session",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSession, dto);
+        }
+
+        if (EventSessionLifecycleAffordancePolicy.CanPublish(dto.EventSessionStatusId, dto.IsScheduled))
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Publish,
+                RouteNames.PublishEventSession,
+                new { id = dto.Id },
+                "POST",
+                "Publish session",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSession, dto);
+        }
+
+        if (EventSessionLifecycleAffordancePolicy.CanCancel(dto.EventSessionStatusId))
+        {
+            yield return EventSessionLifecycleAffordancePolicy.CreateExplicitLifecycleLink(LinkRelations.Cancel, dto, "Cancel session", RouteNames.CancelEventSession);
+        }
+
+        if (EventSessionLifecycleAffordancePolicy.CanComplete(dto.EventSessionStatusId))
+        {
+            yield return EventSessionLifecycleAffordancePolicy.CreateExplicitLifecycleLink(LinkRelations.Complete, dto, "Complete session", RouteNames.CompleteEventSession);
+        }
+
+        if (EventSessionLifecycleAffordancePolicy.CanArchive(dto.EventSessionStatusId))
+        {
+            yield return EventSessionLifecycleAffordancePolicy.CreateExplicitLifecycleLink(LinkRelations.Archive, dto, "Archive session", RouteNames.ArchiveEventSession);
+        }
+
         // Delete link - requires authentication
         yield return new LinkDefinition(
             "delete",
@@ -129,6 +169,45 @@ public sealed class EventSessionCollectionLinkPolicy : ICollectionLinkPolicy<Eve
                 "GET",
                 assignment.Name);
         }
+
+        if (EventSessionLifecycleAffordancePolicy.CanSchedule(dto.EventSessionStatusId))
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Schedule,
+                RouteNames.ScheduleEventSession,
+                new { id = dto.Id },
+                "POST",
+                "Schedule session",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionList, dto);
+        }
+
+        if (EventSessionLifecycleAffordancePolicy.CanPublish(dto.EventSessionStatusId, dto.IsScheduled))
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Publish,
+                RouteNames.PublishEventSession,
+                new { id = dto.Id },
+                "POST",
+                "Publish session",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionList, dto);
+        }
+
+        if (EventSessionLifecycleAffordancePolicy.CanCancel(dto.EventSessionStatusId))
+        {
+            yield return EventSessionLifecycleAffordancePolicy.CreateExplicitLifecycleLink(LinkRelations.Cancel, dto, "Cancel session", RouteNames.CancelEventSession);
+        }
+
+        if (EventSessionLifecycleAffordancePolicy.CanComplete(dto.EventSessionStatusId))
+        {
+            yield return EventSessionLifecycleAffordancePolicy.CreateExplicitLifecycleLink(LinkRelations.Complete, dto, "Complete session", RouteNames.CompleteEventSession);
+        }
+
+        if (EventSessionLifecycleAffordancePolicy.CanArchive(dto.EventSessionStatusId))
+        {
+            yield return EventSessionLifecycleAffordancePolicy.CreateExplicitLifecycleLink(LinkRelations.Archive, dto, "Archive session", RouteNames.ArchiveEventSession);
+        }
     }
 
     /// <inheritdoc />
@@ -144,4 +223,54 @@ public sealed class EventSessionCollectionLinkPolicy : ICollectionLinkPolicy<Eve
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Create, typeof(EventSessionDto), "event_session");
     }
+
+}
+
+internal static class EventSessionLifecycleAffordancePolicy
+{
+    public static bool CanSchedule(int statusId)
+        => statusId is not ((int)EventSessionStatusEnum.Rejected or
+            (int)EventSessionStatusEnum.Cancelled or
+            (int)EventSessionStatusEnum.Archived or
+            (int)EventSessionStatusEnum.Completed or
+            (int)EventSessionStatusEnum.Moderated);
+
+    public static bool CanPublish(int statusId, bool isScheduled)
+        => isScheduled && statusId is not ((int)EventSessionStatusEnum.Published or
+            (int)EventSessionStatusEnum.Rejected or
+            (int)EventSessionStatusEnum.Cancelled or
+            (int)EventSessionStatusEnum.Archived or
+            (int)EventSessionStatusEnum.Completed or
+            (int)EventSessionStatusEnum.Moderated);
+
+    public static bool CanCancel(int statusId)
+        => statusId is (int)EventSessionStatusEnum.Draft
+            or (int)EventSessionStatusEnum.Submitted
+            or (int)EventSessionStatusEnum.UnderReview
+            or (int)EventSessionStatusEnum.Approved
+            or (int)EventSessionStatusEnum.Published;
+
+    public static bool CanComplete(int statusId)
+        => statusId == (int)EventSessionStatusEnum.Published;
+
+    public static bool CanArchive(int statusId)
+        => statusId is (int)EventSessionStatusEnum.Draft
+            or (int)EventSessionStatusEnum.Cancelled
+            or (int)EventSessionStatusEnum.Completed;
+
+    public static LinkDefinition CreateExplicitLifecycleLink(
+        string relation,
+        EventSessionDto dto,
+        string title,
+        string routeName) =>
+        new LinkDefinition(relation, routeName, new { id = dto.Id }, "POST", title, RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSession, dto);
+
+    public static LinkDefinition CreateExplicitLifecycleLink(
+        string relation,
+        EventSessionListDto dto,
+        string title,
+        string routeName) =>
+        new LinkDefinition(relation, routeName, new { id = dto.Id }, "POST", title, RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionList, dto);
 }

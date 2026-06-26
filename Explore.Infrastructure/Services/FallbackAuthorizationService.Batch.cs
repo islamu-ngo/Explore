@@ -61,9 +61,7 @@ public partial class FallbackAuthorizationService
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
         var tenantId = _tenantContext.TenantId;
         var isTenantAdmin = !isInstanceAdmin && await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        var adminOrgIds = isInstanceAdmin || isTenantAdmin
-            ? (IReadOnlySet<Guid>)new HashSet<Guid>()
-            : (await _adminContext.GetAdminOrganizationIdsAsync(cancellationToken)).ToHashSet();
+        var adminOrgIds = (await _adminContext.GetAdminOrganizationIdsAsync(cancellationToken) ?? []).ToHashSet();
 
         var userId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
         return new AuthorityProfile(isInstanceAdmin, isTenantAdmin, tenantId, adminOrgIds, userId);
@@ -77,13 +75,13 @@ public partial class FallbackAuthorizationService
         string action,
         IDictionary<string, object>? resourceAttributes)
     {
-        if (profile.IsInstanceAdmin)
+        if (profile.IsInstanceAdmin && !RequiresDirectEventAuthority(resourceKind, action))
         {
             LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
             return true;
         }
 
-        if (SafeMode)
+        if (SafeMode && !profile.IsInstanceAdmin)
         {
             LogDecision("deny", "safe_mode_active", resourceKind, resourceId, action);
             return false;
@@ -113,10 +111,13 @@ public partial class FallbackAuthorizationService
             "islamuevent_event" when action is "create" => IsEventCreateAllowedForProfile(profile, resourceAttributes),
             "islamuevent_event" or "islamuevent_event_session" or "islamuevent_event_session_group" or "islamuevent_event_session_agenda_item" or "islamuevent_event_day" or "islamuevent_event_agenda_item"
                 => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
-                    && (IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
-                        || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId)
-                        || IsActorUserOwnerFromProfile(profile, resourceAttributes)
-                        || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
+                    && (resourceKind == ResourceKinds.Event && IsEventModerationAction(action)
+                        ? IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
+                        : (IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
+                            && (resourceKind != ResourceKinds.Event || IsTenantAdminEventAction(action)))
+                            || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId)
+                            || IsActorUserOwnerFromProfile(profile, resourceAttributes)
+                            || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
             "islamuevent_event_registration" => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                 && (action is "create" or "view"
                     || IsAdminForOrgScope(profile, resourceAttributes, resourceId)

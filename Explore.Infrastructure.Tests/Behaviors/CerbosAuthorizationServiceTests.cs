@@ -98,6 +98,40 @@ public class CerbosAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowedBatchAsync_MapsRepeatedResourceEntriesByAction()
+    {
+        var userId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+
+        const string eventId = "event-1";
+        var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        protoResponse.Results.Add(CreateResultEntry(eventId, ResourceKinds.Event, AuthorizationActions.Events.ManageTeam, Effect.Deny));
+        protoResponse.Results.Add(CreateResultEntry(eventId, ResourceKinds.Event, AuthorizationActions.Update, Effect.Allow));
+        protoResponse.Results.Add(CreateResultEntry(eventId, ResourceKinds.Event, AuthorizationActions.Delete, Effect.Deny));
+
+        _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(new CheckResourcesResponse(protoResponse));
+
+        var service = CreateService();
+        var checks = new List<AuthorizationCheck>
+        {
+            new(ResourceKinds.Event, eventId, AuthorizationActions.Events.ManageTeam, null),
+            new(ResourceKinds.Event, eventId, AuthorizationActions.Update, null),
+            new(ResourceKinds.Event, eventId, AuthorizationActions.Delete, null)
+        };
+
+        var result = await service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(result.Count).IsEqualTo(3);
+        await Assert.That(result[0]).IsFalse();
+        await Assert.That(result[1]).IsTrue();
+        await Assert.That(result[2]).IsFalse();
+    }
+
+    [Test]
     public async Task IsAllowedBatchAsync_UserIdClaimMissingButResolvable_UsesResolvedUserIdForCerbosPrincipal()
     {
         var resolvedUserId = Guid.NewGuid();

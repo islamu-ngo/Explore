@@ -384,7 +384,9 @@ if (!isOpenApiGeneration)
         .AddAuthorizationFilters()
         .WithTools<AiToolRegistryMcpTools>()
         .WithTools<AiAssistantMcpTools>()
+        .WithTools<EventManagementMcpTools>()
         .WithResources<AiAssistantMcpResources>()
+        .WithResources<EventManagementMcpResources>()
         .WithPrompts<AiAssistantMcpPrompts>();
 
     builder.Services.AddSingleton<IConfigureOptions<McpServerOptions>, AiMcpProjectedToolOptionsSetup>();

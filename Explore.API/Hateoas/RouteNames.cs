@@ -30,6 +30,9 @@ public static class RouteNames
 
     public const string GetEvents = "GetEvents";
     public const string GetEventById = "GetEventById";
+    public const string GetEventManagementDetails = "GetEventManagementDetails";
+    public const string GetEventModerationHistory = "GetEventModerationHistory";
+    public const string GetManagedEventsByActor = "GetManagedEventsByActor";
     public const string GetEventCalendar = "GetEventCalendar";
     public const string GetMyEvents = "GetMyEvents";
     public const string GetEventCreationContext = "GetEventCreationContext";
@@ -37,9 +40,14 @@ public static class RouteNames
     public const string GetEventProgramSummary = "GetEventProgramSummary";
     public const string GetEventPublishReadiness = "GetEventPublishReadiness";
     public const string CreateEvent = "CreateEvent";
+    public const string ImportEvent = "ImportEvent";
     public const string PublishEvent = "PublishEvent";
+    public const string ModerateEventLight = "ModerateEventLight";
+    public const string ModerateEventHeavy = "ModerateEventHeavy";
+    public const string UnmoderateEvent = "UnmoderateEvent";
     public const string UpdateEvent = "UpdateEvent";
-    public const string UpdateEventStatus = "UpdateEventStatus";
+    public const string ArchiveEvent = "ArchiveEvent";
+    public const string CancelEvent = "CancelEvent";
     public const string DeleteEvent = "DeleteEvent";
     public const string GetEventSessions = "GetEventSessions";
     public const string GetEventTemplateSyncDiff = "GetEventTemplateSyncDiff";
@@ -51,7 +59,14 @@ public static class RouteNames
 
     public const string GetEventSessions_List = "GetEventSessionsList";
     public const string GetEventSessionById = "GetEventSessionById";
+    public const string GetManagedEventSessionsByEvent = "GetManagedEventSessionsByEvent";
     public const string CreateEventSession = "CreateEventSession";
+    public const string CreateDraftEventSession = "CreateDraftEventSession";
+    public const string ScheduleEventSession = "ScheduleEventSession";
+    public const string PublishEventSession = "PublishEventSession";
+    public const string ArchiveEventSession = "ArchiveEventSession";
+    public const string CancelEventSession = "CancelEventSession";
+    public const string CompleteEventSession = "CompleteEventSession";
     public const string UpdateEventSession = "UpdateEventSession";
     public const string DeleteEventSession = "DeleteEventSession";
     public const string GetEventSessionLanguages = "GetEventSessionLanguages";
@@ -160,6 +175,8 @@ public static class RouteNames
     public const string GetRegistrationModeById = "GetRegistrationModeById";
     public const string GetRegistrationScopes = "GetRegistrationScopes";
     public const string GetEventSessionKinds = "GetEventSessionKinds";
+    public const string GetEventSessionStatuses = "GetEventSessionStatuses";
+    public const string GetEventSessionStatusById = "GetEventSessionStatusById";
     public const string GetScheduleItemKinds = "GetScheduleItemKinds";
     public const string GetVisibilityTypes = "GetVisibilityTypes";
     public const string GetVisibilityTypeById = "GetVisibilityTypeById";

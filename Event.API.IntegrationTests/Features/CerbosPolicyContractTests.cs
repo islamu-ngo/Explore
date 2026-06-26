@@ -29,11 +29,10 @@ public class CerbosPolicyContractTests : IDisposable
         _cerbos.Dispose();
     }
 
-    #region Instance Admin — Full Access Across All Resources
+    #region Instance Admin — Full Access Across Administered Resources
 
     public static IEnumerable<(string ResourceKind, string[] Actions)> GetInstanceAdminFullAccessCases()
     {
-        yield return ("islamuevent_event", (string[])["view", "create", "update", "delete"]);
         yield return ("islamuevent_organization", (string[])["view", "create", "update", "delete", "manage_members"]);
         yield return ("islamuevent_tenant", (string[])["view", "create", "update", "delete"]);
         yield return ("islamuevent_user", (string[])["view", "create", "update", "delete"]);
@@ -81,12 +80,34 @@ public class CerbosPolicyContractTests : IDisposable
         }
     }
 
+    [Test]
+    public async Task InstanceAdmin_ShouldBeAllowed_ViewAndModerateEventsWithoutEditAuthority()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-instance-admin",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = true, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_event",
+            resourceId: "event-1",
+            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
+            actions: ["view", "view-management", "create", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate"]);
+
+        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("moderate-light").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("moderate-heavy").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("unmoderate").WhoseValue.Should().Be("EFFECT_ALLOW");
+    }
+
     #endregion
 
     #region Tenant Admin — Scoped Access
 
     [Test]
-    public async Task TenantAdmin_ShouldBeAllowed_ManageEventsInOwnTenant()
+    public async Task TenantAdmin_ShouldBeAllowed_ViewAndModerateEventsInOwnTenantWithoutEditAuthority()
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-tenant-admin",
@@ -100,12 +121,16 @@ public class CerbosPolicyContractTests : IDisposable
             resourceKind: "islamuevent_event",
             resourceId: "event-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
-            actions: ["view", "create", "update", "delete"]);
+            actions: ["view", "view-management", "create", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate"]);
 
         result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("moderate-light").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("moderate-heavy").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("unmoderate").WhoseValue.Should().Be("EFFECT_ALLOW");
     }
 
     [Test]
@@ -123,11 +148,15 @@ public class CerbosPolicyContractTests : IDisposable
             resourceKind: "islamuevent_event",
             resourceId: "event-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
-            actions: ["create", "update", "delete"]);
+            actions: ["view-management", "create", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate"]);
 
+        result.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_DENY");
         result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY");
         result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
         result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("moderate-light").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("moderate-heavy").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("unmoderate").WhoseValue.Should().Be("EFFECT_DENY");
     }
 
     [Test]
@@ -146,9 +175,10 @@ public class CerbosPolicyContractTests : IDisposable
             resourceKind: "islamuevent_event",
             resourceId: "event-user-owned",
             resourceAttrs: new { tenantId = "tenant-1", eventId = "event-user-owned", userId = "user-owner" },
-            actions: ["view", "update", "delete", "publish"]);
+            actions: ["view", "view-management", "update", "delete", "publish"]);
 
         ownerResult.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        ownerResult.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_ALLOW");
         ownerResult.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
         ownerResult.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
         ownerResult.Should().ContainKey("publish").WhoseValue.Should().Be("EFFECT_ALLOW");
@@ -166,9 +196,10 @@ public class CerbosPolicyContractTests : IDisposable
             resourceKind: "islamuevent_event",
             resourceId: "event-user-owned",
             resourceAttrs: new { tenantId = "tenant-1", eventId = "event-user-owned", userId = "user-owner" },
-            actions: ["view", "update", "delete", "publish"]);
+            actions: ["view", "view-management", "update", "delete", "publish"]);
 
         otherResult.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        otherResult.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_DENY");
         otherResult.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
         otherResult.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
         otherResult.Should().ContainKey("publish").WhoseValue.Should().Be("EFFECT_DENY");
@@ -502,9 +533,10 @@ public class CerbosPolicyContractTests : IDisposable
             resourceKind: "islamuevent_event",
             resourceId: "event-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
-            actions: ["view"]);
+            actions: ["view", "view-management"]);
 
         result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_DENY");
     }
 
     [Test]

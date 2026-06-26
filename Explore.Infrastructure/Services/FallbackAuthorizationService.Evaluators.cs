@@ -152,7 +152,8 @@ public partial class FallbackAuthorizationService
         CancellationToken cancellationToken)
     {
         var tenantId = ResolveTenantId(resourceAttributes);
-        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken)
+            && IsTenantAdminEventAction(action))
         {
             LogDecision("allow", "is_tenant_admin=true", resourceKind, resourceId, action);
             return true;
@@ -230,10 +231,17 @@ public partial class FallbackAuthorizationService
             return false;
         }
 
-        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken)
+            && (resourceKind != ResourceKinds.Event || IsTenantAdminEventAction(action)))
         {
             LogDecision("allow", "is_tenant_admin=true", resourceKind, resourceId, action);
             return true;
+        }
+
+        if (resourceKind == ResourceKinds.Event && IsEventModerationAction(action))
+        {
+            LogDecision("deny", "moderation_requires_platform_or_tenant_admin", resourceKind, resourceId, action);
+            return false;
         }
 
         var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
@@ -312,6 +320,12 @@ public partial class FallbackAuthorizationService
             userId.Value,
             [eventId],
             cancellationToken);
+
+        if (snapshot is null)
+        {
+            LogDecision("deny", "event_role_snapshot_missing", resourceKind, resourceId, action);
+            return false;
+        }
 
         var permissionCode = PermissionCodeFor(resourceKind, action);
         var allowed = snapshot.Events.TryGetValue(eventId, out var authority)

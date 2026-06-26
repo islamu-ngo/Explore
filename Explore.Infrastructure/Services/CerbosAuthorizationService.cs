@@ -301,7 +301,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         for (var i = 0; i < checks.Count; i++)
         {
             var check = checks[i];
-            var resultEntry = FindResultEntry(response, check);
+            var resultEntry = FindResultEntry(response, check, i);
 
             if (resultEntry is not null && resultEntry.Actions.TryGetValue(check.Action, out var effect))
             {
@@ -324,12 +324,28 @@ public class CerbosAuthorizationService : IAuthorizationProvider
 
     private static Cerbos.Api.V1.Response.CheckResourcesResponse.Types.ResultEntry? FindResultEntry(
         CheckResourcesResponse response,
+        AuthorizationCheck check,
+        int checkIndex)
+    {
+        if (checkIndex < response.Raw.Results.Count)
+        {
+            var positionalResult = response.Raw.Results[checkIndex];
+            if (MatchesResult(positionalResult, check) && positionalResult.Actions.ContainsKey(check.Action))
+                return positionalResult;
+        }
+
+        return response.Raw.Results.FirstOrDefault(result =>
+            MatchesResult(result, check) &&
+            result.Actions.ContainsKey(check.Action));
+    }
+
+    private static bool MatchesResult(
+        Cerbos.Api.V1.Response.CheckResourcesResponse.Types.ResultEntry result,
         AuthorizationCheck check)
     {
-        return response.Raw.Results.FirstOrDefault(result =>
-            result.Resource is { } resource &&
-            string.Equals(resource.Id, check.ResourceId, StringComparison.Ordinal) &&
-            string.Equals(resource.Kind, check.ResourceKind, StringComparison.Ordinal));
+        return result.Resource is { } resource &&
+               string.Equals(resource.Id, check.ResourceId, StringComparison.Ordinal) &&
+               string.Equals(resource.Kind, check.ResourceKind, StringComparison.Ordinal);
     }
 
     private static bool[] DenyAll(int count)

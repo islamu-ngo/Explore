@@ -2,6 +2,7 @@
 // ABOUTME: Main dispatch class — delegates to evaluators (partial) and batch optimization (partial).
 
 using System.Diagnostics;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
@@ -76,7 +77,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         IDictionary<string, object>? resourceAttributes = null,
         CancellationToken cancellationToken = default)
     {
-        if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
+        var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
+        if (isInstanceAdmin && !RequiresDirectEventAuthority(resourceKind, action))
         {
             LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
             return true;
@@ -84,7 +86,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
 
         // Safe-Mode: only instance admin allowed (bypassed above) — deny everything else.
         // Activated when a BYO-Cerbos tenant's PDP is unreachable with failure_mode=closed.
-        if (SafeMode)
+        if (SafeMode && !isInstanceAdmin)
         {
             LogDecision("deny", "safe_mode_active", resourceKind, resourceId, action);
             return false;
@@ -269,6 +271,27 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or "islamuevent_event_agenda_item"
             or "islamuevent_event_registration";
 
+    private static bool RequiresDirectEventAuthority(string resourceKind, string action) =>
+        resourceKind == ResourceKinds.Event &&
+        action is AuthorizationActions.Update
+            or AuthorizationActions.Delete
+            or AuthorizationActions.Events.ManageTeam
+            or AuthorizationActions.Events.ManageOwner
+            or AuthorizationActions.Events.TransferOwnership
+            or AuthorizationActions.Events.ManageFinance;
+
+    private static bool IsTenantAdminEventAction(string action) =>
+        action is AuthorizationActions.View
+            or AuthorizationActions.Events.ViewManagement
+            or AuthorizationActions.Events.ModerateLight
+            or AuthorizationActions.Events.ModerateHeavy
+            or AuthorizationActions.Events.Unmoderate;
+
+    private static bool IsEventModerationAction(string action) =>
+        action is AuthorizationActions.Events.ModerateLight
+            or AuthorizationActions.Events.ModerateHeavy
+            or AuthorizationActions.Events.Unmoderate;
+
     private static string PermissionCodeFor(string resourceKind, string action)
     {
         const string productNamespacePrefix = "islamuevent_";
@@ -276,8 +299,11 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         var permissionResourceKind = resourceKind.StartsWith(productNamespacePrefix, StringComparison.Ordinal)
             ? resourceKind[productNamespacePrefix.Length..]
             : resourceKind;
+        var permissionAction = resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ViewManagement
+            ? AuthorizationActions.View
+            : action;
 
-        return string.Concat(permissionResourceKind, ":", action);
+        return string.Concat(permissionResourceKind, ":", permissionAction);
     }
 
     private static bool TryResolveEventContext(

@@ -129,6 +129,8 @@ public static class LinkRelations
     /// </summary>
     public const string AddSession = "add-session";
 
+    public const string CreateSessionDraft = "create-session-draft";
+
     /// <summary>
     /// Server-owned defaults and option lists for adding a session to an event program.
     /// </summary>
@@ -239,6 +241,8 @@ public static class LinkRelations
     /// </summary>
     public const string Publish = "publish";
 
+    public const string Schedule = "schedule";
+
     /// <summary>
     /// Readiness validation for publishing draft resources.
     /// </summary>
@@ -248,6 +252,28 @@ public static class LinkRelations
     /// Cancel action for events or registrations.
     /// </summary>
     public const string Cancel = "cancel";
+
+    public const string Complete = "complete";
+
+    /// <summary>
+    /// Reversible administrative moderation action for hiding policy-violating events without deleting content.
+    /// </summary>
+    public const string ModerateLight = "moderate-light";
+
+    /// <summary>
+    /// Irreversible administrative moderation action for redacting unsafe event content and deleting uploaded media.
+    /// </summary>
+    public const string ModerateHeavy = "moderate-heavy";
+
+    /// <summary>
+    /// Administrative action for restoring a reversibly moderated event to the published lifecycle state.
+    /// </summary>
+    public const string Unmoderate = "unmoderate";
+
+    /// <summary>
+    /// Management-only audit history for event moderation lifecycle actions.
+    /// </summary>
+    public const string ModerationHistory = "moderation-history";
 
     /// <summary>
     /// Archive action for lifecycle-managed resources.
