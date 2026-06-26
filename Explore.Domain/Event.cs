@@ -59,6 +59,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public ICollection<EventSessionGroup> SessionGroups { get; set; } = new List<EventSessionGroup>();
     public ICollection<EventAgendaItem> AgendaItems { get; set; } = new List<EventAgendaItem>();
     public ICollection<EventDay> Days { get; set; } = new List<EventDay>();
+    public ICollection<EventModerationRecord> ModerationRecords { get; set; } = new List<EventModerationRecord>();
 
     public string? Slug { get; set; }
 
@@ -87,6 +88,10 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public DateTimeOffset? FirstSessionStartUtc { get; set; }
     public DateTimeOffset? LastSessionStartUtc { get; set; }
     public string? EventTimeZoneId { get; set; }
+
+    // Provenance metadata for imported/backfilled events (Task 2.7 lifecycle policy)
+    public string? ProvenanceSource { get; set; }
+    public string? ProvenanceExternalId { get; set; }
 
     // Series
     [ForeignKey("EventSeries")]
@@ -168,7 +173,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
         foreach (var session in Sessions.Where(session => !session.IsDeleted))
         {
             session.ReprojectLocalTimes(canonicalTimeZoneId, calculator);
-            session.EventDayId = daysByDate.TryGetValue(session.LocalStartDate, out var day) ? day.Id : null;
+            session.EventDayId = session.LocalStartDate is not null && daysByDate.TryGetValue(session.LocalStartDate.Value, out var day) ? day.Id : null;
         }
 
         foreach (var agendaItem in AgendaItems.Where(item => !item.IsDeleted))
@@ -183,7 +188,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public void RecalculateScheduleSummaryFromSessions()
     {
         var activeSessions = Sessions
-            .Where(session => !session.IsDeleted)
+            .Where(session => session.ContributesToPublicScheduleSummary())
             .OrderBy(session => session.StartTime)
             .ThenBy(session => session.SortOrder)
             .ThenBy(session => session.Id)

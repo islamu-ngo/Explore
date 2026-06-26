@@ -276,7 +276,7 @@ public class SchedulingConstraintTests
             TenantId = tenant.Id,
             Tenant = null!
         };
-        session.Reschedule(session.StartTime, session.EndTime, "Europe/Brussels", new EventScheduleProjectionCalculator());
+        session.Reschedule(session.StartTime!.Value, session.EndTime!.Value, "Europe/Brussels", new EventScheduleProjectionCalculator());
         context.EventSessions.Add(session);
         await context.SaveChangesAsync();
 
@@ -575,7 +575,7 @@ public class SchedulingConstraintTests
             TenantId = tenant.Id,
             Tenant = null!
         };
-        session.Reschedule(session.StartTime, session.EndTime, "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(session.StartTime!.Value, session.EndTime!.Value, "UTC", new EventScheduleProjectionCalculator());
         context.EventSessions.Add(session);
         await context.SaveChangesAsync();
         return session;

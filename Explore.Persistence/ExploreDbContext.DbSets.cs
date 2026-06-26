@@ -98,6 +98,7 @@ public partial class ExploreDbContext
     public DbSet<EventSessionGroupSession> EventSessionGroupSessions { get; set; }
     public DbSet<EventSessionIslamicAspect> EventSessionIslamicAspects { get; set; }
     public DbSet<EventRegistration> EventRegistrations { get; set; }
+    public DbSet<EventModerationRecord> EventModerationRecords { get; set; }
     public DbSet<EventSessionLanguage> EventSessionLanguages { get; set; }
     public DbSet<EventSessionSpeaker> EventSessionSpeakers { get; set; }
     public DbSet<EventSessionAgendaItem> EventSessionAgendaItems { get; set; }
@@ -122,6 +123,7 @@ public partial class ExploreDbContext
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
     public DbSet<EventStatus> EventStatuses { get; set; }
+    public DbSet<EventSessionStatus> EventSessionStatuses { get; set; }
     public DbSet<EventFormat> EventFormats { get; set; }
     public DbSet<VisibilityType> VisibilityTypes { get; set; }
     public DbSet<RegistrationMode> RegistrationModes { get; set; }

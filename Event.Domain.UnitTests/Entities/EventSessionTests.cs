@@ -51,7 +51,7 @@ public class EventSessionTests
     {
         var entity = CreateEventSession();
 
-        await Assert.That(entity.StartTime).IsEqualTo(default(DateTimeOffset));
+        await Assert.That(entity.StartTime).IsNull();
     }
 
     [Test]
@@ -59,7 +59,7 @@ public class EventSessionTests
     {
         var entity = CreateEventSession();
 
-        await Assert.That(entity.EndTime).IsEqualTo(default(DateTimeOffset));
+        await Assert.That(entity.EndTime).IsNull();
     }
 
     [Test]
@@ -100,8 +100,8 @@ public class EventSessionTests
         var entity = CreateEventSession();
 
         await Assert.That(entity.SortOrder).IsEqualTo(0);
-        await Assert.That(entity.LocalStartMinuteOfDay).IsEqualTo(0);
-        await Assert.That(entity.LocalEndMinuteOfDay).IsEqualTo(0);
+        await Assert.That(entity.LocalStartMinuteOfDay).IsNull();
+        await Assert.That(entity.LocalEndMinuteOfDay).IsNull();
     }
 
     private static bool IsRequiredProperty<T>(string propertyName)

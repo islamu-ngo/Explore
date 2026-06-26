@@ -5,6 +5,7 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Specifications.Events;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using TUnit.Assertions;
@@ -217,6 +218,110 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         await Assert.That(items[0].Title).IsEqualTo("Published Local");
     }
 
+    [Test]
+    public async Task PublicDiscoveryLocationFilter_UsesOnlyPublishedScheduledSessions()
+    {
+        await _fixture.ResetAsync();
+        using var context = _fixture.CreateDbContext();
+        var (tenantId, actorId) = await SeedBaseEntities(context);
+
+        var location = new Location
+        {
+            FullName = "Public Venue",
+            Country = "BE",
+            City = "Brussels",
+            TenantId = tenantId,
+            Tenant = null!,
+            Pii = new LocationPii
+            {
+                Address = "Public Street 1",
+                Postcode = "1000"
+            }
+        };
+        context.Locations.Add(location);
+
+        var hiddenOnlyEvent = CreateEvent(
+            tenantId,
+            actorId,
+            "Hidden Session Only",
+            statusId: (int)EventStatusEnum.Published,
+            visibilityId: (int)VisibilityTypeEnum.Public);
+        var publicSessionEvent = CreateEvent(
+            tenantId,
+            actorId,
+            "Public Session",
+            statusId: (int)EventStatusEnum.Published,
+            visibilityId: (int)VisibilityTypeEnum.Public);
+        context.Events.AddRange(hiddenOnlyEvent, publicSessionEvent);
+        await context.SaveChangesAsync();
+
+        context.EventSessions.Add(CreateSession(
+            tenantId,
+            hiddenOnlyEvent.Id,
+            location.Id,
+            EventSessionStatusEnum.Draft,
+            new DateTimeOffset(2026, 8, 1, 9, 0, 0, TimeSpan.Zero)));
+        context.EventSessions.Add(CreateSession(
+            tenantId,
+            publicSessionEvent.Id,
+            location.Id,
+            EventSessionStatusEnum.Published,
+            new DateTimeOffset(2026, 8, 2, 9, 0, 0, TimeSpan.Zero)));
+        await context.SaveChangesAsync();
+
+        var spec = new EventQuerySpecification()
+            .And(EventFilter.PubliclyDiscoverable())
+            .And(EventSubqueryFilter.Locations([location.Id]));
+        var repository = new EventRepository(context);
+        var (items, totalCount) = await repository.GetEventsWithDetailsPaged(1, 10, spec);
+
+        await Assert.That(totalCount).IsEqualTo(1);
+        await Assert.That(items).Count().IsEqualTo(1);
+        await Assert.That(items[0].Title).IsEqualTo("Public Session");
+    }
+
+    [Test]
+    public async Task PublicDiscoveryScheduleFilter_ExcludesEventsWhosePublishedSessionsHaveEnded()
+    {
+        await _fixture.ResetAsync();
+        using var context = _fixture.CreateDbContext();
+        var (tenantId, actorId) = await SeedBaseEntities(context);
+        var now = DateTimeOffset.UtcNow;
+
+        var endedSingleSession = CreateEvent(tenantId, actorId, "Ended Single Session",
+            statusId: (int)EventStatusEnum.Published, visibilityId: (int)VisibilityTypeEnum.Public);
+        var endedMultiSession = CreateEvent(tenantId, actorId, "Ended Multi Session",
+            statusId: (int)EventStatusEnum.Published, visibilityId: (int)VisibilityTypeEnum.Public);
+        var ongoingSession = CreateEvent(tenantId, actorId, "Ongoing Session",
+            statusId: (int)EventStatusEnum.Published, visibilityId: (int)VisibilityTypeEnum.Public);
+        var futureMultiSession = CreateEvent(tenantId, actorId, "Future Multi Session",
+            statusId: (int)EventStatusEnum.Published, visibilityId: (int)VisibilityTypeEnum.Public);
+        var draftFutureSession = CreateEvent(tenantId, actorId, "Draft Future Session",
+            statusId: (int)EventStatusEnum.Published, visibilityId: (int)VisibilityTypeEnum.Public);
+        context.Events.AddRange(endedSingleSession, endedMultiSession, ongoingSession, futureMultiSession, draftFutureSession);
+        await context.SaveChangesAsync();
+
+        context.EventSessions.AddRange(
+            CreateSession(tenantId, endedSingleSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(-2), now.AddDays(-2).AddHours(1)),
+            CreateSession(tenantId, endedMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(-3), now.AddDays(-3).AddHours(1)),
+            CreateSession(tenantId, endedMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddHours(-3), now.AddHours(-2)),
+            CreateSession(tenantId, ongoingSession.Id, null, EventSessionStatusEnum.Published, now.AddHours(-1), now.AddHours(1)),
+            CreateSession(tenantId, futureMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(-1), now.AddDays(-1).AddHours(1)),
+            CreateSession(tenantId, futureMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(2), now.AddDays(2).AddHours(1)),
+            CreateSession(tenantId, draftFutureSession.Id, null, EventSessionStatusEnum.Draft, now.AddDays(1), now.AddDays(1).AddHours(1)));
+        await context.SaveChangesAsync();
+
+        var spec = new EventQuerySpecification()
+            .And(EventFilter.PubliclyDiscoverable())
+            .And(EventSubqueryFilter.CurrentOrUpcomingPublishedSession())
+            .SortBy(EventSort.Title);
+        var repository = new EventRepository(context);
+        var (items, totalCount) = await repository.GetEventsWithDetailsPaged(1, 10, spec);
+
+        await Assert.That(totalCount).IsEqualTo(2);
+        await Assert.That(items.Select(item => item.Title)).IsEquivalentTo(["Future Multi Session", "Ongoing Session"]);
+    }
+
     #region Helpers
 
     private static async Task<(Guid TenantId, Guid ActorId)> SeedBaseEntities(ExploreDbContext context)
@@ -283,6 +388,30 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
             FirstSessionDate = firstSessionDate,
             ConcurrencyStamp = Guid.NewGuid()
         };
+    }
+
+    private static EventSession CreateSession(
+        Guid tenantId,
+        Guid eventId,
+        Guid? locationId,
+        EventSessionStatusEnum status,
+        DateTimeOffset startsAt,
+        DateTimeOffset? endsAt = null)
+    {
+        var session = new EventSession
+        {
+            EventId = eventId,
+            Event = null!,
+            TenantId = tenantId,
+            Tenant = null!,
+            LocationId = locationId,
+            Location = null!,
+            EventSessionStatusId = (int)status,
+            Title = status == EventSessionStatusEnum.Published ? "Published session" : "Hidden session"
+        };
+
+        session.Reschedule(startsAt, endsAt ?? startsAt.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+        return session;
     }
 
     #endregion

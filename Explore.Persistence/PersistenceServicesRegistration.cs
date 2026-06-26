@@ -126,6 +126,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IAudienceGenderRepository, AudienceGenderRepository>();
         services.AddScoped<IEventTypeRepository, EventTypeRepository>();
         services.AddScoped<IEventStatusRepository, EventStatusRepository>();
+        services.AddScoped<IEventSessionStatusRepository, EventSessionStatusRepository>();
         services.AddScoped<IEventFormatRepository, EventFormatRepository>();
         services.AddScoped<IVisibilityTypeRepository, VisibilityTypeRepository>();
         services.AddScoped<IRegistrationModeRepository, RegistrationModeRepository>();
@@ -185,6 +186,8 @@ public static class PersistenceServicesRegistration
 
         // Event Repositories
         services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<IEventHeavyRedactionRepository, EventHeavyRedactionRepository>();
+        services.AddScoped<IEventModerationRecordRepository, EventModerationRecordRepository>();
         services.AddScoped<IEventSessionRepository, EventSessionRepository>();
         services.AddScoped<IEventSessionGroupRepository, EventSessionGroupRepository>();
         services.AddScoped<IEventSessionGroupSessionRepository, EventSessionGroupSessionRepository>();

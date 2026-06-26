@@ -1,0 +1,24 @@
+// ABOUTME: Repository contract for event moderation history records.
+// ABOUTME: Exposes entity-first history lookups without leaking EF Core or DTO concerns.
+
+using Explore.Domain;
+
+namespace Explore.Application.Contracts.Persistence;
+
+public interface IEventModerationRecordRepository : IGenericRepository<EventModerationRecord, Guid>
+{
+    Task<EventModerationRecord?> GetByIdAsync(
+        Guid tenantId,
+        Guid id,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<EventModerationRecord>> GetByEventAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken);
+
+    Task<EventModerationRecord?> GetLatestByEventAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken);
+}

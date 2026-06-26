@@ -9,10 +9,22 @@ namespace Explore.Application.Contracts.Persistence;
 public interface IEventSessionRepository : IGenericRepository<EventSession, Guid>
 {
     Task<EventSession?> GetSessionWithDetails(Guid id);
+    Task<EventSession?> GetPublicSessionWithDetailsAsync(Guid id, CancellationToken cancellationToken);
     Task<List<EventSession>> GetSessionsByEvent(Guid eventId);
+    Task<List<EventSession>> GetPublicSessionsByEventAsync(Guid eventId, CancellationToken cancellationToken);
     Task<List<EventSession>> GetSessionsByLocation(Guid locationId);
     Task<(List<EventSession> Items, int TotalCount)> GetSessionsWithDetailsPaged(int pageNumber, int pageSize);
+    Task<(List<EventSession> Items, int TotalCount)> GetPublicSessionsWithDetailsPagedAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken);
+
     Task<(List<EventSession> Items, int TotalCount)> GetSessionsWithDetailsPagedFiltered(int pageNumber, int pageSize, EventSessionQuerySpecification specification);
+    Task<(List<EventSession> Items, int TotalCount)> GetPublicSessionsWithDetailsPagedFilteredAsync(
+        int pageNumber,
+        int pageSize,
+        EventSessionQuerySpecification specification,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Layer A read used by CreateEventSessionDtoValidator/UpdateEventSessionDtoValidator.

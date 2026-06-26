@@ -10,6 +10,7 @@ namespace Explore.Domain.Constants;
 public static class PermissionCodes
 {
     // ===== Event =====
+    public const string EventView = "event:view";
     public const string EventCreate = "event:create";
     public const string EventUpdate = "event:update";
     public const string EventDelete = "event:delete";

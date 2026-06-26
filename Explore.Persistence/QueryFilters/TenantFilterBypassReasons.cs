@@ -26,6 +26,9 @@ public static class TenantFilterBypassReasons
     public const string TenantCapabilityResolution =
         "Tenant capability resolution reads module flags by explicit tenant id before ambient context is guaranteed.";
 
+    public const string EventAuthorizationTargetResolution =
+        "MCP and AI proposal authorization resolve the target event tenant by explicit event id before provider authorization.";
+
     public const string TenantLookupCacheWarmup =
         "Tenant lookup cache warmup reads active tenants and domain settings before a request tenant exists.";
 

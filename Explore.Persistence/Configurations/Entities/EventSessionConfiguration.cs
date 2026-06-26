@@ -49,6 +49,11 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
             .HasForeignKey(e => e.EventSessionKindId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(e => e.EventSessionStatus)
+            .WithMany()
+            .HasForeignKey(e => e.EventSessionStatusId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(e => e.EventDay)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventDayId })
@@ -72,6 +77,9 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
         builder.HasIndex(e => e.EventSessionKindId)
             .HasDatabaseName("ix_event_sessions_event_session_kind_id");
 
+        builder.HasIndex(e => e.EventSessionStatusId)
+            .HasDatabaseName("ix_event_sessions_event_session_status_id");
+
         builder.HasPostgresExclusionConstraint(
             name: "EX_EventSession_RoomNoOverlap",
             usingMethod: "gist",
@@ -81,7 +89,7 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
                 room_id WITH =,
                 tstzrange(start_time, end_time, '[)') WITH &&
                 """,
-            predicateSql: "is_deleted = false AND room_id IS NOT NULL",
+            predicateSql: "is_deleted = false AND room_id IS NOT NULL AND start_time IS NOT NULL AND end_time IS NOT NULL",
             preflightConflictExistsSql: """
                 SELECT 1
                 FROM event_sessions a
@@ -93,6 +101,10 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
                 WHERE a.is_deleted = false
                   AND b.is_deleted = false
                   AND a.room_id IS NOT NULL
+                  AND a.start_time IS NOT NULL
+                  AND a.end_time IS NOT NULL
+                  AND b.start_time IS NOT NULL
+                  AND b.end_time IS NOT NULL
                   AND tstzrange(a.start_time, a.end_time, '[)')
                       && tstzrange(b.start_time, b.end_time, '[)')
                 """,
@@ -105,19 +117,19 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
                 "price IS NULL OR price >= 0");
             t.HasCheckConstraint(
                 "CK_EventSession_EndAfterStart",
-                "end_time > start_time");
+                "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
             t.HasCheckConstraint(
                 "CK_EventSession_LocalStartMinuteRange",
-                "local_start_minute_of_day BETWEEN 0 AND 1439");
+                "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
             t.HasCheckConstraint(
                 "CK_EventSession_LocalEndMinuteRange",
-                "local_end_minute_of_day BETWEEN 0 AND 1439");
+                "local_end_minute_of_day IS NULL OR local_end_minute_of_day BETWEEN 0 AND 1439");
             t.HasCheckConstraint(
                 "CK_EventSession_LocalStartMinuteMatchesTime",
-                "local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
+                "local_start_minute_of_day IS NULL OR local_start_time IS NULL OR local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
             t.HasCheckConstraint(
                 "CK_EventSession_LocalEndMinuteMatchesTime",
-                "local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
+                "local_end_minute_of_day IS NULL OR local_end_time IS NULL OR local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
             t.HasCheckConstraint(
                 "CK_EventSession_RoomRequiresLocation",
                 "room_id IS NULL OR location_id IS NOT NULL");

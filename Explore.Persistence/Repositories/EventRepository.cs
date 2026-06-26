@@ -6,6 +6,7 @@ using Explore.Application.Specifications.Events;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.Extensions;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -43,6 +44,14 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .IncludeStandardDetails()
             .Include(e => e.AtprotoRecord)
             .FirstOrDefaultAsync(e => e.Id == id);
+    }
+
+    public async Task<Event?> GetAuthorizationTargetByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Events
+            .AsNoTracking()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EventAuthorizationTargetResolution)
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
     public async Task<Event?> GetScheduleGraphForUpdateAsync(Guid id, CancellationToken cancellationToken)
@@ -86,6 +95,19 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         return await query.ToListAsync();
     }
 
+    public async Task<IReadOnlyList<Event>> GetEventsByActorWithDetails(Guid actorId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Events
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
+            .IncludeStandardDetails()
+            .Where(e => e.ActorId == actorId)
+            .OrderByDescending(e => e.FirstSessionStartUtc)
+            .ThenBy(e => e.Title)
+            .ThenBy(e => e.Id)
+            .ToListAsync(cancellationToken);
+    }
+
 
     public async Task<(List<Event> Items, int TotalCount)> GetEventsWithDetailsPaged(int pageNumber, int pageSize)
     {
@@ -114,11 +136,11 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .IncludeStandardDetails()
             .AsQueryable();
 
-        query = ApplySubqueryFilters(query, specification);
+        var now = DateTimeOffset.UtcNow;
+        query = ApplySubqueryFilters(query, specification, now);
         query = ApplyProjectionFilters(query, specification);
 
         // Apply direct filters and sorting via specification
-        var now = DateTimeOffset.UtcNow;
         query = specification.Apply(query, now);
 
         // If no sort was specified by the specification, default to date descending
@@ -191,8 +213,12 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
     /// These filters use correlated subqueries (EXISTS pattern) for efficient SQL translation.
     /// </summary>
     private IQueryable<Event> ApplySubqueryFilters(
-        IQueryable<Event> query, EventQuerySpecification specification)
+        IQueryable<Event> query, EventQuerySpecification specification, DateTimeOffset now)
     {
+        var publicDiscoverySessionFacet = specification.Filters
+            .OfType<EventFilter>()
+            .Any(filter => filter.FilterType == EventFilterType.PubliclyDiscoverable);
+
         foreach (var subFilter in specification.SubqueryFilters)
         {
             query = subFilter.FilterType switch
@@ -227,37 +253,75 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
                 EventSubqueryFilterType.Location => query.Where(e =>
                     _dbContext.EventSessions.Any(es =>
-                        es.EventId == e.Id && es.LocationId == (Guid)subFilter.Value)),
+                        es.EventId == e.Id &&
+                        (!publicDiscoverySessionFacet ||
+                            es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
+                            es.StartTime != null &&
+                            es.EndTime != null) &&
+                        es.LocationId == (Guid)subFilter.Value)),
 
                 EventSubqueryFilterType.Locations => query.Where(e =>
                     _dbContext.EventSessions.Any(es =>
-                        es.EventId == e.Id && es.LocationId != null &&
+                        es.EventId == e.Id &&
+                        (!publicDiscoverySessionFacet ||
+                            es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
+                            es.StartTime != null &&
+                            es.EndTime != null) &&
+                        es.LocationId != null &&
                         ((List<Guid>)subFilter.Value).Contains(es.LocationId.Value))),
 
                 EventSubqueryFilterType.RegistrationMode => query.Where(e =>
                     _dbContext.EventSessions.Any(es =>
-                        es.EventId == e.Id && es.RegistrationModeId == (int)subFilter.Value)),
+                        es.EventId == e.Id &&
+                        (!publicDiscoverySessionFacet ||
+                            es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
+                            es.StartTime != null &&
+                            es.EndTime != null) &&
+                        es.RegistrationModeId == (int)subFilter.Value)),
 
                 EventSubqueryFilterType.RegistrationModes => query.Where(e =>
                     _dbContext.EventSessions.Any(es =>
-                        es.EventId == e.Id && es.RegistrationModeId != null &&
+                        es.EventId == e.Id &&
+                        (!publicDiscoverySessionFacet ||
+                            es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
+                            es.StartTime != null &&
+                            es.EndTime != null) &&
+                        es.RegistrationModeId != null &&
                         ((List<int>)subFilter.Value).Contains(es.RegistrationModeId.Value))),
 
                 EventSubqueryFilterType.Language => query.Where(e =>
                     _dbContext.EventSessions.Any(es =>
                         es.EventId == e.Id &&
+                        (!publicDiscoverySessionFacet ||
+                            es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
+                            es.StartTime != null &&
+                            es.EndTime != null) &&
                         _dbContext.EventSessionLanguages.Any(esl =>
                             esl.EventSessionId == es.Id && esl.LanguageId == (int)subFilter.Value))),
 
                 EventSubqueryFilterType.Languages => query.Where(e =>
                     _dbContext.EventSessions.Any(es =>
                         es.EventId == e.Id &&
+                        (!publicDiscoverySessionFacet ||
+                            es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
+                            es.StartTime != null &&
+                            es.EndTime != null) &&
                         _dbContext.EventSessionLanguages.Any(esl =>
                             esl.EventSessionId == es.Id &&
                             ((List<int>)subFilter.Value).Contains(esl.LanguageId)))),
 
                 EventSubqueryFilterType.FutureOnly => query.Where(e =>
                     e.LastSessionStartUtc == null || e.LastSessionStartUtc > (DateTimeOffset)subFilter.Value),
+
+                EventSubqueryFilterType.CurrentOrUpcomingPublishedSession => query.Where(e =>
+                    _dbContext.EventSessions.Any(es =>
+                        es.EventId == e.Id &&
+                        es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
+                        es.StartTime != null &&
+                        es.EndTime != null &&
+                        es.LocalEndDate != null &&
+                        es.LocalEndTime != null &&
+                        es.EndTime >= now)),
 
                 EventSubqueryFilterType.TemporalView => ApplyTemporalFilter(query, subFilter),
 

@@ -3,6 +3,7 @@
 
 namespace Event.Domain.UnitTests.Entities;
 
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 
 public class EventScheduleProjectionTests
@@ -28,6 +29,7 @@ public class EventScheduleProjectionTests
             EventId = eventId,
             Event = null!,
             Tenant = tenant,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             StartTime = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero)
         };
@@ -72,6 +74,7 @@ public class EventScheduleProjectionTests
             Event = null!,
             Tenant = tenant,
             EventDayId = Guid.NewGuid(),
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             StartTime = new DateTimeOffset(2026, 6, 15, 22, 30, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 6, 15, 23, 30, 0, TimeSpan.Zero)
         };
@@ -91,6 +94,88 @@ public class EventScheduleProjectionTests
         await Assert.That(session.LocalStartDate).IsEqualTo(new DateOnly(2026, 6, 16));
         await Assert.That(session.EventDayId).IsNull();
         await Assert.That(@event.FirstSessionDate).IsEqualTo(new DateOnly(2026, 6, 16));
+    }
+
+    [Test]
+    public async Task RecalculateScheduleSummaryFromSessions_UsesOnlyPublishedScheduledSessions()
+    {
+        var eventId = Guid.NewGuid();
+        var tenant = CreateTenant();
+        var published = CreateSession(eventId, tenant, EventSessionStatusEnum.Published, 3, "Europe/Brussels");
+        var draftEarlier = CreateSession(eventId, tenant, EventSessionStatusEnum.Draft, 1, "Europe/Brussels");
+        var rejectedLater = CreateSession(eventId, tenant, EventSessionStatusEnum.Rejected, 5, "Europe/Brussels");
+        var unscheduledPublished = new EventSession
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Event = null!,
+            Tenant = tenant,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published
+        };
+        var @event = CreateEvent(eventId, tenant);
+        @event.Sessions.Add(draftEarlier);
+        @event.Sessions.Add(published);
+        @event.Sessions.Add(rejectedLater);
+        @event.Sessions.Add(unscheduledPublished);
+
+        @event.RecalculateScheduleSummaryFromSessions();
+
+        await Assert.That(@event.SessionCount).IsEqualTo(1);
+        await Assert.That(@event.FirstSessionStartUtc).IsEqualTo(published.StartTime);
+        await Assert.That(@event.LastSessionStartUtc).IsEqualTo(published.StartTime);
+        await Assert.That(@event.FirstSessionDate).IsEqualTo(published.LocalStartDate);
+        await Assert.That(@event.LastSessionDate).IsEqualTo(published.LocalStartDate);
+    }
+
+    [Test]
+    public async Task Reschedule_WhenInputHasNonUtcOffset_StoresUtcInstantsAndPreservesConfiguredLocalProjection()
+    {
+        var tenant = CreateTenant();
+        var localStart = new DateTimeOffset(2026, 7, 10, 18, 0, 0, TimeSpan.FromHours(2));
+        var localEnd = new DateTimeOffset(2026, 7, 10, 20, 0, 0, TimeSpan.FromHours(2));
+        var session = new EventSession
+        {
+            Event = null!,
+            Tenant = tenant,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Draft
+        };
+        var agendaItem = new EventAgendaItem
+        {
+            Event = null!,
+            Tenant = tenant,
+            Title = "Arrival"
+        };
+
+        session.Reschedule(localStart, localEnd, "Europe/Brussels", _calculator);
+        agendaItem.Reschedule(localStart, localEnd, "Europe/Brussels", _calculator);
+
+        await Assert.That(session.StartTime).IsEqualTo(localStart.ToUniversalTime());
+        await Assert.That(session.EndTime).IsEqualTo(localEnd.ToUniversalTime());
+        await Assert.That(session.StartTime!.Value.Offset).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(session.EndTime!.Value.Offset).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(session.LocalStartTime).IsEqualTo(new TimeOnly(18, 0));
+        await Assert.That(session.LocalEndTime).IsEqualTo(new TimeOnly(20, 0));
+        await Assert.That(agendaItem.StartTime).IsEqualTo(localStart.ToUniversalTime());
+        await Assert.That(agendaItem.EndTime).IsEqualTo(localEnd.ToUniversalTime());
+        await Assert.That(agendaItem.StartTime.Offset).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(agendaItem.EndTime.Offset).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(agendaItem.LocalStartTime).IsEqualTo(new TimeOnly(18, 0));
+        await Assert.That(agendaItem.LocalEndTime).IsEqualTo(new TimeOnly(20, 0));
+    }
+
+    private EventSession CreateSession(Guid eventId, Tenant tenant, EventSessionStatusEnum status, int dayOffset, string timezoneId)
+    {
+        var session = new EventSession
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Event = null!,
+            Tenant = tenant,
+            EventSessionStatusId = (int)status
+        };
+        var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero).AddDays(dayOffset);
+        session.Reschedule(start, start.AddHours(1), timezoneId, _calculator);
+        return session;
     }
 
     private static Explore.Domain.Event CreateEvent(Guid eventId, Tenant tenant) => new()

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
 using Explore.Domain.Services.Scheduling;
 
@@ -20,16 +21,19 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     public Guid? EventDayId { get; set; }
     public EventDay? EventDay { get; set; }
 
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+    // Nullable for draft/unscheduled sessions. Scheduled sessions require both non-null with EndTime > StartTime.
+    // When null, all cached local projections must also be null (enforced by ReprojectLocalTimes and DB check constraints).
+    public DateTimeOffset? StartTime { get; set; }
+    public DateTimeOffset? EndTime { get; set; }
 
     // Cached local projections — written exclusively via ReprojectLocalTimes/Reschedule.
-    public DateOnly LocalStartDate { get; private set; }
-    public DateOnly LocalEndDate { get; private set; }
-    public TimeOnly LocalStartTime { get; private set; }
-    public TimeOnly LocalEndTime { get; private set; }
-    public int LocalStartMinuteOfDay { get; private set; }
-    public int LocalEndMinuteOfDay { get; private set; }
+    // All null when session is unscheduled; complete and consistent when scheduled.
+    public DateOnly? LocalStartDate { get; private set; }
+    public DateOnly? LocalEndDate { get; private set; }
+    public TimeOnly? LocalStartTime { get; private set; }
+    public TimeOnly? LocalEndTime { get; private set; }
+    public int? LocalStartMinuteOfDay { get; private set; }
+    public int? LocalEndMinuteOfDay { get; private set; }
 
     public int SortOrder { get; set; }
 
@@ -45,6 +49,9 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
 
     public int? EventSessionKindId { get; set; }
     public EventSessionKind? EventSessionKind { get; set; }
+
+    public int EventSessionStatusId { get; set; } = (int)EventSessionStatusEnum.Draft;
+    public EventSessionStatus? EventSessionStatus { get; set; }
 
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
@@ -103,7 +110,20 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     public void ReprojectLocalTimes(string timezoneId, IEventScheduleProjectionCalculator calculator)
     {
         ArgumentNullException.ThrowIfNull(calculator);
-        var projection = calculator.Project(StartTime, EndTime, timezoneId);
+
+        // Unscheduled sessions: clear all local projections so DB check constraints pass.
+        if (StartTime is null || EndTime is null)
+        {
+            LocalStartDate = null;
+            LocalEndDate = null;
+            LocalStartTime = null;
+            LocalEndTime = null;
+            LocalStartMinuteOfDay = null;
+            LocalEndMinuteOfDay = null;
+            return;
+        }
+
+        var projection = calculator.Project(StartTime.Value, EndTime.Value, timezoneId);
         LocalStartDate = projection.LocalStartDate;
         LocalEndDate = projection.LocalEndDate;
         LocalStartTime = projection.LocalStartTime;
@@ -127,9 +147,17 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
             throw new ArgumentException("EndTime must be strictly greater than StartTime.", nameof(endUtc));
         }
 
-        StartTime = startUtc;
-        EndTime = endUtc;
+        StartTime = startUtc.ToUniversalTime();
+        EndTime = endUtc.ToUniversalTime();
         ReprojectLocalTimes(timezoneId, calculator);
+    }
+
+    public bool ContributesToPublicScheduleSummary()
+    {
+        return !IsDeleted
+            && EventSessionStatusId == (int)EventSessionStatusEnum.Published
+            && StartTime is not null
+            && EndTime is not null;
     }
 }
 

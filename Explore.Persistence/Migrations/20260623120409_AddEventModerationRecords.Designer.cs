@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260623120409_AddEventModerationRecords")]
+    partial class AddEventModerationRecords
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -787,10 +790,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
-                    b.Property<Guid?>("ActingActorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("acting_actor_id");
-
                     b.Property<DateTime?>("ConfirmedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("confirmed_at");
@@ -861,11 +860,6 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("ConversationId")
                         .HasDatabaseName("ix_ai_proposed_actions_conversation_id");
-
-                    b.HasIndex("TenantId", "ActingActorId", "CreatedAt")
-                        .HasDatabaseName("ix_ai_proposed_actions_tenant_acting_actor_created_at")
-                        .HasFilter("acting_actor_id IS NOT NULL")
-                        .IsDescending(false, false, true);
 
                     b.HasIndex("KindId")
                         .HasDatabaseName("ix_ai_proposed_actions_kind_id");
@@ -2850,16 +2844,6 @@ namespace Explore.Persistence.Migrations
                         .HasPrecision(19, 4)
                         .HasColumnType("numeric(19,4)")
                         .HasColumnName("price");
-
-                    b.Property<string>("ProvenanceExternalId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("provenance_external_id");
-
-                    b.Property<string>("ProvenanceSource")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("provenance_source");
 
                     b.Property<int?>("RegistrationPolicyId")
                         .HasColumnType("integer")
@@ -12668,12 +12652,6 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedAction", b =>
                 {
-                    b.HasOne("Explore.Domain.Actor", "ActingActor")
-                        .WithMany()
-                        .HasForeignKey("ActingActorId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ai_proposed_actions_actors_acting_actor_id");
-
                     b.HasOne("Explore.Domain.Ai.AiConversation", "Conversation")
                         .WithMany("ProposedActions")
                         .HasForeignKey("ConversationId")
@@ -12700,8 +12678,6 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_ai_proposed_actions_ai_proposed_action_statuses_status_id");
-
-                    b.Navigation("ActingActor");
 
                     b.Navigation("Conversation");
 

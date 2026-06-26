@@ -34,6 +34,8 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(2048);
         builder.Property(e => e.Timezone).HasMaxLength(100);
         builder.Property(e => e.EventTimeZoneId).HasMaxLength(100);
+        builder.Property(e => e.ProvenanceSource).HasMaxLength(100);
+        builder.Property(e => e.ProvenanceExternalId).HasMaxLength(200);
         builder.Property(e => e.Price).HasPrecision(19, 4);
 
         builder.HasOne(e => e.EventType)

@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260623101543_AddEventSessionStatusAndNullableSchedule")]
+    partial class AddEventSessionStatusAndNullableSchedule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -787,10 +790,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
-                    b.Property<Guid?>("ActingActorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("acting_actor_id");
-
                     b.Property<DateTime?>("ConfirmedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("confirmed_at");
@@ -861,11 +860,6 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("ConversationId")
                         .HasDatabaseName("ix_ai_proposed_actions_conversation_id");
-
-                    b.HasIndex("TenantId", "ActingActorId", "CreatedAt")
-                        .HasDatabaseName("ix_ai_proposed_actions_tenant_acting_actor_created_at")
-                        .HasFilter("acting_actor_id IS NOT NULL")
-                        .IsDescending(false, false, true);
 
                     b.HasIndex("KindId")
                         .HasDatabaseName("ix_ai_proposed_actions_kind_id");
@@ -2851,16 +2845,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("numeric(19,4)")
                         .HasColumnName("price");
 
-                    b.Property<string>("ProvenanceExternalId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("provenance_external_id");
-
-                    b.Property<string>("ProvenanceSource")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("provenance_source");
-
                     b.Property<int?>("RegistrationPolicyId")
                         .HasColumnType("integer")
                         .HasColumnName("registration_policy_id");
@@ -4131,89 +4115,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_islamic_aspects_primary_language_id");
 
                     b.ToTable("event_islamic_aspects", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventModerationRecord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("ActionKind")
-                        .HasColumnType("integer")
-                        .HasColumnName("action_kind");
-
-                    b.Property<string>("CorrelationId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("correlation_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_id");
-
-                    b.Property<bool>("IsIrreversible")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_irreversible");
-
-                    b.Property<Guid>("ModeratorUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("moderator_user_id");
-
-                    b.Property<int>("PreviousStatusId")
-                        .HasColumnType("integer")
-                        .HasColumnName("previous_status_id");
-
-                    b.Property<string>("ReasonCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("reason_code");
-
-                    b.Property<int>("ResultingStatusId")
-                        .HasColumnType("integer")
-                        .HasColumnName("resulting_status_id");
-
-                    b.Property<Guid?>("SourceModerationRecordId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("source_moderation_record_id");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_moderation_records");
-
-                    b.HasIndex("SourceModerationRecordId")
-                        .HasDatabaseName("ix_event_moderation_records_source_moderation_record_id");
-
-                    b.HasIndex("TenantId", "CorrelationId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_event_moderation_records_tenant_correlation")
-                        .HasFilter("correlation_id IS NOT NULL");
-
-                    b.HasIndex("TenantId", "ActionKind", "CreatedAt")
-                        .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_event_moderation_records_tenant_action_created");
-
-                    b.HasIndex("TenantId", "EventId", "CreatedAt")
-                        .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_event_moderation_records_tenant_event_created");
-
-                    b.ToTable("event_moderation_records", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_event_moderation_records_correlation_not_blank", "correlation_id IS NULL OR length(btrim(correlation_id)) > 0");
-
-                            t.HasCheckConstraint("ck_event_moderation_records_reason_code_not_blank", "length(btrim(reason_code)) > 0");
-
-                            t.HasCheckConstraint("ck_event_moderation_records_status_transition", "previous_status_id <> resulting_status_id");
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.EventRegistration", b =>
@@ -12668,12 +12569,6 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedAction", b =>
                 {
-                    b.HasOne("Explore.Domain.Actor", "ActingActor")
-                        .WithMany()
-                        .HasForeignKey("ActingActorId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ai_proposed_actions_actors_acting_actor_id");
-
                     b.HasOne("Explore.Domain.Ai.AiConversation", "Conversation")
                         .WithMany("ProposedActions")
                         .HasForeignKey("ConversationId")
@@ -12700,8 +12595,6 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_ai_proposed_actions_ai_proposed_action_statuses_status_id");
-
-                    b.Navigation("ActingActor");
 
                     b.Navigation("Conversation");
 
@@ -13520,36 +13413,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Madhab");
 
                     b.Navigation("PrimaryLanguage");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventModerationRecord", b =>
-                {
-                    b.HasOne("Explore.Domain.EventModerationRecord", "SourceModerationRecord")
-                        .WithMany()
-                        .HasForeignKey("SourceModerationRecordId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_moderation_records_event_moderation_records_source_mo");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_moderation_records_tenants_tenant_id");
-
-                    b.HasOne("Explore.Domain.Event", "Event")
-                        .WithMany("ModerationRecords")
-                        .HasForeignKey("TenantId", "EventId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_moderation_records_events_tenant_id_event_id");
-
-                    b.Navigation("Event");
-
-                    b.Navigation("SourceModerationRecord");
-
-                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventRegistration", b =>
@@ -18583,8 +18446,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Days");
 
                     b.Navigation("IslamicAspect");
-
-                    b.Navigation("ModerationRecords");
 
                     b.Navigation("SessionGroups");
 

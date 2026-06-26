@@ -56,6 +56,9 @@ public partial class ExploreDbContext
         modelBuilder.Entity<EventRoleAssignment>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
+        modelBuilder.Entity<EventModerationRecord>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
         // ===== Event Scheduling Refactor - Phase 1 additive entities =====
         modelBuilder.Entity<EventDay>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)

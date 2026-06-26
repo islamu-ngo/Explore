@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Application.Specifications.EventSessions;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -32,6 +33,14 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
+    public async Task<EventSession?> GetPublicSessionWithDetailsAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return await BuildPublicSessionQuery()
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+    }
+
     public async Task<List<EventSession>> GetSessionsByEvent(Guid eventId)
     {
         return await _dbContext.EventSessions
@@ -41,6 +50,16 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .Where(s => s.EventId == eventId)
             .OrderBy(s => s.StartTime)
             .ToListAsync();
+    }
+
+    public async Task<List<EventSession>> GetPublicSessionsByEventAsync(
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        return await BuildPublicSessionQuery()
+            .Where(s => s.EventId == eventId)
+            .OrderBy(s => s.StartTime)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<List<EventSession>> GetSessionsByLocation(Guid locationId)
@@ -72,6 +91,23 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         return (items, totalCount);
     }
 
+    public async Task<(List<EventSession> Items, int TotalCount)> GetPublicSessionsWithDetailsPagedAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var query = BuildPublicSessionQuery()
+            .OrderByDescending(s => s.StartTime);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task<(List<EventSession> Items, int TotalCount)> GetSessionsWithDetailsPagedFiltered(
         int pageNumber, int pageSize, EventSessionQuerySpecification specification)
     {
@@ -94,6 +130,31 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    public async Task<(List<EventSession> Items, int TotalCount)> GetPublicSessionsWithDetailsPagedFilteredAsync(
+        int pageNumber,
+        int pageSize,
+        EventSessionQuerySpecification specification,
+        CancellationToken cancellationToken)
+    {
+        var query = BuildPublicSessionQuery();
+
+        query = ApplySessionProjectionFilters(query, specification);
+        query = specification.Apply(query);
+
+        if (!specification.HasSort)
+        {
+            query = query.OrderByDescending(s => s.StartTime);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }
@@ -138,7 +199,8 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         EventSession session,
         CancellationToken cancellationToken)
     {
-        if (session.RoomId is null)
+        // Null schedule skips overlap; the GiST exclusion is partial (NULL schedule exempt).
+        if (session.RoomId is null || session.StartTime is null || session.EndTime is null)
         {
             return await Create(session);
         }
@@ -146,7 +208,7 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         await using var tx = await _dbContext.Database
             .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        var conflicts = await BuildOverlapQuery(session.RoomId.Value, session.StartTime, session.EndTime, excludeSessionId: null)
+        var conflicts = await BuildOverlapQuery(session.RoomId.Value, session.StartTime.Value, session.EndTime.Value, excludeSessionId: null)
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
@@ -175,7 +237,8 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         EventSession session,
         CancellationToken cancellationToken)
     {
-        if (session.RoomId is null)
+        // Null schedule skips overlap; the GiST exclusion is partial (NULL schedule exempt).
+        if (session.RoomId is null || session.StartTime is null || session.EndTime is null)
         {
             await Update(session);
             return;
@@ -184,7 +247,7 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         await using var tx = await _dbContext.Database
             .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        var conflicts = await BuildOverlapQuery(session.RoomId.Value, session.StartTime, session.EndTime, session.Id)
+        var conflicts = await BuildOverlapQuery(session.RoomId.Value, session.StartTime.Value, session.EndTime.Value, session.Id)
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
@@ -247,6 +310,20 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         }
 
         return query;
+    }
+
+    private IQueryable<EventSession> BuildPublicSessionQuery()
+    {
+        return _dbContext.EventSessions
+            .AsNoTracking()
+            .AsSplitQuery()
+            .IncludeStandardDetails()
+            .Where(s => s.EventSessionStatusId == (int)EventSessionStatusEnum.Published)
+            .Where(s => s.StartTime != null && s.EndTime != null)
+            .Where(s => s.Event.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
+            .Where(s => s.Event.EventStatusId != (int)EventStatusEnum.Draft
+                && s.Event.EventStatusId != (int)EventStatusEnum.Moderated
+                && s.Event.EventStatusId != (int)EventStatusEnum.Archived);
     }
 
     private IQueryable<EventSession> ApplySessionProjectionFilters(

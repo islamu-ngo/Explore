@@ -94,8 +94,8 @@ public class EventAgendaItem : ITenantEntity, IAuditableEntity, ISoftDeletable, 
             throw new ArgumentException("EndTime must be strictly greater than StartTime.", nameof(endUtc));
         }
 
-        StartTime = startUtc;
-        EndTime = endUtc;
+        StartTime = startUtc.ToUniversalTime();
+        EndTime = endUtc.ToUniversalTime();
         ReprojectLocalTimes(timezoneId, calculator);
     }
 }

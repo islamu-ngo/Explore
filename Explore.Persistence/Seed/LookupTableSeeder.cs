@@ -48,6 +48,7 @@ public static class LookupTableSeeder
         await SeedDidCustodyTypesAsync(context, cancellationToken);
         await SeedEventFormatsAsync(context, cancellationToken);
         await SeedEventStatusesAsync(context, cancellationToken);
+        await SeedEventSessionStatusesAsync(context, cancellationToken);
         await SeedEventTypesAsync(context, cancellationToken);
         await SeedFileTypesAsync(context, cancellationToken);
         await SeedLanguagesAsync(context, cancellationToken);
@@ -133,10 +134,63 @@ public static class LookupTableSeeder
 
     private static async Task SeedAiProposedActionKindsAsync(ExploreDbContext context, CancellationToken ct)
     {
-        if (await context.Set<AiProposedActionKindLookup>().AnyAsync(ct)) return;
+        var requiredLookups = new[]
+        {
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventDraft, MasterCode = "CREATE_EVENT_DRAFT", FullName = "Create event draft", Description = "Create a draft event after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpdateEventDraft, MasterCode = "UPDATE_EVENT_DRAFT", FullName = "Update event draft", Description = "Propose draft event changes after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.PublishEvent, MasterCode = "PUBLISH_EVENT", FullName = "Publish event", Description = "Propose publishing an event after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEvent, MasterCode = "DELETE_EVENT", FullName = "Delete event", Description = "Propose deleting an event after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpsertEventIslamicAspect, MasterCode = "UPSERT_EVENT_ISLAMIC_ASPECT", FullName = "Upsert event Islamic aspect", Description = "Propose saving an event Islamic aspect after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventIslamicAspect, MasterCode = "DELETE_EVENT_ISLAMIC_ASPECT", FullName = "Delete event Islamic aspect", Description = "Propose deleting an event Islamic aspect after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpsertEventTechAspect, MasterCode = "UPSERT_EVENT_TECH_ASPECT", FullName = "Upsert event Tech aspect", Description = "Propose saving an event Tech aspect after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventTechAspect, MasterCode = "DELETE_EVENT_TECH_ASPECT", FullName = "Delete event Tech aspect", Description = "Propose deleting an event Tech aspect after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventSession, MasterCode = "CREATE_EVENT_SESSION", FullName = "Create event session", Description = "Propose creating an event session after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpdateEventSession, MasterCode = "UPDATE_EVENT_SESSION", FullName = "Update event session", Description = "Propose updating an event session after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventSession, MasterCode = "DELETE_EVENT_SESSION", FullName = "Delete event session", Description = "Propose deleting an event session after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventSessionGroup, MasterCode = "CREATE_EVENT_SESSION_GROUP", FullName = "Create event session group", Description = "Propose creating an event session group after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpdateEventSessionGroup, MasterCode = "UPDATE_EVENT_SESSION_GROUP", FullName = "Update event session group", Description = "Propose updating an event session group after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventSessionGroup, MasterCode = "DELETE_EVENT_SESSION_GROUP", FullName = "Delete event session group", Description = "Propose deleting an event session group after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.AssignSessionToEventSessionGroup, MasterCode = "ASSIGN_SESSION_TO_EVENT_SESSION_GROUP", FullName = "Assign session to event session group", Description = "Propose assigning a session to an event session group after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UnassignSessionFromEventSessionGroup, MasterCode = "UNASSIGN_SESSION_FROM_EVENT_SESSION_GROUP", FullName = "Unassign session from event session group", Description = "Propose unassigning a session from an event session group after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventDay, MasterCode = "CREATE_EVENT_DAY", FullName = "Create event day", Description = "Propose creating an event day after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpdateEventDay, MasterCode = "UPDATE_EVENT_DAY", FullName = "Update event day", Description = "Propose updating an event day after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventDay, MasterCode = "DELETE_EVENT_DAY", FullName = "Delete event day", Description = "Propose deleting an event day after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventAgendaItem, MasterCode = "CREATE_EVENT_AGENDA_ITEM", FullName = "Create event agenda item", Description = "Propose creating an event agenda item after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpdateEventAgendaItem, MasterCode = "UPDATE_EVENT_AGENDA_ITEM", FullName = "Update event agenda item", Description = "Propose updating an event agenda item after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventAgendaItem, MasterCode = "DELETE_EVENT_AGENDA_ITEM", FullName = "Delete event agenda item", Description = "Propose deleting an event agenda item after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventCustomPropertyDefinition, MasterCode = "CREATE_EVENT_CUSTOM_PROPERTY_DEFINITION", FullName = "Create event custom property definition", Description = "Propose creating an event custom property definition after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpdateEventCustomPropertyDefinition, MasterCode = "UPDATE_EVENT_CUSTOM_PROPERTY_DEFINITION", FullName = "Update event custom property definition", Description = "Propose updating an event custom property definition after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventCustomPropertyDefinition, MasterCode = "DELETE_EVENT_CUSTOM_PROPERTY_DEFINITION", FullName = "Delete event custom property definition", Description = "Propose deleting an event custom property definition after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.PurgeEventCustomPropertyDefinition, MasterCode = "PURGE_EVENT_CUSTOM_PROPERTY_DEFINITION", FullName = "Purge event custom property definition", Description = "Propose purging an event custom property definition after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.SetEventCustomPropertyValue, MasterCode = "SET_EVENT_CUSTOM_PROPERTY_VALUE", FullName = "Set event custom property value", Description = "Propose setting an event custom property value after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.SetEventCustomPropertyMultiValues, MasterCode = "SET_EVENT_CUSTOM_PROPERTY_MULTI_VALUES", FullName = "Set event custom property multi-values", Description = "Propose replacing event custom property multi-values after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventRegistration, MasterCode = "CREATE_EVENT_REGISTRATION", FullName = "Create event registration", Description = "Propose creating an event registration after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpdateEventRegistration, MasterCode = "UPDATE_EVENT_REGISTRATION", FullName = "Update event registration", Description = "Propose updating an event registration after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventRegistration, MasterCode = "DELETE_EVENT_REGISTRATION", FullName = "Delete event registration", Description = "Propose deleting an event registration after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.AssignEventTeamRole, MasterCode = "ASSIGN_EVENT_TEAM_ROLE", FullName = "Assign event team role", Description = "Propose assigning an event team role after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.RevokeEventTeamRole, MasterCode = "REVOKE_EVENT_TEAM_ROLE", FullName = "Revoke event team role", Description = "Propose revoking an event team role after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventTemplate, MasterCode = "CREATE_EVENT_TEMPLATE", FullName = "Create event template", Description = "Propose creating an event template after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpdateEventTemplate, MasterCode = "UPDATE_EVENT_TEMPLATE", FullName = "Update event template", Description = "Propose updating an event template after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventTemplate, MasterCode = "DELETE_EVENT_TEMPLATE", FullName = "Delete event template", Description = "Propose deleting an event template after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventSessionTemplate, MasterCode = "CREATE_EVENT_SESSION_TEMPLATE", FullName = "Create event session template", Description = "Propose creating an event session template after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UpdateEventSessionTemplate, MasterCode = "UPDATE_EVENT_SESSION_TEMPLATE", FullName = "Update event session template", Description = "Propose updating an event session template after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.DeleteEventSessionTemplate, MasterCode = "DELETE_EVENT_SESSION_TEMPLATE", FullName = "Delete event session template", Description = "Propose deleting an event session template after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.ApplyEventTemplateSync, MasterCode = "APPLY_EVENT_TEMPLATE_SYNC", FullName = "Apply event template sync", Description = "Propose applying event template sync changes after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.ApplyEventSessionTemplateSync, MasterCode = "APPLY_EVENT_SESSION_TEMPLATE_SYNC", FullName = "Apply event session template sync", Description = "Propose applying event session template sync changes after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.LightModerateEvent, MasterCode = "LIGHT_MODERATE_EVENT", FullName = "Light moderate event", Description = "Propose reversible event moderation after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.HeavyModerateEvent, MasterCode = "HEAVY_MODERATE_EVENT", FullName = "Heavy moderate event", Description = "Propose irreversible event heavy moderation after human confirmation" },
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.UnmoderateEvent, MasterCode = "UNMODERATE_EVENT", FullName = "Unmoderate event", Description = "Propose unmoderating a reversible event moderation after human confirmation" }
+        };
 
-        context.Set<AiProposedActionKindLookup>().AddRange(
-            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventDraft, MasterCode = "CREATE_EVENT_DRAFT", FullName = "Create event draft", Description = "Create a draft event after human confirmation" });
+        var existingIds = await context.Set<AiProposedActionKindLookup>()
+            .Select(lookup => lookup.Id)
+            .ToListAsync(ct);
+        var missingLookups = requiredLookups
+            .Where(lookup => !existingIds.Contains(lookup.Id))
+            .ToArray();
+        if (missingLookups.Length == 0) return;
+
+        context.Set<AiProposedActionKindLookup>().AddRange(missingLookups);
         await context.SaveChangesAsync(ct);
     }
 
@@ -155,16 +209,47 @@ public static class LookupTableSeeder
 
     private static async Task SeedAiProviderKindsAsync(ExploreDbContext context, CancellationToken ct)
     {
-        if (await context.Set<AiProviderKindLookup>().AnyAsync(ct)) return;
-
-        context.Set<AiProviderKindLookup>().AddRange(
+        var requiredLookups = new[]
+        {
             new AiProviderKindLookup { Id = (int)AiProviderKind.None, MasterCode = "NONE", FullName = "None", Description = "AI provider is disabled" },
             new AiProviderKindLookup { Id = (int)AiProviderKind.Fake, MasterCode = "FAKE", FullName = "Fake", Description = "Deterministic fake provider for testing" },
             new AiProviderKindLookup { Id = (int)AiProviderKind.OpenAiCompatible, MasterCode = "OPENAI_COMPATIBLE", FullName = "OpenAI Compatible", Description = "Any OpenAI-compatible API endpoint" },
             new AiProviderKindLookup { Id = (int)AiProviderKind.AnthropicCompatible, MasterCode = "ANTHROPIC_COMPATIBLE", FullName = "Anthropic Compatible", Description = "Anthropic Messages API endpoint" },
-            new AiProviderKindLookup { Id = (int)AiProviderKind.OpenAiSdk, MasterCode = "OPENAI_SDK", FullName = "OpenAI SDK", Description = "Microsoft.Extensions.AI with OpenAI SDK" },
-            new AiProviderKindLookup { Id = (int)AiProviderKind.AzureOpenAi, MasterCode = "AZURE_OPENAI", FullName = "Azure OpenAI", Description = "Microsoft.Extensions.AI with Azure OpenAI" });
-        await context.SaveChangesAsync(ct);
+            new AiProviderKindLookup { Id = (int)AiProviderKind.OpenAi, MasterCode = "OPENAI", FullName = "OpenAI", Description = "OpenAI Responses API endpoint" },
+            new AiProviderKindLookup { Id = (int)AiProviderKind.AzureOpenAi, MasterCode = "AZURE_OPENAI", FullName = "Azure OpenAI", Description = "Microsoft.Extensions.AI with Azure OpenAI" },
+            new AiProviderKindLookup { Id = (int)AiProviderKind.Anthropic, MasterCode = "ANTHROPIC", FullName = "Anthropic", Description = "Anthropic Messages API endpoint at api.anthropic.com" }
+        };
+
+        var existingLookups = await context.Set<AiProviderKindLookup>().ToListAsync(ct);
+        var existingById = existingLookups.ToDictionary(lookup => lookup.Id);
+        var changed = false;
+
+        foreach (var requiredLookup in requiredLookups)
+        {
+            if (!existingById.TryGetValue(requiredLookup.Id, out var existingLookup))
+            {
+                context.Set<AiProviderKindLookup>().Add(requiredLookup);
+                changed = true;
+                continue;
+            }
+
+            if (existingLookup.MasterCode == requiredLookup.MasterCode
+                && existingLookup.FullName == requiredLookup.FullName
+                && existingLookup.Description == requiredLookup.Description)
+            {
+                continue;
+            }
+
+            existingLookup.MasterCode = requiredLookup.MasterCode;
+            existingLookup.FullName = requiredLookup.FullName;
+            existingLookup.Description = requiredLookup.Description;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            await context.SaveChangesAsync(ct);
+        }
     }
 
     private static async Task SeedRegistrationScopesAsync(ExploreDbContext context, CancellationToken ct)
@@ -455,14 +540,57 @@ public static class LookupTableSeeder
 
     private static async Task SeedEventStatusesAsync(ExploreDbContext context, CancellationToken ct)
     {
-        if (await context.Set<EventStatus>().AnyAsync(ct)) return;
-
-        context.Set<EventStatus>().AddRange(
+        var statuses = new EventStatus[]
+        {
             new EventStatus { Id = (int)EventStatusEnum.Draft, MasterCode = "DRAFT", FullName = "Draft", Description = "Event is in draft state and not visible to the public" },
             new EventStatus { Id = (int)EventStatusEnum.Published, MasterCode = "PUBLISHED", FullName = "Published", Description = "Event is published and visible to the public" },
             new EventStatus { Id = (int)EventStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled", Description = "Event has been cancelled" },
             new EventStatus { Id = (int)EventStatusEnum.Completed, MasterCode = "COMPLETED", FullName = "Completed", Description = "Event has been completed" },
-            new EventStatus { Id = (int)EventStatusEnum.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Event has been archived" });
+            new EventStatus { Id = (int)EventStatusEnum.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Event has been archived" },
+            new EventStatus { Id = (int)EventStatusEnum.Moderated, MasterCode = "MODERATED", FullName = "Moderated", Description = "Event was hidden by administration after moderation" }
+        };
+
+        var existingIds = await context.Set<EventStatus>()
+            .Select(status => status.Id)
+            .ToListAsync(ct);
+        var existingIdSet = existingIds.ToHashSet();
+        var missingStatuses = statuses
+            .Where(status => !existingIdSet.Contains(status.Id))
+            .ToArray();
+
+        if (missingStatuses.Length == 0) return;
+
+        context.Set<EventStatus>().AddRange(missingStatuses);
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedEventSessionStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        var statuses = new EventSessionStatus[]
+        {
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.Draft, MasterCode = "DRAFT", FullName = "Draft", Description = "Session is in draft state and not visible to the public" },
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.Submitted, MasterCode = "SUBMITTED", FullName = "Submitted", Description = "Session has been submitted for review" },
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.UnderReview, MasterCode = "UNDER_REVIEW", FullName = "Under review", Description = "Session is currently being reviewed" },
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.Approved, MasterCode = "APPROVED", FullName = "Approved", Description = "Session has been approved but is not yet published" },
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.Published, MasterCode = "PUBLISHED", FullName = "Published", Description = "Session is published and visible to the public" },
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Session was rejected during review" },
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled", Description = "Session has been cancelled" },
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Session has been archived" },
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.Completed, MasterCode = "COMPLETED", FullName = "Completed", Description = "Session has been completed" },
+            new EventSessionStatus { Id = (int)EventSessionStatusEnum.Moderated, MasterCode = "MODERATED", FullName = "Moderated", Description = "Session was hidden by event-level moderation" }
+        };
+
+        var existingIds = await context.Set<EventSessionStatus>()
+            .Select(status => status.Id)
+            .ToListAsync(ct);
+        var existingIdSet = existingIds.ToHashSet();
+        var missingStatuses = statuses
+            .Where(status => !existingIdSet.Contains(status.Id))
+            .ToArray();
+
+        if (missingStatuses.Length == 0) return;
+
+        context.Set<EventSessionStatus>().AddRange(missingStatuses);
         await context.SaveChangesAsync(ct);
     }
 

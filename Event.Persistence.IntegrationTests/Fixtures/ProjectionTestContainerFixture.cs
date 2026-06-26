@@ -50,6 +50,7 @@ public class ProjectionTestContainerFixture : IAsyncInitializer, IAsyncDisposabl
             new TenantStatus { Id = 1, MasterCode = "PENDING", FullName = "Pending" },
             new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active" });
         context.Set<EventStatus>().Add(new EventStatus { Id = 1, MasterCode = "DRAFT", FullName = "Draft" });
+        context.Set<EventSessionStatus>().Add(new EventSessionStatus { Id = 1, MasterCode = "DRAFT", FullName = "Draft" });
         context.Set<EventFormat>().Add(new EventFormat { Id = 1, MasterCode = "LOCAL", FullName = "Local" });
         context.Set<VisibilityType>().Add(new VisibilityType { Id = 1, MasterCode = "PUBLIC", FullName = "Public" });
         await context.SaveChangesAsync();
