@@ -7,10 +7,11 @@
     <PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="Aspire.Hosting.DevTunnels" Version="13.2.3" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.2.3" />
-    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.2.3" />
-    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.2.3" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.5.1" />
+    <PackageVersion Include="Aspire.Hosting.DevTunnels" Version="9.5.1-preview.1.25502.11" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="9.5.1" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="9.5.1" />
+    <PackageVersion Include="Aspire.Hosting.Redis" Version="9.5.1" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.2.3" />
     <PackageVersion Include="Aspire.Keycloak.Authentication" Version="13.2.3-preview.1.26217.6" />
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.2.3" />
@@ -32,11 +33,11 @@
     <PackageVersion Include="FluentValidation" Version="11.9.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
     <PackageVersion Include="Ical.Net" Version="5.2.1" />
-    <PackageVersion Include="Infisical.Sdk" Version="3.0.4" />
-<PackageVersion Include="MailKit" Version="4.16.0" />
-  <!-- MessagePack pinned to patched 2.5.301 for GHSA-hv8m-jj95-wg3x (transitive via KubernetesClient) -->
-  <PackageVersion Include="MessagePack" Version="2.5.301" />
-  <PackageVersion Include="MediatR" Version="14.1.0" />
+    <PackageVersion Include="Infisical.Sdk" Version="3.0.3" />
+    <PackageVersion Include="MailKit" Version="4.16.0" />
+    <!-- MessagePack pinned to patched 2.5.301 for GHSA-hv8m-jj95-wg3x (transitive via KubernetesClient) -->
+    <PackageVersion Include="MessagePack" Version="2.5.301" />
+    <PackageVersion Include="MediatR" Version="14.1.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.7" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.7" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.7" />

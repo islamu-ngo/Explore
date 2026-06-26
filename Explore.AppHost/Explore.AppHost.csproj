@@ -6,17 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>event-shared-secrets</UserSecretsId>
-	<HotReloadAutoRestart>true</HotReloadAutoRestart>
+    <HotReloadAutoRestart>true</HotReloadAutoRestart>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
     <PackageReference Include="Aspire.Hosting.DevTunnels" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Aspire.Hosting.RabbitMQ" />
     <PackageReference Include="Aspire.Hosting.Redis" />
-    <!-- MessagePack explicit override: forces patched 2.5.301 over transitive 2.5.192 (GHSA-hv8m-jj95-wg3x via KubernetesClient) -->
+    <PackageReference Include="Infisical.Sdk" />
     <PackageReference Include="MessagePack" />
-    <!-- Infisical.Sdk removed - each project loads its own secrets via AddSecretManagement() -->
     <PackageReference Include="SonarAnalyzer.CSharp">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

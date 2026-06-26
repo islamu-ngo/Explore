@@ -358,7 +358,7 @@
         "type": "Project",
         "dependencies": {
           "Explore.Application": "[1.0.0, )",
-          "Infisical.Sdk": "[3.0.4, )",
+          "Infisical.Sdk": "[3.0.3, )",
           "Npgsql": "[10.0.2, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.1, )"
         }
@@ -404,9 +404,9 @@
       },
       "Infisical.Sdk": {
         "type": "CentralTransitive",
-        "requested": "[3.0.4, )",
-        "resolved": "3.0.4",
-        "contentHash": "6D5l4cOcJdG36cw7KULyhC1YuxVAPuSizHdyjXJv2CSJz31vPxj8vplxPy2FElButJd4JFaadwSNqAb61jA4IA==",
+        "requested": "[3.0.3, )",
+        "resolved": "3.0.3",
+        "contentHash": "Gccdw7xvG7pNQbcxDT5oWAUQZpYN7vPv/o9pncrFdPtiMWv7jFbP5yHr83ZkxRVJhbNws2hm0zYPzmAIJI+Akw==",
         "dependencies": {
           "Polly.Extensions.Http": "3.0.0"
         }
