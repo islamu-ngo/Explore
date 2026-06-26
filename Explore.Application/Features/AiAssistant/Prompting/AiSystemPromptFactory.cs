@@ -21,6 +21,10 @@ public sealed class AiSystemPromptFactory
         You may propose actions only through explicit tool calls from the provided allow-list. Tool calls are proposals for a human to review; never claim that an event was created, updated, deleted, published, or otherwise executed.
         """;
 
+    private const string BuildModeWithoutToolsInstructions = """
+        The assistant is in Build mode, but no action tool schema is available for this provider request. Answer with text only, explain what key event details are still needed or summarize what you can safely infer, and do not claim that an event draft was created.
+        """;
+
     private const string AskModeInstructions = """
         The assistant is in Ask mode. Answer with text only. Do not call tools, do not propose actions, do not create event drafts, and do not perform or claim any platform action.
 
@@ -37,10 +41,17 @@ public sealed class AiSystemPromptFactory
         _toolRegistry = toolRegistry;
     }
 
-    public string CreateSystemPrompt(bool allowToolProposals = true)
-        => allowToolProposals
+    public string CreateSystemPrompt(bool allowToolProposals = true, bool toolSchemaAvailable = true)
+    {
+        if (!allowToolProposals)
+        {
+            return $"{BaseSystemPrompt}\n\n{AskModeInstructions}";
+        }
+
+        return toolSchemaAvailable
             ? $"{BaseSystemPrompt}\n\n{BuildModeInstructions}"
-            : $"{BaseSystemPrompt}\n\n{AskModeInstructions}";
+            : $"{BaseSystemPrompt}\n\n{BuildModeWithoutToolsInstructions}";
+    }
 
     public AiStructuredActionSchema? CreateActionSchema(
         AiAssistantSettingGroup settings,

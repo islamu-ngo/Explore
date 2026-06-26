@@ -3,6 +3,8 @@
 
 using System.Text.Json;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventAspects;
+using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Domain.Ai;
@@ -11,6 +13,9 @@ namespace Explore.Application.Features.AiAssistant.Actions;
 
 public sealed class CreateEventDraftAiActionMapper
 {
+    private const string PrimaryLocationTempKey = "primary-location";
+    private const string PrimaryRoomTempKey = "primary-room";
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
@@ -137,23 +142,27 @@ public sealed class CreateEventDraftAiActionMapper
             Description = Normalize(payload.Description),
             Content = Normalize(payload.Content),
             Slug = Normalize(payload.Slug),
-            EventTypeId = null,
-            AudienceGenderId = null,
-            AudienceAgeId = null,
+            EventTypeId = payload.EventTypeId,
+            AudienceGenderId = payload.AudienceGenderId,
+            AudienceAgeId = payload.AudienceAgeId,
             OrganizationId = organizationId,
             GroupId = groupId,
             Price = payload.Price,
             CurrencyCode = Normalize(payload.CurrencyCode),
             IsRegistrationRequired = payload.IsRegistrationRequired,
             ExternalRegistrationUrl = Normalize(payload.ExternalRegistrationUrl),
-            VisibilityTypeId = 1,
-            EventFormatId = 1,
-            MadhabId = null,
+            VisibilityTypeId = payload.VisibilityTypeId == 0 ? 1 : payload.VisibilityTypeId,
+            EventFormatId = payload.EventFormatId == 0 ? 1 : payload.EventFormatId,
+            MadhabId = payload.MadhabId,
             Timezone = Normalize(payload.Timezone),
             EventTimeZoneId = Normalize(payload.EventTimeZoneId),
             EventUrl = Normalize(payload.EventUrl),
-            CategoryIds = new List<Guid>(),
-            TagIds = new List<Guid>()
+            IslamicAspect = NormalizeIslamicAspect(payload.IslamicAspect),
+            CategoryIds = payload.CategoryIds.Distinct().ToList(),
+            TagIds = payload.TagIds.Distinct().ToList(),
+            Locations = NormalizeLocation(payload.Location),
+            Rooms = NormalizeRoom(payload.Room, payload.Location is not null),
+            Sessions = NormalizeSession(payload.Session, payload.Location is not null, payload.Room is not null)
         };
 
         return CreateEventDraftAiActionMappingResult.Success(draft);
@@ -161,6 +170,113 @@ public sealed class CreateEventDraftAiActionMapper
 
     private static string? Normalize(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string NormalizeRequired(string? value)
+        => Normalize(value) ?? string.Empty;
+
+    private static CreateUpdateIslamicAspectDto? NormalizeIslamicAspect(CreateUpdateIslamicAspectDto? aspect)
+        => aspect is null
+            ? null
+            : new CreateUpdateIslamicAspectDto
+            {
+                MadhabId = aspect.MadhabId,
+                ReferencePrayer = aspect.ReferencePrayer,
+                PrayerTimeOffset = aspect.PrayerTimeOffset,
+                GenderMode = aspect.GenderMode,
+                IncludesQuranRecitation = aspect.IncludesQuranRecitation,
+                PrimaryLanguageId = aspect.PrimaryLanguageId
+            };
+
+    private static EventSessionIslamicAspectDto? NormalizeSessionIslamicAspect(EventSessionIslamicAspectDto? aspect)
+        => aspect is null
+            ? null
+            : new EventSessionIslamicAspectDto
+            {
+                StartTimeType = aspect.StartTimeType,
+                ReferencePrayer = aspect.ReferencePrayer,
+                OffsetMinutes = aspect.OffsetMinutes,
+                RequiresWudu = aspect.RequiresWudu,
+                RitualRequirementsJson = Normalize(aspect.RitualRequirementsJson)
+            };
+
+    private static List<CreateEventLocationRequest> NormalizeLocation(CreateEventDraftLocationPayload? location)
+    {
+        if (location is null)
+        {
+            return [];
+        }
+
+        return
+        [
+            new CreateEventLocationRequest
+            {
+                TempKey = PrimaryLocationTempKey,
+                FullName = NormalizeRequired(location.FullName),
+                Address = NormalizeRequired(location.Address),
+                Postcode = NormalizeRequired(location.Postcode),
+                Country = NormalizeRequired(location.Country),
+                City = NormalizeRequired(location.City),
+                Latitude = location.Latitude,
+                Longitude = location.Longitude,
+                Timezone = Normalize(location.Timezone)
+            }
+        ];
+    }
+
+    private static List<CreateEventRoomRequest> NormalizeRoom(CreateEventDraftRoomPayload? room, bool hasPrimaryLocation)
+    {
+        if (room is null || !hasPrimaryLocation)
+        {
+            return [];
+        }
+
+        return
+        [
+            new CreateEventRoomRequest
+            {
+                TempKey = PrimaryRoomTempKey,
+                LocationTempKey = PrimaryLocationTempKey,
+                Name = NormalizeRequired(room.Name),
+                Slug = Normalize(room.Slug),
+                Description = Normalize(room.Description),
+                Capacity = room.Capacity
+            }
+        ];
+    }
+
+    private static List<CreateEventSessionRequest> NormalizeSession(
+        CreateEventDraftSessionPayload? session,
+        bool hasPrimaryLocation,
+        bool hasPrimaryRoom)
+    {
+        if (session is null)
+        {
+            return [];
+        }
+
+        return
+        [
+            new CreateEventSessionRequest
+            {
+                TempKey = "primary-session",
+                RoomTempKey = hasPrimaryLocation && hasPrimaryRoom ? PrimaryRoomTempKey : null,
+                StartTime = session.StartTime,
+                EndTime = session.EndTime,
+                LocationTempKey = hasPrimaryLocation && !hasPrimaryRoom ? PrimaryLocationTempKey : null,
+                Title = Normalize(session.Title),
+                EventSessionKindId = session.EventSessionKindId,
+                Description = Normalize(session.Description),
+                Slug = Normalize(session.Slug),
+                MaxAudienceAttendees = session.MaxAudienceAttendees,
+                RegistrationModeId = session.RegistrationModeId,
+                Price = session.Price,
+                CurrencyCode = Normalize(session.CurrencyCode),
+                IslamicAspect = NormalizeSessionIslamicAspect(session.IslamicAspect),
+                LanguageIds = session.LanguageIds.Distinct().ToList(),
+                SpeakerActorIds = session.SpeakerActorIds.Distinct().ToList()
+            }
+        ];
+    }
 
     private static (Guid? OrganizationId, Guid? GroupId) ResolveOwnerScope(
         CreateEventDraftAiActionPayload payload,

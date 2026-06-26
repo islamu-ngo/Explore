@@ -193,7 +193,7 @@ public sealed class AiProposedActionCommandHandlerTests
     }
 
     [Test]
-    public async Task Confirm_WhenCreateEventDraftContainsFabricatedReferences_DropsReferencesBeforeCreateCommand()
+    public async Task Confirm_WhenCreateEventDraftContainsReferences_PreservesReferencesForCreateCommand()
     {
         var categoryId = Guid.CreateVersion7();
         var tagId = Guid.CreateVersion7();
@@ -220,14 +220,62 @@ public sealed class AiProposedActionCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
-        await Assert.That(sentCommand!.Request.EventTypeId).IsNull();
-        await Assert.That(sentCommand.Request.AudienceGenderId).IsNull();
-        await Assert.That(sentCommand.Request.AudienceAgeId).IsNull();
-        await Assert.That(sentCommand.Request.VisibilityTypeId).IsEqualTo(1);
-        await Assert.That(sentCommand.Request.EventFormatId).IsEqualTo(1);
-        await Assert.That(sentCommand.Request.MadhabId).IsNull();
-        await Assert.That(sentCommand.Request.CategoryIds).IsEmpty();
-        await Assert.That(sentCommand.Request.TagIds).IsEmpty();
+        await Assert.That(sentCommand!.Request.EventTypeId).IsEqualTo(999);
+        await Assert.That(sentCommand.Request.AudienceGenderId).IsEqualTo(999);
+        await Assert.That(sentCommand.Request.AudienceAgeId).IsEqualTo(999);
+        await Assert.That(sentCommand.Request.VisibilityTypeId).IsEqualTo(999);
+        await Assert.That(sentCommand.Request.EventFormatId).IsEqualTo(999);
+        await Assert.That(sentCommand.Request.MadhabId).IsEqualTo(999);
+        await Assert.That(sentCommand.Request.CategoryIds).IsEquivalentTo([categoryId]);
+        await Assert.That(sentCommand.Request.TagIds).IsEquivalentTo([tagId]);
+    }
+
+    [Test]
+    public async Task Confirm_WhenCreateEventDraftContainsPrimaryStructuredDetails_DispatchesStructuredCreateCommand()
+    {
+        var speakerActorId = Guid.CreateVersion7();
+        AiProposedAction action = CreateProposedAction(
+            payloadJson: $$"""
+              {
+                "title": "Poster Event",
+                "islamicAspect": {
+                  "genderMode": 3
+                },
+                "location": {
+                  "fullName": "Islamic Centre Brussels",
+                  "address": "Rue Example 10",
+                  "postcode": "1000",
+                  "country": "Belgium",
+                  "city": "Brussels"
+                },
+                "room": {
+                  "name": "Main Hall"
+                },
+                "session": {
+                  "title": "Opening Lecture",
+                  "startTime": "2026-07-10T18:00:00Z",
+                  "endTime": "2026-07-10T20:00:00Z",
+                  "speakerActorIds": ["{{speakerActorId}}"]
+                }
+              }
+              """);
+        CreateEventCommand? sentCommand = null;
+        _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
+        _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+
+        BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(sentCommand).IsNotNull();
+        await Assert.That(sentCommand!.Request.IslamicAspect).IsNotNull();
+        await Assert.That(sentCommand.Request.IslamicAspect!.GenderMode).IsEqualTo(GenderSegregationMode.Segregated);
+        await Assert.That(sentCommand.Request.Locations.Single().TempKey).IsEqualTo("primary-location");
+        await Assert.That(sentCommand.Request.Rooms.Single().LocationTempKey).IsEqualTo("primary-location");
+        await Assert.That(sentCommand.Request.Sessions.Single().Title).IsEqualTo("Opening Lecture");
+        await Assert.That(sentCommand.Request.Sessions.Single().RoomTempKey).IsEqualTo("primary-room");
+        await Assert.That(sentCommand.Request.Sessions.Single().SpeakerActorIds).IsEquivalentTo([speakerActorId]);
+        await Assert.That(sentCommand.Request.AgendaItems).IsEmpty();
     }
 
     [Test]

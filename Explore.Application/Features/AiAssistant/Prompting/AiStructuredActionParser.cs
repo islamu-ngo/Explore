@@ -27,6 +27,15 @@ public sealed class AiStructuredActionParser
 
         foreach (var candidate in candidates)
         {
+            var definition = _toolRegistry.FindDefinition(candidate.Kind);
+            if (definition is null || !definition.ExposeToProvider)
+            {
+                return AiStructuredActionParseResult.Failure(
+                    "unknown_action_kind",
+                    "AI provider returned an unsupported proposed action kind.",
+                    AiToolCorrectionMessages.SchemaExactRetry);
+            }
+
             var validationResult = _toolRegistry.ValidatePayload(
                 candidate.Kind,
                 candidate.PayloadJson,

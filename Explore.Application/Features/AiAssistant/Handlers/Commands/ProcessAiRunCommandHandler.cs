@@ -1,13 +1,16 @@
 // ABOUTME: Processes queued AI assistant runs outside the HTTP request path.
 // ABOUTME: Persists assistant text and proposal-only tool output while respecting Ask vs Build mode.
 
+using System.Globalization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.DTOs.Event;
 using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.AiAssistant.Tools;
+using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
@@ -20,16 +23,19 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
 {
     private readonly IAiConversationRepository _conversationRepository;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
+    private readonly IMediator _mediator;
     private readonly AiPromptContextBuilder _promptContextBuilder;
     private readonly AiProviderResponseResolver _providerResponseResolver;
 
     public ProcessAiRunCommandHandler(
         IAiConversationRepository conversationRepository,
         IHierarchicalSettingsResolver settingsResolver,
-        IAiChatProvider chatProvider)
+        IAiChatProvider chatProvider,
+        IMediator mediator)
     {
         _conversationRepository = conversationRepository;
         _settingsResolver = settingsResolver;
+        _mediator = mediator;
         var toolRegistry = AiToolContractRegistry.CreateDefault();
         _promptContextBuilder = new AiPromptContextBuilder(new AiSystemPromptFactory(toolRegistry));
         _providerResponseResolver = new AiProviderResponseResolver(
@@ -75,8 +81,8 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
             await FailAndActivateAsync(
                 conversation!,
                 run,
-                "model_not_allowed",
-                "Selected AI model is not allowed by tenant policy.",
+                AiAssistantAvailability.ModelNotAllowedFailureCode,
+                AiAssistantAvailability.ModelNotAllowedFailureMessage,
                 cancellationToken);
             return;
         }
@@ -85,11 +91,16 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
         run.Start(startedAt);
         await _conversationRepository.Update(conversation!);
 
+        var selectedReferences = await BuildSelectedReferenceContextAsync(
+            conversation!,
+            settings,
+            cancellationToken);
         var providerPayload = _promptContextBuilder.Build(
             conversation!,
             settings,
             run.ModelId,
-            allowToolProposals);
+            allowToolProposals,
+            selectedReferences);
 
         AiProviderResponseResolution providerResolution;
         try
@@ -240,5 +251,94 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
         return response.ProposedActions.Count > 0
             ? "I prepared a proposed action for your review."
             : "The AI provider returned an empty response.";
+    }
+
+    private async Task<IReadOnlyList<AiSelectedReferenceDto>> BuildSelectedReferenceContextAsync(
+        AiConversation conversation,
+        AiAssistantSettingGroup settings,
+        CancellationToken cancellationToken)
+    {
+        var selectedReferences = conversation.References
+            .OrderBy(reference => reference.CreatedAt)
+            .ThenBy(reference => reference.Id)
+            .Take(settings.SelectedReferenceLimit)
+            .Select(reference => new AiSelectedReferenceDto(
+                reference.Kind.ToString(),
+                reference.ReferenceId,
+                reference.DisplayName,
+                reference.Summary))
+            .ToList();
+
+        if (selectedReferences.Count == 0)
+        {
+            return [];
+        }
+
+        var enrichedReferences = new List<AiSelectedReferenceDto>(selectedReferences.Count);
+        foreach (AiSelectedReferenceDto reference in selectedReferences)
+        {
+            if (IsEventReference(reference))
+            {
+                var eventDetails = await _mediator.Send(
+                    new GetEventDetailsRequest { Id = reference.ReferenceId },
+                    cancellationToken);
+                if (eventDetails is not null)
+                {
+                    enrichedReferences.Add(new AiSelectedReferenceDto(
+                        AiReferenceKind.Event.ToString(),
+                        eventDetails.Id,
+                        eventDetails.Title,
+                        BuildEventReferenceSummary(eventDetails)));
+                    continue;
+                }
+            }
+
+            enrichedReferences.Add(reference);
+        }
+
+        return enrichedReferences;
+    }
+
+    private static bool IsEventReference(AiSelectedReferenceDto reference)
+        => string.Equals(reference.Kind, AiReferenceKind.Event.ToString(), StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildEventReferenceSummary(EventDto eventDetails)
+    {
+        var parts = new List<string>
+        {
+            $"status: {eventDetails.EventStatusFullName}",
+            $"format: {eventDetails.EventFormatFullName}",
+            $"visibility: {eventDetails.VisibilityTypeFullName}",
+            $"host: {eventDetails.ActorDisplayName}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(eventDetails.Subtitle))
+        {
+            parts.Add($"subtitle: {eventDetails.Subtitle.Trim()}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(eventDetails.Description))
+        {
+            parts.Add($"description: {eventDetails.Description.Trim()}");
+        }
+
+        if (eventDetails.FirstSessionDate.HasValue || eventDetails.LastSessionDate.HasValue)
+        {
+            var firstSessionDate = eventDetails.FirstSessionDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";
+            var lastSessionDate = eventDetails.LastSessionDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";
+            parts.Add($"dates: {firstSessionDate} to {lastSessionDate}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(eventDetails.Timezone))
+        {
+            parts.Add($"timezone: {eventDetails.Timezone.Trim()}");
+        }
+
+        if (eventDetails.SessionCount.HasValue)
+        {
+            parts.Add($"sessions: {eventDetails.SessionCount.Value.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        return string.Join("; ", parts);
     }
 }

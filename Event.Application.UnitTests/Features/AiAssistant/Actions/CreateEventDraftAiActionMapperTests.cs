@@ -2,13 +2,14 @@
 // ABOUTME: Verifies privileged fields, unknown fields, validation bounds, and owner-scope allow-lists are enforced.
 
 using Explore.Application.Features.AiAssistant.Actions;
+using Explore.Domain;
 
 namespace Event.Application.UnitTests.Features.AiAssistant.Actions;
 
 public sealed class CreateEventDraftAiActionMapperTests
 {
     [Test]
-    public async Task Map_WhenPayloadIsMinimal_ReturnsDraftRequestWithoutProgramGraph()
+    public async Task Map_WhenPayloadHasLookupReferences_PreservesDraftReferences()
     {
         var categoryId = Guid.CreateVersion7();
         var tagId = Guid.CreateVersion7();
@@ -33,14 +34,14 @@ public sealed class CreateEventDraftAiActionMapperTests
         await Assert.That(result.Draft).IsNotNull();
         await Assert.That(result.Draft!.Title).IsEqualTo("Community Iftar");
         await Assert.That(result.Draft.Description).IsEqualTo("Evening meal");
-        await Assert.That(result.Draft.EventTypeId).IsNull();
-        await Assert.That(result.Draft.AudienceGenderId).IsNull();
-        await Assert.That(result.Draft.AudienceAgeId).IsNull();
-        await Assert.That(result.Draft.VisibilityTypeId).IsEqualTo(1);
-        await Assert.That(result.Draft.EventFormatId).IsEqualTo(1);
-        await Assert.That(result.Draft.MadhabId).IsNull();
-        await Assert.That(result.Draft.CategoryIds).IsEmpty();
-        await Assert.That(result.Draft.TagIds).IsEmpty();
+        await Assert.That(result.Draft.EventTypeId).IsEqualTo(999);
+        await Assert.That(result.Draft.AudienceGenderId).IsEqualTo(999);
+        await Assert.That(result.Draft.AudienceAgeId).IsEqualTo(999);
+        await Assert.That(result.Draft.VisibilityTypeId).IsEqualTo(999);
+        await Assert.That(result.Draft.EventFormatId).IsEqualTo(999);
+        await Assert.That(result.Draft.MadhabId).IsEqualTo(999);
+        await Assert.That(result.Draft.CategoryIds).IsEquivalentTo([categoryId]);
+        await Assert.That(result.Draft.TagIds).IsEquivalentTo([tagId]);
 
         var createRequest = result.Draft.ToCreateEventRequest();
         await Assert.That(createRequest.EventStatusId).IsEqualTo(1);
@@ -48,6 +49,54 @@ public sealed class CreateEventDraftAiActionMapperTests
         await Assert.That(createRequest.Days).IsEmpty();
         await Assert.That(createRequest.Rooms).IsEmpty();
         await Assert.That(createRequest.AgendaItems).IsEmpty();
+    }
+
+    [Test]
+    public async Task Map_WhenPayloadContainsPrimaryStructuredDetails_MapsDetailsToDraftRequest()
+    {
+        var speakerActorId = Guid.CreateVersion7();
+        var result = new CreateEventDraftAiActionMapper().Map(
+            $$"""
+              {
+                "title": "  Poster Event  ",
+                "islamicAspect": {
+                  "genderMode": 3,
+                  "includesQuranRecitation": true
+                },
+                "location": {
+                  "fullName": " Islamic Centre Brussels ",
+                  "address": " Rue Example 10 ",
+                  "postcode": " 1000 ",
+                  "country": " Belgium ",
+                  "city": " Brussels ",
+                  "timezone": " Europe/Brussels "
+                },
+                "room": {
+                  "name": " Main Hall "
+                },
+                "session": {
+                  "startTime": "2026-07-10T18:00:00Z",
+                  "endTime": "2026-07-10T20:00:00Z",
+                  "title": " Opening Lecture ",
+                  "eventSessionKindId": 2,
+                  "speakerActorIds": ["{{speakerActorId}}", "{{speakerActorId}}"]
+                }
+              }
+              """);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Draft).IsNotNull();
+        await Assert.That(result.Draft!.IslamicAspect).IsNotNull();
+        await Assert.That(result.Draft.IslamicAspect!.GenderMode).IsEqualTo(GenderSegregationMode.Segregated);
+        await Assert.That(result.Draft.Locations.Single().TempKey).IsEqualTo("primary-location");
+        await Assert.That(result.Draft.Locations.Single().FullName).IsEqualTo("Islamic Centre Brussels");
+        await Assert.That(result.Draft.Rooms.Single().TempKey).IsEqualTo("primary-room");
+        await Assert.That(result.Draft.Rooms.Single().LocationTempKey).IsEqualTo("primary-location");
+        await Assert.That(result.Draft.Sessions.Single().Title).IsEqualTo("Opening Lecture");
+        await Assert.That(result.Draft.Sessions.Single().RoomTempKey).IsEqualTo("primary-room");
+        await Assert.That(result.Draft.Sessions.Single().EventSessionKindId).IsEqualTo(2);
+        await Assert.That(result.Draft.Sessions.Single().SpeakerActorIds).IsEquivalentTo([speakerActorId]);
+        await Assert.That(result.Draft.AgendaItems).IsEmpty();
     }
 
     [Test]
@@ -71,10 +120,9 @@ public sealed class CreateEventDraftAiActionMapperTests
     [Test]
     [Arguments("tenantId")]
     [Arguments("eventStatusId")]
-    [Arguments("sessions")]
-    [Arguments("days")]
-    [Arguments("rooms")]
-    [Arguments("agendaItems")]
+    [Arguments("firstSessionStartUtc")]
+    [Arguments("sessionCount")]
+    [Arguments("actorId")]
     [Arguments("roleAssignments")]
     public async Task Map_WhenPayloadContainsPrivilegedField_ReturnsUnsupportedPayloadFieldFailure(string fieldName)
     {

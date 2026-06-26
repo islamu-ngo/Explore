@@ -11,7 +11,8 @@ public sealed record AiToolAgentMetadata(
     AiToolFollowUpPolicy FollowUpPolicy,
     string SafeActionInstructions,
     AiToolResultPresentationMetadata ResultPresentation,
-    string? RequiredHalLinkRel = null)
+    string? RequiredHalLinkRel = null,
+    bool DestructiveHint = false)
 {
     public static AiToolAgentMetadata Default { get; } = new(
         AiToolScopeMetadata.Empty,

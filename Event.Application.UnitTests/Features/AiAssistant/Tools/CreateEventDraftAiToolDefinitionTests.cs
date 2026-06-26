@@ -126,7 +126,7 @@ public sealed class CreateEventDraftAiToolDefinitionTests
     }
 
     [Test]
-    public async Task Registry_WhenProviderNormalizationEnabled_DropsUntrustedLookupAndReferenceIds()
+    public async Task Registry_WhenProviderNormalizationEnabled_DropsOnlyMalformedOwnerScope()
     {
         var registry = AiToolContractRegistry.CreateDefault();
         var categoryId = Guid.CreateVersion7();
@@ -154,14 +154,14 @@ public sealed class CreateEventDraftAiToolDefinitionTests
         await Assert.That(result.NormalizedPayloadJson).IsNotNull();
         await Assert.That(result.NormalizedPayloadJson!).Contains("Community Dinner");
         await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("organizationId");
-        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("eventTypeId");
-        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("audienceGenderId");
-        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("audienceAgeId");
-        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("visibilityTypeId");
-        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("eventFormatId");
-        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("madhabId");
-        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("categoryIds");
-        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("tagIds");
+        await Assert.That(result.NormalizedPayloadJson!).Contains("eventTypeId");
+        await Assert.That(result.NormalizedPayloadJson!).Contains("audienceGenderId");
+        await Assert.That(result.NormalizedPayloadJson!).Contains("audienceAgeId");
+        await Assert.That(result.NormalizedPayloadJson!).Contains("visibilityTypeId");
+        await Assert.That(result.NormalizedPayloadJson!).Contains("eventFormatId");
+        await Assert.That(result.NormalizedPayloadJson!).Contains("madhabId");
+        await Assert.That(result.NormalizedPayloadJson!).Contains(categoryId.ToString());
+        await Assert.That(result.NormalizedPayloadJson!).Contains(tagId.ToString());
     }
 
     private static HashSet<string> GetSchemaPropertyNames()
@@ -200,11 +200,15 @@ public sealed class CreateEventDraftAiToolDefinitionTests
             "visibilityTypeId" => ("{\"title\":\"Draft\",\"visibilityTypeId\":1}", CreateEventDraftAiActionMappingContext.Empty),
             "eventFormatId" => ("{\"title\":\"Draft\",\"eventFormatId\":1}", CreateEventDraftAiActionMappingContext.Empty),
             "madhabId" => ("{\"title\":\"Draft\",\"madhabId\":1}", CreateEventDraftAiActionMappingContext.Empty),
+            "islamicAspect" => ("{\"title\":\"Draft\",\"islamicAspect\":{\"genderMode\":3,\"includesQuranRecitation\":true}}", CreateEventDraftAiActionMappingContext.Empty),
             "timezone" => ("{\"title\":\"Draft\",\"timezone\":\"Europe/Brussels\"}", CreateEventDraftAiActionMappingContext.Empty),
             "eventTimeZoneId" => ("{\"title\":\"Draft\",\"eventTimeZoneId\":\"Europe/Brussels\"}", CreateEventDraftAiActionMappingContext.Empty),
             "eventUrl" => ("{\"title\":\"Draft\",\"eventUrl\":\"https://example.test/event\"}", CreateEventDraftAiActionMappingContext.Empty),
             "categoryIds" => ($"{{\"title\":\"Draft\",\"categoryIds\":[\"{categoryId}\"]}}", CreateEventDraftAiActionMappingContext.Empty),
             "tagIds" => ($"{{\"title\":\"Draft\",\"tagIds\":[\"{tagId}\"]}}", CreateEventDraftAiActionMappingContext.Empty),
+            "location" => ("{\"title\":\"Draft\",\"location\":{\"fullName\":\"Main Centre\",\"address\":\"Street 1\",\"postcode\":\"1000\",\"country\":\"Belgium\",\"city\":\"Brussels\"}}", CreateEventDraftAiActionMappingContext.Empty),
+            "room" => ("{\"title\":\"Draft\",\"location\":{\"fullName\":\"Main Centre\",\"address\":\"Street 1\",\"postcode\":\"1000\",\"country\":\"Belgium\",\"city\":\"Brussels\"},\"room\":{\"name\":\"Main Hall\"}}", CreateEventDraftAiActionMappingContext.Empty),
+            "session" => ("{\"title\":\"Draft\",\"session\":{\"startTime\":\"2026-07-10T18:00:00Z\",\"endTime\":\"2026-07-10T20:00:00Z\"}}", CreateEventDraftAiActionMappingContext.Empty),
             _ => throw new InvalidOperationException($"No valid mapper payload sample exists for allowed AI field '{fieldName}'.")
         };
     }

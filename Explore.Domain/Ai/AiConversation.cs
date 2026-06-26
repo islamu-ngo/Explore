@@ -171,6 +171,7 @@ public class AiConversation : ITenantEntity, IAuditableEntity, ISoftDeletable, I
             TenantId = TenantId,
             ConversationId = Id,
             MessageId = messageId,
+            ActingActorId = ActorId,
             Kind = kind,
             PayloadJson = payloadJson.Trim(),
             CreatedAt = utcNow,

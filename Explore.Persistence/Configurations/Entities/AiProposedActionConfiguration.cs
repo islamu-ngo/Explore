@@ -25,6 +25,11 @@ public class AiProposedActionConfiguration : IEntityTypeConfiguration<AiProposed
             .HasForeignKey(e => e.MessageId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(e => e.ActingActor)
+            .WithMany()
+            .HasForeignKey(e => e.ActingActorId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasOne(e => e.KindLookup)
             .WithMany()
             .HasForeignKey(e => e.KindId)
@@ -40,6 +45,11 @@ public class AiProposedActionConfiguration : IEntityTypeConfiguration<AiProposed
 
         builder.HasIndex(e => new { e.TenantId, e.StatusId, e.KindId, e.CreatedAt })
             .HasDatabaseName("ix_ai_proposed_actions_tenant_status_kind_created_at");
+
+        builder.HasIndex(e => new { e.TenantId, e.ActingActorId, e.CreatedAt })
+            .HasFilter("acting_actor_id IS NOT NULL")
+            .HasDatabaseName("ix_ai_proposed_actions_tenant_acting_actor_created_at")
+            .IsDescending(false, false, true);
 
         builder.ToTable(t =>
         {

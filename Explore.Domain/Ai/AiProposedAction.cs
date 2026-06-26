@@ -14,6 +14,8 @@ public class AiProposedAction : ITenantEntity
     public AiConversation? Conversation { get; set; }
     public Guid? MessageId { get; set; }
     public AiMessage? Message { get; set; }
+    public Guid? ActingActorId { get; set; }
+    public Actor? ActingActor { get; set; }
     public int KindId { get; set; }
     public AiProposedActionKindLookup? KindLookup { get; set; }
     [NotMapped]

@@ -1,9 +1,52 @@
 // ABOUTME: Defines the allow-listed action kinds the AI assistant may propose.
-// ABOUTME: Starts with event draft creation so future mutating tools remain explicitly registered.
+// ABOUTME: Keeps event mutation proposal kinds explicitly registered before persistence accepts them.
 
 namespace Explore.Domain.Ai;
 
 public enum AiProposedActionKind
 {
-    CreateEventDraft = 1
+    CreateEventDraft = 1,
+    UpdateEventDraft = 2,
+    PublishEvent = 3,
+    DeleteEvent = 4,
+    UpsertEventIslamicAspect = 5,
+    DeleteEventIslamicAspect = 6,
+    UpsertEventTechAspect = 7,
+    DeleteEventTechAspect = 8,
+    CreateEventSession = 9,
+    UpdateEventSession = 10,
+    DeleteEventSession = 11,
+    CreateEventSessionGroup = 12,
+    UpdateEventSessionGroup = 13,
+    DeleteEventSessionGroup = 14,
+    AssignSessionToEventSessionGroup = 15,
+    UnassignSessionFromEventSessionGroup = 16,
+    CreateEventDay = 17,
+    UpdateEventDay = 18,
+    DeleteEventDay = 19,
+    CreateEventAgendaItem = 20,
+    UpdateEventAgendaItem = 21,
+    DeleteEventAgendaItem = 22,
+    CreateEventCustomPropertyDefinition = 23,
+    UpdateEventCustomPropertyDefinition = 24,
+    DeleteEventCustomPropertyDefinition = 25,
+    PurgeEventCustomPropertyDefinition = 26,
+    SetEventCustomPropertyValue = 27,
+    SetEventCustomPropertyMultiValues = 28,
+    CreateEventRegistration = 29,
+    UpdateEventRegistration = 30,
+    DeleteEventRegistration = 31,
+    AssignEventTeamRole = 32,
+    RevokeEventTeamRole = 33,
+    CreateEventTemplate = 34,
+    UpdateEventTemplate = 35,
+    DeleteEventTemplate = 36,
+    CreateEventSessionTemplate = 37,
+    UpdateEventSessionTemplate = 38,
+    DeleteEventSessionTemplate = 39,
+    ApplyEventTemplateSync = 40,
+    ApplyEventSessionTemplateSync = 41,
+    LightModerateEvent = 42,
+    HeavyModerateEvent = 43,
+    UnmoderateEvent = 44
 }

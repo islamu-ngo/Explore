@@ -5,13 +5,16 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.DTOs.Event;
 using Explore.Application.Features.AiAssistant.Handlers.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
+using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain;
 using Explore.Domain.Ai;
 using Explore.Domain.Constants;
+using MediatR;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.AiAssistant.Commands;
@@ -25,6 +28,7 @@ public sealed class ProcessAiRunCommandHandlerTests
     private readonly IAiConversationRepository _conversationRepository = Substitute.For<IAiConversationRepository>();
     private readonly IHierarchicalSettingsResolver _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
     private readonly IAiChatProvider _chatProvider = Substitute.For<IAiChatProvider>();
+    private readonly IMediator _mediator = Substitute.For<IMediator>();
 
     public ProcessAiRunCommandHandlerTests()
     {
@@ -125,6 +129,29 @@ public sealed class ProcessAiRunCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenQueuedRunModelIsNoLongerEnabled_FailsRunBeforeProviderCall()
+    {
+        _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(CreateSettings(
+                enabled: true,
+                provider: AiProviderDefaults.ProviderOpenAiCompatible,
+                endpointUrl: "https://ai.example.test/v1",
+                modelId: "gpt-5.4-mini",
+                allowedModelIds: ["gpt-5.4-mini"]));
+        var conversation = CreateQueuedConversation(modelId: "unapproved-model");
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+
+        await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Active);
+        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Failed);
+        await Assert.That(conversation.Runs.Single().FailureCode).IsEqualTo("model_not_allowed");
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
+        await _conversationRepository.Received(1).Update(conversation);
+    }
+
+    [Test]
     public async Task Handle_WhenProviderFirstReturnsInvalidToolPayload_RetriesWithSafeCorrectionAndPersistsCorrectedProposal()
     {
         var conversation = CreateQueuedConversation();
@@ -155,6 +182,39 @@ public sealed class ProcessAiRunCommandHandlerTests
         await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Succeeded);
         await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
         await Assert.That(conversation.ProposedActions.Single().PayloadJson).Contains("Corrected Draft");
+    }
+
+    [Test]
+    public async Task Handle_WhenPosterImageProviderFirstReturnsEmptyText_RetriesWithImageContextAndPersistsProposal()
+    {
+        var conversation = CreateQueuedConversation();
+        conversation.Messages.Single().ImageAttachmentsJson = """
+            [{"mediaType":"image/png","data":"aW1hZ2UtYnl0ZXM=","fileName":"poster.png","sizeBytes":11}]
+            """;
+        var capturedPayloads = new List<AiChatPayload>();
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation, conversation);
+        _chatProvider.SendAsync(Arg.Do<AiChatPayload>(payload => capturedPayloads.Add(payload)), Arg.Any<CancellationToken>())
+            .Returns(
+                AiChatProviderResult.Failure("invalid_response", "AI provider returned an empty text response."),
+                AiChatProviderResult.Success(new AiChatResponse(
+                    string.Empty,
+                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Poster Draft\"}")],
+                    new AiTokenUsage(1, 2, 3))));
+
+        await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(capturedPayloads.Count).IsEqualTo(2);
+        await Assert.That(capturedPayloads[0].Messages.Single(message => message.Role == AiMessageRole.User).Images.Count)
+            .IsEqualTo(1);
+        await Assert.That(capturedPayloads[1].Messages.Any(message => message.Images.Count == 1)).IsTrue();
+        await Assert.That(capturedPayloads[1].Messages.Last().Content)
+            .Contains("did not include usable assistant text or a valid platform tool call");
+        await Assert.That(capturedPayloads[1].Messages.Last().Content)
+            .Contains("return one valid platform tool call using the provided schema");
+        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Succeeded);
+        await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
+        await Assert.That(conversation.ProposedActions.Single().PayloadJson).Contains("Poster Draft");
     }
 
     [Test]
@@ -223,8 +283,44 @@ public sealed class ProcessAiRunCommandHandlerTests
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WhenSelectedEventReferenceExists_EnrichesPromptWithEventDetails()
+    {
+        var eventId = Guid.CreateVersion7();
+        var conversation = CreateQueuedConversation();
+        conversation.AddReference(
+            AiReferenceKind.Event,
+            eventId,
+            "Search result title",
+            "Search summary",
+            _userId,
+            DateTime.UtcNow.AddMinutes(-2));
+        var capturedPayloads = new List<AiChatPayload>();
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation, conversation);
+        _mediator.Send(Arg.Is<GetEventDetailsRequest>(query => query.Id == eventId), Arg.Any<CancellationToken>())
+            .Returns(CreateEventDto(eventId));
+        _chatProvider.SendAsync(Arg.Do<AiChatPayload>(payload => capturedPayloads.Add(payload)), Arg.Any<CancellationToken>())
+            .Returns(AiChatProviderResult.Success(new AiChatResponse(
+                "Assistant response",
+                [],
+                new AiTokenUsage(1, 2, 3))));
+
+        await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(capturedPayloads.Count).IsEqualTo(1);
+        var referenceContext = capturedPayloads.Single().Messages.FirstOrDefault(message =>
+            message.Role == AiMessageRole.System &&
+            message.Content.Contains("<selected_references>", StringComparison.Ordinal));
+        await Assert.That(referenceContext).IsNotNull();
+        await Assert.That(referenceContext!.Content).Contains("GetById Community Iftar");
+        await Assert.That(referenceContext.Content).Contains("status: Published");
+        await Assert.That(referenceContext.Content).Contains("description: Detailed event context from GetById.");
+        await Assert.That(referenceContext.Content).DoesNotContain("Search result title");
+    }
+
     private ProcessAiRunCommandHandler CreateHandler()
-        => new(_conversationRepository, _settingsResolver, _chatProvider);
+        => new(_conversationRepository, _settingsResolver, _chatProvider, _mediator);
 
     private ProcessAiRunCommand CreateCommand(string mode = AiAssistantInteractionModes.Build)
         => new()
@@ -283,6 +379,7 @@ public sealed class ProcessAiRunCommandHandlerTests
         string apiKey = "",
         string modelId = "",
         bool toolProposalsEnabled = false,
+        IReadOnlyList<string>? allowedModelIds = null,
         int timeoutSeconds = AiProviderDefaults.DefaultTimeoutSeconds)
     {
         var settings = new Dictionary<string, ResolvedSetting>
@@ -292,6 +389,9 @@ public sealed class ProcessAiRunCommandHandlerTests
             [GovernanceSettingKeys.AiAssistant.EndpointUrl] = Setting(GovernanceSettingKeys.AiAssistant.EndpointUrl, endpointUrl),
             [GovernanceSettingKeys.AiAssistant.ApiKey] = Setting(GovernanceSettingKeys.AiAssistant.ApiKey, apiKey),
             [GovernanceSettingKeys.AiAssistant.ModelId] = Setting(GovernanceSettingKeys.AiAssistant.ModelId, modelId),
+            [GovernanceSettingKeys.AiAssistant.AllowedModelIds] = Setting(
+                GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+                allowedModelIds ?? Array.Empty<string>()),
             [GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled] = Setting(GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled, toolProposalsEnabled),
             [GovernanceSettingKeys.AiAssistant.MaxInputTokens] = Setting(GovernanceSettingKeys.AiAssistant.MaxInputTokens, AiProviderDefaults.DefaultMaxInputTokens),
             [GovernanceSettingKeys.AiAssistant.MaxOutputTokens] = Setting(GovernanceSettingKeys.AiAssistant.MaxOutputTokens, AiProviderDefaults.DefaultMaxOutputTokens),
@@ -310,4 +410,32 @@ public sealed class ProcessAiRunCommandHandlerTests
         Source = SettingSource.SystemDefault,
         IsLocked = false
     };
+
+    private EventDto CreateEventDto(Guid eventId)
+        => new()
+        {
+            Id = eventId,
+            ConcurrencyStamp = Guid.CreateVersion7(),
+            Title = "GetById Community Iftar",
+            Subtitle = "Full detail title",
+            Description = "Detailed event context from GetById.",
+            ActorId = Guid.CreateVersion7(),
+            ActorDisplayName = "ISLAMU",
+            ActorTypeId = 2,
+            ActorTypeFullName = "Organization",
+            EventStatusId = 2,
+            EventStatusFullName = "Published",
+            EventStatusMasterCode = "published",
+            VisibilityTypeId = 1,
+            VisibilityTypeFullName = "Public",
+            VisibilityTypeMasterCode = "public",
+            EventFormatId = 1,
+            EventFormatFullName = "In person",
+            EventFormatMasterCode = "in_person",
+            FirstSessionDate = new DateOnly(2026, 6, 26),
+            LastSessionDate = new DateOnly(2026, 6, 26),
+            Timezone = "Europe/Brussels",
+            SessionCount = 1,
+            TenantId = _tenantId
+        };
 }
