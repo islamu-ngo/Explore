@@ -7,19 +7,26 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Event.Api.IntegrationTests.Builders;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Mcp;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Models;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Ai;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Domain.Settings;
 using Explore.Persistence;
+using Explore.Persistence.Extensions;
+using Explore.Persistence.QueryFilters;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -33,6 +40,10 @@ namespace ApiIntegrationTests.Features;
 public sealed class McpProtocolContractTests
 {
     private const string SensitiveMarker = "private-prompt-marker-7f29";
+    private static readonly string[] ProjectedProposalToolNames = AiMcpProjectedToolFactory
+        .CreateTools(AiToolContractRegistry.CreateDefault())
+        .Select(tool => tool.ProtocolTool.Name)
+        .ToArray();
 
     [Test]
     public async Task AuthenticatedClient_CanDiscoverExpectedMcpSurface()
@@ -57,13 +68,33 @@ public sealed class McpProtocolContractTests
         using var prompts = await mcp.InvokeAsync("prompts/list");
 
         GetResult(initialize).TryGetProperty("protocolVersion", out _).Should().BeTrue();
-        GetNames(GetResult(tools), "tools").Should().Contain([
+        GetNames(GetResult(tools), "tools").Should().Contain(
+        [
             "list_ai_tool_contracts",
+            "search_public_events",
+            "get_public_event",
+            "get_public_event_program_summary",
+            "list_public_event_sessions",
+            "list_my_events",
+            "get_event_creation_context",
+            "get_event_publish_readiness",
+            "get_event_program_management_context",
+            "get_event_custom_properties_context",
+            "get_event_registrations_context",
+            "get_event_team_context",
+            "get_event_template_catalog_context",
+            "get_event_template_sync_context",
+            "get_event_session_template_sync_context",
             "propose_ai_tool_action",
-            "propose_create_event_draft"]);
+            .. ProjectedProposalToolNames
+        ]);
         GetNames(GetResult(resources), "resources").Should().Contain("ai_conversations");
-        GetNames(GetResult(resourceTemplates), "resourceTemplates").Should().Contain("ai_conversation_detail");
-        GetNames(GetResult(prompts), "prompts").Should().Contain("create_event_draft_with_confirmation");
+        GetNames(GetResult(resourceTemplates), "resourceTemplates").Should().Contain([
+            "ai_conversation_detail",
+            "event_management_context"]);
+        GetNames(GetResult(prompts), "prompts").Should().Contain([
+            "create_event_draft_with_confirmation",
+            "manage_event_with_confirmation"]);
     }
 
     [Test]
@@ -73,7 +104,13 @@ public sealed class McpProtocolContractTests
         using var httpClient = factory.CreateClient();
         var userId = Guid.CreateVersion7();
         var conversationId = await CreateConversationAsync(httpClient, userId);
+        var existingEvent = await SeedOwnedDraftEventAsync(
+            factory,
+            userId,
+            $"MCP Existing Draft {Guid.NewGuid():N}");
         var eventCountBefore = await CountEventsAsync(factory);
+        var aspectCountsBefore = await ReadAspectCountsAsync(factory);
+        var existingEventBefore = await ReadEventStateAsync(factory, existingEvent.EventId);
         var mcp = McpProtocolTestClient.Authenticated(httpClient, userId);
 
         using var registryCall = await mcp.CallToolAsync("list_ai_tool_contracts", new JsonObject());
@@ -98,10 +135,143 @@ public sealed class McpProtocolContractTests
             ["summary"] = "Projected proposal smoke",
             ["title"] = "Projected MCP protocol draft"
         });
+        using var projectedUpdateProposal = await mcp.CallToolAsync("propose_update_event_draft", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected update proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["title"] = "Projected MCP protocol update"
+        });
+        using var projectedPublishProposal = await mcp.CallToolAsync("propose_publish_event", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected publish proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["readinessIsReady"] = true,
+            ["readinessErrorCount"] = 0
+        });
+        using var projectedDeleteProposal = await mcp.CallToolAsync("propose_delete_event", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected delete proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["managementContextHasDelete"] = true,
+            ["destructiveSummary"] = "Delete duplicate draft from protocol smoke.",
+            ["confirmationPhrase"] = "DELETE_EVENT",
+            ["acknowledgedConsequences"] = true
+        });
+        using var projectedIslamicAspectProposal = await mcp.CallToolAsync("propose_upsert_event_islamic_aspect", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected Islamic aspect proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["aspectKind"] = "islamic",
+            ["managementContextHasEdit"] = true,
+            ["genderMode"] = 0,
+            ["includesQuranRecitation"] = true
+        });
+        using var projectedDeleteIslamicAspectProposal = await mcp.CallToolAsync("propose_delete_event_islamic_aspect", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected Islamic aspect delete proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["aspectKind"] = "islamic",
+            ["managementContextHasEdit"] = true,
+            ["destructiveSummary"] = "Remove stale Islamic aspect metadata.",
+            ["confirmationPhrase"] = "DELETE_ISLAMIC_ASPECT",
+            ["acknowledgedConsequences"] = true
+        });
+        using var projectedTechAspectProposal = await mcp.CallToolAsync("propose_upsert_event_tech_aspect", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected Tech aspect proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["aspectKind"] = "tech",
+            ["managementContextHasEdit"] = true,
+            ["skillLevel"] = 0,
+            ["requiresLaptop"] = true
+        });
+        using var projectedDeleteTechAspectProposal = await mcp.CallToolAsync("propose_delete_event_tech_aspect", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected Tech aspect delete proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["aspectKind"] = "tech",
+            ["managementContextHasEdit"] = true,
+            ["destructiveSummary"] = "Remove stale Tech aspect metadata.",
+            ["confirmationPhrase"] = "DELETE_TECH_ASPECT",
+            ["acknowledgedConsequences"] = true
+        });
+        using var projectedSessionProposal = await mcp.CallToolAsync("propose_create_event_session", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected session proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["managementContextHasAddSession"] = true,
+            ["title"] = "MCP protocol opening session",
+            ["startTime"] = "2026-07-01T09:00:00Z",
+            ["endTime"] = "2026-07-01T10:00:00Z"
+        });
+        using var projectedRegistrationDeleteProposal = await mcp.CallToolAsync("propose_delete_event_registration", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected registration delete proposal smoke",
+            ["registrationId"] = Guid.CreateVersion7().ToString(),
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["managementContextHasDelete"] = true,
+            ["destructiveSummary"] = "Cancel duplicate registration.",
+            ["confirmationPhrase"] = "DELETE_EVENT_REGISTRATION",
+            ["acknowledgedConsequences"] = true
+        });
+        using var projectedTemplateSyncProposal = await mcp.CallToolAsync("propose_apply_event_template_sync", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected template sync proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["managementContextHasEdit"] = true,
+            ["baseProvenanceVersion"] = 2,
+            ["plan"] = new JsonObject
+            {
+                ["targetTemplateVersion"] = 3,
+                ["baseProvenanceVersion"] = 2,
+                ["addedDefinitionKeys"] = new JsonArray("sessions.track"),
+                ["modifiedDefinitionKeys"] = new JsonArray(),
+                ["retiredDefinitionKeys"] = new JsonArray(),
+                ["addedOptionKeys"] = new JsonArray(),
+                ["modifiedOptionKeys"] = new JsonArray(),
+                ["retiredOptionKeys"] = new JsonArray()
+            },
+            ["destructiveSummary"] = "Apply reviewed template sync changes.",
+            ["confirmationPhrase"] = "APPLY_EVENT_TEMPLATE_SYNC",
+            ["acknowledgedConsequences"] = true
+        });
 
         AssertSuccessfulToolResult(genericProposal);
         AssertSuccessfulToolResult(projectedProposal);
+        AssertSuccessfulToolResult(projectedUpdateProposal);
+        AssertSuccessfulToolResult(projectedPublishProposal);
+        AssertSuccessfulToolResult(projectedDeleteProposal);
+        AssertSuccessfulToolResult(projectedIslamicAspectProposal);
+        AssertSuccessfulToolResult(projectedDeleteIslamicAspectProposal);
+        AssertSuccessfulToolResult(projectedTechAspectProposal);
+        AssertSuccessfulToolResult(projectedDeleteTechAspectProposal);
+        AssertSuccessfulToolResult(projectedSessionProposal);
+        AssertSuccessfulToolResult(projectedRegistrationDeleteProposal);
+        AssertSuccessfulToolResult(projectedTemplateSyncProposal);
         (await CountEventsAsync(factory)).Should().Be(eventCountBefore);
+        (await ReadAspectCountsAsync(factory)).Should().Be(aspectCountsBefore);
+        var existingEventAfter = await ReadEventStateAsync(factory, existingEvent.EventId);
+        existingEventAfter.Should().Be(existingEventBefore);
 
         using var detailRequest = CreateAuthenticatedRequest(
             HttpMethod.Get,
@@ -110,7 +280,130 @@ public sealed class McpProtocolContractTests
         using var detailResponse = await httpClient.SendAsync(detailRequest);
         detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         using var detail = await JsonDocument.ParseAsync(await detailResponse.Content.ReadAsStreamAsync());
-        detail.RootElement.GetProperty("proposedActions").GetArrayLength().Should().Be(2);
+        detail.RootElement.GetProperty("proposedActions").GetArrayLength().Should().Be(12);
+    }
+
+    [Test]
+    public async Task ToolsCall_WhenModerationTargetAuthorizationDenied_ReturnsFailureWithoutPersistingProposal()
+    {
+        var deniedChecks = new List<AuthorizationCheck>();
+        var authorizationProvider = new StubAuthorizationProvider
+        {
+            CheckPredicate = check =>
+            {
+                if (check.ResourceKind == ResourceKinds.Event &&
+                    check.Action == AuthorizationActions.Events.ModerateHeavy)
+                {
+                    deniedChecks.Add(check);
+                    return false;
+                }
+
+                return true;
+            }
+        };
+        await using var factory = CreateMcpEnabledFactory(authorizationProvider);
+        using var httpClient = factory.CreateClient();
+        var userId = Guid.CreateVersion7();
+        var conversationId = await CreateConversationAsync(httpClient, userId);
+        var existingEvent = await SeedOwnedDraftEventAsync(
+            factory,
+            userId,
+            $"MCP Moderation Denied {Guid.NewGuid():N}");
+        var mcp = McpProtocolTestClient.Authenticated(httpClient, userId);
+
+        using var projectedModerationProposal = await mcp.CallToolAsync("propose_heavy_moderate_event", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected moderation proposal denial smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["managementContextHasModerateHeavy"] = true,
+            ["reasonCode"] = "policy-review",
+            ["destructiveSummary"] = "Restrict event visibility until policy review completes.",
+            ["confirmationPhrase"] = "HEAVY_MODERATE_EVENT",
+            ["acknowledgedConsequences"] = true
+        });
+
+        using var descriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(projectedModerationProposal)));
+        descriptor.RootElement.GetProperty("Success").GetBoolean().Should().BeFalse();
+        descriptor.RootElement.GetProperty("FailureCode").GetString().Should().Be("tool_authorization_denied");
+        deniedChecks.Should().ContainSingle(check =>
+            check.ResourceId == existingEvent.EventId.ToString() &&
+            HasGuidAttribute(check.ResourceAttributes, "eventId", existingEvent.EventId) &&
+            HasGuidAttribute(check.ResourceAttributes, "tenantId", PlatformDefaults.DefaultTenantId));
+
+        using var detailRequest = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/ai/assistant/conversations/{conversationId}",
+            userId);
+        using var detailResponse = await httpClient.SendAsync(detailRequest);
+        detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var detail = await JsonDocument.ParseAsync(await detailResponse.Content.ReadAsStreamAsync());
+        detail.RootElement.GetProperty("proposedActions").GetArrayLength().Should().Be(0);
+    }
+
+    [Test]
+    public async Task ToolsCall_WhenInstanceAdminTargetsCrossTenantModeration_UsesTargetTenantAndPersistsProposal()
+    {
+        var targetTenantId = Guid.CreateVersion7();
+        var moderationChecks = new List<AuthorizationCheck>();
+        var authorizationProvider = new StubAuthorizationProvider
+        {
+            CheckPredicate = check =>
+            {
+                if (check.ResourceKind == ResourceKinds.Event &&
+                    check.Action == AuthorizationActions.Events.ModerateHeavy)
+                {
+                    moderationChecks.Add(check);
+                    return HasGuidAttribute(check.ResourceAttributes, "tenantId", targetTenantId);
+                }
+
+                return true;
+            }
+        };
+        await using var factory = CreateMcpEnabledFactory(authorizationProvider);
+        using var httpClient = factory.CreateClient();
+        var userId = Guid.CreateVersion7();
+        var instanceAdminHeader = TestAuthHandler.CreateInstanceAdminHeaderValue(userId);
+        var conversationId = await CreateConversationAsync(httpClient, userId, instanceAdminHeader);
+        var existingEvent = await SeedOwnedDraftEventAsync(
+            factory,
+            userId,
+            $"MCP Instance Admin Cross Tenant {Guid.NewGuid():N}",
+            targetTenantId);
+        var eventStateBefore = await ReadEventStateAsync(factory, existingEvent.EventId);
+        var mcp = McpProtocolTestClient.AuthenticatedWithHeader(httpClient, userId, instanceAdminHeader);
+
+        using var projectedModerationProposal = await mcp.CallToolAsync("propose_heavy_moderate_event", new JsonObject
+        {
+            ["conversationId"] = conversationId.ToString(),
+            ["summary"] = "Projected cross-tenant moderation proposal smoke",
+            ["eventId"] = existingEvent.EventId.ToString(),
+            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
+            ["managementContextHasModerateHeavy"] = true,
+            ["reasonCode"] = "policy-review",
+            ["destructiveSummary"] = "Restrict event visibility until platform policy review completes.",
+            ["confirmationPhrase"] = "HEAVY_MODERATE_EVENT",
+            ["acknowledgedConsequences"] = true
+        });
+
+        AssertSuccessfulToolResult(projectedModerationProposal);
+        moderationChecks.Should().ContainSingle(check =>
+            check.ResourceId == existingEvent.EventId.ToString() &&
+            HasGuidAttribute(check.ResourceAttributes, "eventId", existingEvent.EventId) &&
+            HasGuidAttribute(check.ResourceAttributes, "tenantId", targetTenantId));
+        (await ReadEventStateAsync(factory, existingEvent.EventId)).Should().Be(eventStateBefore);
+
+        using var detailRequest = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/ai/assistant/conversations/{conversationId}",
+            userId,
+            instanceAdminHeader);
+        using var detailResponse = await httpClient.SendAsync(detailRequest);
+        detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var detail = await JsonDocument.ParseAsync(await detailResponse.Content.ReadAsStreamAsync());
+        var proposedActions = detail.RootElement.GetProperty("proposedActions");
+        proposedActions.GetArrayLength().Should().Be(1);
     }
 
     [Test]
@@ -160,18 +453,25 @@ public sealed class McpProtocolContractTests
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    private static McpProtocolContractFactory CreateMcpEnabledFactory()
-        => CreateFactory(mcpEnabled: true);
+    private static McpProtocolContractFactory CreateMcpEnabledFactory(
+        StubAuthorizationProvider? authorizationProvider = null)
+        => CreateFactory(mcpEnabled: true, authorizationProvider);
 
-    private static McpProtocolContractFactory CreateFactory(bool mcpEnabled)
-        => new(mcpEnabled);
+    private static McpProtocolContractFactory CreateFactory(
+        bool mcpEnabled,
+        StubAuthorizationProvider? authorizationProvider = null)
+        => new(mcpEnabled, authorizationProvider);
 
-    private static async Task<Guid> CreateConversationAsync(HttpClient client, Guid userId)
+    private static async Task<Guid> CreateConversationAsync(
+        HttpClient client,
+        Guid userId,
+        string? authHeaderValue = null)
     {
         using var request = CreateAuthenticatedRequest(
             HttpMethod.Post,
             "/api/ai/assistant/conversations",
-            userId);
+            userId,
+            authHeaderValue);
         request.Content = JsonContent.Create(new CreateAiConversationRequestDto
         {
             Title = "MCP protocol contract"
@@ -185,10 +485,14 @@ public sealed class McpProtocolContractTests
         return body.Id;
     }
 
-    private static HttpRequestMessage CreateAuthenticatedRequest(HttpMethod method, string url, Guid userId)
+    private static HttpRequestMessage CreateAuthenticatedRequest(
+        HttpMethod method,
+        string url,
+        Guid userId,
+        string? authHeaderValue = null)
     {
         var request = new HttpRequestMessage(method, url);
-        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId));
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, authHeaderValue ?? TestAuthHandler.CreateAuthHeaderValue(userId));
         return request;
     }
 
@@ -197,6 +501,95 @@ public sealed class McpProtocolContractTests
         await using var scope = factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         return await dbContext.Events.CountAsync();
+    }
+
+    private static async Task<OwnedDraftEventSeed> SeedOwnedDraftEventAsync(
+        McpProtocolContractFactory factory,
+        Guid userId,
+        string title,
+        Guid? tenantId = null)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var resolvedTenantId = tenantId ?? PlatformDefaults.DefaultTenantId;
+        var tenant = await context.Tenants.FindAsync(resolvedTenantId);
+        if (tenant is null)
+        {
+            tenant = new TenantBuilder()
+                .WithId(resolvedTenantId)
+                .WithFullName("Default MCP Protocol Event Tenant")
+                .WithSlug($"mcp-protocol-event-{resolvedTenantId:N}"[..48])
+                .Build();
+            context.Tenants.Add(tenant);
+            await context.SaveChangesAsync();
+        }
+
+        var owner = new UserBuilder()
+            .WithId(userId)
+            .Build();
+        var existingOwner = await context.Users.FindAsync(userId);
+        if (existingOwner is null)
+        {
+            context.Users.Add(owner);
+            await context.SaveChangesAsync();
+        }
+        else
+        {
+            owner = existingOwner;
+        }
+
+        var ownerActor = new ActorBuilder()
+            .WithTenantId(tenant.Id)
+            .WithUserId(owner.Id)
+            .WithDisplayName("MCP Protocol Owner")
+            .Build();
+        context.Actors.Add(ownerActor);
+        await context.SaveChangesAsync();
+
+        owner.ActorId = ownerActor.Id;
+        owner.DefaultActorId = ownerActor.Id;
+
+        var @event = new EventBuilder()
+            .WithTitle(title)
+            .WithDescription($"Description for {title}")
+            .WithActorId(ownerActor.Id)
+            .WithTenantId(tenant.Id)
+            .WithStatus(EventStatusEnum.Draft)
+            .WithVisibility(VisibilityTypeEnum.Private)
+            .WithSessionDates(
+                DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)),
+                DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)))
+            .Build();
+        context.Events.Add(@event);
+        await context.SaveChangesAsync();
+
+        @event.CreatedBy = userId;
+        await context.SaveChangesAsync();
+
+        return new OwnedDraftEventSeed(@event.Id, @event.ConcurrencyStamp);
+    }
+
+    private static async Task<EventState> ReadEventStateAsync(
+        McpProtocolContractFactory factory,
+        Guid eventId)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        return await dbContext.Events
+            .AsNoTracking()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EventAuthorizationTargetResolution)
+            .Where(@event => @event.Id == eventId)
+            .Select(@event => new EventState(@event.Title, @event.ConcurrencyStamp, @event.EventStatusId))
+            .SingleAsync();
+    }
+
+    private static async Task<AspectCounts> ReadAspectCountsAsync(McpProtocolContractFactory factory)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        return new AspectCounts(
+            await dbContext.EventIslamicAspects.CountAsync(),
+            await dbContext.EventTechAspects.CountAsync());
     }
 
     private static JsonElement GetResult(JsonDocument document)
@@ -268,12 +661,36 @@ public sealed class McpProtocolContractTests
         return false;
     }
 
+    private static bool HasGuidAttribute(
+        IReadOnlyDictionary<string, object>? attributes,
+        string name,
+        Guid expected)
+        => attributes?.TryGetValue(name, out var value) == true &&
+            Guid.TryParse(value.ToString(), out var actual) &&
+            actual == expected;
+
+    private sealed record OwnedDraftEventSeed(Guid EventId, Guid ConcurrencyStamp);
+
+    private sealed record EventState(string Title, Guid ConcurrencyStamp, int EventStatusId);
+
+    private sealed record AspectCounts(int IslamicAspectCount, int TechAspectCount);
+
     private sealed class McpProtocolTestClient(HttpClient client, Guid userId)
     {
         private int _nextId;
+        private string? _authHeaderValue;
 
         public static McpProtocolTestClient Authenticated(HttpClient client, Guid? userId = null)
             => new(client, userId ?? Guid.CreateVersion7());
+
+        public static McpProtocolTestClient AuthenticatedWithHeader(
+            HttpClient client,
+            Guid userId,
+            string authHeaderValue)
+            => new(client, userId)
+            {
+                _authHeaderValue = authHeaderValue
+            };
 
         public Task<JsonDocument> InvokeAsync(string method, JsonObject? parameters = null)
             => SendJsonRpcAsync(method, parameters, expectProtocolSuccess: true);
@@ -328,7 +745,7 @@ public sealed class McpProtocolContractTests
         private HttpRequestMessage CreateBaseRequest()
         {
             var request = new HttpRequestMessage(HttpMethod.Post, "/mcp");
-            request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId));
+            request.Headers.Add(TestAuthHandler.AuthHeaderName, _authHeaderValue ?? TestAuthHandler.CreateAuthHeaderValue(userId));
             request.Headers.Add("ProtocolVersion", "2025-06-18");
             request.Headers.Add("MCP-Protocol-Version", "2025-06-18");
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -363,11 +780,13 @@ public sealed class McpProtocolContractTests
         }
     }
 
-    private sealed class McpProtocolContractFactory(bool mcpEnabled) : AuthenticatedWebApplicationFactory
+    private sealed class McpProtocolContractFactory(
+        bool mcpEnabled,
+        StubAuthorizationProvider? authorizationProvider) : AuthenticatedWebApplicationFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            AuthorizationProviderOverride = new StubAuthorizationProvider();
+            AuthorizationProviderOverride = authorizationProvider ?? new StubAuthorizationProvider();
             AdditionalConfiguration["Mcp:Enabled"] = mcpEnabled ? "true" : "false";
             AdditionalConfiguration["Mcp:EndpointPath"] = "/mcp";
             AdditionalConfiguration["Mcp:Stateless"] = "true";

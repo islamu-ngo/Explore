@@ -6,7 +6,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Mcp;
 using Explore.Application.Constants;
+using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Services;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -17,6 +19,28 @@ namespace ApiIntegrationTests.Features;
 
 public sealed class McpAuthorizationTests
 {
+    private static readonly string[] ProjectedProposalToolNames = AiMcpProjectedToolFactory
+        .CreateTools(AiToolContractRegistry.CreateDefault())
+        .Select(tool => tool.ProtocolTool.Name)
+        .ToArray();
+
+    private static readonly string[] ProposalToolNames = ProjectedProposalToolNames
+        .Prepend("propose_ai_tool_action")
+        .ToArray();
+
+    private static readonly string[] EventManagementReadToolNames =
+    [
+        "list_my_events",
+        "get_event_creation_context",
+        "get_event_publish_readiness",
+        "get_event_program_management_context",
+        "get_event_custom_properties_context",
+        "get_event_registrations_context",
+        "get_event_team_context",
+        "get_event_template_catalog_context",
+        "get_event_template_sync_context",
+        "get_event_session_template_sync_context"
+    ];
 
     [Test]
     public async Task McpEndpoint_WhenRuntimeGovernanceDisabled_ReturnsNotFound()
@@ -66,8 +90,8 @@ public sealed class McpAuthorizationTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
         toolNames.Should().Contain("list_ai_tool_contracts");
-        toolNames.Should().NotContain("propose_ai_tool_action");
-        toolNames.Should().NotContain("propose_create_event_draft");
+        AssertEventManagementReadsHidden(toolNames);
+        AssertProposalToolsHidden(toolNames);
     }
 
     [Test]
@@ -100,8 +124,8 @@ public sealed class McpAuthorizationTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
         toolNames.Should().Contain("list_ai_tool_contracts");
-        toolNames.Should().NotContain("propose_ai_tool_action");
-        toolNames.Should().NotContain("propose_create_event_draft");
+        AssertEventManagementReadsHidden(toolNames);
+        AssertProposalToolsHidden(toolNames);
     }
 
     [Test]
@@ -118,6 +142,9 @@ public sealed class McpAuthorizationTests
 
         response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
         response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+        var toolNames = await ReadToolNamesAsync(response);
+        AssertEventManagementReadsDiscoverable(toolNames);
+        AssertProposalToolsDiscoverable(toolNames, includeGeneric: false);
     }
 
     [Test]
@@ -138,8 +165,8 @@ public sealed class McpAuthorizationTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
         toolNames.Should().Contain("list_ai_tool_contracts");
-        toolNames.Should().NotContain("propose_ai_tool_action");
-        toolNames.Should().NotContain("propose_create_event_draft");
+        AssertEventManagementReadsHidden(toolNames);
+        AssertProposalToolsHidden(toolNames);
     }
 
     [Test]
@@ -176,8 +203,8 @@ public sealed class McpAuthorizationTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
         toolNames.Should().Contain("list_ai_tool_contracts");
-        toolNames.Should().NotContain("propose_ai_tool_action");
-        toolNames.Should().NotContain("propose_create_event_draft");
+        AssertEventManagementReadsHidden(toolNames);
+        AssertProposalToolsHidden(toolNames);
     }
 
     [Test]
@@ -220,7 +247,7 @@ public sealed class McpAuthorizationTests
     }
 
     [Test]
-    public async Task McpEndpoint_WithMcpReadOnlyApiKey_CannotDiscoverOrCallProposalTools()
+    public async Task McpEndpoint_WithMcpReadOnlyApiKey_CannotDiscoverPrivateEventReadsOrProposalTools()
     {
         const string keyId = "mcp-read-only-key";
         const string secret = "mcp-read-only-secret";
@@ -246,19 +273,173 @@ public sealed class McpAuthorizationTests
         using var client = factory.CreateClient();
         using var listRequest = CreateMcpRequest();
         listRequest.Headers.Add("X-API-Key", rawApiKey);
+        using var resourceTemplatesRequest = CreateMcpListRequest("resources/templates/list");
+        resourceTemplatesRequest.Headers.Add("X-API-Key", rawApiKey);
 
         var listResponse = await client.SendAsync(listRequest);
+        var resourceTemplatesResponse = await client.SendAsync(resourceTemplatesRequest);
 
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(listResponse);
         toolNames.Should().Contain("list_ai_tool_contracts");
-        toolNames.Should().NotContain("propose_ai_tool_action");
-        toolNames.Should().NotContain("propose_create_event_draft");
+        AssertEventManagementReadsHidden(toolNames);
+        AssertProposalToolsHidden(toolNames);
+
+        resourceTemplatesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resourceTemplateNames = await ReadResourceTemplateNamesAsync(resourceTemplatesResponse);
+        resourceTemplateNames.Should().NotContain("event_management_context");
+
+        using var eventReadCallRequest = CreateMcpToolCallRequest("list_my_events", new { });
+        eventReadCallRequest.Headers.Add("X-API-Key", rawApiKey);
+
+        var eventReadCallResponse = await client.SendAsync(eventReadCallRequest);
+
+        eventReadCallResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var eventReadErrorDocument = await ReadJsonRpcDocumentAsync(eventReadCallResponse);
+        eventReadErrorDocument.RootElement.TryGetProperty("error", out _).Should().BeTrue(eventReadErrorDocument.RootElement.GetRawText());
+        eventReadErrorDocument.RootElement.GetRawText().Should().NotContain(rawApiKey);
 
         using var callRequest = CreateMcpToolCallRequest("propose_create_event_draft", new
         {
             conversationId = Guid.CreateVersion7(),
             title = "Read-only key should not propose"
+        });
+        callRequest.Headers.Add("X-API-Key", rawApiKey);
+
+        var callResponse = await client.SendAsync(callRequest);
+
+        callResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var errorDocument = await ReadJsonRpcDocumentAsync(callResponse);
+        errorDocument.RootElement.TryGetProperty("error", out _).Should().BeTrue(errorDocument.RootElement.GetRawText());
+        errorDocument.RootElement.GetRawText().Should().NotContain(rawApiKey);
+    }
+
+    [Test]
+    public async Task McpEndpoint_WithMcpReadAndEventReadApiKey_CanDiscoverEventManagementReadsButNotProposalTools()
+    {
+        const string keyId = "mcp-event-read-key";
+        const string secret = "mcp-event-read-secret";
+        var rawApiKey = ApiKeyHashing.FormatPersistedApiKey(keyId, secret);
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DeploymentMode = DeploymentMode.SingleTenant,
+            DefaultTenantId = PlatformDefaults.DefaultTenantId,
+            McpEnabled = true,
+            PersistedApiKeys =
+            [
+                new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
+                {
+                    KeyId = keyId,
+                    Secret = secret,
+                    TenantId = PlatformDefaults.DefaultTenantId,
+                    OwnerId = Guid.CreateVersion7(),
+                    Scopes = [ExternalApiKeyScopes.McpRead, ExternalApiKeyScopes.EventsRead]
+                }
+            ]
+        };
+        using var client = factory.CreateClient();
+        using var listRequest = CreateMcpRequest();
+        listRequest.Headers.Add("X-API-Key", rawApiKey);
+        using var resourceTemplatesRequest = CreateMcpListRequest("resources/templates/list");
+        resourceTemplatesRequest.Headers.Add("X-API-Key", rawApiKey);
+
+        var listResponse = await client.SendAsync(listRequest);
+        var resourceTemplatesResponse = await client.SendAsync(resourceTemplatesRequest);
+
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var toolNames = await ReadToolNamesAsync(listResponse);
+        toolNames.Should().Contain("list_ai_tool_contracts");
+        AssertEventManagementReadsDiscoverable(toolNames);
+        AssertProposalToolsHidden(toolNames);
+
+        resourceTemplatesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resourceTemplateNames = await ReadResourceTemplateNamesAsync(resourceTemplatesResponse);
+        resourceTemplateNames.Should().Contain("event_management_context");
+    }
+
+    [Test]
+    public async Task McpEndpoint_WithValidApiKeyWithoutMcpScope_CannotDiscoverAuthenticatedEventReads()
+    {
+        const string keyId = "mcp-unscoped-key";
+        const string secret = "mcp-unscoped-secret";
+        var rawApiKey = ApiKeyHashing.FormatPersistedApiKey(keyId, secret);
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DeploymentMode = DeploymentMode.SingleTenant,
+            DefaultTenantId = PlatformDefaults.DefaultTenantId,
+            McpEnabled = true,
+            PersistedApiKeys =
+            [
+                new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
+                {
+                    KeyId = keyId,
+                    Secret = secret,
+                    TenantId = PlatformDefaults.DefaultTenantId,
+                    OwnerId = Guid.CreateVersion7(),
+                    Scopes = [ExternalApiKeyScopes.EventsRead]
+                }
+            ]
+        };
+        using var client = factory.CreateClient();
+        using var request = CreateMcpRequest();
+        request.Headers.Add("X-API-Key", rawApiKey);
+
+        var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var toolNames = await ReadToolNamesAsync(response);
+        toolNames.Should().Contain("list_ai_tool_contracts");
+        AssertEventManagementReadsHidden(toolNames);
+        AssertProposalToolsHidden(toolNames);
+    }
+
+    [Test]
+    public async Task McpEndpoint_WithInstanceAdminApiKeyWithoutMcpPropose_CannotDiscoverOrCallProposalTools()
+    {
+        const string keyId = "mcp-instance-admin-no-propose-key";
+        const string secret = "mcp-instance-admin-no-propose-secret";
+        var rawApiKey = ApiKeyHashing.FormatPersistedApiKey(keyId, secret);
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DeploymentMode = DeploymentMode.SingleTenant,
+            DefaultTenantId = PlatformDefaults.DefaultTenantId,
+            McpEnabled = true,
+            PersistedApiKeys =
+            [
+                new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
+                {
+                    KeyId = keyId,
+                    Secret = secret,
+                    OwnerType = ExternalApiKeyOwnerType.InstanceAdmin,
+                    OwnerId = Guid.CreateVersion7(),
+                    Scopes = [ExternalApiKeyScopes.McpRead, ExternalApiKeyScopes.AdminInstance]
+                }
+            ]
+        };
+        using var client = factory.CreateClient();
+        using var listRequest = CreateMcpRequest();
+        listRequest.Headers.Add("X-API-Key", rawApiKey);
+
+        var listResponse = await client.SendAsync(listRequest);
+
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var toolNames = await ReadToolNamesAsync(listResponse);
+        AssertEventManagementReadsDiscoverable(toolNames);
+        AssertProposalToolsHidden(toolNames);
+
+        using var callRequest = CreateMcpToolCallRequest("propose_heavy_moderate_event", new
+        {
+            conversationId = Guid.CreateVersion7(),
+            eventId = Guid.CreateVersion7(),
+            expectedConcurrencyStamp = Guid.CreateVersion7(),
+            managementContextHasModerateHeavy = true,
+            reasonCode = "policy-review",
+            destructiveSummary = "Restrict event visibility until platform policy review completes.",
+            confirmationPhrase = "HEAVY_MODERATE_EVENT",
+            acknowledgedConsequences = true
         });
         callRequest.Headers.Add("X-API-Key", rawApiKey);
 
@@ -323,6 +504,99 @@ public sealed class McpAuthorizationTests
     }
 
     [Test]
+    public async Task McpEndpoint_RateLimiting_PartitionsInvalidApiKeyWithAnonymousTrafficByIp()
+    {
+        const string invalidApiKey = "invalid-mcp-ip-partition-secret";
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DeploymentMode = DeploymentMode.SingleTenant,
+            DefaultTenantId = PlatformDefaults.DefaultTenantId,
+            McpEnabled = true,
+            DisableRateLimitingInTesting = false,
+            GlobalRateLimitTokenLimit = 1,
+            GlobalRateLimitTokensPerPeriod = 1,
+            GlobalRateLimitReplenishPeriodSeconds = 60
+        };
+        using var client = factory.CreateClient();
+
+        using var invalidKeyRequest = CreateMcpRequest();
+        invalidKeyRequest.Headers.Add("X-API-Key", invalidApiKey);
+        var invalidKeyResponse = await client.SendAsync(invalidKeyRequest);
+
+        using var throttledAnonymousRequest = CreateMcpRequest();
+        var throttledAnonymousResponse = await client.SendAsync(throttledAnonymousRequest);
+        var throttledBody = await throttledAnonymousResponse.Content.ReadAsStringAsync();
+
+        invalidKeyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        throttledAnonymousResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        throttledAnonymousResponse.Headers.Contains("Retry-After").Should().BeTrue();
+        throttledBody.Should().NotContain(invalidApiKey);
+    }
+
+    [Test]
+    public async Task McpEndpoint_RateLimiting_PartitionsValidApiKeysByKeyId()
+    {
+        const string firstKeyId = "mcp-rate-key-one";
+        const string firstSecret = "mcp-rate-secret-one";
+        const string secondKeyId = "mcp-rate-key-two";
+        const string secondSecret = "mcp-rate-secret-two";
+        var firstRawApiKey = ApiKeyHashing.FormatPersistedApiKey(firstKeyId, firstSecret);
+        var secondRawApiKey = ApiKeyHashing.FormatPersistedApiKey(secondKeyId, secondSecret);
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DeploymentMode = DeploymentMode.SingleTenant,
+            DefaultTenantId = PlatformDefaults.DefaultTenantId,
+            McpEnabled = true,
+            DisableRateLimitingInTesting = false,
+            GlobalRateLimitTokenLimit = 1,
+            GlobalRateLimitTokensPerPeriod = 1,
+            GlobalRateLimitReplenishPeriodSeconds = 60,
+            PersistedApiKeys =
+            [
+                new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
+                {
+                    KeyId = firstKeyId,
+                    Secret = firstSecret,
+                    TenantId = PlatformDefaults.DefaultTenantId,
+                    OwnerId = Guid.CreateVersion7(),
+                    Scopes = [ExternalApiKeyScopes.McpRead]
+                },
+                new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
+                {
+                    KeyId = secondKeyId,
+                    Secret = secondSecret,
+                    TenantId = PlatformDefaults.DefaultTenantId,
+                    OwnerId = Guid.CreateVersion7(),
+                    Scopes = [ExternalApiKeyScopes.McpRead]
+                }
+            ]
+        };
+        using var client = factory.CreateClient();
+
+        using var firstKeyRequest = CreateMcpRequest();
+        firstKeyRequest.Headers.Add("X-API-Key", firstRawApiKey);
+        var firstKeyResponse = await client.SendAsync(firstKeyRequest);
+
+        using var secondKeyRequest = CreateMcpRequest();
+        secondKeyRequest.Headers.Add("X-API-Key", secondRawApiKey);
+        var secondKeyResponse = await client.SendAsync(secondKeyRequest);
+
+        using var throttledFirstKeyRequest = CreateMcpRequest();
+        throttledFirstKeyRequest.Headers.Add("X-API-Key", firstRawApiKey);
+        var throttledFirstKeyResponse = await client.SendAsync(throttledFirstKeyRequest);
+        var throttledBody = await throttledFirstKeyResponse.Content.ReadAsStringAsync();
+
+        firstKeyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        secondKeyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        throttledFirstKeyResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        throttledFirstKeyResponse.Headers.Contains("Retry-After").Should().BeTrue();
+        throttledBody.Should().NotContain(firstRawApiKey);
+        throttledBody.Should().NotContain(secondRawApiKey);
+    }
+
+    [Test]
     public async Task McpEndpoint_WithInvalidApiKey_IsRateLimitedWithoutEchoingCredential()
     {
         const string invalidApiKey = "invalid-mcp-rate-limit-secret";
@@ -375,7 +649,7 @@ public sealed class McpAuthorizationTests
                     TenantId = PlatformDefaults.DefaultTenantId,
                     OwnerId = ownerUserId,
                     OwnerType = ExternalApiKeyOwnerType.User,
-                    Scopes = [ExternalApiKeyScopes.McpRead, ExternalApiKeyScopes.McpPropose]
+                    Scopes = [ExternalApiKeyScopes.McpRead, ExternalApiKeyScopes.EventsRead, ExternalApiKeyScopes.McpPropose]
                 }
             ]
         };
@@ -388,8 +662,8 @@ public sealed class McpAuthorizationTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
         toolNames.Should().Contain("list_ai_tool_contracts");
-        toolNames.Should().Contain("propose_ai_tool_action");
-        toolNames.Should().Contain("propose_create_event_draft");
+        AssertEventManagementReadsDiscoverable(toolNames);
+        AssertProposalToolsDiscoverable(toolNames);
     }
 
     [Test]
@@ -425,19 +699,59 @@ public sealed class McpAuthorizationTests
     }
 
     private static HttpRequestMessage CreateMcpRequest()
+        => CreateMcpListRequest("tools/list");
+
+    private static void AssertProposalToolsHidden(IReadOnlyList<string> toolNames)
+    {
+        foreach (var toolName in ProposalToolNames)
+        {
+            toolNames.Should().NotContain(toolName);
+        }
+    }
+
+    private static void AssertEventManagementReadsHidden(IReadOnlyList<string> toolNames)
+    {
+        foreach (var toolName in EventManagementReadToolNames)
+        {
+            toolNames.Should().NotContain(toolName);
+        }
+    }
+
+    private static void AssertEventManagementReadsDiscoverable(IReadOnlyList<string> toolNames)
+    {
+        foreach (var toolName in EventManagementReadToolNames)
+        {
+            toolNames.Should().Contain(toolName);
+        }
+    }
+
+    private static void AssertProposalToolsDiscoverable(
+        IReadOnlyList<string> toolNames,
+        bool includeGeneric = true)
+    {
+        var expectedNames = includeGeneric
+            ? ProposalToolNames
+            : ProjectedProposalToolNames;
+
+        foreach (var toolName in expectedNames)
+        {
+            toolNames.Should().Contain(toolName);
+        }
+    }
+
+    private static HttpRequestMessage CreateMcpListRequest(string method)
     {
         var request = new HttpRequestMessage(
             HttpMethod.Post,
             "/mcp")
         {
             Content = new StringContent(
-                """
+                JsonSerializer.Serialize(new
                 {
-                  "jsonrpc": "2.0",
-                  "id": 1,
-                  "method": "tools/list"
-                }
-                """,
+                    jsonrpc = "2.0",
+                    id = 1,
+                    method
+                }),
                 Encoding.UTF8,
                 "application/json")
         };
@@ -482,6 +796,19 @@ public sealed class McpAuthorizationTests
         return result.GetProperty("tools")
             .EnumerateArray()
             .Select(tool => tool.GetProperty("name").GetString())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!)
+            .ToArray();
+    }
+
+    private static async Task<IReadOnlyList<string>> ReadResourceTemplateNamesAsync(HttpResponseMessage response)
+    {
+        using var document = await ReadJsonRpcDocumentAsync(response);
+        var result = document.RootElement.GetProperty("result");
+
+        return result.GetProperty("resourceTemplates")
+            .EnumerateArray()
+            .Select(template => template.GetProperty("name").GetString())
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Select(name => name!)
             .ToArray();

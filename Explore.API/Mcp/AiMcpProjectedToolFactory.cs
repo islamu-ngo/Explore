@@ -97,6 +97,7 @@ public sealed class AiMcpProjectedProposalTool : McpServerTool
 {
     private const string ConversationIdArgumentName = "conversationId";
     private const string SummaryArgumentName = "summary";
+    private const string InvalidToolArgumentsMessage = "Invalid MCP tool arguments.";
     private static readonly IReadOnlyList<object> AuthorizationMetadata =
         [new AuthorizeAttribute { Policy = McpAuthorizationPolicies.Propose }];
 
@@ -154,7 +155,7 @@ public sealed class AiMcpProjectedProposalTool : McpServerTool
 
             command = MapArgumentsToCommand(request.Params.Arguments);
         }
-        catch (ArgumentException ex)
+        catch (ArgumentException)
         {
             McpAdapterTelemetry.MarkFailure(activity, "invalid_tool_arguments");
             McpAdapterTelemetry.RecordToolCall(
@@ -168,9 +169,9 @@ public sealed class AiMcpProjectedProposalTool : McpServerTool
                 new AiAssistantMcpTools.AiMcpCommandResultDescriptor(
                     false,
                     null,
-                    ex.Message,
+                    InvalidToolArgumentsMessage,
                     "invalid_tool_arguments",
-                    [ex.Message]),
+                    [InvalidToolArgumentsMessage]),
                 isError: true);
         }
 
@@ -246,7 +247,7 @@ public sealed class AiMcpProjectedProposalTool : McpServerTool
             {
                 Title = definition.DisplayName,
                 ReadOnlyHint = false,
-                DestructiveHint = false,
+                DestructiveHint = metadata.DestructiveHint,
                 IdempotentHint = false,
                 OpenWorldHint = false
             },
@@ -257,6 +258,7 @@ public sealed class AiMcpProjectedProposalTool : McpServerTool
                 ["islamuRiskClass"] = metadata.RiskClass.ToString(),
                 ["islamuApprovalMode"] = metadata.ApprovalMode.ToString(),
                 ["islamuRequiresConfirmation"] = requiresConfirmation,
+                ["islamuDestructive"] = metadata.DestructiveHint,
                 ["islamuSafeActionInstructions"] = metadata.SafeActionInstructions
             }
         };

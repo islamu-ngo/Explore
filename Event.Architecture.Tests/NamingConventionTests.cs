@@ -122,6 +122,7 @@ public class NamingConventionTests
             "CreateEventRequest",
             "CreateEventSessionRequest",
             "CreateEventDayRequest",
+            "CreateEventLocationRequest",
             "CreateEventRoomRequest",
             "CreateEventAgendaItemRequest",
             "UpdateTenantPolicyRequest",

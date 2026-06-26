@@ -23,6 +23,9 @@ public class HandlerValidatorPairingTests
         ["Explore.Application.Features.InstanceOnboarding.Handlers.Commands.UpdateBrandingSettingsCommandHandler"] = "Settings validation is delegated to IInstanceGovernanceSettingService; handler performs admin authorization only.",
         ["Explore.Application.Features.InstanceOnboarding.Handlers.Commands.UpdateDomainSettingsCommandHandler"] = "Settings validation is delegated to IInstanceGovernanceSettingService; handler performs admin authorization only.",
         ["Explore.Application.Features.InstanceOnboarding.Handlers.Commands.UpdateTenantDelegationSettingsCommandHandler"] = "Settings validation is delegated to IInstanceGovernanceSettingService; handler performs admin authorization only.",
+        ["Explore.Application.Features.EventSessions.Handlers.Commands.ArchiveEventSessionCommandHandler"] = "EventSessionLifecycleRequestDtoValidator is manually instantiated in the shared EventSessionLifecycleTransitionCommandHandlerBase.",
+        ["Explore.Application.Features.EventSessions.Handlers.Commands.CancelEventSessionCommandHandler"] = "EventSessionLifecycleRequestDtoValidator is manually instantiated in the shared EventSessionLifecycleTransitionCommandHandlerBase.",
+        ["Explore.Application.Features.EventSessions.Handlers.Commands.CompleteEventSessionCommandHandler"] = "EventSessionLifecycleRequestDtoValidator is manually instantiated in the shared EventSessionLifecycleTransitionCommandHandlerBase.",
     };
 
     [Test]

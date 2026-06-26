@@ -25,7 +25,11 @@ public sealed class McpSdkContractTests
             .Should().NotBeNull();
         typeof(AiAssistantMcpTools).GetCustomAttribute<McpServerToolTypeAttribute>()
             .Should().NotBeNull();
+        typeof(EventManagementMcpTools).GetCustomAttribute<McpServerToolTypeAttribute>()
+            .Should().NotBeNull();
         typeof(AiAssistantMcpResources).GetCustomAttribute<McpServerResourceTypeAttribute>()
+            .Should().NotBeNull();
+        typeof(EventManagementMcpResources).GetCustomAttribute<McpServerResourceTypeAttribute>()
             .Should().NotBeNull();
         typeof(AiAssistantMcpPrompts).GetCustomAttribute<McpServerPromptTypeAttribute>()
             .Should().NotBeNull();
@@ -38,9 +42,25 @@ public sealed class McpSdkContractTests
         {
             RequiredMethod(typeof(AiToolRegistryMcpTools), nameof(AiToolRegistryMcpTools.ListAiToolContracts)),
             RequiredMethod(typeof(AiAssistantMcpTools), nameof(AiAssistantMcpTools.ProposeAiToolActionAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.SearchPublicEventsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetPublicEventAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetPublicEventProgramSummaryAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListPublicEventSessionsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListMyEventsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCreationContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventPublishReadinessAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventProgramManagementContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCustomPropertiesContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventRegistrationsContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTeamContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateCatalogContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateSyncContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventSessionTemplateSyncContextAsync)),
             RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.ListConversationsAsync)),
             RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.GetConversationAsync)),
-            RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.CreateEventDraftWithConfirmation))
+            RequiredMethod(typeof(EventManagementMcpResources), nameof(EventManagementMcpResources.GetEventManagementContextAsync)),
+            RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.CreateEventDraftWithConfirmation)),
+            RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.ManageEventWithConfirmation))
         };
 
         foreach (var method in methods)
@@ -56,7 +76,22 @@ public sealed class McpSdkContractTests
         var exposedMethods = new[]
         {
             RequiredMethod(typeof(AiAssistantMcpTools), nameof(AiAssistantMcpTools.ProposeAiToolActionAsync)),
-            RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.GetConversationAsync))
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.SearchPublicEventsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetPublicEventAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetPublicEventProgramSummaryAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListPublicEventSessionsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListMyEventsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCreationContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventPublishReadinessAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventProgramManagementContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCustomPropertiesContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventRegistrationsContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTeamContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateCatalogContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateSyncContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventSessionTemplateSyncContextAsync)),
+            RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.GetConversationAsync)),
+            RequiredMethod(typeof(EventManagementMcpResources), nameof(EventManagementMcpResources.GetEventManagementContextAsync))
         };
 
         foreach (var parameter in exposedMethods.SelectMany(method => method.GetParameters()))
@@ -76,7 +111,11 @@ public sealed class McpSdkContractTests
     {
         var anonymousSafeMethods = new HashSet<MethodInfo>
         {
-            RequiredMethod(typeof(AiToolRegistryMcpTools), nameof(AiToolRegistryMcpTools.ListAiToolContracts))
+            RequiredMethod(typeof(AiToolRegistryMcpTools), nameof(AiToolRegistryMcpTools.ListAiToolContracts)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.SearchPublicEventsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetPublicEventAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetPublicEventProgramSummaryAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListPublicEventSessionsAsync))
         };
 
         foreach (var method in McpCallableMethods())
@@ -104,6 +143,46 @@ public sealed class McpSdkContractTests
             .GetCustomAttribute<AuthorizeAttribute>()?.Policy
             .Should().Be(McpAuthorizationPolicies.Propose);
 
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListMyEventsAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCreationContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventPublishReadinessAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventProgramManagementContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCustomPropertiesContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventRegistrationsContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTeamContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateCatalogContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateSyncContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
+        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventSessionTemplateSyncContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
         RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.ListConversationsAsync))
             .GetCustomAttribute<AuthorizeAttribute>()?.Policy
             .Should().Be(McpAuthorizationPolicies.Read);
@@ -112,13 +191,24 @@ public sealed class McpSdkContractTests
             .GetCustomAttribute<AuthorizeAttribute>()?.Policy
             .Should().Be(McpAuthorizationPolicies.Read);
 
+        RequiredMethod(typeof(EventManagementMcpResources), nameof(EventManagementMcpResources.GetEventManagementContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+
         RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.CreateEventDraftWithConfirmation))
             .GetCustomAttribute<AuthorizeAttribute>()?.Policy
             .Should().Be(McpAuthorizationPolicies.Propose);
 
-        var projectedTool = new AiMcpProjectedProposalTool(CreateEventDraftAiToolDefinition.Create());
-        projectedTool.Metadata.OfType<AuthorizeAttribute>().Single().Policy
+        RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.ManageEventWithConfirmation))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
             .Should().Be(McpAuthorizationPolicies.Propose);
+
+        foreach (var definition in AiToolContractRegistry.CreateDefault().Definitions.Where(definition => definition.ExposeToMcp))
+        {
+            var projectedTool = new AiMcpProjectedProposalTool(definition);
+            projectedTool.Metadata.OfType<AuthorizeAttribute>().Single().Policy
+                .Should().Be(McpAuthorizationPolicies.Propose);
+        }
     }
 
     [Test]
@@ -128,7 +218,9 @@ public sealed class McpSdkContractTests
         {
             typeof(AiToolRegistryMcpTools),
             typeof(AiAssistantMcpTools),
+            typeof(EventManagementMcpTools),
             typeof(AiAssistantMcpResources),
+            typeof(EventManagementMcpResources),
             typeof(AiAssistantMcpPrompts)
         };
 
@@ -163,7 +255,7 @@ public sealed class McpSdkContractTests
         program.Should().Contain(".WithHttpTransport(options =>");
         program.Should().Contain("options.Stateless = mcpAdapterSettings.Stateless");
         program.Should().Contain("builder.Services.PostConfigure<McpAdapterSettings>");
-        program.Should().Contain("settings.EndpointPath = endpointPath.StartsWith(\"/\", StringComparison.Ordinal)");
+        program.Should().Contain("settings.EndpointPath = endpointPath.StartsWith('/')");
         program.Should().Contain("app.MapMcp(effectiveMcpAdapterSettings.EndpointPath)");
         program.Should().Contain(".AllowAnonymous()");
         program.Should().NotContain(".WithStdioServerTransport");
@@ -177,7 +269,9 @@ public sealed class McpSdkContractTests
 
         program.Should().Contain(".WithTools<AiToolRegistryMcpTools>()");
         program.Should().Contain(".WithTools<AiAssistantMcpTools>()");
+        program.Should().Contain(".WithTools<EventManagementMcpTools>()");
         program.Should().Contain(".WithResources<AiAssistantMcpResources>()");
+        program.Should().Contain(".WithResources<EventManagementMcpResources>()");
         program.Should().Contain(".WithPrompts<AiAssistantMcpPrompts>()");
         program.Should().Contain("AiMcpProjectedToolOptionsSetup");
         program.Should().NotContain(".WithToolsFromAssembly");
@@ -199,9 +293,25 @@ public sealed class McpSdkContractTests
         [
             RequiredMethod(typeof(AiToolRegistryMcpTools), nameof(AiToolRegistryMcpTools.ListAiToolContracts)),
             RequiredMethod(typeof(AiAssistantMcpTools), nameof(AiAssistantMcpTools.ProposeAiToolActionAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.SearchPublicEventsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetPublicEventAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetPublicEventProgramSummaryAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListPublicEventSessionsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListMyEventsAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCreationContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventPublishReadinessAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventProgramManagementContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCustomPropertiesContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventRegistrationsContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTeamContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateCatalogContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateSyncContextAsync)),
+            RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventSessionTemplateSyncContextAsync)),
             RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.ListConversationsAsync)),
             RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.GetConversationAsync)),
-            RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.CreateEventDraftWithConfirmation))
+            RequiredMethod(typeof(EventManagementMcpResources), nameof(EventManagementMcpResources.GetEventManagementContextAsync)),
+            RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.CreateEventDraftWithConfirmation)),
+            RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.ManageEventWithConfirmation))
         ];
 
     private static MethodInfo RequiredMethod(Type type, string methodName)
