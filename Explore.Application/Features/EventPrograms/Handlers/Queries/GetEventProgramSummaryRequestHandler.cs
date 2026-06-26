@@ -7,6 +7,7 @@ using Explore.Application.DTOs.EventProgram;
 using Explore.Application.Features.EventPrograms.Models;
 using Explore.Application.Features.EventPrograms.Requests.Queries;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.EventPrograms.Handlers.Queries;
@@ -36,10 +37,10 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
     public async Task<EventProgramSummaryDto?> Handle(GetEventProgramSummaryRequest request, CancellationToken cancellationToken)
     {
         var eventEntity = await _eventRepository.GetEventWithDetails(request.EventId);
-        if (eventEntity is null)
+        if (eventEntity is null || !IsPublicProgramEligible(eventEntity))
             return null;
 
-        var sessions = await _eventSessionRepository.GetSessionsByEvent(request.EventId);
+        var sessions = await _eventSessionRepository.GetPublicSessionsByEventAsync(request.EventId, cancellationToken);
         var groups = await _eventSessionGroupRepository.GetByEventAsync(request.EventId, cancellationToken);
         var agendaItems = await _eventAgendaItemRepository.GetByEventAsync(request.EventId, cancellationToken);
         var groupLookup = groups.ToDictionary(group => group.Id);
@@ -70,6 +71,12 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
             .ToList();
 
         return summary;
+    }
+
+    private static bool IsPublicProgramEligible(Event eventEntity)
+    {
+        return eventEntity.EventStatusId == (int)EventStatusEnum.Published &&
+            eventEntity.VisibilityTypeId == (int)VisibilityTypeEnum.Public;
     }
 
     private static List<ProgramGroupAccumulator> BuildProgramGroups(
@@ -121,16 +128,19 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
         TimeZoneInfo timezone,
         Event eventEntity)
     {
-        var localStart = session.LocalStartDate == default
-            ? TimeZoneInfo.ConvertTime(session.StartTime, timezone)
+        var startTime = session.StartTime!.Value;
+        var endTime = session.EndTime!.Value;
+
+        var localStart = session.LocalStartDate is null || session.LocalStartTime is null
+            ? TimeZoneInfo.ConvertTime(startTime, timezone)
             : new DateTimeOffset(
-                session.LocalStartDate.ToDateTime(session.LocalStartTime),
-                TimeZoneInfo.ConvertTime(session.StartTime, timezone).Offset);
-        var localEnd = session.LocalEndDate == default
-            ? TimeZoneInfo.ConvertTime(session.EndTime, timezone)
+                session.LocalStartDate.Value.ToDateTime(session.LocalStartTime.Value),
+                TimeZoneInfo.ConvertTime(startTime, timezone).Offset);
+        var localEnd = session.LocalEndDate is null || session.LocalEndTime is null
+            ? TimeZoneInfo.ConvertTime(endTime, timezone)
             : new DateTimeOffset(
-                session.LocalEndDate.ToDateTime(session.LocalEndTime),
-                TimeZoneInfo.ConvertTime(session.EndTime, timezone).Offset);
+                session.LocalEndDate.Value.ToDateTime(session.LocalEndTime.Value),
+                TimeZoneInfo.ConvertTime(endTime, timezone).Offset);
 
         return new EventProgramItemDto
         {
@@ -139,8 +149,8 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
             EventSessionKindId = session.EventSessionKindId,
             EventSessionKindName = session.EventSessionKind?.FullName,
             EventSessionKindMasterCode = session.EventSessionKind?.MasterCode,
-            StartsAtUtc = session.StartTime,
-            EndsAtUtc = session.EndTime,
+            StartsAtUtc = startTime,
+            EndsAtUtc = endTime,
             LocalDate = DateOnly.FromDateTime(localStart.DateTime),
             LocalStartTime = TimeOnly.FromDateTime(localStart.DateTime),
             LocalEndTime = TimeOnly.FromDateTime(localEnd.DateTime),

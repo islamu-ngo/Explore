@@ -157,6 +157,12 @@ public sealed class EventSubqueryFilter
         new(EventSubqueryFilterType.FutureOnly, now);
 
     /// <summary>
+    /// Filters public discovery lists to events with at least one published scheduled session that has not ended yet.
+    /// </summary>
+    public static EventSubqueryFilter CurrentOrUpcomingPublishedSession() =>
+        new(EventSubqueryFilterType.CurrentOrUpcomingPublishedSession, true);
+
+    /// <summary>
     /// Filters events based on their temporal status relative to Now.
     /// </summary>
     public static EventSubqueryFilter Temporal(TemporalView view, DateTimeOffset now) =>
@@ -215,6 +221,9 @@ public enum EventSubqueryFilterType
 
     /// <summary>Filters out events where the last session has already started.</summary>
     FutureOnly,
+
+    /// <summary>Requires at least one public, scheduled session whose end time has not passed.</summary>
+    CurrentOrUpcomingPublishedSession,
 
     /// <summary>Filters events by temporal status (Upcoming, Ongoing, Past).</summary>
     TemporalView

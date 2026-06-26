@@ -4,6 +4,8 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Agenda;
 using Explore.Application.Features.Agenda.Requests.Queries;
+using Explore.Domain;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.Agenda.Handlers.Queries;
@@ -30,31 +32,41 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
     public async Task<EventAgendaProjectionDto?> Handle(GetEventAgendaProjectionRequest request, CancellationToken cancellationToken)
     {
         var parentEvent = await _eventRepository.GetById(request.EventId);
-        if (parentEvent == null)
+        if (parentEvent == null || !IsPublicAgendaEligible(parentEvent))
             return null;
 
         var eventDays = await _eventDayRepository.GetByEventAsync(request.EventId, cancellationToken);
-        var sessions = await _eventSessionRepository.GetSessionsByEvent(request.EventId);
+        var sessions = await _eventSessionRepository.GetPublicSessionsByEventAsync(request.EventId, cancellationToken);
         var agendaItems = await _eventAgendaItemRepository.GetByEventAsync(request.EventId, cancellationToken);
 
-        // Build unified entry list from sessions and agenda items
         var entries = new List<AgendaScheduleEntryDto>();
 
         foreach (var session in sessions)
         {
+            if (session.StartTime is not { } startTime ||
+                session.EndTime is not { } endTime ||
+                session.LocalStartDate is not { } localStartDate ||
+                session.LocalStartTime is not { } localStartTime ||
+                session.LocalEndTime is not { } localEndTime ||
+                session.LocalStartMinuteOfDay is not { } localStartMinuteOfDay ||
+                session.LocalEndMinuteOfDay is not { } localEndMinuteOfDay)
+            {
+                continue;
+            }
+
             entries.Add(new AgendaScheduleEntryDto
             {
                 Id = session.Id,
                 EntryType = "Session",
                 Title = session.Title ?? string.Empty,
                 Description = session.Description,
-                StartTime = session.StartTime,
-                EndTime = session.EndTime,
-                LocalStartDate = session.LocalStartDate,
-                LocalStartTime = session.LocalStartTime,
-                LocalEndTime = session.LocalEndTime,
-                LocalStartMinuteOfDay = session.LocalStartMinuteOfDay,
-                LocalEndMinuteOfDay = session.LocalEndMinuteOfDay,
+                StartTime = startTime,
+                EndTime = endTime,
+                LocalStartDate = localStartDate,
+                LocalStartTime = localStartTime,
+                LocalEndTime = localEndTime,
+                LocalStartMinuteOfDay = localStartMinuteOfDay,
+                LocalEndMinuteOfDay = localEndMinuteOfDay,
                 RoomId = session.RoomId,
                 LocationId = session.LocationId,
                 MaxAudienceAttendees = session.MaxAudienceAttendees,
@@ -90,20 +102,16 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
             });
         }
 
-        // Group entries by local date
         var entriesByDate = entries
             .GroupBy(e => e.LocalStartDate)
             .ToDictionary(g => g.Key, g => g.OrderBy(e => e.LocalStartMinuteOfDay).ThenBy(e => e.SortOrder).ToList());
 
-        // Build EventDay lookup by local date
         var daysByDate = eventDays.ToDictionary(d => d.LocalDate);
 
-        // Collect all unique dates (union of EventDay dates and entry dates)
         var allDates = new HashSet<DateOnly>(daysByDate.Keys);
         foreach (var date in entriesByDate.Keys)
             allDates.Add(date);
 
-        // Build day groups
         var dayGroups = new List<AgendaDayGroupDto>();
         foreach (var date in allDates.OrderBy(d => d))
         {
@@ -123,7 +131,6 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
             });
         }
 
-        // Final sort: authored EventDay sort order first, then chronological date
         dayGroups = dayGroups
             .OrderBy(d => d.SortOrder)
             .ThenBy(d => d.LocalDate)
@@ -136,5 +143,11 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
             Timezone = parentEvent.EventTimeZoneId ?? parentEvent.Timezone,
             Days = dayGroups
         };
+    }
+
+    private static bool IsPublicAgendaEligible(Event parentEvent)
+    {
+        return parentEvent.EventStatusId == (int)EventStatusEnum.Published &&
+            parentEvent.VisibilityTypeId == (int)VisibilityTypeEnum.Public;
     }
 }
