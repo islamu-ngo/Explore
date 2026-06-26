@@ -95,6 +95,34 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<StorageObject>> ListDeleteRequestedForResourceAsync(
+        Guid tenantId,
+        string owningResourceKind,
+        Guid owningResourceId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        if (limit <= 0 || tenantId == Guid.Empty || owningResourceId == Guid.Empty || string.IsNullOrWhiteSpace(owningResourceKind))
+        {
+            return [];
+        }
+
+        return await _dbContext.StorageObjects
+            .IgnoreTenantFilter(TenantFilterBypassReasons.InstanceStorageAdministration)
+            .Where(storageObject =>
+                !storageObject.IsDeleted &&
+                storageObject.TenantId == tenantId &&
+                storageObject.LifecycleState == StorageObjectLifecycleStates.DeleteRequested &&
+                (storageObject.Provider == StorageProviders.Local ||
+                 storageObject.Provider == StorageProviders.S3Compatible) &&
+                storageObject.OwningResourceKind == owningResourceKind &&
+                storageObject.OwningResourceId == owningResourceId)
+            .OrderBy(storageObject => storageObject.UpdatedAt ?? storageObject.CreatedAt)
+            .ThenBy(storageObject => storageObject.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<string>> ListKnownObjectKeysAsync(
         string provider,
         IReadOnlyCollection<string> objectKeys,

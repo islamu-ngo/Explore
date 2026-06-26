@@ -21,6 +21,13 @@ public interface IStorageObjectRepository : IGenericRepository<StorageObject, Gu
         int limit,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<StorageObject>> ListDeleteRequestedForResourceAsync(
+        Guid tenantId,
+        string owningResourceKind,
+        Guid owningResourceId,
+        int limit,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<string>> ListKnownObjectKeysAsync(
         string provider,
         IReadOnlyCollection<string> objectKeys,
