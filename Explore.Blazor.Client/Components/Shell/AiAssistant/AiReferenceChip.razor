@@ -7,7 +7,8 @@
         @onkeydown="HandleKeyDownAsync"
         aria-label="Remove @Reference.DisplayName"
         data-testid="ai-reference-chip">
-    @Reference.DisplayName
+    <MudIcon Icon="@GetReferenceIcon(Reference.Kind)" Size="Size.Small" />
+    <span class="ai-rail__chip-text">@Reference.DisplayName</span>
     <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
 </button>
 
@@ -19,6 +20,15 @@
     public EventCallback<Guid> OnRemove { get; set; }
 
     private Task RemoveAsync() => OnRemove.InvokeAsync(Reference.ReferenceId);
+
+    private static string GetReferenceIcon(string? kind) => kind switch
+    {
+        "Event" => Icons.Material.Filled.Event,
+        "Organization" => Icons.Material.Filled.Business,
+        "Actor" => Icons.Material.Filled.Person,
+        "EventSession" => Icons.Material.Filled.Schedule,
+        _ => Icons.Material.Filled.Tag
+    };
 
     private Task HandleKeyDownAsync(KeyboardEventArgs args)
     {

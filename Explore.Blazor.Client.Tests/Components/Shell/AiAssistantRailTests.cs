@@ -38,23 +38,17 @@ public sealed class AiAssistantRailTests : IDisposable
     }
 
     [Test]
-    public async Task Render_WhenAssistantIsAvailable_LoadsConversationsAndMessages()
+    public async Task Open_WhenLatestConversationIsEmpty_LoadsExistingEmptyConversationWithoutCreatingAnother()
     {
         var conversationId = Guid.CreateVersion7();
         _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(
                 CreateConversationCollection(
                 [
-                    new() { Id = conversationId, Title = "Event planning", Status = "Active" }
+                    new() { Id = conversationId, Title = "AI Assistant", Status = "Active", LastMessageSequence = 0 }
                 ])));
         _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(
-                conversationId,
-                "Event planning",
-                [
-                    new Messages2 { Role = "User", Sequence = 1, Content = "Plan an iftar" },
-                    new Messages2 { Role = "Assistant", Sequence = 2, Content = "I can help with that." }
-                ])));
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "AI Assistant")));
         _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
@@ -62,16 +56,59 @@ public sealed class AiAssistantRailTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Event planning", StringComparison.Ordinal)
-                || !cut.Markup.Contains("Plan an iftar", StringComparison.Ordinal)
-                || !cut.Markup.Contains("I can help with that.", StringComparison.Ordinal))
+            if (_conversationState.SelectedConversation?.Id != conversationId)
             {
-                throw new InvalidOperationException("Expected rail to render loaded conversation details.");
+                throw new InvalidOperationException("Expected rail to reuse the latest empty conversation.");
             }
         });
 
         await _clientService.Received(1).GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
         await _clientService.Received(1).GetConversationAsync(conversationId, Arg.Any<CancellationToken>());
+        await _clientService.DidNotReceive().CreateConversationAsync(
+            Arg.Any<CreateAiConversationRequestDto>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Open_WhenLatestConversationHasMessages_CreatesAndLoadsFreshConversation()
+    {
+        var previousConversationId = Guid.CreateVersion7();
+        var freshConversationId = Guid.CreateVersion7();
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(
+                    CreateConversationCollection(
+                    [
+                        new() { Id = previousConversationId, Title = "Event planning", Status = "Active", LastMessageSequence = 2 }
+                    ])),
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(
+                    CreateConversationCollection(
+                    [
+                        new() { Id = freshConversationId, Title = "AI Assistant", Status = "Active", LastMessageSequence = 0 },
+                        new() { Id = previousConversationId, Title = "Event planning", Status = "Active", LastMessageSequence = 2 }
+                    ])));
+        _clientService.CreateConversationAsync(Arg.Any<CreateAiConversationRequestDto>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiAssistantCommandResult(true, freshConversationId, "Created", null, [])));
+        _clientService.GetConversationAsync(freshConversationId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(freshConversationId, "AI Assistant")));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (_conversationState.SelectedConversation?.Id != freshConversationId)
+            {
+                throw new InvalidOperationException("Expected rail open to select a fresh conversation.");
+            }
+        });
+
+        await _clientService.Received(1).CreateConversationAsync(
+            Arg.Is<CreateAiConversationRequestDto>(request => request.Title == "AI Assistant"),
+            Arg.Any<CancellationToken>());
+        await _clientService.Received(1).GetConversationAsync(freshConversationId, Arg.Any<CancellationToken>());
+        await _clientService.DidNotReceive().GetConversationAsync(previousConversationId, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -210,23 +247,111 @@ public sealed class AiAssistantRailTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
 
-        await cut.Find("[data-testid='ai-rail-reference-search']").InputAsync(new ChangeEventArgs { Value = "iftar" });
-        await cut.Find("[data-testid='ai-rail-reference-search-submit']").ClickAsync(new MouseEventArgs());
+        await cut.Find("[data-testid='ai-rail-prompt']").InputAsync(new ChangeEventArgs { Value = "@iftar" });
 
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Community Iftar", StringComparison.Ordinal)
-                || !cut.Markup.Contains("Event link available", StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("Expected HAL-linked reference result.");
-            }
-        });
+        cut.WaitForElement("[data-testid='ai-rail-reference-result']");
 
         await cut.Find("[data-testid='ai-rail-reference-result']").ClickAsync(new MouseEventArgs());
         await Assert.That(_conversationState.SelectedReferences.Count).IsEqualTo(1);
+        await Assert.That(cut.Find("[data-testid='ai-rail-prompt']").GetAttribute("value")).IsEqualTo("@Community Iftar ");
+        await Assert.That(cut.Find("[data-testid='ai-rail-prompt-reference-token']").TextContent).IsEqualTo("@Community Iftar");
 
         await cut.Find("[data-testid='ai-reference-chip']").ClickAsync(new MouseEventArgs());
         await Assert.That(_conversationState.SelectedReferences).IsEmpty();
+        await Assert.That(cut.FindAll("[data-testid='ai-rail-prompt-reference-token']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task ReferenceSearch_WhenMentionTriggerIsDeleted_ClosesAutocomplete()
+    {
+        var conversationId = Guid.CreateVersion7();
+        _conversationState.SelectConversation(new HalResourceOfAiConversationDto { Id = conversationId, Title = "References" });
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        var prompt = cut.Find("[data-testid='ai-rail-prompt']");
+
+        await prompt.InputAsync(new ChangeEventArgs { Value = "@iftar" });
+        cut.WaitForElement("[data-testid='ai-rail-reference-autocomplete']");
+
+        await prompt.InputAsync(new ChangeEventArgs { Value = "iftar" });
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[data-testid='ai-rail-reference-autocomplete']").Count != 0)
+            {
+                throw new InvalidOperationException("Expected deleting the @ mention trigger to close autocomplete.");
+            }
+        });
+    }
+
+    [Test]
+    public async Task SendMessage_WhenReferenceIsSelected_PassesReferenceContext()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var runId = Guid.CreateVersion7();
+        var referenceId = Guid.CreateVersion7();
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Reference send"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _clientService.SearchReferencesAsync("iftar", Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiReferenceSearchResultDto>>(
+            [
+                new()
+                {
+                    Kind = "Event",
+                    ReferenceId = referenceId,
+                    DisplayName = "Community Iftar",
+                    Summary = "Public evening program",
+                    _links = new Dictionary<string, Anonymous8>
+                    {
+                        ["event"] = new() { Href = $"/api/events/{referenceId}", Method = "GET" }
+                    }
+                }
+            ]));
+        _clientService.SendMessageAsync(
+                conversationId,
+                "@Community Iftar",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
+                Arg.Any<IReadOnlyList<AiSelectedReferenceDto>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiAssistantCommandResult(true, runId, "Sent", null, [])));
+        _clientService.GetRunStatusAsync(conversationId, runId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(AiRunStatusResult.Ok(new HalResourceOfAiRunDto { Status = "Succeeded" })));
+        _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "Reference send")));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        await cut.Find("[data-testid='ai-rail-prompt']").InputAsync(new ChangeEventArgs { Value = "@iftar" });
+        cut.WaitForElement("[data-testid='ai-rail-reference-result']");
+        await cut.Find("[data-testid='ai-rail-reference-result']").ClickAsync(new MouseEventArgs());
+        await cut.Find("[data-testid='ai-rail-send']").ClickAsync(new MouseEventArgs());
+
+        await _clientService.Received(1).SendMessageAsync(
+            conversationId,
+            "@Community Iftar",
+            Arg.Any<string?>(),
+            Arg.Is<string?>(value => value != null && value.StartsWith("blazor-ai-send-", StringComparison.Ordinal)),
+            Arg.Is<string?>(value => value == "build"),
+            Arg.Any<Guid?>(),
+            Arg.Is<IReadOnlyList<AiMessageImageInputDto>?>(value => value != null && value.Count == 0),
+            Arg.Is<IReadOnlyList<AiSelectedReferenceDto>?>(references =>
+                references != null
+                && references.Count == 1
+                && references.Single().Kind == "Event"
+                && references.Single().ReferenceId == referenceId
+                && references.Single().DisplayName == "Community Iftar"
+                && references.Single().Summary == "Public evening program"),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -285,6 +410,7 @@ public sealed class AiAssistantRailTests : IDisposable
                 Arg.Any<string?>(),
                 Arg.Any<Guid?>(),
                 Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
+                Arg.Any<IReadOnlyList<AiSelectedReferenceDto>?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(true, Guid.CreateVersion7(), "Sent", null, [])));
         _clientService.GetRunStatusAsync(conversationId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -321,6 +447,7 @@ public sealed class AiAssistantRailTests : IDisposable
             Arg.Is<string?>(value => value == "build"),
             Arg.Is<Guid?>(value => value == actorId),
             Arg.Is<IReadOnlyList<AiMessageImageInputDto>?>(value => value != null && value.Count == 0),
+            Arg.Is<IReadOnlyList<AiSelectedReferenceDto>?>(value => value != null && value.Count == 0),
             Arg.Any<CancellationToken>());
     }
 
@@ -359,6 +486,7 @@ public sealed class AiAssistantRailTests : IDisposable
                 Arg.Any<string?>(),
                 Arg.Any<Guid?>(),
                 Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
+                Arg.Any<IReadOnlyList<AiSelectedReferenceDto>?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(true, Guid.CreateVersion7(), "Sent", null, [])));
         _clientService.GetRunStatusAsync(conversationId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -406,6 +534,7 @@ public sealed class AiAssistantRailTests : IDisposable
                 && images.Single().SizeBytes == imageBytes.Length
                 && images.Single().Data == expectedBase64
                 && !images.Single().Data.StartsWith("data:", StringComparison.OrdinalIgnoreCase)),
+            Arg.Is<IReadOnlyList<AiSelectedReferenceDto>?>(value => value != null && value.Count == 0),
             Arg.Any<CancellationToken>());
     }
 
@@ -436,6 +565,99 @@ public sealed class AiAssistantRailTests : IDisposable
     }
 
     [Test]
+    public async Task SendMessage_WhenSelectedActorExpiresAfterBootstrapRefresh_UsesRefreshedAuthorizedActor()
+    {
+        var userActorId = Guid.CreateVersion7();
+        var organizationActorId = Guid.CreateVersion7();
+        var existingConversationId = Guid.CreateVersion7();
+        var newConversationId = Guid.CreateVersion7();
+        var runId = Guid.CreateVersion7();
+        _conversationState.SelectConversation(CreateConversation(existingConversationId, "Existing actor context"));
+        _clientService.GetBootstrapAsync(Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<HalResourceOfAiAssistantBootstrapDto?>(CreateBootstrap(
+                    (userActorId, "User", "Amina Yusuf"),
+                    (organizationActorId, "Organization", "ISLAMU Center"))),
+                Task.FromResult<HalResourceOfAiAssistantBootstrapDto?>(CreateBootstrap(
+                    userActorId,
+                    "User",
+                    "Amina Yusuf")));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])),
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection(
+                [
+                    new() { Id = newConversationId, Title = "Refreshed actor context", Status = "Active" }
+                ])));
+        _clientService.CreateConversationAsync(Arg.Any<CreateAiConversationRequestDto>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiAssistantCommandResult(true, newConversationId, "Created", null, [])));
+        _clientService.GetConversationAsync(newConversationId, Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(newConversationId, "Refreshed actor context")),
+                Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(
+                    newConversationId,
+                    "Refreshed actor context",
+                    [new Messages2 { Role = "Assistant", Sequence = 1, Content = "Ready under the refreshed actor." }])),
+                Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(
+                    newConversationId,
+                    "Refreshed actor context",
+                    [new Messages2 { Role = "Assistant", Sequence = 1, Content = "Ready under the refreshed actor." }])));
+        _clientService.SendMessageAsync(
+                newConversationId,
+                "Continue with refreshed authority",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
+                Arg.Any<IReadOnlyList<AiSelectedReferenceDto>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiAssistantCommandResult(true, runId, "Sent", null, [])));
+        _clientService.GetRunStatusAsync(newConversationId, runId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(AiRunStatusResult.Ok(new HalResourceOfAiRunDto
+            {
+                Status = "Succeeded"
+            })));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        var selector = cut.WaitForElement("[data-testid='ai-rail-actor-selector']");
+        await selector.ChangeAsync(new ChangeEventArgs { Value = organizationActorId.ToString() });
+        await cut.Find("[data-testid='ai-rail-new-conversation']").ClickAsync(new MouseEventArgs());
+
+        cut.WaitForAssertion(() =>
+        {
+            var refreshedSelector = cut.Find("[data-testid='ai-rail-actor-selector']");
+            if (refreshedSelector.GetAttribute("value") != userActorId.ToString()
+                || cut.Markup.Contains("Organization · ISLAMU Center", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected stale actor selection to refresh to the remaining authorized actor.");
+            }
+        });
+
+        await cut.Find("[data-testid='ai-rail-prompt']").ChangeAsync(new ChangeEventArgs
+        {
+            Value = "Continue with refreshed authority"
+        });
+        await cut.Find("[data-testid='ai-rail-send']").ClickAsync(new MouseEventArgs());
+
+        await _clientService.Received(1).CreateConversationAsync(
+            Arg.Is<CreateAiConversationRequestDto>(request => request.ActorId == organizationActorId),
+            Arg.Any<CancellationToken>());
+        await _clientService.Received(1).SendMessageAsync(
+            newConversationId,
+            "Continue with refreshed authority",
+            Arg.Any<string?>(),
+            Arg.Is<string?>(value => value != null && value.StartsWith("blazor-ai-send-", StringComparison.Ordinal)),
+            Arg.Is<string?>(value => value == "build"),
+            Arg.Is<Guid?>(value => value == userActorId),
+            Arg.Is<IReadOnlyList<AiMessageImageInputDto>?>(value => value != null && value.Count == 0),
+            Arg.Is<IReadOnlyList<AiSelectedReferenceDto>?>(value => value != null && value.Count == 0),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task SendMessage_WhenApiReturnsConflict_ReloadsConversationAndShowsProblemMessage()
     {
         var conversationId = Guid.CreateVersion7();
@@ -450,6 +672,7 @@ public sealed class AiAssistantRailTests : IDisposable
                 Arg.Any<string?>(),
                 Arg.Any<Guid?>(),
                 Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
+                Arg.Any<IReadOnlyList<AiSelectedReferenceDto>?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(
                 false,
@@ -571,6 +794,7 @@ public sealed class AiAssistantRailTests : IDisposable
         {
             Id = conversationId,
             Title = title,
+            LastMessageSequence = messages?.Select(message => message.Sequence.GetValueOrDefault()).DefaultIfEmpty(0).Max() ?? 0,
             Messages = messages,
             ProposedActions = proposedActions,
             _links = new Dictionary<string, Anonymous6>

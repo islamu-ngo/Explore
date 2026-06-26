@@ -100,6 +100,16 @@ public sealed class AiAssistantClientServiceTests
                 SizeBytes = 5
             }
         };
+        var references = new List<AiSelectedReferenceDto>
+        {
+            new()
+            {
+                Kind = "Event",
+                ReferenceId = Guid.CreateVersion7(),
+                DisplayName = "Community Iftar",
+                Summary = "Public evening program"
+            }
+        };
         _apiClient.SendAiMessageAsync(
                 conversationId,
                 Arg.Any<SendAiMessageRequestDto>(),
@@ -111,7 +121,12 @@ public sealed class AiAssistantClientServiceTests
 
         var service = CreateService();
 
-        var result = await service.SendMessageAsync(conversationId, "Plan an iftar", idempotencyKey: "send-key", images: images);
+        var result = await service.SendMessageAsync(
+            conversationId,
+            "Plan an iftar",
+            idempotencyKey: "send-key",
+            images: images,
+            references: references);
 
         await Assert.That(result.Success).IsTrue();
         await _apiClient.Received(1).SendAiMessageAsync(
@@ -123,7 +138,11 @@ public sealed class AiAssistantClientServiceTests
                 && request.Images != null
                 && request.Images.Count == 1
                 && request.Images.Single().MediaType == "image/png"
-                && request.Images.Single().Data == "aW1hZ2U="),
+                && request.Images.Single().Data == "aW1hZ2U="
+                && request.References != null
+                && request.References.Count == 1
+                && request.References.Single().Kind == "Event"
+                && request.References.Single().DisplayName == "Community Iftar"),
             "send-key",
             null,
             null,

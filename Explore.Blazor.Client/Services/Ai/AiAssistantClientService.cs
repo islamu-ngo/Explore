@@ -97,6 +97,7 @@ public sealed class AiAssistantClientService(
         string? mode = null,
         Guid? actorId = null,
         IReadOnlyList<AiMessageImageInputDto>? images = null,
+        IReadOnlyList<AiSelectedReferenceDto>? references = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -108,7 +109,8 @@ public sealed class AiAssistantClientService(
                 ActorId = actorId,
                 ModelId = modelId,
                 Mode = mode,
-                Images = images?.ToList() ?? []
+                Images = images?.ToList() ?? [],
+                References = references?.ToList() ?? []
             };
 
             var response = await apiClient.SendAiMessageAsync(

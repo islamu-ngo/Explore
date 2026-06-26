@@ -11,9 +11,12 @@
     inset-inline-end: 0;
     bottom: 0;
     width: var(--isl-dock-shell-ai-width, 360px);
+    max-inline-size: 100vw;
+    min-inline-size: 0;
     z-index: var(--isl-dock-z-shell, 1200);
     background: var(--mud-palette-surface);
     border-inline-start: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 50%, transparent);
+    overflow-x: hidden;
 
     display: flex;
     flex-direction: column;
@@ -21,6 +24,11 @@
     transform: translateX(100%);
     visibility: hidden;
     transition: var(--isl-dock-panel-transition, transform 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms ease);
+}
+
+.ai-rail,
+.ai-rail * {
+    box-sizing: border-box;
 }
 
 .ai-rail--open {
@@ -64,12 +72,14 @@
     border-bottom: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 40%, transparent);
     flex-shrink: 0;
     min-height: 48px;
+    min-inline-size: 0;
 }
 
 .ai-rail__header-brand {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-inline-size: 0;
 }
 
 .ai-rail__header-icon {
@@ -80,14 +90,18 @@
 .ai-rail__header-title {
     font-weight: 600;
     font-size: 0.9rem;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
     color: var(--mud-palette-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .ai-rail__header-actions {
     display: flex;
     align-items: center;
     gap: 2px;
+    flex-shrink: 0;
 }
 
 /* ══════════════════════════════════════════════
@@ -132,6 +146,7 @@
     font: inherit;
     text-align: start;
     transition: background 150ms ease, border-color 150ms ease;
+    min-inline-size: 0;
 }
 
 .ai-rail__conversation-button:hover,
@@ -149,6 +164,9 @@
 .ai-rail__conversation-title {
     font-weight: 600;
     font-size: 0.82rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .ai-rail__conversation-status {
@@ -172,10 +190,12 @@
 .ai-rail__body {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 16px 14px;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-inline-size: 0;
 }
 
 .ai-rail__message-list,
@@ -183,6 +203,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-inline-size: 0;
 }
 
 .ai-rail__message {
@@ -190,6 +211,8 @@
     padding: 10px 14px;
     background: color-mix(in srgb, var(--mud-palette-background-gray) 50%, var(--mud-palette-surface));
     max-width: 92%;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
     animation: ai-rail-msg-in 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -287,6 +310,8 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-inline-size: 0;
+    max-inline-size: 100%;
 }
 
 /* ── References panel (collapsible above composer) ── */
@@ -319,6 +344,8 @@
     flex-direction: column;
     gap: 6px;
     transition: border-color 200ms ease, box-shadow 200ms ease;
+    min-inline-size: 0;
+    max-inline-size: 100%;
 }
 
 .ai-rail__composer-card:focus-within {
@@ -332,6 +359,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    min-inline-size: 0;
 }
 
 .ai-rail__actor-label {
@@ -339,6 +367,7 @@
     font-size: 0.7rem;
     font-weight: 600;
     letter-spacing: 0.01em;
+    flex-shrink: 0;
 }
 
 .ai-rail__actor-selector {
@@ -351,7 +380,7 @@
     color: var(--mud-palette-text-primary);
     font-size: 0.72rem;
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
 }
 
 .ai-rail__actor-selector:focus-visible {
@@ -362,7 +391,12 @@
 /* ── Textarea ── */
 
 .ai-rail__textarea {
+    grid-area: 1 / 1;
+    position: relative;
+    z-index: 1;
     width: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
     border: none;
     background: transparent;
     color: var(--mud-palette-text-primary);
@@ -373,6 +407,17 @@
     resize: none;
     outline: none;
     min-height: 24px;
+    overflow-x: hidden;
+}
+
+.ai-rail__textarea--with-highlights {
+    color: transparent;
+    caret-color: var(--mud-palette-text-primary);
+}
+
+.ai-rail__textarea--with-highlights::selection {
+    color: var(--mud-palette-text-primary);
+    background: color-mix(in srgb, var(--mud-palette-primary) 22%, transparent);
 }
 
 .ai-rail__textarea::placeholder {
@@ -385,6 +430,8 @@
     flex-wrap: wrap;
     gap: 6px;
     padding-block: 2px 4px;
+    min-inline-size: 0;
+    max-inline-size: 100%;
 }
 
 .ai-rail__image-chip {
@@ -399,6 +446,7 @@
     color: var(--mud-palette-text-primary);
     font-size: 0.72rem;
     font-weight: 600;
+    min-inline-size: 0;
 }
 
 .ai-rail__image-chip-text {
@@ -434,6 +482,125 @@
     outline: none;
 }
 
+.ai-rail__selected-reference-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    padding-block: 2px 4px;
+}
+
+.ai-rail__prompt-shell {
+    position: relative;
+    display: grid;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+}
+
+.ai-rail__prompt-highlights {
+    grid-area: 1 / 1;
+    min-block-size: 24px;
+    max-inline-size: 100%;
+    padding: 4px 0;
+    color: var(--mud-palette-text-primary);
+    font: inherit;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+    white-space: pre-wrap;
+}
+
+.ai-rail__prompt-reference-token {
+    display: inline;
+    padding-inline: 2px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--mud-palette-warning) 26%, transparent);
+    color: var(--mud-palette-text-primary);
+    font-weight: 700;
+}
+
+.ai-rail__reference-autocomplete {
+    position: absolute;
+    inset-block-start: auto;
+    inset-block-end: calc(100% + 4px);
+    inset-inline: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-block-size: 220px;
+    min-block-size: 38px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px;
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 55%, transparent);
+    border-radius: 8px;
+    background: var(--mud-palette-surface);
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--mud-palette-black) 18%, transparent);
+    transform-origin: bottom center;
+}
+
+.ai-rail__reference-status,
+.ai-rail__reference-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 30px;
+    padding: 5px 8px;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.76rem;
+}
+
+.ai-rail__reference-option {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    inline-size: 100%;
+    min-inline-size: 0;
+    padding: 7px 8px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--mud-palette-text-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    text-align: start;
+}
+
+.ai-rail__reference-option:hover,
+.ai-rail__reference-option:focus-visible,
+.ai-rail__reference-option--active {
+    background: color-mix(in srgb, var(--mud-palette-primary) 12%, transparent);
+    outline: none;
+}
+
+.ai-rail__reference-option-icon {
+    color: var(--mud-palette-text-secondary);
+}
+
+.ai-rail__reference-option-text {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.ai-rail__reference-option-kind {
+    padding-inline: 6px;
+    padding-block: 2px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--mud-palette-lines-default) 35%, transparent);
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.66rem;
+    font-weight: 700;
+}
+
 /* ── Toolbar ── */
 
 .ai-rail__composer-toolbar {
@@ -441,6 +608,7 @@
     align-items: center;
     gap: 2px;
     margin-top: 2px;
+    min-inline-size: 0;
 }
 
 .ai-rail__toolbar-spacer {
@@ -586,12 +754,16 @@
     flex-direction: row;
     flex-wrap: wrap;
     gap: 6px;
+    min-inline-size: 0;
+    max-inline-size: 100%;
 }
 
 .ai-rail__chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    max-inline-size: 100%;
+    min-inline-size: 0;
     padding: 4px 8px;
     border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 30%, transparent);
     border-radius: 8px;
@@ -602,6 +774,14 @@
     font-size: 0.78rem;
     text-align: start;
     transition: border-color 150ms ease;
+}
+
+.ai-rail__chip-text {
+    min-inline-size: 0;
+    max-inline-size: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .ai-rail__chip:hover,
@@ -941,7 +1121,7 @@
 .ai-rail__history-title {
     font-weight: 600;
     font-size: 0.9rem;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
     color: var(--mud-palette-text-primary);
 }
 
