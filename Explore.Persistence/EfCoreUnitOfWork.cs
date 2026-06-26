@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Explore.Persistence;
 
@@ -54,15 +55,31 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                await transaction.RollbackAsync(ct);
+                await RollbackBestEffortAsync(transaction, ct);
                 throw TranslateConcurrencyException(ex);
             }
             catch
             {
-                await transaction.RollbackAsync(ct);
+                await RollbackBestEffortAsync(transaction, ct);
                 throw;
             }
         });
+    }
+
+    private static async Task RollbackBestEffortAsync(IDbContextTransaction transaction, CancellationToken ct)
+    {
+        try
+        {
+            await transaction.RollbackAsync(ct);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Preserve the original operation exception when EF/Npgsql already disposed the failed transaction.
+        }
+        catch (InvalidOperationException)
+        {
+            // Preserve the original operation exception when the transaction is no longer rollback-ready.
+        }
     }
 
     private static ConcurrencyConflictException TranslateConcurrencyException(DbUpdateConcurrencyException ex)

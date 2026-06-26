@@ -1,5 +1,6 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -125,6 +126,36 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .ToListAsync();
 
         return (items, totalCount);
+    }
+
+    public async Task<IReadOnlyList<Actor>> SearchAiReferenceActorsAsync(
+        string searchTerm,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        string trimmedTerm = searchTerm.Trim();
+
+        if (string.IsNullOrWhiteSpace(trimmedTerm) || limit <= 0)
+        {
+            return [];
+        }
+
+        string pattern = $"%{trimmedTerm}%";
+
+        return await _dbContext.Actors
+            .AsNoTracking()
+            .Include(a => a.Pii)
+            .Include(a => a.ActorType)
+            .Where(actor => actor.ActorTypeId == (int)ActorTypeEnum.User
+                || actor.ActorTypeId == (int)ActorTypeEnum.Organization)
+            .Where(actor => actor.Pii != null
+                && (EF.Functions.ILike(actor.Pii.DisplayName, pattern)
+                    || (actor.Pii.Handle != null && EF.Functions.ILike(actor.Pii.Handle, pattern))
+                    || (actor.Description != null && EF.Functions.ILike(actor.Description, pattern))))
+            .OrderBy(actor => actor.Pii.DisplayName)
+            .ThenBy(actor => actor.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<int> ForgetPiiAsync(Guid actorId)

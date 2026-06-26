@@ -43,6 +43,30 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         await Assert.That(currentAttendees).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task GetRegistrationsByEventWithDetailsPaged_ReturnsOnlyRequestedEventRows()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var firstScenario = await SeedApprovedRegistrationAsync(seedContext);
+        var secondScenario = await SeedApprovedRegistrationAsync(seedContext);
+        await using var queryContext = fixture.CreateDbContext();
+        var repository = new EventRegistrationRepository(queryContext);
+
+        var (items, totalCount) = await repository.GetRegistrationsByEventWithDetailsPaged(
+            firstScenario.EventId,
+            pageNumber: 1,
+            pageSize: 10,
+            CancellationToken.None);
+
+        await Assert.That(totalCount).IsEqualTo(1);
+        await Assert.That(items.Count).IsEqualTo(1);
+        await Assert.That(items[0].EventId).IsEqualTo(firstScenario.EventId);
+        await Assert.That(items[0].EventId).IsNotEqualTo(secondScenario.EventId);
+        await Assert.That(items[0].User?.Pii).IsNotNull();
+        await Assert.That(items[0].EventSession?.Event).IsNotNull();
+    }
+
     private ExploreDbContext CreateRetryingDbContext()
     {
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
@@ -148,8 +172,8 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         context.EventRegistrations.Add(registration);
         await context.SaveChangesAsync();
 
-        return new RegistrationScenario(registration.Id, session.Id);
+        return new RegistrationScenario(eventId, registration.Id, session.Id);
     }
 
-    private sealed record RegistrationScenario(Guid RegistrationId, Guid SessionId);
+    private sealed record RegistrationScenario(Guid EventId, Guid RegistrationId, Guid SessionId);
 }

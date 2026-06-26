@@ -26,6 +26,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
                 .ThenInclude(u => u!.Pii)
             .Include(r => r.EventSession)
                 .ThenInclude(s => s.Event)
+                    .ThenInclude(e => e!.FeaturedImage)
             .Include(r => r.ApprovalStatus)
             .FirstOrDefaultAsync(r => r.Id == id);
     }
@@ -36,6 +37,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
             .AsNoTracking()
             .Include(r => r.EventSession)
                 .ThenInclude(s => s.Event)
+                    .ThenInclude(e => e!.FeaturedImage)
             .Include(r => r.ApprovalStatus)
             .FirstOrDefaultAsync(r => r.UserId == userId && r.EventSessionId == eventSessionId);
     }
@@ -48,6 +50,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
                 .ThenInclude(u => u!.Pii)
             .Include(r => r.EventSession)
                 .ThenInclude(s => s.Event)
+                    .ThenInclude(e => e!.FeaturedImage)
             .Include(r => r.ApprovalStatus)
             .Where(r => r.EventSessionId == eventSessionId)
             .ToListAsync();
@@ -59,6 +62,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
             .AsNoTracking()
             .Include(r => r.EventSession)
                 .ThenInclude(s => s.Event)
+                    .ThenInclude(e => e!.FeaturedImage)
             .Include(r => r.ApprovalStatus)
             .Where(r => r.UserId == userId)
             .ToListAsync();
@@ -80,6 +84,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
                 .ThenInclude(u => u!.Pii)
             .Include(r => r.EventSession)
                 .ThenInclude(s => s.Event)
+                    .ThenInclude(e => e!.FeaturedImage)
             .Include(r => r.ApprovalStatus)
             .OrderByDescending(r => r.Id);
 
@@ -88,6 +93,33 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    public async Task<(List<EventRegistration> Items, int TotalCount)> GetRegistrationsByEventWithDetailsPaged(
+        Guid eventId,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var query = _dbContext.EventRegistrations
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(r => r.User)
+                .ThenInclude(u => u!.Pii)
+            .Include(r => r.EventSession)
+                .ThenInclude(s => s.Event)
+                    .ThenInclude(e => e!.FeaturedImage)
+            .Include(r => r.ApprovalStatus)
+            .Where(r => r.EventId == eventId)
+            .OrderByDescending(r => r.Id);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }

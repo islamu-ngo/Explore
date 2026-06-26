@@ -38,4 +38,11 @@ public interface IEventRegistrationIntentRepository : IGenericRepository<EventRe
         int waitlistedStatusId,
         CancellationToken cancellationToken,
         EmailDispatchOutbox? emailDispatchOutbox = null);
+
+    Task<IReadOnlyList<Guid>> GetRegisteredUserFanoutBatchAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid? afterUserId,
+        int pageSize,
+        CancellationToken cancellationToken);
 }

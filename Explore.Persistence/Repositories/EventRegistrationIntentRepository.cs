@@ -4,6 +4,8 @@
 using System.Data;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -103,6 +105,34 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
 
             return new EventRegistrationIntentCreationResult(intent, waitlistedSessionIds);
         }, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetRegisteredUserFanoutBatchAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid? afterUserId,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<Guid> query = _dbContext.EventRegistrationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(intent => intent.TenantId == tenantId
+                && intent.EventId == eventId
+                && !intent.IsDeleted
+                && intent.ApprovalStatusId != (int)ApprovalStatusEnum.Rejected)
+            .Select(intent => intent.UserId)
+            .Distinct();
+
+        if (afterUserId.HasValue)
+        {
+            query = query.Where(userId => userId.CompareTo(afterUserId.Value) > 0);
+        }
+
+        return await query
+            .OrderBy(userId => userId)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
     }
 
     private async Task<T> ExecuteInSerializableTransactionAsync<T>(

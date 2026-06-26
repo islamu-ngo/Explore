@@ -11,6 +11,11 @@ public interface IActorRepository : IGenericRepository<Actor, Guid>
     Task<bool> DidExists(string did);
     Task<(List<Actor> Items, int TotalCount)> GetActorsWithDetailsPaged(int pageNumber, int pageSize);
 
+    Task<IReadOnlyList<Actor>> SearchAiReferenceActorsAsync(
+        string searchTerm,
+        int limit,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Gets the Actor associated with a specific User (personal actor).
     /// </summary>
