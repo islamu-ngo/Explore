@@ -19,20 +19,17 @@ namespace Event.Application.UnitTests.Features.Events.Commands;
 public class EventListCacheInvalidationCommandHandlerTests
 {
     [Test]
-    public async Task UpdateEventStatus_WhenEventIsUpdated_InvalidatesTenantEventListTag()
+    public async Task UpdateEvent_WhenEventIsUpdated_InvalidatesTenantEventListTag()
     {
         var tenantId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var eventRepository = Substitute.For<IEventRepository>();
-        var eventStatusRepository = Substitute.For<IEventStatusRepository>();
         var cache = Substitute.For<HybridCache>();
         var @event = CreateEvent(eventId, tenantId);
         eventRepository.GetById(eventId).Returns(@event);
-        eventStatusRepository.Exists(2).Returns(true);
 
         var handler = new UpdateEventCommandHandler(
             eventRepository,
-            eventStatusRepository,
             Substitute.For<IAudienceAgeRepository>(),
             Substitute.For<IAudienceGenderRepository>(),
             Substitute.For<IEventTypeRepository>(),
@@ -46,8 +43,7 @@ public class EventListCacheInvalidationCommandHandlerTests
 
         var result = await handler.Handle(new UpdateEventCommand
         {
-            Id = eventId,
-            EventStatusDto = new UpdateEventStatusDto { EventStatusId = 2 }
+            Id = eventId
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();

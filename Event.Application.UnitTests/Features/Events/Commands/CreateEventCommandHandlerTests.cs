@@ -13,6 +13,7 @@ using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services.Lifecycle;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -28,6 +29,8 @@ public class CreateEventCommandHandlerTests
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
+    private readonly IEventSessionSpeakerRepository _eventSessionSpeakerRepository;
+    private readonly IEventIslamicAspectRepository _eventIslamicAspectRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventSessionLanguageRepository _eventSessionLanguageRepository;
     private readonly IEventActorResolver _actorResolver;
@@ -50,9 +53,12 @@ public class CreateEventCommandHandlerTests
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
     private readonly ILanguageRepository _languageRepository;
+    private readonly IMadhabRepository _madhabRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly ITagRepository _tagRepository;
     private readonly IScheduleItemKindRepository _scheduleItemKindRepository;
+    private readonly IEventSessionKindRepository _eventSessionKindRepository;
+    private readonly IActorRepository _actorRepository;
     private readonly IEventDayRepository _eventDayRepository;
     private readonly ILocationRoomRepository _locationRoomRepository;
     private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
@@ -61,6 +67,8 @@ public class CreateEventCommandHandlerTests
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventRoleAssignmentRepository _eventRoleAssignmentRepository;
     private readonly IUserContext _userContext;
+    private readonly IEventLifecyclePolicyProvider _lifecyclePolicyProvider;
+    private readonly IEventLifecycleReadinessEvaluator _lifecycleReadinessEvaluator;
     private readonly ITenantContext _tenantContext;
     private readonly HybridCache _cache;
     private readonly IUnitOfWork _unitOfWork;
@@ -71,6 +79,8 @@ public class CreateEventCommandHandlerTests
     {
         _eventRepository = Substitute.For<IEventRepository>();
         _eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        _eventSessionSpeakerRepository = Substitute.For<IEventSessionSpeakerRepository>();
+        _eventIslamicAspectRepository = Substitute.For<IEventIslamicAspectRepository>();
         _eventSessionIslamicAspectRepository = Substitute.For<IEventSessionIslamicAspectRepository>();
         _eventSessionLanguageRepository = Substitute.For<IEventSessionLanguageRepository>();
         _actorResolver = Substitute.For<IEventActorResolver>();
@@ -93,9 +103,12 @@ public class CreateEventCommandHandlerTests
         _locationRepository = Substitute.For<ILocationRepository>();
         _registrationModeRepository = Substitute.For<IRegistrationModeRepository>();
         _languageRepository = Substitute.For<ILanguageRepository>();
+        _madhabRepository = Substitute.For<IMadhabRepository>();
         _categoryRepository = Substitute.For<ICategoryRepository>();
         _tagRepository = Substitute.For<ITagRepository>();
         _scheduleItemKindRepository = Substitute.For<IScheduleItemKindRepository>();
+        _eventSessionKindRepository = Substitute.For<IEventSessionKindRepository>();
+        _actorRepository = Substitute.For<IActorRepository>();
         _eventDayRepository = Substitute.For<IEventDayRepository>();
         _locationRoomRepository = Substitute.For<ILocationRoomRepository>();
         _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
@@ -104,6 +117,8 @@ public class CreateEventCommandHandlerTests
         _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
         _eventRoleAssignmentRepository = Substitute.For<IEventRoleAssignmentRepository>();
         _userContext = Substitute.For<IUserContext>();
+        _lifecyclePolicyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
+        _lifecycleReadinessEvaluator = Substitute.For<IEventLifecycleReadinessEvaluator>();
         _tenantContext = Substitute.For<ITenantContext>();
         _cache = Substitute.For<HybridCache>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -117,6 +132,25 @@ public class CreateEventCommandHandlerTests
         });
         _eventSessionRepository.Create(Arg.Any<EventSession>())
             .Returns(callInfo => callInfo.Arg<EventSession>());
+        _eventIslamicAspectRepository.Upsert(Arg.Any<EventIslamicAspect>())
+            .Returns(callInfo => callInfo.Arg<EventIslamicAspect>());
+        _locationRepository.Create(Arg.Any<Location>()).Returns(callInfo =>
+        {
+            var entity = callInfo.Arg<Location>();
+            entity.Id = Guid.NewGuid();
+            entity.Pii.LocationId = entity.Id;
+            return entity;
+        });
+        _locationRoomRepository.Create(Arg.Any<LocationRoom>()).Returns(callInfo =>
+        {
+            var entity = callInfo.Arg<LocationRoom>();
+            entity.Id = Guid.NewGuid();
+            return entity;
+        });
+        _eventAgendaItemRepository.Create(Arg.Any<EventAgendaItem>())
+            .Returns(callInfo => callInfo.Arg<EventAgendaItem>());
+        _eventSessionSpeakerRepository.Create(Arg.Any<EventSessionSpeaker>())
+            .Returns(callInfo => callInfo.Arg<EventSessionSpeaker>());
 
         _unitOfWork
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<Guid>>>(), Arg.Any<CancellationToken>())
@@ -132,6 +166,8 @@ public class CreateEventCommandHandlerTests
         _handler = new CreateEventCommandHandler(
             _eventRepository,
             _eventSessionRepository,
+            _eventSessionSpeakerRepository,
+            _eventIslamicAspectRepository,
             _eventSessionIslamicAspectRepository,
             _eventSessionLanguageRepository,
             _eventRoleAssignmentRepository,
@@ -155,9 +191,12 @@ public class CreateEventCommandHandlerTests
             _locationRepository,
             _registrationModeRepository,
             _languageRepository,
+            _madhabRepository,
             _categoryRepository,
             _tagRepository,
             _scheduleItemKindRepository,
+            _eventSessionKindRepository,
+            _actorRepository,
             _eventDayRepository,
             _locationRoomRepository,
             _eventAgendaItemRepository,
@@ -169,7 +208,9 @@ public class CreateEventCommandHandlerTests
             _cache,
             new BusinessMetrics(meterFactory),
             _unitOfWork,
-            _outboxRepository
+            _outboxRepository,
+            _lifecyclePolicyProvider,
+            _lifecycleReadinessEvaluator
         );
     }
 
@@ -273,7 +314,7 @@ public class CreateEventCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithDraftWithoutSessions_ReturnsSuccessWithoutCreatingSessions()
+    public async Task Handle_WithDraftWithoutSessions_CreatesDefaultDraftSession()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -302,7 +343,194 @@ public class CreateEventCommandHandlerTests
             && entity.LastSessionDate == null
             && entity.FirstSessionStartUtc == null
             && entity.LastSessionStartUtc == null));
-        await _eventSessionRepository.DidNotReceive().Create(Arg.Any<EventSession>());
+        await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
+            session.Title == "Draft without program items"
+            && session.StartTime == null
+            && session.EndTime == null
+            && session.EventSessionStatusId == (int)EventSessionStatusEnum.Draft));
+    }
+
+    [Test]
+    public async Task Handle_WithDraftLocationAndNoExplicitSessions_LinksDefaultSessionToPrimaryRoom()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Poster venue event",
+                Locations =
+                [
+                    new CreateEventLocationRequest
+                    {
+                        TempKey = "primary-location",
+                        FullName = "Islamic Centre Brussels",
+                        Address = "Rue Example 10",
+                        Postcode = "1000",
+                        Country = "Belgium",
+                        City = "Brussels"
+                    }
+                ],
+                Rooms =
+                [
+                    new CreateEventRoomRequest
+                    {
+                        TempKey = "primary-room",
+                        LocationTempKey = "primary-location",
+                        Name = "Main Hall"
+                    }
+                ],
+                Sessions = []
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
+            session.LocationId.HasValue
+            && session.RoomId.HasValue
+            && session.StartTime == null
+            && session.EndTime == null));
+    }
+
+    [Test]
+    public async Task Handle_WithDraftSessions_CreatesDraftSessionsWithoutPublicScheduleRollup()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Draft with internal sessions",
+                Sessions = [CreateSessionRequest()]
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
+            entity.SessionCount == 0
+            && entity.FirstSessionDate == null
+            && entity.LastSessionDate == null
+            && entity.FirstSessionStartUtc == null
+            && entity.LastSessionStartUtc == null));
+        await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
+            session.EventSessionStatusId == (int)EventSessionStatusEnum.Draft));
+    }
+
+    [Test]
+    public async Task Handle_WithStructuredDraftGraph_CreatesRelatedEventRows()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var speakerActorId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Structured Poster Event",
+                IslamicAspect = new()
+                {
+                    GenderMode = GenderSegregationMode.Segregated
+                },
+                Locations =
+                [
+                    new CreateEventLocationRequest
+                    {
+                        TempKey = "main-location",
+                        FullName = "Islamic Centre Brussels",
+                        Address = "Rue Example 10",
+                        Postcode = "1000",
+                        Country = "Belgium",
+                        City = "Brussels",
+                        Timezone = "Europe/Brussels"
+                    }
+                ],
+                Rooms =
+                [
+                    new CreateEventRoomRequest
+                    {
+                        TempKey = "main-hall",
+                        LocationTempKey = "main-location",
+                        Name = "Main Hall"
+                    }
+                ],
+                Sessions =
+                [
+                    new CreateEventSessionRequest
+                    {
+                        Title = "Keynote",
+                        RoomTempKey = "main-hall",
+                        StartTime = DateTimeOffset.UtcNow.AddDays(1),
+                        EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+                        EventSessionKindId = 2,
+                        SpeakerActorIds = [speakerActorId, speakerActorId]
+                    }
+                ],
+                AgendaItems =
+                [
+                    new CreateEventAgendaItemRequest
+                    {
+                        Title = "Doors open",
+                        RoomTempKey = "main-hall",
+                        StartTime = DateTimeOffset.UtcNow.AddDays(1).AddMinutes(-30),
+                        EndTime = DateTimeOffset.UtcNow.AddDays(1).AddMinutes(-15)
+                    }
+                ]
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+        _eventSessionKindRepository.Exists(2).Returns(true);
+        _actorRepository.Exists(speakerActorId).Returns(true);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventIslamicAspectRepository.Received(1).Upsert(Arg.Is<EventIslamicAspect>(aspect =>
+            aspect.Id == result.Id
+            && aspect.GenderMode == GenderSegregationMode.Segregated));
+        await _locationRepository.Received(1).Create(Arg.Is<Location>(location =>
+            location.TenantId == tenantId
+            && location.FullName == "Islamic Centre Brussels"
+            && location.Pii.Address == "Rue Example 10"));
+        await _locationRoomRepository.Received(1).Create(Arg.Is<LocationRoom>(room =>
+            room.TenantId == tenantId
+            && room.Name == "Main Hall"
+            && room.LocationId != Guid.Empty));
+        await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
+            session.Title == "Keynote"
+            && session.TenantId == tenantId
+            && session.EventSessionKindId == 2
+            && session.LocationId != null
+            && session.RoomId != null));
+        await _eventSessionSpeakerRepository.Received(1).Create(Arg.Is<EventSessionSpeaker>(speaker =>
+            speaker.ActorId == speakerActorId
+            && speaker.TenantId == tenantId));
+        await _eventAgendaItemRepository.Received(1).Create(Arg.Is<EventAgendaItem>(item =>
+            item.Title == "Doors open"
+            && item.LocationId != null
+            && item.RoomId != null));
     }
 
     [Test]
@@ -445,10 +673,22 @@ public class CreateEventCommandHandlerTests
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
 
+        _lifecyclePolicyProvider.GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(new EventLifecyclePolicy
+            {
+                Profile = ValidationProfile.EventPublish,
+                RequiredEventFields = new HashSet<Enum> { EventFieldKey.Title, EventFieldKey.ScheduleSessions },
+                RequiredSessionFields = new HashSet<Enum>()
+            });
+        _lifecycleReadinessEvaluator.Evaluate(Arg.Any<Explore.Domain.Event>(), ValidationProfile.EventPublish, Arg.Any<EventLifecyclePolicy>())
+            .Returns(LifecycleReadinessResult.Success(ValidationProfile.EventPublish));
+
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(e => e.EventStatusId == (int)EventStatusEnum.Published));
+        await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
+            session.EventSessionStatusId == (int)EventSessionStatusEnum.Published));
         await _outboxRepository.Received(2).Create(Arg.Any<OutboxMessage>());
     }
 
@@ -481,6 +721,19 @@ public class CreateEventCommandHandlerTests
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
+
+        _lifecyclePolicyProvider.GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(new EventLifecyclePolicy
+            {
+                Profile = ValidationProfile.EventPublish,
+                RequiredEventFields = new HashSet<Enum> { EventFieldKey.Title, EventFieldKey.ScheduleSessions },
+                RequiredSessionFields = new HashSet<Enum>()
+            });
+        _lifecycleReadinessEvaluator.Evaluate(Arg.Any<Explore.Domain.Event>(), ValidationProfile.EventPublish, Arg.Any<EventLifecyclePolicy>())
+            .Returns(LifecycleReadinessResult.Failure(ValidationProfile.EventPublish,
+            [
+                new LifecycleReadinessError("schedule_session_required", EventFieldKey.ScheduleSessions, "schedule.sessions", "Event requires at least one scheduled session.", ReadinessErrorSeverity.Error, ReadinessErrorSource.CommandProfile, ValidationProfile.EventPublish)
+            ]));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 

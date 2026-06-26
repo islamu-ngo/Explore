@@ -1,0 +1,101 @@
+// ABOUTME: Builds enriched event detail DTOs for public and authorized management read paths.
+// ABOUTME: Adds moderation eligibility, tags, categories, and safe image URLs after entity mapping.
+
+using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Category;
+using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.Tag;
+using Microsoft.Extensions.Logging;
+
+namespace Explore.Application.Services;
+
+public sealed class EventDetailsProjectionService : IEventDetailsProjectionService
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IEventModerationRecordRepository _eventModerationRecordRepository;
+    private readonly IEventTagsRepository _eventTagsRepository;
+    private readonly IEventCategoriesRepository _eventCategoriesRepository;
+    private readonly IMapper _mapper;
+    private readonly IObjectStorageService _objectStorageService;
+    private readonly ILogger<EventDetailsProjectionService> _logger;
+
+    public EventDetailsProjectionService(
+        IEventRepository eventRepository,
+        IEventModerationRecordRepository eventModerationRecordRepository,
+        IEventTagsRepository eventTagsRepository,
+        IEventCategoriesRepository eventCategoriesRepository,
+        IMapper mapper,
+        IObjectStorageService objectStorageService,
+        ILogger<EventDetailsProjectionService> logger)
+    {
+        _eventRepository = eventRepository;
+        _eventModerationRecordRepository = eventModerationRecordRepository;
+        _eventTagsRepository = eventTagsRepository;
+        _eventCategoriesRepository = eventCategoriesRepository;
+        _mapper = mapper;
+        _objectStorageService = objectStorageService;
+        _logger = logger;
+    }
+
+    public async Task<EventDto?> BuildAsync(Guid eventId, CancellationToken cancellationToken)
+    {
+        var @event = await _eventRepository.GetEventWithDetails(eventId);
+        var dto = _mapper.Map<EventDto>(@event);
+
+        if (dto is null)
+            return null;
+
+        var latestModerationRecord = await _eventModerationRecordRepository.GetLatestByEventAsync(
+            dto.TenantId,
+            eventId,
+            cancellationToken);
+        var tags = await _eventTagsRepository.GetTagsByEvent(eventId);
+        var categories = await _eventCategoriesRepository.GetCategoriesByEvent(eventId);
+
+        dto.IsUnmoderationEligible = latestModerationRecord?.AllowsUnmoderation == true;
+        dto.Tags = _mapper.Map<List<TagListDto>>(tags);
+        dto.Categories = _mapper.Map<List<CategoryListDto>>(categories);
+
+        return dto;
+    }
+
+    public async Task ResolveImageUrlsAsync(EventDto eventDto, CancellationToken cancellationToken)
+    {
+        eventDto.FeaturedImageUri = await ResolveImageUrlAsync(eventDto.FeaturedImageUri);
+        eventDto.ActorProfilePictureUri = await ResolveImageUrlAsync(eventDto.ActorProfilePictureUri);
+    }
+
+    private async Task<string?> ResolveImageUrlAsync(string? objectKeyOrUri)
+    {
+        if (string.IsNullOrEmpty(objectKeyOrUri))
+            return null;
+
+        try
+        {
+            if (objectKeyOrUri.StartsWith("/", StringComparison.OrdinalIgnoreCase))
+                return objectKeyOrUri;
+
+            if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
+                    return objectKeyOrUri;
+
+                if (uri.AbsolutePath.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
+                    return objectKeyOrUri;
+
+                return await _objectStorageService.GeneratePresignedDownloadUrl(uri.AbsolutePath.TrimStart('/'), 60);
+            }
+
+            return await _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate presigned URL for event detail image.");
+            return null;
+        }
+    }
+}

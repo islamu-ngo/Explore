@@ -35,8 +35,7 @@ public class UpdateEventDto
     public bool IsRegistrationRequired { get; set; }
     public string? ExternalRegistrationUrl { get; set; }
 
-    // Status & Visibility
-    public int EventStatusId { get; set; }
+    // Visibility
     public int VisibilityTypeId { get; set; }
 
     // Format

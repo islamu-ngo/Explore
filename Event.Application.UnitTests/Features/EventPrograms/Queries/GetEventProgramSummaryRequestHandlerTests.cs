@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.EventPrograms.Handlers.Queries;
 using Explore.Application.Features.EventPrograms.Requests.Queries;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -38,7 +39,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         session.SessionGroups.Add(CreateAssignment(group, session, eventEntity, tenant, isPrimary: true, sortOrder: 4));
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
-        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
+        _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
         _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
@@ -59,6 +60,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         await Assert.That(item.Capacity).IsEqualTo(120);
         await Assert.That(item.RegistrationModeName).IsEqualTo("Open");
         await Assert.That(result.ReadinessWarnings).IsEmpty();
+        await _eventSessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
     }
 
     [Test]
@@ -71,6 +73,25 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
 
         await Assert.That(result).IsNull();
         await _eventSessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
+        await _eventSessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventAgendaItemRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenEventIsNotPublicPublished_ReturnsNullWithoutLoadingProgram()
+    {
+        var eventId = Guid.NewGuid();
+        var tenant = CreateTenant(Guid.NewGuid());
+        var eventEntity = CreateEvent(eventId, tenant);
+        eventEntity.EventStatusId = (int)EventStatusEnum.Draft;
+
+        _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _eventSessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventSessionGroupRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _eventAgendaItemRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -98,7 +119,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         session.RegistrationMode = null;
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
-        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
+        _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
         _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
@@ -135,7 +156,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
             new DateTimeOffset(2026, 5, 30, 8, 0, 0, TimeSpan.Zero));
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
-        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
+        _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
         _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([agendaItem]);
 
@@ -180,6 +201,8 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
             VisibilityType = null!,
             EventStatus = null!,
             EventFormat = null!,
+            EventStatusId = (int)EventStatusEnum.Published,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             FirstSessionDate = new DateOnly(2026, 6, 1),
             LastSessionDate = new DateOnly(2026, 6, 2),
             Timezone = "Europe/Brussels",

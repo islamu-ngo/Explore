@@ -7,8 +7,10 @@ using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Services;
+using Explore.Application.Services.Lifecycle;
 using Explore.Application.Settings;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
@@ -25,6 +27,7 @@ public static class ApplicationServicesRegistration
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());
+        services.AddScoped<IAiAssistantActorContextService, AiAssistantActorContextService>();
 
         // Onboarding Services
         services.AddScoped<ITenantPolicySettingService, TenantPolicySettingService>();
@@ -62,8 +65,12 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
         services.AddScoped<IEventLifecycleEmailOutboxFactory, EventLifecycleEmailOutboxFactory>();
         services.AddScoped<IEventPublishedNotificationFanoutService, EventPublishedNotificationFanoutService>();
+        services.AddScoped<IEventModerationNotificationFanoutService, EventModerationNotificationFanoutService>();
+        services.AddScoped<IEventDetailsProjectionService, EventDetailsProjectionService>();
         services.AddScoped<INotificationRefreshStreamService, NotificationRefreshStreamService>();
         services.AddScoped<IEventLifecycleScheduler, EventLifecycleScheduler>();
+        services.AddScoped<IEventLifecyclePolicyProvider, EventLifecyclePolicyProvider>();
+        services.AddScoped<IEventLifecycleReadinessEvaluator, EventLifecycleReadinessEvaluator>();
         services.AddScoped<IScheduledEmailDispatchTrigger, NoOpScheduledEmailDispatchTrigger>();
         services.AddSingleton<IScheduledJobRegistry, ScheduledJobRegistry>();
 

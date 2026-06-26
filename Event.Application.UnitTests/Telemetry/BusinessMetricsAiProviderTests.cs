@@ -127,12 +127,28 @@ public sealed class BusinessMetricsAiProviderTests
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
 
-        metrics.RecordAiProviderProposedActions("openai-sdk", 2, "secret_action_payload");
+        metrics.RecordAiProviderProposedActions("openai", 2, "delete_event_tech_aspect");
 
         var measurement = await metricsCapture.SingleAsync("explore.ai.provider.proposed_actions");
 
         await Assert.That(measurement.Value).IsEqualTo(2d);
-        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("openai-sdk");
+        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("openai");
+        await Assert.That(measurement.Tags["action_kind"]?.ToString()).IsEqualTo("delete_event_tech_aspect");
+        await AssertNoSensitiveTagsAsync(measurement);
+    }
+
+    [Test]
+    public async Task RecordAiProviderProposedActionsRejectsUnboundedActionKindTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+
+        metrics.RecordAiProviderProposedActions("openai", 2, "secret_action_payload");
+
+        var measurement = await metricsCapture.SingleAsync("explore.ai.provider.proposed_actions");
+
+        await Assert.That(measurement.Value).IsEqualTo(2d);
+        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("openai");
         await Assert.That(measurement.Tags["action_kind"]?.ToString()).IsEqualTo("unknown");
         await AssertNoSensitiveTagsAsync(measurement);
     }

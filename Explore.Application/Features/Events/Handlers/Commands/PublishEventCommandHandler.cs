@@ -1,5 +1,5 @@
 // ABOUTME: Handler for publishing an existing draft Event.
-// ABOUTME: Validates concurrency stamp and publish readiness, transitions status to Published, and creates outbox messages.
+// ABOUTME: Validates concurrency stamp and policy-aware publish readiness, transitions status to Published, and creates outbox messages.
 
 using System.Text.Json;
 using Explore.Application.Caching;
@@ -10,6 +10,7 @@ using Explore.Application.Models.IntegrationEvents;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Responses;
 using Explore.Application.Services;
+using Explore.Application.Services.Lifecycle;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
@@ -21,7 +22,9 @@ public class PublishEventCommandHandler(
     IEventRepository eventRepository,
     IOutboxRepository outboxRepository,
     IUnitOfWork unitOfWork,
-    HybridCache cache) : IRequestHandler<PublishEventCommand, BaseCommandResponse<Guid>>
+    HybridCache cache,
+    IEventLifecyclePolicyProvider policyProvider,
+    IEventLifecycleReadinessEvaluator readinessEvaluator) : IRequestHandler<PublishEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_publish_concurrency_conflict";
     private const string ReadinessFailedCode = "event_publish_readiness_failed";
@@ -53,7 +56,8 @@ public class PublishEventCommandHandler(
                     ConcurrencyConflictCode);
             }
 
-            var readiness = EventPublishReadinessEvaluator.Evaluate(@event);
+            EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, token);
+            LifecycleReadinessResult readiness = readinessEvaluator.Evaluate(@event, ValidationProfile.EventPublish, policy);
             if (!readiness.IsReady)
                 return Failure(request.Id, "Event is not ready to publish.", readiness.Errors.Select(error => error.Message), ReadinessFailedCode);
 

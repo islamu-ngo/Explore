@@ -17,6 +17,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Services;
+using Explore.Application.Services.Lifecycle;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -30,6 +31,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
+    private readonly IEventSessionSpeakerRepository _eventSessionSpeakerRepository;
+    private readonly IEventIslamicAspectRepository _eventIslamicAspectRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventSessionLanguageRepository _eventSessionLanguageRepository;
     private readonly IEventRoleAssignmentRepository _eventRoleAssignmentRepository;
@@ -53,9 +56,12 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
     private readonly ILanguageRepository _languageRepository;
+    private readonly IMadhabRepository _madhabRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly ITagRepository _tagRepository;
     private readonly IScheduleItemKindRepository _scheduleItemKindRepository;
+    private readonly IEventSessionKindRepository _eventSessionKindRepository;
+    private readonly IActorRepository _actorRepository;
     private readonly IEventDayRepository _eventDayRepository;
     private readonly ILocationRoomRepository _locationRoomRepository;
     private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
@@ -68,10 +74,14 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly BusinessMetrics _metrics;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOutboxRepository _outboxRepository;
+    private readonly IEventLifecyclePolicyProvider _lifecyclePolicyProvider;
+    private readonly IEventLifecycleReadinessEvaluator _lifecycleReadinessEvaluator;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
         IEventSessionRepository eventSessionRepository,
+        IEventSessionSpeakerRepository eventSessionSpeakerRepository,
+        IEventIslamicAspectRepository eventIslamicAspectRepository,
         IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
         IEventSessionLanguageRepository eventSessionLanguageRepository,
         IEventRoleAssignmentRepository eventRoleAssignmentRepository,
@@ -95,9 +105,12 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
         ILanguageRepository languageRepository,
+        IMadhabRepository madhabRepository,
         ICategoryRepository categoryRepository,
         ITagRepository tagRepository,
         IScheduleItemKindRepository scheduleItemKindRepository,
+        IEventSessionKindRepository eventSessionKindRepository,
+        IActorRepository actorRepository,
         IEventDayRepository eventDayRepository,
         ILocationRoomRepository locationRoomRepository,
         IEventAgendaItemRepository eventAgendaItemRepository,
@@ -109,10 +122,14 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         HybridCache cache,
         BusinessMetrics metrics,
         IUnitOfWork unitOfWork,
-        IOutboxRepository outboxRepository)
+        IOutboxRepository outboxRepository,
+        IEventLifecyclePolicyProvider lifecyclePolicyProvider,
+        IEventLifecycleReadinessEvaluator lifecycleReadinessEvaluator)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
+        _eventSessionSpeakerRepository = eventSessionSpeakerRepository;
+        _eventIslamicAspectRepository = eventIslamicAspectRepository;
         _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
         _eventSessionLanguageRepository = eventSessionLanguageRepository;
         _eventRoleAssignmentRepository = eventRoleAssignmentRepository;
@@ -136,9 +153,12 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
         _languageRepository = languageRepository;
+        _madhabRepository = madhabRepository;
         _categoryRepository = categoryRepository;
         _tagRepository = tagRepository;
         _scheduleItemKindRepository = scheduleItemKindRepository;
+        _eventSessionKindRepository = eventSessionKindRepository;
+        _actorRepository = actorRepository;
         _eventDayRepository = eventDayRepository;
         _locationRoomRepository = locationRoomRepository;
         _eventAgendaItemRepository = eventAgendaItemRepository;
@@ -151,6 +171,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _metrics = metrics;
         _unitOfWork = unitOfWork;
         _outboxRepository = outboxRepository;
+        _lifecyclePolicyProvider = lifecyclePolicyProvider;
+        _lifecycleReadinessEvaluator = lifecycleReadinessEvaluator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
@@ -183,7 +205,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
         if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
         {
-            var readiness = EventPublishReadinessEvaluator.Evaluate(eventEntity);
+            EventLifecyclePolicy policy = await _lifecyclePolicyProvider.GetEffectivePolicyAsync(eventEntity.TenantId, ValidationProfile.EventPublish, cancellationToken);
+            LifecycleReadinessResult readiness = _lifecycleReadinessEvaluator.Evaluate(eventEntity, ValidationProfile.EventPublish, policy);
             if (!readiness.IsReady)
             {
                 response.Success = false;
@@ -200,12 +223,14 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             {
                 eventEntity = await _eventRepository.Create(eventEntity);
                 await AssignFeaturedImageActorAsync(dto, actorResult.ActorId);
+                await CreateEventIslamicAspectAsync(dto, eventEntity, ct);
                 await AssignInitialEventOwnerAsync(eventEntity, currentUserId, ct);
 
+                var locationMap = await CreateLocationsAsync(dto, ct);
                 var dayMaps = await CreateEventDaysAsync(dto, eventEntity, timezoneId, ct);
-                var roomMap = await CreateRoomsAsync(dto, ct);
-                await CreateSessionsAsync(dto, eventEntity, dayMaps, roomMap, timezoneId, currentUserId, createdAt, ct);
-                await CreateEventAgendaItemsAsync(dto, eventEntity, dayMaps, roomMap, timezoneId, ct);
+                var roomMap = await CreateRoomsAsync(dto, locationMap, ct);
+                await CreateSessionsAsync(dto, eventEntity, locationMap, dayMaps, roomMap, timezoneId, currentUserId, createdAt, ct);
+                await CreateEventAgendaItemsAsync(dto, eventEntity, locationMap, dayMaps, roomMap, timezoneId, ct);
                 await CreateCategoryAndTagAssignmentsAsync(dto, eventEntity, ct);
                 await InstantiateTemplatePropertiesAsync(dto, eventEntity, currentUserId, createdAt, ct);
 
@@ -253,11 +278,14 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             _locationRepository,
             _registrationModeRepository,
             _languageRepository,
+            _madhabRepository,
             _categoryRepository,
             _tagRepository,
             _scheduleItemKindRepository,
+            _eventSessionKindRepository,
             _locationRoomRepository,
-            _eventSessionTemplateRepository);
+            _eventSessionTemplateRepository,
+            _actorRepository);
 
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
         return validationResult.Errors.Select(e => e.ErrorMessage).ToList();
@@ -268,8 +296,12 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
     private Event BuildEventEntity(CreateEventRequest dto, EventActorResult actorResult, string timezoneId)
     {
-        var firstSession = dto.Sessions.MinBy(s => s.StartTime);
-        var lastSession = dto.Sessions.MaxBy(s => s.StartTime);
+        var eventStatusId = dto.EventStatusId == 0 ? (int)EventStatusEnum.Draft : dto.EventStatusId;
+        var publicSessionRequests = eventStatusId == (int)EventStatusEnum.Published
+            ? dto.Sessions
+            : [];
+        var firstSession = publicSessionRequests.MinBy(s => s.StartTime);
+        var lastSession = publicSessionRequests.MaxBy(s => s.StartTime);
         var firstSessionLocal = firstSession is null
             ? (DateOnly?)null
             : _scheduleProjectionCalculator.Project(firstSession.StartTime, firstSession.EndTime, timezoneId).LocalStartDate;
@@ -292,10 +324,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             FeaturedImageId = dto.FeaturedImageId,
             IsRegistrationRequired = dto.IsRegistrationRequired,
             ExternalRegistrationUrl = dto.ExternalRegistrationUrl,
-            EventStatusId = dto.EventStatusId == 0 ? 1 : dto.EventStatusId,
+            EventStatusId = eventStatusId,
             VisibilityTypeId = dto.VisibilityTypeId == 0 ? 1 : dto.VisibilityTypeId,
             EventFormatId = dto.EventFormatId == 0 ? 1 : dto.EventFormatId,
-            MadhabId = dto.MadhabId,
+            MadhabId = dto.MadhabId ?? dto.IslamicAspect?.MadhabId,
             Timezone = timezoneId,
             EventTimeZoneId = timezoneId,
             EventUrl = dto.EventUrl,
@@ -307,9 +339,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             RegistrationPolicyId = dto.RegistrationPolicyId,
             FirstSessionDate = firstSessionLocal,
             LastSessionDate = lastSessionLocal,
-            FirstSessionStartUtc = firstSession?.StartTime,
-            LastSessionStartUtc = lastSession?.StartTime,
-            SessionCount = dto.Sessions.Count,
+            FirstSessionStartUtc = firstSession?.StartTime.ToUniversalTime(),
+            LastSessionStartUtc = lastSession?.StartTime.ToUniversalTime(),
+            SessionCount = publicSessionRequests.Count,
             ActorId = actorResult.ActorId,
             Actor = null!,
             TenantId = _tenantContext.TenantId,
@@ -331,6 +363,25 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
         storageObject.ActorId = actorId;
         await _storageObjectRepository.Update(storageObject);
+    }
+
+    private async Task CreateEventIslamicAspectAsync(CreateEventRequest dto, Event eventEntity, CancellationToken ct)
+    {
+        if (dto.IslamicAspect is null) return;
+
+        var aspect = new EventIslamicAspect
+        {
+            Id = eventEntity.Id,
+            Event = null,
+            MadhabId = dto.IslamicAspect.MadhabId,
+            ReferencePrayer = dto.IslamicAspect.ReferencePrayer,
+            PrayerTimeOffset = dto.IslamicAspect.PrayerTimeOffset,
+            GenderMode = dto.IslamicAspect.GenderMode,
+            IncludesQuranRecitation = dto.IslamicAspect.IncludesQuranRecitation,
+            PrimaryLanguageId = dto.IslamicAspect.PrimaryLanguageId
+        };
+
+        await _eventIslamicAspectRepository.Upsert(aspect);
     }
 
     private async Task AssignInitialEventOwnerAsync(
@@ -411,15 +462,51 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         return (byKey, byDate);
     }
 
-    private async Task<Dictionary<string, LocationRoom>> CreateRoomsAsync(CreateEventRequest dto, CancellationToken ct)
+    private async Task<Dictionary<string, Location>> CreateLocationsAsync(CreateEventRequest dto, CancellationToken ct)
+    {
+        var byKey = new Dictionary<string, Location>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var locationDto in dto.Locations)
+        {
+            var location = new Location
+            {
+                FullName = locationDto.FullName,
+                Country = locationDto.Country,
+                City = locationDto.City,
+                Timezone = locationDto.Timezone,
+                TenantId = _tenantContext.TenantId,
+                Tenant = null!,
+                Pii = new LocationPii
+                {
+                    Address = locationDto.Address,
+                    Postcode = locationDto.Postcode,
+                    Latitude = locationDto.Latitude,
+                    Longitude = locationDto.Longitude
+                }
+            };
+
+            location = await _locationRepository.Create(location);
+            byKey[locationDto.TempKey.Trim()] = location;
+        }
+
+        return byKey;
+    }
+
+    private async Task<Dictionary<string, LocationRoom>> CreateRoomsAsync(
+        CreateEventRequest dto,
+        IReadOnlyDictionary<string, Location> locationMap,
+        CancellationToken ct)
     {
         var byKey = new Dictionary<string, LocationRoom>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var roomDto in dto.Rooms)
         {
+            var locationId = ResolveLocationId(roomDto.LocationTempKey, roomDto.LocationId, locationMap)
+                ?? throw new InvalidOperationException("Room location was not resolved.");
+
             var room = new LocationRoom
             {
-                LocationId = roomDto.LocationId,
+                LocationId = locationId,
                 Location = null!,
                 TenantId = _tenantContext.TenantId,
                 Tenant = null!,
@@ -440,6 +527,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private async Task CreateSessionsAsync(
         CreateEventRequest dto,
         Event eventEntity,
+        IReadOnlyDictionary<string, Location> locationMap,
         (Dictionary<string, EventDay> ByKey, Dictionary<DateOnly, EventDay> ByDate) dayMaps,
         IReadOnlyDictionary<string, LocationRoom> roomMap,
         string timezoneId,
@@ -447,6 +535,12 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         DateTimeOffset createdAt,
         CancellationToken ct)
     {
+        if (dto.Sessions.Count == 0)
+        {
+            await CreateDefaultSessionAsync(dto, eventEntity, locationMap, roomMap, timezoneId, ct);
+            return;
+        }
+
         var index = 0;
         foreach (var sessionDto in dto.Sessions.OrderBy(s => s.StartTime).ThenBy(s => s.SortOrder))
         {
@@ -459,12 +553,16 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 Tenant = null!,
                 Title = string.IsNullOrWhiteSpace(sessionDto.Title) ? eventEntity.Title : sessionDto.Title,
                 Description = sessionDto.Description,
-                LocationId = sessionDto.LocationId,
+                LocationId = ResolveLocationId(sessionDto.LocationTempKey, sessionDto.LocationId, locationMap, sessionDto.RoomTempKey, roomMap),
                 RoomId = ResolveRoomId(sessionDto.RoomTempKey, sessionDto.RoomId, roomMap),
                 FeaturedImageId = sessionDto.FeaturedImageId,
                 SortOrder = sessionDto.SortOrder == 0 ? index - 1 : sessionDto.SortOrder,
                 MaxAudienceAttendees = sessionDto.MaxAudienceAttendees,
                 CurrentAudienceAttendees = 0,
+                EventSessionKindId = sessionDto.EventSessionKindId,
+                EventSessionStatusId = eventEntity.EventStatusId == (int)EventStatusEnum.Published
+                    ? (int)EventSessionStatusEnum.Published
+                    : (int)EventSessionStatusEnum.Draft,
                 RegistrationModeId = sessionDto.RegistrationModeId ?? (dto.IsRegistrationRequired ? 1 : null),
                 Price = sessionDto.Price,
                 CurrencyCode = sessionDto.CurrencyCode,
@@ -474,23 +572,58 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             };
 
             session.Reschedule(sessionDto.StartTime, sessionDto.EndTime, timezoneId, _scheduleProjectionCalculator);
-            session.EventDayId = ResolveDayId(sessionDto.DayTempKey, session.LocalStartDate, dayMaps);
+            session.EventDayId = session.LocalStartDate is not null
+                ? ResolveDayId(sessionDto.DayTempKey, session.LocalStartDate.Value, dayMaps)
+                : null;
             session = await PersistSessionWithRoomGuardAsync(session, ct);
 
             await CreateSessionAspectsAsync(sessionDto, session, ct);
             await CreateSessionLanguagesAsync(sessionDto, session, ct);
+            await CreateSessionSpeakersAsync(sessionDto, session, ct);
             await InstantiateSessionTemplatePropertiesAsync(sessionDto, session, currentUserId, createdAt, ct);
         }
     }
 
+    private async Task CreateDefaultSessionAsync(
+        CreateEventRequest dto,
+        Event eventEntity,
+        IReadOnlyDictionary<string, Location> locationMap,
+        IReadOnlyDictionary<string, LocationRoom> roomMap,
+        string timezoneId,
+        CancellationToken ct)
+    {
+        var roomId = ResolveDefaultRoomId(dto, roomMap);
+        var locationId = ResolveDefaultLocationId(dto, locationMap, roomMap, roomId);
+        var session = new EventSession
+        {
+            EventId = eventEntity.Id,
+            Event = null!,
+            TenantId = _tenantContext.TenantId,
+            Tenant = null!,
+            Title = eventEntity.Title,
+            LocationId = locationId,
+            RoomId = roomId,
+            SortOrder = 0,
+            CurrentAudienceAttendees = 0,
+            EventSessionStatusId = eventEntity.EventStatusId == (int)EventStatusEnum.Published
+                ? (int)EventSessionStatusEnum.Published
+                : (int)EventSessionStatusEnum.Draft,
+            RegistrationModeId = dto.IsRegistrationRequired ? 1 : null,
+            Slug = SlugGenerator.FromTitle($"{eventEntity.Title}-session-1", "session")
+        };
+
+        session.ReprojectLocalTimes(timezoneId, _scheduleProjectionCalculator);
+        await PersistSessionWithRoomGuardAsync(session, ct);
+    }
+
     private async Task<EventSession> PersistSessionWithRoomGuardAsync(EventSession session, CancellationToken ct)
     {
-        if (session.RoomId is not null)
+        if (session.RoomId is not null && session.StartTime is not null && session.EndTime is not null)
         {
             var conflicts = await _eventSessionRepository.GetOverlappingSessionsInRoomAsync(
                 session.RoomId.Value,
-                session.StartTime,
-                session.EndTime,
+                session.StartTime.Value,
+                session.EndTime.Value,
                 excludeSessionId: null,
                 ct);
 
@@ -538,9 +671,26 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         }
     }
 
+    private async Task CreateSessionSpeakersAsync(CreateEventSessionRequest sessionDto, EventSession session, CancellationToken ct)
+    {
+        foreach (var actorId in sessionDto.SpeakerActorIds.Distinct())
+        {
+            await _eventSessionSpeakerRepository.Create(new EventSessionSpeaker
+            {
+                EventSessionId = session.Id,
+                EventSession = null!,
+                ActorId = actorId,
+                Actor = null!,
+                TenantId = _tenantContext.TenantId,
+                Tenant = null!
+            });
+        }
+    }
+
     private async Task CreateEventAgendaItemsAsync(
         CreateEventRequest dto,
         Event eventEntity,
+        IReadOnlyDictionary<string, Location> locationMap,
         (Dictionary<string, EventDay> ByKey, Dictionary<DateOnly, EventDay> ByDate) dayMaps,
         IReadOnlyDictionary<string, LocationRoom> roomMap,
         string timezoneId,
@@ -556,7 +706,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 Tenant = null!,
                 Title = itemDto.Title,
                 Description = itemDto.Description,
-                LocationId = itemDto.LocationId,
+                LocationId = ResolveLocationId(itemDto.LocationTempKey, itemDto.LocationId, locationMap, itemDto.RoomTempKey, roomMap),
                 RoomId = ResolveRoomId(itemDto.RoomTempKey, itemDto.RoomId, roomMap),
                 KindId = itemDto.KindId,
                 SortOrder = itemDto.SortOrder
@@ -683,6 +833,69 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         }
 
         return existingRoomId;
+    }
+
+    private static Guid? ResolveDefaultRoomId(
+        CreateEventRequest dto,
+        IReadOnlyDictionary<string, LocationRoom> roomMap)
+    {
+        var roomRequest = dto.Rooms
+            .OrderBy(room => room.SortOrder)
+            .FirstOrDefault();
+
+        return roomRequest is null
+            ? null
+            : ResolveRoomId(roomRequest.TempKey, null, roomMap);
+    }
+
+    private static Guid? ResolveDefaultLocationId(
+        CreateEventRequest dto,
+        IReadOnlyDictionary<string, Location> locationMap,
+        IReadOnlyDictionary<string, LocationRoom> roomMap,
+        Guid? roomId)
+    {
+        if (roomId.HasValue)
+        {
+            var room = roomMap.Values.FirstOrDefault(candidate => candidate.Id == roomId.Value);
+            if (room is not null)
+            {
+                return room.LocationId;
+            }
+        }
+
+        var locationRequest = dto.Locations.FirstOrDefault();
+        if (locationRequest is not null
+            && locationMap.TryGetValue(locationRequest.TempKey.Trim(), out var location))
+        {
+            return location.Id;
+        }
+
+        return null;
+    }
+
+    private static Guid? ResolveLocationId(
+        string? locationTempKey,
+        Guid? existingLocationId,
+        IReadOnlyDictionary<string, Location> locationMap,
+        string? roomTempKey = null,
+        IReadOnlyDictionary<string, LocationRoom>? roomMap = null)
+    {
+        if (!string.IsNullOrWhiteSpace(locationTempKey) && locationMap.TryGetValue(locationTempKey.Trim(), out var location))
+        {
+            return location.Id;
+        }
+
+        if (existingLocationId.HasValue)
+        {
+            return existingLocationId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(roomTempKey) && roomMap?.TryGetValue(roomTempKey.Trim(), out var room) == true)
+        {
+            return room.LocationId;
+        }
+
+        return null;
     }
 
     private static Guid? ResolveDayId(

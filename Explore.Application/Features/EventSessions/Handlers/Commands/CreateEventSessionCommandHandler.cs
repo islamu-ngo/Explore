@@ -109,8 +109,10 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
 
         // Auto-link to the matching EventDay by (EventId, LocalStartDate).
         // Returns null when no EventDay exists for this date — EventDayId stays nullable during transition.
-        var matchingDay = await _eventDayRepository.FindByEventAndLocalDateAsync(
-            parentEvent.Id, eventSession.LocalStartDate, cancellationToken);
+        var matchingDay = eventSession.LocalStartDate is not null
+            ? await _eventDayRepository.FindByEventAndLocalDateAsync(
+                parentEvent.Id, eventSession.LocalStartDate.Value, cancellationToken)
+            : null;
         eventSession.EventDayId = matchingDay?.Id;
 
         try

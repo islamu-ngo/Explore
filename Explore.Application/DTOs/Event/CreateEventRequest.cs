@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Explore.Application.DTOs.EventAspects;
 using Explore.Application.DTOs.EventSession;
 
 namespace Explore.Application.DTOs.Event;
@@ -38,8 +39,10 @@ public class CreateEventRequest
     public Guid? EventSeriesId { get; set; }
     public int? SeriesOrder { get; set; }
     public int? RegistrationPolicyId { get; set; }
+    public CreateUpdateIslamicAspectDto? IslamicAspect { get; set; }
     public List<Guid> CategoryIds { get; set; } = new();
     public List<Guid> TagIds { get; set; } = new();
+    public List<CreateEventLocationRequest> Locations { get; set; } = new();
     public List<CreateEventSessionRequest> Sessions { get; set; } = new();
     public List<CreateEventDayRequest> Days { get; set; } = new();
     public List<CreateEventRoomRequest> Rooms { get; set; } = new();
@@ -54,10 +57,12 @@ public class CreateEventSessionRequest
     public DateTimeOffset StartTime { get; set; }
     public DateTimeOffset EndTime { get; set; }
     public Guid? LocationId { get; set; }
+    public string? LocationTempKey { get; set; }
     public Guid? RoomId { get; set; }
     public Guid? FeaturedImageId { get; set; }
     public int SortOrder { get; set; }
     public string? Title { get; set; }
+    public int? EventSessionKindId { get; set; }
     public string? Description { get; set; }
     public string? Slug { get; set; }
     public int? MaxAudienceAttendees { get; set; }
@@ -67,6 +72,7 @@ public class CreateEventSessionRequest
     public Guid? SessionTemplateId { get; set; }
     public EventSessionIslamicAspectDto? IslamicAspect { get; set; }
     public List<int> LanguageIds { get; set; } = new();
+    public List<Guid> SpeakerActorIds { get; set; } = new();
 }
 
 public class CreateEventDayRequest
@@ -82,10 +88,24 @@ public class CreateEventDayRequest
     public bool AllowsDayScopeRegistration { get; set; }
 }
 
+public class CreateEventLocationRequest
+{
+    public required string TempKey { get; set; }
+    public required string FullName { get; set; }
+    public required string Address { get; set; }
+    public required string Postcode { get; set; }
+    public required string Country { get; set; }
+    public required string City { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? Timezone { get; set; }
+}
+
 public class CreateEventRoomRequest
 {
     public required string TempKey { get; set; }
-    public Guid LocationId { get; set; }
+    public Guid? LocationId { get; set; }
+    public string? LocationTempKey { get; set; }
     public required string Name { get; set; }
     public string? Slug { get; set; }
     public string? Description { get; set; }
@@ -103,6 +123,7 @@ public class CreateEventAgendaItemRequest
     public DateTimeOffset StartTime { get; set; }
     public DateTimeOffset EndTime { get; set; }
     public Guid? LocationId { get; set; }
+    public string? LocationTempKey { get; set; }
     public Guid? RoomId { get; set; }
     public int? KindId { get; set; }
     public int SortOrder { get; set; }

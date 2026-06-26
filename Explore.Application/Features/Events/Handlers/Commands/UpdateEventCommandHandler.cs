@@ -20,7 +20,6 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IEventStatusRepository _eventStatusRepository;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
@@ -34,7 +33,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
 
     public UpdateEventCommandHandler(
         IEventRepository eventRepository,
-        IEventStatusRepository eventStatusRepository,
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
@@ -47,7 +45,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         HybridCache cache)
     {
         _eventRepository = eventRepository;
-        _eventStatusRepository = eventStatusRepository;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
@@ -93,22 +90,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
 
             _mapper.Map(request.EventDto, @event);
             @event.ApplyScheduleTimeZone(@event.EventTimeZoneId ?? @event.Timezone, _scheduleProjectionCalculator);
-        }
-
-        if (request.EventStatusDto is not null)
-        {
-            var validator = new UpdateEventStatusDtoValidator(_eventStatusRepository);
-            var validationResult = await validator.ValidateAsync(request.EventStatusDto, cancellationToken);
-
-            if (!validationResult.IsValid)
-            {
-                response.Success = false;
-                response.Message = "Event status update failed.";
-                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                return response;
-            }
-
-            @event.EventStatusId = request.EventStatusDto.EventStatusId;
         }
 
         await _eventRepository.Update(@event);

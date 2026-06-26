@@ -102,8 +102,10 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
 
         // Auto-link to the matching EventDay by (EventId, LocalStartDate).
         // When rescheduled to a different date, the link moves to the new day (or null if no day exists).
-        var matchingDay = await _eventDayRepository.FindByEventAndLocalDateAsync(
-            parentEvent.Id, eventSession.LocalStartDate, cancellationToken);
+        var matchingDay = eventSession.LocalStartDate is not null
+            ? await _eventDayRepository.FindByEventAndLocalDateAsync(
+                parentEvent.Id, eventSession.LocalStartDate.Value, cancellationToken)
+            : null;
         eventSession.EventDayId = matchingDay?.Id;
 
         try

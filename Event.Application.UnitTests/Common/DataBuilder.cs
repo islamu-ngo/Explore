@@ -38,7 +38,7 @@ public static class DataBuilder
         .RuleFor(e => e.Title, f => f.Lorem.Sentence())
         .RuleFor(e => e.Description, f => f.Lorem.Paragraph())
         .RuleFor(e => e.StartTime, f => f.Date.FutureOffset())
-        .RuleFor(e => e.EndTime, (f, e) => e.StartTime.AddHours(2))
+        .RuleFor(e => e.EndTime, (f, e) => e.StartTime!.Value.AddHours(2))
         .RuleFor(e => e.MaxAudienceAttendees, f => f.Random.Int(10, 500))
         .RuleFor(e => e.CurrentAudienceAttendees, f => 0)
         .RuleFor(e => e.Slug, f => f.Lorem.Slug());

@@ -27,11 +27,14 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
         ILanguageRepository languageRepository,
+        IMadhabRepository madhabRepository,
         ICategoryRepository categoryRepository,
         ITagRepository tagRepository,
         IScheduleItemKindRepository scheduleItemKindRepository,
+        IEventSessionKindRepository eventSessionKindRepository,
         ILocationRoomRepository locationRoomRepository,
-        IEventSessionTemplateRepository eventSessionTemplateRepository)
+        IEventSessionTemplateRepository eventSessionTemplateRepository,
+        IActorRepository actorRepository)
     {
         RuleFor(p => p.Title)
             .NotEmpty().WithMessage("{PropertyName} is required.")
@@ -56,6 +59,21 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         RuleFor(p => p.BackgroundEffect).MaximumLength(64).When(p => !string.IsNullOrWhiteSpace(p.BackgroundEffect));
         RuleFor(p => p.Price).GreaterThanOrEqualTo(0).When(p => p.Price.HasValue);
         RuleFor(p => p.SeriesOrder).GreaterThanOrEqualTo(0).When(p => p.SeriesOrder.HasValue);
+
+        RuleFor(p => p.IslamicAspect!.PrayerTimeOffset)
+            .InclusiveBetween(-180, 180)
+            .When(p => p.IslamicAspect?.PrayerTimeOffset is not null)
+            .WithMessage("Prayer time offset must be between -180 and 180 minutes.");
+
+        RuleFor(p => p.IslamicAspect!.PrayerTimeOffset)
+            .Null()
+            .When(p => p.IslamicAspect is not null && !p.IslamicAspect.ReferencePrayer.HasValue)
+            .WithMessage("Prayer time offset requires a reference prayer to be set.");
+
+        RuleFor(p => p.IslamicAspect!.GenderMode)
+            .IsInEnum()
+            .When(p => p.IslamicAspect is not null)
+            .WithMessage("Invalid gender segregation mode.");
 
         RuleFor(p => p.EventTypeId)
             .MustAsync(async (id, _) => !id.HasValue || await eventTypeRepository.Exists(id.Value))
@@ -107,6 +125,10 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
             session.RuleFor(s => s.Title).MaximumLength(500).When(s => !string.IsNullOrWhiteSpace(s.Title));
             session.RuleFor(s => s.Description).MaximumLength(5000).When(s => !string.IsNullOrWhiteSpace(s.Description));
             session.RuleFor(s => s.Slug).MaximumLength(500).When(s => !string.IsNullOrWhiteSpace(s.Slug));
+            session.RuleFor(s => s.TempKey).MaximumLength(80).When(s => !string.IsNullOrWhiteSpace(s.TempKey));
+            session.RuleFor(s => s.DayTempKey).MaximumLength(80).When(s => !string.IsNullOrWhiteSpace(s.DayTempKey));
+            session.RuleFor(s => s.RoomTempKey).MaximumLength(80).When(s => !string.IsNullOrWhiteSpace(s.RoomTempKey));
+            session.RuleFor(s => s.LocationTempKey).MaximumLength(80).When(s => !string.IsNullOrWhiteSpace(s.LocationTempKey));
             session.RuleFor(s => s.StartTime).NotEmpty().WithMessage("Session start time is required.");
             session.RuleFor(s => s.EndTime).NotEmpty().GreaterThan(s => s.StartTime).WithMessage("Session end time must be after start time.");
             session.RuleFor(s => s.MaxAudienceAttendees).GreaterThan(0).When(s => s.MaxAudienceAttendees.HasValue);
@@ -115,6 +137,19 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
             session.RuleFor(s => s.FeaturedImageId)
                 .MustAsync(async (id, _) => !id.HasValue || await storageObjectRepository.Exists(id.Value))
                 .WithMessage("Session featured image does not exist.");
+        });
+
+        RuleForEach(p => p.Locations).ChildRules(location =>
+        {
+            location.RuleFor(l => l.TempKey).NotEmpty().MaximumLength(80);
+            location.RuleFor(l => l.FullName).NotEmpty().MaximumLength(500);
+            location.RuleFor(l => l.Address).NotEmpty().MaximumLength(500);
+            location.RuleFor(l => l.Postcode).NotEmpty().MaximumLength(500);
+            location.RuleFor(l => l.Country).NotEmpty().MaximumLength(500);
+            location.RuleFor(l => l.City).NotEmpty().MaximumLength(500);
+            location.RuleFor(l => l.Latitude).InclusiveBetween(-90, 90).When(l => l.Latitude.HasValue);
+            location.RuleFor(l => l.Longitude).InclusiveBetween(-180, 180).When(l => l.Longitude.HasValue);
+            location.RuleFor(l => l.Timezone).MaximumLength(500).When(l => !string.IsNullOrWhiteSpace(l.Timezone));
         });
 
         RuleForEach(p => p.Days).ChildRules(day =>
@@ -130,6 +165,10 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         RuleForEach(p => p.Rooms).ChildRules(room =>
         {
             room.RuleFor(r => r.TempKey).NotEmpty().MaximumLength(80);
+            room.RuleFor(r => r.LocationTempKey).MaximumLength(80).When(r => !string.IsNullOrWhiteSpace(r.LocationTempKey));
+            room.RuleFor(r => r)
+                .Must(r => r.LocationId.HasValue ^ !string.IsNullOrWhiteSpace(r.LocationTempKey))
+                .WithMessage("Room must reference exactly one existing location ID or location temp key.");
             room.RuleFor(r => r.Name).NotEmpty().MaximumLength(200);
             room.RuleFor(r => r.Slug).MaximumLength(500).When(r => !string.IsNullOrWhiteSpace(r.Slug));
             room.RuleFor(r => r.Description).MaximumLength(2000).When(r => !string.IsNullOrWhiteSpace(r.Description));
@@ -140,13 +179,17 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         {
             item.RuleFor(i => i.Title).NotEmpty().MaximumLength(300);
             item.RuleFor(i => i.Description).MaximumLength(2000).When(i => !string.IsNullOrWhiteSpace(i.Description));
+            item.RuleFor(i => i.TempKey).MaximumLength(80).When(i => !string.IsNullOrWhiteSpace(i.TempKey));
+            item.RuleFor(i => i.DayTempKey).MaximumLength(80).When(i => !string.IsNullOrWhiteSpace(i.DayTempKey));
+            item.RuleFor(i => i.RoomTempKey).MaximumLength(80).When(i => !string.IsNullOrWhiteSpace(i.RoomTempKey));
+            item.RuleFor(i => i.LocationTempKey).MaximumLength(80).When(i => !string.IsNullOrWhiteSpace(i.LocationTempKey));
             item.RuleFor(i => i.StartTime).NotEmpty().WithMessage("Agenda item start time is required.");
             item.RuleFor(i => i.EndTime).NotEmpty().GreaterThan(i => i.StartTime).WithMessage("Agenda item end time must be after start time.");
             item.RuleFor(i => i.SortOrder).GreaterThanOrEqualTo(0);
         });
 
-        RuleFor(p => p).Must(HaveUniqueTempKeys).WithMessage("Temp keys must be unique within days, rooms, and sessions.");
-        RuleFor(p => p).Must(HaveValidTempReferences).WithMessage("One or more day or room temp-key references are invalid.");
+        RuleFor(p => p).Must(HaveUniqueTempKeys).WithMessage("Temp keys must be unique within locations, days, rooms, and sessions.");
+        RuleFor(p => p).Must(HaveValidTempReferences).WithMessage("One or more location, day, or room temp-key references are invalid.");
         RuleFor(p => p).Must(HaveValidIslamicSessionScheduling).WithMessage(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
 
         RuleFor(p => p).MustAsync(async (request, _) => await AllLocationsExistAsync(request, locationRepository))
@@ -158,6 +201,9 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         RuleFor(p => p).MustAsync(async (request, _) => await AllLanguagesExistAsync(request, languageRepository))
             .WithMessage("One or more session languages do not exist.");
 
+        RuleFor(p => p).MustAsync(async (request, _) => await AllEventIslamicAspectLookupsExistAsync(request, madhabRepository, languageRepository))
+            .WithMessage("One or more Islamic aspect lookup references do not exist.");
+
         RuleFor(p => p).MustAsync(async (request, _) => await AllCategoriesExistAsync(request, categoryRepository))
             .WithMessage("One or more categories do not exist.");
 
@@ -167,6 +213,9 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         RuleFor(p => p).MustAsync(async (request, _) => await AllAgendaKindsExistAsync(request, scheduleItemKindRepository))
             .WithMessage("One or more agenda item kinds do not exist.");
 
+        RuleFor(p => p).MustAsync(async (request, _) => await AllSessionKindsExistAsync(request, eventSessionKindRepository))
+            .WithMessage("One or more session kinds do not exist.");
+
         RuleFor(p => p).MustAsync(async (request, _) => await AllExistingRoomsExistAsync(request, locationRoomRepository))
             .WithMessage("One or more rooms do not exist.");
 
@@ -175,11 +224,15 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
 
         RuleFor(p => p).MustAsync(async (request, _) => await AllSessionTemplatesExistAsync(request, eventSessionTemplateRepository))
             .WithMessage("One or more session templates do not exist.");
+
+        RuleFor(p => p).MustAsync(async (request, _) => await AllSpeakerActorsExistAsync(request, actorRepository))
+            .WithMessage("One or more speaker actors do not exist.");
     }
 
     private static bool HaveUniqueTempKeys(CreateEventRequest request)
     {
-        return IsUnique(request.Days.Select(d => d.TempKey))
+        return IsUnique(request.Locations.Select(l => l.TempKey))
+            && IsUnique(request.Days.Select(d => d.TempKey))
             && IsUnique(request.Rooms.Select(r => r.TempKey))
             && IsUnique(request.Sessions.Select(s => s.TempKey));
     }
@@ -221,10 +274,12 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
     private static bool HaveValidTempReferences(CreateEventRequest request)
     {
         var dayKeys = request.Days.Where(d => !string.IsNullOrWhiteSpace(d.TempKey)).Select(d => d.TempKey!.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var locationKeys = request.Locations.Where(l => !string.IsNullOrWhiteSpace(l.TempKey)).Select(l => l.TempKey.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var roomKeys = request.Rooms.Select(r => r.TempKey.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        return request.Sessions.All(s => IsBlankOrContained(s.DayTempKey, dayKeys) && IsBlankOrContained(s.RoomTempKey, roomKeys))
-            && request.AgendaItems.All(i => IsBlankOrContained(i.DayTempKey, dayKeys) && IsBlankOrContained(i.RoomTempKey, roomKeys));
+        return request.Rooms.All(r => IsBlankOrContained(r.LocationTempKey, locationKeys))
+            && request.Sessions.All(s => IsBlankOrContained(s.DayTempKey, dayKeys) && IsBlankOrContained(s.RoomTempKey, roomKeys) && IsBlankOrContained(s.LocationTempKey, locationKeys))
+            && request.AgendaItems.All(i => IsBlankOrContained(i.DayTempKey, dayKeys) && IsBlankOrContained(i.RoomTempKey, roomKeys) && IsBlankOrContained(i.LocationTempKey, locationKeys));
     }
 
     private static bool IsBlankOrContained(string? value, HashSet<string> allowed) =>
@@ -235,13 +290,15 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         return request.Sessions.All(session =>
             EventSessionIslamicAspectValidationRules.HasValidSchedulingState(
                 session.IslamicAspect,
-                session.LocationId));
+                session.LocationId.HasValue || !string.IsNullOrWhiteSpace(session.LocationTempKey)
+                    ? Guid.Empty
+                    : null));
     }
 
     private static async Task<bool> AllLocationsExistAsync(CreateEventRequest request, ILocationRepository repository)
     {
         var ids = request.Sessions.Select(s => s.LocationId)
-            .Concat(request.Rooms.Select(r => (Guid?)r.LocationId))
+            .Concat(request.Rooms.Select(r => r.LocationId))
             .Concat(request.AgendaItems.Select(i => i.LocationId))
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
@@ -250,6 +307,29 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         foreach (var id in ids)
         {
             if (!await repository.Exists(id)) return false;
+        }
+
+        return true;
+    }
+
+    private static async Task<bool> AllEventIslamicAspectLookupsExistAsync(
+        CreateEventRequest request,
+        IMadhabRepository madhabRepository,
+        ILanguageRepository languageRepository)
+    {
+        if (request.IslamicAspect is not { } aspect)
+        {
+            return true;
+        }
+
+        if (aspect.MadhabId.HasValue && !await madhabRepository.Exists(aspect.MadhabId.Value))
+        {
+            return false;
+        }
+
+        if (aspect.PrimaryLanguageId.HasValue && !await languageRepository.Exists(aspect.PrimaryLanguageId.Value))
+        {
+            return false;
         }
 
         return true;
@@ -265,9 +345,29 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         return true;
     }
 
+    private static async Task<bool> AllSessionKindsExistAsync(CreateEventRequest request, IEventSessionKindRepository repository)
+    {
+        foreach (var id in request.Sessions.Select(s => s.EventSessionKindId).Where(id => id.HasValue).Select(id => id!.Value).Distinct())
+        {
+            if (!await repository.Exists(id)) return false;
+        }
+
+        return true;
+    }
+
     private static async Task<bool> AllLanguagesExistAsync(CreateEventRequest request, ILanguageRepository repository)
     {
         foreach (var id in request.Sessions.SelectMany(s => s.LanguageIds).Distinct())
+        {
+            if (!await repository.Exists(id)) return false;
+        }
+
+        return true;
+    }
+
+    private static async Task<bool> AllSpeakerActorsExistAsync(CreateEventRequest request, IActorRepository repository)
+    {
+        foreach (var id in request.Sessions.SelectMany(s => s.SpeakerActorIds).Distinct())
         {
             if (!await repository.Exists(id)) return false;
         }

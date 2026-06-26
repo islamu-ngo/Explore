@@ -1,3 +1,6 @@
+// ABOUTME: Lightweight event-session DTO returned by list APIs and HAL collection items.
+// ABOUTME: Carries lifecycle and schedule state needed for server-filtered collection affordances.
+
 using System;
 using System.Collections.Generic;
 namespace Explore.Application.DTOs.EventSession;
@@ -5,6 +8,7 @@ namespace Explore.Application.DTOs.EventSession;
 public class EventSessionListDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     // Event relationship
     public Guid EventId { get; set; }
@@ -14,13 +18,14 @@ public class EventSessionListDto
     public Guid? EventDayId { get; set; }
 
     // Timing (UTC)
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+    public DateTimeOffset? StartTime { get; set; }
+    public DateTimeOffset? EndTime { get; set; }
+    public bool IsScheduled { get; set; }
 
     // Cached local projections (event timezone)
-    public DateOnly LocalStartDate { get; set; }
-    public TimeOnly LocalStartTime { get; set; }
-    public TimeOnly LocalEndTime { get; set; }
+    public DateOnly? LocalStartDate { get; set; }
+    public TimeOnly? LocalStartTime { get; set; }
+    public TimeOnly? LocalEndTime { get; set; }
 
     // Ordering
     public int SortOrder { get; set; }
@@ -39,6 +44,9 @@ public class EventSessionListDto
     public int? EventSessionKindId { get; set; }
     public string? EventSessionKindFullName { get; set; }
     public string? EventSessionKindMasterCode { get; set; }
+    public int EventSessionStatusId { get; set; }
+    public string? EventSessionStatusFullName { get; set; }
+    public string? EventSessionStatusMasterCode { get; set; }
     public string? Slug { get; set; }
 
     // Media
@@ -62,4 +70,6 @@ public class EventSessionListDto
 
     // Program sections/tracks/devrooms this session belongs to
     public List<EventSessionGroupAssignmentDto> SessionGroups { get; set; } = [];
+
+    public Guid TenantId { get; set; }
 }

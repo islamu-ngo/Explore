@@ -30,7 +30,7 @@ public sealed class GetEventCalendarExportRequestHandlerTests
 
         _eventRepository.GetEventWithDetails(eventId)
             .Returns(CreateEvent(eventId, EventStatusEnum.Published, VisibilityTypeEnum.Public));
-        _sessionRepository.GetSessionsByEvent(eventId)
+        _sessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns([
                 CreateSession(eventId, laterStart, laterStart.AddHours(1)),
                 CreateSession(eventId, earlierStart, earlierStart.AddHours(2))
@@ -43,6 +43,23 @@ public sealed class GetEventCalendarExportRequestHandlerTests
         await Assert.That(result.Title).IsEqualTo("Calendar Event");
         await Assert.That(result.StartsAtUtc).IsEqualTo(earlierStart);
         await Assert.That(result.EndsAtUtc).IsEqualTo(earlierStart.AddHours(2));
+        await _sessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
+    }
+
+    [Test]
+    public async Task Handle_WhenPublicSessionQueryReturnsNoSessions_ReturnsNull()
+    {
+        var eventId = Guid.NewGuid();
+        _eventRepository.GetEventWithDetails(eventId)
+            .Returns(CreateEvent(eventId, EventStatusEnum.Published, VisibilityTypeEnum.Public));
+        _sessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var result = await _handler.Handle(new GetEventCalendarExportRequest(eventId), CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _sessionRepository.Received(1).GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>());
+        await _sessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
     }
 
     [Test]
@@ -56,6 +73,7 @@ public sealed class GetEventCalendarExportRequestHandlerTests
 
         await Assert.That(result).IsNull();
         await _sessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
+        await _sessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -69,6 +87,7 @@ public sealed class GetEventCalendarExportRequestHandlerTests
 
         await Assert.That(result).IsNull();
         await _sessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
+        await _sessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     private static Explore.Domain.Event CreateEvent(

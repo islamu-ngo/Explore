@@ -11,6 +11,7 @@ using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Responses;
 using Explore.Application.Specifications.Events;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -101,13 +102,9 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
     {
         var spec = new EventQuerySpecification();
 
-        // ===== Public discoverability filter =====
-        // When no explicit status filter is provided, apply public visibility rules:
-        // only show Public visibility + non-Draft/Archived events in discovery listings.
-        if (request.EventStatusIds is not { Count: > 0 })
-        {
-            spec = spec.And(EventFilter.PubliclyDiscoverable());
-        }
+        spec = spec.And(EventFilter.PubliclyDiscoverable());
+        spec = spec.And(EventFilter.Status((int)EventStatusEnum.Published));
+        spec = spec.And(EventSubqueryFilter.CurrentOrUpcomingPublishedSession());
 
         // ===== Core Event filters (always available) =====
 

@@ -23,6 +23,7 @@ using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.DTOs.EventSessionSpeaker;
+using Explore.Application.DTOs.EventSessionStatus;
 using Explore.Application.DTOs.EventStatus;
 using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.EventType;
@@ -56,6 +57,7 @@ using Explore.Application.DTOs.UserExternalLogin;
 using Explore.Application.DTOs.VisibilityType;
 using Explore.Application.Hateoas;
 using Explore.Application.Models;
+using Explore.Application.Models.InternalEvents;
 using Explore.Application.Models.PublicExperience;
 using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
@@ -145,10 +147,14 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(EventDto))]
 [JsonSerializable(typeof(EventFormatDto))]
 [JsonSerializable(typeof(EventFormatListDto))]
+[JsonSerializable(typeof(EventHeavyRedactedNotificationFanoutRequested))]
 [JsonSerializable(typeof(EventCreationContextDto))]
 [JsonSerializable(typeof(EventCreationPublisherOptionDto))]
 [JsonSerializable(typeof(EventIslamicAspectDto))]
 [JsonSerializable(typeof(EventListDto))]
+[JsonSerializable(typeof(EventLightModeratedNotificationFanoutRequested))]
+[JsonSerializable(typeof(EventModerationHistoryDto))]
+[JsonSerializable(typeof(EventPublishedNotificationFanoutRequested))]
 [JsonSerializable(typeof(EventProgramDayGroupDto))]
 [JsonSerializable(typeof(EventProgramItemDto))]
 [JsonSerializable(typeof(EventProgramReadinessWarningDto))]
@@ -173,10 +179,13 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(EventSessionGroupListDto))]
 [JsonSerializable(typeof(EventSessionLanguageDto))]
 [JsonSerializable(typeof(EventSessionLanguageListDto))]
+[JsonSerializable(typeof(EventSessionLifecycleRequestDto))]
 [JsonSerializable(typeof(EventSessionListDto))]
 [JsonSerializable(typeof(EventSessionSpeakerDto))]
 [JsonSerializable(typeof(EventSessionSpeakerListDto))]
 [JsonSerializable(typeof(EventSpecificDto))]
+[JsonSerializable(typeof(EventSessionStatusDto))]
+[JsonSerializable(typeof(EventSessionStatusListDto))]
 [JsonSerializable(typeof(EventStatusDto))]
 [JsonSerializable(typeof(EventStatusListDto))]
 [JsonSerializable(typeof(EventTagsDto))]
@@ -369,6 +378,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(List<EventFormatListDto>))]
 [JsonSerializable(typeof(List<EventIslamicAspectDto>))]
 [JsonSerializable(typeof(List<EventListDto>))]
+[JsonSerializable(typeof(List<EventModerationHistoryDto>))]
 [JsonSerializable(typeof(List<EventRegistrationDto>))]
 [JsonSerializable(typeof(List<EventRegistrationListDto>))]
 [JsonSerializable(typeof(List<EventSessionAgendaItemDto>))]
@@ -380,6 +390,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(List<EventSessionSpeakerDto>))]
 [JsonSerializable(typeof(List<EventSessionSpeakerListDto>))]
 [JsonSerializable(typeof(List<EventSpecificDto>))]
+[JsonSerializable(typeof(List<EventSessionStatusDto>))]
+[JsonSerializable(typeof(List<EventSessionStatusListDto>))]
 [JsonSerializable(typeof(List<EventStatusDto>))]
 [JsonSerializable(typeof(List<EventStatusListDto>))]
 [JsonSerializable(typeof(List<EventTagsDto>))]
@@ -518,6 +530,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(IReadOnlyList<EventFormatListDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventIslamicAspectDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventListDto>))]
+[JsonSerializable(typeof(IReadOnlyList<EventModerationHistoryDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventRegistrationDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventRegistrationListDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventSessionAgendaItemDto>))]
@@ -529,6 +542,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(IReadOnlyList<EventSessionSpeakerDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventSessionSpeakerListDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventSpecificDto>))]
+[JsonSerializable(typeof(IReadOnlyList<EventSessionStatusDto>))]
+[JsonSerializable(typeof(IReadOnlyList<EventSessionStatusListDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventStatusDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventStatusListDto>))]
 [JsonSerializable(typeof(IReadOnlyList<EventTagsDto>))]
@@ -632,6 +647,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(PaginatedResult<EventSessionLanguageListDto>))]
 [JsonSerializable(typeof(PaginatedResult<EventSessionListDto>))]
 [JsonSerializable(typeof(PaginatedResult<EventSessionSpeakerListDto>))]
+[JsonSerializable(typeof(PaginatedResult<EventSessionStatusListDto>))]
 [JsonSerializable(typeof(PaginatedResult<EventStatusListDto>))]
 [JsonSerializable(typeof(PaginatedResult<EventTagsListDto>))]
 [JsonSerializable(typeof(PaginatedResult<EventTypeListDto>))]
@@ -716,6 +732,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(HalResource<EventSessionSpeakerDto>))]
 [JsonSerializable(typeof(HalResource<EventSessionSpeakerListDto>))]
 [JsonSerializable(typeof(HalResource<EventSpecificDto>))]
+[JsonSerializable(typeof(HalResource<EventSessionStatusDto>))]
+[JsonSerializable(typeof(HalResource<EventSessionStatusListDto>))]
 [JsonSerializable(typeof(HalResource<EventStatusDto>))]
 [JsonSerializable(typeof(HalResource<EventStatusListDto>))]
 [JsonSerializable(typeof(HalResource<EventTagsDto>))]
@@ -866,6 +884,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(HalCollectionResource<EventSessionSpeakerDto>))]
 [JsonSerializable(typeof(HalCollectionResource<EventSessionSpeakerListDto>))]
 [JsonSerializable(typeof(HalCollectionResource<EventSpecificDto>))]
+[JsonSerializable(typeof(HalCollectionResource<EventSessionStatusDto>))]
+[JsonSerializable(typeof(HalCollectionResource<EventSessionStatusListDto>))]
 [JsonSerializable(typeof(HalCollectionResource<EventStatusDto>))]
 [JsonSerializable(typeof(HalCollectionResource<EventStatusListDto>))]
 [JsonSerializable(typeof(HalCollectionResource<EventTagsDto>))]
@@ -1014,6 +1034,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(HalCollectionEmbedded<EventSessionSpeakerDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<EventSessionSpeakerListDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<EventSpecificDto>))]
+[JsonSerializable(typeof(HalCollectionEmbedded<EventSessionStatusDto>))]
+[JsonSerializable(typeof(HalCollectionEmbedded<EventSessionStatusListDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<EventStatusDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<EventStatusListDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<EventTagsDto>))]

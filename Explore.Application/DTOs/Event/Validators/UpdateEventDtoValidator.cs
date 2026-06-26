@@ -113,9 +113,6 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
                 return storageObjectExists;
             }).WithMessage("{PropertyName} does not exist.");
 
-        RuleFor(p => p.EventStatusId)
-            .NotEmpty().WithMessage("{PropertyName} is required.");
-
         RuleFor(p => p.VisibilityTypeId)
             .NotEmpty().WithMessage("{PropertyName} is required.");
 

@@ -7,6 +7,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
@@ -40,6 +41,7 @@ public class UpdateEventDraftCommandHandlerScheduleTests
             EventId = eventId,
             Event = null!,
             Tenant = tenant,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             StartTime = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero)
         };

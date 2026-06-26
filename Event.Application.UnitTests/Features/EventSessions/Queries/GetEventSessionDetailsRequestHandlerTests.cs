@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for public event session detail query handler mapping behavior.
+// ABOUTME: Verifies public repository reads are mapped to nullable detail DTO responses.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
@@ -43,7 +46,9 @@ public class GetEventSessionDetailsRequestHandlerTests
             EventTitle = string.Empty
         };
 
-        _eventSessionRepository.GetSessionWithDetails(sessionId).Returns(eventSession);
+        _eventSessionRepository
+            .GetPublicSessionWithDetailsAsync(sessionId, Arg.Any<CancellationToken>())
+            .Returns(eventSession);
         _mapper.Map<EventSessionDto>(eventSession).Returns(expectedDto);
 
         // Act
@@ -62,7 +67,9 @@ public class GetEventSessionDetailsRequestHandlerTests
         var sessionId = Guid.NewGuid();
         var request = new GetEventSessionDetailsRequest { Id = sessionId };
 
-        _eventSessionRepository.GetSessionWithDetails(sessionId).Returns((EventSession?)null);
+        _eventSessionRepository
+            .GetPublicSessionWithDetailsAsync(sessionId, Arg.Any<CancellationToken>())
+            .Returns((EventSession?)null);
         _mapper.Map<EventSessionDto>(Arg.Any<EventSession?>()).Returns((EventSessionDto?)null);
 
         // Act
@@ -95,7 +102,9 @@ public class GetEventSessionDetailsRequestHandlerTests
             EventTitle = string.Empty
         };
 
-        _eventSessionRepository.GetSessionWithDetails(sessionId).Returns(eventSession);
+        _eventSessionRepository
+            .GetPublicSessionWithDetailsAsync(sessionId, Arg.Any<CancellationToken>())
+            .Returns(eventSession);
         _mapper.Map<EventSessionDto>(eventSession).Returns(expectedDto);
 
         // Act

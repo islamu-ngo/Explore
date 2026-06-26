@@ -15,7 +15,6 @@ public class UpdateEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRe
     public Guid Id { get; set; }
 
     public UpdateEventDto? EventDto { get; set; }
-    public UpdateEventStatusDto? EventStatusDto { get; set; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

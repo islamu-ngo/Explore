@@ -7,6 +7,7 @@ using Explore.Application.DTOs.CategoryType;
 using Explore.Application.DTOs.CategoryTypeCategories;
 using Explore.Application.DTOs.DidCustodyType;
 using Explore.Application.DTOs.EventFormat;
+using Explore.Application.DTOs.EventSessionStatus;
 using Explore.Application.DTOs.EventStatus;
 using Explore.Application.DTOs.FileType;
 using Explore.Application.DTOs.Language;
@@ -83,6 +84,9 @@ public class LookupMappingProfile : Profile
 
         CreateMap<Domain.EventStatus, EventStatusDto>().ReverseMap();
         CreateMap<Domain.EventStatus, EventStatusListDto>().ReverseMap();
+
+        CreateMap<Domain.EventSessionStatus, EventSessionStatusDto>().ReverseMap();
+        CreateMap<Domain.EventSessionStatus, EventSessionStatusListDto>().ReverseMap();
 
         CreateMap<EventFormat, EventFormatDto>().ReverseMap();
         CreateMap<EventFormat, EventFormatListDto>().ReverseMap();

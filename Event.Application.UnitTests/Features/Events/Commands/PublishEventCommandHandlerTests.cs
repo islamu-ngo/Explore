@@ -1,9 +1,13 @@
+// ABOUTME: Unit tests for publish-event command handling.
+// ABOUTME: Verifies lifecycle readiness, concurrency, outbox, and cache side effects.
+
 using System.Text.Json;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Models.InternalEvents;
+using Explore.Application.Services.Lifecycle;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -18,6 +22,7 @@ public class PublishEventCommandHandlerTests
     private readonly IEventRepository _eventRepository;
     private readonly IOutboxRepository _outboxRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IEventLifecyclePolicyProvider _policyProvider;
     private readonly HybridCache _cache;
     private readonly PublishEventCommandHandler _handler;
 
@@ -26,7 +31,12 @@ public class PublishEventCommandHandlerTests
         _eventRepository = Substitute.For<IEventRepository>();
         _outboxRepository = Substitute.For<IOutboxRepository>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
+        _policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
         _cache = Substitute.For<HybridCache>();
+
+        _policyProvider
+            .GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(CreateEventPublishPolicy());
 
         _unitOfWork
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
@@ -39,7 +49,13 @@ public class PublishEventCommandHandlerTests
         _outboxRepository.Create(Arg.Any<OutboxMessage>())
             .Returns(callInfo => callInfo.Arg<OutboxMessage>());
 
-        _handler = new PublishEventCommandHandler(_eventRepository, _outboxRepository, _unitOfWork, _cache);
+        _handler = new PublishEventCommandHandler(
+            _eventRepository,
+            _outboxRepository,
+            _unitOfWork,
+            _cache,
+            _policyProvider,
+            new EventLifecycleReadinessEvaluator());
     }
 
     [Test]
@@ -157,5 +173,22 @@ public class PublishEventCommandHandlerTests
         FullName = "Test Tenant",
         Slug = "test",
         TenantStatus = null!
+    };
+
+    private static EventLifecyclePolicy CreateEventPublishPolicy() => new()
+    {
+        Profile = ValidationProfile.EventPublish,
+        RequiredEventFields = new HashSet<Enum>
+        {
+            EventFieldKey.Title,
+            EventFieldKey.Tenant,
+            EventFieldKey.Owner,
+            EventFieldKey.Status,
+            EventFieldKey.Visibility,
+            EventFieldKey.Format,
+            EventFieldKey.ScheduleSessions,
+            EventFieldKey.ScheduleFirstStart
+        },
+        RequiredSessionFields = new HashSet<Enum>()
     };
 }

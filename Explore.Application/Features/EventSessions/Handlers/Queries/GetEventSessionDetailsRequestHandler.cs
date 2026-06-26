@@ -25,7 +25,9 @@ public class GetEventSessionDetailsRequestHandler : IRequestHandler<GetEventSess
 
     public async Task<EventSessionDto> Handle(GetEventSessionDetailsRequest request, CancellationToken cancellationToken)
     {
-        var eventSession = await _eventSessionRepository.GetSessionWithDetails(request.Id);
+        var eventSession = await _eventSessionRepository.GetPublicSessionWithDetailsAsync(
+            request.Id,
+            cancellationToken);
         return _mapper.Map<EventSessionDto>(eventSession);
     }
 }

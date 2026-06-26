@@ -24,11 +24,14 @@ public class CreateEventRequestValidatorTests
     private readonly ILocationRepository _locationRepository = Substitute.For<ILocationRepository>();
     private readonly IRegistrationModeRepository _registrationModeRepository = Substitute.For<IRegistrationModeRepository>();
     private readonly ILanguageRepository _languageRepository = Substitute.For<ILanguageRepository>();
+    private readonly IMadhabRepository _madhabRepository = Substitute.For<IMadhabRepository>();
     private readonly ICategoryRepository _categoryRepository = Substitute.For<ICategoryRepository>();
     private readonly ITagRepository _tagRepository = Substitute.For<ITagRepository>();
     private readonly IScheduleItemKindRepository _scheduleItemKindRepository = Substitute.For<IScheduleItemKindRepository>();
+    private readonly IEventSessionKindRepository _eventSessionKindRepository = Substitute.For<IEventSessionKindRepository>();
     private readonly ILocationRoomRepository _locationRoomRepository = Substitute.For<ILocationRoomRepository>();
     private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository = Substitute.For<IEventSessionTemplateRepository>();
+    private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
     private readonly CreateEventRequestValidator _validator;
 
     public CreateEventRequestValidatorTests()
@@ -46,11 +49,14 @@ public class CreateEventRequestValidatorTests
             _locationRepository,
             _registrationModeRepository,
             _languageRepository,
+            _madhabRepository,
             _categoryRepository,
             _tagRepository,
             _scheduleItemKindRepository,
+            _eventSessionKindRepository,
             _locationRoomRepository,
-            _eventSessionTemplateRepository);
+            _eventSessionTemplateRepository,
+            _actorRepository);
     }
 
     [Test]

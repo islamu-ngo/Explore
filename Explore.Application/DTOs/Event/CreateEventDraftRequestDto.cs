@@ -1,7 +1,9 @@
-// ABOUTME: Progressive-disclosure Create Event contract: metadata plus an optional inline single session.
-// ABOUTME: Multi-session/days/rooms/agenda graph remain post-create via the dedicated session composer.
+// ABOUTME: Create Event draft contract used by API, AI confirmation, and MCP tool execution.
+// ABOUTME: Carries metadata plus the initial locations, days, rooms, sessions, agenda, and Islamic aspect graph.
 
 namespace Explore.Application.DTOs.Event;
+
+using Explore.Application.DTOs.EventAspects;
 
 public sealed class CreateEventDraftRequestDto
 {
@@ -34,9 +36,14 @@ public sealed class CreateEventDraftRequestDto
     public Guid? EventSeriesId { get; set; }
     public int? SeriesOrder { get; set; }
     public int? RegistrationPolicyId { get; set; }
+    public CreateUpdateIslamicAspectDto? IslamicAspect { get; set; }
     public List<Guid> CategoryIds { get; set; } = [];
     public List<Guid> TagIds { get; set; } = [];
+    public List<CreateEventLocationRequest> Locations { get; set; } = [];
     public List<CreateEventSessionRequest> Sessions { get; set; } = [];
+    public List<CreateEventDayRequest> Days { get; set; } = [];
+    public List<CreateEventRoomRequest> Rooms { get; set; } = [];
+    public List<CreateEventAgendaItemRequest> AgendaItems { get; set; } = [];
 
     public CreateEventRequest ToCreateEventRequest() => new()
     {
@@ -69,11 +76,13 @@ public sealed class CreateEventDraftRequestDto
         EventSeriesId = EventSeriesId,
         SeriesOrder = SeriesOrder,
         RegistrationPolicyId = RegistrationPolicyId,
+        IslamicAspect = IslamicAspect,
         CategoryIds = CategoryIds,
         TagIds = TagIds,
+        Locations = Locations,
         Sessions = Sessions,
-        Days = [],
-        Rooms = [],
-        AgendaItems = []
+        Days = Days,
+        Rooms = Rooms,
+        AgendaItems = AgendaItems
     };
 }

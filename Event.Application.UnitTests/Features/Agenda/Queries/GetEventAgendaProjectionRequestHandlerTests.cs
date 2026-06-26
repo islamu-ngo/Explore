@@ -1,9 +1,12 @@
+// ABOUTME: Unit tests for public event agenda projection assembly.
+// ABOUTME: Verifies sessions, agenda items, and public lifecycle guards.
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Agenda;
 using Explore.Application.Features.Agenda.Handlers.Queries;
 using Explore.Application.Features.Agenda.Requests.Queries;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using NSubstitute;
 using TUnit.Assertions;
@@ -61,11 +64,13 @@ public class GetEventAgendaProjectionRequestHandlerTests
         parentEvent.Id = eventId;
         parentEvent.Title = "Test Conference";
         parentEvent.Timezone = "Europe/Brussels";
+        parentEvent.EventStatusId = (int)EventStatusEnum.Published;
+        parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
 
         _eventDayRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventDay>());
-        _eventSessionRepository.GetSessionsByEvent(eventId)
+        _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventSession>());
         _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventAgendaItem>());
@@ -77,6 +82,27 @@ public class GetEventAgendaProjectionRequestHandlerTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.EventId).IsEqualTo(eventId);
         await Assert.That(result.EventTitle).IsEqualTo("Test Conference");
+        await _eventSessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
+    }
+
+    [Test]
+    public async Task Handle_WhenEventIsNotPublicPublished_ReturnsNullWithoutLoadingProjectionInputs()
+    {
+        var eventId = Guid.NewGuid();
+        var request = new GetEventAgendaProjectionRequest { EventId = eventId };
+
+        var parentEvent = DataBuilder.Event.Generate();
+        parentEvent.Id = eventId;
+        parentEvent.EventStatusId = (int)EventStatusEnum.Draft;
+        parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
+        _eventRepository.GetById(eventId).Returns(parentEvent);
+
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _eventDayRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventSessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventAgendaItemRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -91,6 +117,8 @@ public class GetEventAgendaProjectionRequestHandlerTests
         parentEvent.Id = eventId;
         parentEvent.Title = "Multi-day Conference";
         parentEvent.Timezone = "Europe/Brussels";
+        parentEvent.EventStatusId = (int)EventStatusEnum.Published;
+        parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
 
         var eventDay = new EventDay
@@ -115,10 +143,10 @@ public class GetEventAgendaProjectionRequestHandlerTests
         session.StartTime = new DateTimeOffset(2026, 7, 15, 8, 0, 0, TimeSpan.Zero);
         session.EndTime = new DateTimeOffset(2026, 7, 15, 10, 0, 0, TimeSpan.Zero);
         session.SortOrder = 1;
-        calculator.Project(session.StartTime, session.EndTime, "Europe/Brussels")
+        calculator.Project(session.StartTime.Value, session.EndTime.Value, "Europe/Brussels")
             .Returns(new LocalScheduleProjection(localDate, localDate, new TimeOnly(10, 0), new TimeOnly(12, 0), 600, 720));
         session.ReprojectLocalTimes("Europe/Brussels", calculator);
-        _eventSessionRepository.GetSessionsByEvent(eventId)
+        _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventSession> { session });
 
         var agendaItem = DataBuilder.EventAgendaItem.Generate();
@@ -152,11 +180,13 @@ public class GetEventAgendaProjectionRequestHandlerTests
 
         var parentEvent = DataBuilder.Event.Generate();
         parentEvent.Id = eventId;
+        parentEvent.EventStatusId = (int)EventStatusEnum.Published;
+        parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
 
         _eventDayRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventDay>());
-        _eventSessionRepository.GetSessionsByEvent(eventId)
+        _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventSession>());
         _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventAgendaItem>());

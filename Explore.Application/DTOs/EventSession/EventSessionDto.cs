@@ -1,3 +1,6 @@
+// ABOUTME: Detailed event-session DTO returned by detail APIs and HAL resources.
+// ABOUTME: Exposes lifecycle status, schedule state, and concurrency metadata for management affordances.
+
 using System;
 using System.Collections.Generic;
 namespace Explore.Application.DTOs.EventSession;
@@ -5,6 +8,7 @@ namespace Explore.Application.DTOs.EventSession;
 public class EventSessionDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     // Event relationship
     public Guid EventId { get; set; }
@@ -14,16 +18,17 @@ public class EventSessionDto
     public Guid? EventDayId { get; set; }
 
     // Timing (UTC)
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+    public DateTimeOffset? StartTime { get; set; }
+    public DateTimeOffset? EndTime { get; set; }
+    public bool IsScheduled { get; set; }
 
     // Cached local projections (event timezone)
-    public DateOnly LocalStartDate { get; set; }
-    public DateOnly LocalEndDate { get; set; }
-    public TimeOnly LocalStartTime { get; set; }
-    public TimeOnly LocalEndTime { get; set; }
-    public int LocalStartMinuteOfDay { get; set; }
-    public int LocalEndMinuteOfDay { get; set; }
+    public DateOnly? LocalStartDate { get; set; }
+    public DateOnly? LocalEndDate { get; set; }
+    public TimeOnly? LocalStartTime { get; set; }
+    public TimeOnly? LocalEndTime { get; set; }
+    public int? LocalStartMinuteOfDay { get; set; }
+    public int? LocalEndMinuteOfDay { get; set; }
 
     // Ordering
     public int SortOrder { get; set; }
@@ -44,6 +49,9 @@ public class EventSessionDto
     public int? EventSessionKindId { get; set; }
     public string? EventSessionKindFullName { get; set; }
     public string? EventSessionKindMasterCode { get; set; }
+    public int EventSessionStatusId { get; set; }
+    public string? EventSessionStatusFullName { get; set; }
+    public string? EventSessionStatusMasterCode { get; set; }
     public string? Description { get; set; }
     public string? Slug { get; set; }
 

@@ -1,5 +1,5 @@
 // ABOUTME: Defines custom OpenTelemetry business metrics for the platform.
-// ABOUTME: Tracks domain activity plus external API-key, email-dispatch, storage, notification fanout, and governance signals.
+// ABOUTME: Tracks domain activity plus moderation, external API-key, email-dispatch, storage, notification fanout, and governance signals.
 
 using System.Diagnostics.Metrics;
 using Explore.Application.Responses;
@@ -19,6 +19,7 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Meter _meter;
     private readonly Counter<long> _eventsCreated;
     private readonly Counter<long> _eventsPublished;
+    private readonly Counter<long> _eventModerationActions;
     private readonly Counter<long> _registrationsCreated;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
@@ -69,6 +70,11 @@ public sealed class BusinessMetrics : IDisposable
             "explore.events.published",
             unit: "{event}",
             description: "Total number of events published");
+
+        _eventModerationActions = meter.CreateCounter<long>(
+            "explore.events.moderation_actions",
+            unit: "{action}",
+            description: "Total event moderation lifecycle decisions by bounded action kind, outcome, and failure category");
 
         _registrationsCreated = meter.CreateCounter<long>(
             "explore.registrations.created",
@@ -262,6 +268,21 @@ public sealed class BusinessMetrics : IDisposable
     {
         _eventsPublished.Add(1,
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"));
+    }
+
+    public void RecordEventModerationAction(
+        string? tenantId,
+        string? actionKind,
+        string? outcome,
+        string? failureCategory = null,
+        bool? irreversible = null)
+    {
+        _eventModerationActions.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("action_kind", NormalizeModerationActionKind(actionKind)),
+            new KeyValuePair<string, object?>("outcome", NormalizeModerationOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeModerationFailureCategory(failureCategory)),
+            new KeyValuePair<string, object?>("irreversible", irreversible?.ToString().ToLowerInvariant() ?? "unknown"));
     }
 
     public void RecordRegistrationCreated(string? tenantId = null)
@@ -653,8 +674,8 @@ public sealed class BusinessMetrics : IDisposable
         {
             "none" => "none",
             "fake" => "fake",
+            "openai" => "openai",
             "openai-compatible" => "openai-compatible",
-            "openai-sdk" => "openai-sdk",
             "azure-openai" => "azure-openai",
             "microsoft-extensions-ai" => "microsoft-extensions-ai",
             _ => "unknown"
@@ -733,7 +754,84 @@ public sealed class BusinessMetrics : IDisposable
     {
         return NormalizeTag(actionKind) switch
         {
-            "create_event_draft" => "create_event_draft",
+            "create_event_draft" or "createeventdraft" => "create_event_draft",
+            "update_event_draft" or "updateeventdraft" => "update_event_draft",
+            "publish_event" or "publishevent" => "publish_event",
+            "delete_event" or "deleteevent" => "delete_event",
+            "upsert_event_islamic_aspect" or "upserteventislamicaspect" => "upsert_event_islamic_aspect",
+            "delete_event_islamic_aspect" or "deleteeventislamicaspect" => "delete_event_islamic_aspect",
+            "upsert_event_tech_aspect" or "upserteventtechaspect" => "upsert_event_tech_aspect",
+            "delete_event_tech_aspect" or "deleteeventtechaspect" => "delete_event_tech_aspect",
+            "create_event_session" or "createeventsession" => "create_event_session",
+            "update_event_session" or "updateeventsession" => "update_event_session",
+            "delete_event_session" or "deleteeventsession" => "delete_event_session",
+            "create_event_session_group" or "createeventsessiongroup" => "create_event_session_group",
+            "update_event_session_group" or "updateeventsessiongroup" => "update_event_session_group",
+            "delete_event_session_group" or "deleteeventsessiongroup" => "delete_event_session_group",
+            "assign_session_to_event_session_group" or "assignsessiontoeventsessiongroup" => "assign_session_to_event_session_group",
+            "unassign_session_from_event_session_group" or "unassignsessionfromeventsessiongroup" => "unassign_session_from_event_session_group",
+            "create_event_day" or "createeventday" => "create_event_day",
+            "update_event_day" or "updateeventday" => "update_event_day",
+            "delete_event_day" or "deleteeventday" => "delete_event_day",
+            "create_event_agenda_item" or "createeventagendaitem" => "create_event_agenda_item",
+            "update_event_agenda_item" or "updateeventagendaitem" => "update_event_agenda_item",
+            "delete_event_agenda_item" or "deleteeventagendaitem" => "delete_event_agenda_item",
+            "create_event_custom_property_definition" or "createeventcustompropertydefinition" => "create_event_custom_property_definition",
+            "update_event_custom_property_definition" or "updateeventcustompropertydefinition" => "update_event_custom_property_definition",
+            "delete_event_custom_property_definition" or "deleteeventcustompropertydefinition" => "delete_event_custom_property_definition",
+            "purge_event_custom_property_definition" or "purgeeventcustompropertydefinition" => "purge_event_custom_property_definition",
+            "set_event_custom_property_value" or "seteventcustompropertyvalue" => "set_event_custom_property_value",
+            "set_event_custom_property_multi_values" or "seteventcustompropertymultivalues" => "set_event_custom_property_multi_values",
+            "create_event_registration" or "createeventregistration" => "create_event_registration",
+            "update_event_registration" or "updateeventregistration" => "update_event_registration",
+            "delete_event_registration" or "deleteeventregistration" => "delete_event_registration",
+            "assign_event_team_role" or "assigneventteamrole" => "assign_event_team_role",
+            "revoke_event_team_role" or "revokeeventteamrole" => "revoke_event_team_role",
+            "create_event_template" or "createeventtemplate" => "create_event_template",
+            "update_event_template" or "updateeventtemplate" => "update_event_template",
+            "delete_event_template" or "deleteeventtemplate" => "delete_event_template",
+            "create_event_session_template" or "createeventsessiontemplate" => "create_event_session_template",
+            "update_event_session_template" or "updateeventsessiontemplate" => "update_event_session_template",
+            "delete_event_session_template" or "deleteeventsessiontemplate" => "delete_event_session_template",
+            "apply_event_template_sync" or "applyeventtemplatesync" => "apply_event_template_sync",
+            "apply_event_session_template_sync" or "applyeventsessiontemplatesync" => "apply_event_session_template_sync",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeModerationActionKind(string? actionKind)
+    {
+        return NormalizeTag(actionKind) switch
+        {
+            "light_moderated" or "lightmoderated" or "moderate-light" or "light" => "light_moderated",
+            "heavy_redacted" or "heavyredacted" or "moderate-heavy" or "heavy" => "heavy_redacted",
+            "unmoderated" or "unmoderate" => "unmoderated",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeModerationOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "succeeded" => "succeeded",
+            "failed" => "failed",
+            "idempotent" => "idempotent",
+            "pending_storage_deletion" => "pending_storage_deletion",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeModerationFailureCategory(string? failureCategory)
+    {
+        return NormalizeTag(failureCategory ?? "none") switch
+        {
+            "none" => "none",
+            "not_found" => "not_found",
+            "invalid_status" => "invalid_status",
+            "not_reversible" => "not_reversible",
+            "user_unresolved" => "user_unresolved",
+            "storage_deletion_pending" => "storage_deletion_pending",
             _ => "unknown"
         };
     }

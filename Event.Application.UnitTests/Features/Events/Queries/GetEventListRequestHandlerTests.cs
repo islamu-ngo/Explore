@@ -9,6 +9,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Queries;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Specifications.Events;
+using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -46,6 +47,21 @@ public class GetEventListRequestHandlerTests
 
         // Default mock for mapper to avoid nulls in PaginatedResult
         _mapper.Map<List<EventListDto>>(Arg.Any<List<Explore.Domain.Event>>()).Returns(new List<EventListDto>());
+    }
+
+    [Test]
+    public async Task Handle_DefaultRequest_AddsPublishedStatusAndCurrentOrUpcomingPublishedSessionFilters()
+    {
+        _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
+            .Returns((new List<Explore.Domain.Event>(), 0));
+
+        await _handler.Handle(new GetEventListRequest(), CancellationToken.None);
+
+        await _eventRepository.Received(1).GetEventsWithDetailsPaged(
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Is<EventQuerySpecification>(s => HasPublishedStatusFilter(s) && s.SubqueryFilters.Any(f =>
+                f.FilterType == EventSubqueryFilterType.CurrentOrUpcomingPublishedSession)));
     }
 
     [Test]
@@ -248,6 +264,19 @@ public class GetEventListRequestHandlerTests
         var probe = CreateEventProbe(actorId);
         var other = CreateEventProbe(Guid.NewGuid());
         return specification.Filters.Any(filter => filter.Predicate.Compile()(probe) && !filter.Predicate.Compile()(other));
+    }
+
+    private static bool HasPublishedStatusFilter(EventQuerySpecification specification)
+    {
+        var published = CreateEventProbe(Guid.NewGuid());
+        published.EventStatusId = (int)EventStatusEnum.Published;
+        var completed = CreateEventProbe(Guid.NewGuid());
+        completed.EventStatusId = (int)EventStatusEnum.Completed;
+
+        return specification.Filters.Any(filter =>
+            filter is EventFilter { FilterType: EventFilterType.Status } &&
+            filter.Predicate.Compile()(published) &&
+            !filter.Predicate.Compile()(completed));
     }
 
     private static Explore.Domain.Event CreateEventProbe(Guid actorId) =>

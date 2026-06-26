@@ -172,6 +172,16 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
+    public static readonly ResourceDescriptor<EventSessionListDto> EventSessionList = new(
+        ResourceKinds.EventSession,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["eventId"] = dto.EventId.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
     public static readonly ResourceDescriptor<EventSessionGroupDto> EventSessionGroup = new(
         ResourceKinds.EventSessionGroup,
         dto => dto.Id.ToString(),

@@ -25,7 +25,9 @@ public sealed class GetEventCalendarExportRequestHandler(
             return null;
         }
 
-        List<EventSession> sessions = await eventSessionRepository.GetSessionsByEvent(request.EventId);
+        List<EventSession> sessions = await eventSessionRepository.GetPublicSessionsByEventAsync(
+            request.EventId,
+            cancellationToken);
         EventSession? primarySession = sessions
             .OrderBy(session => session.StartTime)
             .FirstOrDefault();
@@ -35,13 +37,18 @@ public sealed class GetEventCalendarExportRequestHandler(
             return null;
         }
 
+        if (primarySession.StartTime is null || primarySession.EndTime is null)
+        {
+            return null;
+        }
+
         return new EventCalendarExportDto(
             entity.Id,
             entity.Title,
             entity.Content ?? entity.Description,
             entity.Slug,
-            primarySession.StartTime.ToUniversalTime(),
-            primarySession.EndTime.ToUniversalTime(),
+            primarySession.StartTime.Value.ToUniversalTime(),
+            primarySession.EndTime.Value.ToUniversalTime(),
             BuildLocation(primarySession));
     }
 

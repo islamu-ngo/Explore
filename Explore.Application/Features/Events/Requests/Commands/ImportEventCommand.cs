@@ -1,0 +1,22 @@
+// ABOUTME: MediatR command for importing an event from an external source or backfill.
+// ABOUTME: Supplies tenant-scoped resource context for authorization before the import handler runs.
+
+using Explore.Application.Authorization;
+using Explore.Application.DTOs.Event;
+using Explore.Application.Responses;
+using MediatR;
+
+namespace Explore.Application.Features.Events.Requests.Commands;
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Create)]
+public sealed class ImportEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    public required ImportEventRequestDto Request { get; set; }
+
+    string? ISecureRequest.ResourceId => Request.TenantId.ToString();
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = Request.TenantId.ToString()
+    };
+}

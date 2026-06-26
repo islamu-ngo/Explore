@@ -1,6 +1,10 @@
+// ABOUTME: Unit tests for the event publish-readiness query handler.
+// ABOUTME: Verifies policy-aware readiness mapping and missing-event behavior.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Handlers.Queries;
 using Explore.Application.Features.Events.Requests.Queries;
+using Explore.Application.Services.Lifecycle;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using NSubstitute;
@@ -12,12 +16,21 @@ namespace Event.Application.UnitTests.Features.Events.Queries;
 public class GetEventPublishReadinessRequestHandlerTests
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IEventLifecyclePolicyProvider _policyProvider;
     private readonly GetEventPublishReadinessRequestHandler _handler;
 
     public GetEventPublishReadinessRequestHandlerTests()
     {
         _eventRepository = Substitute.For<IEventRepository>();
-        _handler = new GetEventPublishReadinessRequestHandler(_eventRepository);
+        _policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
+        _policyProvider
+            .GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(CreateEventPublishPolicy());
+
+        _handler = new GetEventPublishReadinessRequestHandler(
+            _eventRepository,
+            _policyProvider,
+            new EventLifecycleReadinessEvaluator());
     }
 
     [Test]
@@ -45,10 +58,10 @@ public class GetEventPublishReadinessRequestHandlerTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.IsReady).IsFalse();
-        await Assert.That(result.Errors.Count).IsEqualTo(1);
-        await Assert.That(result.Errors[0].Code).IsEqualTo("schedule_session_required");
-        await Assert.That(result.Errors[0].FieldPath).IsEqualTo("schedule.sessions");
-        await Assert.That(result.Errors[0].Severity).IsEqualTo("error");
+        await Assert.That(result.Errors.Select(error => error.Code)).Contains("schedule_session_required");
+        await Assert.That(result.Errors.Select(error => error.Code)).Contains("schedule_first_start_required");
+        await Assert.That(result.Errors.Single(error => error.Code == "schedule_session_required").FieldPath).IsEqualTo("schedule.sessions");
+        await Assert.That(result.Errors.All(error => error.Severity == "error")).IsTrue();
     }
 
     [Test]
@@ -66,6 +79,7 @@ public class GetEventPublishReadinessRequestHandlerTests
     {
         Id = Guid.NewGuid(),
         Title = "Ready Event",
+        ActorId = Guid.NewGuid(),
         Actor = new Actor
         {
             ActorType = new ActorType { Id = 1, FullName = "User", MasterCode = "user" },
@@ -89,5 +103,22 @@ public class GetEventPublishReadinessRequestHandlerTests
         FullName = "Test Tenant",
         Slug = "test",
         TenantStatus = null!
+    };
+
+    private static EventLifecyclePolicy CreateEventPublishPolicy() => new()
+    {
+        Profile = ValidationProfile.EventPublish,
+        RequiredEventFields = new HashSet<Enum>
+        {
+            EventFieldKey.Title,
+            EventFieldKey.Tenant,
+            EventFieldKey.Owner,
+            EventFieldKey.Status,
+            EventFieldKey.Visibility,
+            EventFieldKey.Format,
+            EventFieldKey.ScheduleSessions,
+            EventFieldKey.ScheduleFirstStart
+        },
+        RequiredSessionFields = new HashSet<Enum>()
     };
 }

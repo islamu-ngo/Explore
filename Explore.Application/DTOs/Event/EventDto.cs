@@ -67,6 +67,7 @@ public class EventDto
     public int EventStatusId { get; set; }
     public required string EventStatusFullName { get; set; }
     public required string EventStatusMasterCode { get; set; }
+    public bool IsUnmoderationEligible { get; set; }
     public int VisibilityTypeId { get; set; }
     public required string VisibilityTypeFullName { get; set; }
     public required string VisibilityTypeMasterCode { get; set; }
