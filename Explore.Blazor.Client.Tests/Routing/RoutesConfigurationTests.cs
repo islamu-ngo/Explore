@@ -26,12 +26,13 @@ public class RoutesConfigurationTests
     }
 
     [Test]
-    public async Task Routes_ShouldInclude_MyRegistrations_Path()
+    public async Task Routes_ShouldNotInclude_RemovedMyRegistrations_Path()
     {
         var routesFilePath = FindRoutesFilePath();
         var routesContent = await File.ReadAllTextAsync(routesFilePath);
 
-        await Assert.That(routesContent).Contains("Path = \"/my/registrations\"");
+        await Assert.That(routesContent).DoesNotContain("Path = \"/my/registrations\"");
+        await Assert.That(routesContent).DoesNotContain("typeof(MyRegistrations)");
     }
 
     [Test]
@@ -83,25 +84,45 @@ public class RoutesConfigurationTests
 
         const string createSessionRoute = "Path = \"/events/:eventId/sessions/create\", Component = typeof(CreateSession)";
         const string editSessionRoute = "Path = \"/events/:eventId/sessions/:sessionId/edit\", Component = typeof(EditSession)";
+        const string detailSessionRoute = "Path = \"/events/:eventId/sessions/:sessionId\", Component = typeof(EventSessionDetail)";
         const string eventDetailRoute = "Path = \"/events/:eventId\", Component = typeof(EventDetail)";
 
         await Assert.That(routesContent).Contains("@using Explore.Blazor.Client.Pages.Events.Sessions");
         await Assert.That(routesContent).Contains(createSessionRoute);
         await Assert.That(routesContent).Contains(editSessionRoute);
+        await Assert.That(routesContent).Contains(detailSessionRoute);
 
         await Assert.That(routesContent.IndexOf(createSessionRoute, StringComparison.Ordinal))
             .IsLessThan(routesContent.IndexOf(eventDetailRoute, StringComparison.Ordinal));
         await Assert.That(routesContent.IndexOf(editSessionRoute, StringComparison.Ordinal))
             .IsLessThan(routesContent.IndexOf(eventDetailRoute, StringComparison.Ordinal));
+        await Assert.That(routesContent.IndexOf(detailSessionRoute, StringComparison.Ordinal))
+            .IsLessThan(routesContent.IndexOf(eventDetailRoute, StringComparison.Ordinal));
+    }
+
+    [Test]
+    public async Task EventSessionDetail_ShouldNotExpose_EventModerationActions()
+    {
+        var sourcePath = FindClientFilePath("Pages", "Events", "Sessions", "EventSessionDetail.razor");
+        var source = await File.ReadAllTextAsync(sourcePath);
+
+        await Assert.That(source).DoesNotContain("moderate-light");
+        await Assert.That(source).DoesNotContain("moderate-heavy");
+        await Assert.That(source).DoesNotContain("Heavy Redact");
+        await Assert.That(source).Contains("Complete");
+        await Assert.That(source).Contains("Archive");
     }
 
     private static string FindRoutesFilePath()
+        => FindClientFilePath("Routes.razor");
+
+    private static string FindClientFilePath(params string[] relativeSegments)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
 
         while (directory is not null)
         {
-            var candidate = Path.Combine(directory.FullName, "Explore.Blazor.Client", "Routes.razor");
+            var candidate = Path.Combine([directory.FullName, "Explore.Blazor.Client", .. relativeSegments]);
             if (File.Exists(candidate))
             {
                 return candidate;

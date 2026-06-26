@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using Blazouter.Services;
 using Explore.Blazor.Client.Pages.Events;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -29,6 +30,48 @@ public sealed class EventDetailTests : IDisposable
 
         await Assert.That(imageUrl).IsNotNull();
         await Assert.That(imageUrl!).EndsWith($"/api/storageobject/{imageId}/content");
+    }
+
+    [Test]
+    public async Task Render_WhenBackgroundColorMissing_KeepsThemeBackgroundAndPublishesFullBleedLayoutStyle()
+    {
+        var eventDto = CreateEventDto("PUBLISHED", "Published");
+        eventDto.BackgroundColor = null;
+        eventDto.BackgroundImageUri = "https://example.test/background.webp";
+        eventDto.BackgroundEffect = "SoftOverlay";
+        var appearanceState = new MainContentAppearanceState();
+        RegisterEventDetailServices(eventDto);
+        _ctx.Services.AddSingleton(appearanceState);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+
+        await Assert.That(appearanceState.HasAppearance).IsTrue();
+        await Assert.That(appearanceState.Style).Contains("--layout-padding-inline: 0px;");
+        await Assert.That(appearanceState.Style.Contains("background:", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(appearanceState.Style.Contains("url(", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(appearanceState.Style.Contains("linear-gradient", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenBackgroundColorPresent_PublishesBackgroundColorOnly()
+    {
+        var eventDto = CreateEventDto("PUBLISHED", "Published");
+        eventDto.BackgroundColor = "#123456";
+        eventDto.BackgroundImageUri = "https://example.test/background.webp";
+        eventDto.BackgroundEffect = "StrongOverlay";
+        var appearanceState = new MainContentAppearanceState();
+        RegisterEventDetailServices(eventDto);
+        _ctx.Services.AddSingleton(appearanceState);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+
+        await Assert.That(appearanceState.HasAppearance).IsTrue();
+        await Assert.That(appearanceState.Style).Contains("--layout-padding-inline: 0px;");
+        await Assert.That(appearanceState.Style).Contains("background: #123456;");
+        await Assert.That(appearanceState.Style.Contains("url(", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(appearanceState.Style.Contains("linear-gradient", StringComparison.Ordinal)).IsFalse();
     }
 
     [Test]
@@ -62,6 +105,132 @@ public sealed class EventDetailTests : IDisposable
     }
 
     [Test]
+    public async Task Render_WhenOnlyModerateLinkReturned_ShowsModerateTopBarWithoutEdit()
+    {
+        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published", "moderate-light"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => cut.Markup.Contains("event-detail-action-bar", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("Moderate");
+        await Assert.That(cut.Markup.Contains("Return to Edit", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains(">Edit<", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains("Cancel", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenOnlyHeavyModerateLinkReturned_ShowsHeavyRedactTopBarWithoutEdit()
+    {
+        RegisterEventDetailServices(CreateEventDto("DRAFT", "Draft", "moderate-heavy"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => cut.Markup.Contains("event-detail-action-bar", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("Heavy Redact");
+        await Assert.That(cut.Markup.Contains("Return to Edit", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains(">Edit<", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains(">Moderate<", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenLightAndHeavyModerationLinksReturned_ShowsBothModerationActions()
+    {
+        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published", "moderate-light", "moderate-heavy"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => cut.Markup.Contains("event-detail-action-bar", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("Moderate");
+        await Assert.That(cut.Markup).Contains("Heavy Redact");
+        await Assert.That(cut.Markup.Contains("Return to Edit", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenOnlyUnmoderateLinkReturned_ShowsRestoreTopBarWithoutEdit()
+    {
+        RegisterEventDetailServices(CreateEventDto("MODERATED", "Moderated", "unmoderate"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => cut.Markup.Contains("event-detail-action-bar", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("Restore");
+        await Assert.That(cut.Markup.Contains("Return to Edit", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains(">Edit<", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains(">Moderate<", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenEventAgendaHasMultipleSessions_ShowsSessionDetailLinks()
+    {
+        var eventId = Guid.NewGuid();
+        var firstSessionId = Guid.NewGuid();
+        var secondSessionId = Guid.NewGuid();
+        var eventDto = CreateEventDto("PUBLISHED", "Published");
+        eventDto.Id = eventId;
+        eventDto.SessionCount = 2;
+
+        var sessions = new List<EventSessionListDto>
+        {
+            new()
+            {
+                Id = firstSessionId,
+                EventId = eventId,
+                Title = "Opening class",
+                EventSessionStatusFullName = "Published",
+                EventSessionStatusMasterCode = "PUBLISHED",
+                StartTime = new DateTimeOffset(2026, 6, 25, 9, 0, 0, TimeSpan.Zero)
+            },
+            new()
+            {
+                Id = secondSessionId,
+                EventId = eventId,
+                Title = "Workshop",
+                EventSessionStatusFullName = "Draft",
+                EventSessionStatusMasterCode = "DRAFT",
+                StartTime = new DateTimeOffset(2026, 6, 25, 10, 0, 0, TimeSpan.Zero)
+            }
+        };
+
+        RegisterEventDetailServices(
+            eventDto,
+            sessions,
+            [
+                new EventDayListDto
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = eventId,
+                    LocalDate = new DateOnly(2026, 6, 25),
+                    Label = "Day 1"
+                }
+            ],
+            [
+                new EventAgendaItemListDto
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = eventId,
+                    Title = "Doors open",
+                    LocalStartDate = new DateOnly(2026, 6, 25),
+                    LocalStartTime = new TimeOnly(8, 30),
+                    LocalEndTime = new TimeOnly(9, 0),
+                    StartTime = new DateTimeOffset(2026, 6, 25, 8, 30, 0, TimeSpan.Zero),
+                    EndTime = new DateTimeOffset(2026, 6, 25, 9, 0, 0, TimeSpan.Zero)
+                }
+            ]);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains($"/events/{eventId}/sessions/{firstSessionId}", StringComparison.Ordinal))
+                throw new InvalidOperationException("First session detail link was not rendered in the agenda section.");
+        }, TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains($"/events/{eventId}/sessions/{secondSessionId}");
+        await Assert.That(cut.Markup).Contains("Doors open");
+    }
+
+
+    [Test]
     public async Task RefreshRestoredEventDetailsAsync_WhenFreshHalLinksArrive_EnablesManagementTopBar()
     {
         var eventId = Guid.NewGuid();
@@ -87,32 +256,77 @@ public sealed class EventDetailTests : IDisposable
         await Assert.That(GetProperty<bool>(component, "HasManagementTopBar")).IsTrue();
     }
 
+    [Test]
+    public async Task CheckRegistrationStatusAsync_WhenRegistrationCarriesEventId_MarksUserRegistered()
+    {
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var registrationId = Guid.NewGuid();
+
+        _ctx.SetAuthenticatedUser(userId, "Registered User", "registered@example.test");
+
+        var eventService = Substitute.For<IEventService>();
+        eventService.GetRegistrationsByUserAsync(userId).Returns(
+        [
+            new EventRegistrationListDto
+            {
+                Id = registrationId,
+                EventId = eventId,
+                UserId = userId
+            }
+        ]);
+
+        var userService = Substitute.For<IUserService>();
+        userService.GetCurrentUserAsync().Returns(new UserDto { Id = userId });
+
+        var component = new EventDetail();
+        SetProperty(component, "EventId", eventId);
+        SetProperty(component, "EventService", eventService);
+        SetProperty(component, "UserService", userService);
+        SetProperty(component, "AuthStateProvider", _ctx.Services.GetRequiredService<AuthenticationStateProvider>());
+        SetProperty(component, "Logger", Substitute.For<ILogger<EventDetail>>());
+
+        await InvokePrivateTaskAsync(component, "CheckRegistrationStatusAsync");
+
+        await Assert.That(GetField<bool>(component, "_isUserRegistered")).IsTrue();
+        await Assert.That(GetField<List<Guid>>(component, "_userRegistrationIds")).Contains(registrationId);
+    }
+
     public void Dispose() => _ctx.Dispose();
 
-    private void RegisterEventDetailServices(EventDto eventDto)
+    private void RegisterEventDetailServices(
+        EventDto eventDto,
+        ICollection<EventSessionListDto>? sessions = null,
+        ICollection<EventDayListDto>? days = null,
+        ICollection<EventAgendaItemListDto>? eventAgendaItems = null,
+        ICollection<EventSessionAgendaItemListDto>? sessionAgendaItems = null)
     {
         _ctx.SetAnonymousUser();
         _ctx.JSInterop.SetupVoid("window.scrollTo", _ => true).SetVoidResult();
 
         var eventService = Substitute.For<IEventService>();
         eventService.GetEventByIdAsync(Arg.Any<Guid>()).Returns(eventDto);
-        eventService.GetSessionsByEventAsync(Arg.Any<Guid>())
-            .Returns(new List<EventSessionListDto>());
+        eventService.GetSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<bool>())
+            .Returns(sessions ?? new List<EventSessionListDto>());
 
         var eventDayService = Substitute.For<IEventDayService>();
         eventDayService.GetDaysByEventAsync(Arg.Any<Guid>())
-            .Returns(new List<EventDayListDto>());
+            .Returns(days ?? new List<EventDayListDto>());
 
         var eventAgendaItemService = Substitute.For<IEventAgendaItemService>();
         eventAgendaItemService.GetAgendaItemsByEventAsync(Arg.Any<Guid>())
-            .Returns(new List<EventAgendaItemListDto>());
+            .Returns(eventAgendaItems ?? new List<EventAgendaItemListDto>());
+
+        var sessionAgendaItemService = Substitute.For<IEventSessionAgendaItemService>();
+        sessionAgendaItemService.GetAgendaItemsBySessionAsync(Arg.Any<Guid>())
+            .Returns(sessionAgendaItems ?? new List<EventSessionAgendaItemListDto>());
 
         _ctx.Services.AddSingleton(eventService);
         _ctx.Services.AddSingleton(Substitute.For<IMapsService>());
         _ctx.Services.AddScoped<RouterStateService>();
         _ctx.Services.AddSingleton(Substitute.For<IUserService>());
         _ctx.Services.AddSingleton(Substitute.For<IEventAspectService>());
-        _ctx.Services.AddSingleton(Substitute.For<IEventSessionAgendaItemService>());
+        _ctx.Services.AddSingleton(sessionAgendaItemService);
         _ctx.Services.AddSingleton(eventAgendaItemService);
         _ctx.Services.AddSingleton(eventDayService);
         _ctx.Services.AddSingleton(Substitute.For<IActorSubscriptionService>());
@@ -135,7 +349,12 @@ public sealed class EventDetailTests : IDisposable
             ActorTypeId = 2,
             ActorTypeFullName = "Organization",
             EventTypeFullName = "Program",
-            EventStatusId = statusCode == "PUBLISHED" ? 2 : 1,
+            EventStatusId = statusCode switch
+            {
+                "PUBLISHED" => 2,
+                "MODERATED" => 6,
+                _ => 1
+            },
             EventStatusFullName = statusName,
             EventStatusMasterCode = statusCode,
             EventFormatId = 1,
@@ -188,6 +407,15 @@ public sealed class EventDetailTests : IDisposable
 
         return (T?)property.GetValue(instance)
             ?? throw new InvalidOperationException($"Property {propertyName} returned null.");
+    }
+
+    private static T GetField<T>(object instance, string fieldName)
+    {
+        var field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Field {fieldName} was not found.");
+
+        return (T?)field.GetValue(instance)
+            ?? throw new InvalidOperationException($"Field {fieldName} returned null.");
     }
 
     private static void SetField<T>(object instance, string fieldName, T value)

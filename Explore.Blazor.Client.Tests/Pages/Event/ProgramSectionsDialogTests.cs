@@ -151,7 +151,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var eventService = Substitute.For<IEventService>();
         eventService.AssignSessionToGroupAsync(eventId, sectionId, sessionId, true, 10)
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
-        eventService.GetSessionsByEventAsync(eventId).Returns(new List<EventSessionListDto>());
+        eventService.GetSessionsByEventAsync(eventId, includeManagedSessions: true).Returns(new List<EventSessionListDto>());
         var section = CreateSection(sectionId, eventId, hasDelete: false, hasAssign: true);
         var session = CreateSession(sessionId, "Opening keynote");
 
@@ -166,7 +166,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "AssignSessionAsync", session);
 
         await eventService.Received(1).AssignSessionToGroupAsync(eventId, sectionId, sessionId, true, 10);
-        await eventService.Received(1).GetSessionsByEventAsync(eventId);
+        await eventService.Received(1).GetSessionsByEventAsync(eventId, includeManagedSessions: true);
         await Assert.That(GetField<bool>(cut.Instance, "_hasChanges")).IsTrue();
     }
 
@@ -179,7 +179,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var eventService = Substitute.For<IEventService>();
         eventService.UnassignSessionFromGroupAsync(eventId, sectionId, sessionId)
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
-        eventService.GetSessionsByEventAsync(eventId).Returns(new List<EventSessionListDto>());
+        eventService.GetSessionsByEventAsync(eventId, includeManagedSessions: true).Returns(new List<EventSessionListDto>());
         var section = CreateSection(sectionId, eventId, hasDelete: false, hasAssign: true);
         var session = CreateSession(sessionId, "Workshop", sectionId);
 
@@ -193,7 +193,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "UnassignSessionAsync", session);
 
         await eventService.Received(1).UnassignSessionFromGroupAsync(eventId, sectionId, sessionId);
-        await eventService.Received(1).GetSessionsByEventAsync(eventId);
+        await eventService.Received(1).GetSessionsByEventAsync(eventId, includeManagedSessions: true);
         await Assert.That(GetField<bool>(cut.Instance, "_hasChanges")).IsTrue();
     }
 

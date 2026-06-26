@@ -3,7 +3,6 @@
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Components.Events;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
@@ -25,17 +24,21 @@ public partial class OrganizationProfile
     private OrganizationDto? _organization;
     private bool _isLoading = true;
     private bool _isLoadingEvents;
+    private bool _isLoadingRegistrationEvents;
     private List<OrganizationReviewDto> _reviews = new();
     private List<EventListDto> _upcomingEvents = new();
     private List<EventListDto> _pastEvents = new();
     private List<KeyValuePair<DateTime, List<EventListDto>>> _pastEventsByDate = new();
-    private EventPreviewWorkspace? _eventPreviewWorkspace;
+    private List<EventListDto> _upcomingRegistrationEvents = new();
+    private List<EventListDto> _pastRegistrationEvents = new();
+    private List<KeyValuePair<DateTime, List<EventListDto>>> _pastRegistrationEventsByDate = new();
     private AppearanceSettings _appearance = new();
     private string _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(new AppearanceSettings(), "#1f6feb");
 
     private string? _errorMessage;
 
-    private IReadOnlyList<EventListDto> ProfileEvents => _upcomingEvents.Concat(_pastEvents).ToList();
+    private List<EventListDto> PostEvents => _upcomingEvents.Concat(_pastEvents).ToList();
+    private List<EventListDto> RegistrationEvents => _upcomingRegistrationEvents.Concat(_pastRegistrationEvents).ToList();
 
     [PersistentState]
     public OrganizationProfileState? PersistedState { get; set; }
@@ -96,6 +99,7 @@ public partial class OrganizationProfile
         if (_organization?.ActorId.HasValue == true)
         {
             _ = InvokeAsync(LoadEventsAsync);
+            _ = InvokeAsync(LoadRegistrationEventsAsync);
         }
     }
 
@@ -106,7 +110,7 @@ public partial class OrganizationProfile
 
         try
         {
-            var allEvents = await EventService.GetPublicEventsByActorAsync(_organization!.ActorId!.Value);
+            var allEvents = await EventService.GetProfileEventsByActorAsync(_organization!.ActorId!.Value);
 
             _upcomingEvents = allEvents
                 .Where(e => e.IsPast != true)
@@ -118,11 +122,7 @@ public partial class OrganizationProfile
                 .OrderByDescending(e => e.FirstSessionDate)
                 .ToList();
 
-            _pastEventsByDate = _pastEvents
-                .GroupBy(e => e.FirstSessionDate?.Date ?? DateTime.MinValue)
-                .OrderByDescending(g => g.Key)
-                .Select(g => new KeyValuePair<DateTime, List<EventListDto>>(g.Key, g.ToList()))
-                .ToList();
+            _pastEventsByDate = GroupEventsByDate(_pastEvents);
 
             Logger.LogDebug("Loaded {Upcoming} upcoming and {Past} past events for actor {ActorId}",
                 _upcomingEvents.Count, _pastEvents.Count, _organization.ActorId);
@@ -138,16 +138,43 @@ public partial class OrganizationProfile
         }
     }
 
+    private async Task LoadRegistrationEventsAsync()
+    {
+        _isLoadingRegistrationEvents = true;
+        StateHasChanged();
+
+        try
+        {
+            var allEvents = await EventService.GetRegistrationEventsByActorAsync(_organization!.ActorId!.Value);
+
+            _upcomingRegistrationEvents = allEvents
+                .Where(e => e.IsPast != true)
+                .OrderBy(e => e.FirstSessionDate)
+                .ToList();
+
+            _pastRegistrationEvents = allEvents
+                .Where(e => e.IsPast == true)
+                .OrderByDescending(e => e.FirstSessionDate)
+                .ToList();
+
+            _pastRegistrationEventsByDate = GroupEventsByDate(_pastRegistrationEvents);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading registration events for organization {OrganizationId}", Id);
+        }
+        finally
+        {
+            _isLoadingRegistrationEvents = false;
+            StateHasChanged();
+        }
+    }
+
     private void ShowAllReviews()
     {
         Navigation.NavigateTo($"/organization/reviews/{Id}");
     }
-
-    private Task HandleEventSelected(EventListDto evt) =>
-        _eventPreviewWorkspace?.SelectEventAsync(evt) ?? Task.CompletedTask;
-
-    private Task HandleEventShare(EventListDto evt) =>
-        _eventPreviewWorkspace?.ShareEventAsync(evt) ?? Task.CompletedTask;
 
     private string GetOrganizationPlaceholder()
     {
@@ -173,6 +200,15 @@ public partial class OrganizationProfile
         return (int)Math.Round(_reviews.Where(r => r.Rating.HasValue).Average(r => r.Rating!.Value));
     }
 
+    private static List<KeyValuePair<DateTime, List<EventListDto>>> GroupEventsByDate(IEnumerable<EventListDto> events)
+    {
+        return events
+            .GroupBy(e => e.FirstSessionDate?.Date ?? DateTime.MinValue)
+            .OrderByDescending(g => g.Key)
+            .Select(g => new KeyValuePair<DateTime, List<EventListDto>>(g.Key, g.ToList()))
+            .ToList();
+    }
+
     private bool TryRestoreState()
     {
         if (PersistedState == null || PersistedState.OrganizationId != Id)
@@ -196,6 +232,7 @@ public partial class OrganizationProfile
         if (_organization?.ActorId.HasValue == true)
         {
             _ = InvokeAsync(LoadEventsAsync);
+            _ = InvokeAsync(LoadRegistrationEventsAsync);
         }
 
         return true;

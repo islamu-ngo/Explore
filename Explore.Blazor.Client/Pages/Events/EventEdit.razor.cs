@@ -50,6 +50,12 @@ public partial class EventEdit : IDisposable
 
     private bool CanManageProgramSections => currentEvent?.HasHalLink("add-session-group") == true;
 
+    private bool CanRequestManagedSessions =>
+        currentEvent?.HasHalLink("edit") == true ||
+        CanAddSession ||
+        CanManageProgramSections ||
+        currentEvent?.HasHalLink("team") == true;
+
     private string ProgramSummary
     {
         get
@@ -422,7 +428,9 @@ public partial class EventEdit : IDisposable
 
                 var programSummaryTask = EventService.GetEventProgramSummaryAsync(EventId);
                 var sessionGroupsTask = EventService.GetSessionGroupsByEventAsync(EventId);
-                var eventSessions = await EventService.GetSessionsByEventAsync(EventId);
+                var eventSessions = await EventService.GetSessionsByEventAsync(
+                    EventId,
+                    includeManagedSessions: CanRequestManagedSessions);
                 sessions = eventSessions?.Select(s => SessionEditorModel.FromDto(s)).ToList()
                            ?? new List<SessionEditorModel>();
                 _programSections = (await sessionGroupsTask).ToList();

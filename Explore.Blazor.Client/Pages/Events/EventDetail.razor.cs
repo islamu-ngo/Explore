@@ -26,18 +26,45 @@ namespace Explore.Blazor.Client.Pages.Events;
 public partial class EventDetail : ComponentBase, IDisposable
 {
     private const string MainContentAppearanceOwner = "EventDetail";
+    private const string EventDetailMainContentStyle = "--layout-padding-inline: 0px;";
     private const string DraftStatusMasterCode = "DRAFT";
     private const string PublishedStatusMasterCode = "PUBLISHED";
     private const string CancelledStatusMasterCode = "CANCELLED";
     private const string CompletedStatusMasterCode = "COMPLETED";
+    private const string ModeratedStatusMasterCode = "MODERATED";
     private const string EditLinkRelation = "edit";
     private const string DeleteLinkRelation = "delete";
     private const string TeamLinkRelation = "team";
     private const string PublishLinkRelation = "publish";
     private const string CancelLinkRelation = "cancel";
+    private const string ModerateLightLinkRelation = "moderate-light";
+    private const string ModerateHeavyLinkRelation = "moderate-heavy";
+    private const string UnmoderateLinkRelation = "unmoderate";
     private const string ArchiveLinkRelation = "archive";
-    private const int CancelledEventStatusId = 3;
-    private const int ArchivedEventStatusId = 5;
+    private const string AddSessionLinkRelation = "add-session";
+    private const string AddSessionGroupLinkRelation = "add-session-group";
+    private const string ModerationHistoryLinkRelation = "moderation-history";
+
+    private static readonly IReadOnlyList<EventModerationReasonOption> LightModerationReasonOptions =
+    [
+        new("policy_review", "Policy review"),
+        new("community_safety_review", "Community safety review"),
+        new("event_details_need_review", "Event details need review")
+    ];
+
+    private static readonly IReadOnlyList<EventModerationReasonOption> HeavyModerationReasonOptions =
+    [
+        new("illegal_content", "Illegal content"),
+        new("illegal_image", "Illegal image"),
+        new("severe_safety_violation", "Severe safety violation")
+    ];
+
+    private static readonly IReadOnlyList<EventModerationReasonOption> UnmoderationReasonOptions =
+    [
+        new("review_cleared", "Review cleared"),
+        new("appeal_approved", "Appeal approved"),
+        new("policy_exception_approved", "Policy exception approved")
+    ];
 
     [Inject] private MainContentAppearanceState MainContentAppearanceState { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
@@ -77,6 +104,9 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool _canManageTeam = false;
     private bool _canPublish = false;
     private bool _canCancel = false;
+    private bool _canModerateLight = false;
+    private bool _canModerateHeavy = false;
+    private bool _canUnmoderate = false;
     private bool _canArchive = false;
     private bool _isProcessingEventAction = false;
     private bool _isAuthenticated = false;
@@ -103,7 +133,23 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool HasManagementTopBar =>
         _eventDetails != null &&
         !_isCheckingAuth &&
-        (_canEdit || _canPublish || _canCancel || _canArchive);
+        (_canEdit || _canPublish || _canCancel || _canModerateLight || _canModerateHeavy || _canUnmoderate || _canArchive);
+
+    private bool CanRequestManagedSessions =>
+        _eventDetails is not null &&
+        (_canEdit ||
+         _canManageTeam ||
+         _canPublish ||
+         _canCancel ||
+         _canModerateLight ||
+         _canModerateHeavy ||
+         _canUnmoderate ||
+         _canArchive ||
+         _eventDetails.HasHalLink(AddSessionLinkRelation) ||
+         _eventDetails.HasHalLink(AddSessionGroupLinkRelation) ||
+         _eventDetails.HasHalLink(ModerationHistoryLinkRelation));
+
+    private bool HasMultipleSessions => _eventSessions?.Count > 1;
 
     /// <summary>
     /// Initializes the component and loads event data.
@@ -176,13 +222,13 @@ public partial class EventDetail : ComponentBase, IDisposable
                 _islamicAspect = MapIslamicAspect(_eventDetails.IslamicAspect);
                 _techAspect = MapTechAspect(_eventDetails.TechAspect);
 
-                // Load event sessions
-                _eventSessions = await EventService.GetSessionsByEventAsync(EventId);
+                CheckAuthorizationFromHalLinks();
+
+                _eventSessions = await EventService.GetSessionsByEventAsync(
+                    EventId,
+                    includeManagedSessions: CanRequestManagedSessions);
                 _primarySession = _eventSessions?.FirstOrDefault();
                 Logger.LogInformation("Loaded {SessionCount} sessions", _eventSessions?.Count ?? 0);
-
-                // Check authorization from HAL links (synchronous — links are already in the response)
-                CheckAuthorizationFromHalLinks();
 
                 // Check registration status and load aspects in parallel
                 var registrationTask = CheckRegistrationStatusAsync();
@@ -402,15 +448,21 @@ public partial class EventDetail : ComponentBase, IDisposable
                 if (user?.Id != null)
                 {
                     var registrations = await EventService.GetRegistrationsByUserAsync(user.Id.Value);
-                    if (_eventSessions != null && registrations != null)
-                    {
-                        var sessionIds = _eventSessions.Select(s => s.Id).ToHashSet();
-                        var matchingRegistrations = registrations
-                            .Where(r => sessionIds.Contains(r.EventSessionId) && r.Id.HasValue)
-                            .ToList();
-                        _isUserRegistered = matchingRegistrations.Any();
-                        _userRegistrationIds = matchingRegistrations.Select(r => r.Id!.Value).ToList();
-                    }
+                    var sessionIds = _eventSessions?
+                        .Where(s => s.Id.HasValue)
+                        .Select(s => s.Id!.Value)
+                        .ToHashSet() ?? [];
+
+                    var matchingRegistrations = registrations?
+                        .Where(r => r.Id.HasValue
+                            && (r.EventId == EventId
+                                || (r.EventId is null
+                                    && r.EventSessionId.HasValue
+                                    && sessionIds.Contains(r.EventSessionId.Value))))
+                        .ToList() ?? [];
+
+                    _isUserRegistered = matchingRegistrations.Any();
+                    _userRegistrationIds = matchingRegistrations.Select(r => r.Id!.Value).ToList();
                 }
             }
         }
@@ -485,6 +537,9 @@ public partial class EventDetail : ComponentBase, IDisposable
             _canManageTeam = false;
             _canPublish = false;
             _canCancel = false;
+            _canModerateLight = false;
+            _canModerateHeavy = false;
+            _canUnmoderate = false;
             _canArchive = false;
             return;
         }
@@ -494,15 +549,21 @@ public partial class EventDetail : ComponentBase, IDisposable
         _canManageTeam = _eventDetails.HasHalLink(TeamLinkRelation);
         _canPublish = _eventDetails.HasHalLink(PublishLinkRelation);
         _canCancel = _eventDetails.HasHalLink(CancelLinkRelation);
+        _canModerateLight = _eventDetails.HasHalLink(ModerateLightLinkRelation);
+        _canModerateHeavy = _eventDetails.HasHalLink(ModerateHeavyLinkRelation);
+        _canUnmoderate = _eventDetails.HasHalLink(UnmoderateLinkRelation);
         _canArchive = _eventDetails.HasHalLink(ArchiveLinkRelation);
         Logger.LogDebug(
-            "HAL link authorization for event {EventId}: CanEdit={CanEdit}, CanDelete={CanDelete}, CanManageTeam={CanManageTeam}, CanPublish={CanPublish}, CanCancel={CanCancel}, CanArchive={CanArchive}",
+            "HAL link authorization for event {EventId}: CanEdit={CanEdit}, CanDelete={CanDelete}, CanManageTeam={CanManageTeam}, CanPublish={CanPublish}, CanCancel={CanCancel}, CanModerateLight={CanModerateLight}, CanModerateHeavy={CanModerateHeavy}, CanUnmoderate={CanUnmoderate}, CanArchive={CanArchive}",
             EventId,
             _canEdit,
             _canDelete,
             _canManageTeam,
             _canPublish,
             _canCancel,
+            _canModerateLight,
+            _canModerateHeavy,
+            _canUnmoderate,
             _canArchive);
     }
 
@@ -523,6 +584,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         DraftStatusMasterCode => Color.Default,
         CancelledStatusMasterCode => Color.Error,
         CompletedStatusMasterCode => Color.Info,
+        ModeratedStatusMasterCode => Color.Error,
         "POSTPONED" => Color.Warning,
         _ => Color.Default
     };
@@ -758,9 +820,10 @@ public partial class EventDetail : ComponentBase, IDisposable
         if (_isCheckingRegistration) return "Checking...";
         if (_isCancellingRegistration) return "Cancelling...";
         if (IsCancelledEvent()) return "Event Cancelled";
-        if (_isUserRegistered) return "Already Registered";
-        if (!_isAuthenticated) return "Login to Register";
+        if (_isAuthenticated && _isUserRegistered) return "Already Registered";
         if (!HasAvailableRegistrationTarget()) return "Registration unavailable";
+        // This will now catch both authenticated (but not registered) users
+        // AND unauthenticated users perfectly
         return _eventDetails?.IsRegistrationRequired == true ? "Register now" : "Join us";
     }
 
@@ -1023,6 +1086,10 @@ public partial class EventDetail : ComponentBase, IDisposable
         if (!_canPublish || _eventDetails is null || _isProcessingEventAction)
             return;
 
+        var selectedSessionsToPublish = await ResolveSessionsToPublishOnEventPublishAsync();
+        if (selectedSessionsToPublish is null)
+            return;
+
         if (_eventDetails.ConcurrencyStamp is not Guid expectedConcurrencyStamp || expectedConcurrencyStamp == Guid.Empty)
         {
             Snackbar.Add("Refresh the event before publishing.", Severity.Warning);
@@ -1036,7 +1103,24 @@ public partial class EventDetail : ComponentBase, IDisposable
             var response = await EventService.PublishEventAsync(EventId, expectedConcurrencyStamp);
             if (response?.Success == true)
             {
-                Snackbar.Add("Event published.", Severity.Success);
+                var sessionPublishResult = await PublishSelectedSessionsAsync(selectedSessionsToPublish);
+                if (sessionPublishResult.FailedCount > 0)
+                {
+                    Snackbar.Add(
+                        $"Event published. {sessionPublishResult.PublishedCount} session{(sessionPublishResult.PublishedCount == 1 ? "" : "s")} published; {sessionPublishResult.FailedCount} failed.",
+                        Severity.Warning);
+                }
+                else if (sessionPublishResult.PublishedCount > 0)
+                {
+                    Snackbar.Add(
+                        $"Event and {sessionPublishResult.PublishedCount} session{(sessionPublishResult.PublishedCount == 1 ? "" : "s")} published.",
+                        Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Event published.", Severity.Success);
+                }
+
                 await LoadEventDataAsync();
                 return;
             }
@@ -1054,29 +1138,287 @@ public partial class EventDetail : ComponentBase, IDisposable
         }
     }
 
+    private async Task<IReadOnlyList<EventSessionPublishSelectionDialog.EventSessionPublishSelection>?> ResolveSessionsToPublishOnEventPublishAsync()
+    {
+        if (CanRequestManagedSessions)
+        {
+            _eventSessions = await EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true);
+        }
+
+        var sessions = _eventSessions?
+            .Where(session => session.Id is { } sessionId && sessionId != Guid.Empty)
+            .OrderBy(session => session.StartTime ?? DateTimeOffset.MaxValue)
+            .ThenBy(session => session.SortOrder)
+            .ThenBy(session => session.Title)
+            .ToArray() ?? [];
+
+        if (sessions.Length <= 1)
+        {
+            var session = sessions.FirstOrDefault(session =>
+                session.ConcurrencyStamp is { } concurrencyStamp
+                && concurrencyStamp != Guid.Empty
+                && session.HasHalLink(PublishLinkRelation));
+
+            return session is null
+                ? []
+                : [new EventSessionPublishSelectionDialog.EventSessionPublishSelection(session.Id!.Value, session.ConcurrencyStamp!.Value)];
+        }
+
+        await AccessibilityFocusService.SaveFocusAsync();
+        try
+        {
+            var parameters = new DialogParameters<EventSessionPublishSelectionDialog>
+            {
+                { dialog => dialog.Sessions, sessions }
+            };
+
+            var dialog = await DialogService.ShowAsync<EventSessionPublishSelectionDialog>(
+                "Publish Sessions",
+                parameters,
+                DialogOptionsFactory.Confirmation());
+            var result = await dialog.Result;
+
+            return result is { Canceled: false, Data: EventSessionPublishSelectionDialog.EventSessionPublishSelectionResult selection }
+                ? selection.Sessions
+                : null;
+        }
+        finally
+        {
+            await AccessibilityFocusService.RestoreFocusAsync();
+        }
+    }
+
+    private async Task<(int PublishedCount, int FailedCount)> PublishSelectedSessionsAsync(
+        IReadOnlyList<EventSessionPublishSelectionDialog.EventSessionPublishSelection> selectedSessions)
+    {
+        var publishedCount = 0;
+        var failedCount = 0;
+
+        foreach (var session in selectedSessions)
+        {
+            var response = await EventService.PublishEventSessionAsync(
+                session.SessionId,
+                session.ExpectedConcurrencyStamp);
+
+            if (response?.Success == true)
+            {
+                publishedCount++;
+                continue;
+            }
+
+            failedCount++;
+            Logger.LogWarning(
+                "Event session {SessionId} could not be published after event {EventId} published: {Message}",
+                session.SessionId,
+                EventId,
+                response?.Message);
+        }
+
+        return (publishedCount, failedCount);
+    }
+
     private Task CancelEventAsync() =>
-        UpdateEventStatusWithConfirmationAsync(
-            CancelledEventStatusId,
+        ConfirmAndExecuteLifecycleActionAsync(
             "Cancel Event",
             $"Cancel \"{_eventDetails?.Title}\"? Registrations and public calls to action will stop being available.",
             "Cancel Event",
-            "Event cancelled.");
+            "Event cancelled.",
+            () => EventService.CancelEventAsync(EventId, _eventDetails?.ConcurrencyStamp ?? Guid.Empty, default));
 
     private Task ArchiveEventAsync() =>
-        UpdateEventStatusWithConfirmationAsync(
-            ArchivedEventStatusId,
+        ConfirmAndExecuteLifecycleActionAsync(
             "Archive Event",
             $"Archive \"{_eventDetails?.Title}\"? Archived events are removed from public event discovery.",
             "Archive Event",
             "Event archived.",
+            () => EventService.ArchiveEventAsync(EventId, _eventDetails?.ConcurrencyStamp ?? Guid.Empty, default),
             navigateToEvents: true);
 
-    private async Task UpdateEventStatusWithConfirmationAsync(
-        int eventStatusId,
+    private async Task ModerateEventAsync()
+    {
+        if (!_canModerateLight || _eventDetails is null || _isProcessingEventAction)
+            return;
+
+        var dialogResult = await ShowModerationReasonDialogAsync(
+            title: "Moderate Event",
+            message: $"Moderate \"{_eventDetails.Title}\"? This hides the event from public discovery.",
+            confirmText: "Moderate",
+            cancelText: "Keep Event",
+            confirmIcon: Icons.Material.Filled.Gavel,
+            titleIcon: Icons.Material.Filled.AdminPanelSettings,
+            confirmColor: Color.Warning,
+            alertSeverity: Severity.Warning,
+            reasonOptions: LightModerationReasonOptions);
+
+        if (dialogResult is null)
+            return;
+
+        _isProcessingEventAction = true;
+
+        try
+        {
+            var response = await EventService.ModerateEventLightAsync(EventId, reasonCode: dialogResult.ReasonCode);
+            if (response?.Success != true)
+            {
+                Snackbar.Add(response?.Message ?? "Event could not be moderated.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Event moderated.", Severity.Success);
+            await LoadEventDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error moderating event {EventId}", EventId);
+            Snackbar.Add("Event could not be moderated.", Severity.Error);
+        }
+        finally
+        {
+            _isProcessingEventAction = false;
+        }
+    }
+
+    private async Task HeavyRedactEventAsync()
+    {
+        if (!_canModerateHeavy || _eventDetails is null || _isProcessingEventAction)
+            return;
+
+        var dialogResult = await ShowModerationReasonDialogAsync(
+            title: "Heavy Redact Event",
+            message: $"Permanently redact \"{_eventDetails.Title}\" and delete event images?",
+            confirmText: "Redact Event",
+            cancelText: "Keep Event",
+            confirmIcon: Icons.Material.Filled.DeleteForever,
+            titleIcon: Icons.Material.Filled.Report,
+            confirmColor: Color.Error,
+            alertSeverity: Severity.Error,
+            reasonOptions: HeavyModerationReasonOptions,
+            requiresIrreversibleConfirmation: true);
+
+        if (dialogResult is null)
+            return;
+
+        _isProcessingEventAction = true;
+
+        try
+        {
+            var response = await EventService.ModerateEventHeavyAsync(EventId, reasonCode: dialogResult.ReasonCode);
+            if (response?.Success != true)
+            {
+                Snackbar.Add(response?.Message ?? "Event could not be heavy moderated.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Event redacted.", Severity.Success);
+            await LoadEventDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error heavy moderating event {EventId}", EventId);
+            Snackbar.Add("Event could not be heavy moderated.", Severity.Error);
+        }
+        finally
+        {
+            _isProcessingEventAction = false;
+        }
+    }
+
+    private async Task UnmoderateEventAsync()
+    {
+        if (!_canUnmoderate || _eventDetails is null || _isProcessingEventAction)
+            return;
+
+        var dialogResult = await ShowModerationReasonDialogAsync(
+            title: "Unmoderate Event",
+            message: $"Restore \"{_eventDetails.Title}\" to published visibility?",
+            confirmText: "Restore",
+            cancelText: "Keep Moderated",
+            confirmIcon: Icons.Material.Filled.Restore,
+            titleIcon: Icons.Material.Filled.Verified,
+            confirmColor: Color.Success,
+            alertSeverity: Severity.Info,
+            reasonOptions: UnmoderationReasonOptions);
+
+        if (dialogResult is null)
+            return;
+
+        _isProcessingEventAction = true;
+
+        try
+        {
+            var response = await EventService.UnmoderateEventAsync(EventId, reasonCode: dialogResult.ReasonCode);
+            if (response?.Success != true)
+            {
+                Snackbar.Add(response?.Message ?? "Event could not be unmoderated.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Event restored.", Severity.Success);
+            await LoadEventDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error unmoderating event {EventId}", EventId);
+            Snackbar.Add("Event could not be unmoderated.", Severity.Error);
+        }
+        finally
+        {
+            _isProcessingEventAction = false;
+        }
+    }
+
+    private async Task<EventModerationDialogResult?> ShowModerationReasonDialogAsync(
+        string title,
+        string message,
+        string confirmText,
+        string cancelText,
+        string confirmIcon,
+        string titleIcon,
+        Color confirmColor,
+        Severity alertSeverity,
+        IReadOnlyList<EventModerationReasonOption> reasonOptions,
+        bool requiresIrreversibleConfirmation = false)
+    {
+        var parameters = new DialogParameters<EventModerationReasonDialog>
+        {
+            { dialog => dialog.DialogTitle, title },
+            { dialog => dialog.Message, message },
+            { dialog => dialog.ConfirmText, confirmText },
+            { dialog => dialog.CancelText, cancelText },
+            { dialog => dialog.ConfirmIcon, confirmIcon },
+            { dialog => dialog.TitleIcon, titleIcon },
+            { dialog => dialog.ConfirmColor, confirmColor },
+            { dialog => dialog.AlertSeverity, alertSeverity },
+            { dialog => dialog.ReasonOptions, reasonOptions },
+            { dialog => dialog.RequiresIrreversibleConfirmation, requiresIrreversibleConfirmation }
+        };
+
+        await AccessibilityFocusService.SaveFocusAsync();
+        try
+        {
+            var dialog = await EventModerationReasonDialog.ShowAsync(
+                DialogService,
+                title,
+                parameters,
+                DialogOptionsFactory.Confirmation());
+            var result = await dialog.Result;
+
+            return result is { Canceled: false, Data: EventModerationDialogResult dialogResult }
+                ? dialogResult
+                : null;
+        }
+        finally
+        {
+            await AccessibilityFocusService.RestoreFocusAsync();
+        }
+    }
+
+    private async Task ConfirmAndExecuteLifecycleActionAsync(
         string title,
         string message,
         string yesText,
         string successMessage,
+        Func<Task<BaseCommandResponseOfGuid?>> action,
         bool navigateToEvents = false)
     {
         if (_eventDetails is null || _isProcessingEventAction)
@@ -1104,10 +1446,10 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         try
         {
-            var success = await EventService.UpdateEventStatusAsync(EventId, eventStatusId);
-            if (!success)
+            var response = await action();
+            if (response?.Success != true)
             {
-                Snackbar.Add("Event status could not be updated.", Severity.Error);
+                Snackbar.Add(response?.Message ?? "Event action could not be completed.", Severity.Error);
                 return;
             }
 
@@ -1122,8 +1464,8 @@ public partial class EventDetail : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error updating event {EventId} to status {EventStatusId}", EventId, eventStatusId);
-            Snackbar.Add("Event status could not be updated.", Severity.Error);
+            Logger.LogError(ex, "Error executing lifecycle action on event {EventId}", EventId);
+            Snackbar.Add("Event action could not be completed.", Severity.Error);
         }
         finally
         {
@@ -1410,9 +1752,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     private string GetWrapperStyle()
     {
-        return _appearance.IsEmpty
-            ? string.Empty
-            : AppearanceStyleBuilder.BuildSurfaceStyle(_appearance, $"#{GetEventColor()}");
+        return BuildEventBackgroundSurfaceStyle();
     }
 
     private bool HasActualCoverImage => !_imageLoadFailed && !string.IsNullOrEmpty(GetImageUrl());
@@ -1455,10 +1795,38 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     private void PublishMainContentAppearance()
     {
-        var style = _appearance.IsEmpty
-            ? string.Empty
-            : AppearanceStyleBuilder.BuildSurfaceStyle(_appearance, $"#{GetEventColor()}");
-        MainContentAppearanceState.Set(MainContentAppearanceOwner, style);
+        MainContentAppearanceState.Set(MainContentAppearanceOwner, BuildMainContentStyle());
+    }
+
+    private string BuildMainContentStyle()
+    {
+        if (string.IsNullOrWhiteSpace(_appearance.BackgroundColor))
+        {
+            return EventDetailMainContentStyle;
+        }
+
+        return BuildEventBackgroundSurfaceStyle(EventDetailMainContentStyle);
+    }
+
+    private string BuildEventBackgroundSurfaceStyle()
+        => BuildEventBackgroundSurfaceStyle(additionalCss: null);
+
+    private string BuildEventBackgroundSurfaceStyle(string? additionalCss)
+    {
+        if (string.IsNullOrWhiteSpace(_appearance.BackgroundColor))
+        {
+            return string.Empty;
+        }
+
+        var backgroundColor = _appearance.BackgroundColor.Trim();
+        var settings = new AppearanceSettings
+        {
+            BackgroundColor = backgroundColor,
+            BackgroundEffect = "None",
+            ImageUri = string.Empty
+        };
+
+        return AppearanceStyleBuilder.BuildSurfaceStyle(settings, backgroundColor, additionalCss);
     }
 
     private void HandleImageError()

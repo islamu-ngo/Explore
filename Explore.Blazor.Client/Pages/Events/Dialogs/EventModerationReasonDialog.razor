@@ -1,0 +1,52 @@
+@* ABOUTME: Dialog for selecting structured moderation reason metadata before event moderation actions. *@
+@* ABOUTME: Keeps destructive heavy-redaction confirmation explicit without exposing authorization internals. *@
+
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6" Class="d-flex align-center gap-2">
+            <MudIcon Icon="@TitleIcon" Color="@ConfirmColor" />
+            @DialogTitle
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudAlert Severity="@AlertSeverity" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+            @Message
+        </MudAlert>
+
+        <MudSelect T="string"
+                   Label="Reason"
+                   Variant="Variant.Outlined"
+                   Required="true"
+                   @bind-Value="_selectedReasonCode"
+                   Class="mb-3">
+            @foreach (var option in ReasonOptions)
+            {
+                <MudSelectItem T="string" Value="@option.Code">@option.Label</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (RequiresIrreversibleConfirmation)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mb-3">
+                Heavy redaction permanently replaces event-owned text and requests event image deletion.
+            </MudAlert>
+            <MudCheckBox T="bool"
+                         @bind-Value="_confirmedIrreversible"
+                         Label="I understand this action cannot be undone." />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="Cancel">
+            @CancelText
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="@ConfirmColor"
+                   StartIcon="@ConfirmIcon"
+                   Disabled="@(!CanSubmit)"
+                   OnClick="Submit">
+            @ConfirmText
+        </MudButton>
+    </DialogActions>
+</MudDialog>

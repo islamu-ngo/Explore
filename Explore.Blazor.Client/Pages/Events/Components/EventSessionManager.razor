@@ -1,3 +1,6 @@
+@* ABOUTME: Renders event sessions and expandable agenda previews for an event detail context. *@
+@* ABOUTME: Supports HAL-gated management reads while keeping registration actions delegated to the parent. *@
+
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using MudBlazor
@@ -21,30 +24,49 @@
                 <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
                     <div class="d-flex flex-wrap gap-4 justify-space-between align-center">
                         <div>
-                            <MudText Typo="Typo.h6">@session.Title</MudText>
+                            @if (HasSessionDetailsLink(session))
+                            {
+                                <MudLink Href="@GetSessionDetailsHref(session)" Typo="Typo.h6">
+                                    @session.Title
+                                </MudLink>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.h6">@session.Title</MudText>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(GetSessionStatusLabel(session)))
+                            {
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Variant="Variant.Outlined"
+                                         Color="@GetSessionStatusColor(session)"
+                                         Class="mt-1">
+                                    @GetSessionStatusLabel(session)
+                                </MudChip>
+                            }
                             <div class="d-flex align-center gap-4 mt-1">
                                 <div class="d-flex align-center gap-1">
                                     <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
                                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                        @(session.StartTime?.ToString("f") ?? "")
+                                        @GetSessionScheduleText(session)
                                     </MudText>
                                 </div>
                                 <div class="d-flex align-center gap-1">
                                     <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
                                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                        @session.LocationFullName
+                                        @GetSessionLocationText(session)
                                     </MudText>
                                 </div>
                             </div>
                         </div>
 
                         <div class="d-flex gap-2">
-                            @if (_sessionAgendaItems.TryGetValue(session.Id!.Value, out var items) && items.Count > 0)
+                            @if (session.Id is Guid sessionId && _sessionAgendaItems.TryGetValue(sessionId, out var items) && items.Count > 0)
                             {
                                 <MudButton Elevation="0" Variant="Variant.Text"
                                            Size="Size.Small"
                                            Color="Color.Default"
-                                           OnClick="@(() => ToggleAgenda(session.Id!.Value))">
+                                           OnClick="@(() => ToggleAgenda(sessionId))">
                                     <MudIcon Icon="@Icons.Material.Outlined.ViewAgenda" Size="Size.Small" Class="mr-1" />
                                     @items.Count item@(items.Count == 1 ? "" : "s")
                                 </MudButton>
@@ -60,7 +82,7 @@
                         </div>
                     </div>
 
-                    @if (_expandedSessions.Contains(session.Id!.Value) && _sessionAgendaItems.TryGetValue(session.Id!.Value, out var agendaItems) && agendaItems.Count > 0)
+                    @if (session.Id is Guid expandedSessionId && _expandedSessions.Contains(expandedSessionId) && _sessionAgendaItems.TryGetValue(expandedSessionId, out var agendaItems) && agendaItems.Count > 0)
                     {
                         <MudDivider Class="my-3" />
                         <MudTimeline TimelinePosition="TimelinePosition.Start">
@@ -99,20 +121,47 @@
 @code {
     [Parameter] public Guid EventId { get; set; }
     [Parameter] public bool ShowRegisterButton { get; set; } = false;
+    [Parameter] public bool IncludeManagedSessions { get; set; }
+    [Parameter] public IEnumerable<EventSessionListDto>? SessionItems { get; set; }
     [Parameter] public EventCallback<EventSessionListDto> OnRegisterClick { get; set; }
 
     public List<EventSessionListDto> Sessions { get; private set; } = new();
 
     private Guid _previousEventId;
+    private bool _previousIncludeManagedSessions;
+    private IEnumerable<EventSessionListDto>? _previousSessionItems;
     private bool _isLoading = true;
     private Dictionary<Guid, ICollection<EventSessionAgendaItemListDto>> _sessionAgendaItems = new();
     private HashSet<Guid> _expandedSessions = new();
 
     protected override async Task OnParametersSetAsync()
     {
-        if (EventId != Guid.Empty && EventId != _previousEventId)
+        if (SessionItems is not null)
+        {
+            if (!ReferenceEquals(SessionItems, _previousSessionItems) || EventId != _previousEventId)
+            {
+                _previousSessionItems = SessionItems;
+                _previousEventId = EventId;
+                await LoadProvidedSessionsAsync(SessionItems);
+            }
+
+            return;
+        }
+
+        _previousSessionItems = null;
+
+        if (EventId == Guid.Empty)
+        {
+            _isLoading = false;
+            Sessions = [];
+            _sessionAgendaItems = [];
+            return;
+        }
+
+        if (EventId != _previousEventId || IncludeManagedSessions != _previousIncludeManagedSessions)
         {
             _previousEventId = EventId;
+            _previousIncludeManagedSessions = IncludeManagedSessions;
             await LoadSessions();
         }
     }
@@ -122,19 +171,8 @@
         _isLoading = true;
         try
         {
-            var result = await EventService.GetSessionsByEventAsync(EventId);
-            Sessions = result.OrderBy(s => s.StartTime).ToList();
-
-            // Load agenda items for all sessions in parallel
-            var agendaTasks = Sessions
-                .Where(s => s.Id.HasValue && s.Id != Guid.Empty)
-                .Select(async s =>
-                {
-                    var items = await AgendaItemService.GetAgendaItemsBySessionAsync(s.Id!.Value);
-                    return (SessionId: s.Id!.Value, Items: items);
-                });
-            var results = await Task.WhenAll(agendaTasks);
-            _sessionAgendaItems = results.ToDictionary(r => r.SessionId, r => r.Items);
+            var result = await EventService.GetSessionsByEventAsync(EventId, IncludeManagedSessions);
+            await PopulateSessionsAsync(result);
         }
         catch (Exception ex)
         {
@@ -148,6 +186,45 @@
         }
     }
 
+    private async Task LoadProvidedSessionsAsync(IEnumerable<EventSessionListDto> sessions)
+    {
+        _isLoading = true;
+        try
+        {
+            await PopulateSessionsAsync(sessions);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading sessions: {ex.Message}", Severity.Error);
+            Sessions = [];
+            _sessionAgendaItems = [];
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PopulateSessionsAsync(IEnumerable<EventSessionListDto> sessions)
+    {
+        Sessions = sessions
+            .OrderBy(s => s.StartTime ?? DateTimeOffset.MaxValue)
+            .ThenBy(s => s.SortOrder)
+            .ThenBy(s => s.Title)
+            .ToList();
+
+        var agendaTasks = Sessions
+            .Where(s => s.Id.HasValue && s.Id != Guid.Empty)
+            .Select(async s =>
+            {
+                var items = await AgendaItemService.GetAgendaItemsBySessionAsync(s.Id!.Value);
+                return (SessionId: s.Id!.Value, Items: items);
+            });
+        var results = await Task.WhenAll(agendaTasks);
+        _sessionAgendaItems = results.ToDictionary(r => r.SessionId, r => r.Items);
+    }
+
     private void ToggleAgenda(Guid sessionId)
     {
         if (!_expandedSessions.Remove(sessionId))
@@ -155,4 +232,50 @@
             _expandedSessions.Add(sessionId);
         }
     }
+
+    private static string GetSessionScheduleText(EventSessionListDto session)
+    {
+        if (session.StartTime is DateTimeOffset startTime)
+        {
+            return session.EndTime is DateTimeOffset endTime
+                ? $"{startTime:f} - {endTime:t}"
+                : startTime.ToString("f");
+        }
+
+        return session.IsScheduled == true ? "Schedule pending" : "Schedule TBD";
+    }
+
+    private static string GetSessionLocationText(EventSessionListDto session)
+    {
+        if (!string.IsNullOrWhiteSpace(session.LocationFullName))
+            return session.LocationFullName;
+
+        if (!string.IsNullOrWhiteSpace(session.RoomName))
+            return session.RoomName;
+
+        return "Location TBD";
+    }
+
+    private static string? GetSessionStatusLabel(EventSessionListDto session) =>
+        !string.IsNullOrWhiteSpace(session.EventSessionStatusFullName)
+            ? session.EventSessionStatusFullName
+            : session.EventSessionStatusMasterCode;
+
+    private static Color GetSessionStatusColor(EventSessionListDto session) =>
+        session.EventSessionStatusMasterCode?.ToUpperInvariant() switch
+        {
+            "DRAFT" => Color.Warning,
+            "SCHEDULED" or "PUBLISHED" => Color.Success,
+            "CANCELLED" => Color.Error,
+            "COMPLETED" => Color.Info,
+            "ARCHIVED" or "MODERATED" => Color.Default,
+            _ => Color.Default
+        };
+
+    private static bool HasSessionDetailsLink(EventSessionListDto session) =>
+        session.EventId.GetValueOrDefault() != Guid.Empty &&
+        session.Id.GetValueOrDefault() != Guid.Empty;
+
+    private static string GetSessionDetailsHref(EventSessionListDto session) =>
+        $"/events/{session.EventId.GetValueOrDefault()}/sessions/{session.Id.GetValueOrDefault()}";
 }

@@ -73,6 +73,39 @@
                                 Cancel
                             </MudButton>
                         }
+                        @if (_canModerateLight)
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       Disabled="_isProcessingEventAction"
+                                       OnClick="ModerateEventAsync"
+                                       StartIcon="@Icons.Material.Filled.AdminPanelSettings">
+                                Moderate
+                            </MudButton>
+                        }
+                        @if (_canModerateHeavy)
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       Disabled="_isProcessingEventAction"
+                                       OnClick="HeavyRedactEventAsync"
+                                       StartIcon="@Icons.Material.Filled.DeleteForever">
+                                Heavy Redact
+                            </MudButton>
+                        }
+                        @if (_canUnmoderate)
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       Disabled="_isProcessingEventAction"
+                                       OnClick="UnmoderateEventAsync"
+                                       StartIcon="@Icons.Material.Filled.Restore">
+                                Restore
+                            </MudButton>
+                        }
                         @if (_canArchive)
                         {
                             <MudButton Elevation="0"
@@ -615,6 +648,13 @@
                     {
                         <section class="mb-12">
                             <h3 class="event-section-title">Agenda</h3>
+                            @if (HasMultipleSessions)
+                            {
+                                <EventSessionManager EventId="EventId"
+                                                     ShowRegisterButton="false"
+                                                     IncludeManagedSessions="CanRequestManagedSessions"
+                                                     SessionItems="_eventSessions" />
+                            }
                             <AgendaMillerColumns EventId="EventId"
                                                  Days="@(_eventDays?.ToList())"
                                                  AgendaItems="@(_eventAgendaItems?.ToList())"
@@ -658,7 +698,10 @@
                             else
                             {
                                 @* Multiple sessions: use existing session manager *@
-                                <EventSessionManager EventId="EventId" ShowRegisterButton="false" />
+                                <EventSessionManager EventId="EventId"
+                                                     ShowRegisterButton="false"
+                                                     IncludeManagedSessions="CanRequestManagedSessions"
+                                                     SessionItems="_eventSessions" />
                             }
                         </section>
                     }

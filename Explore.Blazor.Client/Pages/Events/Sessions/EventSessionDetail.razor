@@ -1,0 +1,339 @@
+@* ABOUTME: Public event-session detail page with HAL-gated management lifecycle actions. *@
+@* ABOUTME: Keeps moderation event-scoped while providing parent-event navigation and session agenda details. *@
+@page "/events/{EventId:guid}/sessions/{SessionId:guid}"
+@rendermode InteractiveServer
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Shared
+@using MudBlazor
+
+@if (_session is null && _isLoading)
+{
+    <div class="event-session-detail__loading" role="status" aria-live="polite">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </div>
+}
+else if (_session is null)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled">@(_errorMessage ?? "Session not found.")</MudAlert>
+        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="@($"/events/{EventId}")" Class="mt-4">
+            Event
+        </MudButton>
+    </MudContainer>
+}
+else
+{
+    <div class="event-session-detail @(HasManagementTopBar ? "event-session-detail--with-action-bar" : null)">
+        @if (HasManagementTopBar)
+        {
+            <div class="event-detail-action-bar" role="region" aria-label="Event session management actions">
+                <div class="event-detail-action-bar__inner">
+                    <div class="event-detail-action-bar__primary">
+                        <MudButton Elevation="0"
+                                   Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   Href="@($"/events/{EventId}")"
+                                   StartIcon="@Icons.Material.Filled.Event">
+                            Event
+                        </MudButton>
+                        @if (_canEdit)
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       Href="@($"/events/{EventId}/sessions/{SessionId}/edit")"
+                                       StartIcon="@Icons.Material.Filled.Edit">
+                                Edit
+                            </MudButton>
+                        }
+                    </div>
+
+                    <div class="event-detail-action-bar__actions" aria-label="Event session lifecycle actions">
+                        @if (_canPublish)
+                        {
+                            <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Primary" Disabled="_isProcessing" OnClick="@(() => ExecuteLifecycleActionAsync(PublishLinkRelation))" StartIcon="@Icons.Material.Filled.Publish">
+                                Publish
+                            </MudButton>
+                        }
+                        @if (_canCancel)
+                        {
+                            <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Warning" Disabled="_isProcessing" OnClick="@(() => ExecuteLifecycleActionAsync(CancelLinkRelation))" StartIcon="@Icons.Material.Filled.Cancel">
+                                Cancel
+                            </MudButton>
+                        }
+                        @if (_canComplete)
+                        {
+                            <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Success" Disabled="_isProcessing" OnClick="@(() => ExecuteLifecycleActionAsync(CompleteLinkRelation))" StartIcon="@Icons.Material.Filled.CheckCircle">
+                                Complete
+                            </MudButton>
+                        }
+                        @if (_canArchive)
+                        {
+                            <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Default" Disabled="_isProcessing" OnClick="@(() => ExecuteLifecycleActionAsync(ArchiveLinkRelation))" StartIcon="@Icons.Material.Filled.Archive">
+                                Archive
+                            </MudButton>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <MudContainer MaxWidth="MaxWidth.Large" Class="event-session-detail__container">
+            <MudGrid Spacing="6">
+                <MudItem xs="12" md="4">
+                    <MudPaper Elevation="0" Class="event-session-detail__side-panel pa-4">
+                        <MudStack Spacing="3">
+                            <MudChip T="string" Color="@GetStatusColor()" Variant="Variant.Filled" Size="Size.Small">
+                                @(_session.EventSessionStatusFullName ?? _session.EventSessionStatusMasterCode ?? "Session")
+                            </MudChip>
+
+                            @if (!string.IsNullOrWhiteSpace(_session.FeaturedImageUri))
+                            {
+                                <img src="@_session.FeaturedImageUri" alt="@_session.Title" class="event-session-detail__image" />
+                            }
+
+                            <div class="event-session-detail__meta-row">
+                                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@GetScheduleText()</MudText>
+                            </div>
+                            <div class="event-session-detail__meta-row">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@GetLocationText()</MudText>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(_session.EventSessionKindFullName))
+                            {
+                                <div class="event-session-detail__meta-row">
+                                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" />
+                                    <MudText Typo="Typo.body2">@_session.EventSessionKindFullName</MudText>
+                                </div>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" md="8">
+                    <MudStack Spacing="4">
+                        <div>
+                            <MudText Typo="Typo.h3" HtmlTag="h1">@_session.Title</MudText>
+                            <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Primary" Href="@($"/events/{EventId}")" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mt-2">
+                                @_session.EventTitle
+                            </MudButton>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_session.Description))
+                        {
+                            <MudPaper Elevation="0" Class="event-session-detail__content pa-4">
+                                <MudText Typo="Typo.body1">@_session.Description</MudText>
+                            </MudPaper>
+                        }
+
+                        <MudPaper Elevation="0" Class="event-session-detail__content pa-4">
+                            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">Agenda</MudText>
+                            @if (_agendaItems.Count == 0)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No agenda items.</MudText>
+                            }
+                            else
+                            {
+                                <MudTimeline TimelinePosition="TimelinePosition.Start">
+                                    @foreach (var item in _agendaItems.OrderBy(item => item.StartTime))
+                                    {
+                                        <MudTimelineItem Color="Color.Primary" Size="Size.Small">
+                                            <ItemContent>
+                                                <MudText Typo="Typo.body1">@item.Title</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @(item.StartTime?.ToString("HH:mm") ?? "")@(item.EndTime != null ? $" - {item.EndTime?.ToString("HH:mm")}" : "")
+                                                </MudText>
+                                            </ItemContent>
+                                        </MudTimelineItem>
+                                    }
+                                </MudTimeline>
+                            }
+                        </MudPaper>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudContainer>
+    </div>
+}
+
+@code {
+    private const string EditLinkRelation = "edit";
+    private const string PublishLinkRelation = "publish";
+    private const string CancelLinkRelation = "cancel";
+    private const string CompleteLinkRelation = "complete";
+    private const string ArchiveLinkRelation = "archive";
+
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public Guid SessionId { get; set; }
+
+    [Inject] private IEventService EventService { get; set; } = default!;
+    [Inject] private IEventSessionAgendaItemService AgendaItemService { get; set; } = default!;
+    [Inject] private IDialogService DialogService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private ILogger<EventSessionDetail> Logger { get; set; } = default!;
+
+    private EventSessionDto? _session;
+    private List<EventSessionAgendaItemListDto> _agendaItems = [];
+    private bool _isLoading = true;
+    private bool _isProcessing;
+    private string? _errorMessage;
+    private bool _canEdit;
+    private bool _canPublish;
+    private bool _canCancel;
+    private bool _canComplete;
+    private bool _canArchive;
+
+    private bool HasManagementTopBar => _session is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _session = await EventService.GetManagedSessionByIdAsync(EventId, SessionId);
+            if (_session is null || _session.EventId != EventId)
+            {
+                _errorMessage = "Session not found.";
+                _session = null;
+                return;
+            }
+
+            CheckHalLinks();
+            var items = await AgendaItemService.GetAgendaItemsBySessionAsync(SessionId);
+            _agendaItems = items.ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading event session {SessionId}", SessionId);
+            _errorMessage = "Session could not be loaded.";
+            _session = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void CheckHalLinks()
+    {
+        _canEdit = _session?.HasHalLink(EditLinkRelation) == true;
+        _canPublish = _session?.HasHalLink(PublishLinkRelation) == true;
+        _canCancel = _session?.HasHalLink(CancelLinkRelation) == true;
+        _canComplete = _session?.HasHalLink(CompleteLinkRelation) == true;
+        _canArchive = _session?.HasHalLink(ArchiveLinkRelation) == true;
+    }
+
+    private async Task ExecuteLifecycleActionAsync(string actionName)
+    {
+        if (_session is null || _isProcessing)
+            return;
+
+        if (_session.ConcurrencyStamp is not Guid expectedConcurrencyStamp || expectedConcurrencyStamp == Guid.Empty)
+        {
+            Snackbar.Add("Refresh the session before changing its lifecycle state.", Severity.Warning);
+            return;
+        }
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            $"{ToTitle(actionName)} Session",
+            $"{ToTitle(actionName)} \"{_session.Title}\"?",
+            yesText: $"{ToTitle(actionName)} Session",
+            cancelText: "Keep Session");
+
+        if (confirmed != true)
+            return;
+
+        _isProcessing = true;
+
+        try
+        {
+            var response = actionName switch
+            {
+                "publish" => await EventService.PublishEventSessionAsync(SessionId, expectedConcurrencyStamp),
+                "cancel" => await EventService.CancelEventSessionAsync(SessionId, expectedConcurrencyStamp),
+                "complete" => await EventService.CompleteEventSessionAsync(SessionId, expectedConcurrencyStamp),
+                "archive" => await EventService.ArchiveEventSessionAsync(SessionId, expectedConcurrencyStamp),
+                _ => null
+            };
+
+            if (response?.Success != true)
+            {
+                Snackbar.Add(response?.Message ?? "Session action could not be completed.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add($"Session {ToPastTense(actionName)}.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error executing session action {ActionName} on session {SessionId}", actionName, SessionId);
+            Snackbar.Add("Session action could not be completed.", Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private string GetScheduleText()
+    {
+        if (_session?.StartTime is not DateTimeOffset start)
+        {
+            return "Schedule TBD";
+        }
+
+        return _session.EndTime is DateTimeOffset end
+            ? $"{start:f} - {end:t}"
+            : start.ToString("f");
+    }
+
+    private string GetLocationText()
+    {
+        if (!string.IsNullOrWhiteSpace(_session?.LocationFullName))
+            return _session.LocationFullName!;
+
+        if (!string.IsNullOrWhiteSpace(_session?.RoomName))
+            return _session.RoomName!;
+
+        return "Location TBD";
+    }
+
+    private Color GetStatusColor() => _session?.EventSessionStatusMasterCode?.ToUpperInvariant() switch
+    {
+        "DRAFT" => Color.Warning,
+        "PUBLISHED" => Color.Success,
+        "CANCELLED" => Color.Error,
+        "COMPLETED" => Color.Info,
+        _ => Color.Default
+    };
+
+    private static string ToTitle(string actionName) => actionName switch
+    {
+        "publish" => "Publish",
+        "cancel" => "Cancel",
+        "complete" => "Complete",
+        "archive" => "Archive",
+        _ => "Update"
+    };
+
+    private static string ToPastTense(string actionName) => actionName switch
+    {
+        "publish" => "published",
+        "cancel" => "cancelled",
+        "complete" => "completed",
+        "archive" => "archived",
+        _ => "updated"
+    };
+}

@@ -72,85 +72,35 @@ else
 
             <MudDivider Class="my-6" />
 
-            @if (_isLoadingEvents)
-            {
-                <div class="group-profile__section">
-                    <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 700;">Upcoming Events</MudText>
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
-                </div>
-            }
-            else if (ProfileEvents.Any())
-            {
-                <EventPreviewWorkspace @ref="_eventPreviewWorkspace" NavigationEvents="@ProfileEvents">
-                    <div class="group-profile__section">
-                        <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 700;">Upcoming Events</MudText>
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pt-6 bg-transparent" Class="mt-6 bg-transparent" Color="Color.Transparent" SliderColor="Color.Primary">
+                <MudTabPanel Text="Posts">
+                    <ProfileEventSections IsLoading="@_isLoadingEvents"
+                                          NavigationEvents="@PostEvents"
+                                          UpcomingEvents="@_upcomingEvents"
+                                          PastEventsByDate="@_pastEventsByDate"
+                                          CssPrefix="group-profile"
+                                          UpcomingTitle="Upcoming Events"
+                                          PastTitle="Past Events"
+                                          UpcomingAriaLabel="Upcoming group events"
+                                          PastAriaLabelPrefix="Past group events on"
+                                          EmptyTitle="No upcoming events"
+                                          EmptyCopy="Subscribe to get notified when new events are posted." />
+                </MudTabPanel>
 
-                        @if (_upcomingEvents.Any())
-                        {
-                            <EventCardList Events="@_upcomingEvents"
-                                           SelectedEventId="@(_eventPreviewWorkspace?.SelectedEventId)"
-                                           AriaLabel="Upcoming group events"
-                                           OnEventSelected="HandleEventSelected"
-                                           OnShareRequested="HandleEventShare" />
-                        }
-                        else
-                        {
-                            <MudPaper Elevation="0" Class="pa-6 text-center border-solid border-1 mud-border-lines-default rounded-lg">
-                                <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
-                                <MudText Typo="Typo.body1" Color="Color.Secondary">No upcoming events</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Subscribe to get notified when new events are posted.</MudText>
-                            </MudPaper>
-                        }
-                    </div>
-
-                    @if (_pastEvents.Any())
-                    {
-                        <MudDivider Class="my-6" />
-
-                        <div class="group-profile__section">
-                            <MudText Typo="Typo.h5" Class="mb-6" Style="font-weight: 700;">Past Events</MudText>
-
-                            <div class="group-profile__timeline">
-                                @foreach (var dateGroup in _pastEventsByDate)
-                                {
-                                    <div class="group-profile__timeline-group">
-                                        <div class="group-profile__timeline-date">
-                                            <div class="group-profile__timeline-dot"></div>
-                                            <div class="group-profile__timeline-date-text">
-                                                <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
-                                                    @dateGroup.Key.ToString("MMM dd, yyyy")
-                                                </MudText>
-                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                    @dateGroup.Key.ToString("dddd")
-                                                </MudText>
-                                            </div>
-                                        </div>
-
-                                        <div class="group-profile__timeline-events">
-                                            <EventCardList Events="@dateGroup.Value"
-                                                           SelectedEventId="@(_eventPreviewWorkspace?.SelectedEventId)"
-                                                           AriaLabel="@($"Past group events on {dateGroup.Key:MMM dd, yyyy}")"
-                                                           OnEventSelected="HandleEventSelected"
-                                                           OnShareRequested="HandleEventShare" />
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                </EventPreviewWorkspace>
-            }
-            else
-            {
-                <div class="group-profile__section">
-                    <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 700;">Upcoming Events</MudText>
-                    <MudPaper Elevation="0" Class="pa-6 text-center border-solid border-1 mud-border-lines-default rounded-lg">
-                        <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
-                        <MudText Typo="Typo.body1" Color="Color.Secondary">No upcoming events</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Subscribe to get notified when new events are posted.</MudText>
-                    </MudPaper>
-                </div>
-            }
+                <MudTabPanel Text="Registration">
+                    <ProfileEventSections IsLoading="@_isLoadingRegistrationEvents"
+                                          NavigationEvents="@RegistrationEvents"
+                                          UpcomingEvents="@_upcomingRegistrationEvents"
+                                          PastEventsByDate="@_pastRegistrationEventsByDate"
+                                          CssPrefix="group-profile"
+                                          UpcomingTitle="Upcoming Events"
+                                          PastTitle="Past Events"
+                                          UpcomingAriaLabel="Upcoming group registration events"
+                                          PastAriaLabelPrefix="Past group registration events on"
+                                          EmptyTitle="No registered events"
+                                          EmptyCopy="Events this group attends will appear here." />
+                </MudTabPanel>
+            </MudTabs>
         </MudContainer>
     </div>
 }

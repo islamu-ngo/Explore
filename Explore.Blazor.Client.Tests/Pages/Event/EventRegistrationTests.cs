@@ -28,6 +28,38 @@ public sealed class EventRegistrationTests : IDisposable
     }
 
     [Test]
+    public async Task OnInitialized_WhenUserHasEventRegistration_SetsAlreadyRegisteredState()
+    {
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        _userService.GetCurrentUserAsync().Returns(new UserDto
+        {
+            Id = userId,
+            FirstName = "Amina",
+            LastName = "Rahman",
+            Email = "amina@example.test"
+        });
+        _registrationService.GetRegistrationsByUserAsync(userId).Returns(
+        [
+            new EventRegistrationListDto
+            {
+                Id = Guid.NewGuid(),
+                EventId = eventId,
+                UserId = userId,
+                EventTitle = "Annual Conference"
+            }
+        ]);
+
+        var cut = _ctx.RenderMudComponent<EventRegistration>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.RegistrationPolicyId, 1));
+
+        await _registrationService.Received(1).GetRegistrationsByUserAsync(userId);
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "isAlreadyRegistered")).IsTrue();
+    }
+
+    [Test]
     public async Task SubmitWithShareEmailUsesRegistrationServiceWithConsentSnapshot()
     {
         var eventId = Guid.NewGuid();
@@ -172,5 +204,15 @@ public sealed class EventRegistrationTests : IDisposable
             ?? throw new InvalidOperationException($"{fieldName} not found.");
 
         field.SetValue(instance, value);
+    }
+
+    private static T GetPrivateField<T>(EventRegistration instance, string fieldName)
+    {
+        var field = typeof(EventRegistration)
+            .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"{fieldName} not found.");
+
+        return (T?)field.GetValue(instance)
+            ?? throw new InvalidOperationException($"{fieldName} returned null.");
     }
 }

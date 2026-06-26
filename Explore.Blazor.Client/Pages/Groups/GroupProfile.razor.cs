@@ -3,7 +3,6 @@
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Components.Events;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
@@ -26,16 +25,20 @@ public partial class GroupProfile
     private GroupAdminDetailsModel? _group;
     private bool _isLoading = true;
     private bool _isLoadingEvents;
+    private bool _isLoadingRegistrationEvents;
     private List<EventListDto> _upcomingEvents = new();
     private List<EventListDto> _pastEvents = new();
     private List<KeyValuePair<DateTime, List<EventListDto>>> _pastEventsByDate = new();
-    private EventPreviewWorkspace? _eventPreviewWorkspace;
+    private List<EventListDto> _upcomingRegistrationEvents = new();
+    private List<EventListDto> _pastRegistrationEvents = new();
+    private List<KeyValuePair<DateTime, List<EventListDto>>> _pastRegistrationEventsByDate = new();
     private AppearanceSettings _branding = new();
     private string _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(new AppearanceSettings(), "#334155");
 
     private string? _errorMessage;
 
-    private IReadOnlyList<EventListDto> ProfileEvents => _upcomingEvents.Concat(_pastEvents).ToList();
+    private List<EventListDto> PostEvents => _upcomingEvents.Concat(_pastEvents).ToList();
+    private List<EventListDto> RegistrationEvents => _upcomingRegistrationEvents.Concat(_pastRegistrationEvents).ToList();
 
     [PersistentState]
     public GroupProfileState? PersistedState { get; set; }
@@ -88,6 +91,7 @@ public partial class GroupProfile
         if (_group?.ActorId.HasValue == true)
         {
             _ = InvokeAsync(LoadEventsAsync);
+            _ = InvokeAsync(LoadRegistrationEventsAsync);
         }
     }
 
@@ -98,7 +102,7 @@ public partial class GroupProfile
 
         try
         {
-            var allEvents = await EventService.GetPublicEventsByActorAsync(_group!.ActorId!.Value);
+            var allEvents = await EventService.GetProfileEventsByActorAsync(_group!.ActorId!.Value);
 
             _upcomingEvents = allEvents
                 .Where(e => e.IsPast != true)
@@ -110,11 +114,7 @@ public partial class GroupProfile
                 .OrderByDescending(e => e.FirstSessionDate)
                 .ToList();
 
-            _pastEventsByDate = _pastEvents
-                .GroupBy(e => e.FirstSessionDate?.Date ?? DateTime.MinValue)
-                .OrderByDescending(g => g.Key)
-                .Select(g => new KeyValuePair<DateTime, List<EventListDto>>(g.Key, g.ToList()))
-                .ToList();
+            _pastEventsByDate = GroupEventsByDate(_pastEvents);
 
             Logger.LogDebug("Loaded {Upcoming} upcoming and {Past} past events for group {GroupId}",
                 _upcomingEvents.Count, _pastEvents.Count, Id);
@@ -136,15 +136,51 @@ public partial class GroupProfile
         }
     }
 
-    private Task HandleEventSelected(EventListDto evt) =>
-        _eventPreviewWorkspace?.SelectEventAsync(evt) ?? Task.CompletedTask;
+    private async Task LoadRegistrationEventsAsync()
+    {
+        _isLoadingRegistrationEvents = true;
+        StateHasChanged();
 
-    private Task HandleEventShare(EventListDto evt) =>
-        _eventPreviewWorkspace?.ShareEventAsync(evt) ?? Task.CompletedTask;
+        try
+        {
+            var allEvents = await EventService.GetRegistrationEventsByActorAsync(_group!.ActorId!.Value);
+
+            _upcomingRegistrationEvents = allEvents
+                .Where(e => e.IsPast != true)
+                .OrderBy(e => e.FirstSessionDate)
+                .ToList();
+
+            _pastRegistrationEvents = allEvents
+                .Where(e => e.IsPast == true)
+                .OrderByDescending(e => e.FirstSessionDate)
+                .ToList();
+
+            _pastRegistrationEventsByDate = GroupEventsByDate(_pastRegistrationEvents);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading registration events for group {GroupId}", Id);
+        }
+        finally
+        {
+            _isLoadingRegistrationEvents = false;
+            StateHasChanged();
+        }
+    }
 
     private string GetGroupPlaceholder()
     {
         return ImageHelper.GetOrganizationPlaceholder(null, _group?.FullName ?? "GRP");
+    }
+
+    private static List<KeyValuePair<DateTime, List<EventListDto>>> GroupEventsByDate(IEnumerable<EventListDto> events)
+    {
+        return events
+            .GroupBy(e => e.FirstSessionDate?.Date ?? DateTime.MinValue)
+            .OrderByDescending(g => g.Key)
+            .Select(g => new KeyValuePair<DateTime, List<EventListDto>>(g.Key, g.ToList()))
+            .ToList();
     }
 
     private bool TryRestoreState()
@@ -168,6 +204,7 @@ public partial class GroupProfile
         if (_group?.ActorId.HasValue == true)
         {
             _ = InvokeAsync(LoadEventsAsync);
+            _ = InvokeAsync(LoadRegistrationEventsAsync);
         }
 
         return true;

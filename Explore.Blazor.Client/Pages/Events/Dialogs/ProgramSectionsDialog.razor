@@ -539,8 +539,8 @@
 
     private async Task LoadSessionsAsync()
     {
-        _sessions = (await EventService.GetSessionsByEventAsync(EventId))
-            .OrderBy(session => session.StartTime)
+        _sessions = (await EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true))
+            .OrderBy(session => session.StartTime ?? DateTimeOffset.MaxValue)
             .ThenBy(session => session.Title)
             .ToList();
     }

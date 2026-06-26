@@ -1,0 +1,91 @@
+/* ABOUTME: Scoped CSS for EventSessionDetail page layout and management action bar. */
+/* ABOUTME: Mirrors event detail action-bar behavior while keeping session content compact. */
+
+.event-session-detail {
+    min-height: 100vh;
+    padding-block-start: var(--isl-space-8);
+    padding-bottom: var(--isl-space-12);
+    background: var(--mud-palette-background);
+}
+
+.event-session-detail--with-action-bar {
+    padding-block-start: 0;
+}
+
+.event-session-detail__container {
+    padding-top: var(--isl-space-8);
+}
+
+.event-detail-action-bar {
+    min-height: 60px;
+    height: 60px;
+    border-bottom: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));
+    background: color-mix(in srgb, var(--mud-palette-surface) 94%, transparent);
+}
+
+.event-detail-action-bar__inner {
+    height: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding-inline: var(--isl-space-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+}
+
+.event-detail-action-bar__primary,
+.event-detail-action-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+    min-width: 0;
+}
+
+.event-detail-action-bar__actions {
+    justify-content: flex-end;
+    overflow-x: auto;
+}
+
+.event-session-detail__loading {
+    min-height: 50vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.event-session-detail__side-panel,
+.event-session-detail__content {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 8px;
+}
+
+.event-session-detail__image {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.event-session-detail__meta-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--isl-space-2);
+}
+
+@media (max-width: 600px) {
+    .event-detail-action-bar {
+        height: auto;
+        min-height: 60px;
+    }
+
+    .event-detail-action-bar__inner {
+        align-items: stretch;
+        flex-direction: column;
+        padding-block: var(--isl-space-2);
+    }
+
+    .event-detail-action-bar__actions {
+        justify-content: flex-start;
+    }
+}

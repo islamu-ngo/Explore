@@ -49,9 +49,9 @@
                              Share this Event
                          </MudButton>
                          <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large"
-                                    Href="/my/registrations"
+                                    Href="/my/profile"
                                     StartIcon="@Icons.Material.Filled.AppRegistration">
-                            View My Registrations
+                            View Registrations
                         </MudButton>
                         <MudButton Elevation="0" Size="Size.Large"
                                    Variant="Variant.Text"
@@ -232,9 +232,9 @@
                              Share this Event
                          </MudButton>
                          <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large"
-                                    Href="/my/registrations"
+                                    Href="/my/profile"
                                     StartIcon="@Icons.Material.Filled.AppRegistration">
-                            View My Registrations
+                            View Registrations
                         </MudButton>
                         <MudButton Elevation="0" Size="Size.Large"
                                    Variant="Variant.Text"
@@ -322,6 +322,11 @@
             {
                 registrationModel.EventId = EventId;
                 registrationModel.UserId = currentUser.Id;
+
+                if (currentUser.Id.HasValue && EventId != Guid.Empty)
+                {
+                    await LoadExistingRegistrationStatusAsync(currentUser.Id.Value);
+                }
             }
 
             if (RecipientActorId.HasValue && RecipientActorId.Value != Guid.Empty)
@@ -356,6 +361,20 @@
             : PublisherOrganizationName;
 
         return $"Share my email address with {orgName} so they can contact me about future events and related updates.";
+    }
+
+    private async Task LoadExistingRegistrationStatusAsync(Guid userId)
+    {
+        try
+        {
+            var registrations = await RegistrationService.GetRegistrationsByUserAsync(userId);
+            isAlreadyRegistered = registrations.Any(registration => registration.EventId == EventId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to check existing registration status for event {EventId}", EventId);
+            isAlreadyRegistered = false;
+        }
     }
 
     private void ToggleSession(Guid sessionId, bool selected)

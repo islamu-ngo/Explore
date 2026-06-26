@@ -2,9 +2,10 @@
    ABOUTME: Handles hero image sizing and responsive adjustments. */
 
 .event-detail-wrapper {
+    --event-detail-container-gutter: var(--isl-space-4);
     min-height: 100vh;
     padding-block-start: var(--isl-space-8);
-    padding-bottom: var(--isl-space-12);
+    padding-block-end: var(--isl-space-12);
     background: var(--event-bg-color, var(--mud-palette-background));
     color: var(--event-theme-text-color, var(--mud-palette-text-primary));
     transition: background 0.3s ease, color 0.3s ease;
@@ -12,21 +13,28 @@
     --event-theme-muted-color: var(--mud-palette-text-secondary);
 }
 
+.event-detail-wrapper--with-action-bar {
+    padding-block-start: 0;
+}
+
 .event-detail-container {
+    box-sizing: border-box;
     max-width: 1000px !important;
     margin: 0 auto;
-    padding-top: 0;
+    padding-block-start: 0;
+    padding-inline: var(--event-detail-container-gutter);
 }
 
 .event-detail-wrapper--with-action-bar .event-detail-container {
-    padding-top: var(--isl-space-8);
+    padding-block-start: var(--isl-space-8);
 }
 
 .event-detail-action-bar {
     min-height: 60px;
     height: 60px;
-    border-bottom: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));
-    background: color-mix(in srgb, var(--mud-palette-surface) 94%, transparent);
+    inline-size: 100%;
+    border-block-end: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));
+    background: inherit;
 }
 
 .event-detail-action-bar__inner {
@@ -297,6 +305,10 @@
 }
 
 @media (max-width: 600px) {
+    .event-detail-wrapper {
+        --event-detail-container-gutter: var(--isl-space-3);
+    }
+
     .event-detail-action-bar__inner {
         padding-inline: var(--isl-space-3);
         gap: var(--isl-space-2);

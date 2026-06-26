@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for EventService.
 // Tests all event-related operations including CRUD and session management.
 
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventSessions;
 
 namespace Explore.Blazor.Client.Tests.Services;
@@ -222,11 +223,52 @@ public class EventServiceTests
         var eventId = Guid.NewGuid();
         _apiClient.GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
+        _apiClient.GetEventManagementDetailsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Unauthorized", 401));
 
         // Act
         var result = await _service.GetEventByIdAsync(eventId);
 
         // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetEventByIdAsync_WhenPublicDetailHiddenAndManagementDetailAllowed_ReturnsManagementEvent()
+    {
+        var eventId = Guid.NewGuid();
+        var expectedEvent = ComponentDataBuilder.EventDto.Generate();
+        expectedEvent.Id = eventId;
+        expectedEvent.Title = "Moderated management event";
+        expectedEvent.EventStatusId = 6;
+        expectedEvent.EventStatusFullName = "Moderated";
+        expectedEvent.EventStatusMasterCode = "MODERATED";
+        var managementResponse = CreateHalResourceResponse(expectedEvent);
+
+        _apiClient.GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Not Found", 404));
+        _apiClient.GetEventManagementDetailsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(managementResponse);
+
+        var result = await _service.GetEventByIdAsync(eventId);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Id).IsEqualTo(eventId);
+        await Assert.That(result.Title).IsEqualTo("Moderated management event");
+    }
+
+    [Test]
+    public async Task GetEventByIdAsync_WhenPublicDetailHiddenAndManagementDetailForbidden_ReturnsNull()
+    {
+        var eventId = Guid.NewGuid();
+
+        _apiClient.GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Not Found", 404));
+        _apiClient.GetEventManagementDetailsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Forbidden", 403));
+
+        var result = await _service.GetEventByIdAsync(eventId);
+
         await Assert.That(result).IsNull();
     }
 
@@ -635,6 +677,206 @@ public class EventServiceTests
 
     #endregion
 
+    #region Moderation Tests
+
+    [Test]
+    public async Task ModerateEventLightAsync_SendsReasonMetadata()
+    {
+        var eventId = Guid.NewGuid();
+        var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
+
+        _apiClient.ModerateEventLightAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<EventModerationRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        var result = await _service.ModerateEventLightAsync(eventId, reasonCode: "policy_review", correlationId: "case-1");
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+        await _apiClient.Received(1).ModerateEventLightAsync(
+            eventId,
+            Arg.Is<EventModerationRequestDto>(request =>
+                request.ReasonCode == "policy_review" && request.CorrelationId == "case-1"),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ModerateEventHeavyAsync_SendsReasonMetadata()
+    {
+        var eventId = Guid.NewGuid();
+        var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
+
+        _apiClient.ModerateEventHeavyAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<EventModerationRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        var result = await _service.ModerateEventHeavyAsync(eventId, reasonCode: "illegal_image", correlationId: "case-heavy-1");
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+        await _apiClient.Received(1).ModerateEventHeavyAsync(
+            eventId,
+            Arg.Is<EventModerationRequestDto>(request =>
+                request.ReasonCode == "illegal_image" && request.CorrelationId == "case-heavy-1"),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UnmoderateEventAsync_SendsReasonMetadata()
+    {
+        var eventId = Guid.NewGuid();
+        var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
+
+        _apiClient.UnmoderateEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<EventModerationRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        var result = await _service.UnmoderateEventAsync(eventId, reasonCode: "appeal_approved", correlationId: "case-restore-1");
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+        await _apiClient.Received(1).UnmoderateEventAsync(
+            eventId,
+            Arg.Is<EventModerationRequestDto>(request =>
+                request.ReasonCode == "appeal_approved" && request.CorrelationId == "case-restore-1"),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    #endregion
+
+    #region GetSessionsByEventAsync Tests
+
+    [Test]
+    public async Task GetSessionsByEventAsync_WhenManagedSessionsNotRequested_UsesPublicSessionsOnly()
+    {
+        var eventId = Guid.NewGuid();
+        var publicSession = new EventSessionListDto
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Title = "Public session",
+            EventSessionStatusFullName = "Published"
+        };
+
+        _apiClient.GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(CreateHalSessionCollectionResponse([publicSession]));
+
+        var result = await _service.GetSessionsByEventAsync(eventId);
+
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result.Single().Title).IsEqualTo("Public session");
+        await _apiClient.Received(1).GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _apiClient.DidNotReceive().GetManagedEventSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetSessionsByEventAsync_WhenManagedSessionsRequestedAndPublicRouteHidden_ReturnsManagedDraftSessions()
+    {
+        var eventId = Guid.NewGuid();
+        var draftSession = new EventSessionListDto
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Title = "Internal draft session",
+            EventSessionStatusFullName = "Draft",
+            EventSessionStatusMasterCode = "DRAFT"
+        };
+
+        _apiClient.GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Not Found", 404));
+        _apiClient.GetManagedEventSessionsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(CreateHalSessionCollectionResponse([draftSession]));
+
+        var result = await _service.GetSessionsByEventAsync(eventId, includeManagedSessions: true);
+
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result.Single().Title).IsEqualTo("Internal draft session");
+        await Assert.That(result.Single().EventSessionStatusMasterCode).IsEqualTo("DRAFT");
+    }
+
+    [Test]
+    public async Task GetSessionsByEventAsync_WhenManagedDuplicateExists_ReplacesPublicSession()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var publicSession = new EventSessionListDto
+        {
+            Id = sessionId,
+            EventId = eventId,
+            Title = "Public projection",
+            EventSessionStatusFullName = "Published"
+        };
+        var managedSession = new EventSessionListDto
+        {
+            Id = sessionId,
+            EventId = eventId,
+            Title = "Managed projection",
+            EventSessionStatusFullName = "Draft",
+            EventSessionStatusMasterCode = "DRAFT"
+        };
+        var internalSession = new EventSessionListDto
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Title = "Internal only",
+            EventSessionStatusFullName = "Draft"
+        };
+
+        _apiClient.GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(CreateHalSessionCollectionResponse([publicSession]));
+        _apiClient.GetManagedEventSessionsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(CreateHalSessionCollectionResponse([managedSession, internalSession]));
+
+        var result = await _service.GetSessionsByEventAsync(eventId, includeManagedSessions: true);
+
+        await Assert.That(result.Count).IsEqualTo(2);
+        await Assert.That(result.Select(session => session.Title)).Contains("Managed projection");
+        await Assert.That(result.Select(session => session.Title)).Contains("Internal only");
+        await Assert.That(result.Select(session => session.Title)).DoesNotContain("Public projection");
+    }
+
+    [Test]
+    public async Task GetSessionsByEventAsync_WhenManagedReadUnauthorized_ReturnsPublicSessions()
+    {
+        var eventId = Guid.NewGuid();
+        var publicSession = new EventSessionListDto
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Title = "Public session"
+        };
+
+        _apiClient.GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(CreateHalSessionCollectionResponse([publicSession]));
+        _apiClient.GetManagedEventSessionsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Forbidden", 403));
+
+        var result = await _service.GetSessionsByEventAsync(eventId, includeManagedSessions: true);
+
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result.Single().Title).IsEqualTo("Public session");
+    }
+
+    #endregion
+
     #region UpdateEventAsync Tests
 
     [Test]
@@ -979,6 +1221,39 @@ public class EventServiceTests
     }
 
     [Test]
+    public async Task GetManagedSessionByIdAsync_WhenPublicDetailHidden_ReturnsManagedSession()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var draftSession = new EventSessionListDto
+        {
+            Id = sessionId,
+            EventId = eventId,
+            EventTitle = "Managed Event",
+            Title = "Internal draft session",
+            EventSessionStatusFullName = "Draft",
+            EventSessionStatusMasterCode = "DRAFT",
+            ConcurrencyStamp = Guid.NewGuid(),
+            AdditionalProperties = CreateHalLinks("publish", "archive")
+        };
+
+        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Not Found", 404));
+        _apiClient.GetManagedEventSessionsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(CreateHalSessionCollectionResponse([draftSession]));
+
+        var result = await _service.GetManagedSessionByIdAsync(eventId, sessionId);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Id).IsEqualTo(sessionId);
+        await Assert.That(result.EventId).IsEqualTo(eventId);
+        await Assert.That(result.Title).IsEqualTo("Internal draft session");
+        await Assert.That(result.EventSessionStatusMasterCode).IsEqualTo("DRAFT");
+        await Assert.That(result.HasHalLink("publish")).IsTrue();
+        await Assert.That(result.HasHalLink("archive")).IsTrue();
+    }
+
+    [Test]
     public async Task GetSessionByIdAsync_ReturnsNull_WhenApiThrowsException()
     {
         // Arrange
@@ -1076,6 +1351,109 @@ public class EventServiceTests
         await _apiClient.Received(1).GetEventsAsync(pageNumber: 1, pageSize: 100, actorId: actorId);
     }
 
+    [Test]
+    public async Task GetProfileEventsByActorAsync_MergesManagedEventsAndUsesManagedDuplicate()
+    {
+        var actorId = Guid.NewGuid();
+        var sharedEventId = Guid.NewGuid();
+        var publicEvent = new EventListDto { Id = sharedEventId, ActorId = actorId, Title = "Public version" };
+        var managedDuplicate = new EventListDto { Id = sharedEventId, ActorId = actorId, Title = "Managed version" };
+        var moderatedEvent = new EventListDto { Id = Guid.NewGuid(), ActorId = actorId, Title = "Moderated", EventStatusId = 6 };
+
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(CreateHalCollectionResponse(new List<EventListDto> { publicEvent }));
+        _apiClient.GetManagedEventsByActorAsync(
+                actorId: actorId,
+                pageNumber: 1,
+                pageSize: 100)
+            .Returns(CreateHalCollectionResponse(new List<EventListDto> { managedDuplicate, moderatedEvent }));
+
+        var result = await _service.GetProfileEventsByActorAsync(actorId);
+
+        await Assert.That(result.Count).IsEqualTo(2);
+        await Assert.That(result.Select(evt => evt.Title)).Contains("Managed version");
+        await Assert.That(result.Select(evt => evt.Title)).Contains("Moderated");
+        await Assert.That(result.Select(evt => evt.Title)).DoesNotContain("Public version");
+        await _apiClient.Received(1).GetEventsAsync(pageNumber: 1, pageSize: 100, actorId: actorId);
+        await _apiClient.Received(1).GetManagedEventsByActorAsync(
+            actorId: actorId,
+            pageNumber: 1,
+            pageSize: 100);
+    }
+
+    [Test]
+    public async Task GetRegistrationEventsByUserAsync_GroupsRegistrationsAndEnrichesEventCards()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var firstSessionId = Guid.NewGuid();
+        var secondSessionId = Guid.NewGuid();
+        var firstSessionDate = DateTimeOffset.UtcNow.AddDays(7);
+
+        _apiClient.GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                new EventRegistrationListDto
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = eventId,
+                    EventSessionId = firstSessionId,
+                    EventTitle = "Fallback event title",
+                    EventStartTime = firstSessionDate
+                },
+                new EventRegistrationListDto
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = eventId,
+                    EventSessionId = secondSessionId,
+                    EventTitle = "Fallback event title",
+                    EventStartTime = firstSessionDate.AddHours(1)
+                }
+            ]);
+
+        _apiClient.GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(CreateHalResourceResponse(new EventDto
+            {
+                Id = eventId,
+                Title = "Annual Conference",
+                EventTypeId = 1,
+                EventTypeFullName = "Conference",
+                FeaturedImageUri = "https://example.test/event.png",
+                FirstSessionDate = firstSessionDate,
+                LastSessionDate = firstSessionDate.AddHours(2)
+            }));
+
+        var result = await _service.GetRegistrationEventsByUserAsync(userId);
+
+        await Assert.That(result.Count).IsEqualTo(1);
+        var registrationEvent = result.Single();
+        await Assert.That(registrationEvent.Id).IsEqualTo(eventId);
+        await Assert.That(registrationEvent.Title).IsEqualTo("Annual Conference");
+        await Assert.That(registrationEvent.FeaturedImageUri).IsEqualTo("https://example.test/event.png");
+        await Assert.That(registrationEvent.IsPast).IsFalse();
+        await _apiClient.Received(1).GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetRegistrationEventsByActorAsync_UsesUserActorRegistrations()
+    {
+        var actorId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        _apiClient.GetActorByIdAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new HalResourceOfActorDto
+            {
+                Id = actorId,
+                UserId = userId
+            });
+        _apiClient.GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var result = await _service.GetRegistrationEventsByActorAsync(actorId);
+
+        await Assert.That(result).IsEmpty();
+        await _apiClient.Received(1).GetActorByIdAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
     #endregion
 
     #region Helper Methods
@@ -1102,6 +1480,25 @@ public class EventServiceTests
                ?? new HalResourceOfEventListDto();
     }
 
+    private static HalCollectionResourceOfEventSessionListDto CreateHalSessionCollectionResponse(
+        IList<EventSessionListDto> items)
+    {
+        return new HalCollectionResourceOfEventSessionListDto
+        {
+            _embedded = new HalCollectionEmbeddedOfEventSessionListDto
+            {
+                Items = items.Select(ToHalSessionResource).ToList()
+            }
+        };
+    }
+
+    private static HalResourceOfEventSessionListDto ToHalSessionResource(EventSessionListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfEventSessionListDto>(json)
+               ?? new HalResourceOfEventSessionListDto();
+    }
+
     /// <summary>
     /// Creates a HAL resource response from an event DTO.
     /// Uses JSON serialization to properly populate all properties.
@@ -1121,6 +1518,19 @@ public class EventServiceTests
             response,
             new Dictionary<string, IEnumerable<string>>(),
             new InvalidOperationException(message));
+    }
+
+    private static Dictionary<string, object> CreateHalLinks(params string[] linkRels)
+    {
+        var links = string.Join(
+            ',',
+            linkRels.Select(rel => $"\"{rel}\":{{\"href\":\"/api/eventsession/{rel}\",\"method\":\"POST\"}}"));
+        using var doc = System.Text.Json.JsonDocument.Parse($"{{\"_links\":{{{links}}}}}");
+
+        return new Dictionary<string, object>
+        {
+            ["_links"] = doc.RootElement.GetProperty("_links").Clone()
+        };
     }
 
     private sealed class CapturingHandler(string responseBody) : HttpMessageHandler

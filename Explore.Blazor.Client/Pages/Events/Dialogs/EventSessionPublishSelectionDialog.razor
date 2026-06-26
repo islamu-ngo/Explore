@@ -1,0 +1,149 @@
+@* ABOUTME: Dialog for selecting which managed event sessions should publish after the parent event publishes. *@
+@* ABOUTME: Returns HAL-publishable session ids with concurrency stamps for the event detail publish flow. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Helpers
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Publish Sessions</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (PublishableSessions.Count == 0)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                    No sessions are ready to publish.
+                </MudAlert>
+            }
+            else
+            {
+                <MudPaper Elevation="0" Class="pa-4 event-session-publish-dialog__select-all" @onclick="ToggleAll">
+                    <div class="d-flex align-center gap-3">
+                        <MudCheckBox T="bool"
+                                     Value="IsAllSelected"
+                                     ValueChanged="@(_ => ToggleAll())"
+                                     Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.subtitle1">Publish all sessions</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@PublishableSessions.Count ready session@(PublishableSessions.Count == 1 ? "" : "s")</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+
+                @foreach (var session in PublishableSessions)
+                {
+                    var sessionId = session.Id!.Value;
+                    <MudPaper Elevation="0" Class="pa-4 event-session-publish-dialog__session" @onclick="() => ToggleSession(sessionId)">
+                        <div class="d-flex align-center gap-3">
+                            <MudCheckBox T="bool"
+                                         Value="@_selectedSessionIds.Contains(sessionId)"
+                                         ValueChanged="@(_ => ToggleSession(sessionId))"
+                                         Color="Color.Primary" />
+                            <div class="event-session-publish-dialog__session-copy">
+                                <MudText Typo="Typo.subtitle1">@session.Title</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@GetScheduleText(session)</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                }
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">
+            Cancel
+        </MudButton>
+        <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Primary" OnClick="KeepDrafts">
+            Keep Drafts
+        </MudButton>
+        <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Primary" Disabled="PublishableSessions.Count == 0" OnClick="Submit">
+            Publish Selected
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public IReadOnlyList<EventSessionListDto> Sessions { get; set; } = [];
+
+    private readonly HashSet<Guid> _selectedSessionIds = [];
+
+    private IReadOnlyList<EventSessionListDto> PublishableSessions => Sessions
+        .Where(session => session.Id is { } sessionId
+            && sessionId != Guid.Empty
+            && session.ConcurrencyStamp is { } concurrencyStamp
+            && concurrencyStamp != Guid.Empty
+            && session.HasHalLink("publish"))
+        .OrderBy(session => session.StartTime ?? DateTimeOffset.MaxValue)
+        .ThenBy(session => session.SortOrder)
+        .ThenBy(session => session.Title)
+        .ToArray();
+
+    private bool IsAllSelected => PublishableSessions.Count > 0
+        && PublishableSessions.All(session => _selectedSessionIds.Contains(session.Id.GetValueOrDefault()));
+
+    protected override void OnInitialized()
+    {
+        foreach (var session in PublishableSessions)
+        {
+            _selectedSessionIds.Add(session.Id!.Value);
+        }
+    }
+
+    private void ToggleAll()
+    {
+        if (IsAllSelected)
+        {
+            _selectedSessionIds.Clear();
+            return;
+        }
+
+        foreach (var session in PublishableSessions)
+        {
+            _selectedSessionIds.Add(session.Id!.Value);
+        }
+    }
+
+    private void ToggleSession(Guid sessionId)
+    {
+        if (!_selectedSessionIds.Remove(sessionId))
+        {
+            _selectedSessionIds.Add(sessionId);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void KeepDrafts() => MudDialog.Close(DialogResult.Ok(EventSessionPublishSelectionResult.Empty));
+
+    private void Submit()
+    {
+        var selectedSessions = PublishableSessions
+            .Where(session => session.Id is { } sessionId && _selectedSessionIds.Contains(sessionId))
+            .Select(session => new EventSessionPublishSelection(session.Id!.Value, session.ConcurrencyStamp!.Value))
+            .ToArray();
+
+        MudDialog.Close(DialogResult.Ok(new EventSessionPublishSelectionResult(selectedSessions)));
+    }
+
+    private static string GetScheduleText(EventSessionListDto session)
+    {
+        if (session.StartTime is not DateTimeOffset start)
+        {
+            return "Schedule TBD";
+        }
+
+        return session.EndTime is DateTimeOffset end
+            ? $"{start:f} - {end:t}"
+            : start.ToString("f");
+    }
+
+    public sealed record EventSessionPublishSelection(Guid SessionId, Guid ExpectedConcurrencyStamp);
+
+    public sealed record EventSessionPublishSelectionResult(IReadOnlyList<EventSessionPublishSelection> Sessions)
+    {
+        public static EventSessionPublishSelectionResult Empty { get; } = new([]);
+    }
+}

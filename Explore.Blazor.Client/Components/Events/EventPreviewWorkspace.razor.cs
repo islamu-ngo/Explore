@@ -20,6 +20,8 @@ namespace Explore.Blazor.Client.Components.Events;
 
 public partial class EventPreviewWorkspace : ComponentBase, IDisposable
 {
+    private const int ModeratedStatusId = 6;
+
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IPublicExperienceService PublicExperienceService { get; set; } = default!;
@@ -156,7 +158,7 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
             return;
         }
 
-        if (_eventCardClickOpensDetailPage)
+        if (_eventCardClickOpensDetailPage && !IsModeratedEvent(evt))
         {
             Navigation.NavigateTo($"/events/{eventId}");
             return;
@@ -244,6 +246,12 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         if (eventToShare.Id is not Guid eventId || eventId == Guid.Empty)
         {
             Snackbar.Add("Sharing is unavailable for this event.", Severity.Warning);
+            return;
+        }
+
+        if (IsModeratedEvent(eventToShare))
+        {
+            Snackbar.Add("Sharing is unavailable for moderated events.", Severity.Warning);
             return;
         }
 
@@ -429,7 +437,7 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
 
     private async Task CopySelectedEventLinkAsync()
     {
-        if (_selectedEvent?.Id is not Guid eventId || eventId == Guid.Empty)
+        if (_selectedEvent?.Id is not Guid eventId || eventId == Guid.Empty || IsModeratedEvent(_selectedEvent))
         {
             return;
         }
@@ -480,6 +488,12 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
     {
         if (_selectedEvent?.Id is not Guid eventId || _selectedEventDetail is null)
         {
+            return;
+        }
+
+        if (IsModeratedEvent(_selectedEvent) || _selectedEventDetail.HasHalLink("register") != true)
+        {
+            Snackbar.Add("Registration is unavailable for this event.", Severity.Warning);
             return;
         }
 
@@ -755,6 +769,10 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
             : eventItem.AudienceAgeFullName;
         return $"{gender} · {age}";
     }
+
+    private static bool IsModeratedEvent(EventListDto? eventItem) =>
+        eventItem?.EventStatusId == ModeratedStatusId ||
+        string.Equals(eventItem?.EventStatusFullName, "Moderated", StringComparison.OrdinalIgnoreCase);
 
     private static string FormatEventDate(EventListDto eventItem)
     {

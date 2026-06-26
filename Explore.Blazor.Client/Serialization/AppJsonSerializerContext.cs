@@ -93,6 +93,7 @@ namespace Explore.Blazor.Client.Serialization;
 [JsonSerializable(typeof(EventSessionKindListDto))]
 [JsonSerializable(typeof(EventSessionLanguageDto))]
 [JsonSerializable(typeof(EventSessionLanguageListDto))]
+[JsonSerializable(typeof(EventSessionLifecycleRequestDto))]
 [JsonSerializable(typeof(EventSessionListDto))]
 [JsonSerializable(typeof(EventSessionSpeakerDto))]
 [JsonSerializable(typeof(EventSessionSpeakerListDto))]

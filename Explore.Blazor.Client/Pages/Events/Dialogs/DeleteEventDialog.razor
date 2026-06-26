@@ -95,7 +95,7 @@
 
         try
         {
-            var sessions = await EventService.GetSessionsByEventAsync(EventId);
+            var sessions = await EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true);
             _sessionCount = sessions?.Count ?? 0;
             Logger.LogDebug("Loaded {SessionCount} sessions for event {EventId}", _sessionCount, EventId);
         }

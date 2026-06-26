@@ -329,7 +329,7 @@ public class EventListTests : IDisposable
             Description = "Event used for sidebar baseline tests"
         });
 
-        _eventService.GetSessionsByEventAsync(eventId).Returns(new List<EventSessionListDto>());
+        _eventService.GetSessionsByEventAsync(eventId, Arg.Any<bool>()).Returns(new List<EventSessionListDto>());
     }
 
     [Test]
@@ -877,8 +877,8 @@ public class EventListTests : IDisposable
         await Assert.That(cut.Markup).Contains("Add to Calendar");
         await Assert.That(cut.Markup).Contains($"href=\"/api/event/{eventId}/calendar\"");
         await Assert.That(cut.Markup).Contains("Share this Event");
-        await Assert.That(cut.Markup).Contains("View My Registrations");
-        await Assert.That(cut.Markup).Contains("href=\"/my/registrations\"");
+        await Assert.That(cut.Markup).Contains("View Registrations");
+        await Assert.That(cut.Markup).Contains("href=\"/my/profile\"");
     }
 
     [Test]
@@ -898,7 +898,7 @@ public class EventListTests : IDisposable
         await Assert.That(cut.Markup).Contains("You're on the Waitlist!");
         await Assert.That(cut.Markup).Contains("You have been added to the waitlist");
         await Assert.That(cut.Markup).Contains("Share this Event");
-        await Assert.That(cut.Markup).Contains("View My Registrations");
+        await Assert.That(cut.Markup).Contains("View Registrations");
     }
 
     [Test]
@@ -917,8 +917,8 @@ public class EventListTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("Already Registered");
         await Assert.That(cut.Markup).Contains("Share this Event");
-        await Assert.That(cut.Markup).Contains("View My Registrations");
-        await Assert.That(cut.Markup).Contains("href=\"/my/registrations\"");
+        await Assert.That(cut.Markup).Contains("View Registrations");
+        await Assert.That(cut.Markup).Contains("href=\"/my/profile\"");
     }
 
     [Test]

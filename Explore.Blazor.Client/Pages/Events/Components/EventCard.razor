@@ -10,7 +10,7 @@
                 @if (HasCardActions)
                 {
                     <div class="event-card__action-menu event-card__action-menu--overlay" @onclick:stopPropagation="true">
-                        @if (OnShareRequested.HasDelegate)
+                        @if (CanShare)
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.Share"
                                            Color="Color.Primary"
@@ -56,6 +56,12 @@
 
                 @* Overlay — title + date + progressive disclosure *@
                 <div class="event-card__overlay">
+                    @if (IsModerated)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled" Class="event-card__overlay-chip">
+                            Moderated
+                        </MudChip>
+                    }
                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="event-card__overlay-chip">
                         @EventTypeName
                     </MudChip>
@@ -161,7 +167,7 @@
                                     <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
                                 </MudTooltip>
                             }
-                            @if (OnShareRequested.HasDelegate)
+                            @if (CanShare)
                             {
                                 <div @onclick:stopPropagation="true">
                                     <MudIconButton Icon="@Icons.Material.Filled.Share"
@@ -193,7 +199,11 @@
                     @* Chips: type + price (reduced from full chip row) *@
                     <div class="event-card__dl-chips">
                         <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@EventTypeName</MudChip>
-                        @if (IsFieldVisible("event_list.card.show_status"))
+                        @if (IsModerated)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">Moderated</MudChip>
+                        }
+                        else if (IsFieldVisible("event_list.card.show_status"))
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@Event.EventStatusFullName</MudChip>
                         }
@@ -279,7 +289,7 @@
                             }
                         </div>
                         <div class="event-card__sr-status-chips">
-                            @if (OnShareRequested.HasDelegate)
+                            @if (CanShare)
                             {
                                 <div @onclick:stopPropagation="true">
                                     <MudIconButton Icon="@Icons.Material.Filled.Share"
@@ -311,7 +321,11 @@
                     @* Chips + icon badges: type, status, price + visibility/gender/format icons *@
                     <div class="event-card__sr-chips">
                         <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@EventTypeName</MudChip>
-                        @if (IsFieldVisible("event_list.card.show_status"))
+                        @if (IsModerated)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">Moderated</MudChip>
+                        }
+                        else if (IsFieldVisible("event_list.card.show_status"))
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@Event.EventStatusFullName</MudChip>
                         }

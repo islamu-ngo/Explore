@@ -1,0 +1,122 @@
+@* ABOUTME: Reusable read-only profile event sections for actor post and registration tabs. *@
+@* ABOUTME: Renders EventCardList rows with upcoming and dated past-event separation plus preview workspace support. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Pages.Events.Components
+
+@if (IsLoading)
+{
+    <div class="@SectionClass">
+        <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 700;">@UpcomingTitle</MudText>
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+    </div>
+}
+else if (NavigationEvents.Any())
+{
+    <EventPreviewWorkspace @ref="_eventPreviewWorkspace" NavigationEvents="@NavigationEvents">
+        <div class="@SectionClass">
+            <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 700;">@UpcomingTitle</MudText>
+
+            @if (UpcomingEvents.Any())
+            {
+                <EventCardList Events="@UpcomingEvents"
+                               SelectedEventId="@(_eventPreviewWorkspace?.SelectedEventId)"
+                               AriaLabel="@UpcomingAriaLabel"
+                               OnEventSelected="HandleEventSelected"
+                               OnShareRequested="HandleEventShare" />
+            }
+            else
+            {
+                <MudPaper Elevation="0" Class="pa-6 text-center border-solid border-1 mud-border-lines-default rounded-lg">
+                    <MudIcon Icon="@EmptyIcon" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">@EmptyTitle</MudText>
+                    @if (!string.IsNullOrWhiteSpace(EmptyCopy))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@EmptyCopy</MudText>
+                    }
+                </MudPaper>
+            }
+        </div>
+
+        @if (PastEventsByDate.Any())
+        {
+            <MudDivider Class="my-6" />
+
+            <div class="@SectionClass">
+                <MudText Typo="Typo.h5" Class="mb-6" Style="font-weight: 700;">@PastTitle</MudText>
+
+                <div class="@TimelineClass">
+                    @foreach (var dateGroup in PastEventsByDate)
+                    {
+                        <div class="@TimelineGroupClass">
+                            <div class="@TimelineDateClass">
+                                <div class="@TimelineDotClass"></div>
+                                <div class="@TimelineDateTextClass">
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
+                                        @dateGroup.Key.ToString("MMM dd, yyyy")
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @dateGroup.Key.ToString("dddd")
+                                    </MudText>
+                                </div>
+                            </div>
+
+                            <div class="@TimelineEventsClass">
+                                <EventCardList Events="@dateGroup.Value"
+                                               SelectedEventId="@(_eventPreviewWorkspace?.SelectedEventId)"
+                                               AriaLabel="@($"{PastAriaLabelPrefix} {dateGroup.Key:MMM dd, yyyy}")"
+                                               OnEventSelected="HandleEventSelected"
+                                               OnShareRequested="HandleEventShare" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </EventPreviewWorkspace>
+}
+else
+{
+    <div class="@SectionClass">
+        <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 700;">@UpcomingTitle</MudText>
+        <MudPaper Elevation="0" Class="pa-6 text-center border-solid border-1 mud-border-lines-default rounded-lg">
+            <MudIcon Icon="@EmptyIcon" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary">@EmptyTitle</MudText>
+            @if (!string.IsNullOrWhiteSpace(EmptyCopy))
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@EmptyCopy</MudText>
+            }
+        </MudPaper>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public IReadOnlyList<EventListDto> NavigationEvents { get; set; } = [];
+    [Parameter] public IReadOnlyList<EventListDto> UpcomingEvents { get; set; } = [];
+    [Parameter] public IReadOnlyList<KeyValuePair<DateTime, List<EventListDto>>> PastEventsByDate { get; set; } = [];
+    [Parameter] public string CssPrefix { get; set; } = "org-profile";
+    [Parameter] public string UpcomingTitle { get; set; } = "Upcoming Events";
+    [Parameter] public string PastTitle { get; set; } = "Past Events";
+    [Parameter] public string UpcomingAriaLabel { get; set; } = "Upcoming events";
+    [Parameter] public string PastAriaLabelPrefix { get; set; } = "Past events on";
+    [Parameter] public string EmptyTitle { get; set; } = "No upcoming events";
+    [Parameter] public string? EmptyCopy { get; set; }
+    [Parameter] public string EmptyIcon { get; set; } = Icons.Material.Outlined.EventBusy;
+
+    private EventPreviewWorkspace? _eventPreviewWorkspace;
+
+    private string SectionClass => $"{CssPrefix}__section";
+    private string TimelineClass => $"{CssPrefix}__timeline";
+    private string TimelineGroupClass => $"{CssPrefix}__timeline-group";
+    private string TimelineDateClass => $"{CssPrefix}__timeline-date";
+    private string TimelineDotClass => $"{CssPrefix}__timeline-dot";
+    private string TimelineDateTextClass => $"{CssPrefix}__timeline-date-text";
+    private string TimelineEventsClass => $"{CssPrefix}__timeline-events";
+
+    private Task HandleEventSelected(EventListDto evt) =>
+        _eventPreviewWorkspace?.SelectEventAsync(evt) ?? Task.CompletedTask;
+
+    private Task HandleEventShare(EventListDto evt) =>
+        _eventPreviewWorkspace?.ShareEventAsync(evt) ?? Task.CompletedTask;
+}

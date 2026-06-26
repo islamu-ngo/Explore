@@ -28,17 +28,20 @@
                            OnClick="@(() => OnNavigateNext.InvokeAsync())"
                            aria-label="Next event" />
 
-            <div class="d-flex gap-2 mx-auto">
-                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.OpenInNew"
-                           OnClick="@(() => OnOpenEventPage.InvokeAsync())">
-                    Event Page
-                </MudButton>
-                <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Default"
-                           StartIcon="@Icons.Material.Outlined.ContentCopy"
-                           OnClick="@(() => OnCopyEventLink.InvokeAsync())">
-                    Copy Link
-                </MudButton>
-            </div>
+            @if (CanUsePublicEventActions)
+            {
+                <div class="d-flex gap-2 mx-auto">
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.OpenInNew"
+                               OnClick="@(() => OnOpenEventPage.InvokeAsync())">
+                        Event Page
+                    </MudButton>
+                    <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Default"
+                               StartIcon="@Icons.Material.Outlined.ContentCopy"
+                               OnClick="@(() => OnCopyEventLink.InvokeAsync())">
+                        Copy Link
+                    </MudButton>
+                </div>
+            }
 
             @* ── Three-dots menu (edit / delete) ── *@
             @if (SelectedEvent.HasManagementLinks())
@@ -693,7 +696,13 @@
             <MudDivider Class="mb-4" />
 
             @* ── Action Buttons ── *@
-            @if (IsUserRegistered)
+            @if (IsSelectedEventModerated)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">
+                    Moderated
+                </MudAlert>
+            }
+            else if (IsUserRegistered)
             {
                 <MudButton Elevation="0" Variant="Variant.Outlined"
                            Color="Color.Success"
@@ -704,7 +713,7 @@
                     Registered
                 </MudButton>
             }
-            else
+            else if (CanRegisterSelectedEvent)
             {
                 <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                            FullWidth="true"
@@ -753,25 +762,27 @@
                                  }
                              </MudText>
 
-                              <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
-                                         FullWidth="true"
-                                         Href="@GetSelectedEventCalendarUrl()"
-                                         StartIcon="@Icons.Material.Outlined.CalendarMonth">
-                                  Add to Calendar
-                              </MudButton>
-
-                              <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" Class="rounded-lg mb-2"
-                                         FullWidth="true"
-                                         OnClick="@(() => OnShareSelectedEvent.InvokeAsync())"
-                                         StartIcon="@Icons.Material.Filled.Share">
-                                  Share this Event
-                              </MudButton>
+                              @if (CanUsePublicEventActions)
+                              {
+                                  <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
+                                             FullWidth="true"
+                                             Href="@GetSelectedEventCalendarUrl()"
+                                             StartIcon="@Icons.Material.Outlined.CalendarMonth">
+                                      Add to Calendar
+                                  </MudButton>
+                                  <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" Class="rounded-lg mb-2"
+                                             FullWidth="true"
+                                             OnClick="@(() => OnShareSelectedEvent.InvokeAsync())"
+                                             StartIcon="@Icons.Material.Filled.Share">
+                                      Share this Event
+                                  </MudButton>
+                              }
 
                               <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="rounded-lg mb-2"
                                          FullWidth="true"
-                                         Href="/my/registrations"
+                                         Href="/my/profile"
                                         StartIcon="@Icons.Material.Filled.AppRegistration">
-                                 View My Registrations
+                                 View Registrations
                              </MudButton>
 
                              <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" Class="rounded-lg"
@@ -793,22 +804,25 @@
                              </MudText>
                               <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="rounded-lg mb-2"
                                          FullWidth="true"
-                                         Href="/my/registrations"
+                                         Href="/my/profile"
                                          StartIcon="@Icons.Material.Filled.AppRegistration">
-                                  View My Registrations
+                                  View Registrations
                               </MudButton>
-                              <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" Class="rounded-lg mb-2"
-                                         FullWidth="true"
-                                         OnClick="@(() => OnShareSelectedEvent.InvokeAsync())"
-                                         StartIcon="@Icons.Material.Filled.Share">
-                                  Share this Event
-                              </MudButton>
-                              <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
-                                         FullWidth="true"
-                                         Href="@GetSelectedEventCalendarUrl()"
-                                         StartIcon="@Icons.Material.Outlined.CalendarMonth">
-                                  Add to Calendar
-                              </MudButton>
+                              @if (CanUsePublicEventActions)
+                              {
+                                  <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" Class="rounded-lg mb-2"
+                                             FullWidth="true"
+                                             OnClick="@(() => OnShareSelectedEvent.InvokeAsync())"
+                                             StartIcon="@Icons.Material.Filled.Share">
+                                      Share this Event
+                                  </MudButton>
+                                  <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
+                                             FullWidth="true"
+                                             Href="@GetSelectedEventCalendarUrl()"
+                                             StartIcon="@Icons.Material.Outlined.CalendarMonth">
+                                      Add to Calendar
+                                  </MudButton>
+                              }
                               <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" Class="rounded-lg"
                                          FullWidth="true"
                                          OnClick="@(() => OnCloseInlineRegistration.InvokeAsync())">

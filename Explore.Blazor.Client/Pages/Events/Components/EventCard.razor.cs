@@ -11,6 +11,8 @@ namespace Explore.Blazor.Client.Pages.Events.Components;
 
 public partial class EventCard : ComponentBase
 {
+    private const int ModeratedStatusId = 6;
+
     [Inject] private NavigationManager Navigation { get; set; } = null!;
 
     /// <summary>The event data to display.</summary>
@@ -118,9 +120,13 @@ public partial class EventCard : ComponentBase
     private string TruncatedDescription => StringHelper.TruncateDescription(Event.Description);
 
     private bool HasManagementMenu => CanEdit || CanDelete;
-    private bool HasCardActions => HasManagementMenu || OnShareRequested.HasDelegate;
+    private bool HasCardActions => HasManagementMenu || CanShare;
     private bool CanEdit => Event.HasHalLink("edit") && OnEditRequested.HasDelegate;
     private bool CanDelete => Event.HasHalLink("delete") && OnDeleteRequested.HasDelegate;
+    private bool CanShare => !IsModerated && OnShareRequested.HasDelegate;
+    private bool IsModerated =>
+        Event.EventStatusId == ModeratedStatusId ||
+        string.Equals(Event.EventStatusFullName, "Moderated", StringComparison.OrdinalIgnoreCase);
     private string ShareButtonLabel => $"Share event: {Event.Title}";
 
     // ── Icon Mapping Helpers ──

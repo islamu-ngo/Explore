@@ -672,6 +672,9 @@ public static class HalResourceExtensions
     public static bool HasHalLink(this EventSessionDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
+    public static bool HasHalLink(this EventSessionListDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
     public static bool HasHalLink(this EventSessionGroupListModel dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 

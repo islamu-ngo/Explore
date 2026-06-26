@@ -202,7 +202,7 @@ public class CreateEventTests : IDisposable
                 }
             }
         });
-        _eventService.GetSessionsByEventAsync(Arg.Any<Guid>()).Returns(new List<EventSessionListDto>());
+        _eventService.GetSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<bool>()).Returns(new List<EventSessionListDto>());
 
         // Template service defaults
         _eventTemplateService.GetTemplatesAsync(

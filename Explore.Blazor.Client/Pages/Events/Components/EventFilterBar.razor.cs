@@ -5,6 +5,7 @@ using System.Globalization;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -86,6 +87,14 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     private async Task SearchAsync()
     {
         await OnSearchRequested.InvokeAsync();
+    }
+
+    private async Task HandleSearchKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await SearchAsync();
+        }
     }
 
     public TagFilterChangedEventArgs GetTagFilter()

@@ -12,6 +12,8 @@ namespace Explore.Blazor.Client.Components.Events;
 
 public partial class EventDetailsSidebar : ComponentBase
 {
+    private const int ModeratedStatusId = 6;
+
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     [Parameter] public EventListDto? SelectedEvent { get; set; }
@@ -71,6 +73,16 @@ public partial class EventDetailsSidebar : ComponentBase
     private bool CanManageSelectedEvent => EventDetail?.HasHalLink("edit")
         ?? SelectedEvent?.HasHalLink("edit")
         ?? false;
+
+    private bool IsSelectedEventModerated =>
+        SelectedEvent?.EventStatusId == ModeratedStatusId ||
+        string.Equals(SelectedEvent?.EventStatusFullName, "Moderated", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(EventDetail?.EventStatusMasterCode, "MODERATED", StringComparison.OrdinalIgnoreCase);
+
+    private bool CanUsePublicEventActions => !IsSelectedEventModerated;
+
+    private bool CanRegisterSelectedEvent =>
+        CanUsePublicEventActions && EventDetail?.HasHalLink("register") == true;
 
     private async Task HandleCloseClickAsync()
     {
@@ -162,6 +174,7 @@ public partial class EventDetailsSidebar : ComponentBase
         "CANCELLED" => Color.Error,
         "COMPLETED" => Color.Info,
         "POSTPONED" => Color.Warning,
+        "MODERATED" => Color.Error,
         _ => Color.Default
     };
 
