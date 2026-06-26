@@ -15,6 +15,7 @@ public class UserProfileTests : IDisposable
     public UserProfileTests()
     {
         _ctx = new BlazorTestContext();
+        _ctx.AddShellStateMocks();
         _userService = Substitute.For<IUserService>();
         _eventService = Substitute.For<IEventService>();
         _reviewService = Substitute.For<IOrganizationReviewService>();
@@ -22,6 +23,8 @@ public class UserProfileTests : IDisposable
         _ctx.Services.AddSingleton(_userService);
         _ctx.Services.AddSingleton(_eventService);
         _ctx.Services.AddSingleton(_reviewService);
+        _ctx.Services.AddSingleton(Substitute.For<IContactShareConsentService>());
+        _ctx.Services.AddSingleton(Substitute.For<IEventRegistrationService>());
         _ctx.Services.AddSingleton(Substitute.For<ILogger<UserProfile>>());
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User", "test@example.com");
@@ -89,15 +92,31 @@ public class UserProfileTests : IDisposable
             Id = userId,
             FirstName = "Amina",
             LastName = "Rahman",
-            Username = "amina",
+            ActorHandle = "amina",
             Email = "amina@example.com",
             EmailVerified = true
         });
 
-        _eventService.GetRegistrationsByUserAsync(userId).Returns(
+        _eventService.GetRegistrationEventsByUserAsync(userId).Returns(
         [
-            new EventRegistrationListDto { Id = Guid.NewGuid() },
-            new EventRegistrationListDto { Id = Guid.NewGuid() }
+            new EventListDto
+            {
+                Id = Guid.NewGuid(),
+                Title = "Registered Conference",
+                EventTypeFullName = "Conference",
+                FirstSessionDate = DateTimeOffset.UtcNow.AddDays(7),
+                LastSessionDate = DateTimeOffset.UtcNow.AddDays(7),
+                IsPast = false
+            },
+            new EventListDto
+            {
+                Id = Guid.NewGuid(),
+                Title = "Past Workshop",
+                EventTypeFullName = "Workshop",
+                FirstSessionDate = DateTimeOffset.UtcNow.AddDays(-7),
+                LastSessionDate = DateTimeOffset.UtcNow.AddDays(-7),
+                IsPast = true
+            }
         ]);
 
         _reviewService.GetReviewsByUserId(userId).Returns(
@@ -120,6 +139,14 @@ public class UserProfileTests : IDisposable
         await Assert.That(cut.Markup).Contains("Amina Rahman");
         await Assert.That(cut.Markup).Contains("amina@example.com");
         await Assert.That(cut.Markup).Contains("Email Verified");
+        await Assert.That(cut.Markup).Contains("events attended");
+
+        cut.FindAll("[role='tab']")
+            .First(tab => tab.TextContent.Contains("Registration", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        await Assert.That(cut.Markup).Contains("Registered Conference");
+        await Assert.That(cut.Markup).Contains("Past Workshop");
 
         cut.FindAll("[role='tab']")
             .First(tab => tab.TextContent.Contains("Reviews", StringComparison.OrdinalIgnoreCase))

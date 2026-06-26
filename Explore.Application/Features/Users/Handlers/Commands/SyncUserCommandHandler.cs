@@ -145,7 +145,7 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                         Pii = new ActorPii
                         {
                             DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName),
-                            Handle = GenerateHandle(userDto.Username, safeEmail!, providerUserId),
+                            Handle = GenerateHandle(null, safeEmail!, providerUserId),
                             Did = provider == AuthSchemeNames.Atproto.ToLowerInvariant() ? providerUserId : null
                         },
                         Description = null,

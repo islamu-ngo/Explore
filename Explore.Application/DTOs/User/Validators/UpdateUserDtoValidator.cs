@@ -12,6 +12,24 @@ public class UpdateUserDtoValidator : AbstractValidator<UpdateUserDto>
         RuleFor(p => p.Id)
             .NotEmpty().WithMessage("{PropertyName} is required.");
 
+        RuleFor(p => p.Names)
+            .SetValidator(new UpdateUserNamesDtoValidator())
+            .When(p => p.Names is not null);
+
+        RuleFor(p => p.ProfileImage)
+            .SetValidator(new UpdateUserProfileImageDtoValidator())
+            .When(p => p.ProfileImage is not null);
+
+        RuleFor(p => p)
+            .Must(p => p.Names is not null || p.ProfileImage is not null)
+            .WithMessage("At least one of Names or ProfileImage must be provided.");
+    }
+}
+
+public class UpdateUserNamesDtoValidator : AbstractValidator<UpdateUserNamesDto>
+{
+    public UpdateUserNamesDtoValidator()
+    {
         RuleFor(p => p.FirstName)
             .NotEmpty().WithMessage("{PropertyName} is required.")
             .MaximumLength(100).WithMessage("{PropertyName} must not exceed 100 characters.");
@@ -19,25 +37,14 @@ public class UpdateUserDtoValidator : AbstractValidator<UpdateUserDto>
         RuleFor(p => p.LastName)
             .NotEmpty().WithMessage("{PropertyName} is required.")
             .MaximumLength(100).WithMessage("{PropertyName} must not exceed 100 characters.");
+    }
+}
 
-        RuleFor(p => p.Email)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .EmailAddress().WithMessage("{PropertyName} must be a valid email address.");
-
-        RuleFor(p => p.Username)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters.");
-
-        RuleFor(p => p.Bio)
-            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.")
-            .When(p => !string.IsNullOrEmpty(p.Bio));
-
-        RuleFor(p => p.City)
-            .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters.")
-            .When(p => !string.IsNullOrEmpty(p.City));
-
-        RuleFor(p => p.Country)
-            .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters.")
-            .When(p => !string.IsNullOrEmpty(p.Country));
+public class UpdateUserProfileImageDtoValidator : AbstractValidator<UpdateUserProfileImageDto>
+{
+    public UpdateUserProfileImageDtoValidator()
+    {
+        RuleFor(p => p.ProfilePictureId)
+            .NotEmpty().WithMessage("{PropertyName} is required.");
     }
 }

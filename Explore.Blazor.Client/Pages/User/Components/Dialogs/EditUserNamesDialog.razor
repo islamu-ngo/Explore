@@ -1,0 +1,75 @@
+@* ABOUTME: MudDialog for editing the user's first and last name independently.
+   ABOUTME: Returns an UpdateUserNamesDto via DialogResult.Ok; caller persists via UserService.UpdateUserAsync. *@
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Edit name</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_firstName"
+                      T="string"
+                      Label="First name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Person" />
+        <MudTextField @bind-Value="_lastName"
+                      T="string"
+                      Label="Last name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Person"
+                      Class="mt-4" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Elevation="0" Color="Color.Primary" OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit" Disabled="@_saving">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string? InitialFirstName { get; set; }
+    [Parameter] public string? InitialLastName { get; set; }
+
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private bool _saving;
+
+    protected override void OnInitialized()
+    {
+        _firstName = InitialFirstName ?? string.Empty;
+        _lastName = InitialLastName ?? string.Empty;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_firstName) || string.IsNullOrWhiteSpace(_lastName))
+        {
+            return Task.CompletedTask;
+        }
+
+        var result = new UpdateUserNamesDto
+        {
+            FirstName = _firstName.Trim(),
+            LastName = _lastName.Trim()
+        };
+
+        MudDialog.Close(DialogResult.Ok(result));
+        return Task.CompletedTask;
+    }
+}

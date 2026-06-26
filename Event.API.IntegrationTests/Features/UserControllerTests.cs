@@ -69,9 +69,11 @@ public class UserControllerTests
         var updateDto = new UpdateUserDto
         {
             Id = Guid.NewGuid(),
-            Email = "updated@example.com",
-            FirstName = "Updated",
-            LastName = "User"
+            Names = new UpdateUserNamesDto
+            {
+                FirstName = "Updated",
+                LastName = "User"
+            }
         };
 
         // Act

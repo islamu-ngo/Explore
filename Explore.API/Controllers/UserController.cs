@@ -73,10 +73,6 @@ public class UserController : ExploreControllerBase
                        ?? User.FindFirst(ClaimTypes.Surname)?.Value
                        ?? string.Empty;
 
-        var username = User.FindFirst("preferred_username")?.Value
-                       ?? User.FindFirst(ClaimTypes.Name)?.Value
-                       ?? string.Empty;
-
         var provider = ResolveAuthProvider();
         var providerId = ResolveProviderId(providerSubject, provider);
         var emailVerified = ResolveEmailVerified(provider, email);
@@ -91,7 +87,6 @@ public class UserController : ExploreControllerBase
             Email = email,
             FirstName = string.IsNullOrWhiteSpace(firstName) ? "User" : firstName,
             LastName = string.IsNullOrWhiteSpace(lastName) ? "" : lastName,
-            Username = username,
             AuthProvider = provider,
             AuthProviderId = providerId,
             EmailVerified = emailVerified

@@ -24,6 +24,7 @@ public class UserMappingProfile : Profile
             .ForMember(dest => dest.ActorBackgroundImageId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundImageId : null))
             .ForMember(dest => dest.ActorBackgroundImageUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.BackgroundImage != null ? src.Actor.BackgroundImage.Uri : null));
         CreateMap<UpdateUserDto, User>();
+        CreateMap<UpdateUserNamesDto, User>();
 
         CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenDto>()
             .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))

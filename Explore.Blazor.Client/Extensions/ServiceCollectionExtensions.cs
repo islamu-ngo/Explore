@@ -156,6 +156,7 @@ public static class ServiceCollectionExtensions
 
         // UI state
         services.AddScoped<SidebarState>();
+        services.AddScoped<CurrentUserState>();
         services.AddScoped<MainContentAppearanceState>();
         services.AddScoped<AiAssistantState>();
         services.AddScoped<AiAssistantConversationState>();

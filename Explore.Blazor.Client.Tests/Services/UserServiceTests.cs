@@ -272,8 +272,11 @@ public class UserServiceTests
         // Arrange
         var updateDto = new UpdateUserDto
         {
-            FirstName = "Updated",
-            LastName = "User"
+            Names = new UpdateUserNamesDto
+            {
+                FirstName = "Updated",
+                LastName = "User"
+            }
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
 
@@ -294,8 +297,11 @@ public class UserServiceTests
         // Arrange
         var updateDto = new UpdateUserDto
         {
-            FirstName = "Updated",
-            LastName = "User"
+            Names = new UpdateUserNamesDto
+            {
+                FirstName = "Updated",
+                LastName = "User"
+            }
         };
 
         _apiClient.UpdateCurrentUserAsync(Arg.Any<UpdateUserDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())

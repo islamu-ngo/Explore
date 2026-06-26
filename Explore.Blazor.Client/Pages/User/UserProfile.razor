@@ -1,5 +1,5 @@
-@* ABOUTME: Authenticated user profile page with identity, stats, posts, history, and reviews. *@
-@* ABOUTME: Reuses shared EventList card and preview workspace components for user-owned event posts. *@
+@* ABOUTME: Authenticated user profile page with identity, stats, posts, registrations, and reviews. *@
+@* ABOUTME: Reuses shared EventList cards and preview workspaces for user-owned and attended event lists. *@
 @page "/my/profile"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
@@ -107,7 +107,7 @@
                 </div>
 
                 <!-- Tabs Section -->
-                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-6 bg-transparent" Class="mt-6 bg-transparent" Color="Color.Transparent" SliderColor="Color.Primary">
+                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pt-6 bg-transparent" Class="mt-6 bg-transparent" Color="Color.Transparent" SliderColor="Color.Primary">
                     <MudTabPanel Text="Posts">
                         <div class="org-profile__section">
                             @if (IsLoading)
@@ -138,45 +138,18 @@
                         </div>
                     </MudTabPanel>
                     
-                    <MudTabPanel Text="History">
-                        <div class="org-profile__section">
-                            @if (IsLoading)
-                            {
-                                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
-                            }
-                            else if (_history.Any())
-                            {
-                                <MudGrid Spacing="4">
-                                    @foreach (var reg in _history)
-                                    {
-                                        <MudItem xs="12" sm="6" md="4">
-                                            <MudCard Elevation="0" Class="org-profile__event-card cursor-pointer" @onclick="@(() => NavigateToEvent(reg.EventId))">
-                                                <div class="org-profile__event-card-image">
-                                                    <MudImage Src="@GetHistoryImage(reg)" ObjectFit="ObjectFit.Cover" Style="width: 100%; height: 100%; display: block;" />
-                                                </div>
-                                                <MudCardContent Class="pa-3">
-                                                    <div class="d-flex align-center gap-2 mb-2">
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold px-1">Registered</MudChip>
-                                                    </div>
-                                                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">@reg.EventTitle</MudText>
-                                                    <div class="d-flex align-center gap-1 mt-2">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
-                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatHistoryDate(reg)</MudText>
-                                                    </div>
-                                                </MudCardContent>
-                                            </MudCard>
-                                        </MudItem>
-                                    }
-                                </MudGrid>
-                            }
-                            else
-                            {
-                                <MudPaper Elevation="0" Class="pa-6 text-center border-solid border-1 mud-border-lines-default rounded-lg">
-                                    <MudIcon Icon="@Icons.Material.Outlined.History" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
-                                    <MudText Typo="Typo.body1" Color="Color.Secondary">No events history</MudText>
-                                </MudPaper>
-                            }
-                        </div>
+                    <MudTabPanel Text="Registration">
+                        <ProfileEventSections IsLoading="@_isLoadingRegistrationEvents"
+                                              NavigationEvents="@RegistrationEvents"
+                                              UpcomingEvents="@_upcomingRegistrationEvents"
+                                              PastEventsByDate="@_pastRegistrationEventsByDate"
+                                              CssPrefix="org-profile"
+                                              UpcomingTitle="Upcoming Events"
+                                              PastTitle="Past Events"
+                                              UpcomingAriaLabel="Upcoming registered events"
+                                              PastAriaLabelPrefix="Past registered events on"
+                                              EmptyTitle="No registered events"
+                                              EmptyCopy="Events you register for will appear here." />
                     </MudTabPanel>
 
                     <MudTabPanel Text="Reviews">

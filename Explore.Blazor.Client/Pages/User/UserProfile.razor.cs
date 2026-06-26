@@ -35,6 +35,15 @@ public partial class UserProfile : ComponentBase
     private int EventsAttended { get; set; }
     private int ReviewsGiven { get; set; }
     private ICollection<OrganizationReviewDto> MyReviews { get; set; } = new List<OrganizationReviewDto>();
+    private ICollection<EventListDto> _posts = new List<EventListDto>();
+    private List<EventListDto> _upcomingRegistrationEvents = new();
+    private List<EventListDto> _pastRegistrationEvents = new();
+    private List<KeyValuePair<DateTime, List<EventListDto>>> _pastRegistrationEventsByDate = new();
+    private bool _isLoadingRegistrationEvents;
+    private EventPreviewWorkspace? _eventPreviewWorkspace;
+
+    private List<EventListDto> RegistrationEvents =>
+        _upcomingRegistrationEvents.Concat(_pastRegistrationEvents).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -111,10 +120,6 @@ public partial class UserProfile : ComponentBase
         }
     }
 
-    private ICollection<EventListDto> _posts = new List<EventListDto>();
-    private ICollection<EventRegistrationListDto> _history = new List<EventRegistrationListDto>();
-    private EventPreviewWorkspace? _eventPreviewWorkspace;
-
     private async Task LoadStatisticsAsync(Guid userId)
     {
         // Load event registrations, reviews, and posts in parallel
@@ -127,18 +132,37 @@ public partial class UserProfile : ComponentBase
 
     private async Task LoadEventRegistrationsAsync(Guid userId)
     {
+        _isLoadingRegistrationEvents = true;
+
         try
         {
-            var registrations = await EventService.GetRegistrationsByUserAsync(userId);
-            _history = registrations ?? new List<EventRegistrationListDto>();
-            EventsAttended = _history.Count;
+            var registrationEvents = await EventService.GetRegistrationEventsByUserAsync(userId);
+
+            _upcomingRegistrationEvents = registrationEvents
+                .Where(evt => evt.IsPast != true)
+                .OrderBy(evt => evt.FirstSessionDate)
+                .ToList();
+
+            _pastRegistrationEvents = registrationEvents
+                .Where(evt => evt.IsPast == true)
+                .OrderByDescending(evt => evt.FirstSessionDate)
+                .ToList();
+
+            _pastRegistrationEventsByDate = GroupEventsByDate(_pastRegistrationEvents);
+            EventsAttended = RegistrationEvents.Count;
             Logger.LogInformation("[UserProfile] Loaded {Count} event registrations", EventsAttended);
         }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "[UserProfile] Error loading registrations");
-            _history = new List<EventRegistrationListDto>();
+            _upcomingRegistrationEvents = new List<EventListDto>();
+            _pastRegistrationEvents = new List<EventListDto>();
+            _pastRegistrationEventsByDate = new List<KeyValuePair<DateTime, List<EventListDto>>>();
             EventsAttended = 0;
+        }
+        finally
+        {
+            _isLoadingRegistrationEvents = false;
         }
     }
 
@@ -172,16 +196,6 @@ public partial class UserProfile : ComponentBase
         }
     }
 
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
-
-    private void NavigateToEvent(Guid? eventId)
-    {
-        if (eventId.HasValue)
-        {
-            Navigation.NavigateTo($"/events/{eventId}");
-        }
-    }
-
     private Task HandleEventSelected(EventListDto evt) =>
         _eventPreviewWorkspace?.SelectEventAsync(evt) ?? Task.CompletedTask;
 
@@ -202,16 +216,13 @@ public partial class UserProfile : ComponentBase
         return Task.CompletedTask;
     }
 
-    private static string GetHistoryImage(EventRegistrationListDto reg)
+    private static List<KeyValuePair<DateTime, List<EventListDto>>> GroupEventsByDate(IEnumerable<EventListDto> events)
     {
-        var color = EventColorHelper.GetColorByHash(reg.EventTitle ?? "Event");
-        return ImageHelper.GetEventImageUrl(reg.EventFeaturedImageUri, reg.EventTitle, color);
-    }
-
-    private static string FormatHistoryDate(EventRegistrationListDto reg)
-    {
-        if (reg.EventStartTime == null) return "TBD";
-        return reg.EventStartTime.Value.ToString("MMM dd, yyyy");
+        return events
+            .GroupBy(evt => evt.FirstSessionDate?.Date ?? DateTime.MinValue)
+            .OrderByDescending(group => group.Key)
+            .Select(group => new KeyValuePair<DateTime, List<EventListDto>>(group.Key, group.ToList()))
+            .ToList();
     }
 
     /// <summary>
@@ -241,7 +252,7 @@ public partial class UserProfile : ComponentBase
         if (!string.IsNullOrEmpty(fullName))
             return fullName;
 
-        return UserData.Username ?? "User";
+        return UserData.ActorHandle ?? "User";
     }
 
     /// <summary>
@@ -249,7 +260,7 @@ public partial class UserProfile : ComponentBase
     /// </summary>
     private string GetInitials()
     {
-        return DisplayHelper.GetInitials(UserData?.FirstName, UserData?.LastName, UserData?.Username);
+        return DisplayHelper.GetInitials(UserData?.FirstName, UserData?.LastName, UserData?.ActorHandle);
     }
 
     /// <summary>
@@ -258,6 +269,6 @@ public partial class UserProfile : ComponentBase
     private string GetUsername()
     {
         if (UserData == null) return "user";
-        return UserData.Username ?? UserData.Email?.Split('@').FirstOrDefault() ?? "user";
+        return UserData.ActorHandle ?? UserData.Email?.Split('@').FirstOrDefault() ?? "user";
     }
 }

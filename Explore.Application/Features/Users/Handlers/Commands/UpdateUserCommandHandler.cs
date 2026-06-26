@@ -57,20 +57,22 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
             return response;
         }
 
-        _mapper.Map(request.UpdateUserDto, user);
-        await _userRepository.Update(user);
+        // Update names (FirstName/LastName) when provided.
+        if (request.UpdateUserDto.Names is not null)
+        {
+            _mapper.Map(request.UpdateUserDto.Names, user);
+        }
 
-        // Handle profile picture update
-        if (request.UpdateUserDto.ProfilePictureId.HasValue && user.ActorId.HasValue)
+        // Update profile picture and link the storage object when provided.
+        if (request.UpdateUserDto.ProfileImage is not null && user.ActorId.HasValue)
         {
             var actor = await _actorRepository.GetById(user.ActorId.Value);
             if (actor != null)
             {
-                actor.ProfilePictureId = request.UpdateUserDto.ProfilePictureId.Value;
+                actor.ProfilePictureId = request.UpdateUserDto.ProfileImage.ProfilePictureId;
                 await _actorRepository.Update(actor);
 
-                // Update the StorageObject's ActorId to link it to this user's actor
-                var storageObject = await _storageObjectRepository.GetById(request.UpdateUserDto.ProfilePictureId.Value);
+                var storageObject = await _storageObjectRepository.GetById(request.UpdateUserDto.ProfileImage.ProfilePictureId);
                 if (storageObject != null)
                 {
                     storageObject.ActorId = user.ActorId.Value;
@@ -78,6 +80,8 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
                 }
             }
         }
+
+        await _userRepository.Update(user);
 
         response.Success = true;
         response.Message = "User updated successfully";
