@@ -64,7 +64,37 @@ public sealed class AiProviderHealthReporterTests
     }
 
     [Test]
-    public async Task Check_WhenSdkBackedProviderConfigured_ReturnsConfiguredNoProbeWithoutSecrets()
+    public async Task Check_WhenOpenAiConfigured_ReturnsConfiguredNoProbe()
+    {
+        var health = _reporter.Check(new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderOpenAi,
+            ApiKey = "test-key",
+            ModelId = "gpt-test"
+        });
+
+        await Assert.That(health.Healthy).IsTrue();
+        await Assert.That(health.Status).IsEqualTo("configured_no_probe");
+    }
+
+    [Test]
+    public async Task Check_WhenAnthropicConfigured_ReturnsConfiguredNoProbe()
+    {
+        var health = _reporter.Check(new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderAnthropic,
+            ApiKey = "test-key",
+            ModelId = "claude-test"
+        });
+
+        await Assert.That(health.Healthy).IsTrue();
+        await Assert.That(health.Status).IsEqualTo("configured_no_probe");
+    }
+
+    [Test]
+    public async Task Check_WhenAzureOpenAiConfigured_ReturnsConfiguredNoProbeWithoutSecrets()
     {
         var health = _reporter.Check(new AiProviderSettings
         {
@@ -114,13 +144,16 @@ public sealed class AiProviderHealthReporterTests
         var strategies = new IAiProviderStrategy[]
         {
             new FakeAiProviderStrategy(new FakeAiChatProvider()),
+            new StubProviderStrategy(AiProviderSettings.ProviderOpenAi, "configured_no_probe",
+                "OpenAI Responses API provider settings are valid; network probing is deferred to the adapter."),
             new StubProviderStrategy(AiProviderSettings.ProviderOpenAiCompatible, "configured_no_probe",
                 "OpenAI-compatible AI provider settings are valid; network probing is deferred to the adapter."),
+            new StubProviderStrategy(AiProviderSettings.ProviderAnthropic, "configured_no_probe",
+                "Anthropic AI provider settings are valid; network probing is deferred to the adapter."),
             new StubProviderStrategy(AiProviderSettings.ProviderAnthropicCompatible, "configured_no_probe",
                 "Anthropic-compatible AI provider settings are valid; network probing is deferred to the adapter."),
-            new StubProviderStrategy(AiProviderSettings.ProviderOpenAiSdk, "configured_no_probe",
-                "SDK-backed AI provider settings are valid; network probing is deferred to the adapter.",
-                new[] { AiProviderSettings.ProviderOpenAiSdk, AiProviderSettings.ProviderAzureOpenAi }),
+            new StubProviderStrategy(AiProviderSettings.ProviderAzureOpenAi, "configured_no_probe",
+                "Azure OpenAI provider settings are valid; network probing is deferred to the adapter."),
         };
         var resolver = new AiProviderStrategyResolver(
             strategies, Substitute.For<ILogger<AiProviderStrategyResolver>>());

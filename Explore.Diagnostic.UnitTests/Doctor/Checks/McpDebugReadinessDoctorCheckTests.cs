@@ -40,7 +40,7 @@ public sealed class McpDebugReadinessDoctorCheckTests
         var fileSystem = CreateFileSystemWithRequiredArtifacts();
         fileSystem.AddFile(
             Path.Combine(Root, "docs/MCP_DEBUGGING.md"),
-            "McpProtocolContractTests resources/templates/list propose_create_event_draft redacted Bearer eyJsecret");
+            "McpProtocolContractTests EventManagementMcpAuthenticatedReadTests resources/templates/list event_management_context propose_create_event_draft propose_update_event_draft redacted Bearer eyJsecret");
         var check = new McpDebugReadinessDoctorCheck(fileSystem, Root);
 
         var result = await check.RunAsync(CancellationToken.None);
@@ -55,7 +55,7 @@ public sealed class McpDebugReadinessDoctorCheckTests
         var fileSystem = new FakeDoctorFileSystem();
         fileSystem.AddFile(
             Path.Combine(Root, "docs/MCP_DEBUGGING.md"),
-            "McpProtocolContractTests resources/templates/list propose_create_event_draft redacted");
+            "McpProtocolContractTests EventManagementMcpAuthenticatedReadTests resources/templates/list event_management_context propose_create_event_draft propose_update_event_draft redacted");
         fileSystem.AddFile(Path.Combine(Root, "docs/adr/ADR-011-local-mcp-stdio-diagnostic-host.md"), "stdio decision");
         fileSystem.AddFile(Path.Combine(Root, ".gitignore"), ".mcp.json\n.vscode/*");
         fileSystem.AddFile(Path.Combine(Root, "Event.API.IntegrationTests/Features/McpProjectedToolTests.cs"), "tests");

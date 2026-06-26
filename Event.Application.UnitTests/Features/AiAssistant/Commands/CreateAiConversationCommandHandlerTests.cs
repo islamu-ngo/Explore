@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Handlers.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Settings;
@@ -23,6 +24,7 @@ public sealed class CreateAiConversationCommandHandlerTests
     private readonly IHierarchicalSettingsResolver _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
+    private readonly IAiAssistantActorContextService _actorContextService = Substitute.For<IAiAssistantActorContextService>();
 
     public CreateAiConversationCommandHandlerTests()
     {
@@ -32,11 +34,14 @@ public sealed class CreateAiConversationCommandHandlerTests
         _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(CreateSettings(enabled: true, provider: AiProviderDefaults.ProviderFake));
         _conversationRepository.Create(Arg.Any<AiConversation>()).Returns(call => call.Arg<AiConversation>());
+        _actorContextService.ResolveAuthorizedActorAsync(_tenantId, _userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(call => AiAssistantActorContextResolution.Success(call.ArgAt<Guid?>(2), []));
     }
 
     [Test]
     public async Task Handle_WhenFakeProviderEnabled_CreatesConversationMetadataOnly()
     {
+        var actorId = Guid.CreateVersion7();
         var handler = CreateHandler();
 
         var result = await handler.Handle(new CreateAiConversationCommand
@@ -44,7 +49,7 @@ public sealed class CreateAiConversationCommandHandlerTests
             Conversation = new CreateAiConversationRequestDto
             {
                 Title = "  Draft planning  ",
-                ActorId = Guid.CreateVersion7()
+                ActorId = actorId
             }
         }, CancellationToken.None);
 
@@ -54,6 +59,7 @@ public sealed class CreateAiConversationCommandHandlerTests
         await _conversationRepository.Received(1).Create(Arg.Is<AiConversation>(conversation =>
             conversation.TenantId == _tenantId &&
             conversation.UserId == _userId &&
+            conversation.ActorId == actorId &&
             conversation.Title == "Draft planning" &&
             conversation.Provider == AiProviderDefaults.ProviderFake &&
             conversation.ModelId == AiProviderDefaults.FakeModelId &&
@@ -100,8 +106,28 @@ public sealed class CreateAiConversationCommandHandlerTests
         await _conversationRepository.DidNotReceive().Create(Arg.Any<AiConversation>());
     }
 
+    [Test]
+    public async Task Handle_WhenActorIsNotAuthorized_FailsBeforePersistence()
+    {
+        var actorId = Guid.CreateVersion7();
+        _actorContextService.ResolveAuthorizedActorAsync(_tenantId, _userId, actorId, Arg.Any<CancellationToken>())
+            .Returns(AiAssistantActorContextResolution.Failure(
+                "actor_context_not_authorized",
+                "AI acting actor is not available to the authenticated user.",
+                []));
+
+        var result = await CreateHandler().Handle(new CreateAiConversationCommand
+        {
+            Conversation = new CreateAiConversationRequestDto { ActorId = actorId }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("actor_context_not_authorized");
+        await _conversationRepository.DidNotReceive().Create(Arg.Any<AiConversation>());
+    }
+
     private CreateAiConversationCommandHandler CreateHandler()
-        => new(_conversationRepository, _settingsResolver, _tenantContext, _currentUserService);
+        => new(_conversationRepository, _settingsResolver, _tenantContext, _currentUserService, _actorContextService);
 
     private static AiAssistantSettingGroup CreateSettings(
         bool enabled = false,

@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai.Validators;
+using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
@@ -20,17 +21,20 @@ public sealed class CreateAiConversationCommandHandler
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IAiAssistantActorContextService _actorContextService;
 
     public CreateAiConversationCommandHandler(
         IAiConversationRepository conversationRepository,
         IHierarchicalSettingsResolver settingsResolver,
         ITenantContext tenantContext,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IAiAssistantActorContextService actorContextService)
     {
         _conversationRepository = conversationRepository;
         _settingsResolver = settingsResolver;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
+        _actorContextService = actorContextService;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -65,13 +69,26 @@ public sealed class CreateAiConversationCommandHandler
                 disabledReason);
         }
 
+        var actorResolution = await _actorContextService.ResolveAuthorizedActorAsync(
+            tenantId,
+            userId,
+            request.Conversation.ActorId,
+            cancellationToken);
+        if (!actorResolution.Succeeded)
+        {
+            return Failure(
+                "AI conversation acting actor is not authorized.",
+                [actorResolution.FailureMessage ?? "AI acting actor is not authorized."],
+                actorResolution.FailureCode);
+        }
+
         var utcNow = DateTime.UtcNow;
         var conversation = new AiConversation
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             UserId = userId,
-            ActorId = request.Conversation.ActorId,
+            ActorId = actorResolution.ActorId,
             Title = string.IsNullOrWhiteSpace(request.Conversation.Title) ? null : request.Conversation.Title.Trim(),
             Provider = AiAssistantAvailability.NormalizeProvider(settings.Provider),
             ModelId = AiAssistantAvailability.ResolveModelId(settings),

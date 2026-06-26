@@ -47,6 +47,7 @@ public sealed class AiEvaluationReportGeneratorTests
 
         scenario.Status.Should().Be(AiEvaluationStatus.Pass);
         scenario.Dimension.Should().Be(AiEvaluationDimension.McpProposalFlow);
+        scenario.Summary.Should().Contain("event-management");
         scenario.Summary.Should().Contain("confirmation-before-side-effects");
         scenario.Recommendation.Should().Contain("discovery and proposals");
     }

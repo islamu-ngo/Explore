@@ -251,7 +251,9 @@ public partial class TenantPolicySettingService
 
         var canOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(lockAiAssistantSetting?.Value, true);
         var aiAssistantProvider = NormalizeAiAssistantProvider(settings.AiAssistantProvider, settings.AiAssistantEnabled);
-        var usesExternalProvider = aiAssistantProvider is "openai-compatible" or "anthropic-compatible";
+        var usesOfficialProvider = aiAssistantProvider is "openai" or "anthropic";
+        var usesCompatibleProvider = aiAssistantProvider is "openai-compatible" or "anthropic-compatible";
+        var usesExternalProvider = usesOfficialProvider || usesCompatibleProvider;
         var aiAssistantAllowedModelIds = usesExternalProvider
             ? NormalizeAiModelIds([settings.AiAssistantModelId], settings.AiAssistantAllowedModelIds)
             : [];
@@ -278,7 +280,7 @@ public partial class TenantPolicySettingService
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.AiAssistant.EndpointUrl,
-            usesExternalProvider ? settings.AiAssistantEndpointUrl : string.Empty,
+            usesCompatibleProvider ? settings.AiAssistantEndpointUrl : string.Empty,
             canOverrideAiAssistant,
             actorUserId);
 
@@ -398,11 +400,28 @@ public partial class TenantPolicySettingService
         }
 
         var failures = new List<ValidationFailure>();
-        if (provider is not "fake" and not "openai-compatible" and not "anthropic-compatible")
+        if (provider is not "fake" and not "openai" and not "openai-compatible" and not "anthropic" and not "anthropic-compatible")
         {
             failures.Add(new ValidationFailure(
                 nameof(settings.AiAssistantProvider),
-                "AI Assistant provider must be OpenAI-compatible, Anthropic-compatible, or Fake."));
+                "AI Assistant provider must be OpenAI, OpenAI-compatible, Anthropic, Anthropic-compatible, or Fake."));
+        }
+
+        if (provider is "openai" or "anthropic")
+        {
+            if (string.IsNullOrWhiteSpace(settings.AiAssistantApiKey))
+            {
+                failures.Add(new ValidationFailure(
+                    nameof(settings.AiAssistantApiKey),
+                    "AI Assistant API key is required for official AI providers."));
+            }
+
+            if (string.IsNullOrWhiteSpace(settings.AiAssistantModelId))
+            {
+                failures.Add(new ValidationFailure(
+                    nameof(settings.AiAssistantModelId),
+                    "AI Assistant model ID is required for official AI providers."));
+            }
         }
 
         if (provider is "openai-compatible" or "anthropic-compatible")
@@ -418,7 +437,7 @@ public partial class TenantPolicySettingService
             {
                 failures.Add(new ValidationFailure(
                     nameof(settings.AiAssistantModelId),
-                    "AI Assistant model ID is required for OpenAI-compatible providers."));
+                    "AI Assistant model ID is required for OpenAI-compatible or Anthropic-compatible providers."));
             }
         }
 
@@ -434,10 +453,10 @@ public partial class TenantPolicySettingService
 
         if (string.IsNullOrWhiteSpace(normalized) || (enabled && normalized == "none"))
         {
-            return enabled ? "openai-compatible" : "none";
+            return enabled ? "openai" : "none";
         }
 
-        if (!enabled && normalized is not "none" and not "fake" and not "openai-compatible" and not "anthropic-compatible")
+        if (!enabled && normalized is not "none" and not "fake" and not "openai" and not "openai-compatible" and not "anthropic" and not "anthropic-compatible")
         {
             return "none";
         }

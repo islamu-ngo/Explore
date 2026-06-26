@@ -224,6 +224,75 @@ public sealed class MicrosoftExtensionsAiChatProviderTests
     }
 
     [Test]
+    public async Task SendAsync_WhenUserMessageHasImage_MapsToTextAndDataContent()
+    {
+        var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(ChatRole.Assistant, "Image accepted")));
+        var provider = CreateProvider(chatClient);
+        const string imageData = "aW1hZ2UtYnl0ZXM=";
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Describe this picture:",
+            messages:
+            [
+                new AiChatMessage(
+                    AiMessageRole.User,
+                    "Describe this picture:",
+                    images:
+                    [
+                        new AiChatImage("image/png", imageData)
+                    ])
+            ]));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(chatClient.Messages![1].Role).IsEqualTo(ChatRole.User);
+        await Assert.That(chatClient.Messages[1].Contents.Count).IsEqualTo(2);
+
+        var text = (TextContent)chatClient.Messages[1].Contents[0];
+        var image = (DataContent)chatClient.Messages[1].Contents[1];
+        await Assert.That(text.Text).IsEqualTo("Describe this picture:");
+        await Assert.That(image.MediaType).IsEqualTo("image/png");
+        await Assert.That(image.Uri).StartsWith("data:image/png;base64,");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenImageBackedBuildModeReturnsBlankTextWithoutToolCall_ReturnsRetryableEmptyResponseFailure()
+    {
+        var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(ChatRole.Assistant, string.Empty)));
+        var provider = CreateProvider(chatClient);
+        const string imageData = "aW1hZ2UtYnl0ZXM=";
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Create event draft for this event poster",
+            toolProposalsEnabled: true,
+            actionSchema: """
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["title"],
+                  "properties": { "title": { "type": "string" } }
+                }
+                """,
+            messages:
+            [
+                new AiChatMessage(
+                    AiMessageRole.User,
+                    "Create event draft for this event poster",
+                    images:
+                    [
+                        new AiChatImage("image/png", imageData)
+                    ])
+            ]));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("invalid_response");
+        await Assert.That(result.Error.Message).Contains("empty text response");
+        await Assert.That(chatClient.Options!.Tools![0].Name).IsEqualTo("create_event_draft");
+
+        var image = (DataContent)chatClient.Messages![1].Contents[1];
+        await Assert.That(image.MediaType).IsEqualTo("image/png");
+    }
+
+    [Test]
     public async Task SendAsync_WhenToolResultMessageMissingCallId_ReturnsSafeFailureBeforeProviderCall()
     {
         var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(ChatRole.Assistant, "unused")));

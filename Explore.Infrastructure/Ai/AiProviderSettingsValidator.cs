@@ -12,9 +12,10 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
     [
         AiProviderSettings.ProviderNone,
         AiProviderSettings.ProviderFake,
+        AiProviderSettings.ProviderOpenAi,
         AiProviderSettings.ProviderOpenAiCompatible,
+        AiProviderSettings.ProviderAnthropic,
         AiProviderSettings.ProviderAnthropicCompatible,
-        AiProviderSettings.ProviderOpenAiSdk,
         AiProviderSettings.ProviderAzureOpenAi
     ];
 
@@ -30,7 +31,7 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
 
         if (!SupportedProviders.Contains(options.Provider))
         {
-            failures.Add("AiProvider:Provider must be a valid provider ID (1-6).");
+            failures.Add("AiProvider:Provider must be a valid provider ID (1-7).");
         }
 
         if (!string.IsNullOrWhiteSpace(options.EndpointUrl))
@@ -38,19 +39,24 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
             ValidateEndpointSafety(options, failures);
         }
 
+        if (options.Enabled && options.Provider == AiProviderSettings.ProviderOpenAi)
+        {
+            ValidateOpenAiSettings(options, failures);
+        }
+
         if (options.Enabled && options.Provider == AiProviderSettings.ProviderOpenAiCompatible)
         {
             ValidateOpenAiCompatibleSettings(options, failures);
         }
 
+        if (options.Enabled && options.Provider == AiProviderSettings.ProviderAnthropic)
+        {
+            ValidateAnthropicSettings(options, failures);
+        }
+
         if (options.Enabled && options.Provider == AiProviderSettings.ProviderAnthropicCompatible)
         {
             ValidateAnthropicCompatibleSettings(options, failures);
-        }
-
-        if (options.Enabled && options.Provider == AiProviderSettings.ProviderOpenAiSdk)
-        {
-            ValidateOpenAiSdkSettings(options, failures);
         }
 
         if (options.Enabled && options.Provider == AiProviderSettings.ProviderAzureOpenAi)
@@ -65,16 +71,16 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
             : ValidateOptionsResult.Fail(failures);
     }
 
-    private static void ValidateOpenAiSdkSettings(AiProviderSettings options, List<string> failures)
+    private static void ValidateOpenAiSettings(AiProviderSettings options, List<string> failures)
     {
         if (string.IsNullOrWhiteSpace(options.ApiKey))
         {
-            failures.Add("AiProvider:ApiKey is required for openai-sdk providers.");
+            failures.Add("AiProvider:ApiKey is required for openai providers.");
         }
 
         if (string.IsNullOrWhiteSpace(options.ModelId))
         {
-            failures.Add("AiProvider:ModelId is required for openai-sdk providers.");
+            failures.Add("AiProvider:ModelId is required for openai providers.");
         }
     }
 
@@ -130,6 +136,19 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
         if (string.IsNullOrWhiteSpace(options.EndpointUrl))
         {
             failures.Add("AiProvider:EndpointUrl is required for anthropic-compatible providers.");
+        }
+    }
+
+    private static void ValidateAnthropicSettings(AiProviderSettings options, List<string> failures)
+    {
+        if (string.IsNullOrWhiteSpace(options.ApiKey))
+        {
+            failures.Add("AiProvider:ApiKey is required for anthropic providers.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ModelId))
+        {
+            failures.Add("AiProvider:ModelId is required for anthropic providers.");
         }
     }
 

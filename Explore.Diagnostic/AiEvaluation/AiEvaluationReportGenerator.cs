@@ -42,6 +42,7 @@ public sealed class AiEvaluationReportGenerator
     {
         var definition = CreateEventDraftAiToolDefinition.Create();
         var registry = AiToolContractRegistry.CreateDefault();
+        var allDefinitions = registry.Definitions;
         var validation = registry.ValidatePayload(
             AiProposedActionKind.CreateEventDraft,
             "{\"title\":\"Draft\",\"description\":\"Details\"}");
@@ -49,12 +50,14 @@ public sealed class AiEvaluationReportGenerator
         if (validation.Succeeded &&
             definition.ConfirmationMode == AiToolConfirmationMode.Required &&
             definition.ExposeToProvider &&
-            definition.ExposeToMcp)
+            definition.ExposeToMcp &&
+            allDefinitions.Count == Enum.GetValues<AiProposedActionKind>().Length &&
+            allDefinitions.All(candidate => candidate.ExposeToMcp))
         {
             return AiEvaluationScenarioResult.Pass(
                 "ai.eval.tool-proposal-correctness",
                 AiEvaluationDimension.ToolProposalCorrectness,
-                "Registry-backed tool proposals validate successfully and remain confirmation-gated.",
+                "Registry-backed event-management tool proposals validate successfully and remain confirmation-gated.",
                 "Keep tool proposal schemas sourced from AiToolContractRegistry and keep confirmation required for mutations.");
         }
 
@@ -153,24 +156,43 @@ public sealed class AiEvaluationReportGenerator
     private static AiEvaluationScenarioResult EvaluateMcpProposalFlow()
     {
         var registry = AiToolContractRegistry.CreateDefault();
-        var definition = registry.FindDefinition(AiProposedActionKind.CreateEventDraft);
-        var forbidden = registry.ValidatePayload(
+        var createDefinition = registry.FindDefinition(AiProposedActionKind.CreateEventDraft);
+        var updateDefinition = registry.FindDefinition(AiProposedActionKind.UpdateEventDraft);
+        var publishDefinition = registry.FindDefinition(AiProposedActionKind.PublishEvent);
+        var sessionDefinition = registry.FindDefinition(AiProposedActionKind.CreateEventSession);
+        var syncDefinition = registry.FindDefinition(AiProposedActionKind.ApplyEventTemplateSync);
+        var forbiddenCreate = registry.ValidatePayload(
             AiProposedActionKind.CreateEventDraft,
             "{\"title\":\"Draft\",\"tenantId\":\"blocked\"}");
+        var forbiddenUpdate = registry.ValidatePayload(
+            AiProposedActionKind.UpdateEventDraft,
+            "{\"eventId\":\"018e4e5c-7f00-7000-8000-000000000001\",\"expectedConcurrencyStamp\":\"stamp\",\"title\":\"Draft\",\"tenantId\":\"blocked\"}");
+        var mcpDefinitions = registry.Definitions.Where(definition => definition.ExposeToMcp).ToArray();
 
-        if (definition is not null &&
-            definition.ExposeToMcp &&
-            definition.ConfirmationMode == AiToolConfirmationMode.Required &&
-            definition.EffectiveAgentMetadata.ApprovalMode == AiToolApprovalMode.HumanConfirmationRequired &&
-            definition.EffectiveAgentMetadata.SafeActionInstructions.Contains("proposal", StringComparison.OrdinalIgnoreCase) &&
-            definition.EffectiveAgentMetadata.SafeActionInstructions.Contains("confirms", StringComparison.OrdinalIgnoreCase) &&
-            !forbidden.Succeeded &&
-            forbidden.FailureCode == "forbidden_tool_argument")
+        if (createDefinition is not null &&
+            updateDefinition is not null &&
+            publishDefinition is not null &&
+            sessionDefinition is not null &&
+            syncDefinition is not null &&
+            mcpDefinitions.Length == Enum.GetValues<AiProposedActionKind>().Length &&
+            mcpDefinitions.All(definition =>
+                definition.ConfirmationMode == AiToolConfirmationMode.Required &&
+                definition.EffectiveAgentMetadata.ApprovalMode == AiToolApprovalMode.HumanConfirmationRequired) &&
+            createDefinition.EffectiveAgentMetadata.SafeActionInstructions.Contains("proposal", StringComparison.OrdinalIgnoreCase) &&
+            createDefinition.EffectiveAgentMetadata.SafeActionInstructions.Contains("confirms", StringComparison.OrdinalIgnoreCase) &&
+            updateDefinition.AllowedPayloadFields.Contains("expectedConcurrencyStamp") &&
+            publishDefinition.AllowedPayloadFields.Contains("readinessIsReady") &&
+            sessionDefinition.AllowedPayloadFields.Contains("eventId") &&
+            syncDefinition.AllowedPayloadFields.Contains("plan") &&
+            !forbiddenCreate.Succeeded &&
+            forbiddenCreate.FailureCode == "forbidden_tool_argument" &&
+            !forbiddenUpdate.Succeeded &&
+            forbiddenUpdate.FailureCode == "forbidden_tool_argument")
         {
             return AiEvaluationScenarioResult.Pass(
                 "ai.eval.mcp-proposal-flow",
                 AiEvaluationDimension.McpProposalFlow,
-                "MCP-facing tool metadata preserves projected proposal selection, hidden-field refusal, and confirmation-before-side-effects language.",
+                "MCP-facing event-management metadata preserves projected proposal selection, hidden-field refusal, and confirmation-before-side-effects language.",
                 "Keep MCP client smoke focused on discovery and proposals; product/API confirmation remains the only execution path.");
         }
 
@@ -191,14 +213,13 @@ public sealed class AiEvaluationReportGenerator
             result.Draft is not null &&
             result.Draft.Title == "Community Iftar" &&
             result.Draft.Price == 0 &&
-            result.Draft.CategoryIds.Count == 1 &&
-            result.Draft.CategoryIds[0] == categoryId)
+            result.Draft.CategoryIds.Count == 0)
         {
             return AiEvaluationScenarioResult.Pass(
                 "ai.eval.event-draft-regression",
                 AiEvaluationDimension.EventDraftRegression,
-                "Event-draft mapping normalizes safe fields and keeps generated draft data bounded.",
-                "Keep mapper regression cases in lockstep with registry schema and proposed-action confirmation tests.");
+                "Event-draft mapping normalizes safe fields, drops generated lookup references, and keeps draft data bounded.",
+                "Keep mapper regression cases in lockstep with registry schema, trusted reference resolution, and proposed-action confirmation tests.");
         }
 
         return AiEvaluationScenarioResult.Fail(

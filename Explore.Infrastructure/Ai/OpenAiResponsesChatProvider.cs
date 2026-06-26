@@ -1,10 +1,9 @@
-// ABOUTME: Implements the OpenAI-compatible chat provider adapter using raw HTTP and platform contracts.
-// ABOUTME: Maps chat completions and tool calls into safe provider-neutral results without SDK leakage.
+// ABOUTME: Implements the first-class OpenAI Responses API provider adapter using raw HTTP.
+// ABOUTME: Maps /v1/responses output text and function calls into safe provider-neutral results.
 
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -15,10 +14,11 @@ using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Ai;
 
-public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCatalog
+public sealed class OpenAiResponsesChatProvider : IAiChatProvider, IAiModelCatalog
 {
-    public const string HttpClientName = "OpenAiCompatibleAiClient";
+    public const string HttpClientName = "OpenAiResponsesAiClient";
 
+    private const string DefaultEndpointUrl = "https://api.openai.com/v1";
     private const string CreateEventDraftToolName = "create_event_draft";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -27,7 +27,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     private readonly AiProviderSettingsValidator _validator;
     private readonly BusinessMetrics _metrics;
 
-    public OpenAiCompatibleChatProvider(
+    public OpenAiResponsesChatProvider(
         IHttpClientFactory httpClientFactory,
         IOptions<AiProviderSettings> options,
         AiProviderSettingsValidator validator,
@@ -44,7 +44,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         cancellationToken.ThrowIfCancellationRequested();
         var settings = _options.Value;
 
-        if (!IsRunnableOpenAiCompatible(settings) || !ValidateSettings(settings).Succeeded)
+        if (!IsRunnableOpenAi(settings) || !ValidateSettings(settings).Succeeded)
         {
             return [];
         }
@@ -60,7 +60,6 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         }
         catch (HttpRequestException)
         {
-            // Bootstrap should remain usable even if the provider omits the optional models endpoint.
         }
         catch (JsonException)
         {
@@ -77,23 +76,19 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
 
     public static async Task<IReadOnlyList<AiModelDescriptor>> DiscoverModelsAsync(
         HttpClient httpClient,
-        string endpointUrl,
-        string? apiKey,
+        string? endpointUrl,
+        string apiKey,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.IsNullOrWhiteSpace(endpointUrl))
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             return [];
         }
 
-        var modelsUri = BuildModelsUri(endpointUrl);
-        using var request = new HttpRequestMessage(HttpMethod.Get, modelsUri);
-        if (!string.IsNullOrWhiteSpace(apiKey))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        }
+        using var request = new HttpRequestMessage(HttpMethod.Get, BuildModelsUri(endpointUrl));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -118,14 +113,14 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     {
         cancellationToken.ThrowIfCancellationRequested();
         var settings = ResolveSettings(request);
-        var providerName = AiProviderDefaults.ProviderOpenAiCompatible;
+        var providerName = AiProviderDefaults.ProviderOpenAi;
         var startedAt = Stopwatch.GetTimestamp();
         using var telemetryActivity = AiProviderTelemetry.StartRequest(providerName, request);
 
-        if (!IsRunnableOpenAiCompatible(settings))
+        if (!IsRunnableOpenAi(settings))
         {
             return CompleteFailure(
-                RecordFailure("provider_not_configured", "OpenAI-compatible provider is not enabled or configured."),
+                RecordFailure("provider_not_configured", "OpenAI provider is not enabled or configured."),
                 startedAt,
                 telemetryActivity);
         }
@@ -192,9 +187,9 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(timeoutCts.Token);
-            var providerResponse = await JsonSerializer.DeserializeAsync<OpenAiChatCompletionResponse>(stream, JsonOptions, timeoutCts.Token);
+            var providerResponse = await JsonSerializer.DeserializeAsync<OpenAiResponsesResponse>(stream, JsonOptions, timeoutCts.Token);
 
-            if (providerResponse is null || providerResponse.Choices.Count == 0)
+            if (providerResponse is null)
             {
                 return CompleteFailure(
                     RecordFailure("invalid_response", "AI provider returned an invalid response."),
@@ -242,9 +237,9 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         }
     }
 
-    private static bool IsRunnableOpenAiCompatible(AiProviderSettings settings) =>
+    private static bool IsRunnableOpenAi(AiProviderSettings settings) =>
         settings.Enabled
-        && settings.Provider == AiProviderSettings.ProviderOpenAiCompatible;
+        && settings.Provider == AiProviderSettings.ProviderOpenAi;
 
     private AiProviderSettings ResolveSettings(AiChatPayload request)
     {
@@ -252,7 +247,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         var providerConfiguration = request.ProviderConfiguration;
 
         if (providerConfiguration is null
-            || providerConfiguration.Provider != AiProviderSettings.ProviderOpenAiCompatible)
+            || providerConfiguration.Provider != AiProviderSettings.ProviderOpenAi)
         {
             return defaults;
         }
@@ -260,7 +255,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         return new AiProviderSettings
         {
             Enabled = true,
-            Provider = AiProviderSettings.ProviderOpenAiCompatible,
+            Provider = AiProviderSettings.ProviderOpenAi,
             EndpointUrl = providerConfiguration.EndpointUrl.Trim(),
             ApiKey = providerConfiguration.ApiKey.Trim(),
             ModelId = providerConfiguration.ModelId.Trim(),
@@ -288,13 +283,10 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         return TimeSpan.FromSeconds(Math.Min(boundedSettingsTimeout, boundedRequestTimeout));
     }
 
-    private static HttpRequestMessage CreateHttpRequest(AiProviderSettings settings, OpenAiChatCompletionRequest payload)
+    private static HttpRequestMessage CreateHttpRequest(AiProviderSettings settings, OpenAiResponsesRequest payload)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, BuildChatCompletionsUri(settings.EndpointUrl));
-        if (!string.IsNullOrWhiteSpace(settings.ApiKey))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
-        }
+        var request = new HttpRequestMessage(HttpMethod.Post, BuildResponsesUri(settings.EndpointUrl));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey.Trim());
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         var json = JsonSerializer.Serialize(payload, JsonOptions);
@@ -302,12 +294,12 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         return request;
     }
 
-    private static Uri BuildChatCompletionsUri(string endpointUrl)
+    private static Uri BuildResponsesUri(string? endpointUrl)
     {
-        var endpoint = new Uri(endpointUrl, UriKind.Absolute);
+        var endpoint = CreateEndpointUri(endpointUrl);
         var path = endpoint.AbsolutePath.TrimEnd('/');
 
-        if (path.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+        if (path.EndsWith("/responses", StringComparison.OrdinalIgnoreCase))
         {
             return endpoint;
         }
@@ -315,25 +307,16 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         var builder = new UriBuilder(endpoint)
         {
             Path = string.IsNullOrEmpty(path)
-                ? "chat/completions"
-                : $"{path}/chat/completions"
+                ? "responses"
+                : $"{path}/responses"
         };
 
         return builder.Uri;
     }
 
-    private static AiModelDescriptor CreateConfiguredModelDescriptor(AiProviderSettings settings) =>
-        new(
-            settings.ModelId.Trim(),
-            settings.ModelId.Trim(),
-            settings.MaxInputTokens,
-            settings.MaxOutputTokens,
-            SupportsToolProposals: true,
-            SupportsStreaming: false);
-
-    private static Uri BuildModelsUri(string endpointUrl)
+    private static Uri BuildModelsUri(string? endpointUrl)
     {
-        var endpoint = new Uri(endpointUrl, UriKind.Absolute);
+        var endpoint = CreateEndpointUri(endpointUrl);
         var path = endpoint.AbsolutePath.TrimEnd('/');
 
         if (path.EndsWith("/models", StringComparison.OrdinalIgnoreCase))
@@ -341,10 +324,10 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
             return endpoint;
         }
 
-        const string chatCompletionsSuffix = "/chat/completions";
-        if (path.EndsWith(chatCompletionsSuffix, StringComparison.OrdinalIgnoreCase))
+        const string responsesSuffix = "/responses";
+        if (path.EndsWith(responsesSuffix, StringComparison.OrdinalIgnoreCase))
         {
-            path = path[..^chatCompletionsSuffix.Length].TrimEnd('/');
+            path = path[..^responsesSuffix.Length].TrimEnd('/');
         }
 
         var builder = new UriBuilder(endpoint)
@@ -358,16 +341,28 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         return builder.Uri;
     }
 
+    private static Uri CreateEndpointUri(string? endpointUrl) =>
+        new(string.IsNullOrWhiteSpace(endpointUrl) ? DefaultEndpointUrl : endpointUrl.Trim(), UriKind.Absolute);
+
+    private static AiModelDescriptor CreateConfiguredModelDescriptor(AiProviderSettings settings) =>
+        new(
+            settings.ModelId.Trim(),
+            settings.ModelId.Trim(),
+            settings.MaxInputTokens,
+            settings.MaxOutputTokens,
+            SupportsToolProposals: true,
+            SupportsStreaming: false);
+
     private bool TryCreatePayload(
         AiProviderSettings settings,
         AiChatPayload request,
-        out OpenAiChatCompletionRequest? payload,
+        out OpenAiResponsesRequest? payload,
         out AiChatProviderResult? failure)
     {
         payload = null;
         failure = null;
 
-        var tools = new List<OpenAiTool>();
+        var tools = new List<OpenAiResponsesTool>();
         if (request.Options.ToolProposalsEnabled && request.ActionSchema is not null)
         {
             foreach (var kind in request.ActionSchema.AllowedKinds.Distinct())
@@ -382,16 +377,15 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
                     return false;
                 }
 
-                tools.Add(new OpenAiTool(
+                tools.Add(new OpenAiResponsesTool(
                     "function",
-                    new OpenAiFunctionTool(
-                        CreateEventDraftToolName,
-                        "Propose a draft event payload. The platform persists this as a proposal that still requires explicit user confirmation.",
-                        schema!.Value)));
+                    CreateEventDraftToolName,
+                    "Propose a draft event payload. The platform persists this as a proposal that still requires explicit user confirmation.",
+                    schema!.Value));
             }
         }
 
-        OpenAiResponseFormat? responseFormat = null;
+        OpenAiResponsesTextConfig? text = null;
         if (request.Options.StructuredOutputEnabled && request.StructuredOutputSchema is not null)
         {
             if (!TryCreateJsonSchema(
@@ -404,109 +398,49 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
                 return false;
             }
 
-            responseFormat = new OpenAiResponseFormat(
+            text = new OpenAiResponsesTextConfig(new OpenAiResponsesTextFormat(
                 "json_schema",
-                new OpenAiResponseJsonSchema(
-                    request.StructuredOutputSchema.Name.Trim(),
-                    request.StructuredOutputSchema.Description.Trim(),
-                    structuredSchema!.Value));
+                request.StructuredOutputSchema.Name.Trim(),
+                request.StructuredOutputSchema.Description.Trim(),
+                structuredSchema!.Value));
         }
 
-        if (!TryBuildMessages(request, out var messages, out failure))
+        if (!TryBuildInput(request, out var input, out failure))
         {
             return false;
         }
 
-        payload = new OpenAiChatCompletionRequest
+        payload = new OpenAiResponsesRequest
         {
             Model = string.IsNullOrWhiteSpace(request.ModelId) ? settings.ModelId.Trim() : request.ModelId.Trim(),
-            Messages = messages!,
-            Temperature = request.Options.Temperature,
-            MaxTokens = request.Options.MaxOutputTokens,
+            Input = input!,
+            Store = true,
             Stream = false,
+            Temperature = request.Options.Temperature,
+            MaxOutputTokens = request.Options.MaxOutputTokens,
             Tools = tools.Count == 0 ? null : tools,
             ToolChoice = tools.Count == 0 ? null : "auto",
-            ResponseFormat = responseFormat,
-            ChatTemplateKwargs = CreateChatTemplateKwargs(settings, request)
+            Text = text
         };
 
         return true;
     }
 
-    private static OpenAiChatTemplateKwargs? CreateChatTemplateKwargs(
-        AiProviderSettings settings,
-        AiChatPayload request)
+    private bool TryBuildInput(AiChatPayload request, out object? input, out AiChatProviderResult? failure)
     {
-        if (!ShouldDisableTemplateThinking(request) || !IsLocalOrPrivateEndpoint(settings.EndpointUrl))
-        {
-            return null;
-        }
-
-        return new OpenAiChatTemplateKwargs { EnableThinking = false };
-    }
-
-    private static bool ShouldDisableTemplateThinking(AiChatPayload request) =>
-        request.Options.ToolProposalsEnabled
-        || request.Options.StructuredOutputEnabled
-        || request.Messages.Any(message => message.Images.Count > 0);
-
-    private static bool IsLocalOrPrivateEndpoint(string? endpointUrl)
-    {
-        if (!Uri.TryCreate(endpointUrl, UriKind.Absolute, out var uri))
-        {
-            return false;
-        }
-
-        var host = uri.Host;
-        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-            || host.Equals("host.docker.internal", StringComparison.OrdinalIgnoreCase)
-            || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (!IPAddress.TryParse(host, out var address))
-        {
-            return false;
-        }
-
-        if (IPAddress.IsLoopback(address))
-        {
-            return true;
-        }
-
-        if (address.AddressFamily == AddressFamily.InterNetwork)
-        {
-            var bytes = address.GetAddressBytes();
-            return bytes[0] == 10
-                || bytes[0] == 127
-                || bytes[0] == 192 && bytes[1] == 168
-                || bytes[0] == 172 && bytes[1] is >= 16 and <= 31;
-        }
-
-        if (address.AddressFamily == AddressFamily.InterNetworkV6)
-        {
-            var bytes = address.GetAddressBytes();
-            return address.IsIPv6LinkLocal
-                || address.IsIPv6SiteLocal
-                || (bytes[0] & 0xfe) == 0xfc;
-        }
-
-        return false;
-    }
-
-    private bool TryBuildMessages(
-        AiChatPayload request,
-        out IReadOnlyList<OpenAiMessage>? messages,
-        out AiChatProviderResult? failure)
-    {
-        var builtMessages = new List<OpenAiMessage>();
-        messages = null;
+        input = null;
         failure = null;
 
+        if (!request.Messages.Any(message => message.Images.Count > 0))
+        {
+            input = BuildInputTranscript(request);
+            return true;
+        }
+
+        var messages = new List<OpenAiResponsesInputMessage>();
         if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
         {
-            builtMessages.Add(new OpenAiMessage("system", request.SystemPrompt.Trim(), null));
+            messages.Add(OpenAiResponsesInputMessage.Text("system", request.SystemPrompt.Trim()));
         }
 
         foreach (var message in request.Messages)
@@ -517,43 +451,51 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
                 return false;
             }
 
-            builtMessages.Add(new OpenAiMessage(
-                ToOpenAiRole(message.Role),
-                MapOpenAiContent(message),
-                string.IsNullOrWhiteSpace(message.Name) ? null : message.Name.Trim()));
+            messages.Add(new OpenAiResponsesInputMessage(ToResponsesRole(message.Role), MapResponsesContent(message)));
         }
 
-        messages = builtMessages;
+        input = messages;
         return true;
     }
 
-    private static object MapOpenAiContent(AiChatMessage message)
+    private static IReadOnlyList<OpenAiResponsesInputContent> MapResponsesContent(AiChatMessage message)
     {
-        if (message.Images.Count == 0)
-        {
-            return message.Content;
-        }
-
-        var parts = new List<OpenAiMessageContentPart>();
+        var content = new List<OpenAiResponsesInputContent>();
         if (!string.IsNullOrWhiteSpace(message.Content))
         {
-            parts.Add(OpenAiMessageContentPart.FromText(message.Content));
+            content.Add(OpenAiResponsesInputContent.FromText(message.Content));
         }
 
         foreach (var image in message.Images)
         {
-            parts.Add(OpenAiMessageContentPart.FromImage(CreateImageDataUrl(image)));
+            content.Add(OpenAiResponsesInputContent.FromImage(CreateImageDataUrl(image)));
         }
 
-        return parts;
+        return content;
     }
 
-    private static string CreateImageDataUrl(AiChatImage image)
+    private static string BuildInputTranscript(AiChatPayload request)
     {
-        var data = image.Data.Trim();
-        return data.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
-            ? data
-            : $"data:{image.MediaType.Trim()};base64,{data}";
+        var builder = new StringBuilder();
+
+        if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
+        {
+            builder.Append("System:");
+            builder.AppendLine();
+            builder.AppendLine(request.SystemPrompt.Trim());
+            builder.AppendLine();
+        }
+
+        foreach (var message in request.Messages)
+        {
+            builder.Append(ToTranscriptRole(message.Role));
+            builder.Append(':');
+            builder.AppendLine();
+            builder.AppendLine(message.Content);
+            builder.AppendLine();
+        }
+
+        return builder.ToString().Trim();
     }
 
     private bool TryCreateJsonSchema(
@@ -597,7 +539,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     }
 
     private bool TryMapResponse(
-        OpenAiChatCompletionResponse providerResponse,
+        OpenAiResponsesResponse providerResponse,
         HttpResponseMessage response,
         AiChatPayload request,
         out AiChatResponse? chatResponse,
@@ -606,28 +548,39 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         chatResponse = null;
         failure = null;
 
-        var choice = providerResponse.Choices[0];
-        if (IsContentFiltered(choice.FinishReason))
+        if (IsContentFiltered(providerResponse.IncompleteDetails?.Reason))
         {
             failure = RecordFailure("content_filtered", "AI provider blocked the response because of content safety policy.");
             return false;
         }
 
-        if (choice.Message is null)
+        var text = string.Join(
+            Environment.NewLine,
+            (providerResponse.Output ?? [])
+                .Where(item => string.Equals(item.Type, "message", StringComparison.OrdinalIgnoreCase))
+                .SelectMany(item => item.Content ?? [])
+                .Where(content => string.Equals(content.Type, "output_text", StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(content.Text))
+                .Select(content => content.Text!.Trim()));
+
+        var functionCalls = request.Options.ToolProposalsEnabled
+            ? (providerResponse.Output ?? []).Where(item => string.Equals(item.Type, "function_call", StringComparison.OrdinalIgnoreCase)).ToList()
+            : [];
+
+        if (!TryMapProposedActions(functionCalls, out var proposedActions, out failure))
         {
-            failure = RecordFailure("invalid_response", "AI provider returned an invalid response.");
             return false;
         }
 
-        var toolCalls = request.Options.ToolProposalsEnabled ? choice.Message.ToolCalls : null;
-        if (!TryMapProposedActions(toolCalls, out var proposedActions, out failure))
+        if (string.IsNullOrWhiteSpace(text) && proposedActions.Count == 0)
         {
+            failure = RecordFailure("invalid_response", "AI provider returned an empty text response.");
             return false;
         }
 
         if (!AiStructuredOutputResponseMapper.TryMapAssistantMessage(
                 request,
-                choice.Message.Content,
+                text,
                 out var assistantMessage,
                 out var structuredOutputFailure))
         {
@@ -635,49 +588,41 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(assistantMessage) && proposedActions.Count == 0)
-        {
-            failure = RecordFailure("invalid_response", "AI provider returned an empty text response.");
-            return false;
-        }
-
         chatResponse = new AiChatResponse(
             assistantMessage,
             proposedActions,
             new AiTokenUsage(
-                providerResponse.Usage?.PromptTokens,
-                providerResponse.Usage?.CompletionTokens,
+                providerResponse.Usage?.InputTokens,
+                providerResponse.Usage?.OutputTokens,
                 providerResponse.Usage?.TotalTokens),
-            GetProviderRequestId(response),
-            choice.FinishReason);
+            GetProviderRequestId(response) ?? providerResponse.Id,
+            providerResponse.Status);
 
         return true;
     }
 
     private bool TryMapProposedActions(
-        IReadOnlyList<OpenAiToolCall>? toolCalls,
+        IReadOnlyList<OpenAiResponsesOutputItem> functionCalls,
         out IReadOnlyList<AiProposedActionCandidate> proposedActions,
         out AiChatProviderResult? failure)
     {
         proposedActions = [];
         failure = null;
 
-        if (toolCalls is null || toolCalls.Count == 0)
+        if (functionCalls.Count == 0)
         {
             return true;
         }
 
         var actions = new List<AiProposedActionCandidate>();
-        foreach (var toolCall in toolCalls)
+        foreach (var functionCall in functionCalls)
         {
-            if (!string.Equals(toolCall.Type, "function", StringComparison.OrdinalIgnoreCase)
-                || toolCall.Function is null
-                || !string.Equals(toolCall.Function.Name, CreateEventDraftToolName, StringComparison.Ordinal))
+            if (!string.Equals(functionCall.Name, CreateEventDraftToolName, StringComparison.Ordinal))
             {
                 continue;
             }
 
-            if (!TryNormalizeToolArguments(toolCall.Function.Arguments, out var payloadJson, out failure))
+            if (!TryNormalizeToolArguments(functionCall.Arguments, out var payloadJson, out failure))
             {
                 return false;
             }
@@ -722,7 +667,15 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         }
     }
 
-    private static string ToOpenAiRole(AiMessageRole role) => role switch
+    private static string ToTranscriptRole(AiMessageRole role) => role switch
+    {
+        AiMessageRole.System => "System",
+        AiMessageRole.User => "User",
+        AiMessageRole.Assistant => "Assistant",
+        _ => "User"
+    };
+
+    private static string ToResponsesRole(AiMessageRole role) => role switch
     {
         AiMessageRole.System => "system",
         AiMessageRole.User => "user",
@@ -730,9 +683,18 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         _ => "user"
     };
 
-    private static bool IsContentFiltered(string? finishReason) =>
-        string.Equals(finishReason, "content_filter", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(finishReason, "content_filtered", StringComparison.OrdinalIgnoreCase);
+    private static string CreateImageDataUrl(AiChatImage image)
+    {
+        var data = image.Data.Trim();
+        return data.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+            ? data
+            : $"data:{image.MediaType.Trim()};base64,{data}";
+    }
+
+    private static bool IsContentFiltered(string? reason) =>
+        string.Equals(reason, "content_filter", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(reason, "content_filtered", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(reason, "safety", StringComparison.OrdinalIgnoreCase);
 
     private static string? GetProviderRequestId(HttpResponseMessage response)
     {
@@ -762,7 +724,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
 
     private AiChatProviderResult RecordFailure(string code, string message, bool isTransient = false)
     {
-        _metrics.RecordAiProviderRequest(AiProviderDefaults.ProviderOpenAiCompatible, "failed", code);
+        _metrics.RecordAiProviderRequest(AiProviderDefaults.ProviderOpenAi, "failed", code);
         return AiChatProviderResult.Failure(code, message, isTransient);
     }
 
@@ -771,18 +733,18 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         long startedAt,
         Activity? telemetryActivity)
     {
-        _metrics.RecordAiProviderRequest(AiProviderDefaults.ProviderOpenAiCompatible, "succeeded");
+        _metrics.RecordAiProviderRequest(AiProviderDefaults.ProviderOpenAi, "succeeded");
         _metrics.RecordAiProviderRequestDuration(
             Stopwatch.GetElapsedTime(startedAt),
-            AiProviderDefaults.ProviderOpenAiCompatible,
+            AiProviderDefaults.ProviderOpenAi,
             "succeeded");
         _metrics.RecordAiProviderTokenUsage(
-            AiProviderDefaults.ProviderOpenAiCompatible,
+            AiProviderDefaults.ProviderOpenAi,
             response.Usage.InputTokens,
             response.Usage.OutputTokens,
             response.Usage.TotalTokens);
         _metrics.RecordAiProviderProposedActions(
-            AiProviderDefaults.ProviderOpenAiCompatible,
+            AiProviderDefaults.ProviderOpenAi,
             response.ProposedActions.Count,
             "create_event_draft");
         AiProviderTelemetry.MarkSuccess(telemetryActivity, response);
@@ -796,59 +758,78 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         var error = result.Error!;
         _metrics.RecordAiProviderRequestDuration(
             Stopwatch.GetElapsedTime(startedAt),
-            AiProviderDefaults.ProviderOpenAiCompatible,
+            AiProviderDefaults.ProviderOpenAi,
             "failed",
             error.Code);
         AiProviderTelemetry.MarkFailure(telemetryActivity, error.Code, error.IsTransient);
         return result;
     }
 
-    private sealed record OpenAiChatCompletionRequest
+    private sealed record OpenAiResponsesRequest
     {
         [JsonPropertyName("model")]
         public string Model { get; init; } = string.Empty;
 
-        [JsonPropertyName("messages")]
-        public IReadOnlyList<OpenAiMessage> Messages { get; init; } = [];
+        [JsonPropertyName("input")]
+        public object Input { get; init; } = string.Empty;
 
-        [JsonPropertyName("temperature")]
-        public decimal Temperature { get; init; }
-
-        [JsonPropertyName("max_tokens")]
-        public int MaxTokens { get; init; }
+        [JsonPropertyName("store")]
+        public bool Store { get; init; }
 
         [JsonPropertyName("stream")]
         public bool Stream { get; init; }
 
+        [JsonPropertyName("temperature")]
+        public decimal Temperature { get; init; }
+
+        [JsonPropertyName("max_output_tokens")]
+        public int MaxOutputTokens { get; init; }
+
         [JsonPropertyName("tools")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public IReadOnlyList<OpenAiTool>? Tools { get; init; }
+        public IReadOnlyList<OpenAiResponsesTool>? Tools { get; init; }
 
         [JsonPropertyName("tool_choice")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ToolChoice { get; init; }
 
-        [JsonPropertyName("response_format")]
+        [JsonPropertyName("text")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public OpenAiResponseFormat? ResponseFormat { get; init; }
-
-        [JsonPropertyName("chat_template_kwargs")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public OpenAiChatTemplateKwargs? ChatTemplateKwargs { get; init; }
+        public OpenAiResponsesTextConfig? Text { get; init; }
     }
 
-    private sealed record OpenAiChatTemplateKwargs
+    private sealed record OpenAiResponsesTool(
+        [property: JsonPropertyName("type")] string Type,
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("description")] string Description,
+        [property: JsonPropertyName("parameters")] JsonElement Parameters)
     {
-        [JsonPropertyName("enable_thinking")]
-        public bool EnableThinking { get; init; }
+        [JsonPropertyName("strict")]
+        public bool Strict => true;
     }
 
-    private sealed record OpenAiMessage(
-        [property: JsonPropertyName("role")] string Role,
-        [property: JsonPropertyName("content")] object Content,
-        [property: JsonPropertyName("name")][property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Name);
+    private sealed record OpenAiResponsesTextConfig(
+        [property: JsonPropertyName("format")] OpenAiResponsesTextFormat Format);
 
-    private sealed record OpenAiMessageContentPart
+    private sealed record OpenAiResponsesTextFormat(
+        [property: JsonPropertyName("type")] string Type,
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("description")] string Description,
+        [property: JsonPropertyName("schema")] JsonElement Schema)
+    {
+        [JsonPropertyName("strict")]
+        public bool Strict => true;
+    }
+
+    private sealed record OpenAiResponsesInputMessage(
+        [property: JsonPropertyName("role")] string Role,
+        [property: JsonPropertyName("content")] IReadOnlyList<OpenAiResponsesInputContent> Content)
+    {
+        public static OpenAiResponsesInputMessage Text(string role, string text) =>
+            new(role, [OpenAiResponsesInputContent.FromText(text)]);
+    }
+
+    private sealed record OpenAiResponsesInputContent
     {
         [JsonPropertyName("type")]
         public string Type { get; init; } = string.Empty;
@@ -859,53 +840,32 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
 
         [JsonPropertyName("image_url")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public OpenAiImageUrl? ImageUrl { get; init; }
+        public string? ImageUrl { get; init; }
 
-        public static OpenAiMessageContentPart FromText(string text) => new()
+        [JsonPropertyName("detail")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Detail { get; init; }
+
+        public static OpenAiResponsesInputContent FromText(string text) => new()
         {
-            Type = "text",
+            Type = "input_text",
             Text = text
         };
 
-        public static OpenAiMessageContentPart FromImage(string imageUrl) => new()
+        public static OpenAiResponsesInputContent FromImage(string imageUrl) => new()
         {
-            Type = "image_url",
-            ImageUrl = new OpenAiImageUrl(imageUrl)
+            Type = "input_image",
+            ImageUrl = imageUrl,
+            Detail = "auto"
         };
     }
 
-    private sealed record OpenAiImageUrl(
-        [property: JsonPropertyName("url")] string Url);
-
-    private sealed record OpenAiTool(
-        [property: JsonPropertyName("type")] string Type,
-        [property: JsonPropertyName("function")] OpenAiFunctionTool Function);
-
-    private sealed record OpenAiFunctionTool(
-        [property: JsonPropertyName("name")] string Name,
-        [property: JsonPropertyName("description")] string Description,
-        [property: JsonPropertyName("parameters")] JsonElement Parameters)
-    {
-        [JsonPropertyName("strict")]
-        public bool Strict => true;
-    }
-
-    private sealed record OpenAiResponseFormat(
-        [property: JsonPropertyName("type")] string Type,
-        [property: JsonPropertyName("json_schema")] OpenAiResponseJsonSchema JsonSchema);
-
-    private sealed record OpenAiResponseJsonSchema(
-        [property: JsonPropertyName("name")] string Name,
-        [property: JsonPropertyName("description")] string Description,
-        [property: JsonPropertyName("schema")] JsonElement Schema)
-    {
-        [JsonPropertyName("strict")]
-        public bool Strict => true;
-    }
-
-    private sealed record OpenAiChatCompletionResponse(
-        [property: JsonPropertyName("choices")] IReadOnlyList<OpenAiChoice> Choices,
-        [property: JsonPropertyName("usage")] OpenAiUsage? Usage);
+    private sealed record OpenAiResponsesResponse(
+        [property: JsonPropertyName("id")] string? Id,
+        [property: JsonPropertyName("status")] string? Status,
+        [property: JsonPropertyName("output")] IReadOnlyList<OpenAiResponsesOutputItem>? Output,
+        [property: JsonPropertyName("usage")] OpenAiResponsesUsage? Usage,
+        [property: JsonPropertyName("incomplete_details")] OpenAiResponsesIncompleteDetails? IncompleteDetails);
 
     private sealed record OpenAiModelsListResponse(
         [property: JsonPropertyName("data")] IReadOnlyList<OpenAiModelDescriptor>? Data);
@@ -913,25 +873,21 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     private sealed record OpenAiModelDescriptor(
         [property: JsonPropertyName("id")] string? Id);
 
-    private sealed record OpenAiChoice(
-        [property: JsonPropertyName("message")] OpenAiResponseMessage? Message,
-        [property: JsonPropertyName("finish_reason")] string? FinishReason);
-
-    private sealed record OpenAiResponseMessage(
-        [property: JsonPropertyName("content")] string? Content,
-        [property: JsonPropertyName("tool_calls")] IReadOnlyList<OpenAiToolCall>? ToolCalls);
-
-    private sealed record OpenAiToolCall(
+    private sealed record OpenAiResponsesOutputItem(
         [property: JsonPropertyName("type")] string? Type,
-        [property: JsonPropertyName("function")] OpenAiFunctionCall? Function);
-
-    private sealed record OpenAiFunctionCall(
+        [property: JsonPropertyName("content")] IReadOnlyList<OpenAiResponsesContent>? Content,
         [property: JsonPropertyName("name")] string? Name,
         [property: JsonPropertyName("arguments")] string? Arguments);
 
-    private sealed record OpenAiUsage(
-        [property: JsonPropertyName("prompt_tokens")] int? PromptTokens,
-        [property: JsonPropertyName("completion_tokens")] int? CompletionTokens,
+    private sealed record OpenAiResponsesContent(
+        [property: JsonPropertyName("type")] string? Type,
+        [property: JsonPropertyName("text")] string? Text);
+
+    private sealed record OpenAiResponsesUsage(
+        [property: JsonPropertyName("input_tokens")] int? InputTokens,
+        [property: JsonPropertyName("output_tokens")] int? OutputTokens,
         [property: JsonPropertyName("total_tokens")] int? TotalTokens);
 
+    private sealed record OpenAiResponsesIncompleteDetails(
+        [property: JsonPropertyName("reason")] string? Reason);
 }

@@ -64,8 +64,11 @@ public sealed class McpDebugReadinessDoctorCheck(IDoctorFileSystem fileSystem, s
 
         var docs = fileSystem.ReadAllText(docsPath);
         AddMissingText(findings, docs, "McpProtocolContractTests", "docs:missing-protocol-harness");
+        AddMissingText(findings, docs, "EventManagementMcpAuthenticatedReadTests", "docs:missing-event-management-harness");
         AddMissingText(findings, docs, "resources/templates/list", "docs:missing-resource-template-smoke");
+        AddMissingText(findings, docs, "event_management_context", "docs:missing-event-management-context-smoke");
         AddMissingText(findings, docs, "propose_create_event_draft", "docs:missing-projected-tool-smoke");
+        AddMissingText(findings, docs, "propose_update_event_draft", "docs:missing-event-management-proposal-smoke");
         AddMissingText(findings, docs, "redacted", "docs:missing-redaction-guidance");
 
         if (ContainsLikelySecret(docs))

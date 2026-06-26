@@ -9,9 +9,10 @@ public sealed class AiProviderSettings
 
     public const int ProviderNone = AiProviderDefaults.ProviderIdNone;
     public const int ProviderFake = AiProviderDefaults.ProviderIdFake;
+    public const int ProviderOpenAi = AiProviderDefaults.ProviderIdOpenAi;
     public const int ProviderOpenAiCompatible = AiProviderDefaults.ProviderIdOpenAiCompatible;
+    public const int ProviderAnthropic = AiProviderDefaults.ProviderIdAnthropic;
     public const int ProviderAnthropicCompatible = AiProviderDefaults.ProviderIdAnthropicCompatible;
-    public const int ProviderOpenAiSdk = AiProviderDefaults.ProviderIdOpenAiSdk;
     public const int ProviderAzureOpenAi = AiProviderDefaults.ProviderIdAzureOpenAi;
     public const string AzureCredentialModeApiKey = "api-key";
     public const string AzureCredentialModeDefaultAzureCredential = "default-azure-credential";

@@ -62,6 +62,7 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IFileStorageProvider, LocalFileStorageProvider>();
         services.AddScoped<IFileStorageProvider, S3FileStorageProvider>();
         services.AddScoped<IFileStorageProviderResolver, FileStorageProviderResolver>();
+        services.AddScoped<IStorageObjectDeletionService, StorageObjectDeletionService>();
 
         // Identity services
         services.AddScoped<IUserContext, UserContext>();
@@ -199,6 +200,11 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IValidateOptions<AiProviderSettings>>(sp => sp.GetRequiredService<AiProviderSettingsValidator>());
         services.AddScoped<AiProviderHealthReporter>();
         services.AddScoped<FakeAiChatProvider>();
+        services.AddHttpClient(OpenAiResponsesChatProvider.HttpClientName, client =>
+        {
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+        services.AddScoped<OpenAiResponsesChatProvider>();
         services.AddHttpClient(OpenAiCompatibleChatProvider.HttpClientName, client =>
         {
             client.Timeout = Timeout.InfiniteTimeSpan;
@@ -209,6 +215,11 @@ public static class InfrastructureServicesRegistration
             client.Timeout = Timeout.InfiniteTimeSpan;
         });
         services.AddScoped<AnthropicCompatibleChatProvider>();
+        services.AddHttpClient(AnthropicChatProvider.HttpClientName, client =>
+        {
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+        services.AddScoped<AnthropicChatProvider>();
         if (IsSdkBackedAiProvider(configuration))
         {
             services.AddScoped<IChatClient>(sp => CreateSdkBackedChatClient(
@@ -217,7 +228,9 @@ public static class InfrastructureServicesRegistration
         }
 
         services.AddScoped<IAiProviderStrategy, FakeAiProviderStrategy>();
+        services.AddScoped<IAiProviderStrategy, OpenAiResponsesProviderStrategy>();
         services.AddScoped<IAiProviderStrategy, OpenAiCompatibleProviderStrategy>();
+        services.AddScoped<IAiProviderStrategy, AnthropicProviderStrategy>();
         services.AddScoped<IAiProviderStrategy, AnthropicCompatibleProviderStrategy>();
         if (IsSdkBackedAiProvider(configuration))
         {
@@ -336,8 +349,7 @@ public static class InfrastructureServicesRegistration
         var providerValue = configuration[$"{AiProviderSettings.SectionName}:Provider"];
         if (!int.TryParse(providerValue, out var providerId))
             return false;
-        return providerId == AiProviderSettings.ProviderOpenAiSdk
-            || providerId == AiProviderSettings.ProviderAzureOpenAi;
+        return providerId == AiProviderSettings.ProviderAzureOpenAi;
     }
 
     private static SocketsHttpHandler CreateKeycloakBootstrapHttpHandler()
@@ -372,13 +384,6 @@ public static class InfrastructureServicesRegistration
 
     private static IChatClient CreateSdkBackedChatClient(AiProviderSettings settings)
     {
-        if (settings.Provider == AiProviderSettings.ProviderOpenAiSdk)
-        {
-            return new OpenAI.OpenAIClient(settings.ApiKey.Trim())
-                .GetChatClient(settings.ModelId.Trim())
-                .AsIChatClient();
-        }
-
         if (settings.Provider == AiProviderSettings.ProviderAzureOpenAi)
         {
             var endpoint = new Uri(settings.EndpointUrl.Trim(), UriKind.Absolute);

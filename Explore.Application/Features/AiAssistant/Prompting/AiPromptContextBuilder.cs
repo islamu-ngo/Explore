@@ -15,6 +15,7 @@ public sealed class AiPromptContextBuilder
 
     private readonly AiSystemPromptFactory _systemPromptFactory;
     private readonly IAiTokenEstimator _tokenEstimator;
+    private readonly AiReferencePromptPacker _referencePromptPacker;
 
     public AiPromptContextBuilder()
         : this(new AiSystemPromptFactory())
@@ -27,35 +28,53 @@ public sealed class AiPromptContextBuilder
     {
         _systemPromptFactory = systemPromptFactory;
         _tokenEstimator = tokenEstimator ?? new ApproximateAiTokenEstimator();
+        _referencePromptPacker = new AiReferencePromptPacker(_tokenEstimator);
     }
 
     public AiChatPayload Build(
         AiConversation conversation,
         AiAssistantSettingGroup settings,
         string modelId,
-        bool allowToolProposals = true)
+        bool allowToolProposals = true,
+        IReadOnlyList<AiSelectedReferenceDto>? selectedReferences = null)
     {
         var budget = AiPromptTokenBudget.Create(settings.MaxInputTokens);
-        var toolProposalsEnabled = settings.ToolProposalsEnabled && allowToolProposals;
-        string systemPrompt = _systemPromptFactory.CreateSystemPrompt(allowToolProposals);
+        var requestedToolProposals = settings.ToolProposalsEnabled && allowToolProposals;
+        string systemPrompt = _systemPromptFactory.CreateSystemPrompt(
+            allowToolProposals,
+            toolSchemaAvailable: requestedToolProposals);
         budget.ConsumeBestEffort(systemPrompt, _tokenEstimator);
 
         var actionSchema = _systemPromptFactory.CreateActionSchema(
             settings,
-            toolProposalsEnabled,
+            requestedToolProposals,
             budget.RemainingTokens,
             _tokenEstimator);
+
+        if (actionSchema is null && requestedToolProposals)
+        {
+            budget = AiPromptTokenBudget.Create(settings.MaxInputTokens);
+            systemPrompt = _systemPromptFactory.CreateSystemPrompt(allowToolProposals, toolSchemaAvailable: false);
+            budget.ConsumeBestEffort(systemPrompt, _tokenEstimator);
+        }
+
         if (actionSchema is not null)
         {
             budget.ConsumeBestEffort(actionSchema.JsonSchema, _tokenEstimator);
         }
 
+        var toolProposalsEnabled = requestedToolProposals && actionSchema is not null;
         var candidateMessages = conversation.Messages
             .OrderByDescending(message => message.Sequence)
             .Where(message => message.Role is AiMessageRole.System or AiMessageRole.User or AiMessageRole.Assistant)
             .Take(MaxProviderMessages)
             .ToList();
         var messages = PackMessages(candidateMessages, budget);
+        var selectedReferencesContext = PackSelectedReferences(conversation, settings, budget, selectedReferences);
+        if (!string.IsNullOrWhiteSpace(selectedReferencesContext))
+        {
+            messages = [new AiChatMessage(AiMessageRole.System, selectedReferencesContext), .. messages];
+        }
 
         return new AiChatPayload(
             modelId,
@@ -119,6 +138,36 @@ public sealed class AiPromptContextBuilder
 
         selectedMessages.Reverse();
         return selectedMessages;
+    }
+
+    private string PackSelectedReferences(
+        AiConversation conversation,
+        AiAssistantSettingGroup settings,
+        AiPromptTokenBudget budget,
+        IReadOnlyList<AiSelectedReferenceDto>? selectedReferences)
+    {
+        var references = selectedReferences?.ToList()
+            ?? conversation.References
+                .OrderBy(reference => reference.CreatedAt)
+                .ThenBy(reference => reference.Id)
+                .Select(reference => new AiSelectedReferenceDto(
+                    reference.Kind.ToString(),
+                    reference.ReferenceId,
+                    reference.DisplayName,
+                    reference.Summary))
+                .ToList();
+
+        if (references.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        string context = _referencePromptPacker.Pack(
+            references,
+            maxReferences: settings.SelectedReferenceLimit,
+            maxTotalTokens: budget.RemainingTokens);
+
+        return budget.TryConsume(context, _tokenEstimator) ? context : string.Empty;
     }
 
     private string CreateTruncatedWrappedMessage(AiMessageRole role, string content, int maxTokens)

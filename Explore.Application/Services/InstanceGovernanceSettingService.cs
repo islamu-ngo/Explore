@@ -286,9 +286,14 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     public async Task ApplyAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto aiAssistant, Guid? actorUserId)
     {
         var provider = NormalizeAiAssistantProvider(aiAssistant.Provider, aiAssistant.Enabled);
-        var usesExternalProvider = provider == AiProviderDefaults.ProviderOpenAiCompatible
+        var usesOfficialProvider = provider == AiProviderDefaults.ProviderOpenAi
+            || provider == AiProviderDefaults.ProviderAnthropic;
+        var usesCompatibleProvider = provider == AiProviderDefaults.ProviderOpenAiCompatible
             || provider == AiProviderDefaults.ProviderAnthropicCompatible;
-        var endpointUrl = usesExternalProvider ? NormalizeOptionalUrl(aiAssistant.EndpointUrl) : string.Empty;
+        var usesExternalProvider = usesOfficialProvider || usesCompatibleProvider;
+        var endpointUrl = usesCompatibleProvider
+            ? NormalizeOptionalUrl(aiAssistant.EndpointUrl)
+            : string.Empty;
         var apiKey = usesExternalProvider ? aiAssistant.ApiKey?.Trim() ?? string.Empty : string.Empty;
         var modelId = usesExternalProvider ? aiAssistant.ModelId?.Trim() ?? string.Empty : string.Empty;
         var allowedModelIds = usesExternalProvider
@@ -746,10 +751,12 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
 
         var normalized = provider?.Trim().ToLowerInvariant();
         return normalized is AiProviderDefaults.ProviderFake
+            or AiProviderDefaults.ProviderOpenAi
             or AiProviderDefaults.ProviderOpenAiCompatible
+            or AiProviderDefaults.ProviderAnthropic
             or AiProviderDefaults.ProviderAnthropicCompatible
             ? normalized
-            : AiProviderDefaults.ProviderOpenAiCompatible;
+            : AiProviderDefaults.ProviderOpenAi;
     }
 
     private static IReadOnlyList<string> NormalizeAiModelIds(params IEnumerable<string?>[] modelIdGroups)

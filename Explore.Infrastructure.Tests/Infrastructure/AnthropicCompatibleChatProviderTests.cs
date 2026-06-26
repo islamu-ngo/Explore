@@ -127,6 +127,149 @@ public sealed class AnthropicCompatibleChatProviderTests
         await Assert.That(source.GetProperty("data").GetString()).DoesNotContain("data:image");
     }
 
+    [Test]
+    public async Task SendAsync_WhenImageBackedBuildModeReturnsTextlessToolUse_MapsEventDraftProposal()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "id": "msg_test",
+              "type": "message",
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "tool_use",
+                  "id": "call_1",
+                  "name": "create_event_draft",
+                  "input": { "title": "Poster Draft" }
+                }
+              ],
+              "model": "claude-test",
+              "stop_reason": "tool_use",
+              "usage": { "input_tokens": 24, "output_tokens": 10 }
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+
+        var result = await provider.SendAsync(CreateRequest(
+            toolProposalsEnabled: true,
+            actionSchema: """
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["title"],
+                  "properties": { "title": { "type": "string" } }
+                }
+                """,
+            messages:
+            [
+                new AiChatMessage(
+                    AiMessageRole.User,
+                    "Create an event draft from this poster:",
+                    images:
+                    [
+                        new AiChatImage("image/png", "aW1hZ2UtYnl0ZXM=")
+                    ])
+            ]));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Response!.AssistantMessage).IsEqualTo("Event draft proposed.");
+        await Assert.That(result.Response.ProposedActions.Count).IsEqualTo(1);
+        await Assert.That(result.Response.ProposedActions[0].PayloadJson).Contains("Poster Draft");
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("tools")[0].GetProperty("name").GetString()).IsEqualTo("create_event_draft");
+        var content = root.GetProperty("messages")[0].GetProperty("content");
+        await Assert.That(content[1].GetProperty("type").GetString()).IsEqualTo("image");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenLocalEndpointHasImageAndToolProposal_DisablesTemplateThinking()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "id": "msg_test",
+              "type": "message",
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "tool_use",
+                  "id": "call_1",
+                  "name": "create_event_draft",
+                  "input": { "title": "Poster Draft" }
+                }
+              ],
+              "model": "claude-test",
+              "stop_reason": "tool_use",
+              "usage": { "input_tokens": 24, "output_tokens": 10 }
+            }
+            """));
+        var settings = CreateSettings();
+        settings.EndpointUrl = "http://127.0.0.1:1337/v1/messages";
+        settings.AllowLocalProviderEndpoints = true;
+        var provider = CreateProvider(handler, settings);
+
+        var result = await provider.SendAsync(CreateRequest(
+            toolProposalsEnabled: true,
+            actionSchema: """
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["title"],
+                  "properties": { "title": { "type": "string" } }
+                }
+                """,
+            messages:
+            [
+                new AiChatMessage(
+                    AiMessageRole.User,
+                    "Create an event draft from this poster:",
+                    images:
+                    [
+                        new AiChatImage("image/png", "aW1hZ2UtYnl0ZXM=")
+                    ])
+            ]));
+
+        await Assert.That(result.Succeeded).IsTrue();
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("chat_template_kwargs").GetProperty("enable_thinking").GetBoolean())
+            .IsFalse();
+        await Assert.That(root.GetProperty("tools")[0].GetProperty("name").GetString()).IsEqualTo("create_event_draft");
+        await Assert.That(root.GetProperty("messages")[0].GetProperty("content")[1].GetProperty("type").GetString())
+            .IsEqualTo("image");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenExternalEndpointIsUsed_DoesNotSendTemplateThinkingOverride()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "id": "msg_test",
+              "type": "message",
+              "role": "assistant",
+              "content": [
+                { "type": "text", "text": "Assistant response" }
+              ],
+              "model": "claude-test",
+              "stop_reason": "end_turn",
+              "usage": { "input_tokens": 12, "output_tokens": 4 }
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+
+        var result = await provider.SendAsync(CreateRequest(messages:
+        [
+            new AiChatMessage(AiMessageRole.User, "Hello")
+        ]));
+
+        await Assert.That(result.Succeeded).IsTrue();
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        await Assert.That(document.RootElement.TryGetProperty("chat_template_kwargs", out _)).IsFalse();
+    }
+
     private static AnthropicCompatibleChatProvider CreateProvider(
         HttpMessageHandler handler,
         AiProviderSettings settings)

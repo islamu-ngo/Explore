@@ -38,6 +38,49 @@ public class AiAssistantSettingGroupTests
     }
 
     [Test]
+    public async Task Populate_OpenAiRequiresApiKeyAndModelButNotEndpoint()
+    {
+        var group = new AiAssistantSettingGroup();
+        group.Populate(CreateSettings(
+            (GovernanceSettingKeys.AiAssistant.Enabled, "true"),
+            (GovernanceSettingKeys.AiAssistant.Provider, "\"openai\""),
+            (GovernanceSettingKeys.AiAssistant.ApiKey, "\"test-key\""),
+            (GovernanceSettingKeys.AiAssistant.ModelId, "\"gpt-test\"")));
+
+        await Assert.That(group.IsOpenAiProvider).IsTrue();
+        await Assert.That(group.IsConfigured).IsTrue();
+        await Assert.That(group.IsAvailable).IsTrue();
+    }
+
+    [Test]
+    public async Task Populate_AnthropicRequiresApiKeyAndModelButNotEndpoint()
+    {
+        var group = new AiAssistantSettingGroup();
+        group.Populate(CreateSettings(
+            (GovernanceSettingKeys.AiAssistant.Enabled, "true"),
+            (GovernanceSettingKeys.AiAssistant.Provider, "\"anthropic\""),
+            (GovernanceSettingKeys.AiAssistant.ApiKey, "\"test-key\""),
+            (GovernanceSettingKeys.AiAssistant.ModelId, "\"claude-test\"")));
+
+        await Assert.That(group.IsAnthropicProvider).IsTrue();
+        await Assert.That(group.IsConfigured).IsTrue();
+        await Assert.That(group.IsAvailable).IsTrue();
+    }
+
+    [Test]
+    public async Task Populate_OpenAiWithoutApiKeyIsUnavailable()
+    {
+        var group = new AiAssistantSettingGroup();
+        group.Populate(CreateSettings(
+            (GovernanceSettingKeys.AiAssistant.Enabled, "true"),
+            (GovernanceSettingKeys.AiAssistant.Provider, "\"openai\""),
+            (GovernanceSettingKeys.AiAssistant.ModelId, "\"gpt-test\"")));
+
+        await Assert.That(group.IsConfigured).IsFalse();
+        await Assert.That(group.IsAvailable).IsFalse();
+    }
+
+    [Test]
     public async Task Populate_OpenAiCompatibleWithoutModelIsUnavailable()
     {
         var group = new AiAssistantSettingGroup();

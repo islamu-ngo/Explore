@@ -10,6 +10,9 @@ namespace Explore.Application.Features.AiAssistant;
 
 internal static class AiAssistantAvailability
 {
+    public const string ModelNotAllowedFailureCode = "model_not_allowed";
+    public const string ModelNotAllowedFailureMessage = "Selected AI model is not allowed by tenant policy.";
+
     public static string NormalizeProvider(string? provider)
         => string.IsNullOrWhiteSpace(provider)
             ? AiProviderDefaults.ProviderNone
@@ -25,8 +28,21 @@ internal static class AiAssistantAvailability
         if (provider == AiProviderDefaults.ProviderNone)
             return "provider_not_configured";
 
-        if (provider != AiProviderDefaults.ProviderFake && provider != AiProviderDefaults.ProviderOpenAiCompatible && provider != AiProviderDefaults.ProviderAnthropicCompatible)
+        if (provider != AiProviderDefaults.ProviderFake
+            && provider != AiProviderDefaults.ProviderOpenAi
+            && provider != AiProviderDefaults.ProviderOpenAiCompatible
+            && provider != AiProviderDefaults.ProviderAnthropic
+            && provider != AiProviderDefaults.ProviderAnthropicCompatible)
             return "provider_unsupported";
+
+        if (provider == AiProviderDefaults.ProviderOpenAi || provider == AiProviderDefaults.ProviderAnthropic)
+        {
+            if (!settings.HasApiKey)
+                return "api_key_not_configured";
+
+            if (!settings.HasModel)
+                return "model_not_configured";
+        }
 
         if (provider == AiProviderDefaults.ProviderOpenAiCompatible || provider == AiProviderDefaults.ProviderAnthropicCompatible)
         {
@@ -43,7 +59,7 @@ internal static class AiAssistantAvailability
     public static string ResolveModelId(AiAssistantSettingGroup settings)
         => NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderFake
             ? AiProviderDefaults.FakeModelId
-            : settings.ModelId.Trim();
+            : settings.ModelId?.Trim() ?? string.Empty;
 
     public static IReadOnlyList<string> ResolveAllowedModelIds(AiAssistantSettingGroup settings)
     {
@@ -87,7 +103,9 @@ internal static class AiAssistantAvailability
             ? AiProviderDefaults.DefaultTimeoutSeconds
             : settings.TimeoutSeconds;
 
-        if (NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderOpenAiCompatible
+        if (NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderOpenAi
+            || NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderOpenAiCompatible
+            || NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderAnthropic
             || NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderAnthropicCompatible)
         {
             configuredTimeout = Math.Max(configuredTimeout, AiProviderDefaults.DefaultTimeoutSeconds);

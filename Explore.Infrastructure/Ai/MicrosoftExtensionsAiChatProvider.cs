@@ -93,15 +93,6 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
                 telemetryActivity);
         }
 
-        if (request.Messages.Any(message => message.Images.Count > 0))
-        {
-            return CompleteFailure(
-                RecordFailure(providerName, "unsupported_image_input", "Image inputs are only supported by the Anthropic-compatible adapter."),
-                providerName,
-                startedAt,
-                telemetryActivity);
-        }
-
         var structuredOutputFailure = AiStructuredOutputResponseMapper.ValidateRequest(request);
         if (structuredOutputFailure is not null)
         {
@@ -184,11 +175,9 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
     }
 
     private static string ResolveTelemetryProvider(AiProviderSettings settings) =>
-        settings.Provider == AiProviderSettings.ProviderOpenAiSdk
-            ? "openai-sdk"
-            : settings.Provider == AiProviderSettings.ProviderAzureOpenAi
-                ? "azure-openai"
-                : ProviderName;
+        settings.Provider == AiProviderSettings.ProviderAzureOpenAi
+            ? "azure-openai"
+            : ProviderName;
 
     private static TimeSpan GetTimeout(AiProviderSettings settings, AiChatOptions options)
     {
@@ -212,6 +201,16 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
 
         foreach (var message in request.Messages)
         {
+            if (message.Images.Count > 0 && message.Role != AiMessageRole.User)
+            {
+                messages = null;
+                failure = RecordFailure(
+                    providerName,
+                    "unsupported_image_role",
+                    "Image input blocks are only supported for user messages.");
+                return false;
+            }
+
             if (message.Role == AiMessageRole.Tool)
             {
                 if (string.IsNullOrWhiteSpace(message.Name))
@@ -230,12 +229,65 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
                 continue;
             }
 
-            messages.Add(new ChatMessage(ToChatRole(message.Role), message.Content)
+            if (!TryCreateChatMessage(message, providerName, out var chatMessage, out failure))
             {
-                AuthorName = string.IsNullOrWhiteSpace(message.Name) ? null : message.Name.Trim()
-            });
+                messages = null;
+                return false;
+            }
+
+            messages.Add(chatMessage!);
         }
 
+        return true;
+    }
+
+    private bool TryCreateChatMessage(
+        AiChatMessage message,
+        string providerName,
+        out ChatMessage? chatMessage,
+        out AiChatProviderResult? failure)
+    {
+        chatMessage = null;
+        failure = null;
+
+        if (message.Images.Count == 0)
+        {
+            chatMessage = new ChatMessage(ToChatRole(message.Role), message.Content)
+            {
+                AuthorName = string.IsNullOrWhiteSpace(message.Name) ? null : message.Name.Trim()
+            };
+            return true;
+        }
+
+        var contents = new List<AIContent>();
+        if (!string.IsNullOrWhiteSpace(message.Content))
+        {
+            contents.Add(new TextContent(message.Content));
+        }
+
+        foreach (var image in message.Images)
+        {
+            try
+            {
+                contents.Add(new DataContent(
+                    Convert.FromBase64String(image.Data.Trim()),
+                    image.MediaType.Trim()));
+            }
+            catch (FormatException)
+            {
+                failure = RecordFailure(
+                    providerName,
+                    "invalid_image_input",
+                    "Image input data must be valid base64.",
+                    isTransient: false);
+                return false;
+            }
+        }
+
+        chatMessage = new ChatMessage(ChatRole.User, contents)
+        {
+            AuthorName = string.IsNullOrWhiteSpace(message.Name) ? null : message.Name.Trim()
+        };
         return true;
     }
 
@@ -375,6 +427,12 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
                 out var structuredOutputFailure))
         {
             failure = RecordFailure(providerName, structuredOutputFailure!.Code, structuredOutputFailure.Message);
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(assistantMessage) && proposedActions.Count == 0)
+        {
+            failure = RecordFailure(providerName, "invalid_response", "AI provider returned an empty text response.");
             return false;
         }
 

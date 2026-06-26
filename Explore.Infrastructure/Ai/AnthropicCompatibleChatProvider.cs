@@ -4,6 +4,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure.Ai;
@@ -14,7 +15,7 @@ using Refit;
 
 namespace Explore.Infrastructure.Ai;
 
-public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
+public class AnthropicCompatibleChatProvider : IAiChatProvider
 {
     public const string HttpClientName = "AnthropicCompatibleAiClient";
 
@@ -32,31 +33,64 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
     private readonly IOptions<AiProviderSettings> _options;
     private readonly AiProviderSettingsValidator _validator;
     private readonly BusinessMetrics _metrics;
+    private readonly int _providerId;
+    private readonly string _providerName;
+    private readonly string _httpClientName;
+    private readonly string _defaultEndpointUrl;
+    private readonly string _notConfiguredMessage;
 
     public AnthropicCompatibleChatProvider(
         IHttpClientFactory httpClientFactory,
         IOptions<AiProviderSettings> options,
         AiProviderSettingsValidator validator,
         BusinessMetrics metrics)
+        : this(
+            httpClientFactory,
+            options,
+            validator,
+            metrics,
+            AiProviderSettings.ProviderAnthropicCompatible,
+            AiProviderDefaults.ProviderAnthropicCompatible,
+            HttpClientName,
+            string.Empty,
+            "Anthropic-compatible provider is not enabled or configured.")
+    {
+    }
+
+    protected AnthropicCompatibleChatProvider(
+        IHttpClientFactory httpClientFactory,
+        IOptions<AiProviderSettings> options,
+        AiProviderSettingsValidator validator,
+        BusinessMetrics metrics,
+        int providerId,
+        string providerName,
+        string httpClientName,
+        string defaultEndpointUrl,
+        string notConfiguredMessage)
     {
         _httpClientFactory = httpClientFactory;
         _options = options;
         _validator = validator;
         _metrics = metrics;
+        _providerId = providerId;
+        _providerName = providerName;
+        _httpClientName = httpClientName;
+        _defaultEndpointUrl = defaultEndpointUrl;
+        _notConfiguredMessage = notConfiguredMessage;
     }
 
     public async Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var settings = ResolveSettings(request);
-        var providerName = AiProviderDefaults.ProviderAnthropicCompatible;
+        var providerName = _providerName;
         var startedAt = Stopwatch.GetTimestamp();
         using var telemetryActivity = AiProviderTelemetry.StartRequest(providerName, request);
 
-        if (!IsRunnableAnthropicCompatible(settings))
+        if (!IsRunnableProvider(settings))
         {
             return CompleteFailure(
-                RecordFailure("provider_not_configured", "Anthropic-compatible provider is not enabled or configured."),
+                RecordFailure("provider_not_configured", _notConfiguredMessage),
                 startedAt,
                 telemetryActivity);
         }
@@ -170,17 +204,17 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
 
     private IAnthropicMessagesApi CreateApiClient(AiProviderSettings settings)
     {
-        var client = _httpClientFactory.CreateClient(HttpClientName);
-        client.BaseAddress = BuildMessagesBaseUri(settings.EndpointUrl);
+        var client = _httpClientFactory.CreateClient(_httpClientName);
+        client.BaseAddress = BuildMessagesBaseUri(settings.EndpointUrl, _defaultEndpointUrl);
         return RestService.For<IAnthropicMessagesApi>(client, RefitSettings);
     }
 
     private static string? ResolveApiKey(AiProviderSettings settings) =>
         string.IsNullOrWhiteSpace(settings.ApiKey) ? null : settings.ApiKey;
 
-    private static bool IsRunnableAnthropicCompatible(AiProviderSettings settings) =>
+    private bool IsRunnableProvider(AiProviderSettings settings) =>
         settings.Enabled
-        && settings.Provider == AiProviderSettings.ProviderAnthropicCompatible;
+        && settings.Provider == _providerId;
 
     private AiProviderSettings ResolveSettings(AiChatPayload request)
     {
@@ -188,7 +222,7 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
         var providerConfiguration = request.ProviderConfiguration;
 
         if (providerConfiguration is null
-            || providerConfiguration.Provider != AiProviderSettings.ProviderAnthropicCompatible)
+            || providerConfiguration.Provider != _providerId)
         {
             return defaults;
         }
@@ -196,7 +230,7 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
         return new AiProviderSettings
         {
             Enabled = true,
-            Provider = AiProviderSettings.ProviderAnthropicCompatible,
+            Provider = _providerId,
             EndpointUrl = providerConfiguration.EndpointUrl.Trim(),
             ApiKey = providerConfiguration.ApiKey.Trim(),
             ModelId = providerConfiguration.ModelId.Trim(),
@@ -224,9 +258,12 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
         return TimeSpan.FromSeconds(Math.Min(boundedSettingsTimeout, boundedRequestTimeout));
     }
 
-    private static Uri BuildMessagesBaseUri(string endpointUrl)
+    private static Uri BuildMessagesBaseUri(string? endpointUrl, string defaultEndpointUrl)
     {
-        var endpoint = new Uri(endpointUrl, UriKind.Absolute);
+        var effectiveEndpointUrl = string.IsNullOrWhiteSpace(endpointUrl)
+            ? defaultEndpointUrl
+            : endpointUrl.Trim();
+        var endpoint = new Uri(effectiveEndpointUrl, UriKind.Absolute);
         var path = endpoint.AbsolutePath.TrimEnd('/');
 
         if (path.EndsWith("/messages", StringComparison.OrdinalIgnoreCase))
@@ -270,10 +307,73 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
             System = string.IsNullOrWhiteSpace(request.SystemPrompt) ? null : request.SystemPrompt.Trim(),
             Messages = messages,
             Temperature = request.Options.Temperature,
-            Tools = tools.Count == 0 ? null : tools
+            Tools = tools.Count == 0 ? null : tools,
+            ChatTemplateKwargs = CreateChatTemplateKwargs(settings, request)
         };
 
         return true;
+    }
+
+    private static AnthropicChatTemplateKwargs? CreateChatTemplateKwargs(
+        AiProviderSettings settings,
+        AiChatPayload request)
+    {
+        if (!ShouldDisableTemplateThinking(request) || !IsLocalOrPrivateEndpoint(settings.EndpointUrl))
+        {
+            return null;
+        }
+
+        return new AnthropicChatTemplateKwargs { EnableThinking = false };
+    }
+
+    private static bool ShouldDisableTemplateThinking(AiChatPayload request) =>
+        request.Options.ToolProposalsEnabled
+        || request.Options.StructuredOutputEnabled
+        || request.Messages.Any(message => message.Images.Count > 0);
+
+    private static bool IsLocalOrPrivateEndpoint(string? endpointUrl)
+    {
+        if (!Uri.TryCreate(endpointUrl, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        var host = uri.Host;
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("host.docker.internal", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!IPAddress.TryParse(host, out var address))
+        {
+            return false;
+        }
+
+        if (IPAddress.IsLoopback(address))
+        {
+            return true;
+        }
+
+        if (address.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var bytes = address.GetAddressBytes();
+            return bytes[0] == 10
+                || bytes[0] == 127
+                || bytes[0] == 192 && bytes[1] == 168
+                || bytes[0] == 172 && bytes[1] is >= 16 and <= 31;
+        }
+
+        if (address.AddressFamily == AddressFamily.InterNetworkV6)
+        {
+            var bytes = address.GetAddressBytes();
+            return address.IsIPv6LinkLocal
+                || address.IsIPv6SiteLocal
+                || (bytes[0] & 0xfe) == 0xfc;
+        }
+
+        return false;
     }
 
     private bool TryBuildTools(AiChatPayload request, out IReadOnlyList<AnthropicApiTool> tools)
@@ -438,6 +538,14 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
             .Where(b => string.Equals(b.Type, "tool_use", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
+        if (!request.Options.ToolProposalsEnabled && toolUseBlocks.Count > 0)
+        {
+            failure = RecordFailure(
+                "unexpected_tool_response",
+                "AI provider returned a tool response, but tool proposals were not enabled for this run.");
+            return false;
+        }
+
         if (request.Options.ToolProposalsEnabled && toolUseBlocks.Count > 0)
         {
             if (!TryMapProposedActions(toolUseBlocks, out var proposedActions, out failure))
@@ -575,7 +683,7 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
 
     private AiChatProviderResult RecordFailure(string code, string message, bool isTransient = false)
     {
-        _metrics.RecordAiProviderRequest(AiProviderDefaults.ProviderAnthropicCompatible, "failed", code);
+        _metrics.RecordAiProviderRequest(_providerName, "failed", code);
         return AiChatProviderResult.Failure(code, message, isTransient);
     }
 
@@ -584,18 +692,18 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
         long startedAt,
         Activity? telemetryActivity)
     {
-        _metrics.RecordAiProviderRequest(AiProviderDefaults.ProviderAnthropicCompatible, "succeeded");
+        _metrics.RecordAiProviderRequest(_providerName, "succeeded");
         _metrics.RecordAiProviderRequestDuration(
             Stopwatch.GetElapsedTime(startedAt),
-            AiProviderDefaults.ProviderAnthropicCompatible,
+            _providerName,
             "succeeded");
         _metrics.RecordAiProviderTokenUsage(
-            AiProviderDefaults.ProviderAnthropicCompatible,
+            _providerName,
             response.Usage.InputTokens,
             response.Usage.OutputTokens,
             response.Usage.TotalTokens);
         _metrics.RecordAiProviderProposedActions(
-            AiProviderDefaults.ProviderAnthropicCompatible,
+            _providerName,
             response.ProposedActions.Count,
             "create_event_draft");
         AiProviderTelemetry.MarkSuccess(telemetryActivity, response);
@@ -609,7 +717,7 @@ public sealed class AnthropicCompatibleChatProvider : IAiChatProvider
         var error = result.Error!;
         _metrics.RecordAiProviderRequestDuration(
             Stopwatch.GetElapsedTime(startedAt),
-            AiProviderDefaults.ProviderAnthropicCompatible,
+            _providerName,
             "failed",
             error.Code);
         AiProviderTelemetry.MarkFailure(telemetryActivity, error.Code, error.IsTransient);

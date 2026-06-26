@@ -4,11 +4,13 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.Ai.Validators;
+using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
@@ -36,6 +38,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAiModelCatalog _modelCatalog;
+    private readonly IAiAssistantActorContextService _actorContextService;
 
     public SendAiMessageCommandHandler(
         IAiConversationRepository conversationRepository,
@@ -43,7 +46,8 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         IHierarchicalSettingsResolver settingsResolver,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
-        IAiModelCatalog modelCatalog)
+        IAiModelCatalog modelCatalog,
+        IAiAssistantActorContextService actorContextService)
     {
         _conversationRepository = conversationRepository;
         _idempotencyRepository = idempotencyRepository;
@@ -51,6 +55,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _modelCatalog = modelCatalog;
+        _actorContextService = actorContextService;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -99,20 +104,57 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         {
             return Failure(
                 "AI model is not allowed for this tenant.",
-                ["Selected AI model is not allowed by tenant policy."],
-                "model_not_allowed");
+                [AiAssistantAvailability.ModelNotAllowedFailureMessage],
+                AiAssistantAvailability.ModelNotAllowedFailureCode);
         }
 
         var modelId = string.IsNullOrWhiteSpace(requestedModelId)
             ? AiAssistantAvailability.ResolveModelId(settings)
             : requestedModelId;
+        var provider = AiAssistantAvailability.NormalizeProvider(settings.Provider);
+        if (!UsesTenantConfiguredExternalProvider(settings))
+        {
+            var availableModels = await _modelCatalog.ListAvailableModelsAsync(cancellationToken);
+
+            if (!availableModels.Any(model => string.Equals(model.Id, modelId, StringComparison.Ordinal)))
+            {
+                return Failure(
+                    "AI provider is not ready for this tenant model.",
+                    ["Configured AI model is not available from the runtime provider."],
+                    "provider_not_ready");
+            }
+        }
+
+        var conversation = await _conversationRepository.GetByIdForUpdateAsync(request.ConversationId, cancellationToken);
+
+        if (conversation is null || conversation.UserId != userId)
+        {
+            return Failure("AI conversation was not found.", ["Conversation was not found."], "conversation_not_found");
+        }
+
+        var actorResolution = await _actorContextService.ResolveAuthorizedActorAsync(
+            tenantId,
+            userId,
+            request.Message.ActorId ?? conversation.ActorId,
+            cancellationToken);
+        if (!actorResolution.Succeeded)
+        {
+            return Failure(
+                "AI message acting actor is not authorized.",
+                [actorResolution.FailureMessage ?? "AI acting actor is not authorized."],
+                actorResolution.FailureCode ?? "actor_context_not_authorized");
+        }
+
+        var selectedReferences = NormalizeReferences(request.Message.References, settings.SelectedReferenceLimit);
+        var selectedReferencesJson = SerializeReferencesForHash(selectedReferences);
         var requestBodyHash = ComputeBodyHash(
             request.ConversationId,
             content,
             imageAttachmentsJson,
+            selectedReferencesJson,
             modelId,
             interactionMode,
-            request.Message.ActorId);
+            actorResolution.ActorId);
         var replay = await TryReplayIdempotencyAsync(
             idempotencyKey,
             tenantId,
@@ -127,20 +169,6 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             return replay;
         }
 
-        var provider = AiAssistantAvailability.NormalizeProvider(settings.Provider);
-        if (!UsesEffectiveOpenAiCompatibleProvider(settings))
-        {
-            var availableModels = await _modelCatalog.ListAvailableModelsAsync(cancellationToken);
-
-            if (!availableModels.Any(model => string.Equals(model.Id, modelId, StringComparison.Ordinal)))
-            {
-                return Failure(
-                    "AI provider is not ready for this tenant model.",
-                    ["Configured AI model is not available from the runtime provider."],
-                    "provider_not_ready");
-            }
-        }
-
         var utcNow = DateTime.UtcNow;
         await _conversationRepository.ReleaseStaleRunningConversationsForUserAsync(
             userId,
@@ -149,13 +177,6 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             StaleRunFailureMessage,
             utcNow,
             cancellationToken);
-
-        var conversation = await _conversationRepository.GetByIdForUpdateAsync(request.ConversationId, cancellationToken);
-
-        if (conversation is null || conversation.UserId != userId)
-        {
-            return Failure("AI conversation was not found.", ["Conversation was not found."], "conversation_not_found");
-        }
 
         if (conversation.Status == AiConversationStatus.Blocked && IsRetryableProviderBlock(conversation.BlockedReason))
         {
@@ -225,7 +246,22 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             return response;
         }
 
-        conversation.ActorId = request.Message.ActorId ?? conversation.ActorId;
+        conversation.ActorId = actorResolution.ActorId;
+        foreach (var selectedReference in selectedReferences)
+        {
+            if (!conversation.References.Any(existing =>
+                    existing.Kind == selectedReference.Kind
+                    && existing.ReferenceId == selectedReference.ReferenceId))
+            {
+                conversation.AddReference(
+                    selectedReference.Kind,
+                    selectedReference.ReferenceId,
+                    selectedReference.DisplayName,
+                    selectedReference.Summary,
+                    userId,
+                    utcNow);
+            }
+        }
         conversation.AddMessage(AiMessageRole.User, content, userId, utcNow, imageAttachmentsJson);
         var run = conversation.QueueRun(provider, modelId, utcNow);
         await _conversationRepository.Update(conversation);
@@ -325,24 +361,89 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         Guid conversationId,
         string content,
         string? imageAttachmentsJson,
+        string? selectedReferencesJson,
         string modelId,
         string mode,
         Guid? actorId)
     {
-        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}:{imageAttachmentsJson}";
+        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}:{imageAttachmentsJson}:{selectedReferencesJson}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+    }
+
+    private static IReadOnlyList<(AiReferenceKind Kind, Guid ReferenceId, string DisplayName, string? Summary)> NormalizeReferences(
+        IReadOnlyList<AiSelectedReferenceDto>? references,
+        int selectedReferenceLimit)
+    {
+        if (references is null || references.Count == 0 || selectedReferenceLimit <= 0)
+        {
+            return [];
+        }
+
+        var selectedReferences = new List<(AiReferenceKind Kind, Guid ReferenceId, string DisplayName, string? Summary)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (AiSelectedReferenceDto reference in references)
+        {
+            if (!Enum.TryParse<AiReferenceKind>(reference.Kind?.Trim(), ignoreCase: true, out var kind)
+                || reference.ReferenceId == Guid.Empty
+                || string.IsNullOrWhiteSpace(reference.DisplayName))
+            {
+                continue;
+            }
+
+            string key = $"{kind}:{reference.ReferenceId:N}";
+            if (!seen.Add(key))
+            {
+                continue;
+            }
+
+            selectedReferences.Add((
+                kind,
+                reference.ReferenceId,
+                reference.DisplayName.Trim(),
+                string.IsNullOrWhiteSpace(reference.Summary) ? null : reference.Summary.Trim()));
+
+            if (selectedReferences.Count >= selectedReferenceLimit)
+            {
+                break;
+            }
+        }
+
+        return selectedReferences;
+    }
+
+    private static string? SerializeReferencesForHash(
+        IReadOnlyList<(AiReferenceKind Kind, Guid ReferenceId, string DisplayName, string? Summary)> references)
+    {
+        if (references.Count == 0)
+        {
+            return null;
+        }
+
+        return JsonSerializer.Serialize(references.Select(reference => new
+        {
+            kind = reference.Kind.ToString(),
+            referenceId = reference.ReferenceId,
+            displayName = reference.DisplayName,
+            summary = reference.Summary
+        }), new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 
     private static string ComputePrincipalFingerprint(Guid userId)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(userId.ToString("N", CultureInfo.InvariantCulture))))
             .ToLowerInvariant();
 
-    private static bool UsesEffectiveOpenAiCompatibleProvider(AiAssistantSettingGroup settings)
+    private static bool UsesTenantConfiguredExternalProvider(AiAssistantSettingGroup settings)
     {
         var provider = AiAssistantAvailability.NormalizeProvider(settings.Provider);
-        return (provider == AiProviderDefaults.ProviderOpenAiCompatible
-            || provider == AiProviderDefaults.ProviderAnthropicCompatible)
-            && !string.IsNullOrWhiteSpace(settings.EndpointUrl);
+        return provider switch
+        {
+            AiProviderDefaults.ProviderOpenAi or AiProviderDefaults.ProviderAnthropic =>
+                !string.IsNullOrWhiteSpace(settings.ApiKey),
+            AiProviderDefaults.ProviderOpenAiCompatible or AiProviderDefaults.ProviderAnthropicCompatible =>
+                !string.IsNullOrWhiteSpace(settings.EndpointUrl),
+            _ => false
+        };
     }
 
     private static DateTime ResolveStaleRunCutoffUtc(DateTime utcNow, AiAssistantSettingGroup settings)

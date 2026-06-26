@@ -1,15 +1,16 @@
-// ABOUTME: Handles AI reference search by mapping tenant-filtered event entities into safe DTOs.
-// ABOUTME: Enforces bounded result counts and prevents full event content from entering AI reference output.
+// ABOUTME: Handles AI reference search by mapping tenant-filtered events and actors into safe DTOs.
+// ABOUTME: Enforces bounded result counts and prevents full event or actor content from entering AI reference output.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Features.AiAssistant.Requests.Queries;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.AiAssistant.Handlers.Queries;
 
-public sealed class SearchAiReferencesQueryHandler(IEventRepository eventRepository)
+public sealed class SearchAiReferencesQueryHandler(IEventRepository eventRepository, IActorRepository actorRepository)
     : IRequestHandler<SearchAiReferencesQuery, IReadOnlyList<AiReferenceSearchResultDto>>
 {
     public const int DefaultLimit = 10;
@@ -17,6 +18,8 @@ public sealed class SearchAiReferencesQueryHandler(IEventRepository eventReposit
     private const int MinimumSearchTermLength = 2;
     private const int MaxSummaryLength = 240;
     private const string EventReferenceKind = "Event";
+    private const string ActorReferenceKind = "Actor";
+    private const string OrganizationReferenceKind = "Organization";
 
     public async Task<IReadOnlyList<AiReferenceSearchResultDto>> Handle(
         SearchAiReferencesQuery request,
@@ -35,7 +38,19 @@ public sealed class SearchAiReferencesQueryHandler(IEventRepository eventReposit
             limit,
             cancellationToken);
 
-        return events.Select(MapEvent).ToList();
+        IReadOnlyList<Actor> actors = await actorRepository.SearchAiReferenceActorsAsync(
+            searchTerm,
+            limit,
+            cancellationToken);
+
+        return events
+            .Select(MapEvent)
+            .Concat(actors.Select(MapActor))
+            .OrderBy(ReferenceKindSort)
+            .ThenBy(reference => reference.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(reference => reference.ReferenceId)
+            .Take(limit)
+            .ToList();
     }
 
     private static int NormalizeLimit(int limit)
@@ -62,10 +77,48 @@ public sealed class SearchAiReferencesQueryHandler(IEventRepository eventReposit
             @event.EventFormat?.FullName);
     }
 
+    private static AiReferenceSearchResultDto MapActor(Actor actor)
+    {
+        var kind = actor.ActorTypeId == (int)ActorTypeEnum.Organization
+            ? OrganizationReferenceKind
+            : ActorReferenceKind;
+        var referenceId = actor.ActorTypeId == (int)ActorTypeEnum.Organization && actor.OrganizationId is Guid organizationId
+            ? organizationId
+            : actor.Id;
+
+        return new AiReferenceSearchResultDto(
+            kind,
+            referenceId,
+            actor.DisplayName,
+            BuildActorSummary(actor),
+            null,
+            null,
+            null,
+            null,
+            null);
+    }
+
     private static string? BuildSummary(Event @event)
     {
         string? summary = FirstNonBlank(@event.Subtitle, @event.Description);
         return summary is null ? null : Truncate(summary, MaxSummaryLength);
+    }
+
+    private static string? BuildActorSummary(Actor actor)
+    {
+        string? summary = FirstNonBlank(actor.Description, actor.Handle is null ? null : $"@{actor.Handle}");
+        return summary is null ? null : Truncate(summary, MaxSummaryLength);
+    }
+
+    private static int ReferenceKindSort(AiReferenceSearchResultDto reference)
+    {
+        return reference.Kind switch
+        {
+            EventReferenceKind => 0,
+            OrganizationReferenceKind => 1,
+            ActorReferenceKind => 2,
+            _ => 3
+        };
     }
 
     private static string? FirstNonBlank(params string?[] values)

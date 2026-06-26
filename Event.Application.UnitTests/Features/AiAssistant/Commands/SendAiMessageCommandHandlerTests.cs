@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Handlers.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Settings;
@@ -31,6 +32,7 @@ public sealed class SendAiMessageCommandHandlerTests
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IAiModelCatalog _modelCatalog = Substitute.For<IAiModelCatalog>();
+    private readonly IAiAssistantActorContextService _actorContextService = Substitute.For<IAiAssistantActorContextService>();
 
     public SendAiMessageCommandHandlerTests()
     {
@@ -59,6 +61,8 @@ public sealed class SendAiMessageCommandHandlerTests
             .Returns(0);
         _modelCatalog.ListAvailableModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new AiModelDescriptor(AiProviderDefaults.FakeModelId, AiProviderDefaults.FakeModelDisplayName, SupportsToolProposals: true)]);
+        _actorContextService.ResolveAuthorizedActorAsync(_tenantId, _userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(call => AiAssistantActorContextResolution.Success(call.ArgAt<Guid?>(2), []));
     }
 
     [Test]
@@ -88,7 +92,51 @@ public sealed class SendAiMessageCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenIdempotencyKeyReplays_ReturnsExistingRunWithoutLoadingConversation()
+    public async Task Handle_WhenRequestedModelIsNotEnabledByGovernance_FailsBeforeConversationLookup()
+    {
+        _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(CreateSettings(
+                enabled: true,
+                provider: AiProviderDefaults.ProviderOpenAiCompatible,
+                endpointUrl: "https://ai.example.test/v1",
+                modelId: "gpt-5.4-mini",
+                allowedModelIds: ["gpt-5.4-mini", "gpt-5.4"]));
+
+        var result = await CreateHandler().Handle(CreateCommand(modelId: "unapproved-model"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("model_not_allowed");
+        await Assert.That(result.Errors).Contains("Selected AI model is not allowed by tenant policy.");
+        await _conversationRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
+        await _idempotencyRepository.DidNotReceive().FindAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _idempotencyRepository.DidNotReceive().SaveAsync(Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenRequestedModelIsEnabledByGovernance_QueuesRunWithRequestedModel()
+    {
+        var conversation = CreateConversation();
+        _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(CreateSettings(
+                enabled: true,
+                provider: AiProviderDefaults.ProviderOpenAiCompatible,
+                endpointUrl: "https://ai.example.test/v1",
+                modelId: "gpt-5.4-mini",
+                allowedModelIds: ["gpt-5.4-mini", "gpt-5.4"]));
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+
+        var result = await CreateHandler().Handle(CreateCommand(modelId: "gpt-5.4"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(conversation.Runs.Single().Provider).IsEqualTo(AiProviderDefaults.ProviderOpenAiCompatible);
+        await Assert.That(conversation.Runs.Single().ModelId).IsEqualTo("gpt-5.4");
+        await _conversationRepository.Received(1).Update(conversation);
+    }
+
+    [Test]
+    public async Task Handle_WhenIdempotencyKeyReplays_ReturnsExistingRunWithoutQueueingDuplicateRun()
     {
         var command = CreateCommand(content: "Replay this", idempotencyKey: "idem-replay");
         var priorRunId = Guid.CreateVersion7();
@@ -99,7 +147,8 @@ public sealed class SendAiMessageCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(priorRunId);
-        await _conversationRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _conversationRepository.Received(1).GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
     [Test]
@@ -220,8 +269,26 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(savedIdempotency).IsNotNull();
         await Assert.That(savedIdempotency!.ResponseBody).IsEqualTo(result.Id.ToString("D", CultureInfo.InvariantCulture));
         await Assert.That(savedIdempotency.RequestBodyHash).IsEqualTo(
-            ComputeBodyHash(_conversationId, "Plan the event", null, AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Build, actorId));
+            ComputeBodyHash(_conversationId, "Plan the event", null, null, AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Build, actorId));
         await _conversationRepository.Received(1).Update(conversation);
+    }
+
+    [Test]
+    public async Task Handle_WhenActorIsNotAuthorized_FailsBeforePersistence()
+    {
+        var actorId = Guid.CreateVersion7();
+        _actorContextService.ResolveAuthorizedActorAsync(_tenantId, _userId, actorId, Arg.Any<CancellationToken>())
+            .Returns(AiAssistantActorContextResolution.Failure(
+                "actor_context_not_authorized",
+                "AI acting actor is not available to the authenticated user.",
+                []));
+
+        var result = await CreateHandler().Handle(CreateCommand(actorId: actorId), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("actor_context_not_authorized");
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
+        await _idempotencyRepository.DidNotReceive().SaveAsync(Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -260,6 +327,46 @@ public sealed class SendAiMessageCommandHandlerTests
                 _conversationId,
                 "Describe this picture:",
                 CreateImageAttachmentsJson(images),
+                null,
+                AiProviderDefaults.FakeModelId,
+                AiAssistantInteractionModes.Build));
+    }
+
+    [Test]
+    public async Task Handle_WhenReferencesAreProvided_PersistsReferencesAndHashesPayload()
+    {
+        var conversation = CreateConversation();
+        IdempotencyRecord? savedIdempotency = null;
+        var eventReferenceId = Guid.CreateVersion7();
+        var actorReferenceId = Guid.CreateVersion7();
+        IReadOnlyList<AiSelectedReferenceDto> references =
+        [
+            new("Event", eventReferenceId, "Community Iftar", "Public evening program"),
+            new("Actor", actorReferenceId, "Amina Speaker", null),
+            new("Event", eventReferenceId, "Community Iftar duplicate", "Duplicate should be ignored")
+        ];
+
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _idempotencyRepository.SaveAsync(Arg.Do<IdempotencyRecord>(record => savedIdempotency = record), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(content: "Draft it with these references", references: references),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(conversation.References.Count).IsEqualTo(2);
+        await Assert.That(conversation.References.Select(reference => reference.Kind)).Contains(AiReferenceKind.Event);
+        await Assert.That(conversation.References.Select(reference => reference.Kind)).Contains(AiReferenceKind.Actor);
+        await Assert.That(conversation.References.Single(reference => reference.Kind == AiReferenceKind.Event).DisplayName).IsEqualTo("Community Iftar");
+        await Assert.That(savedIdempotency).IsNotNull();
+        await Assert.That(savedIdempotency!.RequestBodyHash).IsEqualTo(
+            ComputeBodyHash(
+                _conversationId,
+                "Draft it with these references",
+                null,
+                CreateReferencesJson(references.Take(2).ToList()),
                 AiProviderDefaults.FakeModelId,
                 AiAssistantInteractionModes.Build));
     }
@@ -310,7 +417,7 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(savedIdempotency).IsNotNull();
         await Assert.That(savedIdempotency!.RequestBodyHash).IsEqualTo(
-            ComputeBodyHash(_conversationId, "Just answer", null, AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Ask));
+            ComputeBodyHash(_conversationId, "Just answer", null, null, AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Ask));
     }
 
     private SendAiMessageCommandHandler CreateHandler()
@@ -320,14 +427,17 @@ public sealed class SendAiMessageCommandHandlerTests
             _settingsResolver,
             _tenantContext,
             _currentUserService,
-            _modelCatalog);
+            _modelCatalog,
+            _actorContextService);
 
     private SendAiMessageCommand CreateCommand(
         string content = "Please help plan this event.",
         string idempotencyKey = "idem-ai-send",
         string mode = AiAssistantInteractionModes.Build,
         Guid? actorId = null,
-        IReadOnlyList<AiMessageImageInputDto>? images = null)
+        string? modelId = null,
+        IReadOnlyList<AiMessageImageInputDto>? images = null,
+        IReadOnlyList<AiSelectedReferenceDto>? references = null)
         => new()
         {
             ConversationId = _conversationId,
@@ -337,7 +447,9 @@ public sealed class SendAiMessageCommandHandlerTests
                 Images = images ?? [],
                 IdempotencyKey = idempotencyKey,
                 Mode = mode,
-                ActorId = actorId
+                ActorId = actorId,
+                ModelId = modelId,
+                References = references ?? []
             }
         };
 
@@ -360,6 +472,7 @@ public sealed class SendAiMessageCommandHandlerTests
         var content = command.Message.Content.Trim();
         var mode = AiAssistantInteractionModes.Normalize(command.Message.Mode);
         var imageAttachmentsJson = CreateImageAttachmentsJson(command.Message.Images);
+        var referencesJson = CreateReferencesJson(command.Message.References);
         return new IdempotencyRecord
         {
             Id = Guid.CreateVersion7(),
@@ -369,7 +482,7 @@ public sealed class SendAiMessageCommandHandlerTests
             RequestMethod = "AI_SEND",
             RequestTarget = $"ai/conversations/{command.ConversationId:N}/messages",
             RequestContentType = "application/json",
-            RequestBodyHash = ComputeBodyHash(command.ConversationId, content, imageAttachmentsJson, AiProviderDefaults.FakeModelId, mode, command.Message.ActorId),
+            RequestBodyHash = ComputeBodyHash(command.ConversationId, content, imageAttachmentsJson, referencesJson, AiProviderDefaults.FakeModelId, mode, command.Message.ActorId),
             PrincipalFingerprint = ComputePrincipalFingerprint(_userId),
             StatusCode = 202,
             ResponseBody = runId.ToString("D", CultureInfo.InvariantCulture),
@@ -390,6 +503,7 @@ public sealed class SendAiMessageCommandHandlerTests
         int concurrentRunLimit = 1,
         int selectedReferenceLimit = 8,
         bool toolProposalsEnabled = false,
+        IReadOnlyList<string>? allowedModelIds = null,
         int timeoutSeconds = AiProviderDefaults.DefaultTimeoutSeconds)
     {
         var settings = new Dictionary<string, ResolvedSetting>
@@ -399,6 +513,9 @@ public sealed class SendAiMessageCommandHandlerTests
             [GovernanceSettingKeys.AiAssistant.EndpointUrl] = Setting(GovernanceSettingKeys.AiAssistant.EndpointUrl, endpointUrl),
             [GovernanceSettingKeys.AiAssistant.ApiKey] = Setting(GovernanceSettingKeys.AiAssistant.ApiKey, apiKey),
             [GovernanceSettingKeys.AiAssistant.ModelId] = Setting(GovernanceSettingKeys.AiAssistant.ModelId, modelId),
+            [GovernanceSettingKeys.AiAssistant.AllowedModelIds] = Setting(
+                GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+                allowedModelIds ?? Array.Empty<string>()),
             [GovernanceSettingKeys.AiAssistant.DailyMessageLimit] = Setting(GovernanceSettingKeys.AiAssistant.DailyMessageLimit, dailyLimit),
             [GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit] = Setting(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit, dailyTenantLimit),
             [GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit] = Setting(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit, concurrentRunLimit),
@@ -424,11 +541,12 @@ public sealed class SendAiMessageCommandHandlerTests
         Guid conversationId,
         string content,
         string? imageAttachmentsJson,
+        string? selectedReferencesJson,
         string modelId,
         string mode,
         Guid? actorId = null)
     {
-        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}:{imageAttachmentsJson}";
+        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}:{imageAttachmentsJson}:{selectedReferencesJson}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     }
 
@@ -445,6 +563,22 @@ public sealed class SendAiMessageCommandHandlerTests
             data = image.Data.Trim(),
             fileName = string.IsNullOrWhiteSpace(image.FileName) ? null : image.FileName.Trim(),
             sizeBytes = image.SizeBytes
+        }), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    }
+
+    private static string? CreateReferencesJson(IReadOnlyList<AiSelectedReferenceDto>? references)
+    {
+        if (references is null || references.Count == 0)
+        {
+            return null;
+        }
+
+        return JsonSerializer.Serialize(references.Select(reference => new
+        {
+            kind = reference.Kind.Trim(),
+            referenceId = reference.ReferenceId,
+            displayName = reference.DisplayName.Trim(),
+            summary = string.IsNullOrWhiteSpace(reference.Summary) ? null : reference.Summary.Trim()
         }), new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 

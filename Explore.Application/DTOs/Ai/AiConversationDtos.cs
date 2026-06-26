@@ -16,6 +16,7 @@ public sealed class SendAiMessageRequestDto
 {
     public string Content { get; set; } = string.Empty;
     public IReadOnlyList<AiMessageImageInputDto> Images { get; set; } = [];
+    public IReadOnlyList<AiSelectedReferenceDto> References { get; set; } = [];
     public string IdempotencyKey { get; set; } = string.Empty;
     public Guid? ActorId { get; set; }
     public string? ModelId { get; set; }

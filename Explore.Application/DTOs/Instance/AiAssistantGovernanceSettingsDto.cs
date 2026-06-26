@@ -6,7 +6,7 @@ namespace Explore.Application.DTOs.Instance;
 public sealed class AiAssistantGovernanceSettingsDto
 {
     public bool Enabled { get; set; }
-    public string Provider { get; set; } = "openai-compatible";
+    public string Provider { get; set; } = "openai";
     public string EndpointUrl { get; set; } = string.Empty;
     public string ApiKey { get; set; } = string.Empty;
     public string ModelId { get; set; } = string.Empty;

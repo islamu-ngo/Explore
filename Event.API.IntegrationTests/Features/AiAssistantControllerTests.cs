@@ -102,10 +102,12 @@ public sealed class AiAssistantControllerTests
     }
 
     [Test]
-    public async Task SearchReferences_DispatchesQueryAndReturnsHalCollectionWithEventLinks()
+    public async Task SearchReferences_DispatchesQueryAndReturnsHalCollectionWithKindLinks()
     {
         var eventId = Guid.CreateVersion7();
-        var reference = new AiReferenceSearchResultDto(
+        var actorId = Guid.CreateVersion7();
+        var organizationId = Guid.CreateVersion7();
+        var eventReference = new AiReferenceSearchResultDto(
             "Event",
             eventId,
             "Community Iftar",
@@ -115,12 +117,36 @@ public sealed class AiAssistantControllerTests
             "Published",
             "Public",
             "Local");
+        var actorReference = new AiReferenceSearchResultDto(
+            "Actor",
+            actorId,
+            "Amina Speaker",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+        var organizationReference = new AiReferenceSearchResultDto(
+            "Organization",
+            organizationId,
+            "Community Center",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
         _mediator.Send(Arg.Any<SearchAiReferencesQuery>(), Arg.Any<CancellationToken>())
-            .Returns([reference]);
+            .Returns([eventReference, actorReference, organizationReference]);
         _linkGenerator.GeneratePath(RouteNames.SearchAiReferences, Arg.Any<object>(), Arg.Any<HttpContext>())
             .Returns("/api/ai/assistant/references?searchTerm=iftar&limit=20");
         _linkGenerator.GeneratePath(RouteNames.GetEventById, Arg.Any<object>(), Arg.Any<HttpContext>())
             .Returns($"/api/Event/{eventId}");
+        _linkGenerator.GeneratePath(RouteNames.GetActorById, Arg.Any<object>(), Arg.Any<HttpContext>())
+            .Returns($"/api/Actor/{actorId}");
+        _linkGenerator.GeneratePath(RouteNames.GetOrganizationById, Arg.Any<object>(), Arg.Any<HttpContext>())
+            .Returns($"/api/Organization/{organizationId}");
         var controller = CreateController();
 
         var actionResult = await controller.SearchReferences("iftar", 999, CancellationToken.None);
@@ -130,11 +156,15 @@ public sealed class AiAssistantControllerTests
         var resource = ok!.Value as HalCollectionResource<AiReferenceSearchResultDto>;
         await Assert.That(resource).IsNotNull();
         await Assert.That(resource!.PageSize).IsEqualTo(20);
-        await Assert.That(resource.TotalCount).IsEqualTo(1);
+        await Assert.That(resource.TotalCount).IsEqualTo(3);
         await Assert.That(resource.Links[LinkRelations.Self].Href).Contains("references");
-        var item = resource.Embedded.Items.Single();
-        await Assert.That(item.Data).IsEqualTo(reference);
-        await Assert.That(item.Links[LinkRelations.Event].Href).Contains(eventId.ToString());
+        var eventItem = resource.Embedded.Items.Single(item => item.Data.Kind == "Event");
+        await Assert.That(eventItem.Data).IsEqualTo(eventReference);
+        await Assert.That(eventItem.Links[LinkRelations.Event].Href).Contains(eventId.ToString());
+        var actorItem = resource.Embedded.Items.Single(item => item.Data.Kind == "Actor");
+        await Assert.That(actorItem.Links[LinkRelations.Actor].Href).Contains(actorId.ToString());
+        var organizationItem = resource.Embedded.Items.Single(item => item.Data.Kind == "Organization");
+        await Assert.That(organizationItem.Links[LinkRelations.Organization].Href).Contains(organizationId.ToString());
         await _mediator.Received(1).Send(
             Arg.Is<SearchAiReferencesQuery>(query => query.SearchTerm == "iftar" && query.Limit == 20),
             Arg.Any<CancellationToken>());

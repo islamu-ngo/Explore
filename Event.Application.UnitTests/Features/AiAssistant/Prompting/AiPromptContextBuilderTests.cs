@@ -30,7 +30,31 @@ public sealed class AiPromptContextBuilderTests
     }
 
     [Test]
-    public async Task Build_WhenToolProposalsEnabled_AddsCreateEventDraftSchemaOnly()
+    public async Task Build_WhenConversationHasSelectedReferences_AddsBoundedReferenceContext()
+    {
+        var conversation = CreateConversation();
+        var referenceId = Guid.CreateVersion7();
+        conversation.AddReference(
+            AiReferenceKind.Event,
+            referenceId,
+            "Community Iftar",
+            "Public evening program.",
+            conversation.UserId,
+            DateTime.UtcNow);
+        conversation.AddMessage(AiMessageRole.User, "Draft from this.", conversation.UserId, DateTime.UtcNow);
+
+        var request = new AiPromptContextBuilder().Build(conversation, CreateSettings(), AiProviderDefaults.FakeModelId);
+
+        await Assert.That(request.Messages.Count).IsEqualTo(2);
+        await Assert.That(request.Messages[0].Role).IsEqualTo(AiMessageRole.System);
+        await Assert.That(request.Messages[0].Content).Contains("<selected_references>");
+        await Assert.That(request.Messages[0].Content).Contains($"id=\"{referenceId}\"");
+        await Assert.That(request.Messages[0].Content).Contains("<title>Community Iftar</title>");
+        await Assert.That(request.Messages[1].Content).Contains("Draft from this.");
+    }
+
+    [Test]
+    public async Task Build_WhenToolProposalsEnabled_AddsStructuredCreateEventDraftSchema()
     {
         var conversation = CreateConversation();
         conversation.AddMessage(AiMessageRole.User, "Draft an event", conversation.UserId, DateTime.UtcNow);
@@ -45,8 +69,12 @@ public sealed class AiPromptContextBuilderTests
         await Assert.That(request.ActionSchema.JsonSchema).Contains("\"type\": \"object\"");
         await Assert.That(request.ActionSchema.JsonSchema).Contains("\"additionalProperties\": false");
         await Assert.That(request.ActionSchema.JsonSchema).Contains("\"organizationId\"");
-        await Assert.That(request.ActionSchema.JsonSchema).DoesNotContain("\"eventStatusId\"");
+        await Assert.That(request.ActionSchema.JsonSchema).Contains("\"location\"");
+        await Assert.That(request.ActionSchema.JsonSchema).Contains("\"room\"");
+        await Assert.That(request.ActionSchema.JsonSchema).Contains("\"session\"");
         await Assert.That(request.ActionSchema.JsonSchema).DoesNotContain("\"sessions\"");
+        await Assert.That(request.ActionSchema.JsonSchema).DoesNotContain("\"agendaItems\"");
+        await Assert.That(request.ActionSchema.JsonSchema).DoesNotContain("\"eventStatusId\"");
     }
 
     [Test]
@@ -62,10 +90,12 @@ public sealed class AiPromptContextBuilderTests
             AiProviderDefaults.FakeModelId);
 
         await Assert.That(request.ActionSchema).IsNull();
+        await Assert.That(request.Options.ToolProposalsEnabled).IsFalse();
+        await Assert.That(request.SystemPrompt).Contains("no action tool schema is available");
     }
 
     [Test]
-    public async Task Build_WhenBuildModeButToolSettingDisabled_KeepsBuildPromptWithoutExposingTools()
+    public async Task Build_WhenBuildModeButToolSettingDisabled_UsesTextOnlyBuildFallback()
     {
         var conversation = CreateConversation();
         conversation.AddMessage(AiMessageRole.User, "Create an event draft", conversation.UserId, DateTime.UtcNow);
@@ -76,7 +106,8 @@ public sealed class AiPromptContextBuilderTests
             AiProviderDefaults.FakeModelId,
             allowToolProposals: true);
 
-        await Assert.That(request.SystemPrompt).Contains("You may propose actions only through explicit tool calls");
+        await Assert.That(request.SystemPrompt).Contains("no action tool schema is available");
+        await Assert.That(request.SystemPrompt).DoesNotContain("You may propose actions only through explicit tool calls");
         await Assert.That(request.SystemPrompt).DoesNotContain("The assistant is in Ask mode");
         await Assert.That(request.SystemPrompt).DoesNotContain("switch to Build mode");
         await Assert.That(request.Options.ToolProposalsEnabled).IsFalse();

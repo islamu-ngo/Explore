@@ -43,8 +43,13 @@ public sealed class AiReplayReportGeneratorTests
         inspectorScenario.Summary.Should().Contain("MCP Inspector");
         inspectorScenario.Diagnostics.Should().Contain("tools/list");
         inspectorScenario.Diagnostics.Should().Contain("resources/list");
+        inspectorScenario.Diagnostics.Should().Contain("resources/templates/list");
         inspectorScenario.Diagnostics.Should().Contain("prompts/list");
         inspectorScenario.Diagnostics.Should().Contain("propose_create_event_draft");
+        inspectorScenario.Diagnostics.Should().Contain("propose_update_event_draft");
+        inspectorScenario.Diagnostics.Should().Contain("propose_publish_event");
+        inspectorScenario.Diagnostics.Should().Contain("propose_create_event_session");
+        inspectorScenario.Diagnostics.Should().Contain("41 registry-projected proposal tools");
         inspectorScenario.DatabaseSideEffectsDetected.Should().BeFalse();
     }
 
@@ -58,6 +63,8 @@ public sealed class AiReplayReportGeneratorTests
 
         projectedToolScenario.Status.Should().Be(AiReplayScenarioStatus.Pass);
         projectedToolScenario.Diagnostics.Should().Contain("propose_create_event_draft");
+        projectedToolScenario.Diagnostics.Should().Contain("propose_update_event_draft");
+        projectedToolScenario.Diagnostics.Should().Contain("sub-resource propose_* tools");
         projectedToolScenario.Diagnostics.Should().Contain("allow-listed");
         confirmationScenario.Status.Should().Be(AiReplayScenarioStatus.Pass);
         confirmationScenario.Summary.Should().Contain("proposals only");

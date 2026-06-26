@@ -40,6 +40,12 @@ public sealed class AiProviderSettingsBootstrapWorker(
             return;
         }
 
+        if ((providerId == AiProviderSettings.ProviderOpenAi || providerId == AiProviderSettings.ProviderAnthropic)
+            && (string.IsNullOrWhiteSpace(settings.ApiKey) || string.IsNullOrWhiteSpace(settings.ModelId)))
+        {
+            return;
+        }
+
         if ((providerId == AiProviderSettings.ProviderOpenAiCompatible || providerId == AiProviderSettings.ProviderAnthropicCompatible)
             && (string.IsNullOrWhiteSpace(settings.EndpointUrl) || string.IsNullOrWhiteSpace(settings.ModelId)))
         {
@@ -57,10 +63,18 @@ public sealed class AiProviderSettingsBootstrapWorker(
                 await SeedIfMissingAsync(systemSettings, upsertService, GovernanceSettingKeys.AiAssistant.Enabled, settings.Enabled).ConfigureAwait(false);
                 await SeedIfMissingAsync(systemSettings, upsertService, GovernanceSettingKeys.AiAssistant.Provider, AiProviderDefaults.ProviderIdToLabel(providerId)).ConfigureAwait(false);
 
-                if (providerId == AiProviderSettings.ProviderOpenAiCompatible || providerId == AiProviderSettings.ProviderAnthropicCompatible)
+                if (providerId == AiProviderSettings.ProviderOpenAi
+                    || providerId == AiProviderSettings.ProviderAnthropic
+                    || providerId == AiProviderSettings.ProviderOpenAiCompatible
+                    || providerId == AiProviderSettings.ProviderAnthropicCompatible)
                 {
                     var modelId = settings.ModelId.Trim();
-                    await SeedIfMissingAsync(systemSettings, upsertService, GovernanceSettingKeys.AiAssistant.EndpointUrl, settings.EndpointUrl.Trim()).ConfigureAwait(false);
+                    if (providerId == AiProviderSettings.ProviderOpenAiCompatible
+                        || providerId == AiProviderSettings.ProviderAnthropicCompatible)
+                    {
+                        await SeedIfMissingAsync(systemSettings, upsertService, GovernanceSettingKeys.AiAssistant.EndpointUrl, settings.EndpointUrl.Trim()).ConfigureAwait(false);
+                    }
+
                     await SeedIfMissingAsync(systemSettings, upsertService, GovernanceSettingKeys.AiAssistant.ModelId, modelId).ConfigureAwait(false);
                     await SeedIfMissingAsync(systemSettings, upsertService, GovernanceSettingKeys.AiAssistant.AllowedModelIds, new[] { modelId }).ConfigureAwait(false);
 

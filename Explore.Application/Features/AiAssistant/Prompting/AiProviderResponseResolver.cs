@@ -11,6 +11,7 @@ public sealed class AiProviderResponseResolver
 {
     private const string DefaultFailureCode = "invalid_tool_arguments";
     private const string DefaultFailureMessage = "AI provider returned invalid action payload JSON.";
+    private const string InvalidResponseFailureCode = "invalid_response";
 
     private readonly IAiChatProvider _chatProvider;
     private readonly AiStructuredActionParser _structuredActionParser;
@@ -28,19 +29,36 @@ public sealed class AiProviderResponseResolver
         CancellationToken cancellationToken)
     {
         var firstAttempt = await SendAndParseAsync(providerPayload, cancellationToken);
-        if (firstAttempt.Succeeded || firstAttempt.ParseResult is null)
+        if (firstAttempt.Succeeded)
         {
             return firstAttempt;
         }
 
-        var correctionPayload = providerPayload with
+        if (firstAttempt.ParseResult is not null)
+        {
+            var correctionPayload = providerPayload with
+            {
+                Messages = providerPayload.Messages
+                    .Append(new AiChatMessage(AiMessageRole.User, BuildSelfCorrectionMessage(firstAttempt.ParseResult)))
+                    .ToList()
+            };
+
+            return await SendAndParseAsync(correctionPayload, cancellationToken);
+        }
+
+        if (!ShouldRetryEmptyProviderResponse(firstAttempt))
+        {
+            return firstAttempt;
+        }
+
+        var emptyResponseCorrectionPayload = providerPayload with
         {
             Messages = providerPayload.Messages
-                .Append(new AiChatMessage(AiMessageRole.User, BuildSelfCorrectionMessage(firstAttempt.ParseResult)))
+                .Append(new AiChatMessage(AiMessageRole.User, BuildEmptyResponseCorrectionMessage(providerPayload)))
                 .ToList()
         };
 
-        return await SendAndParseAsync(correctionPayload, cancellationToken);
+        return await SendAndParseAsync(emptyResponseCorrectionPayload, cancellationToken);
     }
 
     private async Task<AiProviderResponseResolution> SendAndParseAsync(
@@ -83,6 +101,25 @@ public sealed class AiProviderResponseResolver
 
             {correction}
             Return either no tool call, or retry with corrected tool call arguments only. Do not reveal validation internals or include raw rejected arguments.
+            """;
+    }
+
+    private static bool ShouldRetryEmptyProviderResponse(AiProviderResponseResolution resolution) =>
+        string.Equals(resolution.FailureCode, InvalidResponseFailureCode, StringComparison.Ordinal)
+        && !string.IsNullOrWhiteSpace(resolution.FailureMessage)
+        && resolution.FailureMessage.Contains("empty", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildEmptyResponseCorrectionMessage(AiChatPayload providerPayload)
+    {
+        var actionInstruction = providerPayload.Options.ToolProposalsEnabled && providerPayload.ActionSchema is not null
+            ? "If the poster contains enough event details, return one valid platform tool call using the provided schema. If required details are missing, answer in plain text with the missing details instead."
+            : "Answer in plain text only because no platform tool schema is available for this request.";
+
+        return $"""
+            The previous provider response did not include usable assistant text or a valid platform tool call.
+
+            {actionInstruction}
+            Do not return empty content, thinking-only content, or non-text content without a valid platform tool call.
             """;
     }
 }

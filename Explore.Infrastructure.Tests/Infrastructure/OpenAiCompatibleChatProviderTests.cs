@@ -113,6 +113,169 @@ public sealed class OpenAiCompatibleChatProviderTests
     }
 
     [Test]
+    public async Task SendAsync_WhenUserMessageHasImage_PostsOpenAiImageUrlContentParts()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "choices": [
+                {
+                  "message": { "content": "This is an event flyer." },
+                  "finish_reason": "stop"
+                }
+              ]
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+        const string imageData = "aW1hZ2UtYnl0ZXM=";
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Describe this picture:",
+            images:
+            [
+                new AiChatImage("image/jpeg", imageData)
+            ]));
+
+        await Assert.That(result.Succeeded).IsTrue();
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        var message = document.RootElement.GetProperty("messages")[1];
+        var content = message.GetProperty("content");
+        await Assert.That(message.GetProperty("role").GetString()).IsEqualTo("user");
+        await Assert.That(content.ValueKind).IsEqualTo(JsonValueKind.Array);
+        await Assert.That(content[0].GetProperty("type").GetString()).IsEqualTo("text");
+        await Assert.That(content[0].GetProperty("text").GetString()).IsEqualTo("Describe this picture:");
+
+        var imagePart = content[1];
+        await Assert.That(imagePart.GetProperty("type").GetString()).IsEqualTo("image_url");
+        await Assert.That(imagePart.GetProperty("image_url").GetProperty("url").GetString())
+            .IsEqualTo($"data:image/jpeg;base64,{imageData}");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenLocalEndpointHasImageAndToolProposal_DisablesTemplateThinking()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "choices": [
+                {
+                  "message": {
+                    "content": "",
+                    "tool_calls": [
+                      {
+                        "type": "function",
+                        "function": {
+                          "name": "create_event_draft",
+                          "arguments": "{\"title\":\"Community Dinner\"}"
+                        }
+                      }
+                    ]
+                  },
+                  "finish_reason": "tool_calls"
+                }
+              ]
+            }
+            """));
+        var settings = CreateSettings();
+        settings.EndpointUrl = "http://127.0.0.1:1337/v1";
+        settings.AllowLocalProviderEndpoints = true;
+        var provider = CreateProvider(handler, settings);
+        const string imageData = "aW1hZ2UtYnl0ZXM=";
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Create event draft for this event poster",
+            toolProposalsEnabled: true,
+            actionSchema: """
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["title"],
+                  "properties": { "title": { "type": "string" } }
+                }
+                """,
+            images:
+            [
+                new AiChatImage("image/png", imageData)
+            ]));
+
+        await Assert.That(result.Succeeded).IsTrue();
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("chat_template_kwargs").GetProperty("enable_thinking").GetBoolean()).IsFalse();
+        await Assert.That(root.GetProperty("tools")[0].GetProperty("function").GetProperty("name").GetString())
+            .IsEqualTo("create_event_draft");
+        await Assert.That(root.GetProperty("messages")[1].GetProperty("content")[1].GetProperty("type").GetString())
+            .IsEqualTo("image_url");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenExternalEndpointIsUsed_DoesNotSendTemplateThinkingOverride()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "choices": [
+                {
+                  "message": { "content": "Assistant response" },
+                  "finish_reason": "stop"
+                }
+              ]
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+
+        var result = await provider.SendAsync(CreateRequest("Hello"));
+
+        await Assert.That(result.Succeeded).IsTrue();
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        await Assert.That(document.RootElement.TryGetProperty("chat_template_kwargs", out _)).IsFalse();
+    }
+
+    [Test]
+    public async Task SendAsync_WhenImageBackedBuildModeReturnsBlankTextWithoutToolCall_ReturnsRetryableEmptyResponseFailure()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "choices": [
+                {
+                  "message": { "content": "" },
+                  "finish_reason": "stop"
+                }
+              ]
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+        const string imageData = "aW1hZ2UtYnl0ZXM=";
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Create event draft for this event poster",
+            toolProposalsEnabled: true,
+            actionSchema: """
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["title"],
+                  "properties": { "title": { "type": "string" } }
+                }
+                """,
+            images:
+            [
+                new AiChatImage("image/png", imageData)
+            ]));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("invalid_response");
+        await Assert.That(result.Error.Message).Contains("empty text response");
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("tools")[0].GetProperty("function").GetProperty("name").GetString())
+            .IsEqualTo("create_event_draft");
+        var content = root.GetProperty("messages")[1].GetProperty("content");
+        await Assert.That(content[1].GetProperty("type").GetString()).IsEqualTo("image_url");
+    }
+
+    [Test]
     public async Task SendAsync_WhenProviderReturnsToolCall_ReturnsCreateEventDraftCandidate()
     {
         var handler = new RecordingMessageHandler(_ => JsonResponse("""
@@ -363,9 +526,10 @@ public sealed class OpenAiCompatibleChatProviderTests
         bool structuredOutputEnabled = false,
         AiStructuredOutputSchema? structuredOutputSchema = null,
         int timeoutSeconds = 30,
-        AiChatProviderConfiguration? providerConfiguration = null) => new(
+        AiChatProviderConfiguration? providerConfiguration = null,
+        IReadOnlyList<AiChatImage>? images = null) => new(
             "gpt-test",
-            [new AiChatMessage(AiMessageRole.User, userMessage)],
+            [new AiChatMessage(AiMessageRole.User, userMessage, images: images)],
             "You are a safe assistant.",
             new AiChatOptions(
                 8000,

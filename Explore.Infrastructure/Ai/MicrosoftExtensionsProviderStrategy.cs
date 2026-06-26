@@ -1,5 +1,5 @@
-// ABOUTME: Strategy for SDK-backed AI providers (openai-sdk and azure-openai) via MEAI IChatClient.
-// ABOUTME: Delegates to MicrosoftExtensionsAiChatProvider; supports both OpenAI SDK and Azure OpenAI.
+// ABOUTME: Strategy for SDK-backed Azure OpenAI providers via MEAI IChatClient.
+// ABOUTME: Delegates to MicrosoftExtensionsAiChatProvider for Azure-specific SDK dispatch.
 
 using Explore.Application.Contracts.Infrastructure.Ai;
 
@@ -14,11 +14,10 @@ public sealed class MicrosoftExtensionsProviderStrategy : IAiProviderStrategy
         _provider = provider;
     }
 
-    public int ProviderId => AiProviderSettings.ProviderOpenAiSdk;
+    public int ProviderId => AiProviderSettings.ProviderAzureOpenAi;
 
     public bool SupportsProvider(int providerId) =>
-        providerId == AiProviderSettings.ProviderOpenAiSdk
-        || providerId == AiProviderSettings.ProviderAzureOpenAi;
+        providerId == AiProviderSettings.ProviderAzureOpenAi;
 
     public Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default) =>
         _provider.SendAsync(request, cancellationToken);

@@ -7,7 +7,7 @@ using Explore.Domain.Constants;
 
 public static class AiAssistantSettingDefinitions
 {
-    private static readonly string[] AllowedProviders = ["none", "fake", "openai-compatible", "anthropic-compatible"];
+    private static readonly string[] AllowedProviders = ["none", "fake", "openai", "openai-compatible", "anthropic", "anthropic-compatible"];
     private const string DefaultTimeoutSeconds = "120";
 
     public static readonly SettingDefinition Enabled = new(
@@ -23,7 +23,7 @@ public static class AiAssistantSettingDefinitions
         ValueType: SettingValueType.String,
         DefaultValue: "\"none\"",
         Category: "AiAssistant",
-        Description: "Selected AI provider. Use fake for deterministic tests and compatible providers for configured endpoints.",
+        Description: "Selected AI provider. Use OpenAI or Anthropic for official APIs, fake for deterministic tests, and compatible providers for configured endpoints.",
         MaxScope: SettingScope.Tenant,
         AllowedValues: AllowedProviders);
 

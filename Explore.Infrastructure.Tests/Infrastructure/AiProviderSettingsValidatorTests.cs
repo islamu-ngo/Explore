@@ -54,12 +54,12 @@ public sealed class AiProviderSettingsValidatorTests
     }
 
     [Test]
-    public async Task Validate_OpenAiSdkRequiresModelAndKeyButNotEndpoint()
+    public async Task Validate_OpenAiRequiresModelAndKeyButNotEndpoint()
     {
         var missing = _validator.Validate(null, new AiProviderSettings
         {
             Enabled = true,
-            Provider = AiProviderSettings.ProviderOpenAiSdk
+            Provider = AiProviderSettings.ProviderOpenAi
         });
 
         await Assert.That(missing.Succeeded).IsFalse();
@@ -69,8 +69,32 @@ public sealed class AiProviderSettingsValidatorTests
         var configured = _validator.Validate(null, new AiProviderSettings
         {
             Enabled = true,
-            Provider = AiProviderSettings.ProviderOpenAiSdk,
+            Provider = AiProviderSettings.ProviderOpenAi,
             ModelId = "gpt-test",
+            ApiKey = "test-key"
+        });
+
+        await Assert.That(configured.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task Validate_AnthropicRequiresModelAndKeyButNotEndpoint()
+    {
+        var missing = _validator.Validate(null, new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderAnthropic
+        });
+
+        await Assert.That(missing.Succeeded).IsFalse();
+        await Assert.That(missing.FailureMessage).Contains("ModelId");
+        await Assert.That(missing.FailureMessage).Contains("ApiKey");
+
+        var configured = _validator.Validate(null, new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderAnthropic,
+            ModelId = "claude-test",
             ApiKey = "test-key"
         });
 

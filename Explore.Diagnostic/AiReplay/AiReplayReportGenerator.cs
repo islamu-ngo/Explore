@@ -1,6 +1,8 @@
 // ABOUTME: Generates deterministic fake/replay AI usability reports for assistant and MCP flows.
 // ABOUTME: Exercises registry, HAL catalog, plan validation, and recovery without live providers or persistence writes.
 
+using System.Globalization;
+using System.Text;
 using Explore.Application.Features.AiAssistant.Plans;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Domain.Ai;
@@ -12,9 +14,19 @@ public sealed class AiReplayReportGenerator
     private const string Version = "atcr-ai-replay-v1";
     private const string RequiredCreateEventHalRel = "create-event";
     private const string CreateEventDraftToolName = "CreateEventDraft";
-    private const string ProjectedCreateEventDraftMcpToolName = "propose_create_event_draft";
     private const string ValidFixturePayloadJson = "{\"title\":\"Replay fixture\"}";
     private const string MissingTitleFixturePayloadJson = "{\"description\":\"Replay fixture missing a required field\"}";
+
+    private static readonly string[] RequiredProjectedMcpToolNames =
+    [
+        "propose_create_event_draft",
+        "propose_update_event_draft",
+        "propose_publish_event",
+        "propose_delete_event",
+        "propose_create_event_session",
+        "propose_set_event_custom_property_value",
+        "propose_apply_event_template_sync"
+    ];
 
     private static readonly Guid TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000011");
     private static readonly Guid ConversationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000012");
@@ -85,17 +97,16 @@ public sealed class AiReplayReportGenerator
 
     private AiReplayScenarioResult ReplayMcpInspectorContract()
     {
-        var definition = _registry.FindDefinition(AiProposedActionKind.CreateEventDraft);
+        var mcpDefinitions = GetMcpProposalDefinitions();
+        var projectedToolNames = BuildProjectedToolNames(mcpDefinitions);
 
-        if (definition is not null &&
-            definition.ExposeToMcp &&
-            definition.Name == CreateEventDraftToolName &&
-            definition.ConfirmationMode == AiToolConfirmationMode.Required)
+        if (HasFullMcpProposalSurface(mcpDefinitions, projectedToolNames) &&
+            mcpDefinitions.All(definition => definition.ConfirmationMode == AiToolConfirmationMode.Required))
         {
             return AiReplayScenarioResult.Pass(
                 AiReplayScenarioCodes.McpInspectorContract,
                 "MCP Inspector replay has a bounded discovery checklist for tools, resources, prompts, and proposal-only calls.",
-                $"Expected smoke scope: tools/list, resources/list, prompts/list, list_ai_tool_contracts, {ProjectedCreateEventDraftMcpToolName}, ai_conversations, ai_conversation_detail, and create_event_draft_with_confirmation; do not confirm or execute proposed actions.");
+                $"Expected smoke scope: tools/list, resources/list, resources/templates/list, prompts/list, list_ai_tool_contracts, event_management_context, manage_event_with_confirmation, ai_conversations, ai_conversation_detail, and {mcpDefinitions.Length} registry-projected proposal tools including {string.Join(", ", RequiredProjectedMcpToolNames)}; do not confirm or execute proposed actions.");
         }
 
         return AiReplayScenarioResult.Fail(
@@ -109,10 +120,13 @@ public sealed class AiReplayReportGenerator
     {
         var definition = _registry.FindDefinition(AiProposedActionKind.CreateEventDraft);
         var validation = _registry.ValidatePayload(AiProposedActionKind.CreateEventDraft, ValidFixturePayloadJson);
+        var mcpDefinitions = GetMcpProposalDefinitions();
 
         if (definition is not null &&
             definition.ExposeToMcp &&
             definition.ConfirmationMode == AiToolConfirmationMode.Required &&
+            mcpDefinitions.Length == Enum.GetValues<AiProposedActionKind>().Length &&
+            mcpDefinitions.All(candidate => candidate.ConfirmationMode == AiToolConfirmationMode.Required) &&
             validation.Succeeded)
         {
             return AiReplayScenarioResult.Pass(
@@ -130,18 +144,24 @@ public sealed class AiReplayReportGenerator
 
     private AiReplayScenarioResult ReplayMcpProjectedToolSelection()
     {
-        var definition = _registry.FindDefinition(AiProposedActionKind.CreateEventDraft);
+        var createDefinition = _registry.FindDefinition(AiProposedActionKind.CreateEventDraft);
+        var updateDefinition = _registry.FindDefinition(AiProposedActionKind.UpdateEventDraft);
+        var projectedToolNames = BuildProjectedToolNames(GetMcpProposalDefinitions());
 
-        if (definition is not null &&
-            definition.ExposeToMcp &&
-            definition.AllowedPayloadFields.Contains("title") &&
-            definition.ForbiddenPayloadFields.Contains("tenantId") &&
-            ProjectedCreateEventDraftMcpToolName.StartsWith("propose_", StringComparison.Ordinal))
+        if (createDefinition is not null &&
+            updateDefinition is not null &&
+            createDefinition.ExposeToMcp &&
+            updateDefinition.ExposeToMcp &&
+            createDefinition.AllowedPayloadFields.Contains("title") &&
+            updateDefinition.AllowedPayloadFields.Contains("expectedConcurrencyStamp") &&
+            createDefinition.ForbiddenPayloadFields.Contains("tenantId") &&
+            updateDefinition.ForbiddenPayloadFields.Contains("tenantId") &&
+            RequiredProjectedMcpToolNames.All(projectedToolNames.Contains))
         {
             return AiReplayScenarioResult.Pass(
                 AiReplayScenarioCodes.McpProjectedToolSelection,
-                "MCP replay selects the projected proposal tool for event drafts instead of inventing privileged fields.",
-                $"Use {ProjectedCreateEventDraftMcpToolName} with conversationId plus allow-listed draft fields; hidden runtime fields and confirmation endpoints remain out of scope for agents.");
+                "MCP replay selects registry-projected event-management proposal tools instead of inventing privileged fields.",
+                "Use propose_create_event_draft, propose_update_event_draft, propose_publish_event, and sub-resource propose_* tools with conversationId plus allow-listed fields; hidden runtime fields and confirmation endpoints remain out of scope for agents.");
         }
 
         return AiReplayScenarioResult.Fail(
@@ -154,17 +174,21 @@ public sealed class AiReplayReportGenerator
     private AiReplayScenarioResult ReplayMcpConfirmationRequired()
     {
         var definition = _registry.FindDefinition(AiProposedActionKind.CreateEventDraft);
+        var mcpDefinitions = GetMcpProposalDefinitions();
         var instructions = definition?.EffectiveAgentMetadata.SafeActionInstructions ?? string.Empty;
 
         if (definition is not null &&
             definition.ConfirmationMode == AiToolConfirmationMode.Required &&
             definition.EffectiveAgentMetadata.ApprovalMode == AiToolApprovalMode.HumanConfirmationRequired &&
+            mcpDefinitions.All(candidate =>
+                candidate.ConfirmationMode == AiToolConfirmationMode.Required &&
+                candidate.EffectiveAgentMetadata.ApprovalMode == AiToolApprovalMode.HumanConfirmationRequired) &&
             instructions.Contains("proposal", StringComparison.OrdinalIgnoreCase) &&
             instructions.Contains("confirms", StringComparison.OrdinalIgnoreCase))
         {
             return AiReplayScenarioResult.Pass(
                 AiReplayScenarioCodes.McpConfirmationRequired,
-                "MCP replay states that event-draft calls create proposals only and require product confirmation before side effects.",
+                "MCP replay states that event-management calls create proposals only and require product confirmation before side effects.",
                 "Agent-facing guidance preserves proposal-vs-execution language and does not claim that an event exists before confirmation.");
         }
 
@@ -249,4 +273,62 @@ public sealed class AiReplayReportGenerator
             ]);
 
     private static HashSet<string> HalSet(params string[] rels) => new(rels, StringComparer.OrdinalIgnoreCase);
+
+    private AiToolDefinition[] GetMcpProposalDefinitions()
+        => _registry.Definitions
+            .Where(definition => definition.ExposeToMcp)
+            .OrderBy(definition => definition.Kind)
+            .ToArray();
+
+    private static bool HasFullMcpProposalSurface(
+        AiToolDefinition[] mcpDefinitions,
+        HashSet<string> projectedToolNames)
+        => mcpDefinitions.Length == Enum.GetValues<AiProposedActionKind>().Length &&
+           RequiredProjectedMcpToolNames.All(projectedToolNames.Contains);
+
+    private static HashSet<string> BuildProjectedToolNames(IEnumerable<AiToolDefinition> definitions)
+        => definitions
+            .Select(definition => $"propose_{ToSnakeCase(definition.Name)}")
+            .ToHashSet(StringComparer.Ordinal);
+
+    private static string ToSnakeCase(string value)
+    {
+        var builder = new StringBuilder(value.Length + 8);
+        var previousWasSeparator = false;
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            var character = value[index];
+            if (!char.IsLetterOrDigit(character))
+            {
+                AppendSeparator(builder, ref previousWasSeparator);
+                continue;
+            }
+
+            if (char.IsUpper(character) &&
+                index > 0 &&
+                !previousWasSeparator &&
+                char.IsLetterOrDigit(value[index - 1]) &&
+                !char.IsUpper(value[index - 1]))
+            {
+                AppendSeparator(builder, ref previousWasSeparator);
+            }
+
+            builder.Append(char.ToLower(character, CultureInfo.InvariantCulture));
+            previousWasSeparator = false;
+        }
+
+        return builder.ToString().Trim('_');
+    }
+
+    private static void AppendSeparator(StringBuilder builder, ref bool previousWasSeparator)
+    {
+        if (builder.Length == 0 || previousWasSeparator)
+        {
+            return;
+        }
+
+        builder.Append('_');
+        previousWasSeparator = true;
+    }
 }

@@ -101,7 +101,9 @@ public static class ConfigurationExtensions
         var aiApiKey = ReadFirst(config, "AI_API_KEY", "AI__API_KEY", "AiProvider:ApiKey");
         var aiProviderMasterCode = ReadFirst(config, "AI_PROVIDER", "AI__PROVIDER", "AiProvider:Provider")?.Trim().ToUpperInvariant().Replace('-', '_');
         var aiProviderId = MapProviderMasterCodeToId(aiProviderMasterCode);
-        var aiProviderDefaultsAvailable = !string.IsNullOrWhiteSpace(aiEndpointUrl) && !string.IsNullOrWhiteSpace(aiModelId);
+        var aiProviderDefaultsAvailable = aiProviderMasterCode is "OPENAI" or "ANTHROPIC"
+            ? !string.IsNullOrWhiteSpace(aiApiKey) && !string.IsNullOrWhiteSpace(aiModelId)
+            : !string.IsNullOrWhiteSpace(aiEndpointUrl) && !string.IsNullOrWhiteSpace(aiModelId);
 
         var mappedConfig = new Dictionary<string, string?>();
 
@@ -220,8 +222,9 @@ public static class ConfigurationExtensions
         "FAKE" => "2",
         "OPENAI_COMPATIBLE" => "3",
         "ANTHROPIC_COMPATIBLE" => "4",
-        "OPENAI_SDK" => "5",
+        "OPENAI" => "5",
         "AZURE_OPENAI" => "6",
+        "ANTHROPIC" => "7",
         _ => null
     };
 

@@ -9,6 +9,7 @@ public enum AiProviderKind
     Fake = 2,
     OpenAiCompatible = 3,
     AnthropicCompatible = 4,
-    OpenAiSdk = 5,
-    AzureOpenAi = 6
+    OpenAi = 5,
+    AzureOpenAi = 6,
+    Anthropic = 7
 }

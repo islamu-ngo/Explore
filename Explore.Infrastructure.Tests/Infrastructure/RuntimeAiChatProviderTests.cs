@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for the runtime AI provider selector.
-// ABOUTME: Verifies fail-closed behavior and routing to fake or OpenAI-compatible adapters.
+// ABOUTME: Verifies fail-closed behavior and routing to fake, OpenAI, and compatible adapters.
 
 using System.Diagnostics.Metrics;
 using System.Net;
@@ -105,6 +105,60 @@ public sealed class RuntimeAiChatProviderTests
     }
 
     [Test]
+    public async Task SendAsync_WhenOpenAiConfigured_DelegatesToOpenAiResponsesAdapter()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "id": "resp_test",
+              "status": "completed",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    { "type": "output_text", "text": "OpenAI response" }
+                  ]
+                }
+              ],
+              "usage": { "input_tokens": 8, "output_tokens": 4, "total_tokens": 12 }
+            }
+            """));
+        var provider = CreateProvider(CreateOpenAiResponsesSettings(), handler);
+
+        var result = await provider.SendAsync(CreateRequest("Hello"));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Response!.AssistantMessage).IsEqualTo("OpenAI response");
+        await Assert.That(handler.Calls).IsEqualTo(1);
+        await Assert.That(handler.RequestUri).IsEqualTo(new Uri("https://api.openai.com/v1/responses"));
+    }
+
+    [Test]
+    public async Task SendAsync_WhenAnthropicConfigured_DelegatesToAnthropicMessagesAdapter()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "id": "msg_test",
+              "type": "message",
+              "role": "assistant",
+              "content": [
+                { "type": "text", "text": "Anthropic response" }
+              ],
+              "model": "claude-test",
+              "stop_reason": "end_turn",
+              "usage": { "input_tokens": 8, "output_tokens": 4 }
+            }
+            """));
+        var provider = CreateProvider(CreateAnthropicSettings(), handler);
+
+        var result = await provider.SendAsync(CreateRequest("Hello"));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Response!.AssistantMessage).IsEqualTo("Anthropic response");
+        await Assert.That(handler.Calls).IsEqualTo(1);
+        await Assert.That(handler.RequestUri).IsEqualTo(new Uri("https://api.anthropic.com/v1/messages"));
+    }
+
+    [Test]
     public async Task SendAsync_WhenConfiguredEndpointIsUnsafe_FailsBeforeHttpCall()
     {
         var handler = new RecordingMessageHandler(_ => throw new InvalidOperationException("HTTP should not be called."));
@@ -125,12 +179,13 @@ public sealed class RuntimeAiChatProviderTests
     }
 
     [Test]
-    public async Task SendAsync_WhenOpenAiSdkConfigured_DelegatesToMicrosoftExtensionsAdapter()
+    public async Task SendAsync_WhenAzureOpenAiConfigured_DelegatesToMicrosoftExtensionsAdapter()
     {
         var settings = new AiProviderSettings
         {
             Enabled = true,
-            Provider = AiProviderSettings.ProviderOpenAiSdk,
+            Provider = AiProviderSettings.ProviderAzureOpenAi,
+            EndpointUrl = "https://ai.example.openai.azure.com/",
             ApiKey = "test-key",
             ModelId = "gpt-test"
         };
@@ -154,7 +209,8 @@ public sealed class RuntimeAiChatProviderTests
         var provider = CreateProvider(new AiProviderSettings
         {
             Enabled = true,
-            Provider = AiProviderSettings.ProviderOpenAiSdk,
+            Provider = AiProviderSettings.ProviderAzureOpenAi,
+            EndpointUrl = "https://ai.example.openai.azure.com/",
             ApiKey = "test-key",
             ModelId = "gpt-test"
         });
@@ -179,7 +235,11 @@ public sealed class RuntimeAiChatProviderTests
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
 
         var fakeProvider = new FakeAiChatProvider();
+        var openAiResponsesProvider = new OpenAiResponsesChatProvider(
+            factory, options, validator, new BusinessMetrics(meterFactory));
         var openAiProvider = new OpenAiCompatibleChatProvider(
+            factory, options, validator, new BusinessMetrics(meterFactory));
+        var officialAnthropicProvider = new AnthropicChatProvider(
             factory, options, validator, new BusinessMetrics(meterFactory));
         var anthropicProvider = new AnthropicCompatibleChatProvider(
             factory, options, validator, new BusinessMetrics(meterFactory));
@@ -187,7 +247,9 @@ public sealed class RuntimeAiChatProviderTests
         var strategies = new List<IAiProviderStrategy>
         {
             new FakeAiProviderStrategy(fakeProvider),
+            new OpenAiResponsesProviderStrategy(openAiResponsesProvider),
             new OpenAiCompatibleProviderStrategy(openAiProvider),
+            new AnthropicProviderStrategy(officialAnthropicProvider),
             new AnthropicCompatibleProviderStrategy(anthropicProvider),
         };
 
@@ -213,6 +275,17 @@ public sealed class RuntimeAiChatProviderTests
             new BusinessMetrics(meterFactory));
     }
 
+    private static AiProviderSettings CreateOpenAiResponsesSettings() => new()
+    {
+        Enabled = true,
+        Provider = AiProviderSettings.ProviderOpenAi,
+        ApiKey = "test-key",
+        ModelId = "gpt-test",
+        MaxInputTokens = 8000,
+        MaxOutputTokens = 1024,
+        TimeoutSeconds = 30
+    };
+
     private static AiProviderSettings CreateOpenAiSettings() => new()
     {
         Enabled = true,
@@ -220,6 +293,17 @@ public sealed class RuntimeAiChatProviderTests
         EndpointUrl = "https://ai.example.test/v1",
         ApiKey = "test-key",
         ModelId = "gpt-test",
+        MaxInputTokens = 8000,
+        MaxOutputTokens = 1024,
+        TimeoutSeconds = 30
+    };
+
+    private static AiProviderSettings CreateAnthropicSettings() => new()
+    {
+        Enabled = true,
+        Provider = AiProviderSettings.ProviderAnthropic,
+        ApiKey = "test-key",
+        ModelId = "claude-test",
         MaxInputTokens = 8000,
         MaxOutputTokens = 1024,
         TimeoutSeconds = 30

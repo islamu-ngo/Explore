@@ -31,10 +31,14 @@ public class AiAssistantSettingGroup : ISettingGroup
     public bool HasEndpointUrl => !string.IsNullOrWhiteSpace(EndpointUrl);
     public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
     public bool HasModel => !string.IsNullOrWhiteSpace(ModelId);
-    public bool IsFakeProvider => Provider.Equals("fake", StringComparison.OrdinalIgnoreCase);
-    public bool IsOpenAiCompatibleProvider => Provider.Equals("openai-compatible", StringComparison.OrdinalIgnoreCase);
-    public bool IsAnthropicCompatibleProvider => Provider.Equals("anthropic-compatible", StringComparison.OrdinalIgnoreCase);
-    public bool IsConfigured => (IsOpenAiCompatibleProvider || IsAnthropicCompatibleProvider) && HasEndpointUrl && HasModel;
+    public bool IsFakeProvider => Provider.Equals(AiProviderDefaults.ProviderFake, StringComparison.OrdinalIgnoreCase);
+    public bool IsOpenAiProvider => Provider.Equals(AiProviderDefaults.ProviderOpenAi, StringComparison.OrdinalIgnoreCase);
+    public bool IsOpenAiCompatibleProvider => Provider.Equals(AiProviderDefaults.ProviderOpenAiCompatible, StringComparison.OrdinalIgnoreCase);
+    public bool IsAnthropicProvider => Provider.Equals(AiProviderDefaults.ProviderAnthropic, StringComparison.OrdinalIgnoreCase);
+    public bool IsAnthropicCompatibleProvider => Provider.Equals(AiProviderDefaults.ProviderAnthropicCompatible, StringComparison.OrdinalIgnoreCase);
+    public bool IsConfigured =>
+        ((IsOpenAiProvider || IsAnthropicProvider) && HasApiKey && HasModel)
+        || ((IsOpenAiCompatibleProvider || IsAnthropicCompatibleProvider) && HasEndpointUrl && HasModel);
     public bool IsAvailable => Enabled && IsConfigured;
 
     public static IEnumerable<string> SettingKeys =>
