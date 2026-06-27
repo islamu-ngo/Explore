@@ -29,7 +29,7 @@ For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Gen
 
 `/alive`, `/health`, and `/metrics` are runtime operational endpoints, not generated OpenAPI controller operations. Storage local-first readiness is reported through the `storage` health check, and the dry-run-first reconciliation worker posture is reported through `storage-reconciliation`. These health payloads use bounded status/failure fields and must not expose filesystem paths, object keys, bucket names, endpoints, access keys, or secrets.
 
-The optional MCP adapter is not an OpenAPI controller group. It is mapped at the startup `Mcp:EndpointPath` only when `Mcp:Enabled=true`, then gated at runtime by hierarchical `mcp.enabled` settings after tenant/auth resolution. The endpoint is mapped anonymously so MCP SDK authorization filters can expose anonymous-safe registry discovery, while scoped tools/resources/prompts still require a valid bearer or API-key principal. Runtime MCP governance never changes endpoint path or stateless transport mode.
+The optional MCP adapter is not an OpenAPI controller group. It is mapped at the startup `Mcp:EndpointPath` only when `Mcp:Enabled=true`, then gated at runtime by hierarchical `mcp.enabled` settings after tenant/auth resolution. The endpoint is mapped anonymously so MCP SDK authorization filters can expose anonymous-safe registry discovery and public event list/detail/program/session read tools, while protected reads such as `list_my_events`, `get_event_creation_context`, `get_event_publish_readiness`, the `event_management_context` resource template, program/custom-property/registration/team/template/sync context tools, and other scoped tools/resources/prompts still require a valid bearer or API-key principal. API keys need `mcp:read` plus event read-equivalent scope authority for those protected event-management reads. Runtime MCP governance never changes endpoint path or stateless transport mode.
 
 ---
 
@@ -236,7 +236,7 @@ Non-interactive callers authenticate with long-lived `X-API-Key` credentials in 
 | `4` | `TENANT` | Tenant | Required | Acts as tenant admin for the bound tenant |
 | `5` | `INSTANCE_ADMIN` | Instance Admin | **Nullable** | Cross-tenant operator; bypasses tenant isolation |
 
-**Scope Model** (`ExternalApiKeyScopes`): `events:read`, `events:write`, `organizations:read`, `organizations:write`, `groups:read`, `groups:write`, `users:read`, `users:write`, `lookups:read`, `mcp:read`, `registrations:write`, `mcp:propose`, `api-keys:manage`, `admin:tenant`, `admin:instance`. Effective permissions are the intersection of (a) the scopes on the key and (b) the owner's authority ceiling (`ExternalApiKeyScopeCeiling`). Keys cannot hold scopes above their owner type. MCP-specific scopes are least-privilege AI-conversation scopes: `mcp:read` allows MCP conversation/read discovery only, and `mcp:propose` is required to discover/call MCP proposal tools and prompts without granting event writes or confirmation authority.
+**Scope Model** (`ExternalApiKeyScopes`): `events:read`, `events:write`, `organizations:read`, `organizations:write`, `groups:read`, `groups:write`, `users:read`, `users:write`, `lookups:read`, `mcp:read`, `registrations:write`, `mcp:propose`, `api-keys:manage`, `admin:tenant`, `admin:instance`. Effective permissions are the intersection of (a) the scopes on the key and (b) the owner's authority ceiling (`ExternalApiKeyScopeCeiling`). Keys cannot hold scopes above their owner type. Anonymous-safe MCP event tools expose only published public event data; program/session tools first require the event detail query to resolve a `Published` + `Public` event before returning lower-level program or session data. Protected MCP event-management reads such as `list_my_events`, `get_event_creation_context`, `get_event_publish_readiness`, `event_management_context`, and the Phase 5 program/custom-property/registration/team/template/sync contexts require a user bearer session or, for API keys, both `mcp:read` and the existing event read scope gate (`events:read`, `events:write`, or tenant/admin equivalent accepted by `MachineScopeMapping`). `mcp:read` alone does not grant private event-management discovery. These reads derive user and tenant context from the authenticated request and existing Application services rather than accepting caller-supplied user, tenant, role, or claim data. The management-context resource derives edit/delete/publish/publish-readiness/add-session/session-create-context availability from REST HAL `_links`, not from MCP-side role checks. The standalone `get_event_publish_readiness` tool also requires the REST HAL `publish-readiness` affordance before it calls `GetEventPublishReadinessRequest`, so MCP cannot broaden publish readiness beyond the current management action surface. MCP-specific scopes are least-privilege AI-conversation and adapter scopes: `mcp:read` allows scoped MCP read discovery, `mcp:read` plus event read scope authority allows protected event-management reads, and `mcp:propose` is required to discover/call MCP proposal tools and prompts without granting event writes or confirmation authority.
 
 **Authentication Flow**:
 1. `ApiKeyAuthenticationHandler` parses the `X-API-Key` header, splits `{keyId}.{secret}`.
@@ -649,20 +649,41 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 1. Core events:
    - `GET /api/event` — list with full specification pattern filtering
    - `GET /api/event/{id}` — detail with HATEOAS links
+   - `GET /api/event/{id}/management-detail` — authenticated management detail, including draft/internal/moderated events visible to the principal through event `view-management`
+   - `GET /api/event/{id}/moderation/history` — authenticated safe moderation audit history for authorized management views
+   - `GET /api/event/management/by-actor/{actorId}` — authenticated actor-owned management list, including hidden rows authorized by per-event `view-management`
+   - `GET /api/event/{id}/publish-readiness` — authenticated/resource-authorized publish readiness diagnostics
    - `POST /api/event` — create
+   - `POST /api/event/import` — authenticated import/backfill create with provenance
    - `POST /api/event/with-sessions` — create with sessions in one request
-2. Aspect endpoints:
+   - `POST /api/event/{id}/publish` — publish after readiness and concurrency validation
+   - `POST /api/event/{id}/archive` — archive after concurrency validation
+   - `POST /api/event/{id}/cancel` — cancel after concurrency validation
+   - `POST /api/event/{id}/moderation/light` — light moderation; exposed by HAL relation `moderate-light` when the caller has moderation authority
+   - `POST /api/event/{id}/moderation/heavy` — irreversible heavy redaction; exposed by HAL relation `moderate-heavy` only after backend redaction, storage-deletion retry, and generic notification safety are available
+   - `POST /api/event/{id}/moderation/unmoderate` — restore a reversibly light-moderated event to `Published`; exposed by HAL relation `unmoderate` only when the latest moderation record allows unmoderation
+2. Event sessions and program items:
+   - `GET /api/eventsession` / `GET /api/eventsession/{id}` / `GET /api/eventsession/by-event/{eventId}` — anonymous public session reads; only scheduled, published sessions under public published events are returned
+   - `GET /api/eventsession/management/by-event/{eventId}` — authenticated management read that can return draft/internal sessions when authorized
+   - `POST /api/eventsession/drafts` — create an unscheduled draft session under an event
+   - `POST /api/eventsession/{id}/schedule` — assign a real schedule and local projections after concurrency validation
+   - `POST /api/eventsession/{id}/publish` — publish a scheduled session after parent-event/readiness checks
+   - `POST /api/eventsession/{id}/cancel` — cancel a draft/submitted/review/approved/published session after concurrency and parent-event lifecycle validation
+   - `POST /api/eventsession/{id}/complete` — complete a published session after confirming the parent event is still published
+   - `POST /api/eventsession/{id}/archive` — archive a draft, cancelled, or completed session after concurrency and parent-event lifecycle validation
+   - `EventSessionDto` and `EventSessionListDto` expose nullable `startTime`, `endTime`, and local projection fields. Use `isScheduled`, `eventSessionStatusId`, `eventSessionStatusMasterCode`, `concurrencyStamp`, and HAL `_links` to drive lifecycle UI.
+3. Aspect endpoints:
    - `.../aspects/islamic` (`GET/PUT/DELETE`)
    - `.../aspects/tech` (`GET/PUT/DELETE`)
-3. Module governance:
+4. Module governance:
    - `/api/module/*` (`available`, `enabled`, `enable`, `disable`, `schema`)
-4. Public experience:
+5. Public experience:
     - `GET /api/publicexperience/settings`
     - `POST /api/a/t` — anonymous-safe analytics relay for relay transport mode
-5. Federation:
+6. Federation:
    - `/api/atproto/*` — AT Protocol record management
    - `/api/indexeddid/*` — DID indexing
-6. Notifications (all `[Authorize]`):
+7. Notifications (all `[Authorize]`):
       - `GET /api/notification` — paginated list with `?isRead=` and `?notificationTypeId=` filters
      - `GET /api/notification/{id}` — detail
      - `GET /api/notification/unread-count` — unread count (partial index optimized)
@@ -670,13 +691,13 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
      - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
     - `POST /api/notification/read-all` — bulk mark all as read (YouTube-style, timestamp cutoff)
     - `DELETE /api/notification/{id}` — soft delete
-7. Actor subscriptions (all `[Authorize]`):
+8. Actor subscriptions (all `[Authorize]`):
    - `GET /api/actor-subscriptions` — current user's paged actor subscriptions
    - `GET /api/actor-subscriptions/actors/{targetActorId}` — current user's subscription state for a target actor
    - `POST /api/actor-subscriptions` — subscribe to an organization/group actor
    - `PATCH /api/actor-subscriptions/actors/{targetActorId}/notification-level` — update subscription notification level with concurrency stamp
    - `DELETE /api/actor-subscriptions/actors/{targetActorId}` — unsubscribe with concurrency stamp
-8. Footer management:
+9. Footer management:
    - `GET /api/footer/config` — public footer config (AllowAnonymous)
    - `GET /api/footer/link-groups` — list link groups (Authorize)
    - `GET /api/footer/link-groups/{id}` — link group detail (Authorize)
@@ -688,9 +709,9 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `PUT /api/footer/links/{id}` — update link
    - `DELETE /api/footer/links/{id}` — delete link
    - `PUT /api/footer/settings` — update footer settings
-9. Actor appearance:
+10. Actor appearance:
    - Actor entities include appearance fields (BackgroundColor, BackgroundEffect, BannerColor, BannerPictureId, BackgroundImageId) managed via actor update endpoints.
-10. Instance MCP governance:
+11. Instance MCP governance:
    - `GET /api/instance/settings/mcp` — instance MCP runtime enablement and tenant override lock state.
    - `PUT /api/instance/settings/mcp` — update `mcp.enabled`, `mcp.enable_legacy_sse`, `governance.lock_tenant_mcp`, and `governance.lock_tenant_mcp_legacy_sse`.
    - Endpoint path and stateless mode remain startup-only and are not exposed as runtime-editable fields.
@@ -705,6 +726,15 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 4. HAL schema transformers shape OpenAPI schemas so generated clients preserve HAL extension data.
 5. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `schemas/openapi.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
 6. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
+
+For lifecycle contract changes, the current safe regeneration path is:
+
+```bash
+dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity minimal --no-restore -maxcpucount:1
+dotnet msbuild Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1 /v:minimal
+```
+
+The generated contract now includes `ImportEvent`, `CreateDraftEventSession`, `ScheduleEventSession`, `PublishEventSession`, `CancelEventSession`, `CompleteEventSession`, and `ArchiveEventSession` operations. NSwag emits nullable client properties for draft-capable session schedule fields, so callers must handle `DateTimeOffset?` and `TimeSpan?` for session schedule/local projections.
 
 Before v1.0, intentional breaking API contract changes may be accepted when they make the API, HAL affordances, or generated OpenAPI contract cleaner. They still require an entry in [API_CHANGELOG.md](API_CHANGELOG.md), regenerated OpenAPI/inventory/generated-client artifacts through the documented workflow when applicable, and retained contract-governance evidence. Do not hand-edit `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, or generated NSwag client output. At v1.0, breaking schema diffs become blocking per governance.
 
