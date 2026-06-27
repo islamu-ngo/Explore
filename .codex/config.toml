@@ -18,6 +18,21 @@ args = [
     "chrome-devtools-mcp@latest",
 ]
 
+[mcp_servers.chrome-devtools.tools.new_page]
+approval_mode = "approve"
+
+[mcp_servers.chrome-devtools.tools.take_snapshot]
+approval_mode = "approve"
+
+[mcp_servers.chrome-devtools.tools.evaluate_script]
+approval_mode = "approve"
+
+[mcp_servers.chrome-devtools.tools.take_screenshot]
+approval_mode = "approve"
+
+[mcp_servers.chrome-devtools.tools.resize_page]
+approval_mode = "approve"
+
 [mcp_servers.sequential-thinking]
 command = "npx"
 args = [
