@@ -3,13 +3,13 @@
 
 # ISLAMU Event Contributor License Agreement
 
-> **Version:** 1.1
+> **Version:** 1.0
 > **Status:** Operational draft pending legal review
 > **Owner:** ISLAMU nonprofit | Platform/Ops
 > **Maintainer of record:** Amir Akrari
 > **Purpose:** Preserve the ISLAMU nonprofit's ability to keep ISLAMU Event public under AGPL-3.0-or-later while also offering alternative terms for legitimate sustainability, enterprise, nonprofit, humanitarian, public-sector, procurement-restricted, hosted-service, and social-impact deployments.
 
-A new CLA version is published by bumping the `Version` line above and updating the `path-to-signatures` version segment in `.github/workflows/cla.yml` (e.g. `signatures/v1.2/cla.json`). Earlier signatures remain valid only for the CLA version under which they were recorded; a contributor must re-sign when the version changes.
+A new CLA version is published by bumping the `Version` line above and updating the `path-to-signatures` version segment in `.github/workflows/cla.yml` (e.g. `signatures/v1.0/cla.json`). Earlier signatures remain valid only for the CLA version under which they were recorded; a contributor must re-sign when the version changes.
 
 This Contributor License Agreement (CLA) applies to contributions submitted to ISLAMU Event, including API, Blazor, infrastructure, workflow, documentation, configuration, generated artifacts, tests, and related project materials.
 
@@ -121,7 +121,7 @@ I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, an
 
 The ISLAMU CLA workflow (powered by [cla-assistant/github-action][cla-action-link], pinned at `contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1`) records each signature in `signatures/v1.0/cla.json` on the `develop` branch. The recorded entry stores the contributor's GitHub username, user ID, the pull request number, the signing comment ID and body, and an ISO-8601 timestamp.
 
-If the CLA version changes, the workflow switches the signatures file to a new version segment (for example `signatures/v1.2/cla.json`) and contributors must re-sign the new version.
+If the CLA version changes, the workflow switches the signatures file to a new version segment (for example `signatures/v1.0/cla.json`) and contributors must re-sign the new version.
 
 To re-run the CLA check after signing, post a comment containing only `recheck`.
 

@@ -131,6 +131,18 @@ The browser authentication state is intentionally display-only:
 
 Generated DTOs preserve HAL `_links` through extension data. Per-resource UI affordances must be gated by HAL links from the API, not by duplicating role checks in Razor components. Admin authorization-provider setup/sync UI surfaces server-confirmed status, sync, and manual-package download affordances; the browser never owns Cerbos Admin API credentials or access tokens.
 
+### Event Management And Moderation UI
+
+Event detail and profile surfaces are HAL-driven management views:
+
+1. `EventService.GetEventByIdAsync` tries public detail first. If the public route returns `404` for a hidden/moderated event, it falls back to authenticated `GetEventManagementDetailsAsync`; `401`, `403`, and `404` on the management route still fail closed.
+2. Actor profile event lists merge public actor events with `GetManagedEventsByActorAsync` results when the current principal is authorized. Managed duplicates win so status and HAL data stay authoritative.
+3. Event topbar actions must read link relations from the event DTO. Light moderation uses `moderate-light`, heavy redaction uses `moderate-heavy`, reversible restore uses `unmoderate`, and safe audit history uses `moderation-history`.
+4. Event session reads default to the anonymous-safe public program route. Management views may pass `includeManagedSessions: true` to `EventService.GetSessionsByEventAsync` only from a server-provided HAL management context; the service then merges public sessions with the authorized management collection and falls back to public data on `401`, `403`, or `404`.
+5. The Blazor service exposes explicit `ModerateEventLightAsync`, `ModerateEventHeavyAsync`, and `UnmoderateEventAsync` methods. Do not reintroduce a generic `ModerateEventAsync` compatibility alias; the API contract intentionally split light and heavy semantics.
+6. Moderated event cards and sidebars may show a red/error "Moderated" state only after the API returned the authorized management DTO. Public visitors should not receive moderated event data at all.
+7. Heavy redaction is destructive and must require explicit user confirmation in UI before calling the API. The API remains authoritative for redaction, deletion, notification, and authorization outcomes.
+
 ### AI Assistant Client Surface
 
 The product assistant follows the same BFF and service-layer boundary:

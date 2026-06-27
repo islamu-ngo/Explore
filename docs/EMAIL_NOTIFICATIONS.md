@@ -6,10 +6,10 @@ ABOUTME: Prevents unsupported claims about notification fanout, queueing, unsubs
 > **Audience:** Operators | Admins | Contributors
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-29
-> **Source Anchors:** `Explore.Infrastructure/Mail/`, `Explore.Domain/Settings/Definitions/EmailSettingDefinitions.cs`, `Explore.API/HealthChecks/SmtpHealthCheck.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
+> **Last Verified:** 2026-06-23
+> **Source Anchors:** `Explore.Infrastructure/Mail/`, `Explore.Domain/Settings/Definitions/EmailSettingDefinitions.cs`, `Explore.API/HealthChecks/SmtpHealthCheck.cs`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationNotificationFanoutService.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
-Email delivery is implemented as direct SMTP sending. In-app notifications are a separate authenticated inbox feature; actor-subscription fanout creates durable in-app notification rows and is not an SMTP/email fanout pipeline.
+Email delivery is implemented as direct SMTP sending. In-app notifications are a separate authenticated inbox feature; actor-subscription fanout and moderation attendee fanout create durable in-app notification rows and are not SMTP/email fanout pipelines.
 
 ## What Is Implemented
 
@@ -20,9 +20,9 @@ Email delivery is implemented as direct SMTP sending. In-app notifications are a
 | Resilience | `EmailResiliencePipelines` retries transient SMTP failures with exponential backoff and jitter. |
 | Admin settings | Instance admins can read, update, and test SMTP settings in the instance admin settings surface. |
 | Health check | `SmtpHealthCheck` participates in readiness as the `smtp` health check. |
-| In-app notifications | Notification controller/client paths handle inbox actions such as read, archive, snooze, and delete separately from SMTP. Actor-subscription fanout creates in-app rows only. |
+| In-app notifications | Notification controller/client paths handle inbox actions such as read, archive, snooze, and delete separately from SMTP. Actor-subscription fanout and moderation attendee fanout create in-app rows only. |
 
-User-facing email notification preferences are not implemented as an active delivery feature. The implemented actor-subscription fanout path writes durable in-app notifications and does not call `IEmailService.SendAsync`; do not claim notification-to-email fanout until source code wires notifications or another workflow to `IEmailService`.
+User-facing email notification preferences are not implemented as an active delivery feature. The implemented actor-subscription and moderation fanout paths write durable in-app notifications and do not call `IEmailService.SendAsync`; do not claim notification-to-email fanout until source code wires notifications or another workflow to `IEmailService`.
 
 ## SMTP Settings
 
@@ -87,7 +87,8 @@ In-app notifications are implemented through notification controller/client/repo
 | SMTP send | `IEmailService` / `SmtpEmailService`. |
 | User email preferences | Not implemented as active email delivery behavior in the inspected source. |
 | Actor-subscription fanout | Implemented only as durable in-app `Notification` row creation through the outbox fanout path. |
-| Notification-to-email fanout | Not implemented in the inspected notification path; no SMTP call is made by actor-subscription fanout. |
+| Event moderation attendee fanout | Implemented only as durable in-app `Notification` row creation through the outbox fanout path. Heavy moderation uses generic, linkless in-app copy and still does not send email. |
+| Notification-to-email fanout | Not implemented in the inspected notification path; no SMTP call is made by actor-subscription or moderation fanout. |
 
 Keep the future notifications doc focused on in-app notification behavior when that doc is created, and link back here only for SMTP delivery boundaries.
 

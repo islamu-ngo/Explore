@@ -4,7 +4,7 @@ ABOUTME: Defines proposal-first, HAL-gated, redacted boundaries for Phase 10 ass
 # AI Agent Experience Hardening
 
 > Status: implemented guardrail contracts and deterministic fake/replay diagnostics.
-> Last Updated: 2026-06-07
+> Last Updated: 2026-06-25
 
 ## Boundary
 
@@ -73,15 +73,15 @@ Manual smoke scope:
 
 1. Use the target API instance's default MCP startup posture (`Mcp:Enabled=true`, `Mcp:EndpointPath=/mcp`, `Mcp:Stateless=true`, and `Mcp:EnableLegacySse=true`) unless the deployment explicitly disables MCP.
 2. Connect MCP Inspector to the Streamable HTTP endpoint configured by `Mcp:EndpointPath` (usually `/mcp`) using one authenticated context only: either `Authorization: Bearer <redacted-token>` or `X-API-Key: <redacted-api-key>`. For multi-tenant routes, include the same tenant binding used by the API edge, such as trusted host routing or `X-Tenant-Slug: <redacted-tenant-slug>`, but never persist the real value in artifacts.
-3. List tools, resources, resource templates, and prompts. Expected bounded surface: `list_ai_tool_contracts`, `propose_ai_tool_action`, projected `propose_create_event_draft`, resource `ai_conversations`, resource template `ai_conversation_detail`, and prompt `create_event_draft_with_confirmation`.
+3. List tools, resources, resource templates, and prompts. Expected bounded surface: anonymous-safe `list_ai_tool_contracts` and public event reads; scoped AI resources such as `ai_conversations`; scoped event-management reads/resources such as `list_my_events`, `get_event_creation_context`, `get_event_publish_readiness`, and `event_management_context`; prompt guidance such as `create_event_draft_with_confirmation` and `manage_event_with_confirmation`; and registry-projected `propose_*` event-management tools such as `propose_create_event_draft`, `propose_update_event_draft`, `propose_publish_event`, `propose_delete_event`, and Phase 5 sub-resource proposals.
 4. Call `list_ai_tool_contracts` and verify the registry advertises proposal/confirmation semantics. Do not save raw response bodies if they contain fixture labels or private metadata.
-5. Optional proposal-only smoke: call `propose_create_event_draft` only against a disposable test conversation and fixture tenant. Stop after the proposed action is persisted; do not call product confirmation endpoints, do not mutate repositories, and do not claim an event was created.
+5. Optional proposal-only smoke: call one low-risk projected proposal tool, preferably `propose_create_event_draft` or `propose_update_event_draft`, only against a disposable test conversation and fixture tenant. Stop after the proposed action is persisted; do not call product confirmation endpoints, do not mutate repositories, and do not claim an event was created or changed.
 6. Rebuild and restart the API/client before treating missing tools as a product bug; stale Debug builds and stale MCP client registrations are the common failure mode.
 7. Redact or discard Inspector screenshots, exports, browser storage, proxy logs, Copilot transcripts, and copied JSON. Retain only scenario codes, pass/fail status, redacted endpoint path, redacted auth mode, and bounded failure categories.
 
 Forbidden Inspector/Copilot artifacts: prompt transcripts, selected-reference content, raw tool payload JSON, provider responses, tenant/user identifiers, endpoint URLs, bearer/API-key values, model IDs, screenshots with user content, raw MCP request/response bodies, and raw exceptions.
 
-The automated contract harness in `Event.API.IntegrationTests/Features/McpProtocolContractTests.cs` covers MCP `initialize`, discovery lists, registry discovery, generic/projected proposal-only calls, disabled endpoints, malformed requests, unknown tools, hidden fields, and redaction behavior without live clients or provider credentials. `McpDebugReadinessDoctorCheck` adds a read-only review gate for MCP debug docs/tests/replay/evaluation evidence without starting clients or printing secrets.
+The automated contract harness in `Event.API.IntegrationTests/Features/McpProtocolContractTests.cs`, `EventManagementMcpPublicReadTests.cs`, `EventManagementMcpAuthenticatedReadTests.cs`, `EventManagementMcpRedactionTests.cs`, and `McpAuthorizationTests.cs` covers MCP `initialize`, discovery lists, registry discovery, public event read parity, authenticated event-management reads, generic/projected proposal-only calls, disabled endpoints, malformed requests, unknown tools, hidden fields, rate-limit partitioning, and redaction behavior without live clients or provider credentials. `McpDebugReadinessDoctorCheck` adds a read-only review gate for MCP debug docs/tests/replay/evaluation evidence without starting clients or printing secrets.
 
 ## Validation
 

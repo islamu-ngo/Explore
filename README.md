@@ -39,27 +39,35 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 ### Event Seekers
 
 - **🔍 Advanced Discovery:** Event search with title, dates, location, categories, tags, and paging filters
-- **👨‍👩‍👧‍👦 Cultural Intelligence:** Culturally-Aware Filters for Age ranges, gender segregation modes, madhab targeting, prayer-relative timing (for instances that enable these modules)
-- **🌐 Multi-Language Support:** Event sessions with multiple language options
-- **📱 PWA & Responsive Design:** Mobile-friendly Blazor UI with MudBlazor components
-- **✅ RSVP & Registration:** Waitlists, approval workflows, registration limits per session
+- **👨‍👩‍👧‍👦 Culturally-Aware Filters (opt-in modules):** Age ranges, gender segregation modes, madhab targeting, prayer-relative timing — only enabled by instances that choose them; never imposed on the software
+- **🌐 Multi-Language Sessions:** Event sessions with multiple language variants and localized content
+- **📱 PWA & Responsive Design:** Mobile-friendly Blazor UI with MudBlazor components; installable as a Progressive Web App
+- **✅ RSVP & Registration:** Waitlists, approval workflows, per-session registration limits, and capacity management
+- **🤖 AI Assistant (when enabled):** Chat with the assistant to discover events, ask questions in natural language, and let it draft registrations or RSVPs as confirmable proposed actions
 
 ### Event Organizers
 
-- **📅 Signle & Multi-Session Events:** Conferences, seminars, recurring programs with speakers, agendas, and language variants
-- **📊 Flexible Publishing:** Manage registrations, waitlists, approval workflows, capacity limits, and event visibility.
-- **👥 Member Management:** Invite members, assign roles (Owner, Admin, Editor, Viewer), track permissions
-- **🎯 Modular Event Types:** Data Modeling: custom fields, event aspects, event templates...
+- **📅 Single & Multi-Session Events:** Conferences, seminars, and recurring programs with speakers, agendas, and language variants
+- **📊 Flexible Publishing:** Manage registrations, waitlists, approval workflows, capacity limits, and event visibility
+- **👥 Member Management:** Invite members, assign roles (Owner, Admin, Editor, Viewer), and track permissions
+- **🎯 Modular Event Types:** Custom fields, event aspects, and event templates for any kind of program
+- **🧩 Custom Properties:** Per-event-type custom fields, single- and multi-select options, relations, and typed validation — see [Custom Properties][custom-properties-doc]
+- **🔔 Notifications & Email:** In-app notifications and transactional email via Svix-compatible webhooks and templated email pipelines — see [Notifications][notifications-doc] and [Email Notifications][email-notifications-doc]
+- **📇 Contact Sharing:** Share contact information with explicit, revocable consent — see [Contact Sharing][contact-sharing-doc]
+- **🤖 AI Assistant (when enabled):** Ask the assistant to draft event listings, suggest categories/tags, and propose schedule improvements; every AI-proposed change is reviewed and explicitly confirmed before any side effect
 
-### Platform Owners & Self Hosters
+### Platform Owners & Self-Hosters
 
-- **🐳 Deployment:** Docker ready
-- **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes
-- **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, policies per tenant
+- **🐳 Deployment:** Docker ready; .NET Aspire for local development
+- **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes — the most important adoption decision for self-hosters
+- **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, and policies per tenant
 - **🔧 Admin Hierarchy:** Instance admins, tenant admins, and organization admins with cascading settings
-- **🌍 Federation Foundation:** ATProto-oriented models and outbound sync plumbing exist, while public ActivityPub and ATProto server endpoints remain roadmap work
+- **🛡️ Built-in Moderation & Verification:** Moderation queues, organizer verification workflows, and structured appeal paths — see [Governance][governance-doc] and [Authorization][authorization-doc]
+- **🔌 Model Context Protocol (MCP) Server:** The API hosts a stateless MCP adapter at `/mcp` so AI agents, IDEs (VS Code, Copilot, Inspector), and external integrations can discover public events and *propose* actions through the normal confirmation flow — mutations never bypass authorization. See [MCP Debugging][mcp-debugging-doc]
+- **🧠 AI-Ready Foundation:** Provider-neutral AI Assistant, RAG ingestion contracts, and proposal-first tooling are wired through the same Cerbos-authorized, HAL-affordance-driven surface as the rest of the platform
+- **🌍 Federation Foundation:** ATProto-oriented models and outbound sync plumbing exist, while public ActivityPub and ATProto server endpoints remain roadmap work — see [Federation][federation-doc]
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
-- **🔐 Enterprise Security:** BFF pattern, Cerbos authorization, Infisical secrets, HATEOAS REST API
+- **🔐 Enterprise Security:** BFF pattern, Cerbos authorization, Infisical secrets, and HATEOAS REST API
 
 ## Deployment & Hosting Options
 
@@ -277,6 +285,14 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [extensibility-doc]: docs/EXTENSIBILITY.md
 [modular-events-doc]: docs/MODULAR_EVENTS.md
 [render-policies-doc]: docs/RENDER_POLICIES.md
+[custom-properties-doc]: docs/CUSTOM_PROPERTIES.md
+[notifications-doc]: docs/NOTIFICATIONS.md
+[email-notifications-doc]: docs/EMAIL_NOTIFICATIONS.md
+[contact-sharing-doc]: docs/CONTACT_SHARING.md
+[authorization-doc]: docs/AUTHORIZATION.md
+[mcp-debugging-doc]: docs/MCP_DEBUGGING.md
+[federation-doc]: docs/FEDERATION.md
+[ai-rag-doc]: docs/AI_RAG_FOUNDATION.md
 [security-policy]: SECURITY-POLICY.md
 [privacy-policy]: https://openislamu.org/privacy
 [license-link]: LICENSE

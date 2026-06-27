@@ -59,6 +59,21 @@ dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.cs
 dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
 ```
 
+### Event Lifecycle Focused Verification
+
+Use these focused commands when changing nullable event-session scheduling, lifecycle transition endpoints, HAL lifecycle affordances, or generated lifecycle API contracts:
+
+```bash
+dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity minimal --no-restore -maxcpucount:1
+dotnet msbuild Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1 /v:minimal
+dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --treenode-filter "/*/*/GetEventPublishReadinessRequestHandlerTests/*" --minimum-expected-tests 1
+dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventsControllerTests/*|/*/*/EventSessionControllerTests/*|/*/*/EventLifecycleHateoasPolicyTests/*" --minimum-expected-tests 1
+dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventSessionVisibilityContractTests/*" --minimum-expected-tests 1
+dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --treenode-filter "/*/*/*/*"
+```
+
+The solution-level build can be blocked by unrelated Blazor WebAssembly task-host issues on local SDK/tooling states where the WebAssembly workload is not installed. For the pinned .NET SDK `10.0.300`, verify the workload with `dotnet workload list` and install the official ASP.NET Core Blazor WebAssembly prerequisite with `dotnet workload install wasm-tools` when Release builds fail in `ComputeWasmBuildAssets`, `Microsoft.NETCore.App.Runtime.Mono.browser-wasm`, or `Microsoft.NET.Sdk.WebAssembly.Pack` resolution. When the change is API/Application/HAL-only, prefer the API project build plus focused tests above and report any broader build blocker separately instead of weakening lifecycle tests.
+
 ### Test Taxonomy And CI Lanes
 
 Use TUnit metadata to route tests into the smallest lane that proves the behavior. TUnit uses `--treenode-filter` for metadata filtering; do not use VSTest-style `--filter` examples for TUnit projects.

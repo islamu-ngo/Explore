@@ -371,7 +371,7 @@ Non-interactive callers (direct API consumers, integrations, automation) authent
 - Each key holds an explicit `Scopes` set (e.g., `events:read`, `admin:tenant`, `admin:instance`).
 - Scopes are bounded by the owner type (`ExternalApiKeyScopeCeiling`): a `User`-owned key cannot hold `admin:tenant`, a `Tenant`-owned key cannot hold `admin:instance`. Attempts to create or update a key with out-of-ceiling scopes are rejected at validator level.
 - Authorization evaluators apply scope gates before any owner-authority check (see `MachineScopeMapping.ScopesPermit`). A key with `events:read` alone cannot perform mutations regardless of owner authority.
-- MCP scopes are deliberately narrow: `mcp:read` permits MCP AI-conversation/read discovery only, while `mcp:propose` is required for MCP proposal tools/prompts and permits proposal creation without granting event write, event confirmation, or arbitrary user-write authority. SDK authorization filters hide proposal tools from API keys that lack `mcp:propose`, and MediatR authorization still fail-closes the call path.
+- MCP scopes are deliberately narrow: `mcp:read` permits generic MCP read discovery, while private event-management MCP reads also require the existing event read scope gate (`events:read`, `events:write`, or tenant/admin equivalent accepted by `MachineScopeMapping`). `mcp:propose` is required for MCP proposal tools/prompts and permits proposal creation without granting event write, event confirmation, or arbitrary user-write authority. SDK authorization filters hide event-management reads from API keys that only have `mcp:read`, hide proposal tools from API keys that lack `mcp:propose`, and MediatR authorization still fail-closes the call path.
 
 ### Machine Principal
 
@@ -389,6 +389,10 @@ The HATEOAS link generation system is authorization-aware:
 4. On batch authorization failure, all permission-bound links are **denied** (fail-closed).
 5. Admin/sync controllers that manually build HAL responses run definitions through the same evaluator before materializing links.
 6. Clients never see links they cannot execute and must not recreate action gates from local roles or claims.
+
+Event moderation links follow the same rule. The active moderation affordances are `moderate-light`, `moderate-heavy`, and eligible `unmoderate`; clients must render them only from HAL `_links`, never from local admin-role checks. Instance and tenant administrators can receive moderation links without receiving event edit/update/delete links. Heavy redaction is irreversible, redacts event-owned text, detaches event images, deletes provider-backed objects through the storage abstraction, and sends generic attendee notifications without event identity. Unmoderation is limited to the latest reversible light-moderation record.
+
+Moderated events remain hidden from public discovery and exact public event URLs. Authorized management detail, actor-profile management lists, and moderation-history reads use the event `view-management` action. The moderation-history API and moderation telemetry are safe metadata surfaces only: they must not include original titles, descriptions, slugs, URLs, image identifiers, object keys, storage paths, bucket names, provider endpoints, raw provider errors, or arbitrary moderator free text.
 
 Related authorization references:
 

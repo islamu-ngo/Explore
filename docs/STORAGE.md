@@ -6,8 +6,8 @@ ABOUTME: Covers local-first runtime storage, optional S3-compatible mode, reconc
 > **Audience:** Operators | Admins | Contributors
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-06-02
-> **Source Anchors:** `Explore.Infrastructure/Storage/`, `Explore.Infrastructure/Services/ObjectStorageService.cs`, `Explore.API/Controllers/StorageObjectController.cs`, `Explore.API/Controllers/TenantStorageSettingsController.cs`, `Explore.Blazor.Client/Services/ImageStorageService.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
+> **Last Verified:** 2026-06-23
+> **Source Anchors:** `Explore.Infrastructure/Storage/`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.Infrastructure/Services/ObjectStorageService.cs`, `Explore.API/Controllers/StorageObjectController.cs`, `Explore.API/Controllers/TenantStorageSettingsController.cs`, `Explore.Blazor.Client/Services/ImageStorageService.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Storage is moving to a local-first, provider-neutral model. New upload/read flows use metadata-backed `StorageObject` records and the selected `IFileStorageProvider`; S3-compatible storage remains optional for instances that select and configure it.
 
@@ -24,6 +24,7 @@ Storage is moving to a local-first, provider-neutral model. New upload/read flow
 | Blazor admin UI | Instance and tenant storage dashboards consume service models mapped from HAL settings resources. Action buttons are driven by `_links` and read-only state, not client-side role checks. |
 | Local self-hosting | Docker Compose mounts a durable `local_storage_data` volume for local-first storage by default. MinIO remains optional through the `storage` profile for instances that select S3-compatible storage. |
 | Reconciliation | API hosts a dry-run-first reconciliation worker that checks metadata/object drift, reports missing backing objects and local orphan files, and performs quarantine/delete mutations only when explicit policy flags are enabled. |
+| Moderation image deletion | Heavy event redaction marks referenced event image metadata as `delete_requested` with the owning event resource id, commits the redaction, then deletes provider objects through `IFileStorageProvider`. Failures leave metadata retryable and do not log object keys, filenames, paths, endpoints, buckets, or raw provider errors. |
 
 The API delete endpoint exists, but `Explore.Blazor.Client/Services/ImageStorageService.cs` still returns `false` from `DeleteImageAsync`. Do not document a completed Blazor client delete flow until that helper is implemented.
 
@@ -126,6 +127,14 @@ The reconciliation worker compares `StorageObject` metadata with provider backin
 - delete-eligible quarantined or delete-requested metadata can be physically deleted from the selected provider and then soft-deleted in metadata.
 
 The local provider intentionally skips temporary files and existing quarantine files during inventory. Metrics, logs, and health data expose only bounded categories/counts; they do not include object keys, filenames, filesystem paths, tenant IDs, user IDs, endpoints, bucket names, access keys, or secrets.
+
+## Heavy Moderation Image Deletion
+
+Heavy event moderation uses the same provider-neutral delete boundary as normal storage cleanup, but it does not wait for the dry-run-first reconciliation schedule. The event redaction transaction clears event/session/day image foreign keys and marks the affected `StorageObject` rows as `delete_requested` with `OwningResourceKind=event` and the redacted event id. After commit, `StorageObjectDeletionService` loads those rows for the tenant/event, calls the selected `IFileStorageProvider.DeleteAsync`, then soft-deletes the storage metadata when the provider delete succeeds or when metadata has no object key.
+
+If a local or S3-compatible delete fails, the redaction remains committed and public APIs cannot use the image metadata, but the command reports a pending retry failure instead of full success. The rows stay in `delete_requested` so a repeated heavy-redaction command or the reconciliation worker can retry idempotently. Local deletion is idempotent for already-missing files, and S3-compatible deletion issues the provider delete request through the AWS SDK adapter.
+
+Operational evidence for this path must remain bounded. Logs and metrics may include provider name, tenant id, owning resource kind/id, storage object id, outcome, and failure category. They must not include object keys, filenames, filesystem paths, S3 endpoints, bucket names, credentials, raw provider response bodies, or raw exception text.
 
 ## Troubleshooting
 

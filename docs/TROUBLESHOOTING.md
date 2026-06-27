@@ -6,8 +6,8 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 > **Audience:** Operators | Contributors | Admins
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
+> **Last Verified:** 2026-06-23
+> **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Use this page when you have a symptom. For planned work, installation, backup, restore, upgrade, or rollback procedures, use the linked runbooks instead of copying procedures into this file.
 
@@ -294,6 +294,19 @@ Checks:
 3. To quarantine missing metadata/object mismatches, set `StorageReconciliation:DryRun=false` and only the needed quarantine flag.
 4. To physically delete delete-eligible objects, also set `StorageReconciliation:DeleteQuarantinedObjects=true`; provider delete is idempotent, but metadata is soft-deleted afterward.
 5. If mutations ran against the wrong environment, stop write traffic, turn dry-run back on, restore database and object-storage backups together, then rerun dry-run reconciliation.
+
+## Heavy Moderation Image Deletion Pending
+
+Symptoms:
+- Heavy event moderation returns a pending image-deletion retry failure after the event was redacted.
+- Storage delete metrics show failed provider deletes for event-owned `delete_requested` rows.
+
+Checks:
+1. Treat the event redaction as committed. Public event reads and image foreign keys should already be unavailable; do not restore event content to retry image deletion.
+2. Check `/health` storage readiness and provider configuration for the selected local or S3-compatible provider.
+3. Re-run the heavy-redaction command for the same event after provider readiness is fixed. The command is idempotent for already-heavy-redacted events and retries remaining event-owned `delete_requested` image rows.
+4. If command retry is not possible, use storage reconciliation only after verifying backups and intentionally enabling destructive mutation flags. Reconciliation can delete eligible `delete_requested` metadata through the provider abstraction.
+5. Support tickets may include bounded failure category, provider name, tenant id, event id, and storage object id. Do not include object keys, filenames, filesystem paths, S3 endpoints, bucket names, credentials, raw provider responses, or raw exception text.
 
 ## Upgrade Or Restore Regressions
 

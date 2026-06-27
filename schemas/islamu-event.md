@@ -191,7 +191,16 @@ Table "event_statuses" {
     master_code [unique, name: 'ix_event_statuses_master_code']
   }
 
-  Note: 'Lookup: event lifecycle state. Values: Draft(1), Published(2), Cancelled(3), Completed(4), Archived(5). Seeded.'
+  Note: 'Lookup: event lifecycle state. Values: Draft(1), Published(2), Cancelled(3), Completed(4), Archived(5), Moderated(6). Seeded.'
+}
+
+Table "event_session_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Lookup: event-session lifecycle state. Values: Draft(1), Submitted(2), UnderReview(3), Approved(4), Published(5), Rejected(6), Cancelled(7), Archived(8), Completed(9), Moderated(10). Seeded. Draft/internal/completed/moderated statuses may be unscheduled or hidden and are not public.'
 }
 
 Table "event_types" {
@@ -2985,8 +2994,9 @@ Table "event_sessions" {
   "event_id" uuid [not null]
   "event_day_id" uuid
   "event_session_kind_id" int
-  "start_time" timestamptz [not null]
-  "end_time" timestamptz [not null]
+  "event_session_status_id" int [not null, default: 1, note: 'FK to event_session_statuses. Default/backfill = Draft.']
+  "start_time" timestamptz
+  "end_time" timestamptz
   "location_id" uuid
   "room_id" uuid
   "title" varchar(500)
@@ -3000,12 +3010,12 @@ Table "event_sessions" {
   "currency_code" varchar(3)
   "description" varchar(500)
   "sort_order" int [not null, default: 0]
-  "local_start_date" date [not null]
-  "local_end_date" date [not null]
-  "local_start_time" time [not null]
-  "local_end_time" time [not null]
-  "local_start_minute_of_day" int [not null]
-  "local_end_minute_of_day" int [not null]
+  "local_start_date" date
+  "local_end_date" date
+  "local_start_time" time
+  "local_end_time" time
+  "local_start_minute_of_day" int
+  "local_end_minute_of_day" int
   "instantiated_from_template_at" timestamptz
   "last_synced_from_template_at" timestamptz
   "source_template_id" uuid
@@ -3029,11 +3039,12 @@ Table "event_sessions" {
     (tenant_id, location_id, room_id, start_time, end_time) [name: 'ix_event_sessions_tenant_location_room_time']
     (tenant_id, event_day_id, sort_order) [name: 'ix_event_sessions_tenant_day_sort']
     (event_session_kind_id) [name: 'ix_event_sessions_event_session_kind_id']
+    (event_session_status_id) [name: 'ix_event_sessions_event_session_status_id']
     (registration_mode_id) [name: 'ix_event_sessions_registration_mode_id']
     (featured_image_id) [name: 'ix_event_sessions_featured_image_id']
   }
 
-  Note: 'Checks: CK_EventSession_NonNegativePrice, CK_EventSession_EndAfterStart, CK_EventSession_RoomRequiresLocation, CK_EventSession_LocalStartMinuteRange, CK_EventSession_LocalEndMinuteRange, CK_EventSession_LocalStartMinuteMatchesTime, CK_EventSession_LocalEndMinuteMatchesTime. Model-owned exclusion: EX_EventSession_RoomNoOverlap prevents overlapping active sessions in the same tenant/location/room using tstzrange(start_time, end_time, ''[)'') and is applied from EF metadata after migrations. UTC times are source of truth; local fields are server-owned projections.'
+  Note: 'Draft-capable program item. Checks: CK_EventSession_NonNegativePrice, CK_EventSession_EndAfterStart (conditional when scheduled), CK_EventSession_RoomRequiresLocation, CK_EventSession_LocalStartMinuteRange, CK_EventSession_LocalEndMinuteRange, CK_EventSession_LocalStartMinuteMatchesTime, CK_EventSession_LocalEndMinuteMatchesTime. Nullable start/end/local projection fields represent unscheduled draft/internal sessions. Model-owned exclusion: EX_EventSession_RoomNoOverlap prevents overlapping active scheduled sessions in the same tenant/location/room using tstzrange(start_time, end_time, ''[)'') and ignores rows where start_time or end_time is null. UTC times are source of truth when present; local fields are server-owned projections.'
 }
 
 Table "event_session_groups" {
@@ -3661,6 +3672,7 @@ Ref: "event_sessions".("tenant_id", "event_id") > "events".("tenant_id", "id") [
 Ref: "event_sessions".("tenant_id", "event_id", "event_day_id") > "event_days".("tenant_id", "event_id", "id") [delete: restrict]
 Ref: "event_sessions".("tenant_id", "location_id") > "locations".("tenant_id", "id") [delete: restrict]
 Ref: "event_sessions".("tenant_id", "location_id", "room_id") > "location_rooms".("tenant_id", "location_id", "id") [delete: restrict]
+Ref: "event_sessions"."event_session_status_id" > "event_session_statuses"."id" [delete: restrict]
 Ref: "event_sessions"."registration_mode_id" > "registration_modes"."id" [delete: restrict]
 Ref: "event_session_groups".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
 Ref: "event_session_groups".("tenant_id", "location_id") > "locations".("tenant_id", "id") [delete: restrict]

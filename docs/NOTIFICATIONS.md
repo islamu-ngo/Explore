@@ -6,10 +6,10 @@ ABOUTME: Separates in-app notifications from SMTP email delivery and unsupported
 > **Audience:** Admins | Integrators | Contributors
 > **Status:** Implemented
 > **Owner:** Product/Admin
-> **Last Verified:** 2026-05-29
-> **Source Anchors:** `Explore.Application/Features/Notifications/`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/NotificationRefreshStreamService.cs`, `Explore.Application/Features/Events/Handlers/Commands/PublishEventCommandHandler.cs`, `Explore.API/Controllers/NotificationController.cs`, `Explore.API/Controllers/ActorSubscriptionController.cs`, `Explore.Blazor.Client/Services/Interop/NotificationRefreshStreamClient.cs`, `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`, `Explore.Blazor.Client/Helpers/NotificationNavigationHelper.cs`, `Explore.Blazor.Client/Pages/Notifications/Notifications.razor`, `docs/EMAIL_NOTIFICATIONS.md`
+> **Last Verified:** 2026-06-23
+> **Source Anchors:** `Explore.Application/Features/Notifications/`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationOutboxMessageFactory.cs`, `Explore.Application/Services/NotificationRefreshStreamService.cs`, `Explore.Application/Features/Events/Handlers/Commands/PublishEventCommandHandler.cs`, `Explore.Application/Features/Events/Handlers/Commands/ModerateEventCommandHandler.cs`, `Explore.Application/Features/Events/Handlers/Commands/HeavyRedactEventCommandHandler.cs`, `Explore.API/Controllers/NotificationController.cs`, `Explore.API/Controllers/ActorSubscriptionController.cs`, `Explore.Blazor.Client/Services/Interop/NotificationRefreshStreamClient.cs`, `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`, `Explore.Blazor.Client/Helpers/NotificationNavigationHelper.cs`, `Explore.Blazor.Client/Pages/Notifications/Notifications.razor`, `docs/EMAIL_NOTIFICATIONS.md`
 
-Notifications are authenticated, user-owned, tenant-scoped in-app records. They power the notification bell, notification panel, and full inbox page. Event-published actor-subscription fanout is implemented through the transactional outbox and creates durable in-app `Notification` rows. The SSE stream is a one-way refresh hint for unread count/inbox state; it does not replace durable notification rows, list/detail APIs, SMTP email delivery, push delivery, or external delivery receipts.
+Notifications are authenticated, user-owned, tenant-scoped in-app records. They power the notification bell, notification panel, and full inbox page. Event-published actor-subscription fanout and event-moderation attendee fanout are implemented through the transactional outbox and create durable in-app `Notification` rows. The SSE stream is a one-way refresh hint for unread count/inbox state; it does not replace durable notification rows, list/detail APIs, SMTP email delivery, push delivery, or external delivery receipts.
 
 ## Lifecycle
 
@@ -17,8 +17,9 @@ Notifications are authenticated, user-owned, tenant-scoped in-app records. They 
 |---|---|
 | Create / store | Notification records store tenant, user, scope, type, reason, entity, actor context, read/archive/snooze state, and soft-delete state. |
 | Actor subscription fanout | Event publication writes an internal `EventPublishedNotificationFanoutRequested` outbox message. The fanout service scans active organization/group actor subscriptions and creates durable in-app notification rows for active tenant-local subscribers. |
-| Deduplication | Fanout notifications use deterministic `Notification.DeduplicationKey` values so outbox retries and duplicate dispatches do not create duplicate inbox rows. |
-| Fanout progress | `NotificationFanoutRun` records source event/actor/kind, cursor, status, and aggregate counts so fanout can be retried and inspected without storing PII. |
+| Moderation attendee fanout | Light moderation writes `EventLightModeratedNotificationFanoutRequested`; heavy redaction writes `EventHeavyRedactedNotificationFanoutRequested`. Both scan event registration intents and create durable in-app rows for registered users. |
+| Deduplication | Fanout notifications use deterministic `Notification.DeduplicationKey` values so outbox retries and duplicate dispatches do not create duplicate inbox rows. Moderation fanout keys include tenant, moderation record, and recipient. |
+| Fanout progress | `NotificationFanoutRun` records source event or moderation-record metadata, cursor, status, and aggregate counts so fanout can be retried and inspected without storing recipient PII. |
 | List | User-scoped list retrieval supports paging and filters from the API and full inbox UI. |
 | Detail | Detail retrieval is ownership-checked for the current user. |
 | Unread count | API and bell use unread count for the badge. |
@@ -61,6 +62,19 @@ Actor-subscription state and mutations are separate authenticated endpoints unde
 
 Clicking a notification item navigates only when the item can be mapped to a supported route: events use `/events/{id}`, organizations use `/organization/profile/{id}`, and groups use `/group/profile/{id}`. Unsupported entity types, including event sessions without a dedicated route, should not be routed to guessed URLs. The item click itself is not the read-state operation; read state is handled by explicit user actions and read endpoints.
 
+## Event Moderation Fanout
+
+Light moderation and heavy redaction deliberately use different notification contracts.
+
+| Moderation Kind | Outbox Payload | Created Notification |
+|---|---|---|
+| Light moderation | `EventLightModeratedNotificationFanoutRequested` contains tenant id, event id, moderation record id, event title, source actor id, and moderation time. | Uses `EventUpdated`, links to the event entity, and may include the event title because the event content is preserved. |
+| Heavy redaction | `EventHeavyRedactedNotificationFanoutRequested` contains tenant id, moderation record id, source actor id, and redaction time. It does not contain event id, title, slug, URL, image URI, object key, or original content. | Uses `General`, has no `NotificationEntityTypeId`, no `EntityId`, no `SourceActorId`, no recipient context actor, and generic copy only. |
+
+Heavy fanout resolves the event id internally from the safe `EventModerationRecord` using an explicit tenant/id repository lookup, then scans registration intents for recipients. The event id is used only for recipient lookup and fanout-run progress. It is not written into attendee-facing notification title/body/entity fields, and the notification item has no route because `NotificationNavigationHelper` only navigates when entity metadata is present.
+
+Moderation fanout is in-app only. It does not call SMTP, push providers, or external brokers for attendee delivery.
+
 ## SSE Refresh Hints
 
 `GET /api/notification/stream` is an authenticated `text/event-stream` endpoint. It emits `notification-refresh` events with a minimal payload: `UnreadCount`, `HasUnread`, bounded `Reason`, and `GeneratedAt`.
@@ -73,6 +87,7 @@ In-app notifications are separate from SMTP email delivery:
 
 - The notification feature does not call `IEmailService` or the SMTP implementation.
 - Actor-subscription fanout creates in-app `Notification` rows only; it does not send email digests or SMTP messages.
+- Light and heavy moderation attendee fanout create in-app `Notification` rows only; they do not send SMTP messages.
 - `docs/EMAIL_NOTIFICATIONS.md` documents direct SMTP delivery and explicitly states notification-to-email fanout is not implemented.
 - Do not claim push notifications, email digests, SMTP delivery, external delivery tracking, or email unsubscribe behavior for in-app notifications.
 

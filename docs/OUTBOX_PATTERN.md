@@ -139,6 +139,8 @@ The outbox pattern is also used for domain-specific event flows:
 
 Event publication also uses the general `OutboxMessage` table for two separate side effects. The external `EventPublished` row preserves MQContract publishing. The internal `EventPublishedNotificationFanoutRequested` row drives actor-subscription notification fanout. The fanout service records resumable progress in `NotificationFanoutRun` and uses deterministic `Notification.DeduplicationKey` values so outbox retries do not create duplicate inbox rows.
 
+Event moderation uses the same general `OutboxMessage` table for attendee fanout. Light moderation writes `EventLightModeratedNotificationFanoutRequested`, which may include event context because the event content is preserved. Heavy redaction writes `EventHeavyRedactedNotificationFanoutRequested`, which omits event id, title, slug, URL, image URI, object key, and original content from the payload; the fanout service resolves the event id from the safe moderation record only for recipient lookup. Heavy attendee notifications are generic, linkless in-app rows.
+
 Non-negotiable boundary: handlers, controllers, automation executors, sequence processors, and domain services may create durable outbox intent only. They must not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly.
 
 ## Monitoring

@@ -114,6 +114,20 @@ These are hard boundaries protecting platform integrity:
 | Enable unapproved modules | Platform consistency |
 | Modify system tables | Data integrity |
 
+### Event Moderation Boundary
+
+Event moderation is a narrow safety exception to the normal business-ownership boundary. Instance administrators and tenant administrators can receive event `moderate-light`, `moderate-heavy`, `unmoderate`, and `view-management` authority in scope without receiving event `update` or `delete` authority.
+
+| Action | Instance Admin | Tenant Admin | Organizer / Event Team |
+|--------|----------------|--------------|-------------------------|
+| Light moderate published event | Allowed in scope | Allowed in tenant | Not granted by ownership alone |
+| Heavy redact unsafe event content/images | Allowed in scope | Allowed in tenant | Not granted by ownership alone |
+| Unmoderate reversible light violation | Allowed in scope | Allowed in tenant | Not granted by ownership alone |
+| Edit event business content | Not granted by moderation authority | Not granted by moderation authority | Granted only by normal event management policy |
+| View safe moderation history | Allowed through `view-management` | Allowed through `view-management` | Allowed only when normal event management policy grants it |
+
+Light moderation hides the event while preserving content and can be reversed back to `Published`. Heavy moderation is irreversible: event-owned text is redacted, event image references are detached, provider objects are deleted through the storage abstraction, attendee notifications are generic, and audit/observability keep only safe metadata. All moderation affordances must be driven by HAL links, not by client-side role checks.
+
 ---
 
 ## Authority Cascade
