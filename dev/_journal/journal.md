@@ -564,3 +564,54 @@
 
 - [2026-06-16 Europe/Brussels] **Prioritize environment/secret S3 keys and fix Cerbos principal builder userId parameter bug** — Uploaded images were resolved to the `"s3_compatible"` provider but saved to the local docker-compose MinIO container. The Admin UI displayed "Storage settings are read-only for this session because the API response did not include an edit affordance" despite the user having Administrator role. Root causes: (1) `S3ConfigResolver.ResolveStringAsync` checked configuration keys in an order that placed `S3Settings:Endpoint` first. Since the docker-compose environment always sets `S3Settings__Endpoint` to `http://minio:9000` as a developer fallback, it took precedence over environment-configured keys (e.g. `STORAGE_S3_ENDPOINT`). (2) `CerbosPrincipalBuilder.BuildSdkPrincipalAsync` accepted `userId` but called parameterless overloads of `IAdminContext` methods, which resolved the user ID from the ambient `HttpContext.User` instead of the passed `userId`. This caused empty memberships in HATEOAS link evaluations. (3) `StoragePolicyResolver` only performed default S3 fallback if the setting source was exactly `SettingSource.SystemDefault` or `SettingSource.SystemLocked`, ignoring seeded database values. Key files: `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs`, `Explore.Application/Services/StoragePolicyResolver.cs`.
 
+[2026-06-23 Europe/Brussels] — Public session query is not organizer-safe
+
+**Context**: While completing Phase 5 authenticated event-management MCP read parity, the organizer program context initially reused the existing session-by-event query.
+
+**Symptom / Observation**: The authenticated JSON-RPC test for `get_event_program_management_context` returned zero sessions for a seeded draft/private organizer event even though the session existed and the event HAL `edit` affordance was available.
+
+**Root Cause**: `GetSessionsByEventRequestHandler` calls `IEventSessionRepository.GetPublicSessionsByEventAsync(...)`, so it is intentionally public-visibility filtered. Organizer/management reads need a different Application query that still maps in Application but does not apply public-only session visibility.
+
+**Resolution**: Added `GetManagedSessionsByEventRequest` / `GetManagedSessionsByEventRequestHandler` and changed the MCP program management context to use that query after the event HAL gate. Verification passed with `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EventManagementMcpAuthenticatedReadTests/AuthenticatedSubResourceReadTools_ReturnBoundedHalGatedContexts" --no-progress --maximum-parallel-tests 1`.
+
+**Why This Matters for Future Work**: Do not reuse public event/session read queries for private MCP management surfaces just because the caller is authenticated. Gate through HAL/domain authority first, then use a management-scoped Application query whose name makes the visibility contract explicit.
+
+**References**:
+- `Explore.Application/Features/EventSessions/Handlers/Queries/GetSessionsByEventRequestHandler.cs:27`
+- `Explore.Application/Features/EventSessions/Handlers/Queries/GetManagedSessionsByEventRequestHandler.cs:25`
+- `Explore.API/Mcp/EventManagementMcpTools.cs:886`
+- `dev/active/full-event-management-mcp/full-event-management-mcp-context.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.claude/rules/*.md` entry
+- [ ] Candidate for skill update: `cqrs-mediatr-guidelines`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [x] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-06-25 Europe/Brussels] - Cerbos HAL batches must map repeated resources by action
+
+**Context**: While debugging an event draft detail page where the owner did not see the management topbar, the API returned `200 OK` but logs showed `Cerbos decision missing. Default deny` for `update`, `moderate-heavy`, and `delete`.
+
+**Symptom / Observation**: Blazor was behaving correctly: it renders the topbar only from HAL `_links`. The HAL link evaluator was not getting the expected authorization decisions because several checks targeted the same event resource with different actions.
+
+**Root Cause**: `CerbosAuthorizationService.BuildDecisionResults` looked up response rows by resource kind/id only. In a batch with repeated `islamuevent_event` entries for different actions, the first same-resource result could be selected even when it did not contain the requested action, causing the action to be treated as missing and denied.
+
+**Resolution**: `CerbosAuthorizationService.FindResultEntry` now prefers the positional result when it matches both resource and action, then falls back to searching by resource and action. Added `IsAllowedBatchAsync_MapsRepeatedResourceEntriesByAction` to prove an allowed `update` decision is not masked by adjacent denied same-resource actions.
+
+**Why This Matters for Future Work**: HAL link authorization commonly batches many affordances for the same aggregate. Any provider response mapper must treat action as part of the decision key, otherwise the UI can lose valid links while the API payload and policy appear correct.
+
+**References**:
+- `Explore.Infrastructure/Services/CerbosAuthorizationService.cs:293`
+- `Explore.Infrastructure/Services/CerbosAuthorizationService.cs:325`
+- `Explore.Infrastructure.Tests/Behaviors/CerbosAuthorizationServiceTests.cs:100`
+- `dev/active/event-moderation-topbar/event-moderation-topbar-context.md:116`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `auth-patterns`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
