@@ -156,8 +156,48 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
         changed |= NormalizeLocationAliases(payload);
         changed |= NormalizeRoomAliases(payload);
         changed |= NormalizeSessionAliases(payload);
+        changed |= PruneIncompleteCreateEventDraftNestedPayloads(payload);
 
         return changed;
+    }
+
+    private static bool PruneIncompleteCreateEventDraftNestedPayloads(JsonObject payload)
+    {
+        var changed = false;
+        var hasCompleteLocation = HasCompleteLocation(payload);
+
+        if (FindObject(payload, "location") is not null && !hasCompleteLocation)
+        {
+            changed |= RemoveProperty(payload, "location");
+            hasCompleteLocation = false;
+        }
+
+        var room = FindObject(payload, "room");
+        if (room is not null && (!hasCompleteLocation || !HasNonBlankStringProperty(room, "name")))
+        {
+            changed |= RemoveProperty(payload, "room");
+        }
+
+        var session = FindObject(payload, "session");
+        if (session is not null
+            && (!HasNonBlankStringProperty(session, "startTime")
+                || !HasNonBlankStringProperty(session, "endTime")))
+        {
+            changed |= RemoveProperty(payload, "session");
+        }
+
+        return changed;
+    }
+
+    private static bool HasCompleteLocation(JsonObject payload)
+    {
+        var location = FindObject(payload, "location");
+        return location is not null
+            && HasNonBlankStringProperty(location, "fullName")
+            && HasNonBlankStringProperty(location, "address")
+            && HasNonBlankStringProperty(location, "postcode")
+            && HasNonBlankStringProperty(location, "country")
+            && HasNonBlankStringProperty(location, "city");
     }
 
     private static bool NormalizeIslamicAspectAliases(JsonObject payload)
@@ -398,6 +438,25 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
         value = payload[actualName];
         payload.Remove(actualName);
         return true;
+    }
+
+    private static bool RemoveProperty(JsonObject payload, string propertyName)
+    {
+        var actualName = FindPropertyName(payload, propertyName);
+        return actualName is not null && payload.Remove(actualName);
+    }
+
+    private static bool HasNonBlankStringProperty(JsonObject payload, string propertyName)
+    {
+        var actualName = FindPropertyName(payload, propertyName);
+        if (actualName is null)
+        {
+            return false;
+        }
+
+        var value = payload[actualName];
+        return value?.GetValueKind() == JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(value.GetValue<string>());
     }
 
     private static string? FindPropertyName(JsonObject payload, string propertyName)

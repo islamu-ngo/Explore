@@ -107,6 +107,45 @@ public sealed class AiStructuredActionParserTests
     }
 
     [Test]
+    public async Task Parse_WhenCreateEventDraftContainsPartialPosterNestedDetails_DropsIncompleteNestedRows()
+    {
+        var result = new AiStructuredActionParser().Parse(
+        [
+            new AiProposedActionCandidate(
+                AiProposedActionKind.CreateEventDraft,
+                """
+                  {
+                    "title": "Community Iftar",
+                    "location": {
+                      "fullName": "Islamic Centre"
+                    },
+                    "room": {
+                      "name": "Main Hall"
+                    },
+                    "session": {
+                      "startTime": "2026-07-10T18:00:00Z"
+                    }
+                  }
+                  """,
+                "Create draft")
+        ]);
+
+        await Assert.That(result.Succeeded).IsTrue();
+
+        using var document = JsonDocument.Parse(result.Actions[0].PayloadJson);
+        await Assert.That(document.RootElement.TryGetProperty("location", out _)).IsFalse();
+        await Assert.That(document.RootElement.TryGetProperty("room", out _)).IsFalse();
+        await Assert.That(document.RootElement.TryGetProperty("session", out _)).IsFalse();
+
+        var mapping = new CreateEventDraftAiActionMapper().Map(result.Actions[0]);
+
+        await Assert.That(mapping.Succeeded).IsTrue();
+        await Assert.That(mapping.Draft!.Locations).IsEmpty();
+        await Assert.That(mapping.Draft.Rooms).IsEmpty();
+        await Assert.That(mapping.Draft.Sessions).IsEmpty();
+    }
+
+    [Test]
     public async Task Parse_WhenPayloadIsInvalidJson_ReturnsInvalidToolArgumentsFailure()
     {
         var result = new AiStructuredActionParser().Parse(

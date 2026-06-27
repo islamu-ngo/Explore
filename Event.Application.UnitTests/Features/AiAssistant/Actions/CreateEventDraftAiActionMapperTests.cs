@@ -100,6 +100,32 @@ public sealed class CreateEventDraftAiActionMapperTests
     }
 
     [Test]
+    public async Task Map_WhenPayloadContainsIncompleteStructuredDetails_SkipsInvalidNestedRows()
+    {
+        var result = new CreateEventDraftAiActionMapper().Map(
+            """
+              {
+                "title": "Poster Event",
+                "location": {
+                  "fullName": "Islamic Centre Brussels"
+                },
+                "room": {
+                  "name": "Main Hall"
+                },
+                "session": {
+                  "startTime": "2026-07-10T18:00:00Z"
+                }
+              }
+              """);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Draft).IsNotNull();
+        await Assert.That(result.Draft!.Locations).IsEmpty();
+        await Assert.That(result.Draft.Rooms).IsEmpty();
+        await Assert.That(result.Draft.Sessions).IsEmpty();
+    }
+
+    [Test]
     public async Task Map_WhenTitleIsMissing_ReturnsMissingTitleFailure()
     {
         var result = new CreateEventDraftAiActionMapper().Map("{\"description\":\"No title\"}");

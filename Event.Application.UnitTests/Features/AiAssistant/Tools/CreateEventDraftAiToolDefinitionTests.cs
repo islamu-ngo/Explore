@@ -164,6 +164,36 @@ public sealed class CreateEventDraftAiToolDefinitionTests
         await Assert.That(result.NormalizedPayloadJson!).Contains(tagId.ToString());
     }
 
+    [Test]
+    public async Task Registry_WhenProviderNormalizationEnabled_DropsIncompletePosterNestedObjects()
+    {
+        var registry = AiToolContractRegistry.CreateDefault();
+
+        var result = registry.ValidatePayload(
+            AiProposedActionKind.CreateEventDraft,
+            """
+              {
+                "title": "Community Iftar",
+                "locationName": "Islamic Centre",
+                "roomName": "Main Hall",
+                "startTime": "2026-07-10T18:00:00Z",
+                "genderMode": 3
+              }
+              """,
+            allowProviderNormalization: true);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.NormalizedPayloadJson).IsNotNull();
+        await Assert.That(result.NormalizedPayloadJson!).Contains("Community Iftar");
+        await Assert.That(result.NormalizedPayloadJson!).Contains("\"islamicAspect\"");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("\"location\"");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("\"room\"");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("\"session\"");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("locationName");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("roomName");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("startTime");
+    }
+
     private static HashSet<string> GetSchemaPropertyNames()
     {
         using var document = JsonDocument.Parse(CreateEventDraftAiToolDefinition.JsonSchema);

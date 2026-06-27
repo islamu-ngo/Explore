@@ -201,7 +201,7 @@ public sealed class CreateEventDraftAiActionMapper
 
     private static List<CreateEventLocationRequest> NormalizeLocation(CreateEventDraftLocationPayload? location)
     {
-        if (location is null)
+        if (location is null || !HasCompleteLocation(location))
         {
             return [];
         }
@@ -225,7 +225,7 @@ public sealed class CreateEventDraftAiActionMapper
 
     private static List<CreateEventRoomRequest> NormalizeRoom(CreateEventDraftRoomPayload? room, bool hasPrimaryLocation)
     {
-        if (room is null || !hasPrimaryLocation)
+        if (room is null || !hasPrimaryLocation || string.IsNullOrWhiteSpace(room.Name))
         {
             return [];
         }
@@ -249,7 +249,7 @@ public sealed class CreateEventDraftAiActionMapper
         bool hasPrimaryLocation,
         bool hasPrimaryRoom)
     {
-        if (session is null)
+        if (session is null || session.StartTime == default || session.EndTime == default || session.EndTime <= session.StartTime)
         {
             return [];
         }
@@ -277,6 +277,13 @@ public sealed class CreateEventDraftAiActionMapper
             }
         ];
     }
+
+    private static bool HasCompleteLocation(CreateEventDraftLocationPayload location)
+        => !string.IsNullOrWhiteSpace(location.FullName)
+            && !string.IsNullOrWhiteSpace(location.Address)
+            && !string.IsNullOrWhiteSpace(location.Postcode)
+            && !string.IsNullOrWhiteSpace(location.Country)
+            && !string.IsNullOrWhiteSpace(location.City);
 
     private static (Guid? OrganizationId, Guid? GroupId) ResolveOwnerScope(
         CreateEventDraftAiActionPayload payload,
