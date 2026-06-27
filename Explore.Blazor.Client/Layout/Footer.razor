@@ -85,7 +85,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var settings = await PublicExperienceService.GetSettingsAsync();
+        var settings = await PublicExperienceService.GetCachedSettingsAsync();
         if (settings is null)
             return;
 

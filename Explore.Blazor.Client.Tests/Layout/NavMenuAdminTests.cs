@@ -64,7 +64,7 @@ public class NavMenuAdminTests : IDisposable
     }
 
     [Test]
-    public async Task NavMenu_AuthenticatedUser_ShowsMyRegistrationsLink()
+    public async Task NavMenu_AuthenticatedUser_DoesNotShowRemovedMyRegistrationsLink()
     {
         // Arrange
         _ctx.SetAuthenticatedUser(AuthenticationTestConstants.DefaultUserId, "Regular User");
@@ -75,8 +75,8 @@ public class NavMenuAdminTests : IDisposable
         OpenDropdown(cut);
 
         // Assert
-        await Assert.That(cut.Markup).Contains("My Registrations");
-        await Assert.That(cut.Markup).Contains("href=\"/my/registrations\"");
+        await Assert.That(cut.Markup).DoesNotContain("My Registrations");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/my/registrations\"");
     }
 
     [Test]

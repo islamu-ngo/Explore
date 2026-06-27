@@ -705,11 +705,7 @@
         _model.CerbosAdminPassword = null;
         _successMessage = response.Message;
 
-        var destination = _isAuthenticated
-            ? "/onboarding/instance"
-            : "/login?returnUrl=/onboarding/instance";
-
-        Navigation.NavigateTo(destination, forceLoad: true);
+        Navigation.NavigateTo("/onboarding/instance", forceLoad: true);
     }
 
     private async Task CopyComposeCommandAsync()

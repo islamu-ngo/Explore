@@ -163,7 +163,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     }
 
     [Test]
-    public async Task SaveLocal_WhenBrowserCommandSucceeds_RedirectsToLogin()
+    public async Task SaveLocal_WhenBrowserCommandSucceeds_RedirectsToInstanceOnboarding()
     {
         SetupIncompleteOnboardingStatus();
         var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
@@ -193,9 +193,9 @@ public class AuthorizationProviderConfigurationTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!_nav.Uri.EndsWith("/login?returnUrl=/onboarding/instance", StringComparison.OrdinalIgnoreCase))
+            if (!_nav.Uri.EndsWith("/onboarding/instance", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"Expected redirect to setup login, got '{_nav.Uri}'.");
+                throw new InvalidOperationException($"Expected redirect to instance onboarding, got '{_nav.Uri}'.");
             }
         });
 
@@ -204,7 +204,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     }
 
     [Test]
-    public async Task SaveCerbos_WhenPdpVerifiedAndPoliciesManuallyConfirmed_SavesWithoutBrowserPolicySyncAndRedirectsToLogin()
+    public async Task SaveCerbos_WhenPdpVerifiedAndPoliciesManuallyConfirmed_SavesWithoutBrowserPolicySyncAndRedirectsToInstanceOnboarding()
     {
         SetupIncompleteOnboardingStatus();
         var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
@@ -246,9 +246,9 @@ public class AuthorizationProviderConfigurationTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!_nav.Uri.EndsWith("/login?returnUrl=/onboarding/instance", StringComparison.OrdinalIgnoreCase))
+            if (!_nav.Uri.EndsWith("/onboarding/instance", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"Expected redirect to setup login, got '{_nav.Uri}'.");
+                throw new InvalidOperationException($"Expected redirect to instance onboarding, got '{_nav.Uri}'.");
             }
         });
     }

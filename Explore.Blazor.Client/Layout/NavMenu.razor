@@ -265,11 +265,6 @@
                                     </div>
                                 }
 
-                                <a href="/my/registrations" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" />
-                                    My Registrations
-                                </a>
-
                                 @if (HasAnyAdminAuthority(context.User))
                                 {
                                     <div class="navbar__dropdown-divider"></div>

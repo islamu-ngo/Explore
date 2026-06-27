@@ -163,30 +163,32 @@
                     else
                     {
                         @* Not yet validated: show secret input + validate button *@
-                        <MudTextField T="string"
-                                      Label="Setup Secret"
-                                      InputType="InputType.Password"
-                                      Variant="Variant.Outlined"
-                                      Immediate="true"
-                                      @bind-Value="_secret"
-                                      Disabled="_isValidating"
-                                      Class="mb-1" />
+                        <form @onsubmit="ValidateAsync" @onsubmit:preventDefault="true">
+                            <MudTextField T="string"
+                                          Label="Setup Secret"
+                                          InputType="InputType.Password"
+                                          Variant="Variant.Outlined"
+                                          Immediate="true"
+                                          @bind-Value="_secret"
+                                          Disabled="_isValidating"
+                                          Class="mb-1" />
 
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4 d-block">
-                            @GetSetupSecretHint()
-                        </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4 d-block">
+                                @GetSetupSecretHint()
+                            </MudText>
 
-                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
-                                   Size="Size.Large"
-                                   Disabled="_isValidating || string.IsNullOrWhiteSpace(_secret)"
-                                   OnClick="ValidateAsync"
-                                   Class="mb-3">
-                            @if (_isValidating)
-                            {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                            }
-                            Validate Secret
-                        </MudButton>
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
+                                       ButtonType="ButtonType.Submit"
+                                       Size="Size.Large"
+                                       Disabled="_isValidating || string.IsNullOrWhiteSpace(_secret)"
+                                       Class="mb-3">
+                                @if (_isValidating)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                Validate Secret
+                            </MudButton>
+                        </form>
                     }
                 </div>
             }

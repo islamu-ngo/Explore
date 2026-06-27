@@ -65,6 +65,9 @@ public partial class NavMenu : IDisposable
     protected SidebarState SidebarState { get; set; } = null!;
 
     [Inject]
+    protected CurrentUserState CurrentUserState { get; set; } = null!;
+
+    [Inject]
     private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
 
     [Inject]
@@ -100,6 +103,7 @@ public partial class NavMenu : IDisposable
         AiAssistantState.OnChange += StateHasChanged;
         TenantNavLinksState.OnChange += StateHasChanged;
         DockLayoutState.Changed += OnDockLayoutChanged;
+        CurrentUserState.OnChanged += OnCurrentUserChanged;
         await LoadPublicExperienceAsync();
         await LoadCurrentUserAsync();
         await LoadNavigationLinksAsync();
@@ -283,6 +287,12 @@ public partial class NavMenu : IDisposable
         _ = InvokeAsync(StateHasChanged);
     }
 
+    private void OnCurrentUserChanged()
+    {
+        _userLoaded = false;
+        _ = InvokeAsync(LoadCurrentUserAsync);
+    }
+
     private void ToggleOrgSubmenu()
     {
         _orgSubmenuOpen = !_orgSubmenuOpen;
@@ -457,6 +467,7 @@ public partial class NavMenu : IDisposable
         AiAssistantState.OnChange -= StateHasChanged;
         TenantNavLinksState.OnChange -= StateHasChanged;
         DockLayoutState.Changed -= OnDockLayoutChanged;
+        CurrentUserState.OnChanged -= OnCurrentUserChanged;
         GC.SuppressFinalize(this);
     }
 }
