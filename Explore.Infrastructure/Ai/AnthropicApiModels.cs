@@ -26,6 +26,16 @@ public sealed class AnthropicCreateMessageRequest
     [JsonPropertyName("tools")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<AnthropicApiTool>? Tools { get; init; }
+
+    [JsonPropertyName("chat_template_kwargs")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AnthropicChatTemplateKwargs? ChatTemplateKwargs { get; init; }
+}
+
+public sealed record AnthropicChatTemplateKwargs
+{
+    [JsonPropertyName("enable_thinking")]
+    public bool EnableThinking { get; init; }
 }
 
 public sealed record AnthropicApiMessage
