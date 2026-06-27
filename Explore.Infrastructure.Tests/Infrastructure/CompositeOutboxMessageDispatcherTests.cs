@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Models.IntegrationEvents;
 using Explore.Application.Models.InternalEvents;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Infrastructure.Messaging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,7 +22,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
     {
         var messagingProvider = Substitute.For<IMessagingProvider>();
         var fanoutService = Substitute.For<IEventPublishedNotificationFanoutService>();
-        var dispatcher = CreateDispatcher(messagingProvider, fanoutService);
+        var moderationFanoutService = Substitute.For<IEventModerationNotificationFanoutService>();
+        var dispatcher = CreateDispatcher(messagingProvider, fanoutService, moderationFanoutService);
         var request = new EventPublishedNotificationFanoutRequested
         {
             TenantId = Guid.NewGuid(),
@@ -47,6 +49,80 @@ public sealed class CompositeOutboxMessageDispatcherTests
                 && payload.EventId == request.EventId
                 && payload.SourceActorId == request.SourceActorId),
             Arg.Any<CancellationToken>());
+        await moderationFanoutService.DidNotReceiveWithAnyArgs().FanoutLightModerationAsync(default!, default);
+        await moderationFanoutService.DidNotReceiveWithAnyArgs().FanoutHeavyRedactionAsync(default!, default);
+        await messagingProvider.DidNotReceiveWithAnyArgs().PublishAsync<EventPublishedIntegrationEvent>(default!, default!, default);
+    }
+
+    [Test]
+    public async Task DispatchAsync_WithLightModerationFanoutEvent_RoutesToModerationFanoutServiceOnly()
+    {
+        var messagingProvider = Substitute.For<IMessagingProvider>();
+        var fanoutService = Substitute.For<IEventPublishedNotificationFanoutService>();
+        var moderationFanoutService = Substitute.For<IEventModerationNotificationFanoutService>();
+        var dispatcher = CreateDispatcher(messagingProvider, fanoutService, moderationFanoutService);
+        var request = new EventLightModeratedNotificationFanoutRequested
+        {
+            TenantId = Guid.NewGuid(),
+            EventId = Guid.NewGuid(),
+            ModerationRecordId = Guid.NewGuid(),
+            EventTitle = "Community Iftar",
+            SourceActorId = Guid.NewGuid(),
+            ModeratedAt = DateTimeOffset.UtcNow
+        };
+
+        await dispatcher.DispatchAsync(new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            AggregateType = "Event",
+            AggregateId = request.EventId,
+            EventType = EventModerationOutboxMessageFactory.EventLightModeratedNotificationFanoutRequestedEventType,
+            Payload = JsonSerializer.Serialize(request)
+        });
+
+        await moderationFanoutService.Received(1).FanoutLightModerationAsync(
+            Arg.Is<EventLightModeratedNotificationFanoutRequested>(payload =>
+                payload.TenantId == request.TenantId
+                && payload.EventId == request.EventId
+                && payload.ModerationRecordId == request.ModerationRecordId),
+            Arg.Any<CancellationToken>());
+        await fanoutService.DidNotReceiveWithAnyArgs().FanoutAsync(default!, default);
+        await moderationFanoutService.DidNotReceiveWithAnyArgs().FanoutHeavyRedactionAsync(default!, default);
+        await messagingProvider.DidNotReceiveWithAnyArgs().PublishAsync<EventPublishedIntegrationEvent>(default!, default!, default);
+    }
+
+    [Test]
+    public async Task DispatchAsync_WithHeavyRedactionFanoutEvent_RoutesToModerationFanoutServiceOnly()
+    {
+        var messagingProvider = Substitute.For<IMessagingProvider>();
+        var fanoutService = Substitute.For<IEventPublishedNotificationFanoutService>();
+        var moderationFanoutService = Substitute.For<IEventModerationNotificationFanoutService>();
+        var dispatcher = CreateDispatcher(messagingProvider, fanoutService, moderationFanoutService);
+        var request = new EventHeavyRedactedNotificationFanoutRequested
+        {
+            TenantId = Guid.NewGuid(),
+            ModerationRecordId = Guid.NewGuid(),
+            SourceActorId = Guid.NewGuid(),
+            RedactedAt = DateTimeOffset.UtcNow
+        };
+
+        await dispatcher.DispatchAsync(new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            AggregateType = "Event",
+            AggregateId = Guid.NewGuid(),
+            EventType = EventModerationOutboxMessageFactory.EventHeavyRedactedNotificationFanoutRequestedEventType,
+            Payload = JsonSerializer.Serialize(request)
+        });
+
+        await moderationFanoutService.Received(1).FanoutHeavyRedactionAsync(
+            Arg.Is<EventHeavyRedactedNotificationFanoutRequested>(payload =>
+                payload.TenantId == request.TenantId
+                && payload.ModerationRecordId == request.ModerationRecordId
+                && payload.SourceActorId == request.SourceActorId),
+            Arg.Any<CancellationToken>());
+        await moderationFanoutService.DidNotReceiveWithAnyArgs().FanoutLightModerationAsync(default!, default);
+        await fanoutService.DidNotReceiveWithAnyArgs().FanoutAsync(default!, default);
         await messagingProvider.DidNotReceiveWithAnyArgs().PublishAsync<EventPublishedIntegrationEvent>(default!, default!, default);
     }
 
@@ -55,7 +131,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
     {
         var messagingProvider = Substitute.For<IMessagingProvider>();
         var fanoutService = Substitute.For<IEventPublishedNotificationFanoutService>();
-        var dispatcher = CreateDispatcher(messagingProvider, fanoutService);
+        var moderationFanoutService = Substitute.For<IEventModerationNotificationFanoutService>();
+        var dispatcher = CreateDispatcher(messagingProvider, fanoutService, moderationFanoutService);
         var integrationEvent = new EventPublishedIntegrationEvent
         {
             TenantId = Guid.NewGuid(),
@@ -79,6 +156,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
             "events.published",
             Arg.Any<CancellationToken>());
         await fanoutService.DidNotReceiveWithAnyArgs().FanoutAsync(default!, default);
+        await moderationFanoutService.DidNotReceiveWithAnyArgs().FanoutLightModerationAsync(default!, default);
+        await moderationFanoutService.DidNotReceiveWithAnyArgs().FanoutHeavyRedactionAsync(default!, default);
     }
 
     [Test]
@@ -86,7 +165,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
     {
         var dispatcher = CreateDispatcher(
             Substitute.For<IMessagingProvider>(),
-            Substitute.For<IEventPublishedNotificationFanoutService>());
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>());
 
         await Assert.That(async () => await dispatcher.DispatchAsync(new OutboxMessage
         {
@@ -100,7 +180,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
 
     private static CompositeOutboxMessageDispatcher CreateDispatcher(
         IMessagingProvider messagingProvider,
-        IEventPublishedNotificationFanoutService fanoutService)
+        IEventPublishedNotificationFanoutService fanoutService,
+        IEventModerationNotificationFanoutService moderationFanoutService)
     {
         var mqDispatcher = new MqContractOutboxMessageDispatcher(
             messagingProvider,
@@ -109,6 +190,7 @@ public sealed class CompositeOutboxMessageDispatcherTests
         return new CompositeOutboxMessageDispatcher(
             mqDispatcher,
             fanoutService,
+            moderationFanoutService,
             NullLogger<CompositeOutboxMessageDispatcher>.Instance);
     }
 }
