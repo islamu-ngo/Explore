@@ -1,3 +1,6 @@
+// ABOUTME: Repository contract for event-category link entities.
+// ABOUTME: Returns domain entities for handler-owned mapping and relationship validation.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,4 +13,5 @@ public interface IEventCategoriesRepository : IGenericRepository<EventCategories
     Task<List<Event>> GetEventsByCategory(Guid categoryId);
     Task<List<Category>> GetCategoriesByEvent(Guid eventId);
     Task<bool> Exists(Guid eventId, Guid categoryId);
+    Task<EventCategories?> GetByEventAndCategory(Guid eventId, Guid categoryId, Guid? excludeId = null);
 }

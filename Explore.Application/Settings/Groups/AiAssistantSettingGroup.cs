@@ -28,6 +28,10 @@ public class AiAssistantSettingGroup : ISettingGroup
     public bool StreamingEnabled { get; private set; }
     public bool AllowAnonymousAccess { get; private set; }
 
+    public int MaxAiContextSensitivity { get; private set; } = 1;
+
+    public int MaxAiContextSensitivity { get; private set; } = (int)AiContextSensitivityEnum.Internal;
+
     public bool HasEndpointUrl => !string.IsNullOrWhiteSpace(EndpointUrl);
     public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
     public bool HasModel => !string.IsNullOrWhiteSpace(ModelId);
@@ -60,7 +64,8 @@ public class AiAssistantSettingGroup : ISettingGroup
         GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit,
         GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
         GovernanceSettingKeys.AiAssistant.StreamingEnabled,
-        GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess
+        GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
+        GovernanceSettingKeys.AiAssistant.MaxAiContextSensitivity
     ];
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
@@ -101,6 +106,8 @@ public class AiAssistantSettingGroup : ISettingGroup
             StreamingEnabled = SettingValueSerializer.Deserialize(streamingEnabled.Value, false);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess, out var allowAnonymousAccess))
             AllowAnonymousAccess = SettingValueSerializer.Deserialize(allowAnonymousAccess.Value, false);
+        if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.MaxAiContextSensitivity, out var maxSensitivity))
+            MaxAiContextSensitivity = SettingValueSerializer.DeserializeInt(maxSensitivity.Value, 1);
     }
 
     private static IReadOnlyList<string> NormalizeModelIds(IEnumerable<string?> modelIds)

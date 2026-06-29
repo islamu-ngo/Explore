@@ -1,3 +1,6 @@
+// ABOUTME: Repository contract for event-tag link entities.
+// ABOUTME: Returns domain entities for handler-owned mapping and relationship validation.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,4 +13,5 @@ public interface IEventTagsRepository : IGenericRepository<EventTags, Guid>
     Task<List<Event>> GetEventsByTag(Guid tagId);
     Task<List<Tag>> GetTagsByEvent(Guid eventId);
     Task<bool> Exists(Guid eventId, Guid tagId);
+    Task<EventTags?> GetByEventAndTag(Guid eventId, Guid tagId, Guid? excludeId = null);
 }
