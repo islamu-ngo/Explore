@@ -17,6 +17,9 @@ using Explore.Domain.Constants;
 using MediatR;
 using NSubstitute;
 
+using Explore.Application.Features.AiAssistant.Disclosure;
+using Explore.Domain.Enums;
+
 namespace Event.Application.UnitTests.Features.AiAssistant.Commands;
 
 public sealed class ProcessAiRunCommandHandlerTests
@@ -29,6 +32,8 @@ public sealed class ProcessAiRunCommandHandlerTests
     private readonly IHierarchicalSettingsResolver _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
     private readonly IAiChatProvider _chatProvider = Substitute.For<IAiChatProvider>();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
+    private readonly IAiContextGateway _contextGateway = Substitute.For<IAiContextGateway>();
+    private readonly IAiProviderTrustResolver _providerTrustResolver = Substitute.For<IAiProviderTrustResolver>();
 
     public ProcessAiRunCommandHandlerTests()
     {
@@ -41,6 +46,21 @@ public sealed class ProcessAiRunCommandHandlerTests
                 new AiTokenUsage(1, 2, 3),
                 "fake-request",
                 "stop")));
+
+        _providerTrustResolver.Resolve(Arg.Any<AiProviderTrustResolutionContext>())
+            .Returns(AiProviderTrustTierEnum.PlatformConfiguredExternalProcessor);
+
+        _contextGateway.Sanitize(Arg.Any<AiContextSanitizationInput>())
+            .Returns(x =>
+            {
+                var input = x.Arg<AiContextSanitizationInput>();
+                var disclosed = new List<AiContextDisclosedField>();
+                foreach (var field in input.Fields)
+                {
+                    disclosed.Add(new AiContextDisclosedField(field.Key, field.Value, AiContextDisclosureRuleEnum.Allow));
+                }
+                return AiContextSanitizedEnvelope.Success(input.EntityName, disclosed, Array.Empty<string>(), Array.Empty<string>());
+            });
     }
 
     [Test]
@@ -320,7 +340,7 @@ public sealed class ProcessAiRunCommandHandlerTests
     }
 
     private ProcessAiRunCommandHandler CreateHandler()
-        => new(_conversationRepository, _settingsResolver, _chatProvider, _mediator);
+        => new(_conversationRepository, _settingsResolver, _chatProvider, _mediator, _contextGateway, _providerTrustResolver);
 
     private ProcessAiRunCommand CreateCommand(string mode = AiAssistantInteractionModes.Build)
         => new()

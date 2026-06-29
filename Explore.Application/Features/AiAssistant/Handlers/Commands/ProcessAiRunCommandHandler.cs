@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.Event;
+using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.AiAssistant.Tools;
@@ -15,6 +16,7 @@ using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Ai;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.AiAssistant.Handlers.Commands;
@@ -26,16 +28,22 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
     private readonly IMediator _mediator;
     private readonly AiPromptContextBuilder _promptContextBuilder;
     private readonly AiProviderResponseResolver _providerResponseResolver;
+    private readonly IAiContextGateway _contextGateway;
+    private readonly IAiProviderTrustResolver _providerTrustResolver;
 
     public ProcessAiRunCommandHandler(
         IAiConversationRepository conversationRepository,
         IHierarchicalSettingsResolver settingsResolver,
         IAiChatProvider chatProvider,
-        IMediator mediator)
+        IMediator mediator,
+        IAiContextGateway contextGateway,
+        IAiProviderTrustResolver providerTrustResolver)
     {
         _conversationRepository = conversationRepository;
         _settingsResolver = settingsResolver;
         _mediator = mediator;
+        _contextGateway = contextGateway;
+        _providerTrustResolver = providerTrustResolver;
         var toolRegistry = AiToolContractRegistry.CreateDefault();
         _promptContextBuilder = new AiPromptContextBuilder(new AiSystemPromptFactory(toolRegistry));
         _providerResponseResolver = new AiProviderResponseResolver(
@@ -275,6 +283,16 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
         }
 
         var enrichedReferences = new List<AiSelectedReferenceDto>(selectedReferences.Count);
+        var providerTrustTier = _providerTrustResolver.Resolve(new AiProviderTrustResolutionContext(
+            EndpointUrl: settings.EndpointUrl,
+            TenantControlled: false,
+            PlatformDefault: true));
+        var viewerScope = conversation.ActorId != Guid.Empty
+            ? AiViewerScopeEnum.OrganizerTeam
+            : AiViewerScopeEnum.Public;
+        var grantedFieldKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        const bool piiDisclosureEnabled = false;
+
         foreach (AiSelectedReferenceDto reference in selectedReferences)
         {
             if (IsEventReference(reference))
@@ -284,11 +302,19 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
                     cancellationToken);
                 if (eventDetails is not null)
                 {
+                    var sanitizationInput = new AiContextSanitizationInput(
+                        EntityName: "Event",
+                        Fields: BuildEventReferenceFieldMap(eventDetails),
+                        ProviderTrustTier: providerTrustTier,
+                        ViewerScope: viewerScope,
+                        GrantedFieldKeys: grantedFieldKeys,
+                        PiiDisclosureEnabled: piiDisclosureEnabled);
+                    var envelope = _contextGateway.Sanitize(sanitizationInput);
                     enrichedReferences.Add(new AiSelectedReferenceDto(
                         AiReferenceKind.Event.ToString(),
                         eventDetails.Id,
                         eventDetails.Title,
-                        BuildEventReferenceSummary(eventDetails)));
+                        BuildEventReferenceSummaryFromEnvelope(envelope)));
                     continue;
                 }
             }
@@ -302,41 +328,66 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
     private static bool IsEventReference(AiSelectedReferenceDto reference)
         => string.Equals(reference.Kind, AiReferenceKind.Event.ToString(), StringComparison.OrdinalIgnoreCase);
 
-    private static string BuildEventReferenceSummary(EventDto eventDetails)
+    private static IReadOnlyDictionary<string, object?> BuildEventReferenceFieldMap(EventDto eventDetails)
     {
-        var parts = new List<string>
+        var fields = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
-            $"status: {eventDetails.EventStatusFullName}",
-            $"format: {eventDetails.EventFormatFullName}",
-            $"visibility: {eventDetails.VisibilityTypeFullName}",
-            $"host: {eventDetails.ActorDisplayName}"
+            ["status"] = eventDetails.EventStatusFullName,
+            ["format"] = eventDetails.EventFormatFullName,
+            ["visibility"] = eventDetails.VisibilityTypeFullName,
+            ["host"] = eventDetails.ActorDisplayName
         };
 
         if (!string.IsNullOrWhiteSpace(eventDetails.Subtitle))
         {
-            parts.Add($"subtitle: {eventDetails.Subtitle.Trim()}");
+            fields["subtitle"] = eventDetails.Subtitle.Trim();
         }
 
         if (!string.IsNullOrWhiteSpace(eventDetails.Description))
         {
-            parts.Add($"description: {eventDetails.Description.Trim()}");
+            fields["description"] = eventDetails.Description.Trim();
         }
 
         if (eventDetails.FirstSessionDate.HasValue || eventDetails.LastSessionDate.HasValue)
         {
             var firstSessionDate = eventDetails.FirstSessionDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";
             var lastSessionDate = eventDetails.LastSessionDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";
-            parts.Add($"dates: {firstSessionDate} to {lastSessionDate}");
+            fields["dates"] = $"{firstSessionDate} to {lastSessionDate}";
         }
 
         if (!string.IsNullOrWhiteSpace(eventDetails.Timezone))
         {
-            parts.Add($"timezone: {eventDetails.Timezone.Trim()}");
+            fields["timezone"] = eventDetails.Timezone.Trim();
         }
 
         if (eventDetails.SessionCount.HasValue)
         {
-            parts.Add($"sessions: {eventDetails.SessionCount.Value.ToString(CultureInfo.InvariantCulture)}");
+            fields["sessions"] = eventDetails.SessionCount.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return fields;
+    }
+
+    private static string BuildEventReferenceSummaryFromEnvelope(AiContextSanitizedEnvelope envelope)
+    {
+        if (!envelope.Succeeded)
+        {
+            return envelope.FailureMessage ?? envelope.FailureCode ?? "context_unavailable";
+        }
+
+        var parts = new List<string>(envelope.DisclosedFields.Count);
+        foreach (var field in envelope.DisclosedFields)
+        {
+            var displayValue = field.Value switch
+            {
+                null => string.Empty,
+                string s => s,
+                _ => field.Value.ToString()
+            };
+            if (!string.IsNullOrWhiteSpace(displayValue))
+            {
+                parts.Add($"{field.Name}: {displayValue}");
+            }
         }
 
         return string.Join("; ", parts);
