@@ -1,17 +1,22 @@
-// ABOUTME: Single command for all actor updates using the null-check DTO pattern.
-// ABOUTME: Each nullable DTO targets a specific update; the handler applies whichever is non-null.
+// ABOUTME: MediatR command for grouped actor PATCH updates.
+// ABOUTME: Carries route authority, If-Match concurrency, and the wrapper DTO.
 
 using System;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.Actors.Requests.Commands;
 
-public class UpdateActorCommand : IRequest<BaseCommandResponse<Guid>>
+[AuthorizeResource(ResourceKinds.Actor, AuthorizationActions.Update)]
+public class UpdateActorCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid ActorId { get; set; }
 
-    public UpdateActorDto? ActorDto { get; set; }
-    public UpdateActorAppearanceDto? AppearanceDto { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; set; }
+
+    public required UpdateActorDto UpdateActorDto { get; set; }
+
+    string? ISecureRequest.ResourceId => ActorId.ToString();
 }

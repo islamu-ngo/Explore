@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for AdminService covering organization management, approval operations,
-// representative lookup tables, and CRUD operations for categories, tags, and locations.
+// ABOUTME: representative lookup tables, and CRUD operations for categories, tags, and locations.
 
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
@@ -424,31 +424,38 @@ public class AdminServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
-        var dto = new UpdateCategoryDto { Id = categoryId, FullName = "Updated Category" };
-        _apiClient.UpdateCategoryAsync(categoryId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        var concurrencyStamp = Guid.NewGuid();
+        var dto = new UpdateCategoryDto { FullName = new UpdateCategoryFullNameDto { Value = "Updated Category" } };
+        _apiClient.UpdateCategoryAsync(categoryId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(ComponentDataBuilder.SuccessResponse(categoryId));
 
         // Act
-        var result = await _service.UpdateCategoryAsync(dto);
+        var result = await _service.UpdateCategoryAsync(categoryId, concurrencyStamp, dto);
 
         // Assert
         await Assert.That(result).IsTrue();
-        await _apiClient.Received(1).UpdateCategoryAsync(categoryId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).UpdateCategoryAsync(
+            categoryId,
+            dto,
+            $"\"{concurrencyStamp:D}\"",
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task UpdateCategoryAsync_ReturnsFalse_WhenIdIsNull()
+    public async Task UpdateCategoryAsync_ReturnsFalse_WhenConcurrencyStampIsEmpty()
     {
         // Arrange
-        var dto = new UpdateCategoryDto { Id = null, FullName = "No ID Category" };
+        var dto = new UpdateCategoryDto { FullName = new UpdateCategoryFullNameDto { Value = "No Stamp Category" } };
 
         // Act
-        var result = await _service.UpdateCategoryAsync(dto);
+        var result = await _service.UpdateCategoryAsync(Guid.NewGuid(), Guid.Empty, dto);
 
         // Assert
         await Assert.That(result).IsFalse();
         await _apiClient.DidNotReceive().UpdateCategoryAsync(
-            Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -591,18 +598,21 @@ public class AdminServiceTests
     }
 
     [Test]
-    public async Task UpdateLocationAsync_ReturnsFalse_WhenIdIsNull()
+    public async Task UpdateLocationAsync_ReturnsFalse_WhenRouteIdIsEmpty()
     {
         // Arrange
-        var dto = new UpdateLocationDto { Id = null, FullName = "No ID Location" };
+        var dto = new UpdateLocationDto
+        {
+            FullName = new UpdateLocationFullNameDto { Value = "No ID Location" }
+        };
 
         // Act
-        var result = await _service.UpdateLocationAsync(dto);
+        var result = await _service.UpdateLocationAsync(Guid.Empty, Guid.NewGuid(), dto);
 
         // Assert
         await Assert.That(result).IsFalse();
         await _apiClient.DidNotReceive().UpdateLocationAsync(
-            Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

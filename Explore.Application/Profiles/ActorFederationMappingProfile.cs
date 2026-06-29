@@ -29,7 +29,6 @@ public class ActorFederationMappingProfile : Profile
             .ForMember(dest => dest.DidCustodyTypeFullName, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.FullName : null))
             .ForMember(dest => dest.BackgroundImageUri, opt => opt.MapFrom(src => src.BackgroundImage != null ? src.BackgroundImage.Uri : null));
         CreateMap<CreateActorDto, Domain.Actor>();
-        CreateMap<UpdateActorDto, Domain.Actor>();
 
         CreateMap<Domain.ActorKeyStore, ActorKeyStoreDto>()
             .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))

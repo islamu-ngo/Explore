@@ -1,11 +1,14 @@
-// ABOUTME: Unit tests for UpdateActorCommandHandler covering the nullable-DTO pattern.
-// ABOUTME: Verifies Actor update, appearance-only update, combined update, not-found, and validation failure paths.
+// ABOUTME: Unit tests for grouped actor update command handling.
+// ABOUTME: Covers validation, concurrency, OptionalUpdate clear/set behavior, storage linking, and cache invalidation.
 
-using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Actor;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.Actors.Handlers.Commands;
 using Explore.Application.Features.Actors.Requests.Commands;
+using Explore.Application.Models.Common;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
@@ -16,313 +19,247 @@ namespace Event.Application.UnitTests.Features.Actors.Commands;
 
 public class UpdateActorCommandHandlerTests
 {
-    private readonly IActorRepository _actorRepository;
-    private readonly IActorTypeRepository _actorTypeRepository;
-    private readonly IDidCustodyTypeRepository _didCustodyTypeRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
-    private readonly IMapper _mapper;
-    private readonly HybridCache _cache;
+    private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
+    private readonly IActorTypeRepository _actorTypeRepository = Substitute.For<IActorTypeRepository>();
+    private readonly IDidCustodyTypeRepository _didCustodyTypeRepository = Substitute.For<IDidCustodyTypeRepository>();
+    private readonly IStorageObjectRepository _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
+    private readonly IAuthorizationProvider _authorizationProvider = Substitute.For<IAuthorizationProvider>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateActorCommandHandler _handler;
 
     public UpdateActorCommandHandlerTests()
     {
-        _actorRepository = Substitute.For<IActorRepository>();
-        _actorTypeRepository = Substitute.For<IActorTypeRepository>();
-        _didCustodyTypeRepository = Substitute.For<IDidCustodyTypeRepository>();
-        _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
-        _mapper = Substitute.For<IMapper>();
-        _cache = Substitute.For<HybridCache>();
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var operation = callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
+                return operation(CancellationToken.None);
+            });
+        _authorizationProvider
+            .IsAllowedBatchAsync(Arg.Any<IReadOnlyList<AuthorizationCheck>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var checks = callInfo.Arg<IReadOnlyList<AuthorizationCheck>>();
+                return checks.Select(_ => true).ToArray();
+            });
 
         _handler = new UpdateActorCommandHandler(
             _actorRepository,
             _actorTypeRepository,
             _didCustodyTypeRepository,
             _storageObjectRepository,
-            _mapper,
+            _authorizationProvider,
+            _unitOfWork,
             _cache);
     }
 
     [Test]
-    public async Task Handle_ActorNotFound_ReturnsFailure()
+    public async Task Handle_WhenWrapperHasNoGroups_ReturnsValidationFailureAndDoesNotSave()
     {
-        var actorId = Guid.NewGuid();
-        _actorRepository.GetById(actorId).Returns((Actor?)null);
-
-        var command = new UpdateActorCommand
+        var result = await _handler.Handle(new UpdateActorCommand
         {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto { BackgroundColor = "#FF0000" }
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("Actor not found.");
-        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
-    }
-
-    [Test]
-    public async Task Handle_AppearanceOnly_AppliesBackgroundColor()
-    {
-        var actorId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto { BackgroundColor = "#00FF00" }
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Id).IsEqualTo(actorId);
-        await Assert.That(actor.BackgroundColor).IsEqualTo("#00FF00");
-        await _actorRepository.Received(1).Update(actor);
-    }
-
-    [Test]
-    public async Task Handle_AppearanceOnly_AppliesBackgroundEffect()
-    {
-        var actorId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto { BackgroundEffect = "SoftOverlay" }
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(actor.BackgroundEffect).IsEqualTo("SoftOverlay");
-        await _actorRepository.Received(1).Update(actor);
-    }
-
-    [Test]
-    public async Task Handle_AppearanceOnly_AppliesBannerColor()
-    {
-        var actorId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto { BannerColor = "#0000FF" }
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(actor.BannerColor).IsEqualTo("#0000FF");
-    }
-
-    [Test]
-    public async Task Handle_AppearanceOnly_AppliesMultipleFields()
-    {
-        var actorId = Guid.NewGuid();
-        var imageId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
-        _storageObjectRepository.Exists(imageId).Returns(true);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto
-            {
-                BackgroundColor = "#FF0000",
-                BackgroundEffect = "StrongOverlay",
-                BannerColor = "#00FF00",
-                BackgroundImageId = imageId
-            }
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(actor.BackgroundColor).IsEqualTo("#FF0000");
-        await Assert.That(actor.BackgroundEffect).IsEqualTo("StrongOverlay");
-        await Assert.That(actor.BannerColor).IsEqualTo("#00FF00");
-        await Assert.That(actor.BackgroundImageId).IsEqualTo(imageId);
-    }
-
-    [Test]
-    public async Task Handle_AppearanceOnly_NullFieldsPreserveExistingValues()
-    {
-        var actorId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        actor.BackgroundColor = "#AABBCC";
-        actor.BackgroundEffect = "Blur";
-        actor.BannerColor = "#112233";
-        _actorRepository.GetById(actorId).Returns(actor);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto
-            {
-                BackgroundColor = "#FF0000"
-                // Other fields null — should NOT overwrite existing values
-            }
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(actor.BackgroundColor).IsEqualTo("#FF0000");
-        await Assert.That(actor.BackgroundEffect).IsEqualTo("Blur");
-        await Assert.That(actor.BannerColor).IsEqualTo("#112233");
-    }
-
-    [Test]
-    public async Task Handle_AppearanceInvalidHexColor_ReturnsValidationError()
-    {
-        var actorId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto { BackgroundColor = "not-a-hex-color" }
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("Actor appearance update failed.");
-        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
-    }
-
-    [Test]
-    public async Task Handle_AppearanceInvalidEffect_ReturnsValidationError()
-    {
-        var actorId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto { BackgroundEffect = "InvalidEffect" }
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
-    }
-
-    [Test]
-    public async Task Handle_AppearanceNonExistentImageId_ReturnsValidationError()
-    {
-        var actorId = Guid.NewGuid();
-        var nonExistentImageId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
-        _storageObjectRepository.Exists(nonExistentImageId).Returns(false);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto { BackgroundImageId = nonExistentImageId }
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
-    }
-
-    [Test]
-    public async Task Handle_ActorDtoOnly_ValidatesAndMaps()
-    {
-        var actorId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
-
-        var dto = new UpdateActorDto
-        {
-            Id = actorId,
-            ActorTypeId = 1,
-            TenantId = Guid.NewGuid(),
-            DisplayName = "Updated Name"
-        };
-
-        _actorTypeRepository.Exists(1).Returns(true);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            ActorDto = dto
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        _mapper.Received(1).Map(dto, actor);
-        await _actorRepository.Received(1).Update(actor);
-    }
-
-    [Test]
-    public async Task Handle_InvalidActorDto_ReturnsValidationError()
-    {
-        var actorId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
-
-        var dto = new UpdateActorDto
-        {
-            Id = actorId,
-            ActorTypeId = 999, // Non-existent type
-            TenantId = Guid.NewGuid(),
-            DisplayName = "Updated Name"
-        };
-
-        _actorTypeRepository.Exists(999).Returns(false);
-
-        var command = new UpdateActorCommand
-        {
-            Id = actorId,
-            ActorDto = dto
-        };
-
-        var result = await _handler.Handle(command, CancellationToken.None);
+            ActorId = Guid.CreateVersion7(),
+            ExpectedConcurrencyStamp = Guid.CreateVersion7(),
+            UpdateActorDto = new UpdateActorDto()
+        }, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Actor update failed.");
         await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task Handle_InvalidatesCache()
+    public async Task Handle_WhenAnyPresentGroupIsUnauthorized_ThrowsAndDoesNotPartiallyApply()
     {
-        var actorId = Guid.NewGuid();
-        var actor = CreateTestActor(actorId);
-        _actorRepository.GetById(actorId).Returns(actor);
+        var actor = CreateTestActor();
+        _actorRepository.GetById(actor.Id).Returns(actor);
+        _authorizationProvider
+            .IsAllowedBatchAsync(Arg.Any<IReadOnlyList<AuthorizationCheck>>(), Arg.Any<CancellationToken>())
+            .Returns([true, false]);
 
-        var command = new UpdateActorCommand
+        await Assert.That(async () => await _handler.Handle(new UpdateActorCommand
         {
-            Id = actorId,
-            AppearanceDto = new UpdateActorAppearanceDto { BackgroundColor = "#FFFFFF" }
-        };
+            ActorId = actor.Id,
+            ExpectedConcurrencyStamp = actor.ConcurrencyStamp,
+            UpdateActorDto = new UpdateActorDto
+            {
+                Profile = new UpdateActorProfileDto
+                {
+                    DisplayName = "Updated Actor"
+                },
+                FederationMetadata = new UpdateActorFederationMetadataDto
+                {
+                    Description = OptionalUpdate<string?>.Set("Sensitive update")
+                }
+            }
+        }, CancellationToken.None)).Throws<AuthorizationException>();
 
-        await _handler.Handle(command, CancellationToken.None);
-
-        await _cache.Received(1).RemoveAsync($"actor:detail:{actorId}", Arg.Any<CancellationToken>());
+        await Assert.That(actor.DisplayName).IsEqualTo("Test Actor");
+        await Assert.That(actor.Description).IsNull();
+        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    private static Actor CreateTestActor(Guid id) =>
+    [Test]
+    public async Task Handle_WhenExpectedConcurrencyStampIsStale_ThrowsConflictAndDoesNotSave()
+    {
+        var actor = CreateTestActor();
+        _actorRepository.GetById(actor.Id).Returns(actor);
+
+        await Assert.That(async () => await _handler.Handle(new UpdateActorCommand
+        {
+            ActorId = actor.Id,
+            ExpectedConcurrencyStamp = Guid.CreateVersion7(),
+            UpdateActorDto = new UpdateActorDto
+            {
+                Profile = new UpdateActorProfileDto
+                {
+                    DisplayName = "Updated Actor"
+                }
+            }
+        }, CancellationToken.None)).Throws<ConcurrencyConflictException>();
+
+        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenProfileGroupIsPresent_AppliesOnlyProvidedProfileFields()
+    {
+        var actor = CreateTestActor();
+        actor.ActorTypeId = 1;
+        _actorRepository.GetById(actor.Id).Returns(actor);
+
+        var result = await _handler.Handle(new UpdateActorCommand
+        {
+            ActorId = actor.Id,
+            ExpectedConcurrencyStamp = actor.ConcurrencyStamp,
+            UpdateActorDto = new UpdateActorDto
+            {
+                Profile = new UpdateActorProfileDto
+                {
+                    DisplayName = "Updated Actor"
+                }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(actor.DisplayName).IsEqualTo("Updated Actor");
+        await Assert.That(actor.ActorTypeId).IsEqualTo(1);
+        await _actorRepository.Received(1).Update(actor);
+        await _cache.Received(1).RemoveAsync($"actor:detail:{actor.Id}", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenAppearanceUsesOptionalUpdate_ClearsAndSetsFields()
+    {
+        var actor = CreateTestActor();
+        actor.BackgroundColor = "#AABBCC";
+        actor.BackgroundEffect = "Blur";
+        actor.BannerColor = "#112233";
+        _actorRepository.GetById(actor.Id).Returns(actor);
+
+        var result = await _handler.Handle(new UpdateActorCommand
+        {
+            ActorId = actor.Id,
+            ExpectedConcurrencyStamp = actor.ConcurrencyStamp,
+            UpdateActorDto = new UpdateActorDto
+            {
+                Appearance = new UpdateActorAppearanceDto
+                {
+                    BackgroundColor = OptionalUpdate<string?>.Set(null),
+                    BackgroundEffect = OptionalUpdate<string?>.Set("SoftOverlay")
+                }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(actor.BackgroundColor).IsNull();
+        await Assert.That(actor.BackgroundEffect).IsEqualTo("SoftOverlay");
+        await Assert.That(actor.BannerColor).IsEqualTo("#112233");
+    }
+
+    [Test]
+    public async Task Handle_WhenProfileImageIsSet_UpdatesActorAndLinksTrackedStorageWithSingleActorSave()
+    {
+        var actor = CreateTestActor();
+        var storageObject = CreateStorageObject();
+        _actorRepository.GetById(actor.Id).Returns(actor);
+        _storageObjectRepository.Exists(storageObject.Id).Returns(true);
+        _storageObjectRepository.GetById(storageObject.Id).Returns(storageObject);
+
+        var result = await _handler.Handle(new UpdateActorCommand
+        {
+            ActorId = actor.Id,
+            ExpectedConcurrencyStamp = actor.ConcurrencyStamp,
+            UpdateActorDto = new UpdateActorDto
+            {
+                ProfileImage = new UpdateActorProfileImageDto
+                {
+                    ProfilePictureId = OptionalUpdate<Guid?>.Set(storageObject.Id)
+                }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(actor.ProfilePictureId).IsEqualTo(storageObject.Id);
+        await Assert.That(storageObject.ActorId).IsEqualTo(actor.Id);
+        await _actorRepository.Received(1).Update(actor);
+        await _storageObjectRepository.DidNotReceive().Update(Arg.Any<StorageObject>());
+    }
+
+    [Test]
+    public async Task Handle_WhenAppearanceGroupHasNoFieldOperations_ReturnsValidationFailure()
+    {
+        var result = await _handler.Handle(new UpdateActorCommand
+        {
+            ActorId = Guid.CreateVersion7(),
+            ExpectedConcurrencyStamp = Guid.CreateVersion7(),
+            UpdateActorDto = new UpdateActorDto
+            {
+                Appearance = new UpdateActorAppearanceDto()
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Appearance group must include at least one field operation.");
+        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
+    }
+
+    private static Actor CreateTestActor()
+    {
+        var actorId = Guid.CreateVersion7();
+        return new Actor
+        {
+            Id = actorId,
+            ActorTypeId = 1,
+            ConcurrencyStamp = Guid.CreateVersion7(),
+            Pii = new ActorPii
+            {
+                ActorId = actorId,
+                DisplayName = "Test Actor"
+            },
+            ActorType = null!,
+            Tenant = null!
+        };
+    }
+
+    private static StorageObject CreateStorageObject() =>
         new()
         {
-            Id = id,
-            Pii = new ActorPii { DisplayName = "Test Actor" },
-            ActorType = null!,
+            Id = Guid.CreateVersion7(),
+            FileType = null!,
+            Uri = "https://cdn.example.test/actor.png",
+            Provider = "local",
+            FullName = "actor.png",
+            SafeDisplayName = "actor.png",
+            Extension = ".png",
+            Visibility = "public",
+            Purpose = "actor-profile",
+            LifecycleState = "active",
             Tenant = null!
         };
 }

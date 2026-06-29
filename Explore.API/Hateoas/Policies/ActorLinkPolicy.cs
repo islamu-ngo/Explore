@@ -35,6 +35,17 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
             "GET",
             "All actors");
 
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
+            RouteNames.UpdateActor,
+            new { id = dto.Id },
+            "PATCH",
+            "Update actor",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Update,
+                ResourceKinds.Actor,
+                dto.Id.ToString());
+
         // Organization link (if organization actor)
         if (dto.OrganizationId.HasValue)
         {

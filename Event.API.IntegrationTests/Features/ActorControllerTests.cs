@@ -1,3 +1,6 @@
+// ABOUTME: Integration tests for public Actor API routing and authorization behavior.
+// ABOUTME: Verifies read endpoints plus authenticated write route contracts.
+
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
@@ -93,27 +96,68 @@ public class ActorControllerTests
 
     #endregion
 
-    #region PUT Endpoints
+    #region PATCH Endpoints
 
     [Test]
     public async Task Update_WithoutAuth_ShouldReturnUnauthorized()
     {
         // Arrange
         var id = Guid.NewGuid();
-        var command = new
+        var command = new UpdateActorDto
         {
-            ActorDto = new UpdateActorDto
+            Profile = new UpdateActorProfileDto
             {
-                Id = id,
                 DisplayName = "Updated Actor"
             }
         };
 
         // Act
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", command);
+        var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{id}", command);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdatePut_WhenUsingOldRoute_ShouldReturnMethodNotAllowed()
+    {
+        var id = Guid.NewGuid();
+        var command = new UpdateActorDto
+        {
+            Profile = new UpdateActorProfileDto
+            {
+                DisplayName = "Updated Actor"
+            }
+        };
+
+        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", command);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Test]
+    public async Task UpdatePatch_WhenAuthenticatedWithoutIfMatch_ShouldReturnBadRequest()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var actorId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var command = new UpdateActorDto
+        {
+            Profile = new UpdateActorProfileDto
+            {
+                DisplayName = "Updated Actor"
+            }
+        };
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/{actorId}")
+        {
+            Content = JsonContent.Create(command)
+        };
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId));
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     #endregion

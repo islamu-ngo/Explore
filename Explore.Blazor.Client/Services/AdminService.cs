@@ -1,5 +1,5 @@
 // ABOUTME: Admin service for managing organizations, lookup tables, and CRUD operations for categories/tags/locations.
-// This is the Anti-Corruption Layer that converts HAL responses to clean DTOs for UI consumption.
+// ABOUTME: Acts as an anti-corruption layer that converts HAL responses to UI-friendly service results.
 
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
@@ -53,7 +53,7 @@ public interface IAdminService
     Task<ICollection<CategoryListDto>> GetCategoriesAsync();
     Task<CategoryDto?> GetCategoryByIdAsync(Guid id);
     Task<bool> CreateCategoryAsync(CreateCategoryDto category);
-    Task<bool> UpdateCategoryAsync(UpdateCategoryDto category);
+    Task<bool> UpdateCategoryAsync(Guid id, Guid expectedConcurrencyStamp, UpdateCategoryDto category);
     Task<bool> DeleteCategoryAsync(Guid id);
 
     // Tag CRUD
@@ -67,7 +67,7 @@ public interface IAdminService
     Task<ICollection<LocationListDto>> GetLocationsAsync();
     Task<LocationDto?> GetLocationByIdAsync(Guid id);
     Task<bool> CreateLocationAsync(CreateLocationDto location);
-    Task<bool> UpdateLocationAsync(UpdateLocationDto location);
+    Task<bool> UpdateLocationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateLocationDto location);
     Task<bool> DeleteLocationAsync(Guid id);
 
     // Tenant management
@@ -530,26 +530,27 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task<bool> UpdateCategoryAsync(UpdateCategoryDto category)
+    public async Task<bool> UpdateCategoryAsync(Guid id, Guid expectedConcurrencyStamp, UpdateCategoryDto category)
     {
         try
         {
-            if (!category.Id.HasValue)
+            if (id == Guid.Empty || expectedConcurrencyStamp == Guid.Empty)
             {
-                _logger.LogWarning("[AdminService.UpdateCategoryAsync] Category ID is null, cannot update");
+                _logger.LogWarning("[AdminService.UpdateCategoryAsync] Category route ID or concurrency stamp is missing.");
                 return false;
             }
-            await _apiClient.UpdateCategoryAsync(category.Id.Value, category);
+
+            await _apiClient.UpdateCategoryAsync(id, category, $"\"{expectedConcurrencyStamp:D}\"");
             return true;
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "[AdminService.UpdateCategoryAsync] API error updating category. CategoryId: {CategoryId}, StatusCode: {StatusCode}", category.Id, ex.StatusCode);
+            _logger.LogError(ex, "[AdminService.UpdateCategoryAsync] API error updating category. CategoryId: {CategoryId}, StatusCode: {StatusCode}", id, ex.StatusCode);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[AdminService.UpdateCategoryAsync] Unexpected error updating category. CategoryId: {CategoryId}", category.Id);
+            _logger.LogError(ex, "[AdminService.UpdateCategoryAsync] Unexpected error updating category. CategoryId: {CategoryId}", id);
             return false;
         }
     }
@@ -742,26 +743,27 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task<bool> UpdateLocationAsync(UpdateLocationDto location)
+    public async Task<bool> UpdateLocationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateLocationDto location)
     {
         try
         {
-            if (!location.Id.HasValue)
+            if (id == Guid.Empty || expectedConcurrencyStamp == Guid.Empty)
             {
-                _logger.LogWarning("[AdminService.UpdateLocationAsync] Location ID is null, cannot update");
+                _logger.LogWarning("[AdminService.UpdateLocationAsync] Location route ID or concurrency stamp is missing.");
                 return false;
             }
-            await _apiClient.UpdateLocationAsync(location.Id.Value, location);
+
+            await _apiClient.UpdateLocationAsync(id, location, $"\"{expectedConcurrencyStamp:D}\"");
             return true;
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "[AdminService.UpdateLocationAsync] API error updating location. LocationId: {LocationId}, StatusCode: {StatusCode}", location.Id, ex.StatusCode);
+            _logger.LogError(ex, "[AdminService.UpdateLocationAsync] API error updating location. LocationId: {LocationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[AdminService.UpdateLocationAsync] Unexpected error updating location. LocationId: {LocationId}", location.Id);
+            _logger.LogError(ex, "[AdminService.UpdateLocationAsync] Unexpected error updating location. LocationId: {LocationId}", id);
             return false;
         }
     }

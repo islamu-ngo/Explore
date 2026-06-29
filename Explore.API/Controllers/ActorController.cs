@@ -191,12 +191,11 @@ public class ActorController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing actor. Supports full update (ActorDto) or targeted appearance update (AppearanceDto).
-    /// Supply only the DTO(s) to update; null DTOs are ignored.
+    /// Partially update an existing actor using nullable logical groups.
     /// </summary>
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateActor)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateActor)]
     [EndpointSummary("Update Actor")]
-    [EndpointDescription("Update an existing actor. Supports full update via ActorDto or targeted appearance updates via AppearanceDto. Null DTOs are ignored.")]
+    [EndpointDescription("Partially update an existing actor. Route ID is authoritative and If-Match must contain the current actor concurrency stamp.")]
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [Consumes("application/json")]
@@ -204,13 +203,25 @@ public class ActorController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorRequestDto dto, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
+        Guid id,
+        [FromBody] UpdateActorDto dto,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
+        {
+            return this.ToValidationProblem(
+                UpdateValidationProblem,
+                "If-Match header is required and must contain the current actor concurrency stamp.");
+        }
+
         var command = new UpdateActorCommand
         {
-            Id = id,
-            ActorDto = dto.ActorDto,
-            AppearanceDto = dto.AppearanceDto
+            ActorId = id,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            UpdateActorDto = dto
         };
         var response = await _mediator.Send(command, cancellationToken);
 
@@ -242,5 +253,21 @@ public class ActorController : ControllerBase
         return NoContent();
     }
 
-    public sealed record UpdateActorRequestDto(UpdateActorDto? ActorDto, UpdateActorAppearanceDto? AppearanceDto);
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        value = value.Trim('"');
+        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
+    }
 }

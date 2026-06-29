@@ -1,3 +1,6 @@
+// ABOUTME: Full actor detail DTO returned by actor read endpoints.
+// ABOUTME: Includes concurrency metadata needed for PATCH If-Match updates.
+
 using System;
 
 namespace Explore.Application.DTOs.Actor;
@@ -9,6 +12,7 @@ namespace Explore.Application.DTOs.Actor;
 public class ActorDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     // ActorType relationship with i18n support
     public int ActorTypeId { get; set; }

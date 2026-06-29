@@ -1,3 +1,6 @@
+// ABOUTME: Actor list DTO returned by paginated actor collection endpoints.
+// ABOUTME: Carries lightweight actor display, federation, appearance, and concurrency metadata.
+
 using System;
 
 namespace Explore.Application.DTOs.Actor;
@@ -9,6 +12,7 @@ namespace Explore.Application.DTOs.Actor;
 public class ActorListDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     // ActorType with i18n support
     public int ActorTypeId { get; set; }
