@@ -1,5 +1,5 @@
-// ABOUTME: MediatR command for updating an event location.
-// ABOUTME: Carries the UpdateLocationDto payload.
+// ABOUTME: MediatR command for PATCH-based Location updates.
+// ABOUTME: Carries route authority, If-Match concurrency, and the grouped update payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Location;
@@ -11,7 +11,11 @@ namespace Explore.Application.Features.Locations.Requests.Commands;
 [AuthorizeResource(ResourceKinds.Location, AuthorizationActions.Update)]
 public class UpdateLocationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required UpdateLocationDto LocationDto { get; set; }
+    public Guid LocationId { get; set; }
 
-    string? ISecureRequest.ResourceId => LocationDto.Id.ToString();
+    public Guid ExpectedConcurrencyStamp { get; set; }
+
+    public required UpdateLocationDto UpdateLocationDto { get; set; }
+
+    string? ISecureRequest.ResourceId => LocationId.ToString();
 }

@@ -1,4 +1,5 @@
-using System;
+// ABOUTME: Detail read-model DTO for Location responses.
+// ABOUTME: Includes concurrency metadata required by PATCH If-Match updates.
 
 namespace Explore.Application.DTOs.Location;
 
@@ -14,4 +15,5 @@ public class LocationDto
     public double? Longitude { get; set; }
     public string? Timezone { get; set; }
     public Guid TenantId { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 }

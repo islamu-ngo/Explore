@@ -1,3 +1,6 @@
+// ABOUTME: Integration tests for public Location API routing and authorization behavior.
+// ABOUTME: Verifies read endpoints plus authenticated PATCH route and If-Match contracts.
+
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
@@ -96,28 +99,56 @@ public class LocationControllerTests
 
     #endregion
 
-    #region PUT Endpoints
+    #region PATCH Endpoints
 
     [Test]
     public async Task Update_WithoutAuth_ShouldReturnUnauthorized()
     {
-        // Arrange
         var id = Guid.NewGuid();
         var updateDto = new UpdateLocationDto
         {
-            Id = id,
-            FullName = "Updated Location",
-            Address = string.Empty,
-            Postcode = string.Empty,
-            Country = string.Empty,
-            City = string.Empty
+            FullName = new UpdateLocationFullNameDto { Value = "Updated Location" }
         };
 
-        // Act
+        var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{id}", updateDto);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdatePut_WhenUsingOldRoute_ShouldReturnMethodNotAllowed()
+    {
+        var id = Guid.NewGuid();
+        var updateDto = new UpdateLocationDto
+        {
+            FullName = new UpdateLocationFullNameDto { Value = "Updated Location" }
+        };
+
         var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", updateDto);
 
-        // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Test]
+    public async Task UpdatePatch_WhenAuthenticatedWithoutIfMatch_ShouldReturnBadRequest()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var locationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var updateDto = new UpdateLocationDto
+        {
+            FullName = new UpdateLocationFullNameDto { Value = "Updated Location" }
+        };
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/{locationId}")
+        {
+            Content = JsonContent.Create(updateDto)
+        };
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId));
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     #endregion

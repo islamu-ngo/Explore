@@ -36,7 +36,7 @@ public sealed class LocationDetailLinkPolicy : ILinkPolicy<LocationDto>
             LinkRelations.Edit,
             RouteNames.UpdateLocation,
             new { id = dto.Id },
-            "PUT",
+            "PATCH",
             "Update location",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Location, dto);

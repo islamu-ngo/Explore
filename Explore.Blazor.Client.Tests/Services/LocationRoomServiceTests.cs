@@ -142,28 +142,37 @@ public class LocationRoomServiceTests
     public async Task UpdateRoomAsync_ReturnsResponse_WhenApiSucceeds()
     {
         var roomId = Guid.NewGuid();
-        var dto = new UpdateLocationRoomDto { Name = "Updated Hall" };
+        var concurrencyStamp = Guid.NewGuid();
+        var dto = new UpdateLocationRoomDto { Name = new UpdateLocationRoomNameDto { Value = "Updated Hall" } };
         var response = new BaseCommandResponseOfGuid { Success = true, Id = roomId };
 
-        _apiClient.UpdateLocationRoomAsync(roomId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateLocationRoomAsync(roomId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
-        var result = await _service.UpdateRoomAsync(roomId, dto);
+        var result = await _service.UpdateRoomAsync(roomId, concurrencyStamp, dto);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
+        await _apiClient.Received(1).UpdateLocationRoomAsync(
+            roomId,
+            dto,
+            $"\"{concurrencyStamp:D}\"",
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task UpdateRoomAsync_ReturnsFailureResponse_WhenApiThrows()
     {
         var roomId = Guid.NewGuid();
-        var dto = new UpdateLocationRoomDto { Name = "Updated Hall" };
+        var concurrencyStamp = Guid.NewGuid();
+        var dto = new UpdateLocationRoomDto { Name = new UpdateLocationRoomNameDto { Value = "Updated Hall" } };
 
-        _apiClient.UpdateLocationRoomAsync(roomId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateLocationRoomAsync(roomId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Conflict", 409));
 
-        var result = await _service.UpdateRoomAsync(roomId, dto);
+        var result = await _service.UpdateRoomAsync(roomId, concurrencyStamp, dto);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();

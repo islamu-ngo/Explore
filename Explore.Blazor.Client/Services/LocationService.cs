@@ -15,7 +15,7 @@ public interface ILocationService
     Task<PaginatedResult<LocationListDto>> GetLocationsPagedAsync(int pageNumber, int pageSize);
     Task<LocationDto?> GetLocationByIdAsync(Guid locationId);
     Task<BaseCommandResponseOfGuid?> CreateLocationAsync(CreateLocationDto dto);
-    Task<BaseCommandResponseOfGuid?> UpdateLocationAsync(Guid id, UpdateLocationDto dto);
+    Task<BaseCommandResponseOfGuid?> UpdateLocationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateLocationDto dto);
     Task<bool> DeleteLocationAsync(Guid locationId);
     Task<ICollection<LocationListDto>> GetLocationsByCityAsync(string city);
     Task<ICollection<LocationListDto>> GetLocationsByCountryAsync(string country);
@@ -94,11 +94,20 @@ public class LocationService : ILocationService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> UpdateLocationAsync(Guid id, UpdateLocationDto dto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateLocationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateLocationDto dto)
     {
         try
         {
-            return await _apiClient.UpdateLocationAsync(id, dto);
+            if (id == Guid.Empty || expectedConcurrencyStamp == Guid.Empty)
+            {
+                return new BaseCommandResponseOfGuid
+                {
+                    Success = false,
+                    Message = "Location route ID and concurrency stamp are required."
+                };
+            }
+
+            return await _apiClient.UpdateLocationAsync(id, dto, $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (ApiException ex)
         {

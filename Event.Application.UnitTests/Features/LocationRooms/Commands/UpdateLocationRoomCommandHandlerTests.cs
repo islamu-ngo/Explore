@@ -1,9 +1,13 @@
-using AutoMapper;
+// ABOUTME: Unit tests for grouped LocationRoom update command handling.
+// ABOUTME: Covers validation, optimistic concurrency, tenant-safe location moves, and explicit field updates.
+
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.LocationRoom;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.LocationRooms.Handlers.Commands;
 using Explore.Application.Features.LocationRooms.Requests.Commands;
+using Explore.Application.Models.Common;
 using Explore.Domain;
 using NSubstitute;
 using TUnit.Assertions;
@@ -15,19 +19,16 @@ public class UpdateLocationRoomCommandHandlerTests
 {
     private readonly ILocationRoomRepository _locationRoomRepository;
     private readonly ILocationRepository _locationRepository;
-    private readonly IMapper _mapper;
     private readonly UpdateLocationRoomCommandHandler _handler;
 
     public UpdateLocationRoomCommandHandlerTests()
     {
         _locationRoomRepository = Substitute.For<ILocationRoomRepository>();
         _locationRepository = Substitute.For<ILocationRepository>();
-        _mapper = Substitute.For<IMapper>();
 
         _handler = new UpdateLocationRoomCommandHandler(
             _locationRoomRepository,
-            _locationRepository,
-            _mapper
+            _locationRepository
         );
     }
 
@@ -40,19 +41,21 @@ public class UpdateLocationRoomCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new UpdateLocationRoomCommand
         {
-            LocationRoomDto = new UpdateLocationRoomDto
+            LocationRoomId = roomId,
+            UpdateLocationRoomDto = new UpdateLocationRoomDto
             {
-                Id = roomId,
-                LocationId = locationId,
-                Name = "Updated Hall",
-                Capacity = 300,
-                SortOrder = 2
+                Location = new UpdateLocationRoomLocationDto { LocationId = locationId },
+                Name = new UpdateLocationRoomNameDto { Value = "Updated Hall" },
+                Capacity = new UpdateLocationRoomCapacityDto { Value = OptionalUpdate<int?>.Set(300) },
+                SortOrder = new UpdateLocationRoomSortOrderDto { Value = 2 }
             }
         };
 
         var existingRoom = DataBuilder.LocationRoom.Generate();
         existingRoom.Id = roomId;
         existingRoom.TenantId = tenantId;
+        existingRoom.ConcurrencyStamp = Guid.NewGuid();
+        command.ExpectedConcurrencyStamp = existingRoom.ConcurrencyStamp;
         _locationRoomRepository.GetById(roomId).Returns(existingRoom);
 
         var parentLocation = DataBuilder.Location.Generate();
@@ -66,7 +69,24 @@ public class UpdateLocationRoomCommandHandlerTests
 
         // Assert
         await Assert.That(result.Success).IsTrue();
+        await Assert.That(existingRoom.Name).IsEqualTo("Updated Hall");
+        await Assert.That(existingRoom.Capacity).IsEqualTo(300);
+        await Assert.That(existingRoom.SortOrder).IsEqualTo(2);
         await _locationRoomRepository.Received(1).Update(Arg.Any<LocationRoom>());
+    }
+
+    [Test]
+    public async Task Handle_WhenWrapperHasNoGroups_ReturnsValidationFailureAndDoesNotSave()
+    {
+        var result = await _handler.Handle(new UpdateLocationRoomCommand
+        {
+            LocationRoomId = Guid.NewGuid(),
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            UpdateLocationRoomDto = new UpdateLocationRoomDto()
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _locationRoomRepository.DidNotReceive().Update(Arg.Any<LocationRoom>());
     }
 
     [Test]
@@ -76,17 +96,15 @@ public class UpdateLocationRoomCommandHandlerTests
         var roomId = Guid.NewGuid();
         var command = new UpdateLocationRoomCommand
         {
-            LocationRoomDto = new UpdateLocationRoomDto
+            LocationRoomId = roomId,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            UpdateLocationRoomDto = new UpdateLocationRoomDto
             {
-                Id = roomId,
-                LocationId = Guid.NewGuid(),
-                Name = "Ghost Room",
-                SortOrder = 1
+                Name = new UpdateLocationRoomNameDto { Value = "Ghost Room" }
             }
         };
 
         _locationRoomRepository.GetById(roomId).Returns((LocationRoom?)null);
-        _locationRepository.Exists(command.LocationRoomDto.LocationId).Returns(true);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -104,18 +122,19 @@ public class UpdateLocationRoomCommandHandlerTests
         var roomId = Guid.NewGuid();
         var command = new UpdateLocationRoomCommand
         {
-            LocationRoomDto = new UpdateLocationRoomDto
+            LocationRoomId = roomId,
+            UpdateLocationRoomDto = new UpdateLocationRoomDto
             {
-                Id = roomId,
-                LocationId = locationId,
-                Name = "Cross-tenant Room",
-                SortOrder = 1
+                Location = new UpdateLocationRoomLocationDto { LocationId = locationId },
+                Name = new UpdateLocationRoomNameDto { Value = "Cross-tenant Room" }
             }
         };
 
         var existingRoom = DataBuilder.LocationRoom.Generate();
         existingRoom.Id = roomId;
         existingRoom.TenantId = Guid.NewGuid(); // Different tenant
+        existingRoom.ConcurrencyStamp = Guid.NewGuid();
+        command.ExpectedConcurrencyStamp = existingRoom.ConcurrencyStamp;
         _locationRoomRepository.GetById(roomId).Returns(existingRoom);
 
         var parentLocation = DataBuilder.Location.Generate();
@@ -129,6 +148,27 @@ public class UpdateLocationRoomCommandHandlerTests
 
         // Assert
         await Assert.That(result.Success).IsFalse();
+        await _locationRoomRepository.DidNotReceive().Update(Arg.Any<LocationRoom>());
+    }
+
+    [Test]
+    public async Task Handle_WhenExpectedConcurrencyStampIsStale_ThrowsConflictAndDoesNotSave()
+    {
+        var room = DataBuilder.LocationRoom.Generate();
+        room.Id = Guid.NewGuid();
+        room.ConcurrencyStamp = Guid.NewGuid();
+        _locationRoomRepository.GetById(room.Id).Returns(room);
+
+        await Assert.That(async () => await _handler.Handle(new UpdateLocationRoomCommand
+        {
+            LocationRoomId = room.Id,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            UpdateLocationRoomDto = new UpdateLocationRoomDto
+            {
+                Name = new UpdateLocationRoomNameDto { Value = "Updated Hall" }
+            }
+        }, CancellationToken.None)).Throws<ConcurrencyConflictException>();
+
         await _locationRoomRepository.DidNotReceive().Update(Arg.Any<LocationRoom>());
     }
 }

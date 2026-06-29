@@ -14,4 +14,5 @@ public class LocationRoomDto
     public int? Capacity { get; set; }
     public int SortOrder { get; set; }
     public Guid TenantId { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 }

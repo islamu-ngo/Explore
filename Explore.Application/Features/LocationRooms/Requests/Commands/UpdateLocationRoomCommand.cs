@@ -1,5 +1,5 @@
-// ABOUTME: MediatR command for updating an existing room.
-// ABOUTME: Secured via AuthorizeResource for the location_room resource kind.
+// ABOUTME: MediatR command for PATCH-based LocationRoom updates.
+// ABOUTME: Carries route authority, If-Match concurrency, and grouped room update payload.
 
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.LocationRoom;
@@ -11,8 +11,12 @@ namespace Explore.Application.Features.LocationRooms.Requests.Commands;
 [AuthorizeResource(ResourceKinds.LocationRoom, AuthorizationActions.Update)]
 public class UpdateLocationRoomCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required UpdateLocationRoomDto LocationRoomDto { get; set; }
+    public Guid LocationRoomId { get; set; }
 
-    string? ISecureRequest.ResourceId => LocationRoomDto.Id.ToString();
+    public Guid ExpectedConcurrencyStamp { get; set; }
+
+    public required UpdateLocationRoomDto UpdateLocationRoomDto { get; set; }
+
+    string? ISecureRequest.ResourceId => LocationRoomId.ToString();
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

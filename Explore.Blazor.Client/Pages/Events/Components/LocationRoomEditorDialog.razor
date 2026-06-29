@@ -93,6 +93,7 @@
 
     [Parameter] public Guid LocationId { get; set; }
     [Parameter] public Guid? RoomId { get; set; }
+    [Parameter] public Guid? ExpectedConcurrencyStamp { get; set; }
     [Parameter] public bool IsNew { get; set; } = true;
     [Parameter] public int InitialSortOrder { get; set; } = 1;
 
@@ -120,6 +121,7 @@
                 _model.Description = room.Description ?? string.Empty;
                 _model.Capacity = room.Capacity ?? 0;
                 _model.SortOrder = room.SortOrder;
+                ExpectedConcurrencyStamp = room.ConcurrencyStamp ?? ExpectedConcurrencyStamp;
             }
             _isLoadingDetail = false;
         }
@@ -167,16 +169,43 @@
             }
             else if (RoomId.HasValue)
             {
+                if (!ExpectedConcurrencyStamp.HasValue || ExpectedConcurrencyStamp.Value == Guid.Empty)
+                {
+                    _submitState.Fail("Room was changed. Reload and try again.");
+                    return;
+                }
+
                 var dto = new UpdateLocationRoomDto
                 {
-                    Name = _model.Name.Trim(),
-                    Slug = string.IsNullOrWhiteSpace(_model.Slug) ? null : _model.Slug.Trim(),
-                    Description = string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description,
-                    Capacity = _model.Capacity,
-                    SortOrder = _model.SortOrder
+                    Name = new UpdateLocationRoomNameDto { Value = _model.Name.Trim() },
+                    Slug = new UpdateLocationRoomSlugDto
+                    {
+                        Value = new OptionalUpdateOfstring
+                        {
+                            HasValue = true,
+                            Value = string.IsNullOrWhiteSpace(_model.Slug) ? null : _model.Slug.Trim()
+                        }
+                    },
+                    Description = new UpdateLocationRoomDescriptionDto
+                    {
+                        Value = new OptionalUpdateOfstring
+                        {
+                            HasValue = true,
+                            Value = string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description
+                        }
+                    },
+                    Capacity = new UpdateLocationRoomCapacityDto
+                    {
+                        Value = new OptionalUpdateOfint
+                        {
+                            HasValue = true,
+                            Value = _model.Capacity
+                        }
+                    },
+                    SortOrder = new UpdateLocationRoomSortOrderDto { Value = _model.SortOrder ?? 0 }
                 };
 
-                var result = await RoomService.UpdateRoomAsync(RoomId.Value, dto);
+                var result = await RoomService.UpdateRoomAsync(RoomId.Value, ExpectedConcurrencyStamp.Value, dto);
                 if (result?.Success == true)
                 {
                     MudDialog.Close(DialogResult.Ok(result.Id));

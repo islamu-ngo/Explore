@@ -1,11 +1,13 @@
-// ABOUTME: Handler for updating an existing room with validation.
-// ABOUTME: Validates location ownership, applies field updates via AutoMapper.
+// ABOUTME: Handler for grouped LocationRoom PATCH updates with optimistic concurrency.
+// ABOUTME: Preserves tenant-safe parent location checks and applies explicit room field updates.
 
-using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.LocationRoom.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.LocationRooms.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.LocationRooms.Handlers.Commands;
@@ -14,16 +16,13 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
 {
     private readonly ILocationRoomRepository _locationRoomRepository;
     private readonly ILocationRepository _locationRepository;
-    private readonly IMapper _mapper;
 
     public UpdateLocationRoomCommandHandler(
         ILocationRoomRepository locationRoomRepository,
-        ILocationRepository locationRepository,
-        IMapper mapper)
+        ILocationRepository locationRepository)
     {
         _locationRoomRepository = locationRoomRepository;
         _locationRepository = locationRepository;
-        _mapper = mapper;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateLocationRoomCommand request, CancellationToken cancellationToken)
@@ -31,7 +30,7 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
         var response = new BaseCommandResponse<Guid>();
 
         var validator = new UpdateLocationRoomDtoValidator(_locationRepository);
-        var validationResult = await validator.ValidateAsync(request.LocationRoomDto, cancellationToken);
+        var validationResult = await validator.ValidateAsync(request.UpdateLocationRoomDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
@@ -41,7 +40,7 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
             return response;
         }
 
-        var room = await _locationRoomRepository.GetById(request.LocationRoomDto.Id);
+        var room = await _locationRoomRepository.GetById(request.LocationRoomId);
         if (room == null)
         {
             response.Success = false;
@@ -49,15 +48,32 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
             return response;
         }
 
-        var parentLocation = await _locationRepository.GetById(request.LocationRoomDto.LocationId);
-        if (parentLocation == null || parentLocation.TenantId != room.TenantId)
+        if (room.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
         {
-            response.Success = false;
-            response.Message = "Location does not belong to the same tenant as the room.";
-            return response;
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The location room was modified by another request. Reload and retry.",
+                nameof(LocationRoom),
+                room.Id.ToString());
         }
 
-        _mapper.Map(request.LocationRoomDto, room);
+        if (request.UpdateLocationRoomDto.Location is not null)
+        {
+            var parentLocation = await _locationRepository.GetById(request.UpdateLocationRoomDto.Location.LocationId);
+            if (parentLocation == null || parentLocation.TenantId != room.TenantId)
+            {
+                response.Success = false;
+                response.Message = "Location does not belong to the same tenant as the room.";
+                return response;
+            }
+        }
+
+        ApplyLocation(room, request.UpdateLocationRoomDto.Location);
+        ApplyName(room, request.UpdateLocationRoomDto.Name);
+        ApplySlug(room, request.UpdateLocationRoomDto.Slug);
+        ApplyDescription(room, request.UpdateLocationRoomDto.Description);
+        ApplyCapacity(room, request.UpdateLocationRoomDto.Capacity);
+        ApplySortOrder(room, request.UpdateLocationRoomDto.SortOrder);
 
         await _locationRoomRepository.Update(room);
 
@@ -66,5 +82,53 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
         response.Message = "Room updated successfully.";
 
         return response;
+    }
+
+    private static void ApplyLocation(LocationRoom room, UpdateLocationRoomLocationDto? group)
+    {
+        if (group is not null)
+        {
+            room.LocationId = group.LocationId;
+        }
+    }
+
+    private static void ApplyName(LocationRoom room, UpdateLocationRoomNameDto? group)
+    {
+        if (group is not null)
+        {
+            room.Name = group.Value;
+        }
+    }
+
+    private static void ApplySlug(LocationRoom room, UpdateLocationRoomSlugDto? group)
+    {
+        if (group?.Value.HasValue == true)
+        {
+            room.Slug = group.Value.Value;
+        }
+    }
+
+    private static void ApplyDescription(LocationRoom room, UpdateLocationRoomDescriptionDto? group)
+    {
+        if (group?.Value.HasValue == true)
+        {
+            room.Description = group.Value.Value;
+        }
+    }
+
+    private static void ApplyCapacity(LocationRoom room, UpdateLocationRoomCapacityDto? group)
+    {
+        if (group?.Value.HasValue == true)
+        {
+            room.Capacity = group.Value.Value;
+        }
+    }
+
+    private static void ApplySortOrder(LocationRoom room, UpdateLocationRoomSortOrderDto? group)
+    {
+        if (group is not null)
+        {
+            room.SortOrder = group.Value;
+        }
     }
 }

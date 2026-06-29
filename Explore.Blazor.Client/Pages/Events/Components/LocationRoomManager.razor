@@ -125,6 +125,7 @@
             { x => x.LocationId, LocationId },
             { x => x.IsNew, false },
             { x => x.RoomId, room.Id },
+            { x => x.ExpectedConcurrencyStamp, room.ConcurrencyStamp },
             { x => x.InitialSortOrder, room.SortOrder }
         };
 

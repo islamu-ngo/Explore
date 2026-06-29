@@ -47,7 +47,7 @@ public sealed class LocationRoomDetailLinkPolicy : ILinkPolicy<LocationRoomDto>
             LinkRelations.Edit,
             RouteNames.UpdateLocationRoom,
             new { id = dto.Id },
-            "PUT",
+            "PATCH",
             "Update room",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.LocationRoom, dto);

@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for LocationService covering location CRUD, city/country lookups, and alias behavior.
-// Verifies HAL conversion, pagination constants, and expected fallback/failure handling.
+// ABOUTME: Verifies HAL conversion, pagination constants, If-Match forwarding, and failure handling.
 
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
@@ -251,27 +251,30 @@ public class LocationServiceTests
     {
         // Arrange
         var locationId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var dto = new UpdateLocationDto
         {
-            Id = locationId,
-            FullName = "Updated Location",
-            Address = "789 Avenue",
-            City = "Berlin",
-            Country = "Germany",
-            Timezone = "Europe/Berlin"
+            FullName = new UpdateLocationFullNameDto { Value = "Updated Location" }
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(locationId);
 
-        _apiClient.UpdateLocationAsync(Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateLocationAsync(Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
-        var result = await _service.UpdateLocationAsync(locationId, dto);
+        var result = await _service.UpdateLocationAsync(locationId, concurrencyStamp, dto);
 
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(locationId);
+        await _apiClient.Received(1).UpdateLocationAsync(
+            locationId,
+            dto,
+            $"\"{concurrencyStamp:D}\"",
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -279,21 +282,17 @@ public class LocationServiceTests
     {
         // Arrange
         var locationId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var dto = new UpdateLocationDto
         {
-            Id = locationId,
-            FullName = "Updated Location",
-            Address = "789 Avenue",
-            City = "Berlin",
-            Country = "Germany",
-            Timezone = "Europe/Berlin"
+            FullName = new UpdateLocationFullNameDto { Value = "Updated Location" }
         };
 
-        _apiClient.UpdateLocationAsync(Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateLocationAsync(Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
 
         // Act
-        var result = await _service.UpdateLocationAsync(locationId, dto);
+        var result = await _service.UpdateLocationAsync(locationId, concurrencyStamp, dto);
 
         // Assert
         await Assert.That(result).IsNotNull();

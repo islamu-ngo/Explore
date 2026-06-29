@@ -64,11 +64,20 @@ public class LocationRoomService : ILocationRoomService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> UpdateRoomAsync(Guid id, UpdateLocationRoomDto dto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateRoomAsync(Guid id, Guid expectedConcurrencyStamp, UpdateLocationRoomDto dto)
     {
         try
         {
-            return await _client.UpdateLocationRoomAsync(id, dto);
+            if (id == Guid.Empty || expectedConcurrencyStamp == Guid.Empty)
+            {
+                return new BaseCommandResponseOfGuid
+                {
+                    Success = false,
+                    Message = "Room route ID and concurrency stamp are required."
+                };
+            }
+
+            return await _client.UpdateLocationRoomAsync(id, dto, $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (ApiException ex)
         {

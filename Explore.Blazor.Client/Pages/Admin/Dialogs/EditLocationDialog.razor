@@ -12,15 +12,14 @@
     </TitleContent>
     <DialogContent>
         <EditForm EditContext="_editContext">
-            <FluentValidationValidator />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.FullName" Label="Name" For="@(() => locationDto.FullName)" Required="true" RequiredError="Name is required." />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Address" Label="Address" For="@(() => locationDto.Address)" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.City" Label="City" For="@(() => locationDto.City)" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Postcode" Label="Postcode" For="@(() => locationDto.Postcode)" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Country" Label="Country" For="@(() => locationDto.Country)" />
-            <MudNumericField @bind-Value="locationDto.Latitude" Label="Latitude" For="@(() => locationDto.Latitude)" />
-            <MudNumericField @bind-Value="locationDto.Longitude" Label="Longitude" For="@(() => locationDto.Longitude)" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Timezone" Label="Timezone" For="@(() => locationDto.Timezone)" />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.FullName" Label="Name" Required="true" RequiredError="Name is required." />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.Address" Label="Address" />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.City" Label="City" />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.Postcode" Label="Postcode" />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.Country" Label="Country" />
+            <MudNumericField @bind-Value="_form.Latitude" Label="Latitude" />
+            <MudNumericField @bind-Value="_form.Longitude" Label="Longitude" />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.Timezone" Label="Timezone" />
         </EditForm>
     </DialogContent>
     <DialogActions>
@@ -36,29 +35,72 @@
     [Parameter] public LocationDto ExistingLocation { get; set; }
 
     private EditContext _editContext = default!;
-    private UpdateLocationDto locationDto = new();
+    private LocationEditForm _form = new();
 
     protected override void OnInitialized()
     {
-        locationDto.Id = ExistingLocation.Id;
-        locationDto.FullName = ExistingLocation.FullName;
-        locationDto.Address = ExistingLocation.Address;
-        locationDto.City = ExistingLocation.City;
-        locationDto.Postcode = ExistingLocation.Postcode;
-        locationDto.Country = ExistingLocation.Country;
-        locationDto.Latitude = ExistingLocation.Latitude;
-        locationDto.Longitude = ExistingLocation.Longitude;
-        locationDto.Timezone = ExistingLocation.Timezone;
-        _editContext = new EditContext(locationDto);
+        _form = new LocationEditForm
+        {
+            FullName = ExistingLocation.FullName ?? string.Empty,
+            Address = ExistingLocation.Address ?? string.Empty,
+            City = ExistingLocation.City ?? string.Empty,
+            Postcode = ExistingLocation.Postcode ?? string.Empty,
+            Country = ExistingLocation.Country ?? string.Empty,
+            Latitude = ExistingLocation.Latitude,
+            Longitude = ExistingLocation.Longitude,
+            Timezone = ExistingLocation.Timezone
+        };
+
+        _editContext = new EditContext(_form);
     }
 
     private void Submit()
     {
         if (_editContext.Validate())
         {
-            DialogReference?.Dismiss(DialogResult.Ok(locationDto));
+            if (string.IsNullOrWhiteSpace(_form.FullName))
+            {
+                return;
+            }
+
+            DialogReference?.Dismiss(DialogResult.Ok(new UpdateLocationDto
+            {
+                FullName = new UpdateLocationFullNameDto { Value = _form.FullName.Trim() },
+                Address = new UpdateLocationAddressDto { Value = _form.Address.Trim() },
+                City = new UpdateLocationCityDto { Value = _form.City.Trim() },
+                Postcode = new UpdateLocationPostcodeDto { Value = _form.Postcode.Trim() },
+                Country = new UpdateLocationCountryDto { Value = _form.Country.Trim() },
+                Latitude = new UpdateLocationLatitudeDto
+                {
+                    Value = new OptionalUpdateOfdouble { HasValue = true, Value = _form.Latitude }
+                },
+                Longitude = new UpdateLocationLongitudeDto
+                {
+                    Value = new OptionalUpdateOfdouble { HasValue = true, Value = _form.Longitude }
+                },
+                Timezone = new UpdateLocationTimezoneDto
+                {
+                    Value = new OptionalUpdateOfstring
+                    {
+                        HasValue = true,
+                        Value = string.IsNullOrWhiteSpace(_form.Timezone) ? null : _form.Timezone.Trim()
+                    }
+                }
+            }));
         }
     }
 
     void Cancel() => DialogReference?.Dismiss(DialogResult.Cancel());
+
+    private sealed class LocationEditForm
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string Postcode { get; set; } = string.Empty;
+        public string Country { get; set; } = string.Empty;
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public string? Timezone { get; set; }
+    }
 }
