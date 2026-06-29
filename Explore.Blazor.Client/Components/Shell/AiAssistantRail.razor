@@ -170,6 +170,44 @@
         @if (ConversationState.SelectedConversation is not null)
         {
             <div class="ai-rail__composer" role="form" aria-label="Send an AI assistant message">
+                @if (IsReferenceAutocompleteVisible)
+                {
+                    <div id="ai-rail-reference-results"
+                         class="ai-rail__reference-autocomplete"
+                         role="listbox"
+                         aria-label="AI reference suggestions"
+                         data-testid="ai-rail-reference-autocomplete">
+                        @if (_isReferenceSearchRunning)
+                        {
+                            <div class="ai-rail__reference-status" role="status">
+                                <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+                            </div>
+                        }
+                        else if (ConversationState.ReferenceResults.Count == 0 && _hasSearchedReferences)
+                        {
+                            <div class="ai-rail__reference-empty" role="status">No matching references</div>
+                        }
+                        else
+                        {
+                            @for (var index = 0; index < ConversationState.ReferenceResults.Count; index++)
+                            {
+                                var reference = ConversationState.ReferenceResults[index];
+                                <button id="@GetReferenceOptionId(index)"
+                                        type="button"
+                                        class="@GetReferenceOptionClass(index)"
+                                        role="option"
+                                        aria-selected="@(index == _activeReferenceIndex)"
+                                        data-testid="ai-rail-reference-result"
+                                        @onmousedown:preventDefault="true"
+                                        @onclick="() => SelectReferenceAsync(reference)">
+                                    <MudIcon Icon="@GetReferenceIcon(reference)" Size="Size.Small" Class="ai-rail__reference-option-icon" />
+                                    <span class="ai-rail__reference-option-text">@reference.DisplayName</span>
+                                    <span class="ai-rail__reference-option-kind">@GetReferenceKindLabel(reference)</span>
+                                </button>
+                            }
+                        }
+                    </div>
+                }
                 <div class="ai-rail__composer-card">
                     <div class="ai-rail__composer-context">
                         <label class="ai-rail__actor-label" for="ai-rail-actor-selector">Acting as</label>
@@ -197,15 +235,6 @@
                             }
                         </select>
                     </div>
-                    @if (ConversationState.SelectedReferences.Count > 0)
-                    {
-                        <div class="ai-rail__selected-reference-list" role="list" aria-label="Selected AI references">
-                            @foreach (var reference in ConversationState.SelectedReferences)
-                            {
-                                <AiReferenceChip Reference="reference" OnRemove="RemoveReference" />
-                            }
-                        </div>
-                    }
                     @if (_selectedImages.Count > 0)
                     {
                         <div class="ai-rail__image-chip-list" role="list" aria-label="Selected image attachments">
@@ -251,48 +280,11 @@
                                   data-testid="ai-rail-prompt"
                                   data-reference-autocomplete-open="@ReferenceAutocompleteOpenData"
                                   data-reference-autocomplete-selectable="@ReferenceAutocompleteSelectableData"
+                                  data-reference-mention-tokens="@ReferenceMentionTokensData"
                                   aria-controls="ai-rail-reference-results"
                                   aria-expanded="@ReferenceAutocompleteOpenData"
                                   aria-autocomplete="list"
                                   aria-activedescendant="@ActiveReferenceOptionId"></textarea>
-                        @if (IsReferenceAutocompleteVisible)
-                        {
-                            <div id="ai-rail-reference-results"
-                                 class="ai-rail__reference-autocomplete"
-                                 role="listbox"
-                                 aria-label="AI reference suggestions"
-                                 data-testid="ai-rail-reference-autocomplete">
-                                @if (_isReferenceSearchRunning)
-                                {
-                                    <div class="ai-rail__reference-status" role="status">
-                                        <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
-                                    </div>
-                                }
-                                else if (ConversationState.ReferenceResults.Count == 0 && _hasSearchedReferences)
-                                {
-                                    <div class="ai-rail__reference-empty" role="status">No matching references</div>
-                                }
-                                else
-                                {
-                                    @for (var index = 0; index < ConversationState.ReferenceResults.Count; index++)
-                                    {
-                                        var reference = ConversationState.ReferenceResults[index];
-                                        <button id="@GetReferenceOptionId(index)"
-                                                type="button"
-                                                class="@GetReferenceOptionClass(index)"
-                                                role="option"
-                                                aria-selected="@(index == _activeReferenceIndex)"
-                                                data-testid="ai-rail-reference-result"
-                                                @onmousedown:preventDefault="true"
-                                                @onclick="() => SelectReferenceAsync(reference)">
-                                            <MudIcon Icon="@GetReferenceIcon(reference.Kind)" Size="Size.Small" Class="ai-rail__reference-option-icon" />
-                                            <span class="ai-rail__reference-option-text">@reference.DisplayName</span>
-                                            <span class="ai-rail__reference-option-kind">@GetReferenceKindLabel(reference.Kind)</span>
-                                        </button>
-                                    }
-                                }
-                            </div>
-                        }
                     </div>
                     <div class="ai-rail__composer-toolbar">
                         <MudMenu @bind-Open="_referencesMenuOpen" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
@@ -426,6 +418,8 @@
     private const int MaxSelectedImages = 4;
     private const long MaxImageBytes = 5 * 1024 * 1024;
     private const int MinimumReferenceSearchLength = 2;
+    private const string ActorReferenceKind = "Actor";
+    private const string ActorContextSummaryPrefix = "Actor context:";
     private static readonly TimeSpan ReferenceSearchDebounceDelay = TimeSpan.FromMilliseconds(250);
 
     private readonly HashSet<Guid> _busyActionIds = [];
@@ -508,6 +502,8 @@
     private string ReferenceAutocompleteSelectableData =>
         IsReferenceAutocompleteVisible && ConversationState.ReferenceResults.Count > 0 ? "true" : "false";
 
+    private string ReferenceMentionTokensData => System.Text.Json.JsonSerializer.Serialize(GetReferenceMentionTokens());
+
     private string? ActiveReferenceOptionId =>
         IsReferenceAutocompleteVisible && ConversationState.ReferenceResults.Count > 0
             ? GetReferenceOptionId(_activeReferenceIndex)
@@ -530,7 +526,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (ConversationState.SelectedConversation is not null)
         {
             await AttachPromptKeyboardHandlerAsync();
         }
@@ -733,6 +729,8 @@
         var content = _promptText.Trim();
         var images = _selectedImages.ToList();
         var selectedReferences = ConversationState.SelectedReferences.ToList();
+        var imageInputs = images.Select(ToImageInputDto).ToList();
+        var referenceInputs = selectedReferences.Select(ToSelectedReferenceDto).ToList();
         var idempotencyKey = $"blazor-ai-send-{Guid.CreateVersion7()}";
 
         await RunCommandAsync(async () =>
@@ -743,15 +741,33 @@
             ConversationState.SetSelectedReferences([]);
             ConversationState.SetError(null);
 
-            var result = await ClientService.SendMessageAsync(
+            var result = await SendAiMessageRequestAsync(
                 conversationId,
                 content,
-                _selectedModelId,
                 idempotencyKey,
-                mode: SelectedInteractionMode,
-                actorId: _selectedActorId,
-                images: images.Select(ToImageInputDto).ToList(),
-                references: selectedReferences.Select(ToSelectedReferenceDto).ToList());
+                imageInputs,
+                referenceInputs);
+
+            if (IsAuthenticationFailure(result))
+            {
+                var authOk = await TryRefreshAuthSessionAsync();
+                if (!authOk)
+                {
+                    _promptText = content;
+                    _selectedImages.AddRange(images);
+                    ConversationState.SetSelectedReferences(selectedReferences);
+                    RedirectToLogin();
+                    return;
+                }
+
+                result = await SendAiMessageRequestAsync(
+                    conversationId,
+                    content,
+                    idempotencyKey,
+                    imageInputs,
+                    referenceInputs);
+            }
+
             if (!result.Success)
             {
                 _promptText = content;
@@ -771,6 +787,27 @@
         });
     }
 
+    private Task<AiAssistantCommandResult> SendAiMessageRequestAsync(
+        Guid conversationId,
+        string content,
+        string idempotencyKey,
+        IReadOnlyList<AiMessageImageInputDto> images,
+        IReadOnlyList<AiSelectedReferenceDto> references)
+    {
+        return ClientService.SendMessageAsync(
+            conversationId,
+            content,
+            _selectedModelId,
+            idempotencyKey,
+            mode: SelectedInteractionMode,
+            actorId: _selectedActorId,
+            images: images,
+            references: references);
+    }
+
+    private static bool IsAuthenticationFailure(AiAssistantCommandResult result) =>
+        string.Equals(result.FailureCode, "unauthorized", StringComparison.OrdinalIgnoreCase);
+
     [JSInvokable]
     public async Task SendPromptFromKeyboardAsync()
     {
@@ -778,6 +815,31 @@
         {
             await SendMessageAsync();
         }
+    }
+
+    [JSInvokable]
+    public PromptReferenceDeletionResult DeletePromptReferenceFromKeyboard(
+        int selectionStart,
+        int selectionEnd,
+        string key)
+    {
+        if (ConversationState.SelectedReferences.Count == 0)
+        {
+            return PromptReferenceDeletionResult.NotHandled(_promptText, selectionStart);
+        }
+
+        var deletion = FindReferenceDeletion(selectionStart, selectionEnd, key);
+        if (deletion is null)
+        {
+            return PromptReferenceDeletionResult.NotHandled(_promptText, selectionStart);
+        }
+
+        _promptText = _promptText.Remove(deletion.Start, deletion.Length);
+        SyncSelectedReferencesWithPromptText();
+        UpdateReferenceAutocompleteFromPrompt();
+        StateHasChanged();
+
+        return new PromptReferenceDeletionResult(true, _promptText, deletion.Start);
     }
 
     [JSInvokable]
@@ -895,7 +957,7 @@
             if (!response.IsSuccessStatusCode)
             {
                 Logger.LogDebug(
-                    "AI polling auth refresh returned status {StatusCode}.",
+                    "AI assistant auth refresh returned status {StatusCode}.",
                     (int)response.StatusCode);
                 return false;
             }
@@ -903,7 +965,7 @@
         }
         catch (Exception ex)
         {
-            Logger.LogDebug(ex, "AI polling auth refresh could not be completed.");
+            Logger.LogDebug(ex, "AI assistant auth refresh could not be completed.");
             return false;
         }
     }
@@ -963,11 +1025,10 @@
     {
         var term = (searchTerm ?? _referenceSearchTerm).Trim();
         _referenceSearchTerm = term;
+        var actorReferences = BuildActorReferenceResults(term);
         if (term.Length < MinimumReferenceSearchLength)
         {
-            _hasSearchedReferences = false;
-            ConversationState.SetReferenceResults([]);
-            _activeReferenceIndex = 0;
+            SetReferenceResults(actorReferences);
             return;
         }
 
@@ -982,9 +1043,80 @@
             return;
         }
 
+        SetReferenceResults(MergeReferenceResults(actorReferences, references));
+        _isReferenceSearchRunning = false;
+    }
+
+    private void SetReferenceResults(IReadOnlyList<HalResourceOfAiReferenceSearchResultDto> references)
+    {
+        _hasSearchedReferences = true;
+        _isReferenceSearchRunning = false;
         ConversationState.SetReferenceResults(references);
         _activeReferenceIndex = 0;
-        _isReferenceSearchRunning = false;
+    }
+
+    private IReadOnlyList<HalResourceOfAiReferenceSearchResultDto> BuildActorReferenceResults(string searchTerm)
+    {
+        var term = searchTerm.Trim();
+        return _actorOptions
+            .Where(actor => ActorReferenceMatches(actor, term))
+            .Select(ToActorContextReference)
+            .ToList();
+    }
+
+    private static bool ActorReferenceMatches(AiRailActorOption actor, string searchTerm)
+    {
+        return searchTerm.Length == 0
+            || actor.ActorDisplayName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+            || actor.ActorType.Contains(searchTerm, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static HalResourceOfAiReferenceSearchResultDto ToActorContextReference(AiRailActorOption actor) => new()
+    {
+        Kind = ActorReferenceKind,
+        ReferenceId = actor.ActorId,
+        DisplayName = actor.ActorDisplayName,
+        Summary = $"{ActorContextSummaryPrefix} {actor.ActorType}"
+    };
+
+    private static IReadOnlyList<HalResourceOfAiReferenceSearchResultDto> MergeReferenceResults(
+        IReadOnlyList<HalResourceOfAiReferenceSearchResultDto> primary,
+        IReadOnlyList<HalResourceOfAiReferenceSearchResultDto>? secondary)
+    {
+        var merged = new List<HalResourceOfAiReferenceSearchResultDto>();
+        var seenById = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenByDisplay = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        AddRange(primary);
+        AddRange(secondary ?? []);
+        return merged;
+
+        void AddRange(IEnumerable<HalResourceOfAiReferenceSearchResultDto> references)
+        {
+            foreach (var reference in references)
+            {
+                Add(reference);
+            }
+        }
+
+        void Add(HalResourceOfAiReferenceSearchResultDto reference)
+        {
+            var referenceId = reference.ReferenceId;
+            if (referenceId == Guid.Empty
+                || string.IsNullOrWhiteSpace(reference.DisplayName))
+            {
+                return;
+            }
+
+            var idKey = $"{NormalizeSelectedReferenceKind(reference.Kind)}:{referenceId:N}";
+            var displayKey = $"{GetReferenceDisplayKind(reference)}:{reference.DisplayName.Trim()}";
+            if (!seenById.Add(idKey) || !seenByDisplay.Add(displayKey))
+            {
+                return;
+            }
+
+            merged.Add(reference);
+        }
     }
 
     private async Task SelectReferenceAsync(HalResourceOfAiReferenceSearchResultDto reference)
@@ -1001,12 +1133,6 @@
         await FocusPromptAsync();
     }
 
-    private void RemoveReference(Guid referenceId)
-    {
-        ConversationState.SetSelectedReferences(
-            ConversationState.SelectedReferences.Where(reference => reference.ReferenceId != referenceId).ToList());
-    }
-
     private void QueueReferenceSearch(string searchTerm)
     {
         _referenceSearchDebounceCts?.Cancel();
@@ -1018,10 +1144,7 @@
 
         if (term.Length < MinimumReferenceSearchLength)
         {
-            _hasSearchedReferences = false;
-            _isReferenceSearchRunning = false;
-            ConversationState.SetReferenceResults([]);
-            _activeReferenceIndex = 0;
+            SetReferenceResults(BuildActorReferenceResults(term));
             return;
         }
 
@@ -1229,18 +1352,7 @@
     private async Task LoadBootstrapAsync()
     {
         var bootstrap = await ClientService.GetBootstrapAsync();
-        var actors = bootstrap?.ActorContexts?
-            .Where(actor => actor.ActorId is Guid actorId && actorId != Guid.Empty)
-            .GroupBy(actor => actor.ActorId!.Value)
-            .Select(group => group.First())
-            .Select(actor => new AiRailActorOption(
-                actor.ActorId!.Value,
-                actor.ActorType?.Trim() ?? string.Empty,
-                actor.ActorDisplayName?.Trim() ?? string.Empty))
-            .Where(actor => !string.IsNullOrWhiteSpace(actor.ActorType) && !string.IsNullOrWhiteSpace(actor.ActorDisplayName))
-            .ToArray() ?? [];
-
-        _actorOptions = actors;
+        _actorOptions = BuildActorOptions(bootstrap);
 
         if (_actorOptions.Count == 0)
         {
@@ -1280,6 +1392,21 @@
         {
             _selectedModelId = _modelOptions[0].Id;
         }
+    }
+
+    private static IReadOnlyList<AiRailActorOption> BuildActorOptions(HalResourceOfAiAssistantBootstrapDto? bootstrap)
+    {
+        return bootstrap?.ActorContexts?
+            .Where(actor => actor.ActorId is Guid actorId && actorId != Guid.Empty)
+            .GroupBy(actor => actor.ActorId!.Value)
+            .Select(group => group.First())
+            .Select(actor => new AiRailActorOption(
+                actor.ActorId!.Value,
+                actor.ActorType?.Trim() ?? string.Empty,
+                actor.ActorDisplayName?.Trim() ?? string.Empty))
+            .Where(actor => !string.IsNullOrWhiteSpace(actor.ActorType)
+                && !string.IsNullOrWhiteSpace(actor.ActorDisplayName))
+            .ToArray() ?? [];
     }
 
     private void SelectModel(string modelId)
@@ -1398,11 +1525,23 @@
 
     private static AiSelectedReferenceDto ToSelectedReferenceDto(HalResourceOfAiReferenceSearchResultDto reference) => new()
     {
-        Kind = reference.Kind,
+        Kind = NormalizeSelectedReferenceKind(reference.Kind),
         ReferenceId = reference.ReferenceId,
         DisplayName = reference.DisplayName,
         Summary = reference.Summary
     };
+
+    private static string NormalizeSelectedReferenceKind(string? kind)
+    {
+        var normalizedKind = kind?.Trim();
+        return normalizedKind switch
+        {
+            "User" => ActorReferenceKind,
+            "Group" => ActorReferenceKind,
+            _ when string.IsNullOrWhiteSpace(normalizedKind) => ActorReferenceKind,
+            _ => normalizedKind
+        };
+    }
 
     private static string GetReferenceOptionClass(bool active) => string.Join(' ', new[]
     {
@@ -1414,23 +1553,47 @@
 
     private static string GetReferenceOptionId(int index) => $"ai-rail-reference-option-{index}";
 
-    private static string GetReferenceIcon(string? kind) => kind switch
+    private static string GetReferenceIcon(HalResourceOfAiReferenceSearchResultDto reference) => GetReferenceDisplayKind(reference) switch
     {
         "Event" => Icons.Material.Filled.Event,
         "Organization" => Icons.Material.Filled.Business,
         "Actor" => Icons.Material.Filled.Person,
+        "User" => Icons.Material.Filled.Person,
+        "Group" => Icons.Material.Filled.Groups,
         "EventSession" => Icons.Material.Filled.Schedule,
         _ => Icons.Material.Filled.Tag
     };
 
-    private static string GetReferenceKindLabel(string? kind) => kind switch
+    private static string GetReferenceKindLabel(HalResourceOfAiReferenceSearchResultDto reference) => GetReferenceDisplayKind(reference) switch
     {
         "Event" => "Event",
         "Organization" => "Org",
         "Actor" => "User",
+        "User" => "User",
+        "Group" => "Group",
         "EventSession" => "Session",
         _ => "Ref"
     };
+
+    private static string GetReferenceDisplayKind(HalResourceOfAiReferenceSearchResultDto reference)
+    {
+        var actorContextKind = GetActorContextKind(reference);
+        return string.IsNullOrWhiteSpace(actorContextKind)
+            ? reference.Kind?.Trim() ?? string.Empty
+            : actorContextKind;
+    }
+
+    private static string? GetActorContextKind(HalResourceOfAiReferenceSearchResultDto reference)
+    {
+        var summary = reference.Summary?.Trim();
+        if (summary is null || !summary.StartsWith(ActorContextSummaryPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var kind = summary[ActorContextSummaryPrefix.Length..].Trim();
+        return string.IsNullOrWhiteSpace(kind) ? null : kind;
+    }
 
     private static string ResolveImageMediaType(IBrowserFile file)
     {
@@ -1543,12 +1706,14 @@
     private void OnPromptInput(ChangeEventArgs e)
     {
         _promptText = e.Value?.ToString() ?? string.Empty;
+        SyncSelectedReferencesWithPromptText();
         UpdateReferenceAutocompleteFromPrompt();
     }
 
     private void OnPromptChange(ChangeEventArgs e)
     {
         _promptText = e.Value?.ToString() ?? string.Empty;
+        SyncSelectedReferencesWithPromptText();
         UpdateReferenceAutocompleteFromPrompt();
     }
 
@@ -1637,16 +1802,126 @@
         _promptText = prefix.Length == 0 ? $"{mention} " : $"{prefix} {mention} ";
     }
 
+    private void SyncSelectedReferencesWithPromptText()
+    {
+        if (ConversationState.SelectedReferences.Count == 0)
+        {
+            return;
+        }
+
+        var retainedReferences = ConversationState.SelectedReferences
+            .Where(PromptContainsReferenceMention)
+            .ToList();
+
+        if (retainedReferences.Count != ConversationState.SelectedReferences.Count)
+        {
+            ConversationState.SetSelectedReferences(retainedReferences);
+        }
+    }
+
+    private bool PromptContainsReferenceMention(HalResourceOfAiReferenceSearchResultDto reference)
+    {
+        var token = GetReferenceMentionToken(reference);
+        return token is not null && _promptText.Contains(token, StringComparison.OrdinalIgnoreCase);
+    }
+
     private IReadOnlyList<string> GetReferenceMentionTokens()
     {
         return ConversationState.SelectedReferences
-            .Select(reference => reference.DisplayName?.Trim())
-            .Where(displayName => !string.IsNullOrWhiteSpace(displayName))
-            .Select(displayName => $"@{displayName}")
+            .Select(GetReferenceMentionToken)
+            .OfType<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(token => token.Length)
             .ToList();
     }
+
+    private static string? GetReferenceMentionToken(HalResourceOfAiReferenceSearchResultDto reference)
+    {
+        var displayName = reference.DisplayName?.Trim();
+        return string.IsNullOrWhiteSpace(displayName) ? null : $"@{displayName}";
+    }
+
+    private ReferenceDeletionRange? FindReferenceDeletion(int selectionStart, int selectionEnd, string key)
+    {
+        var textLength = _promptText.Length;
+        var rangeStart = Math.Clamp(Math.Min(selectionStart, selectionEnd), 0, textLength);
+        var rangeEnd = Math.Clamp(Math.Max(selectionStart, selectionEnd), 0, textLength);
+
+        if (rangeStart == rangeEnd)
+        {
+            if (string.Equals(key, "Backspace", StringComparison.Ordinal))
+            {
+                if (rangeStart == 0)
+                {
+                    return null;
+                }
+
+                rangeStart--;
+            }
+            else if (string.Equals(key, "Delete", StringComparison.Ordinal))
+            {
+                if (rangeStart >= textLength)
+                {
+                    return null;
+                }
+
+                rangeEnd++;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        foreach (var token in GetReferenceMentionTokens())
+        {
+            var tokenStart = 0;
+            while (tokenStart < _promptText.Length)
+            {
+                tokenStart = _promptText.IndexOf(token, tokenStart, StringComparison.OrdinalIgnoreCase);
+                if (tokenStart < 0)
+                {
+                    break;
+                }
+
+                var tokenEnd = tokenStart + token.Length;
+                if (RangesIntersect(rangeStart, rangeEnd, tokenStart, tokenEnd))
+                {
+                    return ExpandReferenceDeletionRange(tokenStart, tokenEnd);
+                }
+
+                tokenStart = tokenEnd;
+            }
+        }
+
+        return null;
+    }
+
+    private ReferenceDeletionRange ExpandReferenceDeletionRange(int tokenStart, int tokenEnd)
+    {
+        var deleteStart = tokenStart;
+        var deleteEnd = tokenEnd;
+
+        if (deleteEnd < _promptText.Length && char.IsWhiteSpace(_promptText[deleteEnd]))
+        {
+            while (deleteEnd < _promptText.Length && char.IsWhiteSpace(_promptText[deleteEnd]))
+            {
+                deleteEnd++;
+            }
+        }
+        else if (deleteStart > 0 && char.IsWhiteSpace(_promptText[deleteStart - 1]))
+        {
+            while (deleteStart > 0 && char.IsWhiteSpace(_promptText[deleteStart - 1]))
+            {
+                deleteStart--;
+            }
+        }
+
+        return new ReferenceDeletionRange(deleteStart, deleteEnd - deleteStart);
+    }
+
+    private static bool RangesIntersect(int firstStart, int firstEnd, int secondStart, int secondEnd) =>
+        firstStart < secondEnd && firstEnd > secondStart;
 
     private string BuildPromptReferenceHighlightMarkup()
     {
@@ -1753,6 +2028,13 @@
     private sealed record AiRailModelOption(string Id, string DisplayName);
     private sealed record AiRailActorOption(Guid ActorId, string ActorType, string ActorDisplayName);
     private sealed record AiRailImageAttachment(Guid Id, string FileName, string MediaType, long SizeBytes, string Data);
+    public sealed record PromptReferenceDeletionResult(bool Handled, string Text, int SelectionStart)
+    {
+        public static PromptReferenceDeletionResult NotHandled(string text, int selectionStart) =>
+            new(false, text, selectionStart);
+    }
+
+    private sealed record ReferenceDeletionRange(int Start, int Length);
 
     private sealed record AiRailTimelineItem(
         string Key,

@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.AiAssistant.Actors;
+using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
@@ -28,6 +29,8 @@ public static class ApplicationServicesRegistration
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());
         services.AddScoped<IAiAssistantActorContextService, AiAssistantActorContextService>();
+services.AddScoped<IAiContextGateway, AiContextGateway>();
+services.AddScoped<IAiProviderTrustResolver, DefaultAiProviderTrustResolver>();
 
         // Onboarding Services
         services.AddScoped<ITenantPolicySettingService, TenantPolicySettingService>();

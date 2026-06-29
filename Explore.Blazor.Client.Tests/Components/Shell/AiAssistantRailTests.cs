@@ -6,6 +6,7 @@ using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Services.Ai;
 using Microsoft.AspNetCore.Components.Forms;
 using MudBlazor;
+using Refit;
 
 namespace Explore.Blazor.Client.Tests.Components.Shell;
 
@@ -221,7 +222,7 @@ public sealed class AiAssistantRailTests : IDisposable
     }
 
     [Test]
-    public async Task ReferenceSearch_SelectsAndRemovesHalLinkedReference()
+    public async Task ReferenceSearch_SelectsAndRemovesInlineMentionReference()
     {
         var conversationId = Guid.CreateVersion7();
         var referenceId = Guid.CreateVersion7();
@@ -255,8 +256,18 @@ public sealed class AiAssistantRailTests : IDisposable
         await Assert.That(_conversationState.SelectedReferences.Count).IsEqualTo(1);
         await Assert.That(cut.Find("[data-testid='ai-rail-prompt']").GetAttribute("value")).IsEqualTo("@Community Iftar ");
         await Assert.That(cut.Find("[data-testid='ai-rail-prompt-reference-token']").TextContent).IsEqualTo("@Community Iftar");
+        await Assert.That(cut.Find("[data-testid='ai-rail-prompt']").GetAttribute("data-reference-mention-tokens"))
+            .Contains("@Community Iftar");
+        await Assert.That(cut.FindAll(".ai-rail__selected-reference-list")).IsEmpty();
+        await Assert.That(cut.FindAll("[data-testid='ai-reference-chip']")).IsEmpty();
 
-        await cut.Find("[data-testid='ai-reference-chip']").ClickAsync(new MouseEventArgs());
+        var deletion = await cut.InvokeAsync(() => cut.Instance.DeletePromptReferenceFromKeyboard(
+            selectionStart: 1,
+            selectionEnd: 1,
+            key: "Backspace"));
+
+        await Assert.That(deletion.Handled).IsTrue();
+        await Assert.That(deletion.Text).IsEqualTo(string.Empty);
         await Assert.That(_conversationState.SelectedReferences).IsEmpty();
         await Assert.That(cut.FindAll("[data-testid='ai-rail-prompt-reference-token']")).IsEmpty();
     }
@@ -452,6 +463,74 @@ public sealed class AiAssistantRailTests : IDisposable
     }
 
     [Test]
+    public async Task SendMessage_WhenUnauthorized_RefreshesSessionAndRetriesWithSameIdempotencyKey()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var idempotencyKeys = new List<string?>();
+        var bffAuthApi = _ctx.Services.GetRequiredService<IBffAuthApi>();
+        var refreshResponse = Substitute.For<IApiResponse>();
+        refreshResponse.IsSuccessStatusCode.Returns(true);
+        refreshResponse.StatusCode.Returns(System.Net.HttpStatusCode.OK);
+        bffAuthApi.RefreshSessionInternalAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(refreshResponse));
+
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Send auth retry"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _clientService.SendMessageAsync(
+                conversationId,
+                "hello",
+                Arg.Any<string?>(),
+                Arg.Do<string?>(value => idempotencyKeys.Add(value)),
+                Arg.Any<string?>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
+                Arg.Any<IReadOnlyList<AiSelectedReferenceDto>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult(new AiAssistantCommandResult(
+                    false,
+                    null,
+                    "The AI assistant message could not be sent.",
+                    "unauthorized",
+                    ["The AI assistant message could not be sent."])),
+                Task.FromResult(new AiAssistantCommandResult(true, null, "Sent", null, [])));
+        _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(
+                conversationId,
+                "Send auth retry",
+                [new Messages2 { Role = "Assistant", Sequence = 1, Content = "Recovered response." }])));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        await cut.Find("[data-testid='ai-rail-prompt']").ChangeAsync(new ChangeEventArgs { Value = "hello" });
+        await cut.Find("[data-testid='ai-rail-send']").ClickAsync(new MouseEventArgs());
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Recovered response.", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected retry success to reload conversation detail.");
+            }
+        });
+        await bffAuthApi.Received(1).RefreshSessionInternalAsync(Arg.Any<CancellationToken>());
+        await _clientService.Received(2).SendMessageAsync(
+            conversationId,
+            "hello",
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Is<string?>(value => value == "build"),
+            Arg.Any<Guid?>(),
+            Arg.Is<IReadOnlyList<AiMessageImageInputDto>?>(value => value != null && value.Count == 0),
+            Arg.Is<IReadOnlyList<AiSelectedReferenceDto>?>(value => value != null && value.Count == 0),
+            Arg.Any<CancellationToken>());
+        await Assert.That(idempotencyKeys.Count).IsEqualTo(2);
+        await Assert.That(idempotencyKeys[0]).IsEqualTo(idempotencyKeys[1]);
+        await Assert.That(idempotencyKeys[0]).StartsWith("blazor-ai-send-");
+    }
+
+    [Test]
     public async Task Render_AddFilesAction_UsesMudFileUploadPicker()
     {
         var conversationId = Guid.CreateVersion7();
@@ -562,6 +641,118 @@ public sealed class AiAssistantRailTests : IDisposable
         await Assert.That(cut.Markup).Contains("Organization · ISLAMU Center");
         await Assert.That(cut.Markup).Contains($"data-actor-type=\"User\"");
         await Assert.That(cut.Markup).Contains($"data-actor-display-name=\"Amina Yusuf\"");
+    }
+
+    [Test]
+    public async Task ReferenceSearch_WhenMentionStarts_ShowsActorContextDefaultsAboveComposerCard()
+    {
+        var userActorId = Guid.CreateVersion7();
+        var organizationActorId = Guid.CreateVersion7();
+        var groupActorId = Guid.CreateVersion7();
+        var conversationId = Guid.CreateVersion7();
+        _clientService.GetBootstrapAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiAssistantBootstrapDto?>(CreateBootstrap(
+                (userActorId, "User", "Amina Yusuf"),
+                (organizationActorId, "Organization", "ISLAMU Center"),
+                (groupActorId, "Group", "Sisters Study Circle"))));
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Reference defaults"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        await cut.Find("[data-testid='ai-rail-prompt']").InputAsync(new ChangeEventArgs { Value = "@" });
+
+        cut.WaitForAssertion(() =>
+        {
+            var results = cut.FindAll("[data-testid='ai-rail-reference-result']");
+            if (results.Count != 3
+                || !cut.Markup.Contains("Amina Yusuf", StringComparison.Ordinal)
+                || !cut.Markup.Contains("ISLAMU Center", StringComparison.Ordinal)
+                || !cut.Markup.Contains("Sisters Study Circle", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected actor-context defaults for a bare mention trigger.");
+            }
+        });
+
+        var autocomplete = cut.Find("[data-testid='ai-rail-reference-autocomplete']");
+        await Assert.That(autocomplete.ParentElement?.ClassList.Contains("ai-rail__composer")).IsTrue();
+
+        var autocompleteIndex = cut.Markup.IndexOf("data-testid=\"ai-rail-reference-autocomplete\"", StringComparison.Ordinal);
+        var composerCardIndex = cut.Markup.IndexOf("ai-rail__composer-card", StringComparison.Ordinal);
+        await Assert.That(autocompleteIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(composerCardIndex).IsGreaterThan(autocompleteIndex);
+
+        var kindLabels = cut.FindAll(".ai-rail__reference-option-kind")
+            .Select(element => element.TextContent)
+            .ToList();
+        await Assert.That(kindLabels).IsEquivalentTo(["User", "Org", "Group"]);
+        await Assert.That(cut.Find("[data-testid='ai-rail-reference-result']").GetAttribute("id"))
+            .IsEqualTo("ai-rail-reference-option-0");
+        await _clientService.DidNotReceive().SearchReferencesAsync(
+            Arg.Any<string?>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SendMessage_WhenActorContextReferenceIsSelected_SendsActorReferenceContext()
+    {
+        var userActorId = Guid.CreateVersion7();
+        var groupActorId = Guid.CreateVersion7();
+        var conversationId = Guid.CreateVersion7();
+        var runId = Guid.CreateVersion7();
+        _clientService.GetBootstrapAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiAssistantBootstrapDto?>(CreateBootstrap(
+                (userActorId, "User", "Amina Yusuf"),
+                (groupActorId, "Group", "Sisters Study Circle"))));
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Actor reference send"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _clientService.SendMessageAsync(
+                conversationId,
+                "@Sisters Study Circle",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
+                Arg.Any<IReadOnlyList<AiSelectedReferenceDto>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiAssistantCommandResult(true, runId, "Sent", null, [])));
+        _clientService.GetRunStatusAsync(conversationId, runId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(AiRunStatusResult.Ok(new HalResourceOfAiRunDto { Status = "Succeeded" })));
+        _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "Actor reference send")));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        await cut.Find("[data-testid='ai-rail-prompt']").InputAsync(new ChangeEventArgs { Value = "@" });
+        cut.WaitForElement("[data-testid='ai-rail-reference-result']");
+        var groupOption = cut.FindAll("[data-testid='ai-rail-reference-result']")
+            .Single(element => element.TextContent.Contains("Sisters Study Circle", StringComparison.Ordinal));
+
+        await groupOption.ClickAsync(new MouseEventArgs());
+        await cut.Find("[data-testid='ai-rail-send']").ClickAsync(new MouseEventArgs());
+
+        await _clientService.Received(1).SendMessageAsync(
+            conversationId,
+            "@Sisters Study Circle",
+            Arg.Any<string?>(),
+            Arg.Is<string?>(value => value != null && value.StartsWith("blazor-ai-send-", StringComparison.Ordinal)),
+            Arg.Is<string?>(value => value == "build"),
+            Arg.Any<Guid?>(),
+            Arg.Is<IReadOnlyList<AiMessageImageInputDto>?>(value => value != null && value.Count == 0),
+            Arg.Is<IReadOnlyList<AiSelectedReferenceDto>?>(references =>
+                references != null
+                && references.Count == 1
+                && references.Single().Kind == "Actor"
+                && references.Single().ReferenceId == groupActorId
+                && references.Single().DisplayName == "Sisters Study Circle"
+                && references.Single().Summary == "Actor context: Group"),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]

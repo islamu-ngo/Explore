@@ -40,9 +40,11 @@ public sealed class AiPromptContextBuilder
     {
         var budget = AiPromptTokenBudget.Create(settings.MaxInputTokens);
         var requestedToolProposals = settings.ToolProposalsEnabled && allowToolProposals;
+        var hasSelectedReferences = (selectedReferences?.Count ?? 0) > 0 || conversation.References.Count > 0;
         string systemPrompt = _systemPromptFactory.CreateSystemPrompt(
             allowToolProposals,
-            toolSchemaAvailable: requestedToolProposals);
+            toolSchemaAvailable: requestedToolProposals,
+            hasSelectedReferences: hasSelectedReferences);
         budget.ConsumeBestEffort(systemPrompt, _tokenEstimator);
 
         var actionSchema = _systemPromptFactory.CreateActionSchema(
@@ -54,7 +56,7 @@ public sealed class AiPromptContextBuilder
         if (actionSchema is null && requestedToolProposals)
         {
             budget = AiPromptTokenBudget.Create(settings.MaxInputTokens);
-            systemPrompt = _systemPromptFactory.CreateSystemPrompt(allowToolProposals, toolSchemaAvailable: false);
+            systemPrompt = _systemPromptFactory.CreateSystemPrompt(allowToolProposals, toolSchemaAvailable: false, hasSelectedReferences: hasSelectedReferences);
             budget.ConsumeBestEffort(systemPrompt, _tokenEstimator);
         }
 

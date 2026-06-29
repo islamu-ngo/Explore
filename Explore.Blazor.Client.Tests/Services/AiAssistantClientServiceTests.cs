@@ -183,6 +183,27 @@ public sealed class AiAssistantClientServiceTests
     }
 
     [Test]
+    public async Task SendMessageAsync_WhenApiReturnsUnauthorized_ReturnsUnauthorizedFailureCode()
+    {
+        var conversationId = Guid.CreateVersion7();
+        _apiClient.SendAiMessageAsync(
+                conversationId,
+                Arg.Any<SendAiMessageRequestDto>(),
+                Arg.Any<string?>(),
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException(401));
+
+        var service = CreateService();
+
+        var result = await service.SendMessageAsync(conversationId, "hello", idempotencyKey: "send-key");
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("unauthorized");
+    }
+
+    [Test]
     public async Task SendMessageAsync_WhenApiReturnsLegacyOkCommandBody_TreatsAsSuccess()
     {
         var conversationId = Guid.CreateVersion7();

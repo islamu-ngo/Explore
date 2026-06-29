@@ -134,7 +134,7 @@ public sealed class AiAssistantClientService(
             }
 
             logger.LogWarning(ex, "Failed to send AI assistant message for conversation {ConversationId}.", conversationId);
-            return AiAssistantCommandResult.Failure("api_error", "The AI assistant message could not be sent.");
+            return AiAssistantCommandResult.Failure(FailureCodeFor(ex), "The AI assistant message could not be sent.");
         }
     }
 
@@ -346,6 +346,7 @@ public sealed class AiAssistantClientService(
 
     private static string FailureCodeFor(ApiException ex) => ex.StatusCode switch
     {
+        401 => "unauthorized",
         403 => "forbidden",
         409 => "conflict",
         _ => "api_error"

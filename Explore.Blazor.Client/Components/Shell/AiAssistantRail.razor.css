@@ -6,6 +6,9 @@
    ══════════════════════════════════════════════ */
 
 .ai-rail {
+    --ai-rail-reference-token-background: #BFFF00;
+    --ai-rail-reference-token-text: #111827;
+
     position: fixed;
     top: var(--mud-appbar-height, 4rem);
     inset-inline-end: 0;
@@ -196,6 +199,7 @@
     flex-direction: column;
     gap: 10px;
     min-inline-size: 0;
+    min-block-size: 0;
 }
 
 .ai-rail__message-list,
@@ -346,6 +350,7 @@
     transition: border-color 200ms ease, box-shadow 200ms ease;
     min-inline-size: 0;
     max-inline-size: 100%;
+    min-block-size: 160px;
 }
 
 .ai-rail__composer-card:focus-within {
@@ -406,7 +411,7 @@
     padding: 4px 0;
     resize: none;
     outline: none;
-    min-height: 24px;
+    min-block-size: 64px;
     overflow-x: hidden;
 }
 
@@ -482,25 +487,17 @@
     outline: none;
 }
 
-.ai-rail__selected-reference-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    min-inline-size: 0;
-    max-inline-size: 100%;
-    padding-block: 2px 4px;
-}
-
 .ai-rail__prompt-shell {
     position: relative;
     display: grid;
     min-inline-size: 0;
     max-inline-size: 100%;
+    min-block-size: 64px;
 }
 
 .ai-rail__prompt-highlights {
     grid-area: 1 / 1;
-    min-block-size: 24px;
+    min-block-size: 64px;
     max-inline-size: 100%;
     padding: 4px 0;
     color: var(--mud-palette-text-primary);
@@ -517,30 +514,28 @@
     display: inline;
     padding-inline: 2px;
     border-radius: 4px;
-    background: color-mix(in srgb, var(--mud-palette-warning) 26%, transparent);
-    color: var(--mud-palette-text-primary);
-    font-weight: 700;
+    background: var(--ai-rail-reference-token-background);
+    color: var(--ai-rail-reference-token-text);
+    font-weight: 800;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
 }
 
 .ai-rail__reference-autocomplete {
-    position: absolute;
-    inset-block-start: auto;
-    inset-block-end: calc(100% + 4px);
-    inset-inline: 0;
-    z-index: 30;
+    position: relative;
+    z-index: 2;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    max-block-size: 220px;
-    min-block-size: 38px;
+    max-block-size: calc((22px * 6) + (2px * 5) + 4px);
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 4px;
+    padding: 2px;
     border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 55%, transparent);
     border-radius: 8px;
     background: var(--mud-palette-surface);
     box-shadow: 0 12px 28px color-mix(in srgb, var(--mud-palette-black) 18%, transparent);
-    transform-origin: bottom center;
+    flex-shrink: 0;
 }
 
 .ai-rail__reference-status,
@@ -548,27 +543,29 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-block-size: 30px;
-    padding: 5px 8px;
+    min-block-size: 22px;
+    padding: 1px 4px;
     color: var(--mud-palette-text-secondary);
-    font-size: 0.76rem;
+    font-size: 0.68rem;
 }
 
 .ai-rail__reference-option {
     display: grid;
-    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     inline-size: 100%;
+    min-block-size: 22px;
     min-inline-size: 0;
-    padding: 7px 8px;
+    padding: 1px;
     border: none;
-    border-radius: 6px;
+    border-radius: 4px;
     background: transparent;
     color: var(--mud-palette-text-primary);
     cursor: pointer;
     font: inherit;
-    font-size: 0.82rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
     text-align: start;
 }
 
@@ -581,6 +578,9 @@
 
 .ai-rail__reference-option-icon {
     color: var(--mud-palette-text-secondary);
+    inline-size: 16px;
+    block-size: 16px;
+    font-size: 1rem;
 }
 
 .ai-rail__reference-option-text {
@@ -592,13 +592,14 @@
 }
 
 .ai-rail__reference-option-kind {
-    padding-inline: 6px;
-    padding-block: 2px;
+    padding-inline: 4px;
+    padding-block: 1px;
     border-radius: 999px;
     background: color-mix(in srgb, var(--mud-palette-lines-default) 35%, transparent);
     color: var(--mud-palette-text-secondary);
-    font-size: 0.66rem;
+    font-size: 0.56rem;
     font-weight: 700;
+    line-height: 1.1;
 }
 
 /* ── Toolbar ── */

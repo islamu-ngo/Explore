@@ -432,8 +432,8 @@
 
         await RunLookupEditAsync<UpdateCategoryDto>(
             options => EditCategoryDialog.ShowAsync(DialogService, "Edit Category", parameters, options),
-            AdminService.UpdateCategoryAsync,
-            dto => dto.FullName,
+            dto => AdminService.UpdateCategoryAsync(category.Id.Value, category.ConcurrencyStamp ?? Guid.Empty, dto),
+            dto => dto.FullName?.Value,
             "Category",
             LoadCategoriesAsync);
     }
@@ -514,8 +514,11 @@
 
         await RunLookupEditAsync<UpdateLocationDto>(
             options => EditLocationDialog.ShowAsync(DialogService, "Edit Location", parameters, options),
-            AdminService.UpdateLocationAsync,
-            dto => dto.FullName,
+            dto => AdminService.UpdateLocationAsync(
+                locationDetails.Id ?? Guid.Empty,
+                locationDetails.ConcurrencyStamp ?? Guid.Empty,
+                dto),
+            dto => dto.FullName?.Value,
             "Location",
             LoadLocationsAsync);
     }

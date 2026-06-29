@@ -194,6 +194,73 @@ public sealed class AiPromptContextBuilderTests
         await Assert.That(request.Messages[0].Content).DoesNotContain("Tool output");
     }
 
+    [Test]
+    public async Task Build_AlwaysIncludesIntentFirstProtocolInSystemPrompt()
+    {
+        var conversation = CreateConversation();
+        conversation.AddMessage(AiMessageRole.User, "What can you tell me?", conversation.UserId, DateTime.UtcNow);
+
+        var request = new AiPromptContextBuilder().Build(conversation, CreateSettings(), AiProviderDefaults.FakeModelId);
+
+        await Assert.That(request.SystemPrompt).Contains("INTENT-FIRST RESPONSE PROTOCOL");
+        await Assert.That(request.SystemPrompt).Contains("INFORMATION");
+        await Assert.That(request.SystemPrompt).Contains("ACTION");
+    }
+
+    [Test]
+    public async Task Build_WhenToolProposalsEnabled_IncludesToolRestraintGuidance()
+    {
+        var conversation = CreateConversation();
+        conversation.AddMessage(AiMessageRole.User, "Tell me about the program", conversation.UserId, DateTime.UtcNow);
+
+        var request = new AiPromptContextBuilder().Build(
+            conversation,
+            CreateSettings(toolProposalsEnabled: true),
+            AiProviderDefaults.FakeModelId);
+
+        await Assert.That(request.ActionSchema).IsNotNull();
+        await Assert.That(request.SystemPrompt).Contains("Restraint");
+        await Assert.That(request.SystemPrompt).Contains("@mention");
+    }
+
+    [Test]
+    public async Task Build_WhenConversationHasActorReference_IncludesReferenceContextGuidance()
+    {
+        var conversation = CreateConversation();
+        conversation.AddReference(
+            AiReferenceKind.Actor,
+            Guid.CreateVersion7(),
+            "Amir Akrari",
+            "Community organizer.",
+            conversation.UserId,
+            DateTime.UtcNow);
+        conversation.AddMessage(
+            AiMessageRole.User,
+            "what info can you get on @Amir Akrari's account?",
+            conversation.UserId,
+            DateTime.UtcNow);
+
+        var request = new AiPromptContextBuilder().Build(
+            conversation,
+            CreateSettings(toolProposalsEnabled: true),
+            AiProviderDefaults.FakeModelId);
+
+        await Assert.That(request.SystemPrompt).Contains("SELECTED REFERENCES GUIDANCE");
+        await Assert.That(request.SystemPrompt).Contains("@mention");
+        await Assert.That(request.SystemPrompt).Contains("never triggers for action");
+    }
+
+    [Test]
+    public async Task Build_WhenNoSelectedReferences_OmitsReferenceContextGuidance()
+    {
+        var conversation = CreateConversation();
+        conversation.AddMessage(AiMessageRole.User, "Hello", conversation.UserId, DateTime.UtcNow);
+
+        var request = new AiPromptContextBuilder().Build(conversation, CreateSettings(), AiProviderDefaults.FakeModelId);
+
+        await Assert.That(request.SystemPrompt).DoesNotContain("SELECTED REFERENCES GUIDANCE");
+    }
+
     private static AiConversation CreateConversation()
         => new()
         {
