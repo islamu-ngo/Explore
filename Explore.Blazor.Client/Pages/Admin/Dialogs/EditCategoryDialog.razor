@@ -13,8 +13,8 @@
     <DialogContent>
         <EditForm EditContext="_editContext">
             <FluentValidationValidator />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="categoryDto.FullName" Label="Name" For="@(() => categoryDto.FullName)" Required="true" RequiredError="Name is required." />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="categoryDto.MasterCode" Label="Master Code" For="@(() => categoryDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="categoryDto.FullName!.Value" Label="Name" For="@(() => categoryDto.FullName!.Value)" Required="true" RequiredError="Name is required." />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="categoryDto.MasterCode!.Value" Label="Master Code" For="@(() => categoryDto.MasterCode!.Value)" Required="true" RequiredError="Master Code is required." />
         </EditForm>
     </DialogContent>
     <DialogActions>
@@ -34,10 +34,8 @@
 
     protected override void OnInitialized()
     {
-        categoryDto.Id = ExistingCategory.Id;
-        categoryDto.FullName = ExistingCategory.FullName;
-        categoryDto.MasterCode = ExistingCategory.MasterCode;
-        categoryDto.ParentId = ExistingCategory.ParentId;
+        categoryDto.FullName = new UpdateCategoryFullNameDto { Value = ExistingCategory.FullName };
+        categoryDto.MasterCode = new UpdateCategoryMasterCodeDto { Value = ExistingCategory.MasterCode };
         _editContext = new EditContext(categoryDto);
     }
 

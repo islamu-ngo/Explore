@@ -50,7 +50,7 @@ public sealed class CategoryDetailLinkPolicy : ILinkPolicy<CategoryDto>
             LinkRelations.Edit,
             RouteNames.UpdateCategory,
             new { id = dto.Id },
-            "PUT",
+            "PATCH",
             "Update category",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Category, dto);

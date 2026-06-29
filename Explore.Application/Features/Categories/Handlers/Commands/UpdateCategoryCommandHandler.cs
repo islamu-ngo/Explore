@@ -1,12 +1,13 @@
-// ABOUTME: Handler for updating an existing category with validation.
-// ABOUTME: Validates input, fetches entity, applies field updates.
+// ABOUTME: Handler for grouped Category PATCH updates with optimistic concurrency.
+// ABOUTME: Validates groups, loads the entity once, applies explicit field updates, and invalidates category caches after save.
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.Category.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.Categories.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -18,16 +19,13 @@ namespace Explore.Application.Features.Categories.Handlers.Commands;
 public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryCommand, BaseCommandResponse<Guid>>
 {
     private readonly ICategoryRepository _categoryRepository;
-    private readonly IMapper _mapper;
     private readonly HybridCache _cache;
 
     public UpdateCategoryCommandHandler(
         ICategoryRepository categoryRepository,
-        IMapper mapper,
         HybridCache cache)
     {
         _categoryRepository = categoryRepository;
-        _mapper = mapper;
         _cache = cache;
     }
 
@@ -35,8 +33,8 @@ public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryComman
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new UpdateCategoryDtoValidator(_categoryRepository);
-        var validationResult = await validator.ValidateAsync(request.CategoryDto, cancellationToken);
+        var validator = new UpdateCategoryDtoValidator(request.CategoryId, _categoryRepository);
+        var validationResult = await validator.ValidateAsync(request.UpdateCategoryDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
@@ -46,7 +44,7 @@ public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryComman
             return response;
         }
 
-        var category = await _categoryRepository.GetById(request.CategoryDto.Id);
+        var category = await _categoryRepository.GetById(request.CategoryId);
 
         if (category == null)
         {
@@ -55,7 +53,16 @@ public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryComman
             return response;
         }
 
-        _mapper.Map(request.CategoryDto, category);
+        if (category.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The category was modified by another request. Reload and retry.",
+                nameof(Category),
+                category.Id.ToString());
+        }
+
+        ApplyUpdates(category, request.UpdateCategoryDto);
 
         await _categoryRepository.Update(category);
 
@@ -66,5 +73,23 @@ public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryComman
         await _cache.RemoveAsync("categories:list:1:20", cancellationToken);
 
         return response;
+    }
+
+    private static void ApplyUpdates(Category category, UpdateCategoryDto dto)
+    {
+        if (dto.MasterCode is not null)
+        {
+            category.MasterCode = dto.MasterCode.Value;
+        }
+
+        if (dto.FullName is not null)
+        {
+            category.FullName = dto.FullName.Value;
+        }
+
+        if (dto.Parent is { ParentId.HasValue: true })
+        {
+            category.ParentId = dto.Parent.ParentId.Value;
+        }
     }
 }

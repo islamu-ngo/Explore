@@ -1,5 +1,5 @@
-// ABOUTME: MediatR command for updating an existing category.
-// ABOUTME: Carries the UpdateCategoryDto payload.
+// ABOUTME: MediatR command for PATCH-based category updates.
+// ABOUTME: Carries route authority, If-Match concurrency, and the grouped update payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Category;
@@ -11,7 +11,11 @@ namespace Explore.Application.Features.Categories.Requests.Commands;
 [AuthorizeResource(ResourceKinds.Category, AuthorizationActions.Update)]
 public class UpdateCategoryCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required UpdateCategoryDto CategoryDto { get; set; }
+    public Guid CategoryId { get; set; }
 
-    string? ISecureRequest.ResourceId => CategoryDto.Id.ToString();
+    public Guid ExpectedConcurrencyStamp { get; set; }
+
+    public required UpdateCategoryDto UpdateCategoryDto { get; set; }
+
+    string? ISecureRequest.ResourceId => CategoryId.ToString();
 }

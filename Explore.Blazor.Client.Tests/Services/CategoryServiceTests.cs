@@ -238,19 +238,19 @@ public class CategoryServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var dto = new UpdateCategoryDto
         {
-            Id = categoryId,
-            FullName = "Updated Category",
-            MasterCode = "UPDCAT"
+            FullName = new UpdateCategoryFullNameDto { Value = "Updated Category" },
+            MasterCode = new UpdateCategoryMasterCodeDto { Value = "UPDCAT" }
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(categoryId);
 
-        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
-        var result = await _service.UpdateCategoryAsync(categoryId, dto);
+        var result = await _service.UpdateCategoryAsync(categoryId, concurrencyStamp, dto);
 
         // Assert
         await Assert.That(result).IsNotNull();
@@ -263,18 +263,18 @@ public class CategoryServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var dto = new UpdateCategoryDto
         {
-            Id = categoryId,
-            FullName = "Updated Category",
-            MasterCode = "UPDCAT"
+            FullName = new UpdateCategoryFullNameDto { Value = "Updated Category" },
+            MasterCode = new UpdateCategoryMasterCodeDto { Value = "UPDCAT" }
         };
 
-        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
 
         // Act
-        var result = await _service.UpdateCategoryAsync(categoryId, dto);
+        var result = await _service.UpdateCategoryAsync(categoryId, concurrencyStamp, dto);
 
         // Assert
         await Assert.That(result).IsNotNull();

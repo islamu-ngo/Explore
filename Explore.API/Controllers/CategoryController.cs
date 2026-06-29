@@ -143,26 +143,38 @@ public class CategoryController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing category.
+    /// Partially update an existing category.
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateCategory)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateCategory)]
     [EndpointSummary("Update Category")]
-    [EndpointDescription("Update an existing category's information.")]
+    [EndpointDescription("Partially update an existing category. Route ID is authoritative and If-Match must contain the current category concurrency stamp.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateCategoryDto category, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
+        Guid id,
+        [FromBody] UpdateCategoryDto category,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
-        if (id != category.Id)
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Category ID mismatch.");
+            return this.ToValidationProblem(
+                UpdateValidationProblem,
+                "If-Match header is required and must contain the current category concurrency stamp.");
         }
 
-        var command = new UpdateCategoryCommand { CategoryDto = category };
+        var command = new UpdateCategoryCommand
+        {
+            CategoryId = id,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            UpdateCategoryDto = category
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
@@ -190,5 +202,23 @@ public class CategoryController : ControllerBase
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        value = value.Trim('"');
+        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 }

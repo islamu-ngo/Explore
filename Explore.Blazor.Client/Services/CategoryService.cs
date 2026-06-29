@@ -15,7 +15,7 @@ public interface ICategoryService
     Task<PaginatedResult<CategoryListDto>> GetCategoriesPagedAsync(int pageNumber, int pageSize);
     Task<CategoryDto?> GetCategoryByIdAsync(Guid categoryId);
     Task<BaseCommandResponseOfGuid?> CreateCategoryAsync(CreateCategoryDto dto);
-    Task<BaseCommandResponseOfGuid?> UpdateCategoryAsync(Guid id, UpdateCategoryDto dto);
+    Task<BaseCommandResponseOfGuid?> UpdateCategoryAsync(Guid id, Guid expectedConcurrencyStamp, UpdateCategoryDto dto);
     Task<bool> DeleteCategoryAsync(Guid categoryId);
     Task<ICollection<CategoryTypeWithCategoriesDto>> GetCategoriesGroupedByCategoryTypeAsync();
 }
@@ -93,11 +93,11 @@ public class CategoryService : ICategoryService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> UpdateCategoryAsync(Guid id, UpdateCategoryDto dto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateCategoryAsync(Guid id, Guid expectedConcurrencyStamp, UpdateCategoryDto dto)
     {
         try
         {
-            return await _apiClient.UpdateCategoryAsync(id, dto);
+            return await _apiClient.UpdateCategoryAsync(id, dto, $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (ApiException ex)
         {

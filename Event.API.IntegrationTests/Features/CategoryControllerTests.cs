@@ -1,3 +1,6 @@
+// ABOUTME: Integration tests for public Category API routing and authorization behavior.
+// ABOUTME: Verifies read endpoints plus authenticated PATCH route and If-Match contracts.
+
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
@@ -93,7 +96,7 @@ public class CategoryControllerTests
 
     #endregion
 
-    #region PUT Endpoints
+    #region PATCH Endpoints
 
     [Test]
     public async Task Update_WithoutAuth_ShouldReturnUnauthorized()
@@ -102,16 +105,59 @@ public class CategoryControllerTests
         var id = Guid.NewGuid();
         var updateDto = new UpdateCategoryDto
         {
-            Id = id,
-            MasterCode = string.Empty,
-            FullName = "Updated Category"
+            FullName = new UpdateCategoryFullNameDto
+            {
+                Value = "Updated Category"
+            }
         };
 
         // Act
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", updateDto);
+        var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{id}", updateDto);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdatePut_WhenUsingOldRoute_ShouldReturnMethodNotAllowed()
+    {
+        var id = Guid.NewGuid();
+        var updateDto = new UpdateCategoryDto
+        {
+            FullName = new UpdateCategoryFullNameDto
+            {
+                Value = "Updated Category"
+            }
+        };
+
+        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", updateDto);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Test]
+    public async Task UpdatePatch_WhenAuthenticatedWithoutIfMatch_ShouldReturnBadRequest()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var categoryId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var updateDto = new UpdateCategoryDto
+        {
+            FullName = new UpdateCategoryFullNameDto
+            {
+                Value = "Updated Category"
+            }
+        };
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/{categoryId}")
+        {
+            Content = JsonContent.Create(updateDto)
+        };
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId));
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     #endregion
