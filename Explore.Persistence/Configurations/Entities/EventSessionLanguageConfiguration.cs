@@ -11,6 +11,9 @@ public class EventSessionLanguageConfiguration : IEntityTypeConfiguration<EventS
 {
     public void Configure(EntityTypeBuilder<EventSessionLanguage> builder)
     {
+        builder.Property(e => e.ConcurrencyStamp)
+            .IsConcurrencyToken();
+
         builder.HasOne(e => e.EventSession)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.EventSessionId })

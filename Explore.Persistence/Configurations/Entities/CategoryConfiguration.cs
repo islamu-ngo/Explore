@@ -14,6 +14,7 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
     public void Configure(EntityTypeBuilder<Category> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
         builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.Property(e => e.MasterCode).HasMaxLength(100).IsRequired();

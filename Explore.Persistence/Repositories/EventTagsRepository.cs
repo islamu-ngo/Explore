@@ -1,3 +1,6 @@
+// ABOUTME: EF repository for event-tag link entities and tag/event lookup projections.
+// ABOUTME: Exposes duplicate-link reads used by grouped relationship update handlers.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -60,5 +63,19 @@ public class EventTagsRepository : GenericRepository<EventTags, Guid>, IEventTag
         return await _dbContext.EventTags
             .AsNoTracking()
             .AnyAsync(et => et.EventId == eventId && et.TagId == tagId);
+    }
+
+    public async Task<EventTags?> GetByEventAndTag(Guid eventId, Guid tagId, Guid? excludeId = null)
+    {
+        var query = _dbContext.EventTags
+            .AsNoTracking()
+            .Where(et => et.EventId == eventId && et.TagId == tagId);
+
+        if (excludeId.HasValue)
+        {
+            query = query.Where(et => et.Id != excludeId.Value);
+        }
+
+        return await query.FirstOrDefaultAsync();
     }
 }

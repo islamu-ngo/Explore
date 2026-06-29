@@ -298,6 +298,7 @@ public static class PersistenceServicesRegistration
 
         // AI Assistant Repositories
         services.AddScoped<IAiConversationRepository, AiConversationRepository>();
+services.AddScoped<IAiConsentGrantRepository, AiConsentGrantRepository>();
 
         return services;
     }

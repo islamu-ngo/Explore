@@ -22,6 +22,20 @@ public class EventSessionLanguageRepository : GenericRepository<EventSessionLang
             .ToListAsync();
     }
 
+    public async Task<EventSessionLanguage?> GetBySessionAndLanguage(Guid eventSessionId, int languageId, int? excludeId = null)
+    {
+        var query = _dbContext.EventSessionLanguages
+            .AsNoTracking()
+            .Where(l => l.EventSessionId == eventSessionId && l.LanguageId == languageId);
+
+        if (excludeId.HasValue)
+        {
+            query = query.Where(l => l.Id != excludeId.Value);
+        }
+
+        return await query.FirstOrDefaultAsync();
+    }
+
     public async Task<(List<EventSessionLanguage> Items, int TotalCount)> GetLanguagesWithDetailsPaged(int pageNumber, int pageSize)
     {
         var query = _dbContext.EventSessionLanguages

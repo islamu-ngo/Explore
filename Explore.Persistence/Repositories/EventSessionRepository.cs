@@ -237,23 +237,43 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         EventSession session,
         CancellationToken cancellationToken)
     {
-        // Null schedule skips overlap; the GiST exclusion is partial (NULL schedule exempt).
         if (session.RoomId is null || session.StartTime is null || session.EndTime is null)
         {
             await Update(session);
             return;
         }
 
+        if (_dbContext.Database.CurrentTransaction != null)
+        {
+            await UpdateWithRoomOverlapGuardInCurrentTransactionAsync(session, cancellationToken);
+            return;
+        }
+
         await using var tx = await _dbContext.Database
             .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        var conflicts = await BuildOverlapQuery(session.RoomId.Value, session.StartTime.Value, session.EndTime.Value, session.Id)
+        try
+        {
+            await UpdateWithRoomOverlapGuardInCurrentTransactionAsync(session, cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsRoomNoOverlapViolation(ex, session.RoomId))
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw CreateRoomScheduleConflict(session.RoomId!.Value);
+        }
+    }
+
+    private async Task UpdateWithRoomOverlapGuardInCurrentTransactionAsync(
+        EventSession session,
+        CancellationToken cancellationToken)
+    {
+        var conflicts = await BuildOverlapQuery(session.RoomId!.Value, session.StartTime!.Value, session.EndTime!.Value, session.Id)
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
         if (conflicts.Count > 0)
         {
-            await tx.RollbackAsync(cancellationToken);
             throw new RoomScheduleConflictException(session.RoomId.Value, conflicts);
         }
 
@@ -271,11 +291,9 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         try
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
-            await tx.CommitAsync(cancellationToken);
         }
         catch (DbUpdateException ex) when (IsRoomNoOverlapViolation(ex, session.RoomId))
         {
-            await tx.RollbackAsync(cancellationToken);
             throw CreateRoomScheduleConflict(session.RoomId!.Value);
         }
     }

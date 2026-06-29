@@ -11,6 +11,8 @@ public class EventTagsConfiguration : IEntityTypeConfiguration<EventTags>
 {
     public void Configure(EntityTypeBuilder<EventTags> builder)
     {
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
+
         builder.HasOne(e => e.Event)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.EventId })

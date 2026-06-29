@@ -1,5 +1,5 @@
 // ABOUTME: Concrete per-session registration access row derived from a parent EventRegistrationIntent.
-// ABOUTME: Denormalizes EventId so persistence can enforce same-event intent/session membership with composite FKs.
+// ABOUTME: Denormalizes EventId and carries concurrency metadata for grouped PATCH updates.
 
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -7,9 +7,10 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
+public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     [ForeignKey("Event")]
     public Guid EventId { get; set; }

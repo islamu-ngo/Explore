@@ -1,3 +1,6 @@
+// ABOUTME: EF repository for event-category link entities and category/event lookup projections.
+// ABOUTME: Exposes duplicate-link reads used by grouped relationship update handlers.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -60,5 +63,19 @@ public class EventCategoriesRepository : GenericRepository<EventCategories, Guid
         return await _dbContext.EventCategories
             .AsNoTracking()
             .AnyAsync(ec => ec.EventId == eventId && ec.CategoryId == categoryId);
+    }
+
+    public async Task<EventCategories?> GetByEventAndCategory(Guid eventId, Guid categoryId, Guid? excludeId = null)
+    {
+        var query = _dbContext.EventCategories
+            .AsNoTracking()
+            .Where(ec => ec.EventId == eventId && ec.CategoryId == categoryId);
+
+        if (excludeId.HasValue)
+        {
+            query = query.Where(ec => ec.Id != excludeId.Value);
+        }
+
+        return await query.FirstOrDefaultAsync();
     }
 }

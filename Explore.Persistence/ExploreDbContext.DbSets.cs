@@ -237,4 +237,5 @@ public partial class ExploreDbContext
     public DbSet<AiProposedActionStatusLookup> AiProposedActionStatuses { get; set; }
     public DbSet<AiProviderKindLookup> AiProviderKinds { get; set; }
     public DbSet<AiToolExecution> AiToolExecutions { get; set; }
+    public DbSet<AiConsentGrant> AiConsentGrants { get; set; }
 }

@@ -11,6 +11,8 @@ public class EventCategoriesConfiguration : IEntityTypeConfiguration<EventCatego
 {
     public void Configure(EntityTypeBuilder<EventCategories> builder)
     {
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
+
         builder.HasOne(e => e.Event)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.EventId })

@@ -11,6 +11,8 @@ public class EventSessionSpeakerConfiguration : IEntityTypeConfiguration<EventSe
 {
     public void Configure(EntityTypeBuilder<EventSessionSpeaker> builder)
     {
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
+
         builder.HasOne(e => e.Actor)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.ActorId })

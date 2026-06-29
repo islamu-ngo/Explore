@@ -1,10 +1,12 @@
-using System;
+// ABOUTME: Tenant-scoped event venue with PII-backed address and coordinate fields.
+// ABOUTME: Supports optimistic concurrency and timestamp auditing for sensitive location updates.
+
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class Location : ITenantEntity
+public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
 {
     public Guid Id { get; set; }
     public required string FullName { get; set; }
@@ -50,4 +52,10 @@ public class Location : ITenantEntity
 
     public string? Timezone { get; set; }
 
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+
+    public Guid ConcurrencyStamp { get; set; }
 }

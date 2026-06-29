@@ -7,7 +7,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
+public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
 
@@ -102,5 +102,6 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
 }

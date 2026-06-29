@@ -1,3 +1,6 @@
+// ABOUTME: EF Core configuration for User identity aggregates.
+// ABOUTME: Configures UUIDv7 IDs, optional actor linkage, PII extension mapping, and optimistic concurrency.
+
 using Explore.Domain;
 using Explore.Persistence.Seed;
 using Explore.Persistence.ValueGenerators;
@@ -27,6 +30,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(e => e.Pii).AutoInclude();
+
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

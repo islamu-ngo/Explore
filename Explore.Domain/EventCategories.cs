@@ -1,12 +1,16 @@
+// ABOUTME: Tenant-scoped event-to-category link entity for event classification.
+// ABOUTME: Carries audit and optimistic concurrency metadata for grouped relationship updates.
+
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class EventCategories : ITenantEntity, IAuditableEntity
+public class EventCategories : ITenantEntity, IAuditableEntity, IConcurrencyAware
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     [ForeignKey("Event")]
     public Guid EventId { get; set; }

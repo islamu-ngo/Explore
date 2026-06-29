@@ -1,12 +1,17 @@
+// ABOUTME: Tenant-scoped junction entity linking event sessions to supported languages.
+// ABOUTME: Carries a concurrency stamp so language assignment PATCH requests can use If-Match.
+
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class EventSessionLanguage : ITenantEntity
+public class EventSessionLanguage : ITenantEntity, IConcurrencyAware
 {
     public int Id { get; set; }
+
+    public Guid ConcurrencyStamp { get; set; }
 
     [ForeignKey("EventSession")]
     public Guid EventSessionId { get; set; }

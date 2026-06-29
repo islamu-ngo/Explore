@@ -20,6 +20,7 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder.Property(e => e.Country).HasMaxLength(500).IsRequired();
         builder.Property(e => e.City).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Timezone).HasMaxLength(500);
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
 
         builder.HasOne(e => e.Tenant)
             .WithMany()

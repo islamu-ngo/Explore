@@ -20,6 +20,7 @@ public class ActorConfiguration : IEntityTypeConfiguration<Actor>
         builder.Property(e => e.PdsHost).HasMaxLength(500);
         builder.Property(e => e.Description).HasMaxLength(500);
         builder.Property(e => e.ProfilePictureCid).HasMaxLength(500);
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
 
         builder.HasOne(e => e.ActorType)
             .WithMany()

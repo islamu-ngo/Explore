@@ -1,3 +1,6 @@
+// ABOUTME: EF repository for event-session speaker link entities and speaker/session lookup projections.
+// ABOUTME: Exposes duplicate-link reads used by grouped relationship update handlers.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -49,5 +52,19 @@ public class EventSessionSpeakerRepository : GenericRepository<EventSessionSpeak
             .ToListAsync();
 
         return (items, totalCount);
+    }
+
+    public async Task<EventSessionSpeaker?> GetBySessionAndActor(Guid eventSessionId, Guid actorId, Guid? excludeId = null)
+    {
+        var query = _dbContext.EventSessionSpeakers
+            .AsNoTracking()
+            .Where(s => s.EventSessionId == eventSessionId && s.ActorId == actorId);
+
+        if (excludeId.HasValue)
+        {
+            query = query.Where(s => s.Id != excludeId.Value);
+        }
+
+        return await query.FirstOrDefaultAsync();
     }
 }

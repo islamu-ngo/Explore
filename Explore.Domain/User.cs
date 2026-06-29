@@ -1,10 +1,13 @@
+// ABOUTME: Domain aggregate for authenticated users and their linked personal actor.
+// ABOUTME: Keeps PII in the extension row while exposing profile delegates and concurrency metadata.
+
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class User : IAuditableEntity, ISoftDeletable
+public class User : IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
 
@@ -47,6 +50,7 @@ public class User : IAuditableEntity, ISoftDeletable
     public string? AuthProviderId { get; set; }
     public Guid? DefaultActorId { get; set; }
     public bool? EmailVerified { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     // Audit fields
     public DateTime CreatedAt { get; set; }

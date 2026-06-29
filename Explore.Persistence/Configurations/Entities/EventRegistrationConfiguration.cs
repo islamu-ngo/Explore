@@ -1,5 +1,5 @@
 // ABOUTME: EF configuration for concrete session registration rows under an EventRegistrationIntent.
-// ABOUTME: Composite tenant/event FKs keep parent intent, event, and selected session relationally consistent.
+// ABOUTME: Preserves composite membership constraints and optimistic concurrency mapping.
 
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +12,7 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
     public void Configure(EntityTypeBuilder<EventRegistration> builder)
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
 
         builder.HasOne(e => e.Event)
             .WithMany()

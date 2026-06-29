@@ -1,12 +1,16 @@
+// ABOUTME: Tenant-scoped event-to-tag link entity for event discovery metadata.
+// ABOUTME: Carries audit and optimistic concurrency metadata for grouped relationship updates.
+
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class EventTags : ITenantEntity, IAuditableEntity
+public class EventTags : ITenantEntity, IAuditableEntity, IConcurrencyAware
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     [ForeignKey("Event")]
     public Guid EventId { get; set; }

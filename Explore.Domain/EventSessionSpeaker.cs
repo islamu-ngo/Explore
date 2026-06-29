@@ -1,12 +1,16 @@
+// ABOUTME: Tenant-scoped event-session speaker link entity.
+// ABOUTME: Carries optimistic concurrency metadata for grouped relationship updates.
+
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class EventSessionSpeaker : ITenantEntity
+public class EventSessionSpeaker : ITenantEntity, IConcurrencyAware
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     [ForeignKey("Actor")]
     public Guid ActorId { get; set; }
