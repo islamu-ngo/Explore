@@ -93,18 +93,41 @@ public class NamingConventionTests
     [Test]
     public async Task Validators_ShouldEndWith_Validator()
     {
-        var result = Types.InAssembly(ApplicationAssembly)
+        var types = Types.InAssembly(ApplicationAssembly)
             .That()
             .ResideInNamespaceContaining("Validators")
             .And()
             .AreClasses()
             .And()
             .AreNotAbstract()
-            .Should()
-            .HaveNameEndingWith("Validator")
-            .GetResult();
+            .GetTypes();
 
-        await Assert.That(result.IsSuccessful).IsTrue();
+        var failingTypes = types
+            .Where(t =>
+            {
+                var name = t.Name;
+                if (t.IsGenericType || name.Contains('`'))
+                {
+                    var idx = name.IndexOf('`');
+                    if (idx >= 0)
+                    {
+                        name = name.Substring(0, idx);
+                    }
+                }
+                return !name.EndsWith("Validator");
+            })
+            .ToList();
+
+        if (failingTypes.Any())
+        {
+            Console.WriteLine($"Validator Naming Failures ({failingTypes.Count()}):");
+            foreach (var type in failingTypes)
+            {
+                Console.WriteLine($"  - {type.FullName}");
+            }
+        }
+
+        await Assert.That(failingTypes).IsEmpty();
     }
 
     #endregion
