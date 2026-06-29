@@ -1,4 +1,8 @@
+// ABOUTME: API integration tests for organization read/write endpoints.
+// ABOUTME: Covers anonymous reads, authenticated write protection, PATCH contract, and action-route authorization.
+
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.Organization;
@@ -109,28 +113,45 @@ public class OrganizationControllerTests
 
     #endregion
 
-    #region PUT Endpoints
+    #region Update Endpoints
 
     [Test]
-    public async Task Update_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task UpdatePatch_WithoutAuth_ShouldReturnUnauthorized()
     {
         // Arrange
         var id = Guid.NewGuid();
         var updateDto = new UpdateOrganizationDto
         {
-            FullName = "Updated Organization",
-            Email = "updated@example.com",
-            Country = "Belgium",
-            City = "Brussels",
-            Address = "456 Updated Street",
-            Postcode = 1000
+            FullName = new UpdateOrganizationFullNameDto { Value = "Updated Organization" }
+        };
+
+        // Act
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/{id}")
+        {
+            Content = JsonContent.Create(updateDto)
+        };
+        request.Headers.IfMatch.Add(new EntityTagHeaderValue($"\"{Guid.NewGuid():D}\""));
+        var response = await _fixture.Client.SendAsync(request);
+
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdatePut_WithoutAuth_ShouldReturnMethodNotAllowed()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var updateDto = new UpdateOrganizationDto
+        {
+            FullName = new UpdateOrganizationFullNameDto { Value = "Updated Organization" }
         };
 
         // Act
         var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", updateDto);
 
         // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
     }
 
     [Test]

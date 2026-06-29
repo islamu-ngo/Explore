@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for OrganizationService covering read and write operations with HAL conversion.
-// Validates pagination constants, error handling behavior, and API call contracts with NSubstitute.
+// ABOUTME: Validates pagination constants, If-Match forwarding, error handling, and API call contracts.
 
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
@@ -292,23 +292,31 @@ public class OrganizationServiceTests
     {
         // Arrange
         var organizationId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var updateDto = new UpdateOrganizationDto
         {
-            FullName = "Updated Organization",
-            Email = "updated@example.com"
+            FullName = new UpdateOrganizationFullNameDto { Value = "Updated Organization" },
+            Email = new UpdateOrganizationEmailDto { Value = "updated@example.com" }
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(organizationId);
 
-        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
-        var result = await _service.UpdateOrganizationAsync(organizationId, updateDto);
+        var result = await _service.UpdateOrganizationAsync(organizationId, concurrencyStamp, updateDto);
 
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(organizationId);
+        await _apiClient.Received(1).UpdateOrganizationAsync(
+            organizationId,
+            updateDto,
+            $"\"{concurrencyStamp:D}\"",
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -316,17 +324,42 @@ public class OrganizationServiceTests
     {
         // Arrange
         var organizationId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var updateDto = new UpdateOrganizationDto
         {
-            FullName = "Updated Organization",
-            Email = "updated@example.com"
+            FullName = new UpdateOrganizationFullNameDto { Value = "Updated Organization" },
+            Email = new UpdateOrganizationEmailDto { Value = "updated@example.com" }
         };
 
-        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act & Assert
-        await Assert.ThrowsAsync<ApiException>(async () => await _service.UpdateOrganizationAsync(organizationId, updateDto));
+        await Assert.ThrowsAsync<ApiException>(async () => await _service.UpdateOrganizationAsync(organizationId, concurrencyStamp, updateDto));
+    }
+
+    [Test]
+    public async Task UpdateOrganizationAsync_ReturnsFailure_WhenConcurrencyStampIsEmpty()
+    {
+        // Arrange
+        var updateDto = new UpdateOrganizationDto
+        {
+            FullName = new UpdateOrganizationFullNameDto { Value = "Updated Organization" }
+        };
+
+        // Act
+        var result = await _service.UpdateOrganizationAsync(Guid.NewGuid(), Guid.Empty, updateDto);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsFalse();
+        await _apiClient.DidNotReceive().UpdateOrganizationAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<UpdateOrganizationDto>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     #endregion

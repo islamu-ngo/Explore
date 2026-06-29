@@ -44,7 +44,6 @@ public class OrganizationMappingProfile : Profile
             .ForMember(dest => dest.ActorBackgroundImageId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundImageId : null))
             .ForMember(dest => dest.ActorBackgroundImageUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.BackgroundImage != null ? src.Actor.BackgroundImage.Uri : null));
         CreateMap<CreateGroupDto, Group>();
-        CreateMap<UpdateGroupDto, Group>();
         CreateMap<UpdateGroupApprovalStatusDto, Group>();
 
         // Group Member
@@ -97,7 +96,6 @@ public class OrganizationMappingProfile : Profile
                 ApprovalStatus = null!,
                 Tenant = null!
             });
-        CreateMap<UpdateOrganizationDto, Organization>();
         CreateMap<UpdateOrganizationApprovalStatusDto, Organization>();
 
         // Organization Member

@@ -1,19 +1,23 @@
-// ABOUTME: MediatR command for updating top-level organization metadata.
-// ABOUTME: Carries the UpdateOrganizationDto payload.
+// ABOUTME: MediatR command for PATCH-based Organization profile updates.
+// ABOUTME: Carries route authority, current user authorization context, If-Match concurrency, and grouped payload.
 using System;
-using System.Collections.Generic;
-using System.Text;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Organization;
+using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.Organizations.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Update)]
-public class UpdateOrganizationCommand : IRequest<Unit>, ISecureRequest
+public class UpdateOrganizationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
-    public required UpdateOrganizationApprovalStatusDto OrganizationApprovalStatusDto { get; set; }
+    public Guid OrganizationId { get; set; }
 
-    string? ISecureRequest.ResourceId => Id.ToString();
+    public required string UserId { get; set; }
+
+    public Guid ExpectedConcurrencyStamp { get; set; }
+
+    public required UpdateOrganizationDto UpdateOrganizationDto { get; set; }
+
+    string? ISecureRequest.ResourceId => OrganizationId.ToString();
 }

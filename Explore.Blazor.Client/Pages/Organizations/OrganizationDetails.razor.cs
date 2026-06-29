@@ -34,7 +34,7 @@ public partial class OrganizationDetails
     private ICollection<EventListDto> _orgEvents = new List<EventListDto>();
     private EventPreviewWorkspace? _eventPreviewWorkspace;
 
-    private UpdateOrganizationDto editModel = new();
+    private OrganizationProfileEditModel editModel = new();
     private AppearanceSettings _appearance = new();
 
     private EditContext _editContext = default!;
@@ -74,7 +74,7 @@ public partial class OrganizationDetails
     {
         if (organization != null)
         {
-            editModel = new UpdateOrganizationDto
+            editModel = new OrganizationProfileEditModel
             {
                 FullName = organization.FullName,
                 Email = organization.Email,
@@ -159,7 +159,16 @@ public partial class OrganizationDetails
             errorMessage = string.Empty;
             successMessage = string.Empty;
 
-            var success = await OrganizationService.UpdateOrganizationAsync(Id, editModel!);
+            if (organization.ConcurrencyStamp is not { } concurrencyStamp || concurrencyStamp == Guid.Empty)
+            {
+                _submitState.Fail("Reload the organization before saving changes.");
+                return;
+            }
+
+            var success = await OrganizationService.UpdateOrganizationAsync(
+                Id,
+                concurrencyStamp,
+                BuildUpdateDto(editModel));
 
             if (success?.Success == true)
             {
@@ -207,6 +216,38 @@ public partial class OrganizationDetails
             return "Invalid email format";
 
         return null;
+    }
+
+    private static UpdateOrganizationDto BuildUpdateDto(OrganizationProfileEditModel model)
+    {
+        return new UpdateOrganizationDto
+        {
+            FullName = new UpdateOrganizationFullNameDto { Value = model.FullName },
+            Email = new UpdateOrganizationEmailDto { Value = model.Email },
+            WebsiteUrl = new UpdateOrganizationWebsiteUrlDto
+            {
+                Value = new OptionalUpdateOfstring
+                {
+                    HasValue = true,
+                    Value = string.IsNullOrWhiteSpace(model.WebsiteUrl) ? null : model.WebsiteUrl
+                }
+            },
+            Country = new UpdateOrganizationCountryDto { Value = model.Country },
+            City = new UpdateOrganizationCityDto { Value = model.City },
+            Postcode = new UpdateOrganizationPostcodeDto { Value = model.Postcode },
+            Address = new UpdateOrganizationAddressDto { Value = model.Address }
+        };
+    }
+
+    private sealed class OrganizationProfileEditModel
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? WebsiteUrl { get; set; }
+        public string Country { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public int Postcode { get; set; }
+        public string Address { get; set; } = string.Empty;
     }
 
     private Color GetStatusColor(int statusTypeId)

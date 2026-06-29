@@ -1,4 +1,5 @@
 // ABOUTME: Service for managing organization-related operations.
+// ABOUTME: Converts HAL API responses to DTOs and forwards If-Match headers for guarded profile updates.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
@@ -52,7 +53,7 @@ public interface IOrganizationService
     /// <summary>
     /// Updates an existing organization.
     /// </summary>
-    Task<BaseCommandResponseOfGuid?> UpdateOrganizationAsync(Guid id, UpdateOrganizationDto organization);
+    Task<BaseCommandResponseOfGuid?> UpdateOrganizationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateOrganizationDto organization);
 }
 
 /// <summary>
@@ -201,11 +202,20 @@ public class OrganizationService : IOrganizationService
     }
 
     /// <inheritdoc />
-    public async Task<BaseCommandResponseOfGuid?> UpdateOrganizationAsync(Guid id, UpdateOrganizationDto organization)
+    public async Task<BaseCommandResponseOfGuid?> UpdateOrganizationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateOrganizationDto organization)
     {
         try
         {
-            return await _apiClient.UpdateOrganizationAsync(id, organization);
+            if (id == Guid.Empty || expectedConcurrencyStamp == Guid.Empty)
+            {
+                return new BaseCommandResponseOfGuid
+                {
+                    Success = false,
+                    Message = "Organization ID and concurrency stamp are required."
+                };
+            }
+
+            return await _apiClient.UpdateOrganizationAsync(id, organization, $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (ApiException ex)
         {
@@ -214,4 +224,3 @@ public class OrganizationService : IOrganizationService
         }
     }
 }
-

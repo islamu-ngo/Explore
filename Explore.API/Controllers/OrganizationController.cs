@@ -193,21 +193,24 @@ public class OrganizationController : ExploreControllerBase
     }
 
     /// <summary>
-    /// Update an organization.
+    /// Partially update an organization's editable profile fields.
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateOrganization)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateOrganization)]
     [EndpointSummary("Update Organization")]
-    [EndpointDescription("Update an existing organization. User must be a member of the organization.")]
+    [EndpointDescription("Partially update an existing organization. Route ID is authoritative and If-Match must contain the current organization concurrency stamp.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
-        [FromBody] UpdateOrganizationDto updateDto, CancellationToken cancellationToken = default)
+        [FromBody] UpdateOrganizationDto updateDto,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
@@ -215,11 +218,19 @@ public class OrganizationController : ExploreControllerBase
             return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
         }
 
-        var command = new UpdateOrganizationDetailsCommand
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            Id = id,
+            return this.ToValidationProblem(
+                UpdateValidationProblem,
+                "If-Match header is required and must contain the current organization concurrency stamp.");
+        }
+
+        var command = new UpdateOrganizationCommand
+        {
+            OrganizationId = id,
             UserId = userId,
-            OrganizationDto = updateDto
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            UpdateOrganizationDto = updateDto
         };
 
         var result = await _mediator.Send(command, cancellationToken);
@@ -249,10 +260,10 @@ public class OrganizationController : ExploreControllerBase
         Guid id,
         [FromBody] UpdateOrganizationApprovalStatusDto approvalStatus, CancellationToken cancellationToken = default)
     {
-        var command = new UpdateOrganizationCommand
+        var command = new UpdateOrganizationApprovalStatusCommand
         {
-            Id = id,
-            OrganizationApprovalStatusDto = approvalStatus
+            OrganizationId = id,
+            ApprovalStatusDto = approvalStatus
         };
 
         await _mediator.Send(command, cancellationToken);
@@ -293,5 +304,21 @@ public class OrganizationController : ExploreControllerBase
         return NoContent();
     }
 
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
 
+        var value = ifMatch.Trim();
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        value = value.Trim('"');
+        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
+    }
 }

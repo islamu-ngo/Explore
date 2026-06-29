@@ -153,7 +153,7 @@
     public Guid OrganizationId { get; set; }
 
     private OrganizationDto? _organization;
-    private UpdateOrganizationDto _model = new();
+    private OrganizationProfileEditModel _model = new();
     private AppearanceSettings _appearance = new();
     private bool _loading = true;
     private bool _saving;
@@ -173,7 +173,7 @@
             _organization = await OrganizationService.GetOrganizationByIdAsync(OrganizationId);
             if (_organization != null)
             {
-                _model = new UpdateOrganizationDto
+                _model = new OrganizationProfileEditModel
                 {
                     FullName = _organization.FullName ?? string.Empty,
                     Email = _organization.Email ?? string.Empty,
@@ -181,7 +181,7 @@
                     Address = _organization.Address ?? string.Empty,
                     City = _organization.City ?? string.Empty,
                     Country = _organization.Country ?? string.Empty,
-                    Postcode = int.TryParse(_organization.Postcode, out var postcode) ? postcode : null
+                    Postcode = int.TryParse(_organization.Postcode, out var postcode) ? postcode : 0
                 };
                 _appearance = new AppearanceSettings
                 {
@@ -217,8 +217,16 @@
         _errorMessage = null;
         try
         {
-            // Appearance fields are now managed via Actor — not saved through UpdateOrganizationDto
-            var response = await OrganizationService.UpdateOrganizationAsync(OrganizationId, _model);
+            if (_organization.ConcurrencyStamp is not { } concurrencyStamp || concurrencyStamp == Guid.Empty)
+            {
+                _errorMessage = "Reload the organization profile before saving changes.";
+                return;
+            }
+
+            var response = await OrganizationService.UpdateOrganizationAsync(
+                OrganizationId,
+                concurrencyStamp,
+                BuildUpdateDto(_model));
 
             if (response?.Success == true)
             {
@@ -249,5 +257,37 @@
         }
 
         return null;
+    }
+
+    private static UpdateOrganizationDto BuildUpdateDto(OrganizationProfileEditModel model)
+    {
+        return new UpdateOrganizationDto
+        {
+            FullName = new UpdateOrganizationFullNameDto { Value = model.FullName },
+            Email = new UpdateOrganizationEmailDto { Value = model.Email },
+            WebsiteUrl = new UpdateOrganizationWebsiteUrlDto
+            {
+                Value = new OptionalUpdateOfstring
+                {
+                    HasValue = true,
+                    Value = string.IsNullOrWhiteSpace(model.WebsiteUrl) ? null : model.WebsiteUrl
+                }
+            },
+            Address = new UpdateOrganizationAddressDto { Value = model.Address },
+            City = new UpdateOrganizationCityDto { Value = model.City },
+            Country = new UpdateOrganizationCountryDto { Value = model.Country },
+            Postcode = new UpdateOrganizationPostcodeDto { Value = model.Postcode }
+        };
+    }
+
+    private sealed class OrganizationProfileEditModel
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? WebsiteUrl { get; set; }
+        public string Address { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string Country { get; set; } = string.Empty;
+        public int Postcode { get; set; }
     }
 }
