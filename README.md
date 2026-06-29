@@ -194,6 +194,14 @@ If you discover a security vulnerability in ISLAMU Event, please report it respo
 
 To disclose any security issues, please email us at [contact@openislamu.org][contact-email].
 
+### Security fixes from forks
+
+If you maintain a fork of ISLAMU Event and discover or fix a security vulnerability, please report it privately first using the process in our Security Policy instead of opening a public issue or public pull request before coordination.
+
+We are grateful for security fixes from forks. To merge an exact patch into the official ISLAMU Event repository, every non-bot contributor must sign the ISLAMU Contributor License Agreement. This keeps the official codebase compatible with both the public AGPL-3.0-or-later release and ISLAMU’s alternative licensing path.
+
+If you cannot or do not want to sign the CLA, you can still help by privately sharing the vulnerability details, affected versions, reproduction steps, and the general remediation approach. The ISLAMU maintainers may then implement an independent fix.
+
 ## Contributors
 
 ### Core Maintainer
