@@ -105,7 +105,7 @@
     public Guid GroupId { get; set; }
 
     private GroupAdminDetailsModel? _group;
-    private UpdateGroupDto _model = new() { FullName = string.Empty };
+    private GroupProfileEditModel _model = new();
     private AppearanceSettings _branding = new();
     private bool _isLoading = true;
     private FormSubmitState _submitState = new();
@@ -127,7 +127,7 @@
             _group = await GroupService.GetGroupDetailsAsync(GroupId);
             if (_group != null)
             {
-                _model = new UpdateGroupDto
+                _model = new GroupProfileEditModel
                 {
                     FullName = _group.FullName,
                     Description = _group.Description
@@ -162,8 +162,18 @@
         _errorMessage = null;
         try
         {
+            var group = _group;
+            if (group is null || group.ConcurrencyStamp == Guid.Empty)
+            {
+                _errorMessage = "Reload the group settings before saving changes.";
+                return;
+            }
+
             // Branding fields are now managed via Actor — not saved through UpdateGroupDto
-            var response = await GroupService.UpdateGroupAsync(GroupId, _model);
+            var response = await GroupService.UpdateGroupAsync(
+                GroupId,
+                group.ConcurrencyStamp,
+                BuildUpdateDto(_model));
 
             if (response?.Success == true)
             {
@@ -206,4 +216,21 @@
     {
         return _currentSection == section ? "settings-nav-active" : "";
     }
+
+    private static UpdateGroupDto BuildUpdateDto(GroupProfileEditModel model)
+    {
+        return new UpdateGroupDto
+        {
+            FullName = new UpdateGroupFullNameDto { Value = model.FullName },
+            Description = new UpdateGroupDescriptionDto
+            {
+                Value = new OptionalUpdateOfstring
+                {
+                    HasValue = true,
+                    Value = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description
+                }
+            }
+        };
+    }
+
 }

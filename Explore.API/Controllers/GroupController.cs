@@ -169,16 +169,19 @@ public class GroupController : ExploreControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateGroup)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateGroup)]
     [EndpointSummary("Update Group")]
-    [EndpointDescription("Update an existing group. User must have group management permission.")]
+    [EndpointDescription("Partially update an existing group. Route ID is authoritative and If-Match must contain the current group concurrency stamp.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateGroupDto updateDto,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
         CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
@@ -187,11 +190,19 @@ public class GroupController : ExploreControllerBase
             return this.ToAuthenticationRequiredProblem();
         }
 
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
+        {
+            return this.ToValidationProblem(
+                UpdateValidationProblem,
+                "If-Match header is required and must contain the current group concurrency stamp.");
+        }
+
         var command = new UpdateGroupCommand
         {
-            Id = id,
+            GroupId = id,
             UserId = userId,
-            GroupDto = updateDto
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            UpdateGroupDto = updateDto
         };
 
         var response = await _mediator.Send(command, cancellationToken);
@@ -261,6 +272,24 @@ public class GroupController : ExploreControllerBase
         }
 
         return Ok(response);
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        value = value.Trim('"');
+        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 
 }

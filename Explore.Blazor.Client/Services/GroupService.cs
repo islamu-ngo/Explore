@@ -1,5 +1,5 @@
 // ABOUTME: Service for group creation, membership administration, and settings management in Blazor.
-// ABOUTME: Uses Refit BFF reads and generated API client commands/member operations.
+// ABOUTME: Uses Refit BFF reads and forwards If-Match headers for guarded Group PATCH updates.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
@@ -11,7 +11,7 @@ public interface IGroupService
     Task<ICollection<GroupPublisherListDto>> GetMyGroupsAsync();
     Task<bool> CreateGroupAsync(string fullName, string? description = null);
     Task<GroupAdminDetailsModel?> GetGroupDetailsAsync(Guid groupId);
-    Task<BaseCommandResponseOfGuid?> UpdateGroupAsync(Guid groupId, UpdateGroupDto group);
+    Task<BaseCommandResponseOfGuid?> UpdateGroupAsync(Guid groupId, Guid expectedConcurrencyStamp, UpdateGroupDto group);
     Task<ICollection<GroupMemberDto>> GetGroupMembersAsync(Guid groupId);
     Task<GroupMembersResult> GetGroupMembersWithAffordancesAsync(Guid groupId);
     Task<BaseCommandResponseOfGuid?> AddGroupMemberAsync(AddGroupMemberDto member);
@@ -111,6 +111,7 @@ public class GroupService : IGroupService
             return new GroupAdminDetailsModel
             {
                 Id = group.Id ?? groupId,
+                ConcurrencyStamp = group.ConcurrencyStamp ?? Guid.Empty,
                 FullName = group.FullName ?? string.Empty,
                 Description = group.Description,
                 ActorId = group.ActorId,
@@ -129,11 +130,20 @@ public class GroupService : IGroupService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> UpdateGroupAsync(Guid groupId, UpdateGroupDto group)
+    public async Task<BaseCommandResponseOfGuid?> UpdateGroupAsync(Guid groupId, Guid expectedConcurrencyStamp, UpdateGroupDto group)
     {
         try
         {
-            return await _apiClient.UpdateGroupAsync(groupId, group);
+            if (groupId == Guid.Empty || expectedConcurrencyStamp == Guid.Empty)
+            {
+                return new BaseCommandResponseOfGuid
+                {
+                    Success = false,
+                    Message = "Group ID and concurrency stamp are required."
+                };
+            }
+
+            return await _apiClient.UpdateGroupAsync(groupId, group, $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (ApiException ex)
         {
@@ -250,6 +260,7 @@ public class GroupPublisherListDto
 public class GroupAdminDetailsModel
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string? Description { get; set; }
     public Guid? ActorId { get; set; }

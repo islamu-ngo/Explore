@@ -1,3 +1,6 @@
+// ABOUTME: Detail DTO for Group HAL resources and admin editing surfaces.
+// ABOUTME: Exposes ConcurrencyStamp so PATCH clients can send guarded If-Match updates.
+
 using System;
 
 namespace Explore.Application.DTOs.Group;
@@ -5,6 +8,7 @@ namespace Explore.Application.DTOs.Group;
 public class GroupDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public required string FullName { get; set; }
     public string? Description { get; set; }
 

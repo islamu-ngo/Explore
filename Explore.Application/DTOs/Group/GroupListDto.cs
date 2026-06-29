@@ -1,3 +1,6 @@
+// ABOUTME: List DTO for Group collections and HAL item affordances.
+// ABOUTME: Includes ConcurrencyStamp for list-driven editors that issue route-authoritative PATCH updates.
+
 using System;
 using Explore.Domain.Enums;
 
@@ -6,6 +9,7 @@ namespace Explore.Application.DTOs.Group;
 public class GroupListDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public Guid TenantId { get; set; }
     public required string FullName { get; set; }
     public string? Description { get; set; }

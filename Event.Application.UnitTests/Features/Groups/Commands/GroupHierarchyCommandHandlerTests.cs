@@ -7,8 +7,10 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Group;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.Groups.Handlers.Commands;
 using Explore.Application.Features.Groups.Requests.Commands;
+using Explore.Application.Models.Common;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
@@ -118,12 +120,15 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         var handler = CreateUpdateHandler();
         var command = new UpdateGroupCommand
         {
-            Id = groupId,
+            GroupId = groupId,
             UserId = userId.ToString(),
-            GroupDto = new UpdateGroupDto
+            ExpectedConcurrencyStamp = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            UpdateGroupDto = new UpdateGroupDto
             {
-                FullName = "Managed Group",
-                ParentGroupId = groupId
+                ParentGroup = new UpdateGroupParentGroupDto
+                {
+                    Value = OptionalUpdate<Guid?>.Set(groupId)
+                }
             }
         };
 
@@ -134,6 +139,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         {
             Id = groupId,
             FullName = "Managed Group",
+            ConcurrencyStamp = command.ExpectedConcurrencyStamp,
             ApprovalStatus = null!,
             TenantId = tenantId,
             Tenant = null!
@@ -156,12 +162,15 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         var handler = CreateUpdateHandler();
         var command = new UpdateGroupCommand
         {
-            Id = groupId,
+            GroupId = groupId,
             UserId = userId.ToString(),
-            GroupDto = new UpdateGroupDto
+            ExpectedConcurrencyStamp = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            UpdateGroupDto = new UpdateGroupDto
             {
-                FullName = "Managed Group",
-                ParentGroupId = parentGroupId
+                ParentGroup = new UpdateGroupParentGroupDto
+                {
+                    Value = OptionalUpdate<Guid?>.Set(parentGroupId)
+                }
             }
         };
 
@@ -172,6 +181,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         {
             Id = groupId,
             FullName = "Managed Group",
+            ConcurrencyStamp = command.ExpectedConcurrencyStamp,
             ApprovalStatus = null!,
             TenantId = tenantId,
             Tenant = null!
@@ -196,12 +206,15 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         var handler = CreateUpdateHandler();
         var command = new UpdateGroupCommand
         {
-            Id = groupId,
+            GroupId = groupId,
             UserId = userId.ToString(),
-            GroupDto = new UpdateGroupDto
+            ExpectedConcurrencyStamp = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            UpdateGroupDto = new UpdateGroupDto
             {
-                FullName = "Managed Group",
-                ParentGroupId = parentGroupId
+                ParentGroup = new UpdateGroupParentGroupDto
+                {
+                    Value = OptionalUpdate<Guid?>.Set(parentGroupId)
+                }
             }
         };
 
@@ -212,6 +225,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         {
             Id = groupId,
             FullName = "Managed Group",
+            ConcurrencyStamp = command.ExpectedConcurrencyStamp,
             ApprovalStatus = null!,
             TenantId = tenantId,
             Tenant = null!
@@ -224,6 +238,172 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors).Contains("Parent group hierarchy exceeds the maximum supported depth.");
+        await _groupRepository.DidNotReceive().Update(Arg.Any<Group>());
+    }
+
+    [Test]
+    public async Task Update_ShouldRejectEmptyWrapperWithoutLoadingOrSaving()
+    {
+        var handler = CreateUpdateHandler();
+        var command = new UpdateGroupCommand
+        {
+            GroupId = Guid.NewGuid(),
+            UserId = Guid.NewGuid().ToString(),
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            UpdateGroupDto = new UpdateGroupDto()
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("At least one group update group must be provided.");
+        await _groupRepository.DidNotReceive().GetById(Arg.Any<Guid>());
+        await _groupRepository.DidNotReceive().Update(Arg.Any<Group>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Update_ShouldThrowConcurrencyConflictBeforeSave()
+    {
+        var tenantId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var currentStamp = Guid.NewGuid();
+        var handler = CreateUpdateHandler();
+        var command = new UpdateGroupCommand
+        {
+            GroupId = groupId,
+            UserId = userId.ToString(),
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            UpdateGroupDto = new UpdateGroupDto
+            {
+                FullName = new UpdateGroupFullNameDto { Value = "Updated Group" }
+            }
+        };
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _userContext.GetRequiredUserId().Returns(userId);
+        _groupMemberRepository.HasPermissionInGroup(groupId, userId, Arg.Any<string>()).Returns(true);
+        _groupRepository.GetById(groupId).Returns(new Group
+        {
+            Id = groupId,
+            FullName = "Managed Group",
+            ConcurrencyStamp = currentStamp,
+            ApprovalStatus = null!,
+            TenantId = tenantId,
+            Tenant = null!
+        });
+
+        await Assert.That(async () => await handler.Handle(command, CancellationToken.None))
+            .Throws<ConcurrencyConflictException>();
+
+        await _groupRepository.DidNotReceive().Update(Arg.Any<Group>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Update_ShouldApplySingleGroupAndInvalidateDetailCache()
+    {
+        var tenantId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var group = new Group
+        {
+            Id = groupId,
+            FullName = "Managed Group",
+            Description = "Existing description",
+            ConcurrencyStamp = concurrencyStamp,
+            ApprovalStatus = null!,
+            TenantId = tenantId,
+            Tenant = null!
+        };
+        var handler = CreateUpdateHandler();
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _userContext.GetRequiredUserId().Returns(userId);
+        _groupMemberRepository.HasPermissionInGroup(groupId, userId, Arg.Any<string>()).Returns(true);
+        _groupRepository.GetById(groupId).Returns(group);
+
+        var result = await handler.Handle(new UpdateGroupCommand
+        {
+            GroupId = groupId,
+            UserId = userId.ToString(),
+            ExpectedConcurrencyStamp = concurrencyStamp,
+            UpdateGroupDto = new UpdateGroupDto
+            {
+                FullName = new UpdateGroupFullNameDto { Value = "Updated Group" }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(group.FullName).IsEqualTo("Updated Group");
+        await Assert.That(group.Description).IsEqualTo("Existing description");
+        await _groupRepository.Received(1).Update(group);
+        await _cache.Received(1).RemoveAsync($"group:detail:{groupId}", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Update_ShouldExplicitlyClearDescription()
+    {
+        var tenantId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var group = new Group
+        {
+            Id = groupId,
+            FullName = "Managed Group",
+            Description = "Existing description",
+            ConcurrencyStamp = concurrencyStamp,
+            ApprovalStatus = null!,
+            TenantId = tenantId,
+            Tenant = null!
+        };
+        var handler = CreateUpdateHandler();
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _userContext.GetRequiredUserId().Returns(userId);
+        _groupMemberRepository.HasPermissionInGroup(groupId, userId, Arg.Any<string>()).Returns(true);
+        _groupRepository.GetById(groupId).Returns(group);
+
+        var result = await handler.Handle(new UpdateGroupCommand
+        {
+            GroupId = groupId,
+            UserId = userId.ToString(),
+            ExpectedConcurrencyStamp = concurrencyStamp,
+            UpdateGroupDto = new UpdateGroupDto
+            {
+                Description = new UpdateGroupDescriptionDto
+                {
+                    Value = OptionalUpdate<string?>.Set(null)
+                }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(group.Description).IsNull();
+        await _groupRepository.Received(1).Update(group);
+    }
+
+    [Test]
+    public async Task Update_ShouldRejectDescriptionGroupWithoutFieldOperation()
+    {
+        var handler = CreateUpdateHandler();
+
+        var result = await handler.Handle(new UpdateGroupCommand
+        {
+            GroupId = Guid.NewGuid(),
+            UserId = Guid.NewGuid().ToString(),
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            UpdateGroupDto = new UpdateGroupDto
+            {
+                Description = new UpdateGroupDescriptionDto()
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Description group must include Value.");
         await _groupRepository.DidNotReceive().Update(Arg.Any<Group>());
     }
 
@@ -247,7 +427,6 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
             _groupRepository,
             _groupMemberRepository,
             _userContext,
-            _mapper,
             _tenantContext,
             _cache);
     }
