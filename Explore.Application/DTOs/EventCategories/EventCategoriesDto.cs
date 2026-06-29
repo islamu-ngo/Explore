@@ -1,3 +1,6 @@
+// ABOUTME: Detail DTO for an event-category relationship row.
+// ABOUTME: Exposes concurrency metadata so clients can submit strong update preconditions.
+
 using System;
 
 namespace Explore.Application.DTOs.EventCategories;
@@ -5,6 +8,7 @@ namespace Explore.Application.DTOs.EventCategories;
 public class EventCategoriesDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public Guid EventId { get; set; }
     public string? EventTitle { get; set; }
     public Guid CategoryId { get; set; }

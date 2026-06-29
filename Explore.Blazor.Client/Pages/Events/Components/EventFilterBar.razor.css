@@ -95,6 +95,17 @@
   margin-bottom: 0;
 }
 
+::deep .filter-bar__date--past {
+  color: var(--mud-palette-text-disabled) !important;
+  opacity: 0.58;
+}
+
+::deep .filter-bar__date--past:hover,
+::deep .filter-bar__date--past:focus-visible {
+  color: var(--mud-palette-text-secondary) !important;
+  opacity: 0.82;
+}
+
 /* ── Mobile Filter Drawer ── */
 
 .filter-bar__mobile-drawer {

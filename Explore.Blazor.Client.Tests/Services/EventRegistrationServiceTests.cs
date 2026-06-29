@@ -288,14 +288,21 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var registrationId = Guid.NewGuid();
-        var dto = new UpdateEventRegistrationDto { Id = registrationId };
+        var concurrencyStamp = Guid.NewGuid();
+        var dto = CreateUpdateRegistrationDto();
         var expectedResponse = ComponentDataBuilder.SuccessResponse(registrationId);
 
-        _apiClient.UpdateEventRegistrationAsync(registrationId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventRegistrationAsync(
+                registrationId,
+                dto,
+                $"\"{concurrencyStamp:D}\"",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
-        var result = await _service.UpdateRegistrationAsync(registrationId, dto);
+        var result = await _service.UpdateRegistrationAsync(registrationId, concurrencyStamp, dto);
 
         // Assert
         await Assert.That(result).IsNotNull();
@@ -307,12 +314,19 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var registrationId = Guid.NewGuid();
-        var dto = new UpdateEventRegistrationDto { Id = registrationId };
-        _apiClient.UpdateEventRegistrationAsync(registrationId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        var concurrencyStamp = Guid.NewGuid();
+        var dto = CreateUpdateRegistrationDto();
+        _apiClient.UpdateEventRegistrationAsync(
+                registrationId,
+                dto,
+                $"\"{concurrencyStamp:D}\"",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act
-        var result = await _service.UpdateRegistrationAsync(registrationId, dto);
+        var result = await _service.UpdateRegistrationAsync(registrationId, concurrencyStamp, dto);
 
         // Assert
         await Assert.That(result).IsNotNull();
@@ -320,6 +334,18 @@ public class EventRegistrationServiceTests
     }
 
     #endregion
+
+    private static UpdateEventRegistrationDto CreateUpdateRegistrationDto() => new()
+    {
+        ApprovalStatus = new UpdateEventRegistrationApprovalStatusDto
+        {
+            ApprovalStatusId = new OptionalUpdateOfint
+            {
+                HasValue = true,
+                Value = 1
+            }
+        }
+    };
 
     // ========== CancelRegistrationAsync ==========
 

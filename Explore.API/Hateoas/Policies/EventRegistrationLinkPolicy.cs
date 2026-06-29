@@ -59,7 +59,7 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
             LinkRelations.Edit,
             RouteNames.UpdateEventRegistration,
             new { id = dto.Id },
-            "PUT",
+            "PATCH",
             "Update registration",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventRegistration, dto);

@@ -1,41 +1,32 @@
-using Explore.Application.Contracts.Persistence;
+// ABOUTME: Validates grouped event-session language update payloads.
+// ABOUTME: Keeps lookup and tenant consistency checks in the command handler.
+
 using FluentValidation;
 
 namespace Explore.Application.DTOs.EventSessionLanguage.Validators;
 
 public class UpdateEventSessionLanguageDtoValidator : AbstractValidator<UpdateEventSessionLanguageDto>
 {
-    private readonly IEventSessionRepository _eventSessionRepository;
-    private readonly ILanguageRepository _languageRepository;
-
-    public UpdateEventSessionLanguageDtoValidator(
-        IEventSessionRepository eventSessionRepository,
-        ILanguageRepository languageRepository)
+    public UpdateEventSessionLanguageDtoValidator()
     {
-        _eventSessionRepository = eventSessionRepository;
-        _languageRepository = languageRepository;
+        RuleFor(x => x)
+            .Must(HasAtLeastOneGroup)
+            .WithMessage("At least one event session language update group must be provided.");
 
-        RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("{PropertyName} is required");
+        When(x => x.Session is not null, () =>
+        {
+            RuleFor(x => x.Session!.EventSessionId)
+                .NotEmpty().WithMessage("EventSessionId is required.");
+        });
 
-        RuleFor(x => x.EventSessionId)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MustAsync(EventSessionExists)
-            .WithMessage("{PropertyName} not found");
-
-        RuleFor(x => x.LanguageId)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MustAsync(LanguageExists)
-            .WithMessage("{PropertyName} not found");
+        When(x => x.Language is not null, () =>
+        {
+            RuleFor(x => x.Language!.LanguageId)
+                .NotEmpty().WithMessage("LanguageId is required.");
+        });
     }
 
-    private async Task<bool> EventSessionExists(Guid eventSessionId, CancellationToken cancellationToken)
-    {
-        return await _eventSessionRepository.Exists(eventSessionId);
-    }
-
-    private async Task<bool> LanguageExists(int languageId, CancellationToken cancellationToken)
-    {
-        return await _languageRepository.Exists(languageId);
-    }
+    private static bool HasAtLeastOneGroup(UpdateEventSessionLanguageDto dto) =>
+        dto.Session is not null ||
+        dto.Language is not null;
 }

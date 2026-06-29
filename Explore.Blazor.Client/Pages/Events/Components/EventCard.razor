@@ -65,6 +65,12 @@
                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="event-card__overlay-chip">
                         @EventTypeName
                     </MudChip>
+                    @if (IsPastEvent)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Filled" Class="event-card__ended-chip event-card__overlay-chip">
+                            Ended
+                        </MudChip>
+                    }
                     <MudText Typo="Typo.subtitle2" Class="event-card__overlay-title">@Event.Title</MudText>
                     @if (IsFieldVisible("event_list.card.show_date"))
                     {
@@ -203,6 +209,10 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">Moderated</MudChip>
                         }
+                        else if (IsPastEvent)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Filled" Class="event-card__ended-chip">Ended</MudChip>
+                        }
                         else if (IsFieldVisible("event_list.card.show_status"))
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@Event.EventStatusFullName</MudChip>
@@ -324,6 +334,10 @@
                         @if (IsModerated)
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">Moderated</MudChip>
+                        }
+                        else if (IsPastEvent)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Filled" Class="event-card__ended-chip">Ended</MudChip>
                         }
                         else if (IsFieldVisible("event_list.card.show_status"))
                         {

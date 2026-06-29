@@ -1,52 +1,52 @@
-// ABOUTME: Handler for updating a session-language link with validation.
-// ABOUTME: Validates input, fetches entity, applies field updates.
+// ABOUTME: Handler for grouped route-ID updates to session-language links.
+// ABOUTME: Validates references before mutation, checks concurrency, saves once, and invalidates parent event caches.
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionLanguage.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Domain;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Explore.Application.Features.EventSessionLanguages.Handlers.Commands;
 
 public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEventSessionLanguageCommand, BaseCommandResponse<int>>
 {
     private readonly IEventSessionLanguageRepository _repository;
-    private readonly IMapper _mapper;
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly ILanguageRepository _languageRepository;
+    private readonly HybridCache _cache;
 
     public UpdateEventSessionLanguageCommandHandler(
         IEventSessionLanguageRepository repository,
-        IMapper mapper,
         IEventSessionRepository eventSessionRepository,
-        ILanguageRepository languageRepository)
+        ILanguageRepository languageRepository,
+        HybridCache cache)
     {
         _repository = repository;
-        _mapper = mapper;
         _eventSessionRepository = eventSessionRepository;
         _languageRepository = languageRepository;
+        _cache = cache;
     }
 
     public async Task<BaseCommandResponse<int>> Handle(UpdateEventSessionLanguageCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<int>();
 
-        var validator = new UpdateEventSessionLanguageDtoValidator(_eventSessionRepository, _languageRepository);
+        var validator = new UpdateEventSessionLanguageDtoValidator();
         var validationResult = await validator.ValidateAsync(request.EventSessionLanguageDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event Session Language update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return ValidationFailure(validationResult.Errors.Select(e => e.ErrorMessage).ToList());
         }
 
-        var eventSessionLanguage = await _repository.GetById(request.EventSessionLanguageDto.Id);
+        var eventSessionLanguage = await _repository.GetById(request.EventSessionLanguageId);
         if (eventSessionLanguage == null)
         {
             response.Success = false;
@@ -54,8 +54,44 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
             return response;
         }
 
-        _mapper.Map(request.EventSessionLanguageDto, eventSessionLanguage);
+        if (eventSessionLanguage.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                $"Event session language {request.EventSessionLanguageId} was modified by another request.");
+        }
+
+        var previousEventId = await GetEventIdOrNullAsync(eventSessionLanguage.EventSessionId);
+        var targetSessionId = request.EventSessionLanguageDto.Session?.EventSessionId ?? eventSessionLanguage.EventSessionId;
+        var targetLanguageId = request.EventSessionLanguageDto.Language?.LanguageId ?? eventSessionLanguage.LanguageId;
+
+        var targetSession = await _eventSessionRepository.GetById(targetSessionId);
+        if (targetSession is null)
+        {
+            return ValidationFailure("Event session not found.");
+        }
+
+        if (targetSession.TenantId != eventSessionLanguage.TenantId)
+        {
+            return ValidationFailure("Event session must belong to the same tenant as the language assignment.");
+        }
+
+        if (!await _languageRepository.Exists(targetLanguageId))
+        {
+            return ValidationFailure("Language not found.");
+        }
+
+        var duplicate = await _repository.GetBySessionAndLanguage(targetSessionId, targetLanguageId, request.EventSessionLanguageId);
+        if (duplicate is not null)
+        {
+            return ValidationFailure("Language is already assigned to this event session.");
+        }
+
+        ApplySession(eventSessionLanguage, request.EventSessionLanguageDto.Session, targetSession);
+        ApplyLanguage(eventSessionLanguage, request.EventSessionLanguageDto.Language);
+
         await _repository.Update(eventSessionLanguage);
+        await InvalidateCachesAsync(previousEventId, targetSession.EventId, targetSession.TenantId, cancellationToken);
 
         response.Success = true;
         response.Id = eventSessionLanguage.Id;
@@ -63,4 +99,54 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
 
         return response;
     }
+
+    private async Task<Guid?> GetEventIdOrNullAsync(Guid eventSessionId)
+    {
+        var session = await _eventSessionRepository.GetById(eventSessionId);
+        return session?.EventId;
+    }
+
+    private static void ApplySession(EventSessionLanguage entity, DTOs.EventSessionLanguage.UpdateEventSessionLanguageSessionDto? dto, EventSession targetSession)
+    {
+        if (dto is null)
+        {
+            return;
+        }
+
+        entity.EventSessionId = dto.EventSessionId;
+        entity.TenantId = targetSession.TenantId;
+    }
+
+    private static void ApplyLanguage(EventSessionLanguage entity, DTOs.EventSessionLanguage.UpdateEventSessionLanguageLanguageDto? dto)
+    {
+        if (dto is null)
+        {
+            return;
+        }
+
+        entity.LanguageId = dto.LanguageId;
+    }
+
+    private async Task InvalidateCachesAsync(Guid? previousEventId, Guid currentEventId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        await _cache.RemoveAsync($"event:detail:{currentEventId}", cancellationToken);
+
+        if (previousEventId.HasValue && previousEventId.Value != currentEventId)
+        {
+            await _cache.RemoveAsync($"event:detail:{previousEventId.Value}", cancellationToken);
+        }
+
+        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), cancellationToken);
+    }
+
+    private static BaseCommandResponse<int> ValidationFailure(string error) =>
+        ValidationFailure(new List<string> { error });
+
+    private static BaseCommandResponse<int> ValidationFailure(List<string> errors) =>
+        new()
+        {
+            Success = false,
+            Message = "Event Session Language update failed.",
+            Errors = errors
+        };
 }

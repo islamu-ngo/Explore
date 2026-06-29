@@ -134,26 +134,36 @@ public class EventRegistrationController : ExploreControllerBase
         return Ok(response);
     }
 
-    // PUT: api/eventregistration/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id}", Name = RouteNames.UpdateEventRegistration)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateEventRegistration)]
     [EndpointSummary("Update Event Registration")]
     [EndpointDescription("Update an existing event registration (e.g., change approval status)")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventRegistrationDto dto, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
+        Guid id,
+        [FromBody] UpdateEventRegistrationDto dto,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
-        if (id != dto.Id)
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
             return this.ToValidationProblem(
                 UpdateValidationProblem,
-                "Event registration ID mismatch.");
+                "If-Match header is required and must contain the current event registration concurrency stamp.");
         }
 
-        var command = new UpdateEventRegistrationCommand { EventRegistrationDto = dto };
+        var command = new UpdateEventRegistrationCommand
+        {
+            EventRegistrationId = id,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            EventRegistrationDto = dto
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
@@ -164,6 +174,28 @@ public class EventRegistrationController : ExploreControllerBase
         }
 
         return Ok(response);
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = Guid.Empty;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var trimmed = ifMatch.Trim();
+        if (trimmed.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"')
+        {
+            trimmed = trimmed[1..^1];
+        }
+
+        return Guid.TryParse(trimmed, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 
     // DELETE: api/eventregistration/{id}

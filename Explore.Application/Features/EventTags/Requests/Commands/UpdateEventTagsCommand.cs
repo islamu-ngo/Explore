@@ -1,5 +1,5 @@
-// ABOUTME: MediatR command for updating an event-tag link.
-// ABOUTME: Carries the UpdateEventTagsDto payload.
+// ABOUTME: MediatR command for route-ID event-tag link updates.
+// ABOUTME: Carries expected concurrency and grouped relationship update payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventTags;
@@ -11,7 +11,11 @@ namespace Explore.Application.Features.EventTags.Requests.Commands;
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
 public class UpdateEventTagsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public Guid EventTagId { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; set; }
     public required UpdateEventTagsDto EventTagsDto { get; set; }
+    public Guid EventId { get; set; }
+    public Guid TenantId { get; set; }
 
-    string? ISecureRequest.ResourceId => EventTagsDto.EventId.ToString();
+    string? ISecureRequest.ResourceId => EventId.ToString();
 }

@@ -28,18 +28,24 @@
                            OnClick="@(() => OnNavigateNext.InvokeAsync())"
                            aria-label="Next event" />
 
-            @if (CanUsePublicEventActions)
+            @if (CanOpenEventPage || CanUsePublicEventActions)
             {
                 <div class="d-flex gap-2 mx-auto">
-                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.OpenInNew"
-                               OnClick="@(() => OnOpenEventPage.InvokeAsync())">
-                        Event Page
-                    </MudButton>
-                    <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Default"
-                               StartIcon="@Icons.Material.Outlined.ContentCopy"
-                               OnClick="@(() => OnCopyEventLink.InvokeAsync())">
-                        Copy Link
-                    </MudButton>
+                    @if (CanOpenEventPage)
+                    {
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.OpenInNew"
+                                   OnClick="@(() => OnOpenEventPage.InvokeAsync())">
+                            Event Page
+                        </MudButton>
+                    }
+                    @if (CanUsePublicEventActions)
+                    {
+                        <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Default"
+                                   StartIcon="@Icons.Material.Outlined.ContentCopy"
+                                   OnClick="@(() => OnCopyEventLink.InvokeAsync())">
+                            Copy Link
+                        </MudButton>
+                    }
                 </div>
             }
 
@@ -700,6 +706,12 @@
             {
                 <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">
                     Moderated
+                </MudAlert>
+            }
+            else if (IsSelectedEventPast)
+            {
+                <MudAlert Severity="Severity.Normal" Variant="Variant.Outlined" Dense="true" Icon="@Icons.Material.Outlined.EventBusy">
+                    Ended
                 </MudAlert>
             }
             else if (IsUserRegistered)

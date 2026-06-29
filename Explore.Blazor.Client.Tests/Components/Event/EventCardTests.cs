@@ -157,6 +157,22 @@ public class EventCardTests : IDisposable
     }
 
     [Test]
+    public async Task EventCard_WhenPast_RendersEndedBadgeAndSuppressesShareAction()
+    {
+        var eventDto = CreateTestEvent();
+        eventDto.IsPast = true;
+
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, eventDto)
+            .Add(x => x.Layout, LayoutMode.DetailedList)
+            .Add(x => x.OnShareRequested, EventCallback.Factory.Create<EventListDto>(this, _ => { })));
+
+        await Assert.That(cut.Markup).Contains("event-card--past");
+        await Assert.That(cut.Markup).Contains("Ended");
+        await Assert.That(cut.Markup).DoesNotContain("Share event: Test Blazor Conference");
+    }
+
+    [Test]
     public async Task EventCard_ShareButton_InvokesShareCallbackWithoutSelectingCard()
     {
         var shareCount = 0;

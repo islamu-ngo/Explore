@@ -56,24 +56,23 @@ public sealed class EventRegistrationControllerTests
     }
 
     [Test]
-    public async Task Update_WhenRouteAndBodyIdsDiffer_ReturnsValidationProblemDetails()
+    public async Task Update_WhenIfMatchIsMissing_ReturnsValidationProblemDetails()
     {
-        var routeId = Guid.NewGuid();
-        var bodyId = Guid.NewGuid();
-        using var mediator = new EventRegistrationMediatorStub(_ => throw new InvalidOperationException("Mediator should not run for ID mismatch."));
+        var registrationId = Guid.NewGuid();
+        using var mediator = new EventRegistrationMediatorStub(_ => throw new InvalidOperationException("Mediator should not run when If-Match is missing."));
         await using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
         using var request = CreateAuthenticatedJsonRequest(
-            HttpMethod.Put,
-            $"/api/eventregistration/{routeId}",
-            CreateUpdateDto(bodyId));
+            HttpMethod.Patch,
+            $"/api/eventregistration/{registrationId}",
+            CreateUpdateDto());
 
         var response = await client.SendAsync(request);
 
         using var document = await AssertEventRegistrationValidationProblemAsync(
             response,
-            "Event registration ID mismatch.",
-            "Event registration ID mismatch.");
+            "If-Match header is required and must contain the current event registration concurrency stamp.",
+            "If-Match header is required and must contain the current event registration concurrency stamp.");
         await Assert.That(mediator.LastRequest).IsNull();
     }
 
@@ -89,10 +88,12 @@ public sealed class EventRegistrationControllerTests
         });
         await using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
+        var concurrencyStamp = Guid.NewGuid();
         using var request = CreateAuthenticatedJsonRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             $"/api/eventregistration/{registrationId}",
-            CreateUpdateDto(registrationId));
+            CreateUpdateDto(),
+            ifMatch: concurrencyStamp);
 
         var response = await client.SendAsync(request);
 
@@ -103,7 +104,8 @@ public sealed class EventRegistrationControllerTests
 
         var command = mediator.LastRequest as UpdateEventRegistrationCommand;
         await Assert.That(command).IsNotNull();
-        await Assert.That(command!.EventRegistrationDto.Id).IsEqualTo(registrationId);
+        await Assert.That(command!.EventRegistrationId).IsEqualTo(registrationId);
+        await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(concurrencyStamp);
     }
 
     [Test]
@@ -117,10 +119,12 @@ public sealed class EventRegistrationControllerTests
         });
         await using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
+        var concurrencyStamp = Guid.NewGuid();
         using var request = CreateAuthenticatedJsonRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             $"/api/eventregistration/{registrationId}",
-            CreateUpdateDto(registrationId));
+            CreateUpdateDto(),
+            ifMatch: concurrencyStamp);
 
         var response = await client.SendAsync(request);
 
@@ -128,7 +132,8 @@ public sealed class EventRegistrationControllerTests
 
         var command = mediator.LastRequest as UpdateEventRegistrationCommand;
         await Assert.That(command).IsNotNull();
-        await Assert.That(command!.EventRegistrationDto.Id).IsEqualTo(registrationId);
+        await Assert.That(command!.EventRegistrationId).IsEqualTo(registrationId);
+        await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(concurrencyStamp);
     }
 
     private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
@@ -149,21 +154,28 @@ public sealed class EventRegistrationControllerTests
         HttpMethod method,
         string url,
         TValue body,
-        Guid? userId = null)
+        Guid? userId = null,
+        Guid? ifMatch = null)
     {
         var request = new HttpRequestMessage(method, url)
         {
             Content = JsonContent.Create(body)
         };
         request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId ?? Guid.NewGuid()));
+        if (ifMatch.HasValue)
+        {
+            request.Headers.TryAddWithoutValidation("If-Match", $"\"{ifMatch.Value:D}\"");
+        }
+
         return request;
     }
 
-    private static UpdateEventRegistrationDto CreateUpdateDto(Guid id) => new()
+    private static UpdateEventRegistrationDto CreateUpdateDto() => new()
     {
-        Id = id,
-        UserId = Guid.NewGuid(),
-        EventSessionId = Guid.NewGuid()
+        ApprovalStatus = new UpdateEventRegistrationApprovalStatusDto
+        {
+            ApprovalStatusId = Explore.Application.Models.Common.OptionalUpdate<int?>.Set(1)
+        }
     };
 
     private static async Task<System.Text.Json.JsonDocument> AssertEventRegistrationValidationProblemAsync(

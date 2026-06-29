@@ -1,3 +1,6 @@
+// ABOUTME: Blazor client service for event registration CRUD and management calls.
+// ABOUTME: Wraps generated API calls and forwards optimistic concurrency stamps for PATCH updates.
+
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
@@ -11,7 +14,7 @@ public interface IEventRegistrationService
     Task<PaginatedResult<EventRegistrationListDto>> GetRegistrationsPagedAsync(int pageNumber, int pageSize);
     Task<EventRegistrationDto?> GetRegistrationByIdAsync(Guid registrationId);
     Task<BaseCommandResponseOfGuid?> RegisterForSessionAsync(CreateEventRegistrationDto dto);
-    Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(Guid id, UpdateEventRegistrationDto dto);
+    Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateEventRegistrationDto dto);
     Task<bool> CancelRegistrationAsync(Guid registrationId);
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsBySessionAsync(Guid sessionId);
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId);
@@ -116,11 +119,17 @@ public class EventRegistrationService : IEventRegistrationService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(Guid id, UpdateEventRegistrationDto dto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(
+        Guid id,
+        Guid expectedConcurrencyStamp,
+        UpdateEventRegistrationDto dto)
     {
         try
         {
-            return await _apiClient.UpdateEventRegistrationAsync(id, dto);
+            return await _apiClient.UpdateEventRegistrationAsync(
+                id,
+                dto,
+                $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (ApiException ex)
         {

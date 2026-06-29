@@ -24,6 +24,33 @@
     }
 }
 
+::deep .event-card--past {
+    border-color: var(--mud-palette-lines-default) !important;
+    background-color: color-mix(in oklch, var(--mud-palette-surface) 86%, var(--mud-palette-background) 14%);
+}
+
+::deep .event-card--past:hover {
+    border-color: var(--mud-palette-lines-default) !important;
+    box-shadow: none;
+    transform: none;
+}
+
+::deep .event-card--past .event-card__image,
+::deep .event-card--past .event-card__image-foreground {
+    filter: grayscale(0.75);
+    opacity: 0.68;
+}
+
+::deep .event-card--past .event-card__overlay {
+    background: linear-gradient(to top, oklch(0 0 0 / 0.78) 0%, oklch(0 0 0 / 0.34) 62%, transparent 100%);
+}
+
+::deep .event-card__ended-chip {
+    color: var(--mud-palette-text-secondary) !important;
+    background-color: var(--mud-palette-action-disabled-background) !important;
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
 /* ── Shared Image Styles ── */
 
 ::deep .event-card__image-blur {

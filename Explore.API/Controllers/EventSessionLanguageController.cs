@@ -36,6 +36,11 @@ public class EventSessionLanguageController : ControllerBase
         "Program validation failed",
         "Event session language creation failed.");
 
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "program",
+        "Program validation failed",
+        "Event session language update failed.");
+
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
 
@@ -102,6 +107,62 @@ public class EventSessionLanguageController : ControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPatch("{id:int}", Name = RouteNames.UpdateEventSessionLanguage)]
+    [EndpointSummary("Update event session language assignment")]
+    [EndpointDescription("Update the session or language of an event session language assignment.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<int>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<int>>> Update(
+        int id,
+        [FromBody] UpdateEventSessionLanguageDto language,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
+        {
+            ModelState.AddModelError(
+                "If-Match",
+                "If-Match header is required and must contain the current event session language concurrency stamp.");
+            return ValidationProblem(ModelState);
+        }
+
+        var existing = await _mediator.Send(new GetEventSessionLanguageDetailsRequest { Id = id }, cancellationToken);
+        if (existing is null || existing.Id == 0)
+        {
+            return this.ToNotFoundProblem(EventSessionLanguageNotFoundProblem);
+        }
+
+        var session = await GetSessionOrNullAsync(existing.EventSessionId, cancellationToken);
+        if (session is null)
+        {
+            return this.ToNotFoundProblem(EventSessionNotFoundProblem);
+        }
+
+        var response = await _mediator.Send(new UpdateEventSessionLanguageCommand
+        {
+            EventSessionLanguageId = id,
+            EventSessionLanguageDto = language,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            TenantId = _tenantContext.TenantId,
+            EventSessionId = existing.EventSessionId,
+            EventId = session.EventId
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:int}", Name = RouteNames.DeleteEventSessionLanguage)]
     [EndpointSummary("Remove language from event session")]
     [EndpointDescription("Remove a language assignment from an event session.")]
@@ -142,5 +203,23 @@ public class EventSessionLanguageController : ControllerBase
     {
         var session = await _mediator.Send(new GetEventSessionDetailsRequest { Id = eventSessionId }, cancellationToken);
         return session is not null && session.Id != Guid.Empty ? session : null;
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+
+        if (string.IsNullOrWhiteSpace(ifMatch) || ifMatch.StartsWith("W/", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var trimmed = ifMatch.Trim();
+        if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"')
+        {
+            trimmed = trimmed[1..^1];
+        }
+
+        return Guid.TryParse(trimmed, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 }

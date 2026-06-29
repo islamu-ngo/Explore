@@ -1,50 +1,31 @@
+// ABOUTME: Validator for grouped event-category link updates.
+// ABOUTME: Validates group presence and required group fields; handlers validate references.
+
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Explore.Application.Contracts.Persistence;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.EventCategories.Validators;
 
 public class UpdateEventCategoriesDtoValidator : AbstractValidator<UpdateEventCategoriesDto>
 {
-    private readonly IEventRepository _eventRepository;
-    private readonly ICategoryRepository _categoryRepository;
-    private readonly IEventCategoriesRepository _eventCategoriesRepository;
-
-    public UpdateEventCategoriesDtoValidator(
-        IEventRepository eventRepository,
-        ICategoryRepository categoryRepository,
-        IEventCategoriesRepository eventCategoriesRepository)
+    public UpdateEventCategoriesDtoValidator()
     {
-        _eventRepository = eventRepository;
-        _categoryRepository = categoryRepository;
-        _eventCategoriesRepository = eventCategoriesRepository;
+        RuleFor(x => x)
+            .Must(dto => dto.Event is not null || dto.Category is not null)
+            .WithMessage("At least one event category update group must be provided.");
 
-        RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("{PropertyName} is required");
+        When(x => x.Event is not null, () =>
+        {
+            RuleFor(x => x.Event!.EventId)
+                .NotEmpty()
+                .WithMessage("EventId is required.");
+        });
 
-        RuleFor(x => x.EventId)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MustAsync(EventExists)
-            .WithMessage("{PropertyName} not found");
-
-        RuleFor(x => x.CategoryId)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MustAsync(CategoryExists)
-            .WithMessage("{PropertyName} not found");
-
-        // TenantId is set by the handler from context, not by the client
-        // No validation needed here
-    }
-
-    private async Task<bool> EventExists(Guid eventId, CancellationToken cancellationToken)
-    {
-        return await _eventRepository.Exists(eventId);
-    }
-
-    private async Task<bool> CategoryExists(Guid categoryId, CancellationToken cancellationToken)
-    {
-        return await _categoryRepository.Exists(categoryId);
+        When(x => x.Category is not null, () =>
+        {
+            RuleFor(x => x.Category!.CategoryId)
+                .NotEmpty()
+                .WithMessage("CategoryId is required.");
+        });
     }
 }

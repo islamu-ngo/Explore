@@ -63,19 +63,27 @@
 
     private async Task UpdateStatus(EventRegistrationListDto registration, int newStatusId)
     {
+        if (!registration.Id.HasValue || !registration.ConcurrencyStamp.HasValue)
+        {
+            Snackbar.Add("Registration cannot be updated because its concurrency metadata is missing.", Severity.Error);
+            return;
+        }
+
         var dto = new UpdateEventRegistrationDto
         {
-            Id = registration.Id,
-            UserId = registration.UserId,
-            EventSessionId = registration.EventSessionId,
-            ApprovalStatusId = newStatusId,
-            TenantId = registration.TenantId,
-            AtprotoRecordId = null
+            ApprovalStatus = new UpdateEventRegistrationApprovalStatusDto
+            {
+                ApprovalStatusId = new OptionalUpdateOfint
+                {
+                    HasValue = true,
+                    Value = newStatusId
+                }
+            }
         };
 
         try
         {
-            var response = await EventService.UpdateRegistrationAsync(dto);
+            var response = await EventService.UpdateRegistrationAsync(registration.Id.Value, registration.ConcurrencyStamp.Value, dto);
             if (response?.Success == true)
             {
                 Snackbar.Add("Registration status updated.", Severity.Success);

@@ -95,6 +95,22 @@ public class EventFilterBarTests : IDisposable
     }
 
     [Test]
+    public async Task DateRangePicker_StylesPastDatesWithoutDisablingSelection()
+    {
+        _ctx.RenderMudComponent<EventFilterBarComponent>();
+        var classifier = typeof(EventFilterBarComponent).GetMethod(
+            "GetDateClasses",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("GetDateClasses was not found.");
+
+        var pastClass = (string)classifier.Invoke(null, [DateTime.Today.AddDays(-1)])!;
+        var todayClass = (string)classifier.Invoke(null, [DateTime.Today])!;
+
+        await Assert.That(pastClass).IsEqualTo("filter-bar__date--past");
+        await Assert.That(todayClass).IsEqualTo(string.Empty);
+    }
+
+    [Test]
     public async Task MultiSelectionText_UsesLookupFullNamesSeparatedByComma()
     {
         var cut = _ctx.RenderMudComponent<EventFilterBarComponent>(p => p

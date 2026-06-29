@@ -1,3 +1,6 @@
+// ABOUTME: Event registration detail DTO for HAL and management reads.
+// ABOUTME: Exposes concurrency metadata for route-ID PATCH updates.
+
 using System;
 
 namespace Explore.Application.DTOs.EventRegistration;
@@ -5,6 +8,7 @@ namespace Explore.Application.DTOs.EventRegistration;
 public class EventRegistrationDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     // User
     public Guid UserId { get; set; }

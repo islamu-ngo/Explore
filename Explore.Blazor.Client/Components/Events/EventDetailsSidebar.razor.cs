@@ -79,7 +79,11 @@ public partial class EventDetailsSidebar : ComponentBase
         string.Equals(SelectedEvent?.EventStatusFullName, "Moderated", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(EventDetail?.EventStatusMasterCode, "MODERATED", StringComparison.OrdinalIgnoreCase);
 
-    private bool CanUsePublicEventActions => !IsSelectedEventModerated;
+    private bool IsSelectedEventPast => SelectedEvent?.IsPast == true;
+
+    private bool CanOpenEventPage => !IsSelectedEventModerated;
+
+    private bool CanUsePublicEventActions => !IsSelectedEventModerated && !IsSelectedEventPast;
 
     private bool CanRegisterSelectedEvent =>
         CanUsePublicEventActions && EventDetail?.HasHalLink("register") == true;

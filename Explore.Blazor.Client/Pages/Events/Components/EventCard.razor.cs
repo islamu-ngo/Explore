@@ -53,6 +53,7 @@ public partial class EventCard : ComponentBase
             var css = $"event-card event-card--{Layout}";
             css += Layout == LayoutMode.CompactGrid ? " rounded-lg" : " rounded-xl";
             if (IsSelected) css += " event-card--selected";
+            if (IsPastEvent) css += " event-card--past";
             return css;
         }
     }
@@ -123,7 +124,8 @@ public partial class EventCard : ComponentBase
     private bool HasCardActions => HasManagementMenu || CanShare;
     private bool CanEdit => Event.HasHalLink("edit") && OnEditRequested.HasDelegate;
     private bool CanDelete => Event.HasHalLink("delete") && OnDeleteRequested.HasDelegate;
-    private bool CanShare => !IsModerated && OnShareRequested.HasDelegate;
+    private bool CanShare => !IsModerated && !IsPastEvent && OnShareRequested.HasDelegate;
+    private bool IsPastEvent => Event.IsPast == true;
     private bool IsModerated =>
         Event.EventStatusId == ModeratedStatusId ||
         string.Equals(Event.EventStatusFullName, "Moderated", StringComparison.OrdinalIgnoreCase);

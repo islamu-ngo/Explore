@@ -52,4 +52,30 @@ public class EventSessionLanguageCommandSecurityTests
         await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
         await Assert.That(command.ResourceAttributes["eventId"]).IsEqualTo(eventId.ToString());
     }
+
+    [Test]
+    public async Task UpdateCommand_ResourceId_ShouldUseParentSessionAndCarryTenantAndEventContext()
+    {
+        var eventSessionId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+
+        ISecureRequest command = new UpdateEventSessionLanguageCommand
+        {
+            EventSessionLanguageId = 42,
+            EventSessionId = eventSessionId,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            TenantId = tenantId,
+            EventId = eventId,
+            EventSessionLanguageDto = new UpdateEventSessionLanguageDto
+            {
+                Language = new UpdateEventSessionLanguageLanguageDto { LanguageId = 2 }
+            }
+        };
+
+        await Assert.That(command.ResourceId).IsEqualTo(eventSessionId.ToString());
+        await Assert.That(command.ResourceAttributes).IsNotNull();
+        await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
+        await Assert.That(command.ResourceAttributes["eventId"]).IsEqualTo(eventId.ToString());
+    }
 }

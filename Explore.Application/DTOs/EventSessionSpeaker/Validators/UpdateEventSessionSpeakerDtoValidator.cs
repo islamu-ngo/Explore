@@ -1,40 +1,30 @@
-using Explore.Application.Contracts.Persistence;
+// ABOUTME: Validator for grouped event-session speaker link updates.
+// ABOUTME: Validates group presence and required group fields; handlers validate references.
+
 using FluentValidation;
 
 namespace Explore.Application.DTOs.EventSessionSpeaker.Validators;
 
 public class UpdateEventSessionSpeakerDtoValidator : AbstractValidator<UpdateEventSessionSpeakerDto>
 {
-    private readonly IActorRepository _actorRepository;
-    private readonly IEventSessionRepository _eventSessionRepository;
-
-    public UpdateEventSessionSpeakerDtoValidator(
-        IActorRepository actorRepository,
-        IEventSessionRepository eventSessionRepository)
+    public UpdateEventSessionSpeakerDtoValidator()
     {
-        _actorRepository = actorRepository;
-        _eventSessionRepository = eventSessionRepository;
+        RuleFor(x => x)
+            .Must(dto => dto.Session is not null || dto.Actor is not null)
+            .WithMessage("At least one event session speaker update group must be provided.");
 
-        RuleFor(p => p.Id)
-            .NotEmpty().WithMessage("{PropertyName} is required.");
+        When(x => x.Session is not null, () =>
+        {
+            RuleFor(x => x.Session!.EventSessionId)
+                .NotEmpty()
+                .WithMessage("EventSessionId is required.");
+        });
 
-        RuleFor(p => p.ActorId)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .MustAsync(async (id, cancellation) =>
-            {
-                var exists = await _actorRepository.Exists(id);
-                return exists;
-            }).WithMessage("Actor does not exist.");
-
-        RuleFor(p => p.EventSessionId)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .MustAsync(async (id, cancellation) =>
-            {
-                var exists = await _eventSessionRepository.Exists(id);
-                return exists;
-            }).WithMessage("EventSession does not exist.");
-
-        // TenantId is set by the handler from context, not by the client
-        // No validation needed here
+        When(x => x.Actor is not null, () =>
+        {
+            RuleFor(x => x.Actor!.ActorId)
+                .NotEmpty()
+                .WithMessage("ActorId is required.");
+        });
     }
 }

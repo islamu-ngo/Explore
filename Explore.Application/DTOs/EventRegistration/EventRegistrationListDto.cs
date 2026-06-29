@@ -1,3 +1,6 @@
+// ABOUTME: Event registration list DTO for management collection reads.
+// ABOUTME: Includes concurrency metadata so list-sourced editors can issue PATCH updates.
+
 using System;
 
 namespace Explore.Application.DTOs.EventRegistration;
@@ -5,6 +8,7 @@ namespace Explore.Application.DTOs.EventRegistration;
 public class EventRegistrationListDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     // User
     public Guid UserId { get; set; }

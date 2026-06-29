@@ -31,13 +31,11 @@ public class LookupMappingProfile : Profile
         CreateMap<Location, LocationDto>().ReverseMap();
         CreateMap<Location, LocationListDto>().ReverseMap();
         CreateMap<CreateLocationDto, Location>();
-        CreateMap<UpdateLocationDto, Location>();
 
         CreateMap<LocationRoom, LocationRoomDto>()
             .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null));
         CreateMap<LocationRoom, LocationRoomListDto>();
         CreateMap<CreateLocationRoomDto, LocationRoom>();
-        CreateMap<UpdateLocationRoomDto, LocationRoom>();
 
         CreateMap<Tag, TagDto>().ReverseMap();
         CreateMap<Tag, TagListDto>();

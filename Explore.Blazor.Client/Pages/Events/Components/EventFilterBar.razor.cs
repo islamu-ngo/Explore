@@ -76,6 +76,9 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     private TriStateTagFilterDropdown? _tagFilterDropdown;
     private TriStateCategoryFilterDropdown? _categoryFilterDropdown;
 
+    private static string GetDateClasses(DateTime date) =>
+        date.Date < DateTime.Today ? "filter-bar__date--past" : string.Empty;
+
     private void ToggleFilters() => ToggleFilterDrawerOrPanel();
 
     private async Task OnLayoutChanged(LayoutMode mode)

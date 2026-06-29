@@ -1,61 +1,58 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Explore.Application.Contracts.Persistence;
+// ABOUTME: FluentValidation validator for grouped UpdateEventRegistrationDto PATCH payloads.
+// ABOUTME: Enforces wrapper presence and explicit clear semantics for nullable registration groups.
+
 using FluentValidation;
 
 namespace Explore.Application.DTOs.EventRegistration.Validators;
 
 public class UpdateEventRegistrationDtoValidator : AbstractValidator<UpdateEventRegistrationDto>
 {
-    private readonly IUserRepository _userRepository;
-    private readonly IEventSessionRepository _eventSessionRepository;
-    private readonly IApprovalStatusRepository _approvalStatusRepository;
-
-    public UpdateEventRegistrationDtoValidator(
-        IUserRepository userRepository,
-        IEventSessionRepository eventSessionRepository,
-        IApprovalStatusRepository approvalStatusRepository)
+    public UpdateEventRegistrationDtoValidator()
     {
-        _userRepository = userRepository;
-        _eventSessionRepository = eventSessionRepository;
-        _approvalStatusRepository = approvalStatusRepository;
+        RuleFor(dto => dto)
+            .Must(HaveAtLeastOneGroup)
+            .WithMessage("At least one event registration update group must be provided.");
 
-        RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("{PropertyName} is required");
+        When(dto => dto.User is not null, () =>
+        {
+            RuleFor(dto => dto.User!.UserId)
+                .NotEmpty().WithMessage("UserId is required.");
+        });
 
-        RuleFor(x => x.UserId)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MustAsync(UserExists)
-            .WithMessage("{PropertyName} not found");
+        When(dto => dto.Session is not null, () =>
+        {
+            RuleFor(dto => dto.Session!.EventSessionId)
+                .NotEmpty().WithMessage("EventSessionId is required.");
+        });
 
-        RuleFor(x => x.EventSessionId)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MustAsync(EventSessionExists)
-            .WithMessage("{PropertyName} not found");
+        When(dto => dto.Intent is not null, () =>
+        {
+            RuleFor(dto => dto.Intent!.EventRegistrationIntentId.HasValue)
+                .Equal(true)
+                .WithMessage("EventRegistrationIntentId must specify an explicit field operation.");
+        });
 
-        RuleFor(x => x.ApprovalStatusId)
-            .MustAsync(ApprovalStatusExists)
-            .When(x => x.ApprovalStatusId.HasValue)
-            .WithMessage("{PropertyName} not found");
+        When(dto => dto.ApprovalStatus is not null, () =>
+        {
+            RuleFor(dto => dto.ApprovalStatus!.ApprovalStatusId.HasValue)
+                .Equal(true)
+                .WithMessage("ApprovalStatusId must specify an explicit field operation.");
+        });
 
-        // TenantId is set by the handler from context, not by the client
-        // No validation needed here
+        When(dto => dto.AtprotoRecord is not null, () =>
+        {
+            RuleFor(dto => dto.AtprotoRecord!.AtprotoRecordId.HasValue)
+                .Equal(true)
+                .WithMessage("AtprotoRecordId must specify an explicit field operation.");
+        });
     }
 
-    private async Task<bool> UserExists(Guid userId, CancellationToken cancellationToken)
+    private static bool HaveAtLeastOneGroup(UpdateEventRegistrationDto dto)
     {
-        return await _userRepository.Exists(userId);
-    }
-
-    private async Task<bool> EventSessionExists(Guid eventSessionId, CancellationToken cancellationToken)
-    {
-        return await _eventSessionRepository.Exists(eventSessionId);
-    }
-
-    private async Task<bool> ApprovalStatusExists(int? approvalStatusId, CancellationToken cancellationToken)
-    {
-        if (!approvalStatusId.HasValue) return true;
-        return await _approvalStatusRepository.Exists(approvalStatusId.Value);
+        return dto.User is not null
+            || dto.Session is not null
+            || dto.Intent is not null
+            || dto.ApprovalStatus is not null
+            || dto.AtprotoRecord is not null;
     }
 }
