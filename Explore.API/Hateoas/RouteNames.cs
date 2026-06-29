@@ -71,6 +71,7 @@ public static class RouteNames
     public const string DeleteEventSession = "DeleteEventSession";
     public const string GetEventSessionLanguages = "GetEventSessionLanguages";
     public const string CreateEventSessionLanguage = "CreateEventSessionLanguage";
+    public const string UpdateEventSessionLanguage = "UpdateEventSessionLanguage";
     public const string DeleteEventSessionLanguage = "DeleteEventSessionLanguage";
     public const string GetEventSessionAgendaItems = "GetEventSessionAgendaItems";
     public const string GetEventRegistrations = "GetEventRegistrations";

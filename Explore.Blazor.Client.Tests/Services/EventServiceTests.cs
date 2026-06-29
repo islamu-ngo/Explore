@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventSessions;
+using UpdateEventDraftRequestDto = Explore.Blazor.Client.Models.Events.UpdateEventDraftRequestDto;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -884,10 +885,20 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var updateDto = new UpdateEventDraftRequestDto { Title = "Updated Title" };
+        var updateDto = new UpdateEventDraftRequestDto
+        {
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            Title = "Updated Title"
+        };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
 
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<UpdateEventDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -904,8 +915,18 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var updateDto = new UpdateEventDraftRequestDto { Title = "Updated Title" };
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        var updateDto = new UpdateEventDraftRequestDto
+        {
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            Title = "Updated Title"
+        };
+        _apiClient.UpdateEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<UpdateEventDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -920,19 +941,39 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = new Guid("d415b43c-3f93-4b68-9a2d-59021d838e11");
-        var updateDto = new UpdateEventDraftRequestDto { Title = "Test Title" };
+        var concurrencyStamp = Guid.NewGuid();
+        var updateDto = new UpdateEventDraftRequestDto
+        {
+            ExpectedConcurrencyStamp = concurrencyStamp,
+            Title = "Test Title"
+        };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        UpdateEventDto? capturedUpdate = null;
+        string? capturedIfMatch = null;
+        _apiClient.UpdateEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Do<UpdateEventDto>(dto => capturedUpdate = dto),
+                Arg.Do<string?>(value => capturedIfMatch = value),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
         await _service.UpdateEventAsync(eventId, updateDto);
 
-        // Assert: service forwards the narrow draft DTO directly.
         await _apiClient.Received(1).UpdateEventAsync(
             eventId,
-            Arg.Is<UpdateEventDraftRequestDto>(c => c == updateDto),
-            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<UpdateEventDto>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await Assert.That(capturedUpdate).IsNotNull();
+        await Assert.That(capturedUpdate!.Title?.Value).IsEqualTo("Test Title");
+        await Assert.That(capturedUpdate.Subtitle?.Value.HasValue).IsTrue();
+        await Assert.That(capturedUpdate.FeaturedImage?.Value.HasValue).IsTrue();
+        await Assert.That(capturedIfMatch).IsEqualTo($"\"{concurrencyStamp:D}\"");
     }
 
     [Test]
@@ -954,7 +995,8 @@ public class EventServiceTests
 
         _apiClient.UpdateEventAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<UpdateEventDraftRequestDto>(),
+                Arg.Any<UpdateEventDto>(),
+                Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -972,7 +1014,7 @@ public class EventServiceTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("event_draft_concurrency_conflict");
+        await Assert.That(result.FailureCode).IsEqualTo("event_concurrency_conflict");
         await Assert.That(result.Message).Contains("event draft changed");
     }
 
@@ -1050,9 +1092,11 @@ public class EventServiceTests
         var sessionId = Guid.NewGuid();
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var request = new UpdateEventSessionRequest
         {
             Id = sessionId,
+            ExpectedConcurrencyStamp = concurrencyStamp,
             EventId = eventId,
             Title = "Updated workshop",
             Description = "Updated description",
@@ -1073,9 +1117,12 @@ public class EventServiceTests
                 RitualRequirementsJson = "{\"note\":\"Update\"}"
             }
         };
+        UpdateEventSessionDto? capturedDto = null;
+        string? capturedIfMatch = null;
         _apiClient.UpdateEventSessionAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<UpdateEventSessionDto>(),
+                Arg.Do<UpdateEventSessionDto>(dto => capturedDto = dto),
+                Arg.Do<string?>(value => capturedIfMatch = value),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -1086,25 +1133,26 @@ public class EventServiceTests
         await Assert.That(result.Id).IsEqualTo(sessionId);
         await _apiClient.Received(1).UpdateEventSessionAsync(
             sessionId,
-            Arg.Is<UpdateEventSessionDto>(dto =>
-                dto.Id == sessionId
-                && dto.EventId == eventId
-                && dto.Title == "Updated workshop"
-                && dto.Description == "Updated description"
-                && dto.Slug == "updated-workshop"
-                && dto.LocationId == locationId
-                && dto.RoomId == roomId
-                && dto.StartTime == request.StartTime
-                && dto.EndTime == request.EndTime
-                && dto.MaxAudienceAttendees == 80
-                && dto.RegistrationModeId == 3
-                && dto.EventSessionKindId == 2
-                && dto.IslamicAspect != null
-                && dto.IslamicAspect.ReferencePrayer == (PrayerTime)3
-                && dto.IslamicAspect.RitualRequirementsJson == "{\"note\":\"Update\"}"),
+            Arg.Any<UpdateEventSessionDto>(),
+            Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+        await Assert.That(capturedIfMatch).IsEqualTo($"\"{concurrencyStamp:D}\"");
+        await Assert.That(capturedDto).IsNotNull();
+        await Assert.That(capturedDto!.Event?.EventId).IsEqualTo(eventId);
+        await Assert.That(capturedDto.Title?.Value?.Value).IsEqualTo("Updated workshop");
+        await Assert.That(capturedDto.Description?.Value?.Value).IsEqualTo("Updated description");
+        await Assert.That(capturedDto.Slug?.Value?.Value).IsEqualTo("updated-workshop");
+        await Assert.That(capturedDto.Location?.Value?.Value).IsEqualTo(locationId);
+        await Assert.That(capturedDto.Room?.Value?.Value).IsEqualTo(roomId);
+        await Assert.That(capturedDto.Schedule?.StartTime?.Value).IsEqualTo(request.StartTime);
+        await Assert.That(capturedDto.Schedule?.EndTime?.Value).IsEqualTo(request.EndTime);
+        await Assert.That(capturedDto.MaxAudienceAttendees?.Value?.Value).IsEqualTo(80);
+        await Assert.That(capturedDto.RegistrationMode?.Value?.Value).IsEqualTo(3);
+        await Assert.That(capturedDto.Kind?.Value?.Value).IsEqualTo(2);
+        await Assert.That(capturedDto.IslamicAspect?.Value?.Value?.ReferencePrayer).IsEqualTo((PrayerTime)3);
+        await Assert.That(capturedDto.IslamicAspect?.Value?.Value?.RitualRequirementsJson).IsEqualTo("{\"note\":\"Update\"}");
     }
 
     #endregion

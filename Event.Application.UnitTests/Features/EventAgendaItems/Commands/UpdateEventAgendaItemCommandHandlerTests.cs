@@ -1,12 +1,16 @@
-using AutoMapper;
-using Event.Application.UnitTests.Common;
+// ABOUTME: Unit tests for grouped EventAgendaItem update command handling.
+// ABOUTME: Covers validation, optimistic concurrency, schedule projection, relationship checks, and cache invalidation.
+
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventAgendaItem;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventAgendaItems.Handlers.Commands;
 using Explore.Application.Features.EventAgendaItems.Requests.Commands;
+using Explore.Application.Models.Common;
 using Explore.Domain;
-using Explore.Domain.Interfaces;
 using Explore.Domain.Services.Scheduling;
+using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -15,138 +19,319 @@ namespace Event.Application.UnitTests.Features.EventAgendaItems.Commands;
 
 public class UpdateEventAgendaItemCommandHandlerTests
 {
-    private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
-    private readonly IEventRepository _eventRepository;
-    private readonly IEventDayRepository _eventDayRepository;
-    private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
-    private readonly IMapper _mapper;
+    private readonly IEventAgendaItemRepository _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
+    private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly IEventDayRepository _eventDayRepository = Substitute.For<IEventDayRepository>();
+    private readonly ILocationRepository _locationRepository = Substitute.For<ILocationRepository>();
+    private readonly ILocationRoomRepository _locationRoomRepository = Substitute.For<ILocationRoomRepository>();
+    private readonly IScheduleItemKindRepository _scheduleItemKindRepository = Substitute.For<IScheduleItemKindRepository>();
+    private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
+    private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateEventAgendaItemCommandHandler _handler;
 
     public UpdateEventAgendaItemCommandHandlerTests()
     {
-        _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
-        _eventRepository = Substitute.For<IEventRepository>();
-        _eventDayRepository = Substitute.For<IEventDayRepository>();
-        _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
-        _mapper = Substitute.For<IMapper>();
-
         _handler = new UpdateEventAgendaItemCommandHandler(
             _eventAgendaItemRepository,
             _eventRepository,
             _eventDayRepository,
+            _locationRepository,
+            _locationRoomRepository,
+            _scheduleItemKindRepository,
             _scheduleProjectionCalculator,
-            _mapper
+            _cache
         );
     }
 
     [Test]
-    public async Task Handle_WithValidRequest_ReturnsSuccessResponse()
+    public async Task Handle_WhenWrapperHasNoGroups_ReturnsValidationFailureAndDoesNotSave()
     {
-        // Arrange
-        var eventId = Guid.NewGuid();
-        var agendaItemId = Guid.NewGuid();
-        var tenantId = Guid.NewGuid();
-        var command = new UpdateEventAgendaItemCommand
+        var result = await _handler.Handle(new UpdateEventAgendaItemCommand
         {
+            EventAgendaItemId = Guid.CreateVersion7(),
+            ExpectedConcurrencyStamp = Guid.CreateVersion7(),
+            EventAgendaItemDto = new UpdateEventAgendaItemDto()
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Event agenda item update failed.");
+        await _eventAgendaItemRepository.DidNotReceive().Update(Arg.Any<EventAgendaItem>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenExpectedConcurrencyStampIsStale_ThrowsConflictAndDoesNotSave()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var parentEvent = CreateEvent(tenantId);
+        var agendaItem = CreateAgendaItem(parentEvent.Id, tenantId);
+        _eventAgendaItemRepository.GetById(agendaItem.Id).Returns(agendaItem);
+        _eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
+
+        await Assert.That(async () => await _handler.Handle(new UpdateEventAgendaItemCommand
+        {
+            EventAgendaItemId = agendaItem.Id,
+            ExpectedConcurrencyStamp = Guid.CreateVersion7(),
             EventAgendaItemDto = new UpdateEventAgendaItemDto
             {
-                Id = agendaItemId,
-                EventId = eventId,
-                Title = "Updated Keynote",
-                StartTime = new DateTimeOffset(2026, 7, 15, 10, 0, 0, TimeSpan.Zero),
-                EndTime = new DateTimeOffset(2026, 7, 15, 11, 0, 0, TimeSpan.Zero),
-                SortOrder = 2
+                Title = new UpdateEventAgendaItemTitleDto { Value = "Updated Keynote" }
             }
-        };
+        }, CancellationToken.None)).Throws<ConcurrencyConflictException>();
 
-        var existingItem = DataBuilder.EventAgendaItem.Generate();
-        existingItem.Id = agendaItemId;
-        existingItem.TenantId = tenantId;
-        _eventAgendaItemRepository.GetById(agendaItemId).Returns(existingItem);
+        await _eventAgendaItemRepository.DidNotReceive().Update(Arg.Any<EventAgendaItem>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
 
-        var parentEvent = DataBuilder.Event.Generate();
-        parentEvent.Id = eventId;
-        parentEvent.TenantId = tenantId;
-        parentEvent.Timezone = "Europe/Brussels";
-        parentEvent.EventTimeZoneId = "Europe/Brussels";
-        _eventRepository.GetById(eventId).Returns(parentEvent);
-        _eventRepository.Exists(eventId).Returns(true);
+    [Test]
+    public async Task Handle_WhenSingleFieldGroupIsPresent_UpdatesOnlyThatField()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var parentEvent = CreateEvent(tenantId);
+        var agendaItem = CreateAgendaItem(parentEvent.Id, tenantId);
+        var originalDescription = agendaItem.Description;
+        var originalSortOrder = agendaItem.SortOrder;
+        _eventAgendaItemRepository.GetById(agendaItem.Id).Returns(agendaItem);
+        _eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
 
-        _eventDayRepository.FindByEventAndLocalDateAsync(eventId, Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns((EventDay?)null);
+        var result = await _handler.Handle(new UpdateEventAgendaItemCommand
+        {
+            EventAgendaItemId = agendaItem.Id,
+            ExpectedConcurrencyStamp = agendaItem.ConcurrencyStamp,
+            EventAgendaItemDto = new UpdateEventAgendaItemDto
+            {
+                Title = new UpdateEventAgendaItemTitleDto { Value = "Updated Keynote" }
+            }
+        }, CancellationToken.None);
 
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
         await Assert.That(result.Success).IsTrue();
-        await _eventAgendaItemRepository.Received(1).Update(Arg.Any<EventAgendaItem>());
+        await Assert.That(agendaItem.Title).IsEqualTo("Updated Keynote");
+        await Assert.That(agendaItem.Description).IsEqualTo(originalDescription);
+        await Assert.That(agendaItem.SortOrder).IsEqualTo(originalSortOrder);
+        await _eventAgendaItemRepository.Received(1).Update(agendaItem);
+        await _cache.Received(1).RemoveAsync($"event:detail:{parentEvent.Id}", Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task Handle_WithNonExistentAgendaItem_ReturnsFailedResponse()
+    public async Task Handle_WhenDescriptionIsExplicitlyCleared_SetsDescriptionToNull()
     {
-        // Arrange
-        var agendaItemId = Guid.NewGuid();
-        var command = new UpdateEventAgendaItemCommand
+        var tenantId = Guid.CreateVersion7();
+        var parentEvent = CreateEvent(tenantId);
+        var agendaItem = CreateAgendaItem(parentEvent.Id, tenantId);
+        _eventAgendaItemRepository.GetById(agendaItem.Id).Returns(agendaItem);
+        _eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
+
+        var result = await _handler.Handle(new UpdateEventAgendaItemCommand
         {
+            EventAgendaItemId = agendaItem.Id,
+            ExpectedConcurrencyStamp = agendaItem.ConcurrencyStamp,
             EventAgendaItemDto = new UpdateEventAgendaItemDto
             {
-                Id = agendaItemId,
-                EventId = Guid.NewGuid(),
-                Title = "Ghost Item",
-                StartTime = DateTimeOffset.Now.AddDays(1),
-                EndTime = DateTimeOffset.Now.AddDays(1).AddHours(1),
-                SortOrder = 1
+                Description = new UpdateEventAgendaItemDescriptionDto
+                {
+                    Value = OptionalUpdate<string?>.Set(null)
+                }
             }
-        };
+        }, CancellationToken.None);
 
-        _eventAgendaItemRepository.GetById(agendaItemId).Returns((EventAgendaItem?)null);
-        _eventRepository.Exists(command.EventAgendaItemDto.EventId).Returns(true);
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(agendaItem.Description).IsNull();
+        await _eventAgendaItemRepository.Received(1).Update(agendaItem);
+    }
 
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
+    [Test]
+    public async Task Handle_WhenDescriptionGroupHasNoFieldOperation_ReturnsValidationFailure()
+    {
+        var result = await _handler.Handle(new UpdateEventAgendaItemCommand
+        {
+            EventAgendaItemId = Guid.CreateVersion7(),
+            ExpectedConcurrencyStamp = Guid.CreateVersion7(),
+            EventAgendaItemDto = new UpdateEventAgendaItemDto
+            {
+                Description = new UpdateEventAgendaItemDescriptionDto()
+            }
+        }, CancellationToken.None);
 
-        // Assert
         await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Description must include an explicit field operation.");
         await _eventAgendaItemRepository.DidNotReceive().Update(Arg.Any<EventAgendaItem>());
     }
 
     [Test]
-    public async Task Handle_WithCrossTenantEvent_ReturnsFailedResponse()
+    public async Task Handle_WhenRescheduledToMatchingEventDay_LinksAgendaItemToEventDay()
     {
-        // Arrange
-        var eventId = Guid.NewGuid();
-        var agendaItemId = Guid.NewGuid();
-        var command = new UpdateEventAgendaItemCommand
+        var tenantId = Guid.CreateVersion7();
+        var parentEvent = CreateEvent(tenantId);
+        var agendaItem = CreateAgendaItem(parentEvent.Id, tenantId);
+        var eventDayId = Guid.CreateVersion7();
+        var startUtc = new DateTimeOffset(2026, 7, 20, 7, 0, 0, TimeSpan.Zero);
+        var endUtc = new DateTimeOffset(2026, 7, 20, 8, 0, 0, TimeSpan.Zero);
+        var expectedLocalDate = new DateOnly(2026, 7, 20);
+        _eventAgendaItemRepository.GetById(agendaItem.Id).Returns(agendaItem);
+        _eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
+        _eventDayRepository.FindByEventAndLocalDateAsync(parentEvent.Id, expectedLocalDate, Arg.Any<CancellationToken>())
+            .Returns(new EventDay
+            {
+                Id = eventDayId,
+                EventId = parentEvent.Id,
+                LocalDate = expectedLocalDate,
+                Event = null!,
+                Tenant = null!
+            });
+
+        var result = await _handler.Handle(new UpdateEventAgendaItemCommand
         {
+            EventAgendaItemId = agendaItem.Id,
+            ExpectedConcurrencyStamp = agendaItem.ConcurrencyStamp,
             EventAgendaItemDto = new UpdateEventAgendaItemDto
             {
-                Id = agendaItemId,
-                EventId = eventId,
-                Title = "Cross-tenant",
-                StartTime = DateTimeOffset.Now.AddDays(1),
-                EndTime = DateTimeOffset.Now.AddDays(1).AddHours(1),
-                SortOrder = 1
+                Schedule = new UpdateEventAgendaItemScheduleDto
+                {
+                    StartTime = startUtc,
+                    EndTime = endUtc
+                }
             }
-        };
+        }, CancellationToken.None);
 
-        var existingItem = DataBuilder.EventAgendaItem.Generate();
-        existingItem.Id = agendaItemId;
-        existingItem.TenantId = Guid.NewGuid(); // Different tenant
-        _eventAgendaItemRepository.GetById(agendaItemId).Returns(existingItem);
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(agendaItem.StartTime).IsEqualTo(startUtc);
+        await Assert.That(agendaItem.EndTime).IsEqualTo(endUtc);
+        await Assert.That(agendaItem.EventDayId).IsEqualTo(eventDayId);
+    }
 
-        var parentEvent = DataBuilder.Event.Generate();
-        parentEvent.Id = eventId;
-        parentEvent.TenantId = Guid.NewGuid(); // Different tenant from item
-        _eventRepository.GetById(eventId).Returns(parentEvent);
-        _eventRepository.Exists(eventId).Returns(true);
+    [Test]
+    public async Task Handle_WhenRoomBelongsToDifferentLocation_ReturnsFailureAndDoesNotSave()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var parentEvent = CreateEvent(tenantId);
+        var agendaItem = CreateAgendaItem(parentEvent.Id, tenantId);
+        var selectedLocation = CreateLocation(tenantId);
+        var selectedRoom = CreateRoom(tenantId, Guid.CreateVersion7());
+        _eventAgendaItemRepository.GetById(agendaItem.Id).Returns(agendaItem);
+        _eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
+        _locationRepository.Exists(selectedLocation.Id).Returns(true);
+        _locationRepository.GetById(selectedLocation.Id).Returns(selectedLocation);
+        _locationRoomRepository.Exists(selectedRoom.Id).Returns(true);
+        _locationRoomRepository.GetById(selectedRoom.Id).Returns(selectedRoom);
 
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(new UpdateEventAgendaItemCommand
+        {
+            EventAgendaItemId = agendaItem.Id,
+            ExpectedConcurrencyStamp = agendaItem.ConcurrencyStamp,
+            EventAgendaItemDto = new UpdateEventAgendaItemDto
+            {
+                Location = new UpdateEventAgendaItemLocationDto
+                {
+                    Value = OptionalUpdate<Guid?>.Set(selectedLocation.Id)
+                },
+                Room = new UpdateEventAgendaItemRoomDto
+                {
+                    Value = OptionalUpdate<Guid?>.Set(selectedRoom.Id)
+                }
+            }
+        }, CancellationToken.None);
 
-        // Assert
         await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Room must belong to the selected location.");
         await _eventAgendaItemRepository.DidNotReceive().Update(Arg.Any<EventAgendaItem>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenMovingToCrossTenantEvent_ReturnsFailureAndDoesNotSave()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var otherTenantId = Guid.CreateVersion7();
+        var originalEvent = CreateEvent(tenantId);
+        var crossTenantEvent = CreateEvent(otherTenantId);
+        var agendaItem = CreateAgendaItem(originalEvent.Id, tenantId);
+        _eventAgendaItemRepository.GetById(agendaItem.Id).Returns(agendaItem);
+        _eventRepository.GetById(crossTenantEvent.Id).Returns(crossTenantEvent);
+        _eventRepository.Exists(crossTenantEvent.Id).Returns(true);
+
+        var result = await _handler.Handle(new UpdateEventAgendaItemCommand
+        {
+            EventAgendaItemId = agendaItem.Id,
+            ExpectedConcurrencyStamp = agendaItem.ConcurrencyStamp,
+            EventAgendaItemDto = new UpdateEventAgendaItemDto
+            {
+                Event = new UpdateEventAgendaItemEventDto { EventId = crossTenantEvent.Id }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Event does not belong to the same tenant as the agenda item.");
+        await _eventAgendaItemRepository.DidNotReceive().Update(Arg.Any<EventAgendaItem>());
+    }
+
+    private static Explore.Domain.Event CreateEvent(Guid tenantId)
+    {
+        return new Explore.Domain.Event
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            Title = "Event",
+            Timezone = "Europe/Brussels",
+            EventTimeZoneId = "Europe/Brussels",
+            Actor = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            Tenant = null!
+        };
+    }
+
+    private static EventAgendaItem CreateAgendaItem(Guid eventId, Guid tenantId)
+    {
+        var agendaItem = new EventAgendaItem
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventId,
+            TenantId = tenantId,
+            Title = "Existing Agenda Item",
+            Description = "Existing description",
+            StartTime = new DateTimeOffset(2026, 7, 20, 6, 0, 0, TimeSpan.Zero),
+            EndTime = new DateTimeOffset(2026, 7, 20, 7, 0, 0, TimeSpan.Zero),
+            SortOrder = 3,
+            ConcurrencyStamp = Guid.CreateVersion7(),
+            Event = null!,
+            Tenant = null!
+        };
+        agendaItem.ReprojectLocalTimes("Europe/Brussels", new EventScheduleProjectionCalculator());
+        return agendaItem;
+    }
+
+    private static Location CreateLocation(Guid tenantId)
+    {
+        return new Location
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            FullName = "Main Venue",
+            Country = "Belgium",
+            City = "Brussels",
+            Pii = new LocationPii
+            {
+                Address = "Main Street 1",
+                Postcode = "1000"
+            },
+            Tenant = null!
+        };
+    }
+
+    private static LocationRoom CreateRoom(Guid tenantId, Guid locationId)
+    {
+        return new LocationRoom
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            LocationId = locationId,
+            Name = "Room A",
+            Location = null!,
+            Tenant = null!
+        };
     }
 }

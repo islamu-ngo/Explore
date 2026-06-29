@@ -101,10 +101,14 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         GetEventListRequest request, Guid? ownershipActorId, CancellationToken cancellationToken)
     {
         var spec = new EventQuerySpecification();
+        var hasExplicitDateSearch = request.DateFrom.HasValue || request.DateTo.HasValue;
 
         spec = spec.And(EventFilter.PubliclyDiscoverable());
         spec = spec.And(EventFilter.Status((int)EventStatusEnum.Published));
-        spec = spec.And(EventSubqueryFilter.CurrentOrUpcomingPublishedSession());
+        if (!hasExplicitDateSearch)
+        {
+            spec = spec.And(EventSubqueryFilter.CurrentOrUpcomingPublishedSession());
+        }
 
         // ===== Core Event filters (always available) =====
 

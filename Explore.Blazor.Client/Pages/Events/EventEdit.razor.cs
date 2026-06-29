@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
+using UpdateEventDraftRequestDto = Explore.Blazor.Client.Models.Events.UpdateEventDraftRequestDto;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
@@ -463,8 +464,8 @@ public partial class EventEdit : IDisposable
 
         updateDto = new UpdateEventDraftRequestDto
         {
-            ExpectedConcurrencyStamp = currentEvent.ConcurrencyStamp,
-            Title = currentEvent.Title,
+            ExpectedConcurrencyStamp = currentEvent.ConcurrencyStamp ?? Guid.Empty,
+            Title = currentEvent.Title ?? string.Empty,
             Subtitle = currentEvent.Subtitle,
             Description = currentEvent.Description,
             Content = currentEvent.Content,
@@ -906,7 +907,7 @@ public partial class EventEdit : IDisposable
                 currentEvent = await EventService.GetEventByIdAsync(EventId) ?? currentEvent;
                 if (currentEvent is not null)
                 {
-                    updateDto.ExpectedConcurrencyStamp = currentEvent.ConcurrencyStamp;
+                    updateDto.ExpectedConcurrencyStamp = currentEvent.ConcurrencyStamp ?? Guid.Empty;
                 }
 
                 if (!string.IsNullOrWhiteSpace(navigateToOnSuccess))

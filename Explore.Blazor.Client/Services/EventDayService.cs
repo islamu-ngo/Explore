@@ -64,11 +64,11 @@ public class EventDayService : IEventDayService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> UpdateDayAsync(Guid id, UpdateEventDayDto dto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateDayAsync(Guid id, Guid expectedConcurrencyStamp, UpdateEventDayDto dto)
     {
         try
         {
-            return await _client.UpdateEventDayAsync(id, dto);
+            return await _client.UpdateEventDayAsync(id, dto, $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (ApiException ex)
         {

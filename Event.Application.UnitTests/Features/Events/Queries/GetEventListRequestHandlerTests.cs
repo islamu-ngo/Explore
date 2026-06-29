@@ -65,6 +65,21 @@ public class GetEventListRequestHandlerTests
     }
 
     [Test]
+    public async Task Handle_WithDateFilter_DoesNotAddCurrentOrUpcomingPublishedSessionFilter()
+    {
+        _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
+            .Returns((new List<Explore.Domain.Event>(), 0));
+
+        await _handler.Handle(new GetEventListRequest { DateFrom = new DateOnly(2026, 1, 1) }, CancellationToken.None);
+
+        await _eventRepository.Received(1).GetEventsWithDetailsPaged(
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Is<EventQuerySpecification>(s => HasPublishedStatusFilter(s) && s.SubqueryFilters.All(f =>
+                f.FilterType != EventSubqueryFilterType.CurrentOrUpcomingPublishedSession)));
+    }
+
+    [Test]
     public async Task Handle_WithActorId_AddsActorFilterWithoutResolvingOrganizationOrGroup()
     {
         var actorId = Guid.NewGuid();

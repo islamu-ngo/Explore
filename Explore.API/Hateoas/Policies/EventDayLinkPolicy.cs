@@ -47,7 +47,7 @@ public sealed class EventDayDetailLinkPolicy : ILinkPolicy<EventDayDto>
             LinkRelations.Edit,
             RouteNames.UpdateEventDay,
             new { id = dto.Id },
-            "PUT",
+            "PATCH",
             "Update event day",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventDay, dto);

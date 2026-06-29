@@ -592,6 +592,10 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool IsCancelledEvent() =>
         _eventDetails?.EventStatusMasterCode == CancelledStatusMasterCode;
 
+    private bool IsPastEvent() =>
+        _eventDetails?.LastSessionDate != null &&
+        _eventDetails.LastSessionDate < DateTimeOffset.UtcNow;
+
     /// <summary>
     /// Gets the formatted date display string.
     /// </summary>

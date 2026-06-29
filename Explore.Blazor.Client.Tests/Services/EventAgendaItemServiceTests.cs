@@ -150,13 +150,23 @@ public class EventAgendaItemServiceTests
     public async Task UpdateAgendaItemAsync_ReturnsResponse_WhenApiSucceeds()
     {
         var itemId = Guid.NewGuid();
-        var dto = new UpdateEventAgendaItemDto { Title = "Updated Workshop" };
+        var expectedConcurrencyStamp = Guid.NewGuid();
+        var dto = new UpdateEventAgendaItemDto
+        {
+            Title = new UpdateEventAgendaItemTitleDto { Value = "Updated Workshop" }
+        };
         var response = new BaseCommandResponseOfGuid { Success = true, Id = itemId };
 
-        _apiClient.UpdateEventAgendaItemAsync(itemId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAgendaItemAsync(
+                itemId,
+                dto,
+                $"\"{expectedConcurrencyStamp:D}\"",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .Returns(response);
 
-        var result = await _service.UpdateAgendaItemAsync(itemId, dto);
+        var result = await _service.UpdateAgendaItemAsync(itemId, expectedConcurrencyStamp, dto);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
@@ -166,12 +176,22 @@ public class EventAgendaItemServiceTests
     public async Task UpdateAgendaItemAsync_ReturnsFailureResponse_WhenApiThrows()
     {
         var itemId = Guid.NewGuid();
-        var dto = new UpdateEventAgendaItemDto { Title = "Updated Workshop" };
+        var expectedConcurrencyStamp = Guid.NewGuid();
+        var dto = new UpdateEventAgendaItemDto
+        {
+            Title = new UpdateEventAgendaItemTitleDto { Value = "Updated Workshop" }
+        };
 
-        _apiClient.UpdateEventAgendaItemAsync(itemId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAgendaItemAsync(
+                itemId,
+                dto,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Conflict", 409));
 
-        var result = await _service.UpdateAgendaItemAsync(itemId, dto);
+        var result = await _service.UpdateAgendaItemAsync(itemId, expectedConcurrencyStamp, dto);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();

@@ -105,6 +105,7 @@
 
     private bool _isLoadingDetail;
     private DateTime? _localDate;
+    private Guid _concurrencyStamp;
 
     private EditContext _editContext = default!;
     private FormSubmitState _submitState = new();
@@ -130,6 +131,7 @@
                 _model.SortOrder = day.SortOrder;
                 _model.IsPublished = day.IsPublished;
                 _model.AllowsDayScopeRegistration = day.AllowsDayScopeRegistration;
+                _concurrencyStamp = day.ConcurrencyStamp ?? Guid.Empty;
             }
             _isLoadingDetail = false;
         }
@@ -180,18 +182,24 @@
             }
             else if (DayId.HasValue)
             {
+                if (_concurrencyStamp == Guid.Empty)
+                {
+                    _submitState.Fail("Event day must be reloaded before saving.");
+                    return;
+                }
+
                 var dto = new UpdateEventDayDto
                 {
-                    LocalDate = _localDate.Value,
-                    Label = string.IsNullOrWhiteSpace(_model.Label) ? null : _model.Label,
-                    Description = string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description,
-                    BannerText = string.IsNullOrWhiteSpace(_model.BannerText) ? null : _model.BannerText,
-                    IsPublished = _model.IsPublished,
-                    SortOrder = _model.SortOrder,
-                    AllowsDayScopeRegistration = _model.AllowsDayScopeRegistration
+                    LocalDate = new UpdateEventDayLocalDateDto { Value = _localDate.Value },
+                    Label = new UpdateEventDayLabelDto { Value = OptionalString(_model.Label) },
+                    Description = new UpdateEventDayDescriptionDto { Value = OptionalString(_model.Description) },
+                    BannerText = new UpdateEventDayBannerTextDto { Value = OptionalString(_model.BannerText) },
+                    Publication = new UpdateEventDayPublicationDto { IsPublished = _model.IsPublished },
+                    SortOrder = new UpdateEventDaySortOrderDto { Value = _model.SortOrder },
+                    Registration = new UpdateEventDayRegistrationDto { AllowsDayScopeRegistration = _model.AllowsDayScopeRegistration }
                 };
 
-                var result = await EventDayService.UpdateDayAsync(DayId.Value, dto);
+                var result = await EventDayService.UpdateDayAsync(DayId.Value, _concurrencyStamp, dto);
                 if (result?.Success == true)
                 {
                     MudDialog.Close(DialogResult.Ok(result.Id));
@@ -227,4 +235,10 @@
     }
 
     private void Cancel() => MudDialog.Cancel();
+
+    private static OptionalUpdateOfstring OptionalString(string? value) => new()
+    {
+        HasValue = true,
+        Value = string.IsNullOrWhiteSpace(value) ? null : value
+    };
 }

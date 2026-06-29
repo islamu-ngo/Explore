@@ -1,0 +1,61 @@
+// ABOUTME: API route contract tests for EventDayController endpoints.
+// ABOUTME: Verifies grouped PATCH update contract, route-ID authority, authorization metadata, and conflict response metadata.
+
+using System.Reflection;
+using Explore.API.Attributes;
+using Explore.API.Controllers;
+using Explore.API.Hateoas;
+using Explore.Application.Authorization;
+using Explore.Application.DTOs.EventDay;
+using Explore.Application.Features.EventDays.Requests.Commands;
+using Explore.Application.Models.Common;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
+
+namespace Event.Api.IntegrationTests.Features;
+
+public class EventDayControllerTests
+{
+    [Test]
+    public async Task UpdateRoute_UsesPatchRouteIdAuthoritativeContract()
+    {
+        var action = typeof(EventDayController).GetMethod(nameof(EventDayController.Update))!;
+        var route = action.GetCustomAttribute<HttpPatchAttribute>()!;
+        var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
+
+        await Assert.That(route.Template).IsEqualTo("{id:guid}");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.UpdateEventDay);
+        await Assert.That(classification.Class).IsEqualTo(EndpointClass.Authenticated);
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+        await Assert.That(action.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
+
+        var commandAuthorization = typeof(UpdateEventDayCommand).GetCustomAttribute<AuthorizeResourceAttribute>()!;
+        await Assert.That(commandAuthorization.Resource).IsEqualTo(ResourceKinds.EventDay);
+        await Assert.That(commandAuthorization.Action).IsEqualTo(AuthorizationActions.Update);
+
+        var id = Guid.CreateVersion7();
+        var secureRequest = (ISecureRequest)new UpdateEventDayCommand
+        {
+            EventDayId = id,
+            ExpectedConcurrencyStamp = Guid.CreateVersion7(),
+            EventDayDto = new UpdateEventDayDto
+            {
+                Label = new UpdateEventDayLabelDto { Value = OptionalUpdate<string?>.Set("Updated day") }
+            }
+        };
+        await Assert.That(secureRequest.ResourceId).IsEqualTo(id.ToString());
+
+        await AssertProducesProblem(action, StatusCodes.Status403Forbidden);
+        await AssertProducesProblem(action, StatusCodes.Status404NotFound);
+        await AssertProducesProblem(action, StatusCodes.Status409Conflict);
+    }
+
+    private static async Task AssertProducesProblem(MethodInfo action, int statusCode)
+    {
+        await Assert.That(action.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Any(attribute => attribute.StatusCode == statusCode && attribute.Type == typeof(ProblemDetails))).IsTrue();
+    }
+}

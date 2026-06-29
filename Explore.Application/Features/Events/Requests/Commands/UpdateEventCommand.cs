@@ -1,5 +1,5 @@
-// ABOUTME: Single command for all event updates using the null-check DTO pattern.
-// ABOUTME: Each nullable DTO targets a specific update; the handler applies whichever is non-null.
+// ABOUTME: MediatR command for PATCH-based Event property updates.
+// ABOUTME: Carries route authority, If-Match concurrency, and a grouped update payload.
 
 using System;
 using Explore.Application.Authorization;
@@ -12,9 +12,11 @@ namespace Explore.Application.Features.Events.Requests.Commands;
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
 public class UpdateEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid EventId { get; set; }
 
-    public UpdateEventDto? EventDto { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; set; }
 
-    string? ISecureRequest.ResourceId => Id.ToString();
+    public required UpdateEventDto UpdateEventDto { get; set; }
+
+    string? ISecureRequest.ResourceId => EventId.ToString();
 }

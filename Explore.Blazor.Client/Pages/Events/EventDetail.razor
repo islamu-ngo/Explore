@@ -382,7 +382,7 @@
                                     </div>
                                 </div>
                             }
-                            else if (_eventDetails.EventStatusMasterCode == "COMPLETED")
+                            else if (IsPastEvent() || _eventDetails.EventStatusMasterCode == "COMPLETED")
                             {
                                 <div class="d-flex align-center gap-4">
                                     <MudIcon Icon="@Icons.Material.Filled.History" Color="Color.Default" Size="Size.Large" />

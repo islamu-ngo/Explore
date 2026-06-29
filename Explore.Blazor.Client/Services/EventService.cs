@@ -7,6 +7,7 @@ using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.EventSessions;
 using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
+using UpdateEventDraftRequestDto = Explore.Blazor.Client.Models.Events.UpdateEventDraftRequestDto;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -94,7 +95,10 @@ public interface IEventService
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId);
     Task<ICollection<EventListDto>> GetRegistrationEventsByUserAsync(Guid userId);
     Task<ICollection<EventListDto>> GetRegistrationEventsByActorAsync(Guid actorId);
-    Task<BaseCommandResponseOfGuid> UpdateRegistrationAsync(UpdateEventRegistrationDto registration);
+    Task<BaseCommandResponseOfGuid> UpdateRegistrationAsync(
+        Guid registrationId,
+        Guid expectedConcurrencyStamp,
+        UpdateEventRegistrationDto registration);
     Task<bool> CancelEventRegistrationAsync(Guid registrationId);
     Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId);
     Task<EventSessionDto?> GetManagedSessionByIdAsync(Guid eventId, Guid sessionId);
@@ -425,23 +429,26 @@ public partial class EventService : IEventService
     {
         try
         {
-            return await _apiClient.UpdateEventAsync(eventId, request);
+            return await _apiClient.UpdateEventAsync(
+                eventId,
+                BuildGroupedEventUpdate(request),
+                $"\"{request.ExpectedConcurrencyStamp:D}\"");
         }
         catch (ApiException<ProblemDetails> ex) when (ex.StatusCode == 409)
         {
-            _logger.LogWarning(ex, "Event draft update rejected as stale for event {EventId}", eventId);
+            _logger.LogWarning(ex, "Event update rejected as stale for event {EventId}", eventId);
             return new BaseCommandResponseOfGuid
             {
                 Id = eventId,
                 Success = false,
-                Message = ex.Result?.Detail ?? ex.Result?.Title ?? "Event draft changed since it was loaded.",
+                Message = ex.Result?.Detail ?? ex.Result?.Title ?? "Event changed since it was loaded.",
                 Errors = ["Refresh the event and try again."],
-                FailureCode = "event_draft_concurrency_conflict"
+                FailureCode = "event_concurrency_conflict"
             };
         }
         catch (ApiException<BaseCommandResponseOfGuid> ex)
         {
-            _logger.LogWarning(ex, "Event draft update rejected for event {EventId}", eventId);
+            _logger.LogWarning(ex, "Event update rejected for event {EventId}", eventId);
             return ex.Result;
         }
         catch (Exception ex)
@@ -450,6 +457,60 @@ public partial class EventService : IEventService
             return null;
         }
     }
+
+    private static UpdateEventDto BuildGroupedEventUpdate(UpdateEventDraftRequestDto request) => new()
+    {
+        Title = new UpdateEventTitleDto { Value = request.Title },
+        Subtitle = new UpdateEventSubtitleDto { Value = OptionalString(request.Subtitle) },
+        Description = new UpdateEventDescriptionDto { Value = OptionalString(request.Description) },
+        Content = new UpdateEventContentDto { Value = OptionalString(request.Content) },
+        Slug = new UpdateEventSlugDto { Value = OptionalString(request.Slug) },
+        EventType = new UpdateEventEventTypeDto { Value = OptionalInt(request.EventTypeId) },
+        AudienceGender = new UpdateEventAudienceGenderDto { Value = OptionalInt(request.AudienceGenderId) },
+        AudienceAge = new UpdateEventAudienceAgeDto { Value = OptionalInt(request.AudienceAgeId) },
+        Price = new UpdateEventPriceDto { Value = OptionalDecimal(request.Price) },
+        CurrencyCode = new UpdateEventCurrencyCodeDto { Value = OptionalString(request.CurrencyCode) },
+        FeaturedImage = new UpdateEventFeaturedImageDto { Value = OptionalGuid(request.FeaturedImageId) },
+        RegistrationRequired = new UpdateEventRegistrationRequiredDto { Value = request.IsRegistrationRequired.GetValueOrDefault() },
+        ExternalRegistrationUrl = new UpdateEventExternalRegistrationUrlDto { Value = OptionalString(request.ExternalRegistrationUrl) },
+        Visibility = new UpdateEventVisibilityDto { Value = request.VisibilityTypeId.GetValueOrDefault(1) },
+        Format = new UpdateEventFormatDto { Value = request.EventFormatId.GetValueOrDefault(1) },
+        Madhab = new UpdateEventMadhabDto { Value = OptionalInt(request.MadhabId) },
+        Timezone = new UpdateEventTimezoneDto { Value = OptionalString(request.Timezone) },
+        EventTimeZone = new UpdateEventEventTimeZoneDto { Value = OptionalString(request.EventTimeZoneId) },
+        EventUrl = new UpdateEventUrlDto { Value = OptionalString(request.EventUrl) },
+        BackgroundColor = new UpdateEventBackgroundColorDto { Value = OptionalString(request.BackgroundColor) },
+        BackgroundEffect = new UpdateEventBackgroundEffectDto { Value = OptionalString(request.BackgroundEffect) },
+        BackgroundImage = new UpdateEventBackgroundImageDto { Value = OptionalGuid(request.BackgroundImageId) },
+        SourceTemplate = new UpdateEventSourceTemplateDto { Value = OptionalGuid(request.TemplateId) },
+        SeriesMembership = new UpdateEventSeriesMembershipDto { Value = OptionalGuid(request.EventSeriesId) },
+        SeriesOrder = new UpdateEventSeriesOrderDto { Value = OptionalInt(request.SeriesOrder) },
+        RegistrationPolicy = new UpdateEventRegistrationPolicyDto { Value = OptionalInt(request.RegistrationPolicyId) }
+    };
+
+    private static OptionalUpdateOfstring OptionalString(string? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOfint OptionalInt(int? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOfdecimal OptionalDecimal(double? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOfGuid OptionalGuid(Guid? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
 
     public async Task<BaseCommandResponseOfGuid?> ArchiveEventAsync(Guid eventId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default)
     {
@@ -740,26 +801,48 @@ public partial class EventService : IEventService
         });
 
     public Task<BaseCommandResponseOfGuid> UpdateSessionAsync(UpdateEventSessionRequest session)
-        => _apiClient.UpdateEventSessionAsync(session.Id ?? Guid.Empty, new UpdateEventSessionDto
+        => _apiClient.UpdateEventSessionAsync(
+            session.Id ?? Guid.Empty,
+            BuildGroupedSessionUpdate(session),
+            $"\"{session.ExpectedConcurrencyStamp:D}\"");
+
+    private static UpdateEventSessionDto BuildGroupedSessionUpdate(UpdateEventSessionRequest session) => new()
+    {
+        Event = new UpdateEventSessionEventDto { EventId = session.EventId },
+        Schedule = new UpdateEventSessionScheduleDto
         {
-            Id = session.Id,
-            EventId = session.EventId,
-            StartTime = session.StartTime,
-            EndTime = session.EndTime,
-            LocationId = session.LocationId,
-            FeaturedImageId = session.FeaturedImageId,
-            RoomId = session.RoomId,
-            SortOrder = session.SortOrder,
-            Title = session.Title,
-            EventSessionKindId = session.EventSessionKindId,
-            Description = session.Description,
-            Slug = session.Slug,
-            MaxAudienceAttendees = session.MaxAudienceAttendees,
-            RegistrationModeId = session.RegistrationModeId,
-            Price = session.Price,
-            CurrencyCode = session.CurrencyCode,
-            IslamicAspect = session.IslamicAspect
-        });
+            StartTime = OptionalDateTimeOffset(session.StartTime),
+            EndTime = OptionalDateTimeOffset(session.EndTime)
+        },
+        Location = new UpdateEventSessionLocationDto { Value = OptionalGuid(session.LocationId) },
+        FeaturedImage = new UpdateEventSessionFeaturedImageDto { Value = OptionalGuid(session.FeaturedImageId) },
+        Room = new UpdateEventSessionRoomDto { Value = OptionalGuid(session.RoomId) },
+        SortOrder = new UpdateEventSessionSortOrderDto { Value = session.SortOrder.GetValueOrDefault() },
+        Title = new UpdateEventSessionTitleDto { Value = OptionalString(session.Title) },
+        Kind = new UpdateEventSessionKindDto { Value = OptionalInt(session.EventSessionKindId) },
+        Description = new UpdateEventSessionDescriptionDto { Value = OptionalString(session.Description) },
+        Slug = new UpdateEventSessionSlugDto { Value = OptionalString(session.Slug) },
+        MaxAudienceAttendees = new UpdateEventSessionMaxAudienceAttendeesDto { Value = OptionalInt(session.MaxAudienceAttendees) },
+        RegistrationMode = new UpdateEventSessionRegistrationModeDto { Value = OptionalInt(session.RegistrationModeId) },
+        Price = new UpdateEventSessionPriceDto { Value = OptionalDecimal(session.Price) },
+        CurrencyCode = new UpdateEventSessionCurrencyCodeDto { Value = OptionalString(session.CurrencyCode) },
+        IslamicAspect = new UpdateEventSessionIslamicAspectUpdateDto
+        {
+            Value = OptionalEventSessionIslamicAspect(session.IslamicAspect)
+        }
+    };
+
+    private static OptionalUpdateOfDateTimeOffset OptionalDateTimeOffset(DateTimeOffset? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOfEventSessionIslamicAspectDto OptionalEventSessionIslamicAspect(EventSessionIslamicAspectDto? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
 
     public Task<BaseCommandResponseOfGuid?> PublishEventSessionAsync(
         Guid sessionId,
@@ -1168,7 +1251,14 @@ public partial class EventService : IEventService
         return referenceDate.HasValue && referenceDate.Value.Date < DateTimeOffset.UtcNow.Date;
     }
 
-    public Task<BaseCommandResponseOfGuid> UpdateRegistrationAsync(UpdateEventRegistrationDto registration) => _apiClient.UpdateEventRegistrationAsync(registration.Id ?? Guid.Empty, registration);
+    public Task<BaseCommandResponseOfGuid> UpdateRegistrationAsync(
+        Guid registrationId,
+        Guid expectedConcurrencyStamp,
+        UpdateEventRegistrationDto registration)
+        => _apiClient.UpdateEventRegistrationAsync(
+            registrationId,
+            registration,
+            $"\"{expectedConcurrencyStamp:D}\"");
 
     public async Task<bool> CancelEventRegistrationAsync(Guid registrationId)
     {

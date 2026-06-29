@@ -10,6 +10,6 @@ public interface IEventDayService
     Task<ICollection<EventDayListDto>> GetDaysByEventAsync(Guid eventId);
     Task<EventDayDto?> GetDayByIdAsync(Guid dayId);
     Task<BaseCommandResponseOfGuid?> CreateDayAsync(CreateEventDayDto dto);
-    Task<BaseCommandResponseOfGuid?> UpdateDayAsync(Guid id, UpdateEventDayDto dto);
+    Task<BaseCommandResponseOfGuid?> UpdateDayAsync(Guid id, Guid expectedConcurrencyStamp, UpdateEventDayDto dto);
     Task<bool> DeleteDayAsync(Guid dayId);
 }

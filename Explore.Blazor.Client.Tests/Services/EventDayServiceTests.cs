@@ -143,13 +143,20 @@ public class EventDayServiceTests
     public async Task UpdateDayAsync_ReturnsResponse_WhenApiSucceeds()
     {
         var dayId = Guid.NewGuid();
-        var dto = new UpdateEventDayDto { Label = "Updated Day" };
+        var stamp = Guid.NewGuid();
+        var dto = new UpdateEventDayDto
+        {
+            Label = new UpdateEventDayLabelDto
+            {
+                Value = new OptionalUpdateOfstring { HasValue = true, Value = "Updated Day" }
+            }
+        };
         var response = new BaseCommandResponseOfGuid { Success = true, Id = dayId };
 
-        _apiClient.UpdateEventDayAsync(dayId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventDayAsync(dayId, dto, $"\"{stamp:D}\"", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
-        var result = await _service.UpdateDayAsync(dayId, dto);
+        var result = await _service.UpdateDayAsync(dayId, stamp, dto);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
@@ -159,12 +166,19 @@ public class EventDayServiceTests
     public async Task UpdateDayAsync_ReturnsFailureResponse_WhenApiThrows()
     {
         var dayId = Guid.NewGuid();
-        var dto = new UpdateEventDayDto { Label = "Updated Day" };
+        var stamp = Guid.NewGuid();
+        var dto = new UpdateEventDayDto
+        {
+            Label = new UpdateEventDayLabelDto
+            {
+                Value = new OptionalUpdateOfstring { HasValue = true, Value = "Updated Day" }
+            }
+        };
 
-        _apiClient.UpdateEventDayAsync(dayId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventDayAsync(dayId, dto, $"\"{stamp:D}\"", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Conflict", 409));
 
-        var result = await _service.UpdateDayAsync(dayId, dto);
+        var result = await _service.UpdateDayAsync(dayId, stamp, dto);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();

@@ -9,6 +9,8 @@ public sealed class UpdateEventSessionRequest
 {
     public Guid? Id { get; set; }
 
+    public Guid ExpectedConcurrencyStamp { get; set; }
+
     public Guid? EventId { get; set; }
 
     public DateTimeOffset? StartTime { get; set; }

@@ -105,18 +105,33 @@ public class EventSeriesController : ControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSeries)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateEventSeries)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSeriesDto dto)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
+        Guid id,
+        [FromBody] UpdateEventSeriesDto dto,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
-        if (id != dto.Id)
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Event series ID mismatch.");
+            return this.ToValidationProblem(
+                UpdateValidationProblem,
+                "If-Match header is required and must contain the current event series concurrency stamp.");
         }
 
-        var response = await _mediator.Send(new UpdateEventSeriesCommand { EventSeriesDto = dto });
+        var response = await _mediator.Send(new UpdateEventSeriesCommand
+        {
+            EventSeriesId = id,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            EventSeriesDto = dto
+        }, cancellationToken);
+
         if (!response.Success)
         {
             return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
@@ -124,6 +139,28 @@ public class EventSeriesController : ControllerBase
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
         return Ok(response);
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = Guid.Empty;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var trimmed = ifMatch.Trim();
+        if (trimmed.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"')
+        {
+            trimmed = trimmed[1..^1];
+        }
+
+        return Guid.TryParse(trimmed, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 
     [Authorize]

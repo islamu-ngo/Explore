@@ -1,5 +1,5 @@
-// ABOUTME: MediatR command for updating an event session.
-// ABOUTME: Carries the UpdateEventSessionDto payload.
+// ABOUTME: MediatR command for PATCH-based EventSession property updates.
+// ABOUTME: Carries route ID, If-Match concurrency stamp, and grouped update payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSession;
@@ -11,7 +11,9 @@ namespace Explore.Application.Features.EventSessions.Requests.Commands;
 [AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Update)]
 public class UpdateEventSessionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public Guid EventSessionId { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; set; }
     public required UpdateEventSessionDto EventSessionDto { get; set; }
 
-    string? ISecureRequest.ResourceId => EventSessionDto.Id.ToString();
+    string? ISecureRequest.ResourceId => EventSessionId.ToString();
 }

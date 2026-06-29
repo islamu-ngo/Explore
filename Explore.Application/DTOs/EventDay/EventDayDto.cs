@@ -17,4 +17,5 @@ public class EventDayDto
     public int SortOrder { get; set; }
     public bool AllowsDayScopeRegistration { get; set; }
     public Guid TenantId { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 }

@@ -647,25 +647,37 @@ public class EventController : ExploreControllerBase
     }
 
     /// <summary>
-    /// Update an existing event draft's scalar shell fields.
+    /// Partially update an existing event's editable property groups.
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateEvent)]
-    [EndpointSummary("Update Event Draft")]
-    [EndpointDescription("Update scalar event draft fields. Lifecycle status and session-derived program projection fields are server-owned and are not accepted by this contract.")]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateEvent)]
+    [EndpointSummary("Update Event")]
+    [EndpointDescription("Partially update editable event shell fields. Route ID is authoritative and If-Match must contain the current event concurrency stamp.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDraftRequestDto draft, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
+        Guid id,
+        [FromBody] UpdateEventDto updateDto,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
-        var command = new UpdateEventDraftCommand
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            Id = id,
-            Draft = draft
+            return this.ToValidationProblem(
+                UpdateValidationProblem,
+                "If-Match header is required and must contain the current event concurrency stamp.");
+        }
+
+        var command = new UpdateEventCommand
+        {
+            EventId = id,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            UpdateEventDto = updateDto
         };
         var response = await _mediator.Send(command, cancellationToken);
 
@@ -1020,5 +1032,21 @@ public class EventController : ExploreControllerBase
             : sanitized.ToLowerInvariant();
     }
 
-    public sealed record UpdateEventRequestDto(UpdateEventDto? EventDto);
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        value = value.Trim('"');
+        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
+    }
 }

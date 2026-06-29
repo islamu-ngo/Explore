@@ -21,7 +21,6 @@ public class CustomPropertyMappingProfile : Profile
         CreateMap<Category, CategoryListDto>()
             .ForMember(dest => dest.ParentFullName, opt => opt.MapFrom(src => src.Parent != null ? src.Parent.FullName : null));
         CreateMap<CreateCategoryDto, Category>();
-        CreateMap<UpdateCategoryDto, Category>();
 
         CreateMap<CustomPropertyOption, CustomPropertyOptionDto>();
         CreateMap<CustomPropertyDefinition, CustomPropertyDefinitionDto>();

@@ -16,4 +16,5 @@ public class EventAgendaItemListDto
     public int? KindId { get; set; }
     public string? KindFullName { get; set; }
     public int SortOrder { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 }

@@ -12,6 +12,7 @@ using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Features.EventSessions.Requests.Queries;
+using Explore.Application.Models.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -237,7 +238,7 @@ public class EventSessionControllerTests
 
     #endregion
 
-    #region PUT Endpoints
+    #region PATCH Endpoints
 
     [Test]
     public async Task Update_WithoutAuth_ShouldReturnUnauthorized()
@@ -246,15 +247,55 @@ public class EventSessionControllerTests
         var id = Guid.NewGuid();
         var updateDto = new UpdateEventSessionDto
         {
-            Id = id,
-            Title = "Updated Session"
+            Title = new UpdateEventSessionTitleDto
+            {
+                Value = OptionalUpdate<string?>.Set("Updated Session")
+            }
         };
 
         // Act
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", updateDto);
+        var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{id}", updateDto);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdateRoute_UsesPatchRouteIdAuthoritativeContract()
+    {
+        var action = typeof(EventSessionController).GetMethod(nameof(EventSessionController.Update))!;
+        var route = action.GetCustomAttribute<HttpPatchAttribute>()!;
+        var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
+
+        await Assert.That(route.Template).IsEqualTo("{id:guid}");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.UpdateEventSession);
+        await Assert.That(classification.Class).IsEqualTo(EndpointClass.Authenticated);
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+        await Assert.That(action.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
+
+        var commandAuthorization = typeof(UpdateEventSessionCommand).GetCustomAttribute<AuthorizeResourceAttribute>()!;
+        await Assert.That(commandAuthorization.Resource).IsEqualTo(ResourceKinds.EventSession);
+        await Assert.That(commandAuthorization.Action).IsEqualTo(AuthorizationActions.Update);
+
+        var id = Guid.NewGuid();
+        var secureRequest = (ISecureRequest)new UpdateEventSessionCommand
+        {
+            EventSessionId = id,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            EventSessionDto = new UpdateEventSessionDto
+            {
+                Title = new UpdateEventSessionTitleDto
+                {
+                    Value = OptionalUpdate<string?>.Set("Updated Session")
+                }
+            }
+        };
+        await Assert.That(secureRequest.ResourceId).IsEqualTo(id.ToString());
+
+        await AssertProducesProblem(action, StatusCodes.Status403Forbidden);
+        await AssertProducesProblem(action, StatusCodes.Status404NotFound);
+        await AssertProducesProblem(action, StatusCodes.Status409Conflict);
     }
 
     #endregion

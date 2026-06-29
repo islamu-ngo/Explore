@@ -1,5 +1,5 @@
 // ABOUTME: Service for managing Event Series via the NSwag-generated API client.
-// ABOUTME: Provides list, detail, create, and search operations for series selection.
+// ABOUTME: Provides list, detail, create, update, and search operations for series selection.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Events;
@@ -62,6 +62,31 @@ public class EventSeriesService : IEventSeriesService
         {
             _logger.LogError(ex, "Error creating event series");
             return null;
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> UpdateSeriesAsync(
+        Guid id,
+        Guid expectedConcurrencyStamp,
+        UpdateEventSeriesDto dto,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            return await _apiClient.UpdateEventSeriesAsync(
+                id,
+                dto,
+                $"\"{expectedConcurrencyStamp:D}\"",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating event series {SeriesId}", id);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Failed to update event series."
+            };
         }
     }
 

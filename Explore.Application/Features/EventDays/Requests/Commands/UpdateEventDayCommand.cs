@@ -1,5 +1,5 @@
-// ABOUTME: MediatR command for updating an existing EventDay.
-// ABOUTME: Secured via AuthorizeResource for the event_day resource kind.
+// ABOUTME: MediatR command for route-ID EventDay PATCH updates.
+// ABOUTME: Carries If-Match concurrency stamp and grouped update payload.
 
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventDay;
@@ -11,8 +11,10 @@ namespace Explore.Application.Features.EventDays.Requests.Commands;
 [AuthorizeResource(ResourceKinds.EventDay, AuthorizationActions.Update)]
 public class UpdateEventDayCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public Guid EventDayId { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; set; }
     public required UpdateEventDayDto EventDayDto { get; set; }
 
-    string? ISecureRequest.ResourceId => EventDayDto.Id.ToString();
+    string? ISecureRequest.ResourceId => EventDayId.ToString();
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

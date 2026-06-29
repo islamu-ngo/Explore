@@ -64,11 +64,11 @@ public class EventAgendaItemService : IEventAgendaItemService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> UpdateAgendaItemAsync(Guid id, UpdateEventAgendaItemDto dto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateAgendaItemAsync(Guid id, Guid expectedConcurrencyStamp, UpdateEventAgendaItemDto dto)
     {
         try
         {
-            return await _client.UpdateEventAgendaItemAsync(id, dto);
+            return await _client.UpdateEventAgendaItemAsync(id, dto, $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (ApiException ex)
         {

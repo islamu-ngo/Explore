@@ -11,8 +11,10 @@ namespace Explore.Application.Features.EventAgendaItems.Requests.Commands;
 [AuthorizeResource(ResourceKinds.EventAgendaItem, AuthorizationActions.Update)]
 public class UpdateEventAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public Guid EventAgendaItemId { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; set; }
     public required UpdateEventAgendaItemDto EventAgendaItemDto { get; set; }
 
-    string? ISecureRequest.ResourceId => EventAgendaItemDto.Id.ToString();
+    string? ISecureRequest.ResourceId => EventAgendaItemId.ToString();
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

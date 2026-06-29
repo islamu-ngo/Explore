@@ -1,15 +1,16 @@
 // ABOUTME: Unit tests for UpdateEventSessionCommandHandler validation and schedule re-linking behavior.
 // ABOUTME: Verifies event-session updates, event-day movement, and Islamic aspect invariants.
 
-using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
+using Explore.Application.Models.Common;
 using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
+using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -21,12 +22,14 @@ public class UpdateEventSessionCommandHandlerTests
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
+    private readonly ILocationRoomRepository _locationRoomRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
     private readonly IEventSessionKindRepository _eventSessionKindRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
-    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly HybridCache _cache;
     private readonly UpdateEventSessionCommandHandler _handler;
 
     public UpdateEventSessionCommandHandlerTests()
@@ -34,23 +37,34 @@ public class UpdateEventSessionCommandHandlerTests
         _eventSessionRepository = Substitute.For<IEventSessionRepository>();
         _eventRepository = Substitute.For<IEventRepository>();
         _locationRepository = Substitute.For<ILocationRepository>();
+        _locationRoomRepository = Substitute.For<ILocationRoomRepository>();
         _registrationModeRepository = Substitute.For<IRegistrationModeRepository>();
         _eventSessionKindRepository = Substitute.For<IEventSessionKindRepository>();
         _eventSessionIslamicAspectRepository = Substitute.For<IEventSessionIslamicAspectRepository>();
         _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
         _eventDayRepository = Substitute.For<IEventDayRepository>();
-        _mapper = Substitute.For<IMapper>();
+        _unitOfWork = Substitute.For<IUnitOfWork>();
+        _cache = Substitute.For<HybridCache>();
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var operation = call.Arg<Func<CancellationToken, Task>>();
+                return operation!(CancellationToken.None);
+            });
 
         _handler = new UpdateEventSessionCommandHandler(
             _eventSessionRepository,
             _eventRepository,
             _locationRepository,
+            _locationRoomRepository,
             _registrationModeRepository,
             _eventSessionKindRepository,
             _eventSessionIslamicAspectRepository,
             _scheduleProjectionCalculator,
             _eventDayRepository,
-            _mapper
+            _unitOfWork,
+            _cache
         );
     }
 
@@ -60,22 +74,22 @@ public class UpdateEventSessionCommandHandlerTests
         // Arrange
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var command = new UpdateEventSessionCommand
+        var command = CreateScheduleCommand(
+            sessionId,
+            eventId,
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow.AddDays(1),
+            DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
+            "Fixed Session");
+        command.EventSessionDto.IslamicAspect = new UpdateEventSessionIslamicAspectUpdateDto
         {
-            EventSessionDto = new UpdateEventSessionDto
-            {
-                Id = sessionId,
-                EventId = eventId,
-                StartTime = DateTimeOffset.UtcNow.AddDays(1),
-                EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
-                Title = "Fixed Session",
-                IslamicAspect = new EventSessionIslamicAspectDto
+            Value = OptionalUpdate<EventSessionIslamicAspectDto?>.Set(
+                new EventSessionIslamicAspectDto
                 {
                     StartTimeType = SessionStartTimeType.Fixed,
                     ReferencePrayer = PrayerTime.Dhuhr,
                     OffsetMinutes = 0
-                }
-            }
+                })
         };
 
         _eventRepository.Exists(eventId).Returns(true);
@@ -103,17 +117,8 @@ public class UpdateEventSessionCommandHandlerTests
         var endUtc = new DateTimeOffset(2026, 7, 20, 9, 0, 0, TimeSpan.Zero);
         var expectedLocalDate = new DateOnly(2026, 7, 20);
 
-        var command = new UpdateEventSessionCommand
-        {
-            EventSessionDto = new UpdateEventSessionDto
-            {
-                Id = sessionId,
-                EventId = eventId,
-                StartTime = startUtc,
-                EndTime = endUtc,
-                Title = "Rescheduled Session"
-            }
-        };
+        var concurrencyStamp = Guid.NewGuid();
+        var command = CreateScheduleCommand(sessionId, eventId, concurrencyStamp, startUtc, endUtc, "Rescheduled Session");
 
         var existingEvent = DataBuilder.Event.Generate();
         existingEvent.Id = eventId;
@@ -130,6 +135,7 @@ public class UpdateEventSessionCommandHandlerTests
             TenantId = tenantId,
             StartTime = DateTimeOffset.UtcNow.AddDays(1),
             EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            ConcurrencyStamp = concurrencyStamp,
             Event = null!,
             Tenant = null!
         };
@@ -145,9 +151,6 @@ public class UpdateEventSessionCommandHandlerTests
         };
         _eventDayRepository.FindByEventAndLocalDateAsync(eventId, expectedLocalDate, Arg.Any<CancellationToken>())
             .Returns(matchingDay);
-
-        _mapper.When(m => m.Map(command.EventSessionDto, existingSession))
-            .Do(_ => { /* mapper applies field updates */ });
 
         _eventSessionIslamicAspectRepository.GetById(sessionId).Returns((EventSessionIslamicAspect?)null);
 
@@ -170,17 +173,8 @@ public class UpdateEventSessionCommandHandlerTests
         var startUtc = new DateTimeOffset(2026, 7, 20, 7, 0, 0, TimeSpan.Zero);
         var endUtc = new DateTimeOffset(2026, 7, 20, 9, 0, 0, TimeSpan.Zero);
 
-        var command = new UpdateEventSessionCommand
-        {
-            EventSessionDto = new UpdateEventSessionDto
-            {
-                Id = sessionId,
-                EventId = eventId,
-                StartTime = startUtc,
-                EndTime = endUtc,
-                Title = "Orphan Session"
-            }
-        };
+        var concurrencyStamp = Guid.NewGuid();
+        var command = CreateScheduleCommand(sessionId, eventId, concurrencyStamp, startUtc, endUtc, "Orphan Session");
 
         var existingEvent = DataBuilder.Event.Generate();
         existingEvent.Id = eventId;
@@ -198,6 +192,7 @@ public class UpdateEventSessionCommandHandlerTests
             EventDayId = Guid.NewGuid(), // previously linked to a day
             StartTime = DateTimeOffset.UtcNow.AddDays(1),
             EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            ConcurrencyStamp = concurrencyStamp,
             Event = null!,
             Tenant = null!
         };
@@ -205,9 +200,6 @@ public class UpdateEventSessionCommandHandlerTests
 
         _eventDayRepository.FindByEventAndLocalDateAsync(Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns((EventDay?)null);
-
-        _mapper.When(m => m.Map(command.EventSessionDto, existingSession))
-            .Do(_ => { });
 
         _eventSessionIslamicAspectRepository.GetById(sessionId).Returns((EventSessionIslamicAspect?)null);
 
@@ -234,17 +226,8 @@ public class UpdateEventSessionCommandHandlerTests
         var newEndUtc = new DateTimeOffset(2026, 7, 21, 9, 0, 0, TimeSpan.Zero);
         var newExpectedLocalDate = new DateOnly(2026, 7, 21);
 
-        var command = new UpdateEventSessionCommand
-        {
-            EventSessionDto = new UpdateEventSessionDto
-            {
-                Id = sessionId,
-                EventId = eventId,
-                StartTime = newStartUtc,
-                EndTime = newEndUtc,
-                Title = "Moved Session"
-            }
-        };
+        var concurrencyStamp = Guid.NewGuid();
+        var command = CreateScheduleCommand(sessionId, eventId, concurrencyStamp, newStartUtc, newEndUtc, "Moved Session");
 
         var existingEvent = DataBuilder.Event.Generate();
         existingEvent.Id = eventId;
@@ -262,6 +245,7 @@ public class UpdateEventSessionCommandHandlerTests
             EventDayId = oldDayId, // linked to old day
             StartTime = new DateTimeOffset(2026, 7, 20, 7, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 20, 9, 0, 0, TimeSpan.Zero),
+            ConcurrencyStamp = concurrencyStamp,
             Event = null!,
             Tenant = null!
         };
@@ -278,9 +262,6 @@ public class UpdateEventSessionCommandHandlerTests
         _eventDayRepository.FindByEventAndLocalDateAsync(eventId, newExpectedLocalDate, Arg.Any<CancellationToken>())
             .Returns(newDay);
 
-        _mapper.When(m => m.Map(command.EventSessionDto, existingSession))
-            .Do(_ => { });
-
         _eventSessionIslamicAspectRepository.GetById(sessionId).Returns((EventSessionIslamicAspect?)null);
 
         // Act
@@ -291,4 +272,29 @@ public class UpdateEventSessionCommandHandlerTests
         await Assert.That(existingSession.EventDayId).IsEqualTo(newDayId);
         await Assert.That(existingSession.EventDayId).IsNotEqualTo(oldDayId);
     }
+
+    private static UpdateEventSessionCommand CreateScheduleCommand(
+        Guid sessionId,
+        Guid eventId,
+        Guid concurrencyStamp,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc,
+        string title) => new()
+        {
+            EventSessionId = sessionId,
+            ExpectedConcurrencyStamp = concurrencyStamp,
+            EventSessionDto = new UpdateEventSessionDto
+            {
+                Event = new UpdateEventSessionEventDto { EventId = eventId },
+                Schedule = new UpdateEventSessionScheduleDto
+                {
+                    StartTime = OptionalUpdate<DateTimeOffset?>.Set(startUtc),
+                    EndTime = OptionalUpdate<DateTimeOffset?>.Set(endUtc)
+                },
+                Title = new UpdateEventSessionTitleDto
+                {
+                    Value = OptionalUpdate<string?>.Set(title)
+                }
+            }
+        };
 }

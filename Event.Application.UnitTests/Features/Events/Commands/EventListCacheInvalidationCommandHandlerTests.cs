@@ -1,7 +1,6 @@
 // ABOUTME: Cache invalidation tests for event write handlers that mutate public event lists.
 // ABOUTME: Verifies tenant-scoped list tag eviction instead of legacy fixed-key removal.
 
-using AutoMapper;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -26,24 +25,31 @@ public class EventListCacheInvalidationCommandHandlerTests
         var eventRepository = Substitute.For<IEventRepository>();
         var cache = Substitute.For<HybridCache>();
         var @event = CreateEvent(eventId, tenantId);
-        eventRepository.GetById(eventId).Returns(@event);
+        var concurrencyStamp = Guid.NewGuid();
+        @event.ConcurrencyStamp = concurrencyStamp;
+        eventRepository.GetScheduleGraphForUpdateAsync(eventId, Arg.Any<CancellationToken>()).Returns(@event);
 
         var handler = new UpdateEventCommandHandler(
             eventRepository,
             Substitute.For<IAudienceAgeRepository>(),
             Substitute.For<IAudienceGenderRepository>(),
             Substitute.For<IEventTypeRepository>(),
-            Substitute.For<IActorRepository>(),
+            Substitute.For<IVisibilityTypeRepository>(),
+            Substitute.For<IEventFormatRepository>(),
             Substitute.For<IStorageObjectRepository>(),
             Substitute.For<IEventSeriesRepository>(),
             Substitute.For<IEventRegistrationPolicyRepository>(),
             new EventScheduleProjectionCalculator(),
-            Substitute.For<IMapper>(),
             cache);
 
         var result = await handler.Handle(new UpdateEventCommand
         {
-            Id = eventId
+            EventId = eventId,
+            ExpectedConcurrencyStamp = concurrencyStamp,
+            UpdateEventDto = new UpdateEventDto
+            {
+                Title = new UpdateEventTitleDto { Value = "Updated title" }
+            }
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();

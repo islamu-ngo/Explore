@@ -10,6 +10,7 @@ using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
+using UpdateEventDraftRequestDto = Explore.Blazor.Client.Models.Events.UpdateEventDraftRequestDto;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -329,7 +330,7 @@ public sealed class EventEditTests : IDisposable
             Id = eventId,
             Message = "The event draft changed since it was loaded. Refresh the event and try again.",
             Errors = ["Refresh the event and try again."],
-            FailureCode = "event_draft_concurrency_conflict"
+            FailureCode = "event_concurrency_conflict"
         });
         var component = CreateComponent(eventId, canAddSession: true, eventService);
         InvokePrivate(component, "PopulateFormFromEvent");

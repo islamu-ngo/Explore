@@ -267,6 +267,37 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
     }
 
     [Test]
+    public async Task Update_WithoutIfMatch_ReturnsBadRequest()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        var userId = Guid.CreateVersion7();
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Patch, $"/api/event/{Guid.CreateVersion7()}", userId);
+        request.Content = JsonContent.Create(new UpdateEventDto
+        {
+            Title = new UpdateEventTitleDto { Value = "Updated title" }
+        });
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+    }
+
+    [Test]
+    public async Task Update_WithOldPutRoute_ReturnsMethodNotAllowed()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        var userId = Guid.CreateVersion7();
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/event/{Guid.CreateVersion7()}", userId);
+        request.Content = JsonContent.Create(new { title = new { value = "Updated title" } });
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Test]
     public async Task Delete_WithoutAuthentication_ReturnsUnauthorized()
     {
         await _fixture.ResetDatabaseAsync();

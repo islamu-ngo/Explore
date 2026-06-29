@@ -28,4 +28,5 @@ public class EventAgendaItemDto
     public string? KindFullName { get; set; }
     public int SortOrder { get; set; }
     public Guid TenantId { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 }

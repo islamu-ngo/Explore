@@ -45,6 +45,7 @@ internal static class EventSessionFormModelMapper
         ArgumentNullException.ThrowIfNull(sourceSession);
 
         session.Id = sourceSession.Id;
+        session.ExpectedConcurrencyStamp = sourceSession.ConcurrencyStamp ?? Guid.Empty;
         session.EventId = eventId;
         session.Title = sourceSession.Title ?? string.Empty;
         session.Description = sourceSession.Description;

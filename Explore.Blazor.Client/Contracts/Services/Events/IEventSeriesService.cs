@@ -1,4 +1,4 @@
-// ABOUTME: Contract for EventSeries operations — list, detail, create, and search.
+// ABOUTME: Contract for EventSeries operations — list, detail, create, update, and search.
 // ABOUTME: Used by EventSeriesSection component for series selection on Create/Edit Event pages.
 
 using Explore.Blazor.Client.Clients;
@@ -13,6 +13,12 @@ public interface IEventSeriesService
     Task<EventSeriesDto?> GetSeriesDetailAsync(Guid id, CancellationToken ct = default);
 
     Task<BaseCommandResponseOfGuid?> CreateSeriesAsync(CreateEventSeriesDto dto, CancellationToken ct = default);
+
+    Task<BaseCommandResponseOfGuid?> UpdateSeriesAsync(
+        Guid id,
+        Guid expectedConcurrencyStamp,
+        UpdateEventSeriesDto dto,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Searches series by title substring for autocomplete.

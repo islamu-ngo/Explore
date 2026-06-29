@@ -12,4 +12,5 @@ public class EventDayListDto
     public bool IsPublished { get; set; }
     public int SortOrder { get; set; }
     public bool AllowsDayScopeRegistration { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 }

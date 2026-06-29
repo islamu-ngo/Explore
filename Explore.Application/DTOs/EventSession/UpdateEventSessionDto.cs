@@ -1,45 +1,101 @@
-using System;
+// ABOUTME: Wrapper DTO for PATCH-based EventSession updates using nullable logical groups.
+// ABOUTME: Route ID targets the session while groups express independent field update intent.
+
+using Explore.Application.Models.Common;
+
 namespace Explore.Application.DTOs.EventSession;
 
 public class UpdateEventSessionDto
 {
-    public Guid Id { get; set; }
+    public UpdateEventSessionEventDto? Event { get; set; }
+    public UpdateEventSessionScheduleDto? Schedule { get; set; }
+    public UpdateEventSessionLocationDto? Location { get; set; }
+    public UpdateEventSessionFeaturedImageDto? FeaturedImage { get; set; }
+    public UpdateEventSessionRoomDto? Room { get; set; }
+    public UpdateEventSessionSortOrderDto? SortOrder { get; set; }
+    public UpdateEventSessionTitleDto? Title { get; set; }
+    public UpdateEventSessionKindDto? Kind { get; set; }
+    public UpdateEventSessionDescriptionDto? Description { get; set; }
+    public UpdateEventSessionSlugDto? Slug { get; set; }
+    public UpdateEventSessionMaxAudienceAttendeesDto? MaxAudienceAttendees { get; set; }
+    public UpdateEventSessionRegistrationModeDto? RegistrationMode { get; set; }
+    public UpdateEventSessionPriceDto? Price { get; set; }
+    public UpdateEventSessionCurrencyCodeDto? CurrencyCode { get; set; }
+    public UpdateEventSessionIslamicAspectUpdateDto? IslamicAspect { get; set; }
+}
 
-    // Event relationship
+public class UpdateEventSessionEventDto
+{
     public Guid EventId { get; set; }
+}
 
-    // Timing
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+public class UpdateEventSessionScheduleDto
+{
+    public OptionalUpdate<DateTimeOffset?> StartTime { get; set; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
+    public OptionalUpdate<DateTimeOffset?> EndTime { get; set; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
+}
 
-    // Location
-    public Guid? LocationId { get; set; }
+public class UpdateEventSessionLocationDto
+{
+    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+}
 
-    // Media
-    public Guid? FeaturedImageId { get; set; }
+public class UpdateEventSessionFeaturedImageDto
+{
+    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+}
 
-    // Room (optional child of LocationId used by same-room overlap guard)
-    public Guid? RoomId { get; set; }
+public class UpdateEventSessionRoomDto
+{
+    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+}
 
-    // Ordering
-    public int SortOrder { get; set; }
+public class UpdateEventSessionSortOrderDto
+{
+    public int Value { get; set; }
+}
 
-    // Session Details
-    public string? Title { get; set; }
-    public int? EventSessionKindId { get; set; }
-    public string? Description { get; set; }
-    public string? Slug { get; set; }
+public class UpdateEventSessionTitleDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    // Attendance
-    public int? MaxAudienceAttendees { get; set; }
+public class UpdateEventSessionKindDto
+{
+    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
 
-    // Registration
-    public int? RegistrationModeId { get; set; }
+public class UpdateEventSessionDescriptionDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    // Pricing
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
+public class UpdateEventSessionSlugDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    // Optional Islamic extension for this session
-    public EventSessionIslamicAspectDto? IslamicAspect { get; set; }
+public class UpdateEventSessionMaxAudienceAttendeesDto
+{
+    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
+
+public class UpdateEventSessionRegistrationModeDto
+{
+    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
+
+public class UpdateEventSessionPriceDto
+{
+    public OptionalUpdate<decimal?> Value { get; set; } = OptionalUpdate<decimal?>.Unspecified();
+}
+
+public class UpdateEventSessionCurrencyCodeDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
+
+public class UpdateEventSessionIslamicAspectUpdateDto
+{
+    public OptionalUpdate<EventSessionIslamicAspectDto?> Value { get; set; } = OptionalUpdate<EventSessionIslamicAspectDto?>.Unspecified();
 }

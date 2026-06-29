@@ -1,71 +1,167 @@
-// ABOUTME: Legacy scalar event update DTO for metadata fields; schedule rollups are server-owned projections.
-// ABOUTME: Timezone aliases remain during development but handlers normalize them before reprojecting child schedules.
+// ABOUTME: PATCH wrapper DTO for property-level Event shell updates using nullable logical groups.
+// ABOUTME: Route ID owns identity; nullable fields use OptionalUpdate for explicit set-or-clear semantics.
 
 using System;
+using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.Event;
 
 public class UpdateEventDto
 {
-    public Guid Id { get; set; }
-    public required string Title { get; set; }
-    public string? Subtitle { get; set; }
-    public string? Description { get; set; }
-    public string? Content { get; set; }
-    public string? Slug { get; set; }
+    public UpdateEventTitleDto? Title { get; set; }
+    public UpdateEventSubtitleDto? Subtitle { get; set; }
+    public UpdateEventDescriptionDto? Description { get; set; }
+    public UpdateEventContentDto? Content { get; set; }
+    public UpdateEventSlugDto? Slug { get; set; }
+    public UpdateEventEventTypeDto? EventType { get; set; }
+    public UpdateEventAudienceGenderDto? AudienceGender { get; set; }
+    public UpdateEventAudienceAgeDto? AudienceAge { get; set; }
+    public UpdateEventPriceDto? Price { get; set; }
+    public UpdateEventCurrencyCodeDto? CurrencyCode { get; set; }
+    public UpdateEventFeaturedImageDto? FeaturedImage { get; set; }
+    public UpdateEventRegistrationRequiredDto? RegistrationRequired { get; set; }
+    public UpdateEventExternalRegistrationUrlDto? ExternalRegistrationUrl { get; set; }
+    public UpdateEventVisibilityDto? Visibility { get; set; }
+    public UpdateEventFormatDto? Format { get; set; }
+    public UpdateEventMadhabDto? Madhab { get; set; }
+    public UpdateEventTimezoneDto? Timezone { get; set; }
+    public UpdateEventEventTimeZoneDto? EventTimeZone { get; set; }
+    public UpdateEventUrlDto? EventUrl { get; set; }
+    public UpdateEventBackgroundColorDto? BackgroundColor { get; set; }
+    public UpdateEventBackgroundEffectDto? BackgroundEffect { get; set; }
+    public UpdateEventBackgroundImageDto? BackgroundImage { get; set; }
+    public UpdateEventSourceTemplateDto? SourceTemplate { get; set; }
+    public UpdateEventSeriesMembershipDto? SeriesMembership { get; set; }
+    public UpdateEventSeriesOrderDto? SeriesOrder { get; set; }
+    public UpdateEventRegistrationPolicyDto? RegistrationPolicy { get; set; }
+}
 
-    // Event Type
-    public int? EventTypeId { get; set; }
+public class UpdateEventTitleDto
+{
+    public required string Value { get; set; }
+}
 
-    // Audience
-    public int? AudienceGenderId { get; set; }
-    public int? AudienceAgeId { get; set; }
+public class UpdateEventSubtitleDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    // Actor (Owner - User or Organization)
-    public Guid ActorId { get; set; }
+public class UpdateEventDescriptionDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    // Pricing
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
+public class UpdateEventContentDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    // Featured Image
-    public Guid FeaturedImageId { get; set; }
+public class UpdateEventSlugDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    // Registration
-    public bool IsRegistrationRequired { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
+public class UpdateEventEventTypeDto
+{
+    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
 
-    // Visibility
-    public int VisibilityTypeId { get; set; }
+public class UpdateEventAudienceGenderDto
+{
+    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
 
-    // Format
-    public int EventFormatId { get; set; }
+public class UpdateEventAudienceAgeDto
+{
+    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
 
-    // Islamic Context
-    public int? MadhabId { get; set; }
+public class UpdateEventPriceDto
+{
+    public OptionalUpdate<decimal?> Value { get; set; } = OptionalUpdate<decimal?>.Unspecified();
+}
 
-    // Session Info
-    public DateOnly? FirstSessionDate { get; set; }
-    public DateOnly? LastSessionDate { get; set; }
-    public string? Timezone { get; set; }
+public class UpdateEventCurrencyCodeDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    // Temporal fields (UTC-based)
-    public DateTimeOffset? FirstSessionStartUtc { get; set; }
-    public DateTimeOffset? LastSessionStartUtc { get; set; }
-    public string? EventTimeZoneId { get; set; }
+public class UpdateEventFeaturedImageDto
+{
+    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+}
 
-    // Metadata
-    public string? EventUrl { get; set; }
+public class UpdateEventRegistrationRequiredDto
+{
+    public bool Value { get; set; }
+}
 
-    // Appearance
-    public string? BackgroundColor { get; set; }
-    public string? BackgroundEffect { get; set; }
-    public Guid? BackgroundImageId { get; set; }
+public class UpdateEventExternalRegistrationUrlDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    // Series membership
-    public Guid? EventSeriesId { get; set; }
-    public int? SeriesOrder { get; set; }
+public class UpdateEventVisibilityDto
+{
+    public int Value { get; set; }
+}
 
-    // Registration policy (lookup FK)
-    public int? RegistrationPolicyId { get; set; }
+public class UpdateEventFormatDto
+{
+    public int Value { get; set; }
+}
+
+public class UpdateEventMadhabDto
+{
+    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
+
+public class UpdateEventTimezoneDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
+
+public class UpdateEventEventTimeZoneDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
+
+public class UpdateEventUrlDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
+
+public class UpdateEventBackgroundColorDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
+
+public class UpdateEventBackgroundEffectDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
+
+public class UpdateEventBackgroundImageDto
+{
+    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+}
+
+public class UpdateEventSourceTemplateDto
+{
+    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+}
+
+public class UpdateEventSeriesMembershipDto
+{
+    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+}
+
+public class UpdateEventSeriesOrderDto
+{
+    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
+
+public class UpdateEventRegistrationPolicyDto
+{
+    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
 }

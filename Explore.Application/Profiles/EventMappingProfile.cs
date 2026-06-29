@@ -135,33 +135,6 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.FeaturedImage, opt => opt.Ignore())
             .ForMember(dest => dest.Tenant, opt => opt.Ignore());
 
-        CreateMap<EventSeriesNS.UpdateEventSeriesDto, EventSeries>()
-            .ForMember(dest => dest.Id, opt => opt.Ignore())
-            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
-            .ForMember(dest => dest.ActorId, opt => opt.Ignore())
-            .ForMember(dest => dest.TotalViews, opt => opt.Ignore())
-            .ForMember(dest => dest.VisibilityTypeId, opt => opt.Ignore())
-            .ForMember(dest => dest.VisibilityType, opt => opt.Ignore())
-            .ForMember(dest => dest.StartDateUtc, opt => opt.Ignore())
-            .ForMember(dest => dest.EndDateUtc, opt => opt.Ignore())
-            .ForMember(dest => dest.Events, opt => opt.Ignore())
-            .ForMember(dest => dest.Actor, opt => opt.Ignore())
-            .ForMember(dest => dest.FeaturedImage, opt => opt.Ignore())
-            .ForMember(dest => dest.Tenant, opt => opt.Ignore());
-
-        // UpdateEvent
-        CreateMap<UpdateEventDto, Event>()
-            .ForMember(dest => dest.Id, opt => opt.Ignore())
-            .ForMember(dest => dest.ActorId, opt => opt.Ignore())
-            .ForMember(dest => dest.TotalViews, opt => opt.Ignore())
-            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
-            .ForMember(dest => dest.FirstSessionDate, opt => opt.Ignore())
-            .ForMember(dest => dest.LastSessionDate, opt => opt.Ignore())
-            .ForMember(dest => dest.FirstSessionStartUtc, opt => opt.Ignore())
-            .ForMember(dest => dest.LastSessionStartUtc, opt => opt.Ignore())
-            .ForMember(dest => dest.EventTimeZoneId, opt => opt.MapFrom(src => src.EventTimeZoneId ?? src.Timezone))
-            .ForMember(dest => dest.Timezone, opt => opt.MapFrom(src => src.Timezone ?? src.EventTimeZoneId));
-
         // Event Type
         CreateMap<EventType, EventTypeListDto>().ReverseMap();
 
@@ -170,7 +143,6 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null));
         CreateMap<EventDay, EventDayListDto>();
         CreateMap<CreateEventDayDto, EventDay>();
-        CreateMap<UpdateEventDayDto, EventDay>();
 
         // Event Agenda Item
         CreateMap<EventAgendaItem, EventAgendaItemDto>()
@@ -179,9 +151,6 @@ public class EventMappingProfile : Profile
         CreateMap<EventAgendaItem, EventAgendaItemListDto>()
             .ForMember(dest => dest.KindFullName, opt => opt.MapFrom(src => src.Kind != null ? src.Kind.FullName : null));
         CreateMap<CreateEventAgendaItemDto, EventAgendaItem>()
-            .ForMember(dest => dest.StartTime, opt => opt.Ignore())
-            .ForMember(dest => dest.EndTime, opt => opt.Ignore());
-        CreateMap<UpdateEventAgendaItemDto, EventAgendaItem>()
             .ForMember(dest => dest.StartTime, opt => opt.Ignore())
             .ForMember(dest => dest.EndTime, opt => opt.Ignore());
 
@@ -195,7 +164,6 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
             .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null));
         CreateMap<CreateEventTagsDto, EventTags>();
-        CreateMap<UpdateEventTagsDto, EventTags>();
 
         // Event Categories
         CreateMap<EventCategories, EventCategoriesDto>()
@@ -205,7 +173,6 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
             .ForMember(dest => dest.CategoryFullName, opt => opt.MapFrom(src => src.Category != null ? src.Category.FullName : null));
         CreateMap<CreateEventCategoriesDto, EventCategories>();
-        CreateMap<UpdateEventCategoriesDto, EventCategories>();
 
         // Aspects
         CreateMap<EventIslamicAspect, EventIslamicAspectDto>()

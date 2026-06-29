@@ -10,6 +10,6 @@ public interface IEventAgendaItemService
     Task<ICollection<EventAgendaItemListDto>> GetAgendaItemsByEventAsync(Guid eventId);
     Task<EventAgendaItemDto?> GetAgendaItemByIdAsync(Guid agendaItemId);
     Task<BaseCommandResponseOfGuid?> CreateAgendaItemAsync(CreateEventAgendaItemDto dto);
-    Task<BaseCommandResponseOfGuid?> UpdateAgendaItemAsync(Guid id, UpdateEventAgendaItemDto dto);
+    Task<BaseCommandResponseOfGuid?> UpdateAgendaItemAsync(Guid id, Guid expectedConcurrencyStamp, UpdateEventAgendaItemDto dto);
     Task<bool> DeleteAgendaItemAsync(Guid agendaItemId);
 }

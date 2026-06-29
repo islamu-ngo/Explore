@@ -162,22 +162,35 @@ public class EventAgendaItemController : ControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateEventAgendaItem)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateEventAgendaItem)]
     [EndpointSummary("Update Agenda Item")]
-    [EndpointDescription("Update an existing event agenda item.")]
+    [EndpointDescription("Partially update an existing event agenda item. Route ID is authoritative and If-Match must contain the current agenda item concurrency stamp.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
+        Guid id,
+        [FromBody] UpdateEventAgendaItemDto agendaItem,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
-        if (id != agendaItem.Id)
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Agenda item ID mismatch.");
+            return this.ToValidationProblem(
+                UpdateValidationProblem,
+                "If-Match header is required and must contain the current event agenda item concurrency stamp.");
         }
 
-        var command = new UpdateEventAgendaItemCommand { EventAgendaItemDto = agendaItem };
+        var command = new UpdateEventAgendaItemCommand
+        {
+            EventAgendaItemId = id,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            EventAgendaItemDto = agendaItem
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
@@ -205,5 +218,23 @@ public class EventAgendaItemController : ControllerBase
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        value = value.Trim('"');
+        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 }

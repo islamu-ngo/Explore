@@ -235,7 +235,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             LinkRelations.Edit,
             RouteNames.UpdateEvent,
             new { id = dto.Id },
-            "PUT",
+            "PATCH",
             "Update event",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
@@ -401,7 +401,7 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
             LinkRelations.Edit,
             RouteNames.UpdateEvent,
             new { id = dto.Id },
-            "PUT",
+            "PATCH",
             "Update event",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventList, dto);

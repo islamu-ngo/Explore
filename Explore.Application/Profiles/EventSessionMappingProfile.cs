@@ -79,11 +79,6 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.StartTime, opt => opt.Ignore())
             .ForMember(dest => dest.EndTime, opt => opt.Ignore())
             .ForMember(dest => dest.IslamicAspect, opt => opt.Ignore());
-        CreateMap<UpdateEventSessionDto, EventSession>()
-            .ForMember(dest => dest.StartTime, opt => opt.Ignore())
-            .ForMember(dest => dest.EndTime, opt => opt.Ignore())
-            .ForMember(dest => dest.IslamicAspect, opt => opt.Ignore());
-
         // Event Session Agenda Item
         CreateMap<EventSessionAgendaItem, EventSessionAgendaItemDto>()
             .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventSession.EventId))
@@ -102,7 +97,6 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
             .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
         CreateMap<CreateEventSessionSpeakerDto, EventSessionSpeaker>();
-        CreateMap<UpdateEventSessionSpeakerDto, EventSessionSpeaker>();
 
         // Event Session Language
         CreateMap<EventSessionLanguage, EventSessionLanguageDto>()
@@ -111,6 +105,5 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.LanguageMasterCode, opt => opt.MapFrom(src => src.Language != null ? src.Language.MasterCode : null));
         CreateMap<EventSessionLanguage, EventSessionLanguageListDto>();
         CreateMap<CreateEventSessionLanguageDto, EventSessionLanguage>();
-        CreateMap<UpdateEventSessionLanguageDto, EventSessionLanguage>();
     }
 }
