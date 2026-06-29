@@ -30,7 +30,7 @@ public interface IUserService
     /// <summary>
     /// Updates the current user's profile.
     /// </summary>
-    Task<BaseCommandResponseOfGuid?> UpdateUserAsync(UpdateUserDto userDto);
+    Task<BaseCommandResponseOfGuid?> UpdateUserAsync(Guid userId, Guid expectedConcurrencyStamp, UpdateUserDto userDto);
 
     /// <summary>
     /// Deletes the current user's account.
@@ -173,12 +173,12 @@ public class UserService : IUserService
     }
 
     /// <inheritdoc />
-    public async Task<BaseCommandResponseOfGuid?> UpdateUserAsync(UpdateUserDto userDto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateUserAsync(Guid userId, Guid expectedConcurrencyStamp, UpdateUserDto userDto)
     {
         try
         {
             _logger.LogInformation("Updating user");
-            return await _apiClient.UpdateCurrentUserAsync(userDto);
+            return await _apiClient.UpdateCurrentUserAsync(userId, userDto, $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (ApiException ex)
         {

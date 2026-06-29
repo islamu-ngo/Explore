@@ -9,14 +9,11 @@ public class UpdateUserDtoValidator : AbstractValidator<UpdateUserDto>
 {
     public UpdateUserDtoValidator()
     {
-        RuleFor(p => p.Id)
-            .NotEmpty().WithMessage("{PropertyName} is required.");
-
-        RuleFor(p => p.Names)
+        RuleFor(p => p.Names!)
             .SetValidator(new UpdateUserNamesDtoValidator())
             .When(p => p.Names is not null);
 
-        RuleFor(p => p.ProfileImage)
+        RuleFor(p => p.ProfileImage!)
             .SetValidator(new UpdateUserProfileImageDtoValidator())
             .When(p => p.ProfileImage is not null);
 

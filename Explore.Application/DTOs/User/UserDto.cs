@@ -1,3 +1,6 @@
+// ABOUTME: Public DTO for authenticated user profile details.
+// ABOUTME: Includes actor display metadata and the user concurrency stamp for PATCH If-Match updates.
+
 using System;
 
 namespace Explore.Application.DTOs.User;
@@ -26,6 +29,7 @@ public class UserDto
     public string? AuthProvider { get; set; }
     public string? AuthProviderId { get; set; }
     public bool? EmailVerified { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     // Profile image key (S3 object key) and URI for preview
     public string? ProfileImageKey { get; set; }

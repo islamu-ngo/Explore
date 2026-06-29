@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for UserService covering user sync, current-user retrieval, update, and delete operations.
-// Validates retry/sync edge cases, API error handling, and return contracts for user workflows.
+// ABOUTME: Validates retry/sync edge cases, API error handling, and return contracts for user workflows.
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -280,15 +280,25 @@ public class UserServiceTests
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
 
-        _apiClient.UpdateCurrentUserAsync(Arg.Any<UpdateUserDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        var userId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+
+        _apiClient.UpdateCurrentUserAsync(Arg.Any<Guid>(), Arg.Any<UpdateUserDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
-        var result = await _service.UpdateUserAsync(updateDto);
+        var result = await _service.UpdateUserAsync(userId, concurrencyStamp, updateDto);
 
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
+        await _apiClient.Received(1).UpdateCurrentUserAsync(
+            userId,
+            updateDto,
+            $"\"{concurrencyStamp:D}\"",
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -304,11 +314,11 @@ public class UserServiceTests
             }
         };
 
-        _apiClient.UpdateCurrentUserAsync(Arg.Any<UpdateUserDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateCurrentUserAsync(Arg.Any<Guid>(), Arg.Any<UpdateUserDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act
-        var result = await _service.UpdateUserAsync(updateDto);
+        var result = await _service.UpdateUserAsync(Guid.NewGuid(), Guid.NewGuid(), updateDto);
 
         // Assert
         await Assert.That(result).IsNull();

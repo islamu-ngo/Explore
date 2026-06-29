@@ -5,6 +5,7 @@
 using System.Text.Json.Serialization;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
+using Explore.Blazor.Client.Models.Events;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Pages.Events;

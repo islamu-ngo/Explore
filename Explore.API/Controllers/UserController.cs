@@ -172,9 +172,18 @@ public class UserController : ExploreControllerBase
         return Ok(organizations);
     }
 
-    [HttpPut(Name = RouteNames.UpdateCurrentUser)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateCurrentUser)]
     [Authorize]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateUser([FromBody] UpdateUserDto userDto, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateUser(
+        Guid id,
+        [FromBody] UpdateUserDto userDto,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
@@ -182,12 +191,24 @@ public class UserController : ExploreControllerBase
             return this.ToAuthenticationRequiredProblem();
         }
 
-        if (userDto.Id != currentUserId.Value)
+        if (id != currentUserId.Value)
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "User ID mismatch.");
+            return this.ToForbiddenProblem(detail: "You can only update your own profile.");
         }
 
-        var command = new UpdateUserCommand { UpdateUserDto = userDto };
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
+        {
+            return this.ToValidationProblem(
+                UpdateValidationProblem,
+                "If-Match header is required and must contain the current user concurrency stamp.");
+        }
+
+        var command = new UpdateUserCommand
+        {
+            UserId = id,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            UpdateUserDto = userDto
+        };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
     }
@@ -211,6 +232,24 @@ public class UserController : ExploreControllerBase
     private async Task<Guid?> ResolveCurrentUserIdAsync(CancellationToken cancellationToken)
     {
         return await base.ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        value = value.Trim('"');
+        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 
 }

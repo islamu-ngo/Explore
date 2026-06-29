@@ -5,6 +5,7 @@ using System.Linq;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.User.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -17,6 +18,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
     private readonly IUserRepository _userRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
 
@@ -24,12 +26,14 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
         IUserRepository userRepository,
         IActorRepository actorRepository,
         IStorageObjectRepository storageObjectRepository,
+        IUnitOfWork unitOfWork,
         IMapper mapper,
         HybridCache cache)
     {
         _userRepository = userRepository;
         _actorRepository = actorRepository;
         _storageObjectRepository = storageObjectRepository;
+        _unitOfWork = unitOfWork;
         _mapper = mapper;
         _cache = cache;
     }
@@ -48,47 +52,62 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
             return response;
         }
 
-        var user = await _userRepository.GetById(request.UpdateUserDto.Id);
-
-        if (user == null)
+        var transactionResponse = await _unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            response.Success = false;
-            response.Message = "User not found";
-            return response;
-        }
+            var user = await _userRepository.GetById(request.UserId);
 
-        // Update names (FirstName/LastName) when provided.
-        if (request.UpdateUserDto.Names is not null)
-        {
-            _mapper.Map(request.UpdateUserDto.Names, user);
-        }
-
-        // Update profile picture and link the storage object when provided.
-        if (request.UpdateUserDto.ProfileImage is not null && user.ActorId.HasValue)
-        {
-            var actor = await _actorRepository.GetById(user.ActorId.Value);
-            if (actor != null)
+            if (user == null)
             {
-                actor.ProfilePictureId = request.UpdateUserDto.ProfileImage.ProfilePictureId;
-                await _actorRepository.Update(actor);
+                response.Success = false;
+                response.Message = "User not found";
+                return response;
+            }
 
-                var storageObject = await _storageObjectRepository.GetById(request.UpdateUserDto.ProfileImage.ProfilePictureId);
-                if (storageObject != null)
+            if (user.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
+            {
+                throw new ConcurrencyConflictException(
+                    ConcurrencyConflictException.ConcurrentUpdate,
+                    "The user was modified by another request. Reload and retry.",
+                    nameof(Domain.User),
+                    user.Id.ToString());
+            }
+
+            // Update names (FirstName/LastName) when provided.
+            if (request.UpdateUserDto.Names is not null)
+            {
+                _mapper.Map(request.UpdateUserDto.Names, user);
+            }
+
+            // Update profile picture and link the storage object when provided.
+            if (request.UpdateUserDto.ProfileImage is not null && user.ActorId.HasValue)
+            {
+                var actor = await _actorRepository.GetById(user.ActorId.Value);
+                if (actor != null)
                 {
-                    storageObject.ActorId = user.ActorId.Value;
-                    await _storageObjectRepository.Update(storageObject);
+                    actor.ProfilePictureId = request.UpdateUserDto.ProfileImage.ProfilePictureId;
+
+                    var storageObject = await _storageObjectRepository.GetById(request.UpdateUserDto.ProfileImage.ProfilePictureId);
+                    if (storageObject != null)
+                    {
+                        storageObject.ActorId = user.ActorId.Value;
+                    }
                 }
             }
+
+            await _userRepository.Update(user);
+
+            response.Success = true;
+            response.Message = "User updated successfully";
+            response.Id = user.Id;
+
+            return response;
+        }, cancellationToken);
+
+        if (transactionResponse.Success)
+        {
+            await _cache.RemoveAsync($"user:detail:{transactionResponse.Id}", cancellationToken);
         }
 
-        await _userRepository.Update(user);
-
-        response.Success = true;
-        response.Message = "User updated successfully";
-        response.Id = user.Id;
-
-        await _cache.RemoveAsync($"user:detail:{user.Id}", cancellationToken);
-
-        return response;
+        return transactionResponse;
     }
 }

@@ -138,12 +138,13 @@
     {
         if (_user is null) return;
 
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<EditUserNamesDialog>("Edit name", options);
+        var dialog = await DialogService.ShowAsync<EditUserNamesDialog>(
+            "Edit name",
+            DialogOptionsFactory.Small());
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is UpdateUserNamesDto names)
         {
-            await SavePartialAsync(new UpdateUserDto { Id = _user.Id, Names = names });
+            await SavePartialAsync(new UpdateUserDto { Names = names });
         }
     }
 
@@ -151,14 +152,14 @@
     {
         if (_user is null) return;
 
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<EditUserProfileImageDialog>("Change profile picture", options);
+        var dialog = await DialogService.ShowAsync<EditUserProfileImageDialog>(
+            "Change profile picture",
+            DialogOptionsFactory.Small());
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is EditUserProfileImageDialog.ProfileImageUploadResult img)
         {
             await SavePartialAsync(new UpdateUserDto
             {
-                Id = _user.Id,
                 ProfileImage = new UpdateUserProfileImageDto { ProfilePictureId = img.StorageObjectId }
             });
         }
@@ -166,11 +167,21 @@
 
     private async Task SavePartialAsync(UpdateUserDto dto)
     {
-        if (_user is null) return;
+        if (_user?.Id is not Guid userId)
+        {
+            Snackbar.Add("Unable to save profile because the user identifier is missing.", Severity.Error);
+            return;
+        }
+
+        if (_user.ConcurrencyStamp is not Guid concurrencyStamp || concurrencyStamp == Guid.Empty)
+        {
+            Snackbar.Add("Unable to save profile because the latest profile version is missing. Refresh and try again.", Severity.Error);
+            return;
+        }
 
         try
         {
-            var response = await UserService.UpdateUserAsync(dto);
+            var response = await UserService.UpdateUserAsync(userId, concurrencyStamp, dto);
             if (response?.Success == true)
             {
                 // Re-fetch authoritative user (backend cache was invalidated) and notify shared state

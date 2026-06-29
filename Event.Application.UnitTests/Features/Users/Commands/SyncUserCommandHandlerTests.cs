@@ -73,7 +73,6 @@ public class SyncUserCommandHandlerTests
             Email = "new.user@example.com",
             FirstName = "New",
             LastName = "User",
-            Username = "new.user",
             AuthProvider = "keycloak",
             AuthProviderId = providerUserId.ToString(),
             EmailVerified = true
@@ -123,7 +122,6 @@ public class SyncUserCommandHandlerTests
             Email = "shared@example.com",
             FirstName = "Shared",
             LastName = "User",
-            Username = "shared.user",
             AuthProvider = "google",
             AuthProviderId = "google-sub-123",
             EmailVerified = true
@@ -157,7 +155,6 @@ public class SyncUserCommandHandlerTests
             Email = string.Empty,
             FirstName = "Atproto",
             LastName = "User",
-            Username = "did:plc:abc123",
             AuthProvider = "atproto",
             AuthProviderId = "did:plc:abc123",
             EmailVerified = false
