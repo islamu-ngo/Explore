@@ -27,6 +27,9 @@ public class EventDayListDto
 
     [JsonPropertyName("allowsDayScopeRegistration")]
     public bool AllowsDayScopeRegistration { get; set; }
+
+    [JsonPropertyName("concurrencyStamp")]
+    public Guid? ConcurrencyStamp { get; set; }
 }
 
 public class EventDayDto
@@ -66,6 +69,9 @@ public class EventDayDto
 
     [JsonPropertyName("tenantId")]
     public Guid TenantId { get; set; }
+
+    [JsonPropertyName("concurrencyStamp")]
+    public Guid? ConcurrencyStamp { get; set; }
 }
 
 public class EventAgendaItemListDto
@@ -102,6 +108,9 @@ public class EventAgendaItemListDto
 
     [JsonPropertyName("sortOrder")]
     public int SortOrder { get; set; }
+
+    [JsonPropertyName("concurrencyStamp")]
+    public Guid? ConcurrencyStamp { get; set; }
 }
 
 public class EventAgendaItemDto
@@ -165,6 +174,9 @@ public class EventAgendaItemDto
 
     [JsonPropertyName("tenantId")]
     public Guid TenantId { get; set; }
+
+    [JsonPropertyName("concurrencyStamp")]
+    public Guid? ConcurrencyStamp { get; set; }
 }
 
 public class LocationRoomListDto
@@ -183,6 +195,9 @@ public class LocationRoomListDto
 
     [JsonPropertyName("sortOrder")]
     public int SortOrder { get; set; }
+
+    [JsonPropertyName("concurrencyStamp")]
+    public Guid? ConcurrencyStamp { get; set; }
 }
 
 public class LocationRoomDto
@@ -213,4 +228,7 @@ public class LocationRoomDto
 
     [JsonPropertyName("tenantId")]
     public Guid TenantId { get; set; }
+
+    [JsonPropertyName("concurrencyStamp")]
+    public Guid? ConcurrencyStamp { get; set; }
 }

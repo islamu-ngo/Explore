@@ -258,12 +258,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Actor"
         ],
         "summary": "Update Actor",
-        "description": "Update an existing actor. Supports full update via ActorDto or targeted appearance updates via AppearanceDto. Null DTOs are ignored.",
+        "description": "Partially update an existing actor. Route ID is authoritative and If-Match must contain the current actor concurrency stamp.",
         "operationId": "UpdateActor",
         "parameters": [
           {
@@ -273,6 +273,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -294,12 +301,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateActorRequestDto"
+                "$ref": "#/components/schemas/UpdateActorDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateActorRequestDto"
+                "$ref": "#/components/schemas/UpdateActorDto"
               }
             }
           },
@@ -359,6 +366,23 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -4313,12 +4337,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Category"
         ],
         "summary": "Update Category",
-        "description": "Update an existing category's information.",
+        "description": "Partially update an existing category. Route ID is authoritative and If-Match must contain the current category concurrency stamp.",
         "operationId": "UpdateCategory",
         "parameters": [
           {
@@ -4328,6 +4352,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -4414,6 +4445,23 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -7535,12 +7583,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventAgendaItem"
         ],
         "summary": "Update Agenda Item",
-        "description": "Update an existing event agenda item.",
+        "description": "Partially update an existing event agenda item. Route ID is authoritative and If-Match must contain the current agenda item concurrency stamp.",
         "operationId": "UpdateEventAgendaItem",
         "parameters": [
           {
@@ -7550,6 +7598,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -7634,8 +7689,42 @@
               "application/hal+json": { }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -8990,12 +9079,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Event"
         ],
-        "summary": "Update Event Draft",
-        "description": "Update scalar event draft fields. Lifecycle status and session-derived program projection fields are server-owned and are not accepted by this contract.",
+        "summary": "Update Event",
+        "description": "Partially update editable event shell fields. Route ID is authoritative and If-Match must contain the current event concurrency stamp.",
         "operationId": "UpdateEvent",
         "parameters": [
           {
@@ -9005,6 +9094,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -9026,12 +9122,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateEventDraftRequestDto"
+                "$ref": "#/components/schemas/UpdateEventDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateEventDraftRequestDto"
+                "$ref": "#/components/schemas/UpdateEventDto"
               }
             }
           },
@@ -12261,12 +12357,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventDay"
         ],
         "summary": "Update Event Day",
-        "description": "Update an existing event day.",
+        "description": "Partially update an existing event day. Route ID is authoritative and If-Match must contain the current event day concurrency stamp.",
         "operationId": "UpdateEventDay",
         "parameters": [
           {
@@ -12276,6 +12372,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -12360,8 +12463,42 @@
               "application/hal+json": { }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -12992,7 +13129,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventRegistration"
         ],
@@ -13007,6 +13144,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -13105,8 +13249,48 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
@@ -13642,7 +13826,7 @@
         },
         "x-endpoint-class": "Public"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventSeries"
         ],
@@ -13655,6 +13839,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -13727,8 +13918,59 @@
               "application/hal+json": { }
             }
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -14597,12 +14839,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventSession"
         ],
         "summary": "Update Event Session",
-        "description": "Update an existing event session.",
+        "description": "Partially update an existing event session. Route ID is authoritative and If-Match must contain the current event session concurrency stamp.",
         "operationId": "UpdateEventSession",
         "parameters": [
           {
@@ -14612,6 +14854,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -14696,8 +14945,42 @@
               "application/hal+json": { }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -17733,6 +18016,185 @@
       }
     },
     "/api/eventsessionlanguage/{id}": {
+      "patch": {
+        "tags": [
+          "EventSessionLanguage"
+        ],
+        "summary": "Update event session language assignment",
+        "description": "Update the session or language of an event session language assignment.",
+        "operationId": "UpdateEventSessionLanguage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionLanguageDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionLanguageDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
       "delete": {
         "tags": [
           "EventSessionLanguage"
@@ -22339,12 +22801,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Group"
         ],
         "summary": "Update Group",
-        "description": "Update an existing group. User must have group management permission.",
+        "description": "Partially update an existing group. Route ID is authoritative and If-Match must contain the current group concurrency stamp.",
         "operationId": "UpdateGroup",
         "parameters": [
           {
@@ -22354,6 +22816,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -22423,6 +22892,40 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -28788,12 +29291,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Location"
         ],
         "summary": "Update Location",
-        "description": "Update an existing location's information.",
+        "description": "Partially update an existing location. Route ID is authoritative and If-Match must contain the current location concurrency stamp.",
         "operationId": "UpdateLocation",
         "parameters": [
           {
@@ -28803,6 +29306,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -28889,6 +29399,23 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -29223,12 +29750,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "LocationRoom"
         ],
         "summary": "Update Room",
-        "description": "Update an existing location room.",
+        "description": "Partially update an existing location room. Route ID is authoritative and If-Match must contain the current location room concurrency stamp.",
         "operationId": "UpdateLocationRoom",
         "parameters": [
           {
@@ -29238,6 +29765,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -29324,6 +29858,23 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -31460,12 +32011,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Organization"
         ],
         "summary": "Update Organization",
-        "description": "Update an existing organization. User must be a member of the organization.",
+        "description": "Partially update an existing organization. Route ID is authoritative and If-Match must contain the current organization concurrency stamp.",
         "operationId": "UpdateOrganization",
         "parameters": [
           {
@@ -31475,6 +32026,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -31561,6 +32119,23 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -40734,71 +41309,6 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
-        "tags": [
-          "User"
-        ],
-        "operationId": "UpdateCurrentUser",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateUserDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateUserDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateUserDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
-      },
       "delete": {
         "tags": [
           "User"
@@ -40936,6 +41446,169 @@
                   "items": {
                     "$ref": "#/components/schemas/OrganizationListDto"
                   }
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/user/{id}": {
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "UpdateCurrentUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -41496,6 +42169,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "actorTypeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -41746,6 +42423,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -44448,6 +45129,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "masterCode": {
             "type": "string"
           },
@@ -44481,6 +45166,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -49042,6 +49731,10 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -49104,6 +49797,10 @@
               "string"
             ],
             "format": "int32"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -49762,6 +50459,10 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -49799,6 +50500,10 @@
           },
           "allowsDayScopeRegistration": {
             "type": "boolean"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -51062,6 +51767,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "userId": {
             "type": "string",
             "format": "uuid"
@@ -51158,6 +51867,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -51322,6 +52035,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string"
           },
@@ -51392,6 +52109,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -52801,6 +53522,10 @@
             ],
             "format": "int32"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "eventSessionId": {
             "type": "string",
             "format": "uuid"
@@ -52847,6 +53572,10 @@
               "string"
             ],
             "format": "int32"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           },
           "eventSessionId": {
             "type": "string",
@@ -53166,6 +53895,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "actorId": {
             "type": "string",
             "format": "uuid"
@@ -53196,6 +53929,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -54913,6 +55650,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "fullName": {
             "type": "string"
           },
@@ -55038,6 +55779,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -57134,6 +57879,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "actorTypeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -57327,6 +58076,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -58541,6 +59294,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "masterCode": {
             "type": "string"
           },
@@ -58605,6 +59362,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -59251,6 +60012,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "_links": {
             "type": "object",
             "additionalProperties": {
@@ -59343,6 +60108,10 @@
               "string"
             ],
             "format": "int32"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           },
           "_links": {
             "type": "object",
@@ -59825,6 +60594,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "_links": {
             "type": "object",
             "additionalProperties": {
@@ -59892,6 +60665,10 @@
           },
           "allowsDayScopeRegistration": {
             "type": "boolean"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           },
           "_links": {
             "type": "object",
@@ -62812,6 +63589,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "fullName": {
             "type": "string"
           },
@@ -62968,6 +63749,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -63708,6 +64493,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "_links": {
             "type": "object",
             "additionalProperties": {
@@ -63771,6 +64560,10 @@
               "null",
               "string"
             ]
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           },
           "_links": {
             "type": "object",
@@ -63861,6 +64654,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "_links": {
             "type": "object",
             "additionalProperties": {
@@ -63928,6 +64725,10 @@
             ],
             "format": "int32"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "_links": {
             "type": "object",
             "additionalProperties": {
@@ -63973,6 +64774,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -64152,6 +64957,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -66982,6 +67791,10 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -67015,6 +67828,10 @@
               "null",
               "string"
             ]
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -67073,6 +67890,10 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -67109,6 +67930,10 @@
               "string"
             ],
             "format": "int32"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -67890,6 +68715,134 @@
           }
         }
       },
+      "OptionalUpdateOfDateTime": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "OptionalUpdateOfDateTimeOffset": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "OptionalUpdateOfdecimal": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "OptionalUpdateOfdouble": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "OptionalUpdateOfEventSessionIslamicAspectDto": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
+              }
+            ]
+          }
+        }
+      },
+      "OptionalUpdateOfGuid": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "OptionalUpdateOfint": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "OptionalUpdateOfstring": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "OrganizationDto": {
         "required": [
           "fullName",
@@ -67902,6 +68855,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -68076,6 +69033,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -72504,151 +73465,108 @@
         "type": "object",
         "properties": {
           "backgroundColor": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "backgroundEffect": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "bannerColor": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "bannerPictureId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
           },
           "backgroundImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
           }
         }
       },
       "UpdateActorDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "actorTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "profilePictureId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "backgroundColor": {
-            "type": [
-              "null",
-              "string"
+          "profile": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateActorProfileDto"
+              }
             ]
           },
-          "backgroundEffect": {
-            "type": [
-              "null",
-              "string"
+          "profileImage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateActorProfileImageDto"
+              }
             ]
           },
-          "bannerColor": {
-            "type": [
-              "null",
-              "string"
+          "appearance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateActorAppearanceDto"
+              }
             ]
           },
-          "bannerPictureId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "federationIdentifiers": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateActorFederationIdentifiersDto"
+              }
+            ]
           },
-          "backgroundImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
+          "federationMetadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateActorFederationMetadataDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateActorFederationIdentifiersDto": {
+        "type": "object",
+        "properties": {
           "did": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "handle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "didCustodyTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateActorFederationMetadataDto": {
+        "type": "object",
+        "properties": {
           "pdsHost": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "description": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "indexedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
+            "$ref": "#/components/schemas/OptionalUpdateOfDateTime"
           },
           "profilePictureCid": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "profilePictureUri": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           }
         }
       },
@@ -72686,32 +73604,31 @@
           }
         }
       },
-      "UpdateActorRequestDto": {
-        "required": [
-          "actorDto",
-          "appearanceDto"
-        ],
+      "UpdateActorProfileDto": {
         "type": "object",
         "properties": {
-          "actorDto": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateActorDto"
-              }
-            ]
+          "actorTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
-          "appearanceDto": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateActorAppearanceDto"
-              }
+          "displayName": {
+            "type": [
+              "null",
+              "string"
             ]
+          }
+        }
+      },
+      "UpdateActorProfileImageDto": {
+        "type": "object",
+        "properties": {
+          "profilePictureId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
           }
         }
       },
@@ -72816,28 +73733,67 @@
         }
       },
       "UpdateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "masterCode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCategoryMasterCodeDto"
+              }
+            ]
+          },
+          "fullName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCategoryFullNameDto"
+              }
+            ]
+          },
+          "parent": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCategoryParentDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateCategoryFullNameDto": {
         "required": [
-          "masterCode",
-          "fullName"
+          "value"
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "masterCode": {
+          "value": {
             "type": "string"
-          },
-          "fullName": {
+          }
+        }
+      },
+      "UpdateCategoryMasterCodeDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
             "type": "string"
-          },
+          }
+        }
+      },
+      "UpdateCategoryParentDto": {
+        "type": "object",
+        "properties": {
           "parentId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
           }
         }
       },
@@ -73025,29 +73981,135 @@
           }
         }
       },
-      "UpdateEventAgendaItemDto": {
-        "required": [
-          "title"
-        ],
+      "UpdateEventAgendaItemDescriptionDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventAgendaItemDto": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAgendaItemEventDto"
+              }
+            ]
           },
+          "title": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAgendaItemTitleDto"
+              }
+            ]
+          },
+          "description": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAgendaItemDescriptionDto"
+              }
+            ]
+          },
+          "schedule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAgendaItemScheduleDto"
+              }
+            ]
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAgendaItemLocationDto"
+              }
+            ]
+          },
+          "room": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAgendaItemRoomDto"
+              }
+            ]
+          },
+          "kind": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAgendaItemKindDto"
+              }
+            ]
+          },
+          "sortOrder": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAgendaItemSortOrderDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventAgendaItemEventDto": {
+        "type": "object",
+        "properties": {
           "eventId": {
             "type": "string",
             "format": "uuid"
-          },
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
+          }
+        }
+      },
+      "UpdateEventAgendaItemKindDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventAgendaItemLocationDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventAgendaItemRoomDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventAgendaItemScheduleDto": {
+        "type": "object",
+        "properties": {
           "startTime": {
             "type": "string",
             "format": "date-time"
@@ -73055,37 +74117,86 @@
           "endTime": {
             "type": "string",
             "format": "date-time"
-          },
-          "locationId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "roomId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "kindId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "sortOrder": {
+          }
+        }
+      },
+      "UpdateEventAgendaItemSortOrderDto": {
+        "type": "object",
+        "properties": {
+          "value": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "UpdateEventAgendaItemTitleDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateEventAudienceAgeDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventAudienceGenderDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventBackgroundColorDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventBackgroundEffectDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventBackgroundImageDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventContentDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventCurrencyCodeDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           }
         }
       },
@@ -73265,338 +74376,738 @@
           }
         }
       },
+      "UpdateEventDayBannerImageDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventDayBannerTextDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventDayDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
       "UpdateEventDayDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "eventId": {
-            "type": "string",
-            "format": "uuid"
+          "event": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDayEventDto"
+              }
+            ]
           },
           "localDate": {
-            "type": "string",
-            "format": "date"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDayLocalDateDto"
+              }
+            ]
           },
           "label": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDayLabelDto"
+              }
             ]
           },
           "description": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDayDescriptionDto"
+              }
             ]
           },
           "bannerText": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDayBannerTextDto"
+              }
             ]
           },
-          "bannerImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "bannerImage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDayBannerImageDto"
+              }
+            ]
           },
-          "isPublished": {
-            "type": "boolean"
+          "publication": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDayPublicationDto"
+              }
+            ]
           },
           "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDaySortOrderDto"
+              }
+            ]
           },
+          "registration": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDayRegistrationDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventDayEventDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UpdateEventDayLabelDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventDayLocalDateDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "UpdateEventDayPublicationDto": {
+        "type": "object",
+        "properties": {
+          "isPublished": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateEventDayRegistrationDto": {
+        "type": "object",
+        "properties": {
           "allowsDayScopeRegistration": {
             "type": "boolean"
           }
         }
       },
-      "UpdateEventDraftRequestDto": {
-        "required": [
-          "title"
-        ],
+      "UpdateEventDaySortOrderDto": {
         "type": "object",
         "properties": {
-          "expectedConcurrencyStamp": {
-            "type": "string",
-            "format": "uuid"
-          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateEventDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventDto": {
+        "type": "object",
+        "properties": {
           "title": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventTitleDto"
+              }
+            ]
           },
           "subtitle": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSubtitleDto"
+              }
             ]
           },
           "description": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDescriptionDto"
+              }
             ]
           },
           "content": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventContentDto"
+              }
             ]
           },
           "slug": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSlugDto"
+              }
             ]
           },
-          "eventTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "eventType": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventEventTypeDto"
+              }
+            ]
           },
-          "audienceGenderId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "audienceGender": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAudienceGenderDto"
+              }
+            ]
           },
-          "audienceAgeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "organizationId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "groupId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "audienceAge": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventAudienceAgeDto"
+              }
+            ]
           },
           "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventPriceDto"
+              }
+            ]
           },
           "currencyCode": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventCurrencyCodeDto"
+              }
             ]
           },
-          "featuredImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "featuredImage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventFeaturedImageDto"
+              }
+            ]
           },
-          "isRegistrationRequired": {
-            "type": "boolean"
+          "registrationRequired": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventRegistrationRequiredDto"
+              }
+            ]
           },
           "externalRegistrationUrl": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventExternalRegistrationUrlDto"
+              }
             ]
           },
-          "visibilityTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "visibility": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventVisibilityDto"
+              }
+            ]
           },
-          "eventFormatId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "format": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventFormatDto"
+              }
+            ]
           },
-          "madhabId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "madhab": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventMadhabDto"
+              }
+            ]
           },
           "timezone": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventTimezoneDto"
+              }
             ]
           },
-          "eventTimeZoneId": {
-            "type": [
-              "null",
-              "string"
+          "eventTimeZone": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventEventTimeZoneDto"
+              }
             ]
           },
           "eventUrl": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventUrlDto"
+              }
             ]
           },
           "backgroundColor": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventBackgroundColorDto"
+              }
             ]
           },
           "backgroundEffect": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventBackgroundEffectDto"
+              }
             ]
           },
-          "backgroundImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "backgroundImage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventBackgroundImageDto"
+              }
+            ]
           },
-          "templateId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "sourceTemplate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSourceTemplateDto"
+              }
+            ]
           },
-          "eventSeriesId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "seriesMembership": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSeriesMembershipDto"
+              }
+            ]
           },
           "seriesOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSeriesOrderDto"
+              }
+            ]
           },
-          "registrationPolicyId": {
+          "registrationPolicy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventRegistrationPolicyDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventEventTimeZoneDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventEventTypeDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventExternalRegistrationUrlDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventFeaturedImageDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventFormatDto": {
+        "type": "object",
+        "properties": {
+          "value": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
-              "null",
               "integer",
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "UpdateEventMadhabDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventPriceDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfdecimal"
+          }
+        }
+      },
+      "UpdateEventRegistrationApprovalStatusDto": {
+        "type": "object",
+        "properties": {
+          "approvalStatusId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventRegistrationAtprotoRecordDto": {
+        "type": "object",
+        "properties": {
+          "atprotoRecordId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
           }
         }
       },
       "UpdateEventRegistrationDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+          "user": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventRegistrationUserDto"
+              }
+            ]
           },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
+          "session": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventRegistrationSessionDto"
+              }
+            ]
           },
+          "intent": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventRegistrationIntentDto"
+              }
+            ]
+          },
+          "approvalStatus": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventRegistrationApprovalStatusDto"
+              }
+            ]
+          },
+          "atprotoRecord": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventRegistrationAtprotoRecordDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventRegistrationIntentDto": {
+        "type": "object",
+        "properties": {
+          "eventRegistrationIntentId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventRegistrationPolicyDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventRegistrationRequiredDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateEventRegistrationSessionDto": {
+        "type": "object",
+        "properties": {
           "eventSessionId": {
             "type": "string",
-            "format": "uuid"
-          },
-          "approvalStatusId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "atprotoRecordId": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "uuid"
           }
         }
       },
-      "UpdateEventSeriesDto": {
-        "required": [
-          "title"
-        ],
+      "UpdateEventRegistrationUserDto": {
         "type": "object",
         "properties": {
-          "id": {
+          "userId": {
             "type": "string",
             "format": "uuid"
-          },
+          }
+        }
+      },
+      "UpdateEventSeriesDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventSeriesDto": {
+        "type": "object",
+        "properties": {
           "title": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSeriesTitleDto"
+              }
+            ]
           },
           "description": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSeriesDescriptionDto"
+              }
             ]
           },
           "slug": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSeriesSlugDto"
+              }
             ]
           },
-          "featuredImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "featuredImage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSeriesFeaturedImageDto"
+              }
+            ]
           },
+          "publication": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSeriesPublicationDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventSeriesFeaturedImageDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventSeriesMembershipDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventSeriesOrderDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventSeriesPublicationDto": {
+        "type": "object",
+        "properties": {
           "isPublished": {
             "type": "boolean"
+          }
+        }
+      },
+      "UpdateEventSeriesSlugDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventSeriesTitleDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
           }
         }
       },
@@ -73641,6 +75152,14 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "UpdateEventSessionCurrencyCodeDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           }
         }
       },
@@ -73820,112 +75339,155 @@
           }
         }
       },
+      "UpdateEventSessionDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
       "UpdateEventSessionDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "eventId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "startTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "endTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "locationId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "featuredImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "roomId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "title": {
-            "type": [
-              "null",
-              "string"
+          "event": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionEventDto"
+              }
             ]
           },
-          "eventSessionKindId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "schedule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionScheduleDto"
+              }
+            ]
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionLocationDto"
+              }
+            ]
+          },
+          "featuredImage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionFeaturedImageDto"
+              }
+            ]
+          },
+          "room": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionRoomDto"
+              }
+            ]
+          },
+          "sortOrder": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionSortOrderDto"
+              }
+            ]
+          },
+          "title": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionTitleDto"
+              }
+            ]
+          },
+          "kind": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionKindDto"
+              }
+            ]
           },
           "description": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionDescriptionDto"
+              }
             ]
           },
           "slug": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionSlugDto"
+              }
             ]
           },
           "maxAudienceAttendees": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionMaxAudienceAttendeesDto"
+              }
+            ]
           },
-          "registrationModeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "registrationMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionRegistrationModeDto"
+              }
+            ]
           },
           "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionPriceDto"
+              }
+            ]
           },
           "currencyCode": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionCurrencyCodeDto"
+              }
             ]
           },
           "islamicAspect": {
@@ -73934,9 +75496,26 @@
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
+                "$ref": "#/components/schemas/UpdateEventSessionIslamicAspectUpdateDto"
               }
             ]
+          }
+        }
+      },
+      "UpdateEventSessionEventDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UpdateEventSessionFeaturedImageDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
           }
         }
       },
@@ -74002,6 +75581,141 @@
           }
         }
       },
+      "UpdateEventSessionIslamicAspectUpdateDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfEventSessionIslamicAspectDto"
+          }
+        }
+      },
+      "UpdateEventSessionKindDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventSessionLanguageDto": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionLanguageSessionDto"
+              }
+            ]
+          },
+          "language": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionLanguageLanguageDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventSessionLanguageLanguageDto": {
+        "type": "object",
+        "properties": {
+          "languageId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateEventSessionLanguageSessionDto": {
+        "type": "object",
+        "properties": {
+          "eventSessionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UpdateEventSessionLocationDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventSessionMaxAudienceAttendeesDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventSessionPriceDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfdecimal"
+          }
+        }
+      },
+      "UpdateEventSessionRegistrationModeDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventSessionRoomDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventSessionScheduleDto": {
+        "type": "object",
+        "properties": {
+          "startTime": {
+            "$ref": "#/components/schemas/OptionalUpdateOfDateTimeOffset"
+          },
+          "endTime": {
+            "$ref": "#/components/schemas/OptionalUpdateOfDateTimeOffset"
+          }
+        }
+      },
+      "UpdateEventSessionSlugDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventSessionSortOrderDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "UpdateEventSessionTemplateDto": {
         "type": "object",
         "properties": {
@@ -74052,6 +75766,38 @@
             "items": {
               "$ref": "#/components/schemas/CreateEventSessionTemplateDefinitionDto"
             }
+          }
+        }
+      },
+      "UpdateEventSessionTitleDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventSlugDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventSourceTemplateDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventSubtitleDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           }
         }
       },
@@ -74110,6 +75856,46 @@
             "items": {
               "$ref": "#/components/schemas/CreateEventTemplateDefinitionDto"
             }
+          }
+        }
+      },
+      "UpdateEventTimezoneDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventTitleDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateEventUrlDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventVisibilityDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -74198,34 +75984,67 @@
           }
         }
       },
+      "UpdateGroupDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
       "UpdateGroupDto": {
-        "required": [
-          "fullName"
-        ],
         "type": "object",
         "properties": {
           "fullName": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateGroupFullNameDto"
+              }
             ]
           },
-          "parentOrganizationId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "description": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateGroupDescriptionDto"
+              }
+            ]
           },
-          "parentGroupId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "parentOrganization": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateGroupParentOrganizationDto"
+              }
+            ]
+          },
+          "parentGroup": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateGroupParentGroupDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateGroupFullNameDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
           }
         }
       },
@@ -74238,6 +76057,22 @@
           },
           "role": {
             "$ref": "#/components/schemas/RoleEnum"
+          }
+        }
+      },
+      "UpdateGroupParentGroupDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateGroupParentOrganizationDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
           }
         }
       },
@@ -74326,106 +76161,300 @@
           }
         }
       },
-      "UpdateLocationDto": {
+      "UpdateLocationAddressDto": {
         "required": [
-          "fullName",
-          "address",
-          "postcode",
-          "country",
-          "city"
+          "value"
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "fullName": {
+          "value": {
             "type": "string"
+          }
+        }
+      },
+      "UpdateLocationCityDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateLocationCountryDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateLocationDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationFullNameDto"
+              }
+            ]
           },
           "address": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationAddressDto"
+              }
+            ]
           },
           "postcode": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationPostcodeDto"
+              }
+            ]
           },
           "country": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationCountryDto"
+              }
+            ]
           },
           "city": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationCityDto"
+              }
+            ]
           },
           "latitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationLatitudeDto"
+              }
+            ]
           },
           "longitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationLongitudeDto"
+              }
+            ]
           },
           "timezone": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationTimezoneDto"
+              }
             ]
           }
         }
       },
-      "UpdateLocationRoomDto": {
+      "UpdateLocationFullNameDto": {
         "required": [
-          "name"
+          "value"
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "locationId": {
-            "type": "string",
-            "format": "uuid"
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateLocationLatitudeDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfdouble"
+          }
+        }
+      },
+      "UpdateLocationLongitudeDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfdouble"
+          }
+        }
+      },
+      "UpdateLocationPostcodeDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateLocationRoomCapacityDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateLocationRoomDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateLocationRoomDto": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationRoomLocationDto"
+              }
+            ]
           },
           "name": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationRoomNameDto"
+              }
+            ]
           },
           "slug": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationRoomSlugDto"
+              }
             ]
           },
           "description": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationRoomDescriptionDto"
+              }
             ]
           },
           "capacity": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationRoomCapacityDto"
+              }
+            ]
           },
           "sortOrder": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateLocationRoomSortOrderDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateLocationRoomLocationDto": {
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UpdateLocationRoomNameDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateLocationRoomSlugDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateLocationRoomSortOrderDto": {
+        "type": "object",
+        "properties": {
+          "value": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "UpdateLocationTimezoneDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateOrganizationAddressDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
           }
         }
       },
@@ -74442,43 +76471,121 @@
           }
         }
       },
-      "UpdateOrganizationDto": {
+      "UpdateOrganizationCityDto": {
         "required": [
-          "fullName",
-          "email",
-          "country",
-          "city",
-          "address"
+          "value"
         ],
         "type": "object",
         "properties": {
-          "fullName": {
+          "value": {
             "type": "string"
+          }
+        }
+      },
+      "UpdateOrganizationCountryDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateOrganizationDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateOrganizationFullNameDto"
+              }
+            ]
           },
           "websiteUrl": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateOrganizationWebsiteUrlDto"
+              }
             ]
           },
           "email": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateOrganizationEmailDto"
+              }
+            ]
           },
           "country": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateOrganizationCountryDto"
+              }
+            ]
           },
           "city": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateOrganizationCityDto"
+              }
+            ]
           },
           "postcode": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateOrganizationPostcodeDto"
+              }
+            ]
           },
           "address": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateOrganizationAddressDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateOrganizationEmailDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateOrganizationFullNameDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
             "type": "string"
           }
         }
@@ -74492,6 +76599,27 @@
           },
           "role": {
             "$ref": "#/components/schemas/RoleEnum"
+          }
+        }
+      },
+      "UpdateOrganizationPostcodeDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateOrganizationWebsiteUrlDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           }
         }
       },
@@ -75051,10 +77179,6 @@
       "UpdateUserDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
           "names": {
             "oneOf": [
               {
@@ -75486,6 +77610,10 @@
               "null",
               "boolean"
             ]
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           },
           "profileImageKey": {
             "type": [
