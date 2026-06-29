@@ -69,18 +69,14 @@ public class AuthorizationIntegrationTests
         // Arrange — no X-Test-Auth header = anonymous
         var dto = new UpdateOrganizationDto
         {
-            FullName = "Updated Org",
-            Email = "updated@example.com",
-            Country = "Belgium",
-            City = "Brussels",
-            Address = "Updated Street",
-            Postcode = 1000
+            FullName = new UpdateOrganizationFullNameDto { Value = "Updated Org" }
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/organization/{Guid.NewGuid()}")
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"/api/organization/{Guid.NewGuid()}")
         {
             Content = JsonContent.Create(dto)
         };
+        request.Headers.TryAddWithoutValidation("If-Match", $"\"{Guid.NewGuid():D}\"");
 
         // Act
         var response = await _fixture.Client.SendAsync(request);

@@ -1,3 +1,6 @@
+// ABOUTME: API contract tests for authenticated user profile endpoints.
+// ABOUTME: Covers auth requirements, PATCH route shape, and If-Match precondition validation.
+
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
@@ -60,15 +63,15 @@ public class UserControllerTests
 
     #endregion
 
-    #region PUT Endpoints
+    #region PATCH Endpoints
 
     [Test]
-    public async Task UpdateUser_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task UpdateUserPatch_WithoutAuth_ShouldReturnUnauthorized()
     {
         // Arrange
+        var userId = Guid.NewGuid();
         var updateDto = new UpdateUserDto
         {
-            Id = Guid.NewGuid(),
             Names = new UpdateUserNamesDto
             {
                 FirstName = "Updated",
@@ -77,10 +80,59 @@ public class UserControllerTests
         };
 
         // Act
-        var response = await _fixture.Client.PutAsJsonAsync(BaseUrl, updateDto);
+        var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{userId}", updateDto);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdateUserPut_WhenUsingOldBodyIdRoute_ShouldReturnMethodNotAllowed()
+    {
+        // Arrange
+        var oldBody = new
+        {
+            id = Guid.NewGuid(),
+            names = new
+            {
+                firstName = "Updated",
+                lastName = "User"
+            }
+        };
+
+        // Act
+        var response = await _fixture.Client.PutAsJsonAsync(BaseUrl, oldBody);
+
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Test]
+    public async Task UpdateUserPatch_WhenAuthenticatedWithoutIfMatch_ShouldReturnBadRequest()
+    {
+        // Arrange
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var userId = Guid.NewGuid();
+        var updateDto = new UpdateUserDto
+        {
+            Names = new UpdateUserNamesDto
+            {
+                FirstName = "Updated",
+                LastName = "User"
+            }
+        };
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/{userId}")
+        {
+            Content = JsonContent.Create(updateDto)
+        };
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId));
+
+        // Act
+        var response = await client.SendAsync(request);
+
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     #endregion

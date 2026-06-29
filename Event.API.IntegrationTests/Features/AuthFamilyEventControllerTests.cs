@@ -55,12 +55,14 @@ public class AuthFamilyEventControllerTests(RealRuntimeApiFixture fixture)
     }
 
     [Test]
-    public async Task Anonymous_Put_ReturnsUnauthorized()
+    public async Task Anonymous_Patch_ReturnsUnauthorized()
     {
         await _fixture.ResetDatabaseAsync();
 
-        var content = new StringContent("""{"title":"Updated"}""", Encoding.UTF8, "application/json");
-        var response = await _fixture.Client.PutAsync($"/api/event/{Guid.NewGuid()}", content);
+        var content = new StringContent("""{"title":{"value":"Updated"}}""", Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Patch, $"/api/event/{Guid.NewGuid()}") { Content = content };
+        request.Headers.TryAddWithoutValidation("If-Match", $"\"{Guid.NewGuid():D}\"");
+        var response = await _fixture.Client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }

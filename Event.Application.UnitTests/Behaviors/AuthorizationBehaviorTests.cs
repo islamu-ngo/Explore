@@ -350,8 +350,12 @@ public class AuthorizationBehaviorTests
         var organizationId = Guid.NewGuid();
         var command = new UpdateEventCommand
         {
-            Id = eventId,
-            EventDto = new UpdateEventDto { Id = eventId, Title = "Test", ActorId = Guid.NewGuid(), FeaturedImageId = Guid.NewGuid(), VisibilityTypeId = 1, EventFormatId = 1 }
+            EventId = eventId,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            UpdateEventDto = new UpdateEventDto
+            {
+                Title = new UpdateEventTitleDto { Value = "Test" }
+            }
         };
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
