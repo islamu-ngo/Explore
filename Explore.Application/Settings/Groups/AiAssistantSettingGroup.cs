@@ -30,8 +30,6 @@ public class AiAssistantSettingGroup : ISettingGroup
 
     public int MaxAiContextSensitivity { get; private set; } = 1;
 
-    public int MaxAiContextSensitivity { get; private set; } = (int)AiContextSensitivityEnum.Internal;
-
     public bool HasEndpointUrl => !string.IsNullOrWhiteSpace(EndpointUrl);
     public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
     public bool HasModel => !string.IsNullOrWhiteSpace(ModelId);
