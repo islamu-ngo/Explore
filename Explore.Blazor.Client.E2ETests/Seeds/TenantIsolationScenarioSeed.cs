@@ -151,7 +151,8 @@ public static class TenantIsolationScenarioSeed
 
     private static Explore.Domain.Event CreatePublishedEvent(Guid tenantId, Guid actorId, string title)
     {
-        var sessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7));
+        var sessionStartUtc = DateTimeOffset.UtcNow.AddDays(7);
+        var sessionDate = DateOnly.FromDateTime(sessionStartUtc.UtcDateTime);
 
         return new Explore.Domain.Event
         {
@@ -170,6 +171,10 @@ public static class TenantIsolationScenarioSeed
             EventFormat = null!,
             FirstSessionDate = sessionDate,
             LastSessionDate = sessionDate,
+            FirstSessionStartUtc = sessionStartUtc,
+            LastSessionStartUtc = sessionStartUtc,
+            Timezone = "Europe/Brussels",
+            EventTimeZoneId = "Europe/Brussels",
             TotalViews = 0,
             IsRegistrationRequired = false,
             ConcurrencyStamp = Guid.NewGuid()
