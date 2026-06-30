@@ -17,8 +17,6 @@ Do not add new skipped API contract tests without updating this file in the same
 
 | Test | File | Category | Owner | Removal condition | Why still skipped | Promotion path |
 |---|---|---|---|---|---|---|
-| `RouteNames_EveryConstantResolvesToExactlyOneEndpoint` | `Event.API.IntegrationTests/Features/RouteNameCoverageTests.cs` | API contract / HATEOAS route-name coverage | Platform/Ops + API contract stabilization owner | Enable after write actions are decorated with `[HttpXxx(Name = RouteNames.X)]` in `dev/active/api-contract-stabilization` Phase 3. | The current generated inventory still marks many `RouteName` values as `(Phase 1.4)`, so enabling this now would mix route-name stabilization work into CI/CD hardening. | Finish route-name decoration, remove the `Skip` attribute, and delete this row in the same PR. |
-
 ## Removal Rules
 
 - A skipped API contract test must have `Category: API contract` in the code skip reason.
