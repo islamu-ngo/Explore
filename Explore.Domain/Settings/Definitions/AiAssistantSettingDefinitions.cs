@@ -156,11 +156,19 @@ public static class AiAssistantSettingDefinitions
         Description: "Allow unauthenticated visitors to open the AI assistant from the application shell",
         MaxScope: SettingScope.Tenant);
 
+    public static readonly SettingDefinition MaxAiContextSensitivity = new(
+        Key: GovernanceSettingKeys.AiAssistant.MaxAiContextSensitivity,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "1",
+        Category: "AiAssistant",
+        Description: "Maximum AI context sensitivity level allowed",
+        MaxScope: SettingScope.Tenant);
+
     public static IReadOnlyList<SettingDefinition> All =>
     [
         Enabled, Provider, EndpointUrl, ApiKey, ModelId, AllowedModelIds, MaxInputTokens, MaxOutputTokens,
         Temperature, TimeoutSeconds, RetentionDays, DailyMessageLimit, DailyTenantMessageLimit,
         ConcurrentRunLimit, SelectedReferenceLimit,
-        ToolProposalsEnabled, StreamingEnabled, AllowAnonymousAccess
+        ToolProposalsEnabled, StreamingEnabled, AllowAnonymousAccess, MaxAiContextSensitivity
     ];
 }
