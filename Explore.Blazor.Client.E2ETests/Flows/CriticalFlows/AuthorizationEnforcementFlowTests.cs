@@ -17,17 +17,26 @@ public class AuthorizationEnforcementFlowTests(
     {
         await appHost.ResetDatabaseAsync();
 
-        var page = await playwright.CreatePageAsync(nameof(AnonymousProtectedRoutes_ChallengeToKeycloakLogin));
+        var page1 = await playwright.CreatePageAsync($"{nameof(AnonymousProtectedRoutes_ChallengeToKeycloakLogin)}-1");
         try
         {
-            await BffCookieAuthHelper.AddSetupSecretBypassCookieAsync(page.Context, appHost.BlazorBaseUrl);
-
-            await AssertAnonymousProtectedRouteRedirectsToLoginAsync(page, "/events/create");
-            await AssertAnonymousProtectedRouteRedirectsToLoginAsync(page, "/my/events");
+            await BffCookieAuthHelper.AddSetupSecretBypassCookieAsync(page1.Context, appHost.BlazorBaseUrl);
+            await AssertAnonymousProtectedRouteRedirectsToLoginAsync(page1, "/events/create");
         }
         finally
         {
-            await playwright.ClosePageAsync(page, nameof(AnonymousProtectedRoutes_ChallengeToKeycloakLogin));
+            await playwright.ClosePageAsync(page1, $"{nameof(AnonymousProtectedRoutes_ChallengeToKeycloakLogin)}-1");
+        }
+
+        var page2 = await playwright.CreatePageAsync($"{nameof(AnonymousProtectedRoutes_ChallengeToKeycloakLogin)}-2");
+        try
+        {
+            await BffCookieAuthHelper.AddSetupSecretBypassCookieAsync(page2.Context, appHost.BlazorBaseUrl);
+            await AssertAnonymousProtectedRouteRedirectsToLoginAsync(page2, "/settings");
+        }
+        finally
+        {
+            await playwright.ClosePageAsync(page2, $"{nameof(AnonymousProtectedRoutes_ChallengeToKeycloakLogin)}-2");
         }
     }
 
