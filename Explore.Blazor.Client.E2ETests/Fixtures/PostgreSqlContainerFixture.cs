@@ -75,6 +75,12 @@ public sealed class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDispos
     private static readonly Table[] LookupTables =
     [
         new("__EFMigrationsHistory"),
+        new("ai_conversation_statuses"),
+        new("ai_message_roles"),
+        new("ai_proposed_action_kinds"),
+        new("ai_proposed_action_statuses"),
+        new("ai_reference_kinds"),
+        new("ai_run_statuses"),
         new("actor_types"),
         new("analytics_providers"),
         new("approval_statuses"),
@@ -83,6 +89,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDispos
         new("did_custody_types"),
         new("event_formats"),
         new("event_registration_policies"),
+        new("event_session_statuses"),
         new("event_statuses"),
         new("event_types"),
         new("external_api_key_credit_periods"),
