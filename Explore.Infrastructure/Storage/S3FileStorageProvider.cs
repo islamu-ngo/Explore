@@ -213,7 +213,7 @@ public sealed class S3FileStorageProvider : IFileStorageProvider
                 SupportsBrowserDirectUpload: true,
                 Message: "S3-compatible storage bucket is reachable.");
         }
-        catch (Exception ex) when (ex is AmazonS3Exception or AmazonServiceException or IOException or SystemException)
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "S3-compatible storage health check failed.");
             return new FileStorageProviderStatus(
