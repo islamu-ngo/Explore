@@ -145,11 +145,11 @@ public class CerbosPolicyCompilationTests : IDisposable
             resourceKind: "islamuevent_event",
             resourceId: "evt-1",
             resourceAttrs: new { tenantId = "tenant-42", organizationId = "org-1" },
-            actions: ["view", "create"]);
+            actions: ["view", "moderate-light"]);
 
         result["view"].Should().Be("EFFECT_ALLOW");
-        result["create"].Should().Be("EFFECT_ALLOW",
-            "tenant admin matching tenantId must be allowed to create events");
+        result["moderate-light"].Should().Be("EFFECT_ALLOW",
+            "tenant admin matching tenantId must be allowed to moderate events");
     }
 
     [Test]

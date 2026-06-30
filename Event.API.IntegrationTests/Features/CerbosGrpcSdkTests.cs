@@ -63,16 +63,17 @@ public class CerbosGrpcSdkTests : IDisposable
 
         var resource = ResourceEntry
             .NewInstance("islamuevent_event", "event-grpc-1")
-            .WithActions("view", "create", "update", "delete");
+            .WithActions("view", "create", "update", "delete", "moderate-light");
 
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("event-grpc-1");
 
         result.Should().NotBeNull();
         AssertEffect(result!, "view", Effect.Allow);
-        AssertEffect(result!, "create", Effect.Allow);
-        AssertEffect(result!, "update", Effect.Allow);
-        AssertEffect(result!, "delete", Effect.Allow);
+        AssertEffect(result!, "create", Effect.Deny);
+        AssertEffect(result!, "update", Effect.Deny);
+        AssertEffect(result!, "delete", Effect.Deny);
+        AssertEffect(result!, "moderate-light", Effect.Allow);
     }
 
     #endregion
@@ -176,14 +177,15 @@ public class CerbosGrpcSdkTests : IDisposable
             .NewInstance("islamuevent_event", "event-grpc-3")
             .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
             .WithAttribute("organizationId", AttributeValue.StringValue("org-1"))
-            .WithActions("view", "create", "update");
+            .WithActions("view", "create", "update", "moderate-light");
 
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("event-grpc-3")!;
 
         AssertEffect(result, "view", Effect.Allow);
-        AssertEffect(result, "create", Effect.Allow);
-        AssertEffect(result, "update", Effect.Allow);
+        AssertEffect(result, "create", Effect.Deny);
+        AssertEffect(result, "update", Effect.Deny);
+        AssertEffect(result, "moderate-light", Effect.Allow);
     }
 
     [Test]

@@ -199,10 +199,21 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             orgMemberships: new Dictionary<string, string>(),
             resourceKind: ResourceKinds.Event,
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
-            actions: ["view", "create", "update"]);
+            actions: ["view", "moderate-light"]);
 
         ownTenantResult.Values.Should().OnlyContain(v => v == "EFFECT_ALLOW",
-            "tenant admin should be allowed all actions on events in own tenant");
+            "tenant admin should be allowed view and moderation actions on events in own tenant");
+
+        var ownTenantMutations = await CheckCerbosDecision(
+            isInstanceAdmin: false,
+            tenantMemberships: new Dictionary<string, string> { ["tenant-1"] = "admin" },
+            orgMemberships: new Dictionary<string, string>(),
+            resourceKind: ResourceKinds.Event,
+            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
+            actions: ["create", "update", "delete"]);
+
+        ownTenantMutations.Values.Should().OnlyContain(v => v == "EFFECT_DENY",
+            "tenant admin should be denied direct event mutations in own tenant (delegated to org admins)");
 
         var otherTenantResult = await CheckCerbosDecision(
             isInstanceAdmin: false,
@@ -210,10 +221,10 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             orgMemberships: new Dictionary<string, string>(),
             resourceKind: ResourceKinds.Event,
             resourceAttrs: new { tenantId = "tenant-2", organizationId = "org-2" },
-            actions: ["create", "update", "delete"]);
+            actions: ["create", "update", "delete", "moderate-light"]);
 
         otherTenantResult.Values.Should().OnlyContain(v => v == "EFFECT_DENY",
-            "tenant admin should be denied mutations on events in other tenant");
+            "tenant admin should be denied all mutations and moderation on events in other tenant");
     }
 
     [Test]
