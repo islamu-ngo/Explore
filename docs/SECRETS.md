@@ -38,6 +38,31 @@ When `Provider = None`, secrets come exclusively from environment variables and 
 }
 ```
 
+### Local Development User Secrets
+
+For local development, the projects share a unified .NET User Secrets ID defined in the `.csproj` files: `event-shared-secrets`.
+
+To enable local secret resolution, contributors must create or edit the shared `secrets.json` file:
+- **Linux/macOS:** `/home/{user}/.microsoft/usersecrets/event-shared-secrets/secrets.json`
+- **Windows:** `%APPDATA%\Microsoft\UserSecrets\event-shared-secrets\secrets.json`
+
+Add the bootstrap credentials for your local developer environment inside this file:
+```json
+{
+  "Infisical:Url": "https://example.com",
+  "Infisical:ProjectId": "",
+  "Infisical:Environment": "dev",
+  "Infisical:ClientId": "",
+  "Infisical:ClientSecret": ""
+}
+```
+
+> [!IMPORTANT]
+> The .NET Aspire AppHost (`Explore.AppHost`) does **not** launch or orchestrate PostgreSQL, Keycloak, or Cerbos container resources.
+> Developers must supply connection details and credentials for these dependencies.
+> - If **Infisical** is configured using the shared `secrets.json` file above, they will be loaded automatically at startup.
+> - If Infisical is not used (which is optional), you must configure them manually via environment variables (e.g., `POSTGRESQL_HOST`, `POSTGRESQL_PORT`, `POSTGRESQL_USERNAME`, `POSTGRESQL_PASSWORD`, Keycloak/Cerbos settings, etc.) in your local shell environment before running the AppHost.
+
 ### SecretRefresh Section
 
 | Key | Default | Purpose |

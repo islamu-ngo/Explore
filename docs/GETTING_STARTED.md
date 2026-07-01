@@ -35,6 +35,34 @@ dotnet build --configuration Release --verbosity quiet
 
 Build errors must be fixed before continuing. For recurring failures, use [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
+## Local Secrets & External Dependencies
+
+For local development (especially when running Option A), the applications share a single .NET User Secrets ID: `event-shared-secrets`.
+
+Contributors should configure local credentials or Infisical bootstrap settings in the shared user secrets file:
+- **Linux/macOS:** `/home/{user}/.microsoft/usersecrets/event-shared-secrets/secrets.json`
+- **Windows:** `%APPDATA%\Microsoft\UserSecrets\event-shared-secrets\secrets.json`
+
+### Infisical Configuration (Optional)
+If using Infisical, configure your local bootstrap credentials inside the `secrets.json` file:
+```json
+{
+  "Infisical:Url": "https://example.com",
+  "Infisical:ProjectId": "",
+  "Infisical:Environment": "dev",
+  "Infisical:ClientId": "",
+  "Infisical:ClientSecret": ""
+}
+```
+
+### External Services (PostgreSQL, Cerbos, Keycloak)
+The .NET Aspire AppHost does **not** launch or orchestrate PostgreSQL, Keycloak, or Cerbos container resources.
+Therefore, connection details and keys for these dependencies must be provided by the developer. They can be supplied in one of two ways:
+1. **Infisical (Preferred):** Populated automatically by the `Explore.Secrets` library when bootstrap credentials are provided in the shared `secrets.json` file.
+2. **Environment Variables:** If Infisical is not used (which is optional), you must define the connection details for these dependencies in your environment variables (e.g., `POSTGRESQL_HOST`, `POSTGRESQL_PORT`, `POSTGRESQL_USERNAME`, `POSTGRESQL_PASSWORD`, Keycloak/Cerbos settings, etc.) in the local shell environment before launching.
+
+For more detailed information, see [SECRETS.md](SECRETS.md) and [CONFIGURATION.md](CONFIGURATION.md).
+
 ## Option A: Run The Aspire Development Loop
 
 Aspire is the preferred local development loop because `Explore.AppHost` starts the migration service before API and Blazor, then wires API discovery into Blazor without hardcoded ports.
