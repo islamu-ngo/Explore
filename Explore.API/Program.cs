@@ -112,7 +112,7 @@ builder.Services.AddRouting(options =>
 
 // Add services to the container.
 
-builder.Services.ConfigureApplicationServices();
+builder.Services.ConfigureApplicationServices(builder.Configuration);
 builder.Services.ConfigureInfrastructureServices(builder.Configuration);
 builder.Services.Configure<CerbosPolicyBootSyncOptions>(
     builder.Configuration.GetSection(CerbosPolicyBootSyncOptions.SectionName));

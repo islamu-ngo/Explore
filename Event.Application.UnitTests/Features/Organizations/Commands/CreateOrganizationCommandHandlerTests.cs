@@ -71,8 +71,12 @@ public class CreateOrganizationCommandHandlerTests
     {
         // Arrange
         var config = new MapperConfiguration(
+#if USE_COMMERCIAL_LUCKYPENNY_LIBS
             cfg => cfg.AddProfile<OrganizationMappingProfile>(),
             NullLoggerFactory.Instance);
+#else
+            cfg => cfg.AddProfile<OrganizationMappingProfile>());
+#endif
         var mapper = config.CreateMapper();
         var dto = new CreateOrganizationDto
         {

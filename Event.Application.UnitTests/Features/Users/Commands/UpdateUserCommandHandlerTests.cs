@@ -36,8 +36,12 @@ public sealed class UpdateUserCommandHandlerTests
             });
 
         var mapper = new MapperConfiguration(
+#if USE_COMMERCIAL_LUCKYPENNY_LIBS
             configuration => configuration.AddProfile<UserMappingProfile>(),
             NullLoggerFactory.Instance).CreateMapper();
+#else
+            configuration => configuration.AddProfile<UserMappingProfile>()).CreateMapper();
+#endif
 
         _handler = new UpdateUserCommandHandler(
             _userRepository,

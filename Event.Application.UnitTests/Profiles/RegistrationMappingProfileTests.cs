@@ -15,8 +15,12 @@ public sealed class RegistrationMappingProfileTests
     public RegistrationMappingProfileTests()
     {
         var configuration = new MapperConfiguration(
+#if USE_COMMERCIAL_LUCKYPENNY_LIBS
             cfg => cfg.AddProfile<RegistrationMappingProfile>(),
             NullLoggerFactory.Instance);
+#else
+            cfg => cfg.AddProfile<RegistrationMappingProfile>());
+#endif
         _mapper = configuration.CreateMapper();
     }
 

@@ -15,16 +15,47 @@ using Explore.Application.Services.Lifecycle;
 using Explore.Application.Settings;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Application;
 
 public static class ApplicationServicesRegistration
 {
-    public static IServiceCollection ConfigureApplicationServices(this IServiceCollection services)
+    public static IServiceCollection ConfigureApplicationServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        services.AddAutoMapper(cfg => cfg.AddMaps(Assembly.GetExecutingAssembly()));
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(ApplicationServicesRegistration).Assembly));
+        services.AddAutoMapper(cfg =>
+        {
+#if USE_COMMERCIAL_LUCKYPENNY_LIBS
+            // AutoMapper 15+ requires a Lucky Penny commercial license key at runtime.
+            // Injected from Infisical /api folder: LUCKYPENNY_LICENSE_KEY → Licensing:LuckyPenny:LicenseKey.
+            // No throw here: the OpenAPI doc generator runs Program.Main at build time without secrets.
+            // Lucky Penny libraries themselves enforce licensing at runtime.
+            var licenseKey = configuration["Licensing:LuckyPenny:LicenseKey"];
+            if (!string.IsNullOrEmpty(licenseKey))
+            {
+                cfg.LicenseKey = licenseKey;
+            }
+#endif
+            cfg.AddMaps(Assembly.GetExecutingAssembly());
+        });
+
+        services.AddMediatR(cfg =>
+        {
+#if USE_COMMERCIAL_LUCKYPENNY_LIBS
+            // MediatR 13+ requires a Lucky Penny commercial license key at runtime.
+            // Same key as AutoMapper — single LUCKYPENNY_LICENSE_KEY from Infisical.
+            var licenseKey = configuration["Licensing:LuckyPenny:LicenseKey"];
+            if (!string.IsNullOrEmpty(licenseKey))
+            {
+                cfg.LicenseKey = licenseKey;
+            }
+#endif
+            cfg.RegisterServicesFromAssembly(typeof(ApplicationServicesRegistration).Assembly);
+        });
+
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());

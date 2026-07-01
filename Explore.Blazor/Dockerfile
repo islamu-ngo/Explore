@@ -1,5 +1,5 @@
 # ABOUTME: Builds the Explore Blazor container image with deterministic restore inputs and pinned bases.
-# ABOUTME: Supports production deployment while keeping runtime secrets injected only at startup.
+# ABOUTME: Supports dual-versioning (FOSS default / commercial Lucky Penny) and runtime secret injection.
 # Secrets are loaded at runtime via AddSecretManagement() - no CLI needed
 # Supports zero-downtime deployments with Coolify
 
@@ -11,6 +11,7 @@ EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:ea8bde36c11b6e7eec2656d0e59101d4462f6bd630730f2c8201ed0572b295d5 AS build
 ARG BUILD_CONFIGURATION=Release
+ARG USE_COMMERCIAL_LUCKYPENNY_LIBS=false
 WORKDIR /src
 
 # Copy restore inputs and project graph first for deterministic locked restore caching
@@ -24,15 +25,30 @@ COPY ["Explore.Persistence/Explore.Persistence.csproj", "Explore.Persistence/pac
 COPY ["Explore.Secrets/Explore.Secrets.csproj", "Explore.Secrets/packages.lock.json", "Explore.Secrets/"]
 COPY ["Explore.ServiceDefaults/Explore.ServiceDefaults.csproj", "Explore.ServiceDefaults/packages.lock.json", "Explore.ServiceDefaults/"]
 
-RUN dotnet restore "./Explore.Blazor/Explore.Blazor.csproj" --locked-mode
+# Restore: FOSS uses locked-mode for determinism; commercial re-resolves
+RUN if [ "$USE_COMMERCIAL_LUCKYPENNY_LIBS" = "true" ]; then \
+      dotnet restore "./Explore.Blazor/Explore.Blazor.csproj" \
+        -p:UseCommercialLuckyPennyLibraries=true; \
+    else \
+      dotnet restore "./Explore.Blazor/Explore.Blazor.csproj" \
+        --locked-mode \
+        -p:UseCommercialLuckyPennyLibraries=false; \
+    fi
+
 RUN dotnet tool restore
 COPY . .
 WORKDIR "/src/Explore.Blazor"
-RUN dotnet build "./Explore.Blazor.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "./Explore.Blazor.csproj" -c $BUILD_CONFIGURATION -o /app/build \
+      --no-restore \
+      -p:UseCommercialLuckyPennyLibraries=$USE_COMMERCIAL_LUCKYPENNY_LIBS
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Explore.Blazor.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+ARG USE_COMMERCIAL_LUCKYPENNY_LIBS=false
+RUN dotnet publish "./Explore.Blazor.csproj" -c $BUILD_CONFIGURATION -o /app/publish \
+      /p:UseAppHost=false \
+      --no-restore \
+      -p:UseCommercialLuckyPennyLibraries=$USE_COMMERCIAL_LUCKYPENNY_LIBS
 
 FROM base AS final
 WORKDIR /app
@@ -44,6 +60,7 @@ COPY --from=publish /app/publish .
 # Configure via environment variables:
 #   SECRET_PROVIDER=infisical (or "none" for env vars only)
 #   Infisical__ProjectId, Infisical__ClientId, Infisical__ClientSecret, etc.
+#   Licensing__AutoMapper__LicenseKey, Licensing__MediatR__LicenseKey (commercial builds only)
 # See docs/CONFIGURATION.md for full list of options
 
 ENTRYPOINT ["dotnet", "Explore.Blazor.dll"]

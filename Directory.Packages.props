@@ -1,7 +1,36 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+    <!-- Dual-versioning: FOSS by default, commercial via build flag.
+         Self-hosters: plain `dotnet build` resolves FOSS versions. No license needed.
+         ISLAMU production: `dotnet build -p:UseCommercialLuckyPennyLibraries=true`
+         Lucky Penny commercial licensing starts at AutoMapper 15.0.0+ and MediatR 13.0.0+.
+         Earlier versions remain MIT / Apache-2.0.
+         See docs/DUAL_VERSIONING.md for full details. -->
+    <UseCommercialLuckyPennyLibraries Condition="'$(UseCommercialLuckyPennyLibraries)' == ''">false</UseCommercialLuckyPennyLibraries>
+
+    <!-- Commercial version pins (overridable via MSBuild properties or env vars).
+         Example: dotnet build -p:AutoMapperCommercialVersion=17.0.0 -->
+    <AutoMapperCommercialVersion Condition="'$(AutoMapperCommercialVersion)' == ''">16.1.1</AutoMapperCommercialVersion>
+    <MediatRCommercialVersion Condition="'$(MediatRCommercialVersion)' == ''">14.1.0</MediatRCommercialVersion>
   </PropertyGroup>
+
+  <!-- FOSS versions (default for self-hosters).
+       AutoMapper 14.0.0 = last MIT-licensed version (⚠️ CVE-2026-32933, security-frozen).
+       MediatR 12.5.0 = last Apache-2.0-licensed version. -->
+  <ItemGroup Condition="'$(UseCommercialLuckyPennyLibraries)' != 'true'">
+    <PackageVersion Include="AutoMapper" Version="14.0.0" />
+    <PackageVersion Include="MediatR" Version="12.5.0" />
+  </ItemGroup>
+
+  <!-- Commercial Lucky Penny versions (ISLAMU production builds).
+       Requires runtime license keys via Licensing:AutoMapper:LicenseKey and Licensing:MediatR:LicenseKey. -->
+  <ItemGroup Condition="'$(UseCommercialLuckyPennyLibraries)' == 'true'">
+    <PackageVersion Include="AutoMapper" Version="$(AutoMapperCommercialVersion)" />
+    <PackageVersion Include="MediatR" Version="$(MediatRCommercialVersion)" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageVersion Include="Asp.Versioning.Mvc" Version="8.1.0" />
     <PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
@@ -15,7 +44,6 @@
     <PackageVersion Include="Aspire.Keycloak.Authentication" Version="13.4.6-preview.1.26319.6" />
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.4.6" />
     <PackageVersion Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.4.6" />
-    <PackageVersion Include="AutoMapper" Version="16.1.1" />
     <PackageVersion Include="AWSSDK.S3" Version="4.0.16.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="Blazored.FluentValidation" Version="2.2.0" />
@@ -36,7 +64,6 @@
     <PackageVersion Include="MailKit" Version="4.16.0" />
     <!-- MessagePack pinned to patched 2.5.302 for GHSA-hv8m-jj95-wg3x (transitive via KubernetesClient) -->
     <PackageVersion Include="MessagePack" Version="2.5.302" />
-    <PackageVersion Include="MediatR" Version="14.1.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.7" />
