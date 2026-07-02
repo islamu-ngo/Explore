@@ -32,7 +32,7 @@ public class ProblemDetailsRealRuntimeTests(RealRuntimeApiFixture fixture)
         var response = await _fixture.Client.GetAsync($"/api/event/{Guid.NewGuid()}");
 
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(
-            response, HttpStatusCode.NotFound, "Not Found");
+            response, HttpStatusCode.NotFound, "Event not found");
     }
 
     [Test]

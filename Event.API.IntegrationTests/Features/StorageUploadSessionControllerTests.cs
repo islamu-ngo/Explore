@@ -138,7 +138,9 @@ public sealed class StorageUploadSessionControllerTests
 
         var actionResult = await controller.GetPublicImage(Guid.CreateVersion7(), CancellationToken.None);
 
-        await Assert.That(actionResult).IsTypeOf<NotFoundResult>();
+        var objectResult = actionResult as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(404);
     }
 
     [Test]
@@ -150,14 +152,14 @@ public sealed class StorageUploadSessionControllerTests
 
         var actionResult = await controller.CreateUploadSession(CreateDto(), CancellationToken.None);
 
-        var content = actionResult.Result as ContentResult;
-        await Assert.That(content).IsNotNull();
-        await Assert.That(content!.StatusCode).IsEqualTo((int)HttpStatusCode.RequestEntityTooLarge);
-        await Assert.That(content.ContentType).IsEqualTo("application/problem+json");
+        var objectResult = actionResult.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(413);
 
-        using var document = JsonDocument.Parse(content.Content!);
-        await Assert.That(document.RootElement.GetProperty("code").GetString()).IsEqualTo(FailureCodes.StorageUploadTooLarge);
-        await Assert.That(document.RootElement.GetProperty("title").GetString()).IsEqualTo("Storage upload is too large");
+        var problemDetails = objectResult.Value as ProblemDetails;
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Extensions["code"]).IsEqualTo(FailureCodes.StorageUploadTooLarge);
+        await Assert.That(problemDetails.Title).IsEqualTo("Storage upload is too large");
     }
 
     [Test]

@@ -10,6 +10,7 @@ using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Domain.Enums;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -79,11 +80,19 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
             adminContext,
             setupSecretProvider,
             Substitute.For<IDeploymentModeProvider>(),
-            Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>());
+            Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
 
         IActionResult result = await controller.DownloadAuthorizationPolicyPackage(CancellationToken.None);
 
-        await Assert.That(result).IsTypeOf<ForbidResult>();
+        var objectResult = result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status403Forbidden);
         await mediator.DidNotReceive().Send(Arg.Any<DownloadAuthorizationPolicyPackageQuery>(), Arg.Any<CancellationToken>());
     }
 

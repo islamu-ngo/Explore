@@ -90,11 +90,12 @@ public sealed class TenantStorageSettingsControllerTests
 
         var result = await controller.UpdateStorageSettings(CreateSettings(), CancellationToken.None);
 
-        var badRequest = result.Result as BadRequestObjectResult;
-        await Assert.That(badRequest).IsNotNull();
-        var response = badRequest!.Value as BaseCommandResponse<Guid>;
-        await Assert.That(response).IsNotNull();
-        await Assert.That(response!.FailureCode).IsEqualTo("StorageTenantOverridesLocked");
+        var objectResult = result.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(400);
+        var problemDetails = objectResult.Value as ValidationProblemDetails;
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Extensions["code"]).IsEqualTo("StorageTenantOverridesLocked");
     }
 
     [Test]
@@ -111,7 +112,9 @@ public sealed class TenantStorageSettingsControllerTests
 
         var result = await controller.UpdateStorageSettings(CreateSettings(), CancellationToken.None);
 
-        await Assert.That(result.Result).IsTypeOf<ForbidResult>();
+        var objectResult = result.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status403Forbidden);
     }
 
     private static TenantStorageSettingsController CreateController(

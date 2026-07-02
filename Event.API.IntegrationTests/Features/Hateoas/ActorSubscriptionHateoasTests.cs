@@ -4,6 +4,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Linq;
 
 using Event.Api.IntegrationTests.Builders;
 using Event.Api.IntegrationTests.Fixtures;
@@ -88,10 +89,11 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
         var subscribeResponse = await PostSubscribeAsync(scenario);
 
         await Assert.That(subscribeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var commandResponse = await subscribeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        await Assert.That(commandResponse).IsNotNull();
-        await Assert.That(commandResponse!.Success).IsFalse();
-        await Assert.That(commandResponse.Errors).Contains("Target actor must be an organization or group in the current tenant.");
+        using var document = JsonDocument.Parse(await subscribeResponse.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("validation_failed");
+        var errors = root.GetProperty("errors").GetProperty("actorSubscription").EnumerateArray().Select(e => e.GetString()).ToArray();
+        await Assert.That(errors).Contains("Target actor must be an organization or group in the current tenant.");
 
         await using var verifyScope = _fixture.Factory.Services.CreateAsyncScope();
         var context = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
@@ -109,10 +111,11 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
         var subscribeResponse = await PostSubscribeAsync(scenario);
 
         await Assert.That(subscribeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var commandResponse = await subscribeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        await Assert.That(commandResponse).IsNotNull();
-        await Assert.That(commandResponse!.Success).IsFalse();
-        await Assert.That(commandResponse.Errors).Contains("An active tenant-local user is required before subscribing.");
+        using var document2 = JsonDocument.Parse(await subscribeResponse.Content.ReadAsStringAsync());
+        var root2 = document2.RootElement;
+        await Assert.That(root2.GetProperty("code").GetString()).IsEqualTo("validation_failed");
+        var errors2 = root2.GetProperty("errors").GetProperty("actorSubscription").EnumerateArray().Select(e => e.GetString()).ToArray();
+        await Assert.That(errors2).Contains("An active tenant-local user is required before subscribing.");
 
         await using var verifyScope = _fixture.Factory.Services.CreateAsyncScope();
         var context = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();

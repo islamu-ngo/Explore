@@ -86,7 +86,9 @@ public sealed class InstanceStorageAdminControllerTests
 
         var result = await controller.TestStorageConnection(CancellationToken.None);
 
-        await Assert.That(result.Result).IsTypeOf<ForbidResult>();
+        var objectResult = result.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status403Forbidden);
         await mediator.DidNotReceive().Send(Arg.Any<TestInstanceStorageProviderQuery>(), Arg.Any<CancellationToken>());
     }
 
@@ -129,7 +131,9 @@ public sealed class InstanceStorageAdminControllerTests
 
         var result = await controller.RecalculateStorageUsage(CancellationToken.None);
 
-        await Assert.That(result.Result).IsTypeOf<ForbidResult>();
+        var objectResult = result.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status403Forbidden);
         await mediator.DidNotReceive().Send(Arg.Any<RecalculateInstanceStorageUsageCommand>(), Arg.Any<CancellationToken>());
     }
 

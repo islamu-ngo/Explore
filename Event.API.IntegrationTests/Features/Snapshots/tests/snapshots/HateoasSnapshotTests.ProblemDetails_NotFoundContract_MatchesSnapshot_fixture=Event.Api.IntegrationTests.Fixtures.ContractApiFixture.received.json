@@ -1,8 +1,0 @@
-﻿{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
-  "title": "Resource not found",
-  "status": 404,
-  "detail": "Event (11111111-1111-1111-1111-111111111111) was not found",
-  "instance": "/api/actor/11111111-1111-1111-1111-111111111111",
-  "code": "resource_not_found"
-}

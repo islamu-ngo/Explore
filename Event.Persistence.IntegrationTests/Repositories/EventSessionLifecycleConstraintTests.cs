@@ -24,11 +24,11 @@ public class EventSessionLifecycleConstraintTests
     }
 
     [Test]
-    public async Task EventSessionStatus_ShouldSeedAllEightRows()
+    public async Task EventSessionStatus_ShouldSeedAllTenRows()
     {
         using var context = _fixture.CreateDbContext();
         var statuses = await context.EventSessionStatuses.AsNoTracking().OrderBy(s => s.Id).ToListAsync();
-        await Assert.That(statuses.Count).IsEqualTo(8);
+        await Assert.That(statuses.Count).IsEqualTo(10);
         await Assert.That(statuses[0].FullName).IsEqualTo(nameof(EventSessionStatusEnum.Draft));
         await Assert.That(statuses[1].FullName).IsEqualTo(nameof(EventSessionStatusEnum.Submitted));
         await Assert.That(statuses[2].FullName).IsEqualTo(nameof(EventSessionStatusEnum.UnderReview));
@@ -37,6 +37,8 @@ public class EventSessionLifecycleConstraintTests
         await Assert.That(statuses[5].FullName).IsEqualTo(nameof(EventSessionStatusEnum.Rejected));
         await Assert.That(statuses[6].FullName).IsEqualTo(nameof(EventSessionStatusEnum.Cancelled));
         await Assert.That(statuses[7].FullName).IsEqualTo(nameof(EventSessionStatusEnum.Archived));
+        await Assert.That(statuses[8].FullName).IsEqualTo(nameof(EventSessionStatusEnum.Completed));
+        await Assert.That(statuses[9].FullName).IsEqualTo(nameof(EventSessionStatusEnum.Moderated));
     }
 
     [Test]

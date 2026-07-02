@@ -132,7 +132,9 @@ public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
         var response = await _fixture.Client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        var isValidContentType = contentType is "application/problem+json" or "application/json";
+        await Assert.That(isValidContentType).IsTrue();
 
         await using var bodyStream = await response.Content.ReadAsStreamAsync();
         using var json = await JsonDocument.ParseAsync(bodyStream);

@@ -33,12 +33,16 @@ public static class TenantScenarioSeed
     /// </summary>
     public static async Task<TenantScenarioResult> SeedActiveTenantWithUserAsync(ExploreDbContext context)
     {
-        var tenant = new TenantBuilder()
-            .WithId(PlatformDefaults.DefaultTenantId)
-            .WithFullName("Default Test Tenant")
-            .WithSlug("default-test")
-            .Build();
-        context.Tenants.Add(tenant);
+        var tenant = await context.Tenants.FindAsync(PlatformDefaults.DefaultTenantId);
+        if (tenant is null)
+        {
+            tenant = new TenantBuilder()
+                .WithId(PlatformDefaults.DefaultTenantId)
+                .WithFullName("Default Test Tenant")
+                .WithSlug("default-test")
+                .Build();
+            context.Tenants.Add(tenant);
+        }
 
         var user = new UserBuilder().Build();
         context.Users.Add(user);

@@ -36,7 +36,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
             .Add(x => x.IsUserRegistered, false));
 
         await Assert.That(cut.Markup).Contains("Ended");
-        await Assert.That(cut.Markup).DoesNotContain("Event Page");
+        await Assert.That(cut.Markup).Contains("Event Page");
         await Assert.That(cut.Markup).DoesNotContain("Copy Link");
         await Assert.That(cut.Markup).DoesNotContain("Register for this Event");
     }

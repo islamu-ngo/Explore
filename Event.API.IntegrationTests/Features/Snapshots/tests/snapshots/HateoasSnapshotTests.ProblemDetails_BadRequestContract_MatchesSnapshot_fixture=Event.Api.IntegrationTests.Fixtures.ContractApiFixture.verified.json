@@ -1,7 +1,8 @@
-{
+﻿{
   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
   "title": "Bad request",
   "status": 400,
   "detail": "Invalid input data",
-  "instance": "/api/actor/22222222-2222-2222-2222-222222222222"
+  "instance": "/api/actor/22222222-2222-2222-2222-222222222222",
+  "code": "validation_failed"
 }

@@ -23,12 +23,21 @@ public sealed class EventControllerCalendarTests
 
     public EventControllerCalendarTests()
     {
+        var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+        {
+            TraceIdentifier = "trace-calendar-test"
+        };
+        httpContext.Request.Path = "/api/event/22222222-3333-4444-5555-666666666666/calendar";
+
         _controller = new EventController(
             _mediator,
             Substitute.For<ILogger<EventController>>(),
             Substitute.For<IResourceAssembler<EventDto, EventListDto>>(),
             new IcalNetEventCalendarFileBuilder(),
-            _publicUrlBuilder);
+            _publicUrlBuilder)
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
     }
 
     [Test]
@@ -76,6 +85,8 @@ public sealed class EventControllerCalendarTests
 
         IActionResult result = await _controller.GetCalendar(eventId, CancellationToken.None);
 
-        await Assert.That(result).IsTypeOf<NotFoundResult>();
+        await Assert.That(result).IsTypeOf<ObjectResult>();
+        var objectResult = (ObjectResult)result;
+        await Assert.That(objectResult.StatusCode).IsEqualTo(404);
     }
 }

@@ -41,6 +41,28 @@ public static class TenantIsolationScenarioSeed
 
         var tenantAEvent = CreatePublishedEvent(tenantA.Id, actorA.Id, "Tenant A Published E2E Event");
         context.Events.Add(tenantAEvent);
+
+        var calculator = new Explore.Domain.Services.Scheduling.EventScheduleProjectionCalculator();
+        var sessionStartUtc = DateTimeOffset.UtcNow.AddDays(7);
+        var tenantAEventSession = new EventSession
+        {
+            Id = Guid.NewGuid(),
+            EventId = tenantAEvent.Id,
+            Event = tenantAEvent,
+            TenantId = tenantA.Id,
+            Tenant = tenantA,
+            Title = "Tenant A Published E2E Event Session",
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
+            Slug = "tenant-a-published-e2e-event-session",
+            CurrentAudienceAttendees = 0,
+            SortOrder = 0
+        };
+        tenantAEventSession.Reschedule(sessionStartUtc, sessionStartUtc.AddHours(2), "Europe/Brussels", calculator);
+        context.EventSessions.Add(tenantAEventSession);
+
+        tenantAEvent.Sessions.Add(tenantAEventSession);
+        tenantAEvent.RecalculateScheduleSummaryFromSessions();
+
         await context.SaveChangesAsync();
 
         return new Result(

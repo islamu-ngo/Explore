@@ -89,6 +89,9 @@ public class BlazorTestContext : BunitContext
             .Returns(Task.FromResult(true));
         Services.AddSingleton(dockLayoutPersistence);
         Services.AddScoped(_ => Substitute.For<ILanguagePreferenceService>());
+        Services.AddScoped<CurrentUserState>();
+        Services.AddSingleton(Substitute.For<ITagService>());
+        Services.AddSingleton(Substitute.For<ICategoryService>());
     }
 
     protected override void Dispose(bool disposing)

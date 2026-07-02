@@ -19,6 +19,7 @@ using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -182,10 +183,9 @@ public class InstanceOnboardingControllerTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
-        var responseBody = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        await Assert.That(responseBody).IsNotNull();
-        await Assert.That(responseBody!.Success).IsFalse();
-        await Assert.That(responseBody.Message).IsEqualTo("Instance cannot be launched because critical launch requirements are not met. Please review the blocking issues and try again.");
+        var problemDetails = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Detail).IsEqualTo("Instance cannot be launched because critical launch requirements are not met. Please review the blocking issues and try again.");
     }
 
     [Test]
@@ -312,10 +312,9 @@ public class InstanceOnboardingControllerTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
-        var responseBody = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        await Assert.That(responseBody).IsNotNull();
-        await Assert.That(responseBody!.Success).IsFalse();
-        await Assert.That(responseBody.Message).Contains("Cannot disable all authentication providers linked");
+        var problemDetails = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Detail).Contains("Cannot disable all authentication providers linked");
     }
 
     [Test]

@@ -314,7 +314,7 @@ public class CreateEventCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithDraftWithoutSessions_CreatesDefaultDraftSession()
+    public async Task Handle_WithPublishedWithoutSessions_CreatesDefaultSession()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -323,7 +323,8 @@ public class CreateEventCommandHandlerTests
         {
             Request = new CreateEventRequest
             {
-                Title = "Draft without program items",
+                Title = "Published without program items",
+                EventStatusId = (int)EventStatusEnum.Published,
                 Sessions = []
             }
         };
@@ -333,6 +334,25 @@ public class CreateEventCommandHandlerTests
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
             .Returns(EventActorResult.Success(actorId, isUserReported: true));
 
+        _eventRepository.Create(Arg.Any<Explore.Domain.Event>())
+            .Returns(callInfo =>
+            {
+                var evt = callInfo.Arg<Explore.Domain.Event>();
+                evt.Id = Guid.NewGuid();
+                evt.FirstSessionStartUtc = DateTime.UtcNow;
+                return evt;
+            });
+
+        _lifecyclePolicyProvider.GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(new EventLifecyclePolicy
+            {
+                Profile = ValidationProfile.EventPublish,
+                RequiredEventFields = new HashSet<Enum>(),
+                RequiredSessionFields = new HashSet<Enum>()
+            });
+        _lifecycleReadinessEvaluator.Evaluate(Arg.Any<Explore.Domain.Event>(), ValidationProfile.EventPublish, Arg.Any<EventLifecyclePolicy>())
+            .Returns(LifecycleReadinessResult.Success(ValidationProfile.EventPublish));
+
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
@@ -341,17 +361,16 @@ public class CreateEventCommandHandlerTests
             entity.SessionCount == 0
             && entity.FirstSessionDate == null
             && entity.LastSessionDate == null
-            && entity.FirstSessionStartUtc == null
             && entity.LastSessionStartUtc == null));
         await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
-            session.Title == "Draft without program items"
+            session.Title == "Published without program items"
             && session.StartTime == null
             && session.EndTime == null
-            && session.EventSessionStatusId == (int)EventSessionStatusEnum.Draft));
+            && session.EventSessionStatusId == (int)EventSessionStatusEnum.Published));
     }
 
     [Test]
-    public async Task Handle_WithDraftLocationAndNoExplicitSessions_LinksDefaultSessionToPrimaryRoom()
+    public async Task Handle_WithPublishedLocationAndNoExplicitSessions_LinksDefaultSessionToPrimaryRoom()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -361,6 +380,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Poster venue event",
+                EventStatusId = (int)EventStatusEnum.Published,
                 Locations =
                 [
                     new CreateEventLocationRequest
@@ -391,6 +411,25 @@ public class CreateEventCommandHandlerTests
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
             .Returns(EventActorResult.Success(actorId, isUserReported: true));
 
+        _eventRepository.Create(Arg.Any<Explore.Domain.Event>())
+            .Returns(callInfo =>
+            {
+                var evt = callInfo.Arg<Explore.Domain.Event>();
+                evt.Id = Guid.NewGuid();
+                evt.FirstSessionStartUtc = DateTime.UtcNow;
+                return evt;
+            });
+
+        _lifecyclePolicyProvider.GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(new EventLifecyclePolicy
+            {
+                Profile = ValidationProfile.EventPublish,
+                RequiredEventFields = new HashSet<Enum>(),
+                RequiredSessionFields = new HashSet<Enum>()
+            });
+        _lifecycleReadinessEvaluator.Evaluate(Arg.Any<Explore.Domain.Event>(), ValidationProfile.EventPublish, Arg.Any<EventLifecyclePolicy>())
+            .Returns(LifecycleReadinessResult.Success(ValidationProfile.EventPublish));
+
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
@@ -400,6 +439,8 @@ public class CreateEventCommandHandlerTests
             && session.StartTime == null
             && session.EndTime == null));
     }
+
+
 
     [Test]
     public async Task Handle_WithDraftSessions_CreatesDraftSessionsWithoutPublicScheduleRollup()

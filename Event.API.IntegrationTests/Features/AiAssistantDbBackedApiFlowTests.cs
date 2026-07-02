@@ -109,13 +109,14 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
     public async Task ConfirmProposedCreateEventDraft_CreatesExactlyOneDraftEventWithPostgreSqlPersistence()
     {
         var seeded = await ResetAndSeedAsync();
-        var conversationId = await CreateConversationAsync(seeded.UserId, "Confirm draft planning");
+        var conversationId = await CreateConversationAsync(seeded.UserId, "Confirm draft planning", seeded.OrganizationActorId);
         var eventCountBeforeSend = await CountEventsAsync();
 
         await SendMessageAsync(seeded.UserId, conversationId, "db-confirm-proposal", "Draft an event.");
 
         await Assert.That(await CountEventsAsync()).IsEqualTo(eventCountBeforeSend);
         var proposedActionId = await GetOnlyProposedActionIdAsync(seeded.UserId, conversationId);
+
         var firstEventId = await ConfirmProposedActionAsync(seeded.UserId, conversationId, proposedActionId, "db-confirm-action");
         var duplicateEventId = await ConfirmProposedActionAsync(seeded.UserId, conversationId, proposedActionId, "db-confirm-action-duplicate");
 
@@ -138,10 +139,10 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
         return seeded;
     }
 
-    private async Task<Guid> CreateConversationAsync(Guid userId, string title)
+    private async Task<Guid> CreateConversationAsync(Guid userId, string title, Guid? actorId = null)
     {
         using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/ai/assistant/conversations", userId);
-        request.Content = JsonContent.Create(new CreateAiConversationRequestDto { Title = title });
+        request.Content = JsonContent.Create(new CreateAiConversationRequestDto { Title = title, ActorId = actorId });
 
         var response = await _fixture.Client.SendAsync(request);
 

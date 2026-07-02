@@ -56,7 +56,7 @@ public sealed class TemplateSyncHateoasTests
 
         var history = links.Single(link => link.Rel == "sync-history");
         await Assert.That(history.RequiresAuth).IsTrue();
-        await Assert.That(history.PermissionAction).IsNull();
+        await Assert.That(history.PermissionAction).IsEqualTo(AuthorizationActions.CustomPropertyTemplates.View);
     }
 
     [Test]
@@ -90,7 +90,7 @@ public sealed class TemplateSyncHateoasTests
 
         var history = links.Single(link => link.Rel == "sync-history");
         await Assert.That(history.RequiresAuth).IsTrue();
-        await Assert.That(history.PermissionAction).IsNull();
+        await Assert.That(history.PermissionAction).IsEqualTo(AuthorizationActions.CustomPropertyTemplates.View);
     }
 
     [Test]

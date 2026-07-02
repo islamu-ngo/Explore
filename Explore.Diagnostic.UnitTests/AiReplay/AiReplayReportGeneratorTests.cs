@@ -49,7 +49,7 @@ public sealed class AiReplayReportGeneratorTests
         inspectorScenario.Diagnostics.Should().Contain("propose_update_event_draft");
         inspectorScenario.Diagnostics.Should().Contain("propose_publish_event");
         inspectorScenario.Diagnostics.Should().Contain("propose_create_event_session");
-        inspectorScenario.Diagnostics.Should().Contain("41 registry-projected proposal tools");
+        inspectorScenario.Diagnostics.Should().Contain("44 registry-projected proposal tools");
         inspectorScenario.DatabaseSideEffectsDetected.Should().BeFalse();
     }
 

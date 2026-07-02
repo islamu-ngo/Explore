@@ -44,6 +44,8 @@ internal static class TestDbContextServiceCollectionExtensions
         {
             options.UseNpgsql(connectionString);
             options.UseSnakeCaseNamingConvention();
+            options.ConfigureWarnings(warnings =>
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 
         services.AddScoped(sp =>

@@ -12,6 +12,7 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Persistence;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -221,10 +222,9 @@ public class UserExternalLoginIntegrationTests
         var response = await _fixture.Client.SendAsync(request);
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
-        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsFalse();
-        await Assert.That(body.Message).Contains("explicitly linked");
+        var problemDetails = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Detail).Contains("explicitly linked");
     }
 
     [Test]
@@ -338,7 +338,7 @@ public class UserExternalLoginIntegrationTests
         using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
         var root = document.RootElement;
 
-        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("User External Login not found.");
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("User external login not found.");
         await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("resource_not_found");
     }
 

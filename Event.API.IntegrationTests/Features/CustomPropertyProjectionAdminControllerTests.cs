@@ -98,7 +98,7 @@ public sealed class CustomPropertyProjectionAdminControllerTests
 
         var response = await client.SendAsync(request);
 
-        using var problem = await AssertProjectionValidationProblemAsync(response, failureMessage);
+        using var problem = await AssertProjectionValidationProblemAsync(response, failureMessage, "Custom-property projection validation failed", "customPropertyProjection");
         await Assert.That(problem.RootElement.GetProperty("detail").GetString()).IsEqualTo(failureMessage);
     }
 
@@ -114,7 +114,7 @@ public sealed class CustomPropertyProjectionAdminControllerTests
 
         var response = await client.SendAsync(request);
 
-        using var problem = await AssertProjectionValidationProblemAsync(response, failureMessage);
+        using var problem = await AssertProjectionValidationProblemAsync(response, failureMessage, "Event session custom-property projection validation failed", "eventSessionCustomPropertyProjection");
         await Assert.That(problem.RootElement.GetProperty("detail").GetString()).IsEqualTo(failureMessage);
     }
 
@@ -151,18 +151,20 @@ public sealed class CustomPropertyProjectionAdminControllerTests
 
     private static async Task<JsonDocument> AssertProjectionValidationProblemAsync(
         HttpResponseMessage response,
-        string expectedError)
+        string expectedError,
+        string expectedTitle,
+        string expectedErrorKey)
     {
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(
             response,
             HttpStatusCode.BadRequest,
-            "Projection validation failed");
+            expectedTitle);
 
         var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
 
         var root = document.RootElement;
         await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("custom_property_projection_validation_failed");
-        var errors = root.GetProperty("errors").GetProperty("projection").EnumerateArray().ToArray();
+        var errors = root.GetProperty("errors").GetProperty(expectedErrorKey).EnumerateArray().ToArray();
         await Assert.That(errors.Length).IsEqualTo(1);
         await Assert.That(errors[0].GetString()).IsEqualTo(expectedError);
 

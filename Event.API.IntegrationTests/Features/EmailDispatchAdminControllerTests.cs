@@ -209,6 +209,7 @@ public sealed class EmailDispatchAdminControllerTests
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
+        request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/problem+json"));
         return request;
     }
 

@@ -61,13 +61,13 @@ public class GeneratedClientSmokeTests
     }
 
     [Test]
-    public async Task Put_AuthenticatedEndpoint_AcceptsPayload()
+    public async Task Patch_AuthenticatedEndpoint_AcceptsPayload()
     {
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, "/api/organization/00000000-0000-0000-0000-000000000001");
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Patch, "/api/organization/00000000-0000-0000-0000-000000000001");
         request.Content = JsonContent.Create(new { fullName = "SmokePut" });
 
         var response = await _fixture.Client.SendAsync(request);
-        Console.WriteLine($"PUT /api/organization/... => {response.StatusCode}");
+        Console.WriteLine($"PATCH /api/organization/... => {response.StatusCode}");
 
         var isExpected = response.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent
             or HttpStatusCode.BadRequest or HttpStatusCode.NotFound or HttpStatusCode.Forbidden;

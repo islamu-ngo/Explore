@@ -210,7 +210,7 @@ public sealed class EventRegistrationControllerTests
 
         var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
         var root = document.RootElement;
-        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("Event Registration not found.");
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("Event registration not found.");
         await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("resource_not_found");
         return document;
     }

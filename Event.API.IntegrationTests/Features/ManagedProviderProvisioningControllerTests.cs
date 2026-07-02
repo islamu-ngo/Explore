@@ -7,6 +7,7 @@ using Explore.Application.DTOs.ManagedProviderProvisioning;
 using Explore.Application.Features.ManagedProviderProvisioning.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
 
@@ -20,12 +21,20 @@ public sealed class ManagedProviderProvisioningControllerTests
         var mediator = Substitute.For<IMediator>();
         var adminContext = Substitute.For<IAdminContext>();
         adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
-        var controller = new ManagedProviderProvisioningController(mediator, adminContext);
+        var controller = new ManagedProviderProvisioningController(mediator, adminContext)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
 
         ActionResult<BaseCommandResponse<ManagedProviderClientProvisioningResultDto>> actionResult =
             await controller.EnsureClientProvisioned(NewDto(), CancellationToken.None);
 
-        await Assert.That(actionResult.Result).IsTypeOf<ForbidResult>();
+        var objectResult = actionResult.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status403Forbidden);
         await mediator.DidNotReceive().Send(Arg.Any<EnsureManagedProviderClientProvisionedCommand>(), Arg.Any<CancellationToken>());
     }
 

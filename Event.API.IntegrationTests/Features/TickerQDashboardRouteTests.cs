@@ -21,6 +21,7 @@ using TUnit.Core;
 
 namespace ApiIntegrationTests.Features;
 
+[NotInParallel("RealRuntimeDb")]
 public sealed class TickerQDashboardRouteTests
 {
     [Test]

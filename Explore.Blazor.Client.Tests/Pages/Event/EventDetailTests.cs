@@ -226,6 +226,11 @@ public sealed class EventDetailTests : IDisposable
         }, TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).Contains($"/events/{eventId}/sessions/{secondSessionId}");
+
+        // Click the first day item in the Miller Columns to select it and load its agenda items (including "Doors open")
+        var dayItem = cut.Find(".agenda-miller__column--days .agenda-miller__item");
+        dayItem.Click();
+
         await Assert.That(cut.Markup).Contains("Doors open");
     }
 
