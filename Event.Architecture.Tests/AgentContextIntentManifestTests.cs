@@ -227,7 +227,12 @@ public class AgentContextIntentManifestTests
                 var file = File.Exists(full);
                 if (!dir && !file)
                 {
-                    // Accept project-root path prefixes (e.g., "Explore.API/Controllers/") whose directory exists even if empty.
+                    // Fallback: check if the parent directory of the prefix exists (supports filename-prefix wildcards like 'Ai*.cs')
+                    var parentDir = Path.GetDirectoryName(full);
+                    if (parentDir != null && Directory.Exists(parentDir))
+                    {
+                        continue;
+                    }
                     errors.Add($"Intent '{intent.Id}': paths_in_scope glob '{pathGlob}' does not resolve (prefix '{prefix}' not found).");
                 }
             }

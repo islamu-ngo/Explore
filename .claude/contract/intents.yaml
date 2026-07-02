@@ -384,3 +384,74 @@ intents:
       - architect-agent
       - librarian-agent
       - quality-verifier-agent
+
+  - id: update-ai-context-disclosure
+    title: "Update or extend the AI Context Disclosure Policy"
+    category: cross-cutting
+    triggers:
+      - ai context disclosure
+      - ai pii disclosure
+      - ai consent grant
+      - ai context gateway
+      - ai sensitivity classification
+      - "update.*ai.*disclosure"
+      - "ai.*redaction"
+      - "ai.*consent"
+    must_read_docs:
+      - docs/AI_CONTEXT_SECURITY.md
+      - docs/adr/ADR-012-ai-context-disclosure-policy.md
+      - dev/active/ai-context-disclosure-policy/field-classification-matrix.md
+      - dev/active/ai-context-disclosure-policy/ai-context-disclosure-policy-plan.md
+      - AGENTS.md
+      - docs/SECURITY-MODEL.md
+      - docs/AUTHORIZATION.md
+    load_skills:
+      - clean-architecture-rules
+      - cqrs-mediatr-guidelines
+      - auth-patterns
+    load_rules:
+      - .claude/rules/application-layer.md
+      - .claude/rules/efcore-persistence.md
+      - .claude/rules/tests.md
+    paths_in_scope:
+      - Explore.Domain/Enums/Ai*.cs
+      - Explore.Domain/AiConsentGrant.cs
+      - Explore.Application/Features/AiAssistant/Disclosure/**
+      - Explore.Application/Features/AiAssistant/Requests/Commands/Grant*Consent*.cs
+      - Explore.Application/Features/AiAssistant/Requests/Commands/Revoke*Consent*.cs
+      - Explore.Application/Features/AiAssistant/Handlers/Commands/Grant*Consent*.cs
+      - Explore.Application/Features/AiAssistant/Handlers/Commands/Revoke*Consent*.cs
+      - Explore.Application/Contracts/Persistence/IAiConsentGrantRepository.cs
+      - Explore.Persistence/Repositories/AiConsentGrantRepository.cs
+      - Explore.Persistence/EntityTypeConfigurations/AiConsentGrantConfiguration.cs
+      - Explore.Application/Features/AiAssistant/Handlers/Commands/ProcessAiRunCommandHandler.cs
+      - Explore.Application/Settings/Groups/AiAssistantSettingGroup.cs
+      - Explore.Domain/Constants/GovernanceSettingKeys.cs
+      - Explore.API/Mcp/AiAssistantMcp*.cs
+      - Explore.API/Mcp/McpAdapterTelemetry.cs
+      - Event.Architecture.Tests/AiContextDisclosureSchemaTests.cs
+      - Event.Architecture.Tests/AiContextGatewayBypassTests.cs
+      - docs/AI_CONTEXT_SECURITY.md
+      - docs/adr/ADR-012-ai-context-disclosure-policy.md
+    minimum_tests:
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/AI_CONTEXT_SECURITY.md
+      - dev/active/ai-context-disclosure-policy/field-classification-matrix.md
+      - dev/active/ai-context-disclosure-policy/mcp-tool-audit.md
+    unique_acceptance:
+      - "AiContextDisclosureRegistry.CreateDefault() covers every public persisted property on every *Pii entity (reflection test passes)"
+      - "IAiContextGateway is the only path to disclose entity fields to the AI prompt (bypass test passes)"
+      - "No direct PII entity references in Features/AiAssistant/** or Explore.API/Mcp/** (architecture test passes)"
+      - "MaxAiContextSensitivity and PiiDisclosureEnabled settings exist and default to restrictive values"
+      - "Build is green across Domain, Application, Persistence, and Architecture.Tests"
+    forbidden_without_approval:
+      - "Removing a field from AiContextDisclosureRegistry without updating field-classification-matrix.md"
+      - "Setting PiiDisclosureEnabled default to true"
+      - "Bypassing IAiContextGateway in any AI flow path"
+      - "Adding a new *Pii entity without registering its fields"
+      - "Changing MaxAiContextSensitivity default above Internal"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - quality-verifier-agent

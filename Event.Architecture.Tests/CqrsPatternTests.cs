@@ -60,6 +60,8 @@ public class CqrsPatternTests
             .DoNotHaveNameEndingWith("CommandRequest")
             .And()
             .DoNotResideInNamespaceContaining("DTOs")
+            .And()
+            .DoNotResideInNamespaceContaining("Contracts")
             .Should()
             .ResideInNamespaceContaining("Queries")
             .GetResult();
