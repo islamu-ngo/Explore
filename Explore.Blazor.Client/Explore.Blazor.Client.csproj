@@ -31,10 +31,6 @@
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="MudBlazor" />
     <!-- Newtonsoft.Json removed: NSwag client + HalResourceExtensions migrated to System.Text.Json -->
-    <PackageReference Include="NSwag.ApiDescription.Client">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Refit.HttpClientFactory" />
   </ItemGroup>
 

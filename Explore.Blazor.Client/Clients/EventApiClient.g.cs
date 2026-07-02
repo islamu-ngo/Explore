@@ -58512,6 +58512,10 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("endTime")]
         public System.DateTimeOffset? EndTime { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("endTimeType")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SessionEndTimeType>))]
+        public SessionEndTimeType? EndTimeType { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("locationId")]
         public System.Guid? LocationId { get; set; } = default!;
 
@@ -58660,6 +58664,10 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("endTime")]
         public System.DateTimeOffset? EndTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endTimeType")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SessionEndTimeType>))]
+        public SessionEndTimeType? EndTimeType { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("locationId")]
         public System.Guid? LocationId { get; set; } = default!;
@@ -63038,6 +63046,12 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("endTime")]
         public System.DateTimeOffset? EndTime { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("endTimeType")]
+        public int? EndTimeType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formattedEndTime")]
+        public string? FormattedEndTime { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("isScheduled")]
         public bool? IsScheduled { get; set; } = default!;
 
@@ -63296,6 +63310,14 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? OffsetMinutes { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("endReferencePrayer")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<PrayerTime>))]
+        public PrayerTime? EndReferencePrayer { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endOffsetMinutes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EndOffsetMinutes { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("requiresWudu")]
         public bool? RequiresWudu { get; set; } = default!;
 
@@ -63465,6 +63487,12 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("endTime")]
         public System.DateTimeOffset? EndTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endTimeType")]
+        public int? EndTimeType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formattedEndTime")]
+        public string? FormattedEndTime { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("isScheduled")]
         public bool? IsScheduled { get; set; } = default!;
@@ -69156,6 +69184,12 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("endTime")]
         public System.DateTimeOffset? EndTime { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("endTimeType")]
+        public int? EndTimeType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formattedEndTime")]
+        public string? FormattedEndTime { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("isScheduled")]
         public bool? IsScheduled { get; set; } = default!;
 
@@ -69459,6 +69493,12 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("endTime")]
         public System.DateTimeOffset? EndTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endTimeType")]
+        public int? EndTimeType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formattedEndTime")]
+        public string? FormattedEndTime { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("isScheduled")]
         public bool? IsScheduled { get; set; } = default!;
@@ -73687,6 +73727,28 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class OptionalUpdateOfSessionEndTimeType
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasValue")]
+        public bool? HasValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SessionEndTimeType>))]
+        public SessionEndTimeType? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class OptionalUpdateOfstring
     {
 
@@ -76191,6 +76253,21 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum SessionEndTimeType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Fixed")]
+        Fixed = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"OpenEnded")]
+        OpenEnded = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"RelativeToPrayer")]
+        RelativeToPrayer = 2,
 
     }
 
@@ -80505,6 +80582,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("endTime")]
         public OptionalUpdateOfDateTimeOffset? EndTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endTimeType")]
+        public OptionalUpdateOfSessionEndTimeType? EndTimeType { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

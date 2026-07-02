@@ -47,6 +47,7 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(PublicExperiencePrimaryOrganizationState),
         typeof(RoleEnum),
         typeof(SessionStartTimeType),
+        typeof(SessionEndTimeType),
         typeof(SettingSource),
         typeof(SkillLevel),
         typeof(BatchUpdateMode),
