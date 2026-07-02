@@ -72,13 +72,13 @@ public class EventSeriesRepository : GenericRepository<EventSeries, Guid>, IEven
             .Include(e => e.FeaturedImage)
             .Include(e => e.Actor)
                 .ThenInclude(a => a.Pii)
-            .Include(e => e.Events.Where(ev => ev.LastSessionStartUtc == null || ev.LastSessionStartUtc > now))
+            .Include(e => e.Events.Where(ev => ev.LastSessionEndUtc == null || ev.LastSessionEndUtc > now))
                 .ThenInclude(ev => ev.EventType)
-            .Include(e => e.Events.Where(ev => ev.LastSessionStartUtc == null || ev.LastSessionStartUtc > now))
+            .Include(e => e.Events.Where(ev => ev.LastSessionEndUtc == null || ev.LastSessionEndUtc > now))
                 .ThenInclude(ev => ev.FeaturedImage)
             .Where(q => q.IsPublished && !q.IsDeleted)
-            .Where(q => q.Events.Any(ev => ev.LastSessionStartUtc == null || ev.LastSessionStartUtc > now))
-            .OrderByDescending(q => q.Events.Count(ev => ev.LastSessionStartUtc == null || ev.LastSessionStartUtc > now))
+            .Where(q => q.Events.Any(ev => ev.LastSessionEndUtc == null || ev.LastSessionEndUtc > now))
+            .OrderByDescending(q => q.Events.Count(ev => ev.LastSessionEndUtc == null || ev.LastSessionEndUtc > now))
             .ThenByDescending(q => q.TotalViews)
             .FirstOrDefaultAsync();
     }

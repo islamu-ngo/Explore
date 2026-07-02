@@ -256,8 +256,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                         es.EventId == e.Id &&
                         (!publicDiscoverySessionFacet ||
                             es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
-                            es.StartTime != null &&
-                            es.EndTime != null) &&
+                            es.StartTime != null) &&
                         es.LocationId == (Guid)subFilter.Value)),
 
                 EventSubqueryFilterType.Locations => query.Where(e =>
@@ -265,8 +264,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                         es.EventId == e.Id &&
                         (!publicDiscoverySessionFacet ||
                             es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
-                            es.StartTime != null &&
-                            es.EndTime != null) &&
+                            es.StartTime != null) &&
                         es.LocationId != null &&
                         ((List<Guid>)subFilter.Value).Contains(es.LocationId.Value))),
 
@@ -275,8 +273,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                         es.EventId == e.Id &&
                         (!publicDiscoverySessionFacet ||
                             es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
-                            es.StartTime != null &&
-                            es.EndTime != null) &&
+                            es.StartTime != null) &&
                         es.RegistrationModeId == (int)subFilter.Value)),
 
                 EventSubqueryFilterType.RegistrationModes => query.Where(e =>
@@ -284,8 +281,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                         es.EventId == e.Id &&
                         (!publicDiscoverySessionFacet ||
                             es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
-                            es.StartTime != null &&
-                            es.EndTime != null) &&
+                            es.StartTime != null) &&
                         es.RegistrationModeId != null &&
                         ((List<int>)subFilter.Value).Contains(es.RegistrationModeId.Value))),
 
@@ -294,8 +290,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                         es.EventId == e.Id &&
                         (!publicDiscoverySessionFacet ||
                             es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
-                            es.StartTime != null &&
-                            es.EndTime != null) &&
+                            es.StartTime != null) &&
                         _dbContext.EventSessionLanguages.Any(esl =>
                             esl.EventSessionId == es.Id && esl.LanguageId == (int)subFilter.Value))),
 
@@ -304,8 +299,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                         es.EventId == e.Id &&
                         (!publicDiscoverySessionFacet ||
                             es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
-                            es.StartTime != null &&
-                            es.EndTime != null) &&
+                            es.StartTime != null) &&
                         _dbContext.EventSessionLanguages.Any(esl =>
                             esl.EventSessionId == es.Id &&
                             ((List<int>)subFilter.Value).Contains(esl.LanguageId)))),
@@ -317,8 +311,10 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                     _dbContext.EventSessions.Any(es =>
                         es.EventId == e.Id &&
                         es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
-                        es.EndTime != null &&
-                        es.EndTime >= now)),
+                        (
+                            (es.EndTime != null && es.EndTime >= now) ||
+                            (es.EndTime == null && es.StartTime != null && es.StartTime.Value.AddDays(1) >= now)
+                        ))),
 
                 EventSubqueryFilterType.TemporalView => ApplyTemporalFilter(query, subFilter),
 
@@ -527,9 +523,9 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         return view switch
         {
             TemporalView.Upcoming => query.Where(e => e.FirstSessionStartUtc != null && e.FirstSessionStartUtc > now),
-            TemporalView.Ongoing => query.Where(e => e.FirstSessionStartUtc != null && e.FirstSessionStartUtc <= now && e.LastSessionStartUtc != null && e.LastSessionStartUtc > now),
-            TemporalView.Past => query.Where(e => e.LastSessionStartUtc != null && e.LastSessionStartUtc <= now),
-            TemporalView.UpcomingAndOngoing => query.Where(e => e.LastSessionStartUtc == null || e.LastSessionStartUtc > now),
+            TemporalView.Ongoing => query.Where(e => e.FirstSessionStartUtc != null && e.FirstSessionStartUtc <= now && e.LastSessionEndUtc != null && e.LastSessionEndUtc > now),
+            TemporalView.Past => query.Where(e => e.LastSessionEndUtc != null && e.LastSessionEndUtc <= now),
+            TemporalView.UpcomingAndOngoing => query.Where(e => e.LastSessionEndUtc == null || e.LastSessionEndUtc > now),
             TemporalView.All => query,
             _ => query
         };
