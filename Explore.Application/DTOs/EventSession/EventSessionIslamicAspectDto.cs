@@ -10,6 +10,8 @@ public class EventSessionIslamicAspectDto
     public SessionStartTimeType StartTimeType { get; set; } = SessionStartTimeType.RelativeToPrayer;
     public PrayerTime? ReferencePrayer { get; set; }
     public int? OffsetMinutes { get; set; }
+    public PrayerTime? EndReferencePrayer { get; set; }
+    public int? EndOffsetMinutes { get; set; }
     public bool RequiresWudu { get; set; }
     public string? RitualRequirementsJson { get; set; }
 }

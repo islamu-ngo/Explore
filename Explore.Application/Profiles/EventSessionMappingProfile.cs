@@ -9,6 +9,7 @@ using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Domain;
+using Explore.Domain.Enums;
 
 namespace Explore.Application.Profiles;
 
@@ -57,6 +58,7 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
             .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null))
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
+            .ForMember(dest => dest.FormattedEndTime, opt => opt.MapFrom(src => FormatEndTime(src)))
             .ForMember(dest => dest.SessionGroups, opt => opt.MapFrom(src => src.SessionGroups
                 .Where(assignment => assignment.EventSessionGroup.IsPublished)
                 .OrderByDescending(assignment => assignment.IsPrimary)
@@ -71,6 +73,7 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
             .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null))
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
+            .ForMember(dest => dest.FormattedEndTime, opt => opt.MapFrom(src => FormatEndTime(src)))
             .ForMember(dest => dest.SessionGroups, opt => opt.MapFrom(src => src.SessionGroups
                 .Where(assignment => assignment.EventSessionGroup.IsPublished)
                 .OrderByDescending(assignment => assignment.IsPrimary)
@@ -105,5 +108,39 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.LanguageMasterCode, opt => opt.MapFrom(src => src.Language != null ? src.Language.MasterCode : null));
         CreateMap<EventSessionLanguage, EventSessionLanguageListDto>();
         CreateMap<CreateEventSessionLanguageDto, EventSessionLanguage>();
+    }
+
+    private static string? FormatEndTime(EventSession src)
+    {
+        return src.EndTimeType switch
+        {
+            SessionEndTimeType.OpenEnded => "Open-ended",
+            SessionEndTimeType.RelativeToPrayer => FormatRelativeEndTime(src.IslamicAspect),
+            SessionEndTimeType.Fixed => src.LocalEndTime?.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+            _ => null
+        };
+    }
+
+    private static string? FormatRelativeEndTime(EventSessionIslamicAspect? aspect)
+    {
+        if (aspect == null || !aspect.EndReferencePrayer.HasValue)
+        {
+            return "Relative to prayer";
+        }
+
+        var prayer = aspect.EndReferencePrayer.Value.ToString();
+        var offset = aspect.EndOffsetMinutes ?? 0;
+
+        if (offset == 0)
+        {
+            return $"Until {prayer} prayer";
+        }
+
+        if (offset > 0)
+        {
+            return $"Until {offset} minutes after {prayer}";
+        }
+
+        return $"Until {Math.Abs(offset)} minutes before {prayer}";
     }
 }

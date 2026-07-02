@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.EventSession.Validators;
@@ -117,18 +118,35 @@ public class UpdateEventSessionScheduleDtoValidator : AbstractValidator<UpdateEv
     public UpdateEventSessionScheduleDtoValidator()
     {
         RuleFor(dto => dto)
-            .Must(dto => dto.StartTime.HasValue && dto.EndTime.HasValue)
-            .WithMessage("Schedule group must include StartTime and EndTime.");
+            .Must(dto => dto.StartTime.HasValue && dto.EndTime.HasValue && dto.EndTimeType.HasValue)
+            .WithMessage("Schedule group must include StartTime, EndTime, and EndTimeType.");
+
+        RuleFor(dto => dto.EndTimeType.Value)
+            .IsInEnum().When(dto => dto.EndTimeType.HasValue)
+            .WithMessage("Invalid session end-time type.");
 
         RuleFor(dto => dto)
             .Must(dto =>
-                !dto.StartTime.HasValue ||
-                !dto.EndTime.HasValue ||
-                (dto.StartTime.Value is null && dto.EndTime.Value is null) ||
-                (dto.StartTime.Value is not null &&
-                 dto.EndTime.Value is not null &&
-                 dto.EndTime.Value > dto.StartTime.Value))
-            .WithMessage("Schedule must set both times to null or set EndTime after StartTime.");
+            {
+                if (!dto.EndTimeType.HasValue || !dto.StartTime.HasValue || !dto.EndTime.HasValue)
+                    return true;
+
+                var type = dto.EndTimeType.Value;
+                var start = dto.StartTime.Value;
+                var end = dto.EndTime.Value;
+
+                if (type == SessionEndTimeType.Fixed && end is null)
+                    return false;
+
+                if (type == SessionEndTimeType.OpenEnded && end is not null)
+                    return false;
+
+                if (start is not null && end is not null && end <= start)
+                    return false;
+
+                return true;
+            })
+            .WithMessage("Invalid timing state. EndTime is required for Fixed, must be null for OpenEnded, and must be after StartTime if both are set.");
     }
 }
 
@@ -311,11 +329,31 @@ public class UpdateEventSessionIslamicAspectUpdateDtoValidator : AbstractValidat
             .When(dto => dto.Value.HasValue && dto.Value.Value?.OffsetMinutes is not null)
             .WithMessage(EventSessionIslamicAspectValidationRules.OffsetRangeMessage);
 
+        RuleFor(dto => dto.Value.Value!.EndOffsetMinutes)
+            .InclusiveBetween(
+                EventSessionIslamicAspect.MinOffsetMinutes,
+                EventSessionIslamicAspect.MaxOffsetMinutes)
+            .When(dto => dto.Value.HasValue && dto.Value.Value?.EndOffsetMinutes is not null)
+            .WithMessage(EventSessionIslamicAspectValidationRules.OffsetRangeMessage);
+
         RuleFor(dto => dto.Value.Value)
-            .Must(aspect => aspect is null || EventSessionIslamicAspect.IsValidSchedulingState(
-                aspect.StartTimeType,
-                aspect.ReferencePrayer,
-                aspect.OffsetMinutes))
+            .Must(aspect =>
+            {
+                if (aspect is null) return true;
+
+                var endTimeType = aspect.EndReferencePrayer.HasValue || aspect.EndOffsetMinutes.HasValue
+                    ? SessionEndTimeType.RelativeToPrayer
+                    : SessionEndTimeType.Fixed;
+
+                return EventSessionIslamicAspect.IsValidSchedulingState(
+                    aspect.StartTimeType,
+                    aspect.ReferencePrayer,
+                    aspect.OffsetMinutes) &&
+                EventSessionIslamicAspect.IsValidEndTimeSchedulingState(
+                    endTimeType,
+                    aspect.EndReferencePrayer,
+                    aspect.EndOffsetMinutes);
+            })
             .When(dto => dto.Value.HasValue)
             .WithMessage(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
     }

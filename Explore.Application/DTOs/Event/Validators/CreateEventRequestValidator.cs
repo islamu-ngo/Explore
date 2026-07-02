@@ -7,6 +7,7 @@ using System.Linq;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using FluentValidation;
 
@@ -130,7 +131,17 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
             session.RuleFor(s => s.RoomTempKey).MaximumLength(80).When(s => !string.IsNullOrWhiteSpace(s.RoomTempKey));
             session.RuleFor(s => s.LocationTempKey).MaximumLength(80).When(s => !string.IsNullOrWhiteSpace(s.LocationTempKey));
             session.RuleFor(s => s.StartTime).NotEmpty().WithMessage("Session start time is required.");
-            session.RuleFor(s => s.EndTime).NotEmpty().GreaterThan(s => s.StartTime).WithMessage("Session end time must be after start time.");
+            session.RuleFor(s => s.EndTimeType).IsInEnum().WithMessage("Invalid session end-time type.");
+            session.RuleFor(s => s.EndTime)
+                .NotEmpty().When(s => s.EndTimeType == SessionEndTimeType.Fixed)
+                .WithMessage("Session end time is required when EndTimeType is Fixed.");
+            session.RuleFor(s => s.EndTime)
+                .Empty().When(s => s.EndTimeType == SessionEndTimeType.OpenEnded)
+                .WithMessage("Session end time must be empty when EndTimeType is OpenEnded.");
+            session.RuleFor(s => s.EndTime)
+                .GreaterThan(s => s.StartTime)
+                .When(s => s.EndTime.HasValue)
+                .WithMessage("Session end time must be after start time.");
             session.RuleFor(s => s.MaxAudienceAttendees).GreaterThan(0).When(s => s.MaxAudienceAttendees.HasValue);
             session.RuleFor(s => s.Price).GreaterThanOrEqualTo(0).When(s => s.Price.HasValue);
             session.RuleFor(s => s.CurrencyCode).MaximumLength(3).When(s => !string.IsNullOrWhiteSpace(s.CurrencyCode));

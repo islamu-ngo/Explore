@@ -332,11 +332,11 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
                 break;
 
             case EventSessionFieldKey.ScheduleEnd:
-                if (session.EndTime is null)
+                if (session.EndTimeType == SessionEndTimeType.Fixed && session.EndTime is null)
                 {
                     errors.Add(MissingField(profile, EventSessionFieldKey.ScheduleEnd, "schedule.end", "session_schedule_end_required", "Session schedule end time is required."));
                 }
-                else if (session.StartTime is not null && session.EndTime <= session.StartTime)
+                else if (session.StartTime is not null && session.EndTime is not null && session.EndTime <= session.StartTime)
                 {
                     errors.Add(new LifecycleReadinessError(
                         Code: "session_schedule_range_invalid",

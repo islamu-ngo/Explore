@@ -2,6 +2,7 @@
 // ABOUTME: Route ID targets the session while groups express independent field update intent.
 
 using Explore.Application.Models.Common;
+using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventSession;
 
@@ -33,6 +34,7 @@ public class UpdateEventSessionScheduleDto
 {
     public OptionalUpdate<DateTimeOffset?> StartTime { get; set; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
     public OptionalUpdate<DateTimeOffset?> EndTime { get; set; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
+    public OptionalUpdate<SessionEndTimeType> EndTimeType { get; set; } = OptionalUpdate<SessionEndTimeType>.Unspecified();
 }
 
 public class UpdateEventSessionLocationDto

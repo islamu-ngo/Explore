@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.EventSession.Validators;
@@ -42,9 +43,21 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
         RuleFor(p => p.StartTime)
             .NotEmpty().WithMessage("{PropertyName} is required.");
 
+        RuleFor(p => p.EndTimeType)
+            .IsInEnum().WithMessage("Invalid session end-time type.");
+
         RuleFor(p => p.EndTime)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .GreaterThan(p => p.StartTime).WithMessage("{PropertyName} must be after StartTime.");
+            .NotEmpty().When(p => p.EndTimeType == SessionEndTimeType.Fixed)
+            .WithMessage("{PropertyName} is required when EndTimeType is Fixed.");
+
+        RuleFor(p => p.EndTime)
+            .Empty().When(p => p.EndTimeType == SessionEndTimeType.OpenEnded)
+            .WithMessage("{PropertyName} must be empty when EndTimeType is OpenEnded.");
+
+        RuleFor(p => p.EndTime)
+            .GreaterThan(p => p.StartTime)
+            .When(p => p.EndTime.HasValue)
+            .WithMessage("{PropertyName} must be after StartTime.");
 
         RuleFor(p => p.LocationId)
             .MustAsync(async (id, cancellation) =>
@@ -106,6 +119,13 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
             .When(p => p.IslamicAspect?.OffsetMinutes is not null)
             .WithMessage(EventSessionIslamicAspectValidationRules.OffsetRangeMessage);
 
+        RuleFor(p => p.IslamicAspect!.EndOffsetMinutes)
+            .InclusiveBetween(
+                EventSessionIslamicAspect.MinOffsetMinutes,
+                EventSessionIslamicAspect.MaxOffsetMinutes)
+            .When(p => p.IslamicAspect?.EndOffsetMinutes is not null)
+            .WithMessage(EventSessionIslamicAspectValidationRules.OffsetRangeMessage);
+
         RuleFor(p => p)
             .Must(p => EventSessionIslamicAspectValidationRules.HasValidSchedulingState(p.IslamicAspect, p.LocationId))
             .WithMessage(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
@@ -124,16 +144,16 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
         RuleFor(p => p)
             .MustAsync(async (dto, cancellation) =>
             {
-                if (!dto.RoomId.HasValue) return true;
+                if (!dto.RoomId.HasValue || !dto.EndTime.HasValue) return true;
                 var conflicts = await _eventSessionRepository.GetOverlappingSessionsInRoomAsync(
                     dto.RoomId.Value,
                     dto.StartTime,
-                    dto.EndTime,
+                    dto.EndTime.Value,
                     excludeSessionId: null,
                     cancellation);
                 return conflicts.Count == 0;
             })
-            .When(p => p.RoomId.HasValue && p.EndTime > p.StartTime)
+            .When(p => p.RoomId.HasValue && p.EndTime.HasValue && p.EndTime > p.StartTime)
             .WithMessage("The selected room is already booked for an overlapping time range.");
 
         // TenantId is set by the handler from ITenantContext, not by the client

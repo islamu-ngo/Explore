@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using Explore.Domain.Enums;
+
 namespace Explore.Application.DTOs.EventSession;
 
 public class EventSessionDto
@@ -20,6 +22,8 @@ public class EventSessionDto
     // Timing (UTC)
     public DateTimeOffset? StartTime { get; set; }
     public DateTimeOffset? EndTime { get; set; }
+    public SessionEndTimeType EndTimeType { get; set; }
+    public string? FormattedEndTime { get; set; }
     public bool IsScheduled { get; set; }
 
     // Cached local projections (event timezone)

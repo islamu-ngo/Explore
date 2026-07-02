@@ -14,6 +14,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
 
@@ -134,7 +135,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
             var islamicAspect = new EventSessionIslamicAspect();
             islamicAspect.EventSessionId = eventSession.Id;
             islamicAspect.EventSession = null;
-            ApplyIslamicAspectDto(islamicAspect, request.EventSessionDto.IslamicAspect);
+            ApplyIslamicAspectDto(islamicAspect, request.EventSessionDto.IslamicAspect, request.EventSessionDto.EndTimeType);
 
             await _eventSessionIslamicAspectRepository.Create(islamicAspect);
         }
@@ -191,9 +192,11 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
 
     private static void ApplyIslamicAspectDto(
         EventSessionIslamicAspect aspect,
-        EventSessionIslamicAspectDto dto)
+        EventSessionIslamicAspectDto dto,
+        SessionEndTimeType endTimeType)
     {
         aspect.ApplyScheduling(dto.StartTimeType, dto.ReferencePrayer, dto.OffsetMinutes);
+        aspect.ApplyEndTimeScheduling(endTimeType, dto.EndReferencePrayer, dto.EndOffsetMinutes);
         aspect.RequiresWudu = dto.RequiresWudu;
         aspect.RitualRequirementsJson = dto.RitualRequirementsJson;
     }

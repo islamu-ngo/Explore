@@ -9,6 +9,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -131,7 +132,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
             await _unitOfWork.ExecuteInTransactionAsync(async token =>
             {
                 await _eventSessionRepository.UpdateWithRoomOverlapGuardAsync(eventSession, token);
-                await ApplyIslamicAspectAsync(eventSession.Id, request.EventSessionDto.IslamicAspect, token);
+                await ApplyIslamicAspectAsync(eventSession.Id, request.EventSessionDto.IslamicAspect, eventSession.EndTimeType, token);
             }, cancellationToken);
         }
         catch (RoomScheduleConflictException ex)
@@ -177,6 +178,11 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
             return;
         }
 
+        if (group.EndTimeType.HasValue)
+        {
+            eventSession.EndTimeType = group.EndTimeType.Value;
+        }
+
         if (group.StartTime.Value is null || group.EndTime.Value is null)
         {
             eventSession.StartTime = null;
@@ -208,6 +214,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
     private async Task ApplyIslamicAspectAsync(
         Guid eventSessionId,
         UpdateEventSessionIslamicAspectUpdateDto? group,
+        SessionEndTimeType endTimeType,
         CancellationToken cancellationToken)
     {
         if (group is null)
@@ -233,12 +240,12 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
                 EventSessionId = eventSessionId,
                 EventSession = null
             };
-            ApplyIslamicAspectDto(newAspect, group.Value.Value);
+            ApplyIslamicAspectDto(newAspect, group.Value.Value, endTimeType);
             await _eventSessionIslamicAspectRepository.Create(newAspect);
             return;
         }
 
-        ApplyIslamicAspectDto(existingIslamicAspect, group.Value.Value);
+        ApplyIslamicAspectDto(existingIslamicAspect, group.Value.Value, endTimeType);
         await _eventSessionIslamicAspectRepository.Update(existingIslamicAspect);
     }
 
@@ -359,9 +366,11 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
 
     private static void ApplyIslamicAspectDto(
         EventSessionIslamicAspect aspect,
-        EventSessionIslamicAspectDto dto)
+        EventSessionIslamicAspectDto dto,
+        SessionEndTimeType endTimeType)
     {
         aspect.ApplyScheduling(dto.StartTimeType, dto.ReferencePrayer, dto.OffsetMinutes);
+        aspect.ApplyEndTimeScheduling(endTimeType, dto.EndReferencePrayer, dto.EndOffsetMinutes);
         aspect.RequiresWudu = dto.RequiresWudu;
         aspect.RitualRequirementsJson = dto.RitualRequirementsJson;
     }

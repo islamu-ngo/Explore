@@ -1,4 +1,6 @@
 using System;
+using Explore.Domain.Enums;
+
 namespace Explore.Application.DTOs.EventSession;
 
 public class CreateEventSessionDto
@@ -8,7 +10,8 @@ public class CreateEventSessionDto
 
     // Timing
     public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+    public DateTimeOffset? EndTime { get; set; }
+    public SessionEndTimeType EndTimeType { get; set; } = SessionEndTimeType.Fixed;
 
     // Location
     public Guid? LocationId { get; set; }

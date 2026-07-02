@@ -537,7 +537,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     {
         if (dto.Sessions.Count == 0)
         {
-            await CreateDefaultSessionAsync(dto, eventEntity, locationMap, roomMap, timezoneId, ct);
+            if (eventEntity.EventStatusId != (int)EventStatusEnum.Draft)
+            {
+                await CreateDefaultSessionAsync(dto, eventEntity, locationMap, roomMap, timezoneId, ct);
+            }
             return;
         }
 
@@ -651,6 +654,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             sessionDto.IslamicAspect.StartTimeType,
             sessionDto.IslamicAspect.ReferencePrayer,
             sessionDto.IslamicAspect.OffsetMinutes);
+        aspect.ApplyEndTimeScheduling(
+            sessionDto.EndTimeType,
+            sessionDto.IslamicAspect.EndReferencePrayer,
+            sessionDto.IslamicAspect.EndOffsetMinutes);
 
         await _eventSessionIslamicAspectRepository.Create(aspect);
     }

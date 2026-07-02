@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Explore.Application.DTOs.EventAspects;
 using Explore.Application.DTOs.EventSession;
+using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.Event;
 
@@ -55,7 +56,8 @@ public class CreateEventSessionRequest
     public string? DayTempKey { get; set; }
     public string? RoomTempKey { get; set; }
     public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+    public DateTimeOffset? EndTime { get; set; }
+    public SessionEndTimeType EndTimeType { get; set; } = SessionEndTimeType.Fixed;
     public Guid? LocationId { get; set; }
     public string? LocationTempKey { get; set; }
     public Guid? RoomId { get; set; }
