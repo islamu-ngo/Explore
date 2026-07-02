@@ -7,8 +7,8 @@ namespace Explore.Domain.Services.Scheduling;
 
 public readonly record struct LocalScheduleProjection(
     DateOnly LocalStartDate,
-    DateOnly LocalEndDate,
+    DateOnly? LocalEndDate,
     TimeOnly LocalStartTime,
-    TimeOnly LocalEndTime,
+    TimeOnly? LocalEndTime,
     int LocalStartMinuteOfDay,
-    int LocalEndMinuteOfDay);
+    int? LocalEndMinuteOfDay);

@@ -72,11 +72,11 @@ public class EventAgendaItem : ITenantEntity, IAuditableEntity, ISoftDeletable, 
         ArgumentNullException.ThrowIfNull(calculator);
         var projection = calculator.Project(StartTime, EndTime, timezoneId);
         LocalStartDate = projection.LocalStartDate;
-        LocalEndDate = projection.LocalEndDate;
+        LocalEndDate = projection.LocalEndDate ?? throw new InvalidOperationException("Agenda item projection ended with null LocalEndDate.");
         LocalStartTime = projection.LocalStartTime;
-        LocalEndTime = projection.LocalEndTime;
+        LocalEndTime = projection.LocalEndTime ?? throw new InvalidOperationException("Agenda item projection ended with null LocalEndTime.");
         LocalStartMinuteOfDay = projection.LocalStartMinuteOfDay;
-        LocalEndMinuteOfDay = projection.LocalEndMinuteOfDay;
+        LocalEndMinuteOfDay = projection.LocalEndMinuteOfDay ?? throw new InvalidOperationException("Agenda item projection ended with null LocalEndMinuteOfDay.");
     }
 
     /// <summary>

@@ -4,6 +4,7 @@
 namespace Explore.Domain;
 
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Enums;
 
 public class EventSessionIslamicAspect
 {
@@ -32,6 +33,17 @@ public class EventSessionIslamicAspect
     /// Positive = after prayer, negative = before prayer.
     /// </summary>
     public int? OffsetMinutes { get; set; }
+
+    /// <summary>
+    /// Prayer reference used when EndTimeType is RelativeToPrayer.
+    /// </summary>
+    public PrayerTime? EndReferencePrayer { get; set; }
+
+    /// <summary>
+    /// Offset in minutes from the referenced end prayer.
+    /// Positive = after prayer, negative = before prayer.
+    /// </summary>
+    public int? EndOffsetMinutes { get; set; }
 
     /// <summary>
     /// Indicates whether this session requires participants to have wudu.
@@ -78,6 +90,40 @@ public class EventSessionIslamicAspect
         }
     }
 
+    public void ApplyEndTimeScheduling(
+        SessionEndTimeType endTimeType,
+        PrayerTime? endReferencePrayer,
+        int? endOffsetMinutes)
+    {
+        switch (endTimeType)
+        {
+            case SessionEndTimeType.Fixed:
+            case SessionEndTimeType.OpenEnded:
+                if (endReferencePrayer.HasValue || endOffsetMinutes.HasValue)
+                {
+                    throw new ArgumentException("Fixed or OpenEnded Islamic session scheduling must not include prayer reference fields.", nameof(endTimeType));
+                }
+
+                EndReferencePrayer = null;
+                EndOffsetMinutes = null;
+                return;
+
+            case SessionEndTimeType.RelativeToPrayer:
+                if (!endReferencePrayer.HasValue || !endOffsetMinutes.HasValue)
+                {
+                    throw new ArgumentException("Prayer-relative Islamic session scheduling requires EndReferencePrayer and EndOffsetMinutes.", nameof(endTimeType));
+                }
+
+                ValidateOffset(endOffsetMinutes.Value);
+                EndReferencePrayer = endReferencePrayer.Value;
+                EndOffsetMinutes = endOffsetMinutes.Value;
+                return;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(endTimeType), endTimeType, "Unsupported Islamic session end-time type.");
+        }
+    }
+
     public static bool IsValidSchedulingState(
         SessionStartTimeType startTimeType,
         PrayerTime? referencePrayer,
@@ -89,6 +135,22 @@ public class EventSessionIslamicAspect
             SessionStartTimeType.RelativeToPrayer => referencePrayer.HasValue
                 && offsetMinutes.HasValue
                 && offsetMinutes.Value is >= MinOffsetMinutes and <= MaxOffsetMinutes,
+            _ => false
+        };
+    }
+
+    public static bool IsValidEndTimeSchedulingState(
+        SessionEndTimeType endTimeType,
+        PrayerTime? endReferencePrayer,
+        int? endOffsetMinutes)
+    {
+        return endTimeType switch
+        {
+            SessionEndTimeType.Fixed => !endReferencePrayer.HasValue && !endOffsetMinutes.HasValue,
+            SessionEndTimeType.OpenEnded => !endReferencePrayer.HasValue && !endOffsetMinutes.HasValue,
+            SessionEndTimeType.RelativeToPrayer => endReferencePrayer.HasValue
+                && endOffsetMinutes.HasValue
+                && endOffsetMinutes.Value is >= MinOffsetMinutes and <= MaxOffsetMinutes,
             _ => false
         };
     }

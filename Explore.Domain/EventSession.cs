@@ -25,6 +25,7 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     // When null, all cached local projections must also be null (enforced by ReprojectLocalTimes and DB check constraints).
     public DateTimeOffset? StartTime { get; set; }
     public DateTimeOffset? EndTime { get; set; }
+    public SessionEndTimeType EndTimeType { get; set; } = SessionEndTimeType.Fixed;
 
     // Cached local projections — written exclusively via ReprojectLocalTimes/Reschedule.
     // All null when session is unscheduled; complete and consistent when scheduled.
@@ -112,7 +113,7 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
         ArgumentNullException.ThrowIfNull(calculator);
 
         // Unscheduled sessions: clear all local projections so DB check constraints pass.
-        if (StartTime is null || EndTime is null)
+        if (StartTime is null)
         {
             LocalStartDate = null;
             LocalEndDate = null;
@@ -123,7 +124,7 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
             return;
         }
 
-        var projection = calculator.Project(StartTime.Value, EndTime.Value, timezoneId);
+        var projection = calculator.Project(StartTime.Value, EndTime, timezoneId);
         LocalStartDate = projection.LocalStartDate;
         LocalEndDate = projection.LocalEndDate;
         LocalStartTime = projection.LocalStartTime;
@@ -138,17 +139,17 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     /// </summary>
     public void Reschedule(
         DateTimeOffset startUtc,
-        DateTimeOffset endUtc,
+        DateTimeOffset? endUtc,
         string timezoneId,
         IEventScheduleProjectionCalculator calculator)
     {
-        if (endUtc <= startUtc)
+        if (endUtc.HasValue && endUtc.Value <= startUtc)
         {
             throw new ArgumentException("EndTime must be strictly greater than StartTime.", nameof(endUtc));
         }
 
         StartTime = startUtc.ToUniversalTime();
-        EndTime = endUtc.ToUniversalTime();
+        EndTime = endUtc?.ToUniversalTime();
         ReprojectLocalTimes(timezoneId, calculator);
     }
 
@@ -157,7 +158,7 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
         return !IsDeleted
             && EventSessionStatusId == (int)EventSessionStatusEnum.Published
             && StartTime is not null
-            && EndTime is not null;
+            && (EndTimeType == SessionEndTimeType.OpenEnded || EndTimeType == SessionEndTimeType.RelativeToPrayer || EndTime is not null);
     }
 }
 
