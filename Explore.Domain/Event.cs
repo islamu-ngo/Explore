@@ -87,6 +87,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     // Temporal fields (UTC-based, computed from sessions)
     public DateTimeOffset? FirstSessionStartUtc { get; set; }
     public DateTimeOffset? LastSessionStartUtc { get; set; }
+    public DateTimeOffset? LastSessionEndUtc { get; set; }
     public string? EventTimeZoneId { get; set; }
 
     // Provenance metadata for imported/backfilled events (Task 2.7 lifecycle policy)
@@ -202,6 +203,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
             LastSessionDate = null;
             FirstSessionStartUtc = null;
             LastSessionStartUtc = null;
+            LastSessionEndUtc = null;
             return;
         }
 
@@ -211,5 +213,6 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
         LastSessionDate = last.LocalStartDate;
         FirstSessionStartUtc = first.StartTime;
         LastSessionStartUtc = last.StartTime;
+        LastSessionEndUtc = last.EndTime ?? (last.StartTime?.AddDays(1));
     }
 }
