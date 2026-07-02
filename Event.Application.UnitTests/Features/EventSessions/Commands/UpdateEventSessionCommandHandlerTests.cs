@@ -9,6 +9,7 @@ using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Models.Common;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
@@ -289,7 +290,8 @@ public class UpdateEventSessionCommandHandlerTests
                 Schedule = new UpdateEventSessionScheduleDto
                 {
                     StartTime = OptionalUpdate<DateTimeOffset?>.Set(startUtc),
-                    EndTime = OptionalUpdate<DateTimeOffset?>.Set(endUtc)
+                    EndTime = OptionalUpdate<DateTimeOffset?>.Set(endUtc),
+                    EndTimeType = OptionalUpdate<SessionEndTimeType>.Set(SessionEndTimeType.Fixed)
                 },
                 Title = new UpdateEventSessionTitleDto
                 {
