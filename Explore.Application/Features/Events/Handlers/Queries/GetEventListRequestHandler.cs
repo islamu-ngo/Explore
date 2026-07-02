@@ -105,7 +105,11 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
 
         spec = spec.And(EventFilter.PubliclyDiscoverable());
         spec = spec.And(EventFilter.Status((int)EventStatusEnum.Published));
-        if (!hasExplicitDateSearch)
+        if (request.View.HasValue)
+        {
+            spec = spec.And(EventSubqueryFilter.Temporal(request.View.Value, DateTimeOffset.UtcNow));
+        }
+        else if (!hasExplicitDateSearch)
         {
             spec = spec.And(EventSubqueryFilter.CurrentOrUpcomingPublishedSession());
         }
