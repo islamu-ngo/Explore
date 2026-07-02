@@ -100,7 +100,7 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.MadhabFullName, opt => opt.MapFrom(src => src.Madhab != null ? src.Madhab.FullName : null))
             .ForMember(dest => dest.EventSeriesTitle, opt => opt.MapFrom(src => src.EventSeries != null ? src.EventSeries.Title : null))
             .ForMember(dest => dest.RegistrationPolicyFullName, opt => opt.MapFrom(src => src.RegistrationPolicy != null ? src.RegistrationPolicy.FullName : null))
-            .ForMember(dest => dest.IsPast, opt => opt.MapFrom(src => src.LastSessionStartUtc != null && src.LastSessionStartUtc <= DateTimeOffset.UtcNow));
+            .ForMember(dest => dest.IsPast, opt => opt.MapFrom(src => src.LastSessionEndUtc != null && src.LastSessionEndUtc <= DateTimeOffset.UtcNow));
 
         // EventSessionGroup → DTOs (tracks/devrooms/program sections)
         CreateMap<EventSessionGroup, EventSessionGroupDto>()
