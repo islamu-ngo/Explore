@@ -46,12 +46,15 @@ _Add local reviewer notes here. This section is preserved by the generator._
 | Delete event session template | DeleteEventSessionTemplate | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-templates | event-session-template-context | islamuevent_custom_property_template:delete | EventSubResourceAiActionMapper | no | yes |
 | Delete event Tech aspect | DeleteEventTechAspect | High | HumanConfirmationRequired | Required | edit | /calendar, /events/detail, /events/manage, /events/{eventId} | event-aspects, event-management | event, event-aspect-context, event-management-context | islamuevent_event:update | DeleteEventTechAspectAiActionMapper | no | yes |
 | Delete event template | DeleteEventTemplate | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-templates | event-template-context | islamuevent_custom_property_template:delete | EventSubResourceAiActionMapper | no | yes |
+| Heavy moderate event | HeavyModerateEvent | Critical | HumanConfirmationRequired | Required | moderate-heavy | /calendar, /events/detail, /events/manage, /events/{eventId} | event-management, event-moderation | event, event-management-context, event-moderation-context | islamuevent_event:moderate-heavy | EventModerationAiActionMapper | no | yes |
+| Light moderate event | LightModerateEvent | High | HumanConfirmationRequired | Required | moderate-light | /calendar, /events/detail, /events/manage, /events/{eventId} | event-management, event-moderation | event, event-management-context, event-moderation-context | islamuevent_event:moderate-light | EventModerationAiActionMapper | no | yes |
 | Publish event | PublishEvent | High | HumanConfirmationRequired | Required | publish | /calendar, /events/detail, /events/manage, /events/{eventId} | event-management, event-publishing | event, event-management-context, event-publish-readiness | islamuevent_event:update | PublishEventAiActionMapper | no | yes |
 | Purge event custom property definition | PurgeEventCustomPropertyDefinition | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-custom-properties | event-custom-property-context | islamuevent_custom_property_definition:delete | EventSubResourceAiActionMapper | no | yes |
 | Revoke event team role | RevokeEventTeamRole | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-team | event-team-context | islamuevent_event:manage-team | EventSubResourceAiActionMapper | no | yes |
 | Set event custom property multi-values | SetEventCustomPropertyMultiValues | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-custom-properties | event-custom-property-context | islamuevent_custom_property_value:update | EventSubResourceAiActionMapper | no | yes |
 | Set event custom property value | SetEventCustomPropertyValue | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-custom-properties | event-custom-property-context | islamuevent_custom_property_value:update | EventSubResourceAiActionMapper | no | yes |
 | Unassign session from group | UnassignSessionFromEventSessionGroup | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-program | event-session-group-context | islamuevent_event_session_group:update | EventSubResourceAiActionMapper | no | yes |
+| Unmoderate event | UnmoderateEvent | High | HumanConfirmationRequired | Required | unmoderate | /calendar, /events/detail, /events/manage, /events/{eventId} | event-management, event-moderation | event, event-management-context, event-moderation-context | islamuevent_event:unmoderate | EventModerationAiActionMapper | no | yes |
 | Update event agenda item | UpdateEventAgendaItem | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-agenda | event-agenda-item-context | islamuevent_event_agenda_item:update | EventSubResourceAiActionMapper | no | yes |
 | Update event custom property definition | UpdateEventCustomPropertyDefinition | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-custom-properties | event-custom-property-context | islamuevent_custom_property_definition:update | EventSubResourceAiActionMapper | no | yes |
 | Update event day | UpdateEventDay | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-agenda | event-day-context | islamuevent_event_day:update | EventSubResourceAiActionMapper | no | yes |
@@ -119,7 +122,7 @@ _Add local reviewer notes here. This section is preserved by the generator._
 
 - Availability: Available only when AI tool proposals are enabled and the current API/HAL context allows event creation.
 - Follow-up policy: AskClarifyingQuestionBeforeProposal
-- Safe action instructions: Create a draft proposal only. Do not publish, schedule, invite attendees, assign roles, or claim the event exists before the user confirms the proposal.
+- Safe action instructions: Create a draft proposal only. Put poster-derived date, time, location, gender mode, and primary-session speaker actor references in structured fields instead of prose; keep description as a short summary. The initial event draft may include at most one primary session because event creation creates the first draft session by convention. Use the dedicated event-session draft workflow only after an event exists and the source clearly contains additional sessions. Do not publish, invite attendees, assign roles, or claim the event exists before the user confirms the proposal.
 - Result card: event-draft-proposal-card
 
 ### CreateEventRegistration
@@ -234,6 +237,20 @@ _Add local reviewer notes here. This section is preserved by the generator._
 - Safe action instructions: Read the current management context first, use server-issued identifiers and concurrency stamps, propose delete event template only, and do not claim side effects happened before confirmation.
 - Result card: event-template-delete-proposal-card
 
+### HeavyModerateEvent
+
+- Availability: Available only when the current API/HAL event management context exposes the required moderation affordance.
+- Follow-up policy: ShowWarningsBeforeConfirmation
+- Safe action instructions: Read event management context first, use the current concurrency stamp, require the matching moderation HAL affordance, propose heavy moderate event only, and do not claim moderation happened before confirmation.
+- Result card: event-moderation-heavy-proposal-card
+
+### LightModerateEvent
+
+- Availability: Available only when the current API/HAL event management context exposes the required moderation affordance.
+- Follow-up policy: AskClarifyingQuestionBeforeProposal
+- Safe action instructions: Read event management context first, use the current concurrency stamp, require the matching moderation HAL affordance, propose light moderate event only, and do not claim moderation happened before confirmation.
+- Result card: event-moderation-light-proposal-card
+
 ### PublishEvent
 
 - Availability: Available only when the current API/HAL event context exposes the publish affordance and publish readiness is ready.
@@ -275,6 +292,13 @@ _Add local reviewer notes here. This section is preserved by the generator._
 - Follow-up policy: ShowWarningsBeforeConfirmation
 - Safe action instructions: Read the current management context first, use server-issued identifiers and concurrency stamps, propose unassign session from group only, and do not claim side effects happened before confirmation.
 - Result card: event-session-group-unassign-proposal-card
+
+### UnmoderateEvent
+
+- Availability: Available only when the current API/HAL event management context exposes the required moderation affordance.
+- Follow-up policy: AskClarifyingQuestionBeforeProposal
+- Safe action instructions: Read event management context first, use the current concurrency stamp, require the matching moderation HAL affordance, propose unmoderate event only, and do not claim moderation happened before confirmation.
+- Result card: event-unmoderation-proposal-card
 
 ### UpdateEventAgendaItem
 

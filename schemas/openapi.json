@@ -17099,8 +17099,14 @@
                   "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionGroupListDto"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionGroupListDto"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           }
         },
@@ -17155,8 +17161,14 @@
                   "$ref": "#/components/schemas/HalResourceOfEventSessionGroupDto"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionGroupDto"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "404": {
@@ -17172,8 +17184,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           }
         },
@@ -17241,8 +17259,14 @@
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "400": {
@@ -17258,8 +17282,14 @@
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "401": {
@@ -17275,8 +17305,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "404": {
@@ -17292,8 +17328,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           }
         },
@@ -17344,7 +17386,8 @@
             "description": "No Content",
             "content": {
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "400": {
@@ -17360,8 +17403,14 @@
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "401": {
@@ -17377,8 +17426,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "404": {
@@ -17394,8 +17449,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           }
         },
@@ -17449,8 +17510,14 @@
                   "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionListDto"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionListDto"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           }
         },
@@ -17518,8 +17585,14 @@
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "400": {
@@ -17535,8 +17608,14 @@
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "401": {
@@ -17552,8 +17631,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "404": {
@@ -17569,8 +17654,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           }
         },
@@ -17630,8 +17721,14 @@
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "400": {
@@ -17647,8 +17744,14 @@
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "401": {
@@ -17664,8 +17767,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           }
         },
@@ -17727,7 +17836,8 @@
             "description": "No Content",
             "content": {
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "400": {
@@ -17743,8 +17853,14 @@
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "401": {
@@ -17760,8 +17876,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           },
           "404": {
@@ -17777,8 +17899,14 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
               "application/json": { },
-              "application/hal+json": { }
+              "application/hal+json": { },
+              "application/problem+json": { }
             }
           }
         },
@@ -46977,8 +47105,14 @@
             "format": "date-time"
           },
           "endTime": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
+          },
+          "endTimeType": {
+            "$ref": "#/components/schemas/SessionEndTimeType"
           },
           "locationId": {
             "type": [
@@ -47197,8 +47331,14 @@
             "format": "date-time"
           },
           "endTime": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
+          },
+          "endTimeType": {
+            "$ref": "#/components/schemas/SessionEndTimeType"
           },
           "locationId": {
             "type": [
@@ -53013,6 +53153,15 @@
             ],
             "format": "date-time"
           },
+          "endTimeType": {
+            "type": "integer"
+          },
+          "formattedEndTime": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "isScheduled": {
             "type": "boolean"
           },
@@ -53471,6 +53620,25 @@
             ],
             "format": "int32"
           },
+          "endReferencePrayer": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PrayerTime"
+              }
+            ]
+          },
+          "endOffsetMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "requiresWudu": {
             "type": "boolean"
           },
@@ -53659,6 +53827,15 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "endTimeType": {
+            "type": "integer"
+          },
+          "formattedEndTime": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "isScheduled": {
             "type": "boolean"
@@ -61926,6 +62103,15 @@
             ],
             "format": "date-time"
           },
+          "endTimeType": {
+            "type": "integer"
+          },
+          "formattedEndTime": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "isScheduled": {
             "type": "boolean"
           },
@@ -62493,6 +62679,15 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "endTimeType": {
+            "type": "integer"
+          },
+          "formattedEndTime": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "isScheduled": {
             "type": "boolean"
@@ -68829,6 +69024,17 @@
           }
         }
       },
+      "OptionalUpdateOfSessionEndTimeType": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "$ref": "#/components/schemas/SessionEndTimeType"
+          }
+        }
+      },
       "OptionalUpdateOfstring": {
         "type": "object",
         "properties": {
@@ -71255,6 +71461,14 @@
             "type": "string"
           }
         }
+      },
+      "SessionEndTimeType": {
+        "enum": [
+          "Fixed",
+          "OpenEnded",
+          "RelativeToPrayer"
+        ],
+        "type": "string"
       },
       "SessionStartTimeType": {
         "enum": [
@@ -75692,6 +75906,9 @@
           },
           "endTime": {
             "$ref": "#/components/schemas/OptionalUpdateOfDateTimeOffset"
+          },
+          "endTimeType": {
+            "$ref": "#/components/schemas/OptionalUpdateOfSessionEndTimeType"
           }
         }
       },
