@@ -45,6 +45,13 @@ internal static class CommandResponseResultMapper
             detail,
             code);
 
+        if (response.Id is not null)
+        {
+            problemDetails.Extensions["id"] = response.Id;
+            problemDetails.Extensions["success"] = response.Success;
+            problemDetails.Extensions["message"] = response.Message;
+        }
+
         return ApiProblemFactory.ToProblemResult(problemDetails);
     }
 
@@ -105,14 +112,25 @@ internal static class CommandResponseResultMapper
                 ? ApiProblemCodes.ResourceConflict
                 : response.FailureCode);
 
+        if (response.Id is not null)
+        {
+            problemDetails.Extensions["id"] = response.Id;
+            problemDetails.Extensions["success"] = response.Success;
+            problemDetails.Extensions["message"] = response.Message;
+        }
+
         return ApiProblemFactory.ToProblemResult(problemDetails);
     }
 
     public static ActionResult ToNotFoundProblem(
         this ControllerBase controller,
-        ApiNotFoundProblemDescriptor descriptor)
+        ApiNotFoundProblemDescriptor descriptor,
+        string? detail = null)
     {
-        var problemDetails = ApiProblemFactory.CreateNotFoundProblem(controller.HttpContext, descriptor);
+        var activeDescriptor = detail is not null
+            ? new ApiNotFoundProblemDescriptor(descriptor.Title, detail, descriptor.Code)
+            : descriptor;
+        var problemDetails = ApiProblemFactory.CreateNotFoundProblem(controller.HttpContext, activeDescriptor);
         return ApiProblemFactory.ToProblemResult(problemDetails);
     }
 

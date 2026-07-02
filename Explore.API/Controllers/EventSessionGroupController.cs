@@ -26,7 +26,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
-[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType, "application/problem+json")]
 public class EventSessionGroupController : ControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor EventSessionGroupNotFoundProblem = new(

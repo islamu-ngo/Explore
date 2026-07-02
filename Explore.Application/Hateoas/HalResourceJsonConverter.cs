@@ -87,9 +87,12 @@ public sealed class HalResourceJsonConverter<T> : JsonConverter<HalResource<T>> 
             }
         }
 
-        // Write _links (always present, even if empty for discoverability)
-        writer.WritePropertyName("_links");
-        JsonSerializer.Serialize(writer, value.Links, options);
+        // Write _links only if present
+        if (value.Links is not null && value.Links.Count > 0)
+        {
+            writer.WritePropertyName("_links");
+            JsonSerializer.Serialize(writer, value.Links, options);
+        }
 
         // Write _embedded only if present
         if (value.Embedded is not null && value.Embedded.Count > 0)

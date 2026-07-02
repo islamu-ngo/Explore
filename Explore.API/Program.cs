@@ -543,7 +543,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing") 
     app.MapScalarApiReference();
 }
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
     Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
 

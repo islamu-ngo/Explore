@@ -31,7 +31,8 @@ public class NotificationController : ControllerBase
 
     private static readonly ApiNotFoundProblemDescriptor NotificationNotFoundProblem = new(
         "Notification not found",
-        "Notification was not found.");
+        "Notification was not found.",
+        "notification_not_found");
 
     private readonly IMediator _mediator;
     private readonly INotificationRefreshStreamService _notificationRefreshStreamService;
@@ -155,7 +156,7 @@ public class NotificationController : ControllerBase
     {
         var response = await _mediator.Send(new ArchiveNotificationCommand { Id = id, Archive = archive }, cancellationToken);
         if (!response.Success)
-            return this.ToNotFoundProblem(NotificationNotFoundProblem);
+            return this.ToNotFoundProblem(NotificationNotFoundProblem, response.Message);
 
         return Ok(response);
     }
@@ -172,7 +173,7 @@ public class NotificationController : ControllerBase
     {
         var response = await _mediator.Send(new SnoozeNotificationCommand { Id = id, SnoozedUntil = snoozedUntil }, cancellationToken);
         if (!response.Success)
-            return this.ToNotFoundProblem(NotificationNotFoundProblem);
+            return this.ToNotFoundProblem(NotificationNotFoundProblem, response.Message);
 
         return Ok(response);
     }
