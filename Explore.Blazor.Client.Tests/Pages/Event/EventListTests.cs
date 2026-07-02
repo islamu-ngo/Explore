@@ -186,6 +186,7 @@ public class EventListTests : IDisposable
             Arg.Any<Guid?>(),                  // actorId
             Arg.Any<Guid?>(),                  // organizationId
             Arg.Any<Guid?>(),                  // groupId
+            Arg.Any<string?>(),                // view
             Arg.Any<CancellationToken>())
             .Returns(resultTask);
     }
@@ -386,6 +387,7 @@ public class EventListTests : IDisposable
             actorId,
             organizationId,
             groupId,
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 

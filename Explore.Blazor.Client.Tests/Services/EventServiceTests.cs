@@ -1396,7 +1396,7 @@ public class EventServiceTests
 
         // Assert
         await Assert.That(result.Count).IsEqualTo(2);
-        await _apiClient.Received(1).GetEventsAsync(pageNumber: 1, pageSize: 100, actorId: actorId);
+        await _apiClient.Received(1).GetEventsAsync(pageNumber: 1, pageSize: 100, actorId: actorId, view: "All");
     }
 
     [Test]
@@ -1421,7 +1421,7 @@ public class EventServiceTests
         await Assert.That(result.Select(evt => evt.Title)).Contains("Managed version");
         await Assert.That(result.Select(evt => evt.Title)).Contains("Moderated");
         await Assert.That(result.Select(evt => evt.Title)).DoesNotContain("Public version");
-        await _apiClient.Received(1).GetEventsAsync(pageNumber: 1, pageSize: 100, actorId: actorId);
+        await _apiClient.Received(1).GetEventsAsync(pageNumber: 1, pageSize: 100, actorId: actorId, view: "All");
         await _apiClient.Received(1).GetManagedEventsByActorAsync(
             actorId: actorId,
             pageNumber: 1,
