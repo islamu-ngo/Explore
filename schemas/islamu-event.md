@@ -2997,6 +2997,7 @@ Table "event_sessions" {
   "event_session_status_id" int [not null, default: 1, note: 'FK to event_session_statuses. Default/backfill = Draft.']
   "start_time" timestamptz
   "end_time" timestamptz
+  "end_time_type" int [not null, default: 0, note: 'Values: Fixed(0), OpenEnded(1), RelativeToPrayer(2)']
   "location_id" uuid
   "room_id" uuid
   "title" varchar(500)
@@ -3109,10 +3110,12 @@ Table "event_session_islamic_aspects" {
   "start_time_type" int [not null]
   "reference_prayer" int
   "offset_minutes" int
+  "end_reference_prayer" int
+  "end_offset_minutes" int
   "requires_wudu" boolean [not null, default: false]
   "ritual_requirements_json" jsonb
 
-  Note: 'Checks: CK_EventSessionIslamicAspect_StartTimeState, CK_EventSessionIslamicAspect_OffsetRange, CK_EventSessionIslamicAspect_ReferencePrayerRange. Fixed sessions require null prayer fields; prayer-relative sessions require reference_prayer and offset_minutes, with offsets between -180 and 180 minutes.'
+  Note: 'Checks: CK_EventSessionIslamicAspect_StartTimeState, CK_EventSessionIslamicAspect_OffsetRange, CK_EventSessionIslamicAspect_ReferencePrayerRange, CK_EventSessionIslamicAspect_EndOffsetRange, CK_EventSessionIslamicAspect_EndReferencePrayerRange, CK_EventSessionIslamicAspect_EndTimeState. Fixed start requires null prayer fields; prayer-relative start requires reference_prayer and offset_minutes (-180..180). Fixed end requires null end prayer fields; prayer-relative end requires end_reference_prayer and end_offset_minutes (-180..180).'
 }
 
 Table "event_session_agenda_items" {

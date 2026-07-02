@@ -375,6 +375,17 @@ Do not make the merged event-with-sessions view the canonical write contract.
 
 Soft deletion and retirement behavior must be explicit. Re-creation semantics must not be left accidental.
 
+## Recommended Local Custom Extensions
+
+When an event session is configured with a flexible ending time (such as `SessionEndTimeType.OpenEnded`), organizers may still want to display an approximate duration on the public page for planning purposes. In these cases, it is recommended to define a Layer 3 custom property:
+
+- **Namespace + Key:** `pack.sessions/estimated_duration_minutes` or `tenant.sessions/estimated_duration_minutes`
+- **Label:** Estimated Duration (Minutes)
+- **Description:** Approximate duration of the session in minutes for scheduling guidance.
+- **Value Type:** `Integer`
+
+Using a Layer 3 custom property for estimated duration ensures the core scheduling database schema remains clean and strictly focused on authoritative UTC instants, while allowing long-tail planning hints to be configured dynamically via templates.
+
 ## Related
 
 - `docs/ARCHITECTURE.md`

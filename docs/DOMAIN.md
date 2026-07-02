@@ -68,7 +68,12 @@ Base event data stays in `Event`. Optional modules add 1:1 aspect records sharin
 
 Aspects are optional; an event/session can exist without aspect rows. Sector-standard semantics belong here, not only in Layer 3 custom properties.
 
-`EventSessionIslamicAspect` owns Islamic session scheduling metadata without changing the UTC schedule source of truth. `StartTimeType = Fixed` means the session's UTC `StartTime/EndTime` are authoritative and `ReferencePrayer`/`OffsetMinutes` must be null. `StartTimeType = RelativeToPrayer` requires `ReferencePrayer` and `OffsetMinutes`, with offsets constrained to `-180..180` minutes; application validation also requires `LocationId` so prayer-time resolution has a location anchor. EF/PostgreSQL check constraints enforce the same fixed/relative field shape plus offset and prayer enum ranges.
+`EventSessionIslamicAspect` owns Islamic session scheduling metadata without changing the UTC schedule source of truth.
+
+- **Start Time:** `StartTimeType = Fixed` means the session's UTC `StartTime` is authoritative and `ReferencePrayer`/`OffsetMinutes` must be null. `StartTimeType = RelativeToPrayer` requires `ReferencePrayer` and `OffsetMinutes` (constrained to `-180..180` minutes); application validation also requires `LocationId` so prayer-time resolution has a location anchor.
+- **End Time:** Exposes flexible ending logic via `EventSession.EndTimeType` (`Fixed`, `OpenEnded`, `RelativeToPrayer`). When `EndTimeType = RelativeToPrayer`, the ending is relative to `EndReferencePrayer` and `EndOffsetMinutes` (constrained to `-180..180` minutes) on `EventSessionIslamicAspect`. When `EndTimeType = OpenEnded`, the session does not have a set end time and `EndTime` is stored as null.
+
+EF/PostgreSQL check constraints enforce the fixed/relative field shapes, offset ranges, and prayer enum ranges.
 
 ### 3) Event And Session Lifecycle
 
