@@ -314,7 +314,11 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                     e.LastSessionStartUtc == null || e.LastSessionStartUtc > (DateTimeOffset)subFilter.Value),
 
                 EventSubqueryFilterType.CurrentOrUpcomingPublishedSession => query.Where(e =>
-                    e.LastSessionStartUtc != null && e.LastSessionStartUtc >= now),
+                    _dbContext.EventSessions.Any(es =>
+                        es.EventId == e.Id &&
+                        es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
+                        es.EndTime != null &&
+                        es.EndTime >= now)),
 
                 EventSubqueryFilterType.TemporalView => ApplyTemporalFilter(query, subFilter),
 

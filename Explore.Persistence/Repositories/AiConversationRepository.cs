@@ -151,6 +151,16 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
             .Select(run => run.Id)
             .ToListAsync();
         _dbContext.AiRuns.AddRange(runs.Where(run => !existingRunIds.Contains(run.Id)));
+
+        var proposedActionIds = proposedActions.Select(action => action.Id).ToArray();
+        var existingProposedActionIds = await _dbContext.AiProposedActions
+            .Where(action => proposedActionIds.Contains(action.Id))
+            .Select(action => action.Id)
+            .ToListAsync();
+        _dbContext.AiProposedActions.AddRange(proposedActions.Where(action => !existingProposedActionIds.Contains(action.Id)));
+
+        await _dbContext.SaveChangesAsync();
+
         foreach (var run in runs.Where(run => existingRunIds.Contains(run.Id)))
         {
             await _dbContext.AiRuns
@@ -163,12 +173,6 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
                     .SetProperty(existingRun => existingRun.FailureMessage, run.FailureMessage));
         }
 
-        var proposedActionIds = proposedActions.Select(action => action.Id).ToArray();
-        var existingProposedActionIds = await _dbContext.AiProposedActions
-            .Where(action => proposedActionIds.Contains(action.Id))
-            .Select(action => action.Id)
-            .ToListAsync();
-        _dbContext.AiProposedActions.AddRange(proposedActions.Where(action => !existingProposedActionIds.Contains(action.Id)));
         foreach (var action in proposedActions.Where(action => existingProposedActionIds.Contains(action.Id)))
         {
             await _dbContext.AiProposedActions
@@ -183,8 +187,6 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
                     .SetProperty(existingAction => existingAction.FailureCode, action.FailureCode)
                     .SetProperty(existingAction => existingAction.FailureMessage, action.FailureMessage));
         }
-
-        await _dbContext.SaveChangesAsync();
 
         entity.StatusId = statusId;
         entity.Title = title;

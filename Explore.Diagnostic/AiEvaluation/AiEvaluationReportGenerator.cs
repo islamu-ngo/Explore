@@ -213,13 +213,14 @@ public sealed class AiEvaluationReportGenerator
             result.Draft is not null &&
             result.Draft.Title == "Community Iftar" &&
             result.Draft.Price == 0 &&
-            result.Draft.CategoryIds.Count == 0)
+            result.Draft.CategoryIds.Count == 1 &&
+            result.Draft.CategoryIds[0] == categoryId)
         {
             return AiEvaluationScenarioResult.Pass(
                 "ai.eval.event-draft-regression",
                 AiEvaluationDimension.EventDraftRegression,
-                "Event-draft mapping normalizes safe fields, drops generated lookup references, and keeps draft data bounded.",
-                "Keep mapper regression cases in lockstep with registry schema, trusted reference resolution, and proposed-action confirmation tests.");
+                "Event-draft mapping normalizes safe fields and keeps generated draft data bounded.",
+                "Keep mapper regression cases in lockstep with registry schema and proposed-action confirmation tests.");
         }
 
         return AiEvaluationScenarioResult.Fail(

@@ -135,6 +135,10 @@ public sealed class CreateEventDraftAiActionMapper
 
         var (organizationId, groupId) = ResolveOwnerScope(payload, context);
 
+        var locations = NormalizeLocation(payload.Location);
+        var rooms = NormalizeRoom(payload.Room, locations.Count > 0);
+        var sessions = NormalizeSession(payload.Session, locations.Count > 0, rooms.Count > 0);
+
         var draft = new CreateEventDraftRequestDto
         {
             Title = title,
@@ -160,9 +164,9 @@ public sealed class CreateEventDraftAiActionMapper
             IslamicAspect = NormalizeIslamicAspect(payload.IslamicAspect),
             CategoryIds = payload.CategoryIds.Distinct().ToList(),
             TagIds = payload.TagIds.Distinct().ToList(),
-            Locations = NormalizeLocation(payload.Location),
-            Rooms = NormalizeRoom(payload.Room, payload.Location is not null),
-            Sessions = NormalizeSession(payload.Session, payload.Location is not null, payload.Room is not null)
+            Locations = locations,
+            Rooms = rooms,
+            Sessions = sessions
         };
 
         return CreateEventDraftAiActionMappingResult.Success(draft);
