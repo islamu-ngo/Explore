@@ -25,6 +25,9 @@ public class EventSessionIslamicAspectConfiguration : IEntityTypeConfiguration<E
         builder.Property(e => e.ReferencePrayer)
             .HasConversion<int?>();
 
+        builder.Property(e => e.EndReferencePrayer)
+            .HasConversion<int?>();
+
         builder.Property(e => e.RequiresWudu)
             .HasDefaultValue(false)
             .IsRequired();
@@ -43,6 +46,15 @@ public class EventSessionIslamicAspectConfiguration : IEntityTypeConfiguration<E
             t.HasCheckConstraint(
                 "CK_EventSessionIslamicAspect_ReferencePrayerRange",
                 "reference_prayer IS NULL OR reference_prayer BETWEEN 1 AND 6");
+            t.HasCheckConstraint(
+                "CK_EventSessionIslamicAspect_EndTimeState",
+                "((end_reference_prayer IS NULL AND end_offset_minutes IS NULL) OR (end_reference_prayer IS NOT NULL AND end_offset_minutes IS NOT NULL))");
+            t.HasCheckConstraint(
+                "CK_EventSessionIslamicAspect_EndOffsetRange",
+                "end_offset_minutes IS NULL OR end_offset_minutes BETWEEN -180 AND 180");
+            t.HasCheckConstraint(
+                "CK_EventSessionIslamicAspect_EndReferencePrayerRange",
+                "end_reference_prayer IS NULL OR end_reference_prayer BETWEEN 1 AND 6");
         });
     }
 }

@@ -2,6 +2,7 @@
 // ABOUTME: Composite FKs bind sessions to same-tenant events, days, locations, and rooms at the database boundary.
 
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -25,6 +26,11 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
         builder.Property(e => e.Title).HasMaxLength(500);
         builder.Property(e => e.Slug).HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
+
+        builder.Property(e => e.EndTimeType)
+            .HasConversion<int>()
+            .HasDefaultValue(SessionEndTimeType.Fixed)
+            .IsRequired();
 
         builder.HasOne(e => e.Event)
             .WithMany(e => e.Sessions)
@@ -118,6 +124,9 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
             t.HasCheckConstraint(
                 "CK_EventSession_EndAfterStart",
                 "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
+            t.HasCheckConstraint(
+                "CK_EventSession_EndTimeTypeState",
+                "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
             t.HasCheckConstraint(
                 "CK_EventSession_LocalStartMinuteRange",
                 "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
