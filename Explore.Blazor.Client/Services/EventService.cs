@@ -58,6 +58,7 @@ public interface IEventService
         Guid? actorId = null,
         Guid? organizationId = null,
         Guid? groupId = null,
+        string? view = null,
         CancellationToken cancellationToken = default);
     Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(int pageNumber, int pageSize);
     Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
@@ -207,6 +208,7 @@ public partial class EventService : IEventService
         Guid? actorId = null,
         Guid? organizationId = null,
         Guid? groupId = null,
+        string? view = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -275,6 +277,7 @@ public partial class EventService : IEventService
                 requiresLaptop: requiresLaptop,
                 techStackTag: techStackTag,
                 hasTechAspect: hasTechAspect,
+                view: view,
                 cancellationToken: cancellationToken);
             return result.ToPaginatedResult();
         }
@@ -1386,7 +1389,8 @@ public partial class EventService : IEventService
             var result = await _apiClient.GetEventsAsync(
                 pageNumber: 1,
                 pageSize: 100,
-                actorId: actorId);
+                actorId: actorId,
+                view: "All");
             return result?.GetItems() ?? new List<EventListDto>();
         }
         catch (Exception ex)
@@ -1431,7 +1435,8 @@ public partial class EventService : IEventService
             var result = await _apiClient.GetEventsAsync(
                 pageNumber: 1,
                 pageSize: 100,
-                organizationId: organizationId);
+                organizationId: organizationId,
+                view: "All");
             return result?.GetItems() ?? new List<EventListDto>();
         }
         catch (Exception ex)
@@ -1448,7 +1453,8 @@ public partial class EventService : IEventService
             var result = await _apiClient.GetEventsAsync(
                 pageNumber: 1,
                 pageSize: 100,
-                groupId: groupId);
+                groupId: groupId,
+                view: "All");
             return result?.GetItems() ?? new List<EventListDto>();
         }
         catch (Exception ex)

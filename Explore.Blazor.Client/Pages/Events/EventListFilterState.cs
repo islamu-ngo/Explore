@@ -38,6 +38,7 @@ internal sealed record EventListFilterState(
     Guid? OrganizationId,
     Guid? GroupId)
 {
+    public TemporalView? View { get; init; }
     public static EventListFilterState From(
         EventFilterBar? filterBar,
         string? searchQuery,
@@ -76,7 +77,10 @@ internal sealed record EventListFilterState(
             TechStackTag: filterBar?.TechStackTag,
             ActorId: actorId,
             OrganizationId: organizationId,
-            GroupId: groupId);
+            GroupId: groupId)
+        {
+            View = filterBar?.SelectedTemporalView
+        };
     }
 
     public Task<PaginatedResult<EventListDto>> FetchPageAsync(
@@ -108,6 +112,7 @@ internal sealed record EventListFilterState(
             dateTo: DateTo,
             sortBy: SortBy,
             sortDescending: SortDescending,
+            view: View?.ToString(),
             eventTypeIds: EventTypeIds,
             audienceGenderIds: AudienceGenderIds,
             audienceAgeIds: AudienceAgeIds,
