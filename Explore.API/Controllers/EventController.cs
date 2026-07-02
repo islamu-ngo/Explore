@@ -174,6 +174,7 @@ public class EventController : ExploreControllerBase
             HasTechAspect = filter.HasTechAspect,
             SortBy = filter.SortBy,
             SortDescending = filter.SortDescending,
+            View = ParseTemporalView(filter.View),
             CustomPropertyFilters = filter.CustomPropertyFilters,
             CustomPropertySearchTerm = filter.CustomPropertySearchTerm
         }, cancellationToken);
@@ -947,6 +948,9 @@ public class EventController : ExploreControllerBase
             "or" => TagFilterMode.Or,
             _ => defaultValue
         };
+
+    private static TemporalView? ParseTemporalView(string? value) =>
+        Enum.TryParse<TemporalView>(value, ignoreCase: true, out var view) ? view : null;
 
     private bool TryNormalizeLightModerationMetadata(
         Guid eventId,

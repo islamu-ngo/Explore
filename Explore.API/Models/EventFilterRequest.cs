@@ -51,6 +51,7 @@ public sealed class EventFilterRequest : IValidatableObject
 
     public string? SortBy { get; set; }
     public bool SortDescending { get; set; } = true;
+    public string? View { get; set; }
 
     /// <summary>
     /// Indexed query-string binding, e.g.
