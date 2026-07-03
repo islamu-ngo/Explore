@@ -291,7 +291,7 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
             ? AiViewerScopeEnum.OrganizerTeam
             : AiViewerScopeEnum.Public;
         var grantedFieldKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        const bool piiDisclosureEnabled = false;
+        var piiDisclosureEnabled = settings.PiiDisclosureEnabled;
 
         foreach (AiSelectedReferenceDto reference in selectedReferences)
         {
@@ -308,7 +308,8 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
                         ProviderTrustTier: providerTrustTier,
                         ViewerScope: viewerScope,
                         GrantedFieldKeys: grantedFieldKeys,
-                        PiiDisclosureEnabled: piiDisclosureEnabled);
+                        PiiDisclosureEnabled: piiDisclosureEnabled,
+                        MaxSensitivity: (AiContextSensitivityEnum)settings.MaxAiContextSensitivity);
                     var envelope = _contextGateway.Sanitize(sanitizationInput);
                     enrichedReferences.Add(new AiSelectedReferenceDto(
                         AiReferenceKind.Event.ToString(),

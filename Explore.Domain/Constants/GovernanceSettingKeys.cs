@@ -245,6 +245,7 @@ public static class GovernanceSettingKeys
         public const string StreamingEnabled = "ai_assistant.streaming_enabled";
         public const string AllowAnonymousAccess = "ai_assistant.allow_anonymous_access";
         public const string MaxAiContextSensitivity = "ai_assistant.max_ai_context_sensitivity";
+        public const string PiiDisclosureEnabled = "ai_assistant.pii_disclosure_enabled";
     }
 
     public static class AiAssistantPreferences

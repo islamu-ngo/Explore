@@ -176,6 +176,11 @@ public sealed class AiContextGateway : IAiContextGateway
             return AiContextDisclosureRuleEnum.Deny;
         }
 
+        if ((int)entry.Sensitivity > (int)request.MaxSensitivity)
+        {
+            return AiContextDisclosureRuleEnum.Deny;
+        }
+
         if (request.ViewerScope == AiViewerScopeEnum.InstanceAdmin &&
             entry.Sensitivity is AiContextSensitivityEnum.Confidential
                 or AiContextSensitivityEnum.Restricted)

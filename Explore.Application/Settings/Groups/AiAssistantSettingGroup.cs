@@ -30,6 +30,8 @@ public class AiAssistantSettingGroup : ISettingGroup
 
     public int MaxAiContextSensitivity { get; private set; } = 1;
 
+    public bool PiiDisclosureEnabled { get; private set; }
+
     public bool HasEndpointUrl => !string.IsNullOrWhiteSpace(EndpointUrl);
     public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
     public bool HasModel => !string.IsNullOrWhiteSpace(ModelId);
@@ -63,7 +65,8 @@ public class AiAssistantSettingGroup : ISettingGroup
         GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
         GovernanceSettingKeys.AiAssistant.StreamingEnabled,
         GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
-        GovernanceSettingKeys.AiAssistant.MaxAiContextSensitivity
+        GovernanceSettingKeys.AiAssistant.MaxAiContextSensitivity,
+        GovernanceSettingKeys.AiAssistant.PiiDisclosureEnabled
     ];
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
@@ -106,6 +109,8 @@ public class AiAssistantSettingGroup : ISettingGroup
             AllowAnonymousAccess = SettingValueSerializer.Deserialize(allowAnonymousAccess.Value, false);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.MaxAiContextSensitivity, out var maxSensitivity))
             MaxAiContextSensitivity = SettingValueSerializer.DeserializeInt(maxSensitivity.Value, 1);
+        if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.PiiDisclosureEnabled, out var piiDisclosureEnabled))
+            PiiDisclosureEnabled = SettingValueSerializer.Deserialize(piiDisclosureEnabled.Value, false);
     }
 
     private static IReadOnlyList<string> NormalizeModelIds(IEnumerable<string?> modelIds)

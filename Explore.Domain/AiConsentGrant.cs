@@ -14,18 +14,18 @@ public class AiConsentGrant : ITenantEntity, IAuditableEntity, ISoftDeletable, I
     public Guid ConcurrencyStamp { get; set; } = Guid.NewGuid();
 
     [ForeignKey(nameof(Id))]
-    public required AiConsentGrant Self { get; set; }
+    public AiConsentGrant Self { get; set; } = null!;
 
     public Guid TenantId { get; set; }
     [ForeignKey(nameof(TenantId))]
-    public required Tenant Tenant { get; set; }
+    public Tenant Tenant { get; set; } = null!;
 
     /// <summary>
     /// The data subject whose classified field is being disclosed to an AI prompt.
     /// </summary>
     public Guid SubjectUserId { get; set; }
     [ForeignKey(nameof(SubjectUserId))]
-    public required User SubjectUser { get; set; }
+    public User SubjectUser { get; set; } = null!;
 
     /// <summary>
     /// Registry-keyed entity name (e.g. <c>UserPii</c>). Must match a registered row in <c>AiContextDisclosureRegistry</c>.

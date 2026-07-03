@@ -158,7 +158,7 @@ public class AiAssistantSettingGroupTests
     {
         var keys = AiAssistantSettingGroup.SettingKeys.ToList();
 
-        await Assert.That(keys.Count).IsEqualTo(19);
+        await Assert.That(keys.Count).IsEqualTo(20);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.Provider);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.ModelId);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.AllowedModelIds);

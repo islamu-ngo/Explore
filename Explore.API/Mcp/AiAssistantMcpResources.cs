@@ -4,6 +4,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +13,7 @@ using ModelContextProtocol.Server;
 namespace Explore.API.Mcp;
 
 [McpServerResourceType]
-public sealed class AiAssistantMcpResources(IMediator mediator)
+public sealed class AiAssistantMcpResources(IMediator mediator, IAiContextRedactor redactor)
 {
     [McpServerResource(
         Name = "ai_conversations",
@@ -68,7 +69,7 @@ public sealed class AiAssistantMcpResources(IMediator mediator)
             conversation.CreatedAt,
             conversation.UpdatedAt);
 
-    private static AiMcpConversationDetailDescriptor MapDetail(AiConversationDto conversation)
+    private AiMcpConversationDetailDescriptor MapDetail(AiConversationDto conversation)
         => new(
             Found: true,
             ConversationId: conversation.Id,
@@ -107,7 +108,7 @@ public sealed class AiAssistantMcpResources(IMediator mediator)
                     reference.Kind,
                     reference.ReferenceId,
                     reference.DisplayName,
-                    reference.Summary,
+                    redactor.RedactEmbeddedPii(reference.Summary),
                     reference.CreatedAt))
                 .ToArray(),
             ProposedActions: conversation.ProposedActions
@@ -117,8 +118,9 @@ public sealed class AiAssistantMcpResources(IMediator mediator)
                     action.Kind,
                     action.Status,
                     action.ResultResourceId,
-                    action.FailureCode,
-                    action.CreatedAt))
+        action.FailureCode,
+        action.CreatedAt,
+        !string.IsNullOrEmpty(action.PayloadJson)))
                 .ToArray());
 
     public sealed record AiMcpConversationListDescriptor(IReadOnlyList<AiMcpConversationSummaryDescriptor> Conversations);
@@ -190,6 +192,7 @@ public sealed class AiAssistantMcpResources(IMediator mediator)
         string Kind,
         string Status,
         Guid? ResultResourceId,
-        string? FailureCode,
-        DateTime CreatedAt);
+    string? FailureCode,
+    DateTime CreatedAt,
+    bool HasPayload);
 }

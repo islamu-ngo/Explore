@@ -1,0 +1,79 @@
+@* ABOUTME: MudBlazor dialog for JIT consent prompts when AI assistant needs PII disclosure. *@
+@* ABOUTME: Shows entity/field/purpose and calls consent API on user approval. *@
+
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-4">
+            Data Disclosure Request
+        </MudText>
+
+        <MudText Typo="Typo.body2" Class="mb-3">
+            The AI assistant needs access to the following personal data to answer your question.
+            Review and approve to continue, or deny to keep this information private.
+        </MudText>
+
+        <MudStack Spacing="2">
+            <MudTextField T="string" Label="Data Category"
+                          Value="@EntityName" ReadOnly Variant="Variant.Filled" />
+            <MudTextField T="string" Label="Field"
+                          Value="@FieldName" ReadOnly Variant="Variant.Filled" />
+            @if (!string.IsNullOrEmpty(Purpose))
+            {
+                <MudTextField T="string" Label="Purpose"
+                              Value="@Purpose" ReadOnly Variant="Variant.Filled" />
+            }
+            <MudTextField T="string" Label="Provider Trust"
+                          Value="@ProviderTrustLabel" ReadOnly Variant="Variant.Filled" />
+        </MudStack>
+
+        <MudAlert Severity="Severity.Info" Class="mt-4">
+            @if (IsLocalProvider)
+            {
+                @("This data will be processed by a local model within your network.")
+            }
+            else
+            {
+                @("This data will be sent to an external AI provider. Grant access only if you trust the provider.")
+            }
+        </MudAlert>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="Deny">Deny</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Allow">Allow</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? DialogInstance { get; set; }
+
+    [Parameter]
+    [EditorRequired]
+    public string EntityName { get; set; } = string.Empty;
+
+    [Parameter]
+    [EditorRequired]
+    public string FieldName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Purpose { get; set; }
+
+    [Parameter]
+    public string ProviderTrustLabel { get; set; } = "Unknown";
+
+    [Parameter]
+    public bool IsLocalProvider { get; set; }
+
+    private void Allow()
+    {
+        DialogInstance?.Close(DialogResult.Ok(true));
+    }
+
+    private void Deny()
+    {
+        DialogInstance?.Close(DialogResult.Ok(false));
+    }
+}

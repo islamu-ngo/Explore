@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Services.Ai;
+using Explore.Blazor.Client.Tests;
 using Microsoft.AspNetCore.Components.Forms;
 using MudBlazor;
 using Refit;
@@ -128,12 +129,7 @@ public sealed class AiAssistantRailTests : IDisposable
                 {
                     Id = linkedActionId,
                     Kind = "CreateEventDraft",
-                    Status = "Proposed",
-                    _links = new Dictionary<string, Anonymous59>
-                    {
-                        ["confirm-action"] = new() { Href = "/confirm", Method = "POST" },
-                        ["reject-action"] = new() { Href = "/reject", Method = "POST" }
-                    }
+                    Status = "Proposed"
                 },
                 new ProposedActions2
                 {
@@ -143,6 +139,12 @@ public sealed class AiAssistantRailTests : IDisposable
                 }
             ]
         });
+        var linkedAction = _conversationState.SelectedConversation!.ProposedActions!
+            .Single(action => action.Id == linkedActionId);
+        GeneratedHalLinkTestHelper.SetLinks(
+            linkedAction,
+            ("confirm-action", "/confirm", "POST"),
+            ("reject-action", "/reject", "POST"));
         _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
         _clientService.ConfirmProposedActionAsync(conversationId, linkedActionId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -192,14 +194,14 @@ public sealed class AiAssistantRailTests : IDisposable
                     MessageId = assistantMessageId,
                     Kind = "CreateEventDraft",
                     Status = "Proposed",
-                    PayloadJson = "{\"title\":\"Community Iftar\",\"description\":\"Plan the meal.\"}",
-                    _links = new Dictionary<string, Anonymous59>
-                    {
-                        ["confirm-action"] = new() { Href = "/confirm", Method = "POST" },
-                        ["reject-action"] = new() { Href = "/reject", Method = "POST" }
-                    }
+                    PayloadJson = "{\"title\":\"Community Iftar\",\"description\":\"Plan the meal.\"}"
                 }
             ]));
+        var inlineAction = _conversationState.SelectedConversation!.ProposedActions!.Single();
+        GeneratedHalLinkTestHelper.SetLinks(
+            inlineAction,
+            ("confirm-action", "/confirm", "POST"),
+            ("reject-action", "/reject", "POST"));
         _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
         _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
@@ -994,4 +996,5 @@ public sealed class AiAssistantRailTests : IDisposable
             }
         };
     }
+
 }

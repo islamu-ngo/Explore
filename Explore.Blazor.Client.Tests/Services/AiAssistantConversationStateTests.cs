@@ -2,6 +2,7 @@
 // ABOUTME: Ensures proposal actions are exposed only from server-provided links.
 
 using Explore.Blazor.Client.Services.Ai;
+using Explore.Blazor.Client.Tests;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -10,19 +11,16 @@ public sealed class AiAssistantConversationStateTests
     [Test]
     public async Task CanConfirmAndCanReject_ReadOnlyHalLinks()
     {
-        var action = new ProposedActions2
-        {
-            _links = new Dictionary<string, Anonymous59>
-            {
-                ["confirm-action"] = new() { Href = "/confirm", Method = "POST" },
-                ["reject-action"] = new() { Href = "/reject", Method = "POST" }
-            }
-        };
+        var action = new ProposedActions2();
+        GeneratedHalLinkTestHelper.SetLinks(
+            action,
+            ("confirm-action", "/confirm", "POST"),
+            ("reject-action", "/reject", "POST"));
 
         await Assert.That(AiAssistantConversationState.CanConfirm(action)).IsTrue();
         await Assert.That(AiAssistantConversationState.CanReject(action)).IsTrue();
 
-        action._links.Remove("confirm-action");
+        action._links!.Remove("confirm-action");
 
         await Assert.That(AiAssistantConversationState.CanConfirm(action)).IsFalse();
         await Assert.That(AiAssistantConversationState.CanReject(action)).IsTrue();

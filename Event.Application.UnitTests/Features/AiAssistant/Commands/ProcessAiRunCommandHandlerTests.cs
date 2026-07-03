@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.Event;
+using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Handlers.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
@@ -14,11 +15,9 @@ using Explore.Application.Settings.Groups;
 using Explore.Domain;
 using Explore.Domain.Ai;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using MediatR;
 using NSubstitute;
-
-using Explore.Application.Features.AiAssistant.Disclosure;
-using Explore.Domain.Enums;
 
 namespace Event.Application.UnitTests.Features.AiAssistant.Commands;
 

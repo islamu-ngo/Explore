@@ -2,6 +2,7 @@
 // ABOUTME: Verifies preview/result rendering and absence of local authorization decisions.
 
 using Explore.Blazor.Client.Components.Shell.AiAssistant;
+using Explore.Blazor.Client.Tests;
 
 namespace Explore.Blazor.Client.Tests.Components.Shell;
 
@@ -22,13 +23,12 @@ public sealed class AiProposedActionCardTests : IDisposable
             Id = Guid.CreateVersion7(),
             Kind = "CreateEventDraft",
             Status = "Proposed",
-            PayloadJson = "{\"title\":\"Community Iftar\",\"description\":\"Plan the meal.\",\"tenantId\":\"not-rendered\"}",
-            _links = new Dictionary<string, Anonymous59>
-            {
-                ["confirm-action"] = new() { Href = "/confirm", Method = "POST" },
-                ["reject-action"] = new() { Href = "/reject", Method = "POST" }
-            }
+            PayloadJson = "{\"title\":\"Community Iftar\",\"description\":\"Plan the meal.\",\"tenantId\":\"not-rendered\"}"
         };
+        GeneratedHalLinkTestHelper.SetLinks(
+            action,
+            ("confirm-action", "/confirm", "POST"),
+            ("reject-action", "/reject", "POST"));
         ProposedActions2? confirmed = null;
 
         var cut = _ctx.RenderMudComponent<AiProposedActionCard>(parameters => parameters

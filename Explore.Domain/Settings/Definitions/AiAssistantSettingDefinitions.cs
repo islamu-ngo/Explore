@@ -164,11 +164,19 @@ public static class AiAssistantSettingDefinitions
         Description: "Maximum AI context sensitivity level allowed",
         MaxScope: SettingScope.Tenant);
 
+    public static readonly SettingDefinition PiiDisclosureEnabled = new(
+        Key: GovernanceSettingKeys.AiAssistant.PiiDisclosureEnabled,
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "AiAssistant",
+        Description: "Allow the assistant context pipeline to disclose PII fields when explicit consent and policy checks allow it",
+        MaxScope: SettingScope.Tenant);
+
     public static IReadOnlyList<SettingDefinition> All =>
     [
         Enabled, Provider, EndpointUrl, ApiKey, ModelId, AllowedModelIds, MaxInputTokens, MaxOutputTokens,
         Temperature, TimeoutSeconds, RetentionDays, DailyMessageLimit, DailyTenantMessageLimit,
         ConcurrentRunLimit, SelectedReferenceLimit,
-        ToolProposalsEnabled, StreamingEnabled, AllowAnonymousAccess, MaxAiContextSensitivity
+        ToolProposalsEnabled, StreamingEnabled, AllowAnonymousAccess, MaxAiContextSensitivity, PiiDisclosureEnabled
     ];
 }

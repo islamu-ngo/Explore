@@ -40,6 +40,23 @@
                 The navbar AI button appears only after an endpoint URL and model ID are saved.
             </MudAlert>
 
+            <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">Context Disclosure Policy</MudText>
+
+            <MudAlert Severity="Severity.Warning" Dense="true">
+                Enabling PII disclosure allows the AI assistant to include personal data (emails, names, addresses) in prompts when users explicitly consent. Ensure transcript hygiene and right-to-be-forgotten controls are operational before enabling.
+            </MudAlert>
+
+            <MudSwitch T="bool" @bind-Value="AiAssistant.PiiDisclosureEnabled" Color="Color.Error">
+                Enable PII disclosure (requires explicit user consent per field)
+            </MudSwitch>
+
+            <MudSelect T="int" @bind-Value="AiAssistant.MaxAiContextSensitivity" Label="Maximum data sensitivity tier" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelectItem Value="0">Public — only intentionally public data</MudSelectItem>
+                <MudSelectItem Value="1">Internal — business metadata, opaque IDs (default)</MudSelectItem>
+                <MudSelectItem Value="2">Confidential — sensitive contact data</MudSelectItem>
+                <MudSelectItem Value="3">Restricted — regulated personal PII</MudSelectItem>
+            </MudSelect>
+
             <MudTextField T="string"
                           Value="AiAssistant.EndpointUrl"
                           ValueChanged="OnEndpointUrlChanged"
