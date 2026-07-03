@@ -361,13 +361,13 @@ public static class HttpClientExtensions
         }
 
         // 2. Aspire service discovery env vars (injected by .WithReference in AppHost)
-        var aspireHttps = configuration["services__explore-api__https__0"];
+        var aspireHttps = GetAspireApiReference(configuration, "https");
         if (!string.IsNullOrWhiteSpace(aspireHttps))
         {
             return NormalizeBaseUrl(aspireHttps);
         }
 
-        var aspireHttp = configuration["services__explore-api__http__0"];
+        var aspireHttp = GetAspireApiReference(configuration, "http");
         if (!string.IsNullOrWhiteSpace(aspireHttp))
         {
             return NormalizeBaseUrl(aspireHttp);
@@ -381,4 +381,8 @@ public static class HttpClientExtensions
     {
         return url.EndsWith('/') ? url : url + "/";
     }
+
+    private static string? GetAspireApiReference(IConfiguration configuration, string scheme) =>
+        configuration[$"services:explore-api:{scheme}:0"]
+        ?? configuration[$"services__explore-api__{scheme}__0"];
 }

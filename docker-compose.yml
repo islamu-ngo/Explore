@@ -1,5 +1,5 @@
 # ABOUTME: Docker Compose topology for the ISLAMU Event platform.
-# ABOUTME: Uses PostgreSQL plus a durable local storage volume by default; MinIO remains opt-in.
+# ABOUTME: Uses explicit env mappings, health-gated dependencies, and profiles for optional infrastructure.
 
 name: islamu-event-platform
 
@@ -10,8 +10,8 @@ x-keycloak-env: &keycloak-env
   Keycloak__RequireHttpsMetadata: ${KEYCLOAK_REQUIRE_HTTPS_METADATA:-false}
 
 # Secret management bootstrap configuration (optional).
-# When set, BootstrapSecretLoader resolves POSTGRESQL_* from the `/postgresql` Infisical folder
-# before falling back to the discrete env vars below. Leave blank for zero-secret deployments.
+# If Infisical__* values are non-empty, AddInfisicalCompatibility loads raw Infisical secrets.
+# If SecretProvider__Provider=Infisical, ISecretResolver also uses the Infisical provider.
 x-secrets-env: &secrets-env
   SecretProvider__Provider: ${SECRET_PROVIDER:-None}
   SecretProvider__Infisical__Url: ${INFISICAL_URL:-https://app.infisical.com}
@@ -19,28 +19,94 @@ x-secrets-env: &secrets-env
   SecretProvider__Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
   SecretProvider__Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
   SecretProvider__Infisical__Environment: ${INFISICAL_ENV:-dev}
+  Infisical__Url: ${INFISICAL_URL:-}
+  Infisical__ProjectId: ${INFISICAL_PROJECT_ID:-}
+  Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
+  Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
+  Infisical__Environment: ${INFISICAL_ENV:-dev}
 
 x-postgres-env: &postgres-env
-  POSTGRES_USER: ${POSTGRES_USER:-explore}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-explore}
-  POSTGRES_DB: ${POSTGRES_DB:-explore}
+  POSTGRES_USER: ${POSTGRESQL_USERNAME:-explore}
+  POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD:-explore}
+  POSTGRES_DB: ${POSTGRESQL_DATABASE:-explore}
 
 # Discrete Postgres credentials consumed by BootstrapSecretLoader.
 # Never pre-build ConnectionStrings__DefaultConnection here - the loader composes the string.
 x-postgres-bootstrap-env: &postgres-bootstrap-env
   POSTGRESQL_HOST: ${POSTGRESQL_HOST:-postgres}
   POSTGRESQL_PORT: ${POSTGRESQL_PORT:-5432}
-  POSTGRESQL_DATABASE: ${POSTGRES_DB:-explore}
-  POSTGRESQL_USERNAME: ${POSTGRES_USER:-explore}
-  POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-explore}
+  POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE:-explore}
+  POSTGRESQL_USERNAME: ${POSTGRESQL_USERNAME:-explore}
+  POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD:-explore}
 
 x-s3-env: &s3-env
-  S3Settings__Endpoint: ${S3_INTERNAL_ENDPOINT:-http://minio:9000}
-  S3Settings__PublicEndpoint: ${S3_PUBLIC_ENDPOINT:-http://minio.localhost:9000}
-  S3Settings__Region: ${S3_REGION:-us-east-1}
-  S3Settings__BucketName: ${S3_BUCKET_NAME:-explore}
-  S3Settings__AccessKeyId: ${S3_ACCESS_KEY_ID:-minioadmin}
-  S3Settings__SecretAccessKey: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+  STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-http://minio:9000}
+  STORAGE_S3_PUBLIC_ENDPOINT: ${STORAGE_S3_PUBLIC_ENDPOINT:-http://minio.localhost:9005}
+  STORAGE_S3_REGION: ${STORAGE_S3_REGION:-us-east-1}
+  STORAGE_S3_BUCKET_NAME: ${STORAGE_S3_BUCKET_NAME:-explore}
+  STORAGE_S3_ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY_ID:-minioadmin}
+  STORAGE_S3_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:-minioadmin}
+  S3Settings__Endpoint: ${STORAGE_S3_ENDPOINT:-http://minio:9000}
+  S3Settings__PublicEndpoint: ${STORAGE_S3_PUBLIC_ENDPOINT:-http://minio.localhost:9005}
+  S3Settings__Region: ${STORAGE_S3_REGION:-us-east-1}
+  S3Settings__BucketName: ${STORAGE_S3_BUCKET_NAME:-explore}
+  S3Settings__AccessKeyId: ${STORAGE_S3_ACCESS_KEY_ID:-minioadmin}
+  S3Settings__SecretAccessKey: ${STORAGE_S3_SECRET_ACCESS_KEY:-minioadmin}
+
+x-api-runtime-env: &api-runtime-env
+  DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-}
+  SETUP_SECRET: ${SETUP_SECRET:-}
+  SETUP_SECRET_REQUIRED: ${SETUP_SECRET_REQUIRED:-true}
+  USE_COMMERCIAL_LUCKYPENNY: ${USE_COMMERCIAL_LUCKYPENNY:-false}
+  LUCKYPENNY_LICENSE_KEY: ${LUCKYPENNY_LICENSE_KEY:-}
+  AUTOMAPPER_COMMERCIAL_VERSION: ${AUTOMAPPER_COMMERCIAL_VERSION:-false}
+  MEDIATR_COMMERCIAL_VERSION: ${MEDIATR_COMMERCIAL_VERSION:-false}
+
+x-ai-env: &ai-env
+  AI_PROVIDER: ${AI_PROVIDER:-none}
+  AI_ENDPOINT: ${AI_ENDPOINT:-}
+  AI_MODEL_ID: ${AI_MODEL_ID:-}
+  AI_API_KEY: ${AI_API_KEY:-}
+  AI_TOOL_PROPOSALS_ENABLED: ${AI_TOOL_PROPOSALS_ENABLED:-false}
+
+x-mcp-env: &mcp-env
+  MCP_ENABLED: ${MCP_ENABLED:-true}
+  MCP_ENDPOINT_PATH: ${MCP_ENDPOINT_PATH:-/mcp}
+  MCP_STATELESS: ${MCP_STATELESS:-true}
+  MCP_ENABLE_LEGACY_SSE: ${MCP_ENABLE_LEGACY_SSE:-true}
+
+x-smtp-env: &smtp-env
+  MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-}
+  MAIL_SMTP_PORT: ${MAIL_SMTP_PORT:-587}
+  MAIL_SMTP_USERNAME: ${MAIL_SMTP_USERNAME:-}
+  MAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:-}
+  MAIL_SMTP_ENCRYPTION: ${MAIL_SMTP_ENCRYPTION:-starttls}
+  MAIL_SMTP_FROM_ADDRESS: ${MAIL_SMTP_FROM_ADDRESS:-}
+
+x-reporting-env: &reporting-env
+  Reporting__Enabled: ${REPORTING_ENABLED:-true}
+  Reporting__Mode: ${REPORTING_MODE:-LocalOnly}
+  Reporting__SyncReports: ${REPORTING_SYNC_REPORTS:-true}
+  Reporting__EvaluateSignals: ${REPORTING_EVALUATE_SIGNALS:-false}
+  Reporting__MirrorReviewQueue: ${REPORTING_MIRROR_REVIEW_QUEUE:-false}
+  Reporting__ExecuteDecisions: ${REPORTING_EXECUTE_DECISIONS:-true}
+  Reporting__Osprey__Enabled: ${REPORTING_OSPREY_ENABLED:-false}
+  Reporting__Osprey__EndpointUrl: ${REPORTING_OSPREY_ENDPOINT_URL:-http://osprey:5004}
+  Reporting__Osprey__ApiKey: ${REPORTING_OSPREY_API_KEY:-}
+  Reporting__Osprey__AllowLocalProviderEndpoints: ${REPORTING_OSPREY_ALLOW_LOCAL_PROVIDER_ENDPOINTS:-true}
+  Reporting__Coop__Enabled: ${REPORTING_COOP_ENABLED:-false}
+  Reporting__Coop__EndpointUrl: ${REPORTING_COOP_ENDPOINT_URL:-http://coop:8080}
+  Reporting__Coop__ApiKey: ${REPORTING_COOP_API_KEY:-}
+  Reporting__Coop__AllowLocalProviderEndpoints: ${REPORTING_COOP_ALLOW_LOCAL_PROVIDER_ENDPOINTS:-true}
+  Reporting__Coop__WebhookSecret: ${REPORTING_COOP_WEBHOOK_SECRET:-}
+
+x-webhooks-env: &webhooks-env
+  Webhooks__Enabled: ${WEBHOOKS_ENABLED:-true}
+  Webhooks__Provider: ${WEBHOOKS_PROVIDER:-Local}
+  Webhooks__Svix__BaseUrl: ${WEBHOOKS_SVIX_BASE_URL:-http://svix:8071}
+  Webhooks__Svix__AuthTokenSecretRef: ${WEBHOOKS_SVIX_AUTH_TOKEN_SECRET_REF:-webhooks.svix_auth_token}
+  WEBHOOKS_SVIX_AUTH_TOKEN: ${WEBHOOKS_SVIX_AUTH_TOKEN:-}
+  WEBHOOKS__SVIX_AUTH_TOKEN: ${WEBHOOKS_SVIX_AUTH_TOKEN:-}
 
 x-local-storage-env: &local-storage-env
   Storage__Local__RootPath: ${LOCAL_STORAGE_ROOT_PATH:-/app/storage-data/local}
@@ -62,7 +128,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
+      timeout: 5s
       retries: 5
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
@@ -80,15 +148,17 @@ services:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
-      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${KEYCLOAK_DB_USERNAME:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+      POSTGRES_DB: ${KEYCLOAK_DB_DATABASE:-keycloak}
     volumes:
       - keycloak_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
+      timeout: 5s
       retries: 5
+      start_period: 10s
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.1.2
@@ -96,26 +166,30 @@ services:
     command: ["start-dev", "--import-realm", "--http-port=8080"]
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_DATABASE:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
       KC_HOSTNAME: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}
       KC_HOSTNAME_URL: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
       KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     volumes:
+      # Repository-owned realm export. Keycloak imports JSON files from this
+      # directory on startup; existing realms are not overwritten automatically.
       - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     ports:
-      - "8080:8080"
+      - "${KEYCLOAK_HTTP_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080'"]
       interval: 10s
       timeout: 10s
-      retries: 15 # Give it more attempts
-      start_period: 60s # Give it a full minute to do the heavy lifting
+      retries: 15
+      start_period: 60s
     depends_on:
       keycloak-db:
         condition: service_healthy
@@ -145,21 +219,24 @@ services:
       context: .
       dockerfile: Explore.API/Dockerfile
     environment:
-      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *postgres-bootstrap-env]
+      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *postgres-bootstrap-env, *api-runtime-env, *ai-env, *mcp-env, *smtp-env, *reporting-env, *webhooks-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
-      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-}
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
       Keycloak__Authority: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}
       ConnectionStrings__cache: ${REDIS_CONNECTION_STRING:-redis:6379}
       Cerbos__GrpcEndpoint: ${CERBOS_GRPC_ENDPOINT:-http://cerbos:3593}
+      Cerbos__HttpEndpoint: ${CERBOS_HTTP_ENDPOINT:-http://cerbos:3592}
+      Cerbos__UseTls: ${CERBOS_USE_TLS:-false}
       Cerbos__PlaintextMode: ${CERBOS_PLAINTEXT_MODE:-true}
       Cerbos__PolicyPackagePath: /app/cerbos/policies
-      Cerbos__AdminApi__Endpoints__0: ${CERBOS_ADMIN_API_ENDPOINT:-http://cerbos:3592}
-      Cerbos__AdminApi__AdminUsername: ${CERBOS_ADMIN_USER:-cerbos}
+      Cerbos__AdminApi__Endpoints__0: ${CERBOS_HTTP_ENDPOINT:-http://cerbos:3592}
+      Cerbos__AdminApi__AdminUsername: ${CERBOS_ADMIN_USERNAME:-cerbos}
       Cerbos__AdminApi__AdminPassword: ${CERBOS_ADMIN_PASSWORD:-}
+      Cerbos__AdminUsername: ${CERBOS_ADMIN_USERNAME:-cerbos}
+      Cerbos__AdminPasswordHash: ${CERBOS_ADMIN_PASSWORD_HASH:-}
     ports:
-      - "7039:8080"
+      - "${API_HTTP_PORT:-7039}:8080"
     extra_hosts:
       - "keycloak.localhost:host-gateway"
       - "minio.localhost:host-gateway"
@@ -175,7 +252,16 @@ services:
         condition: service_completed_successfully
       minio:
         condition: service_healthy
-        required: false # API starts even if MinIO is not in the active profile
+        required: false
+      svix:
+        condition: service_healthy
+        required: false
+      coop:
+        condition: service_started
+        required: false
+      osprey:
+        condition: service_started
+        required: false
 
   islamu-event-ui:
     build:
@@ -190,10 +276,10 @@ services:
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
       Keycloak__Realm: ${KEYCLOAK_REALM:-ISLAMU}
       Keycloak__ClientId: islamu-event-blazor
-      Keycloak__ClientSecret: ${KEYCLOAK_BLAZOR_CLIENT_SECRET:-islamu-event-blazor-secret}
+      Keycloak__ClientSecret: ${KEYCLOAK_BLAZOR_CLIENT_SECRET:-}
       ConnectionStrings__cache: ${REDIS_CONNECTION_STRING:-redis:6379}
     ports:
-      - "7002:8080"
+      - "${UI_HTTP_PORT:-7002}:8080"
     extra_hosts:
       - "keycloak.localhost:host-gateway"
       - "minio.localhost:host-gateway"
@@ -213,19 +299,21 @@ services:
     profiles: ["storage"] # Opt-in only
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
-      MINIO_SERVER_URL: ${S3_PUBLIC_ENDPOINT:-http://minio.localhost:9000}
+      MINIO_ROOT_USER: ${STORAGE_S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${STORAGE_S3_SECRET_ACCESS_KEY:-minioadmin}
+      MINIO_SERVER_URL: ${STORAGE_S3_PUBLIC_ENDPOINT:-http://minio.localhost:9005}
     volumes:
       - minio_data:/data
     ports:
-      - "9005:9000" # CHANGED TO 9005 TO AVOID CONFLICT
-      - "9006:9001"
+      - "${MINIO_API_PORT:-9005}:9000"
+      - "${MINIO_CONSOLE_PORT:-9006}:9001"
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
+      timeout: 5s
       retries: 5
+      start_period: 10s
 
   minio-init:
     image: minio/mc:latest
@@ -235,9 +323,9 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:-minioadmin} ${S3_SECRET_ACCESS_KEY:-minioadmin};
-      mc mb --ignore-existing local/${S3_BUCKET_NAME:-explore};
-      mc anonymous set public local/${S3_BUCKET_NAME:-explore};
+      mc alias set local http://minio:9000 ${STORAGE_S3_ACCESS_KEY_ID:-minioadmin} ${STORAGE_S3_SECRET_ACCESS_KEY:-minioadmin};
+      mc mb --ignore-existing local/${STORAGE_S3_BUCKET_NAME:-explore};
+      mc anonymous set public local/${STORAGE_S3_BUCKET_NAME:-explore};
       "
 
   cerbos-db:
@@ -250,11 +338,14 @@ services:
       POSTGRES_DB: ${CERBOS_POSTGRES_DB:-cerbos}
     volumes:
       - cerbos_data:/var/lib/postgresql/data
+      # Repository-owned Cerbos PostgreSQL schema used by local infrastructure.
       - ./cerbos/init/cerbos-schema.sql:/docker-entrypoint-initdb.d/cerbos-schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
+      timeout: 5s
       retries: 5
+      start_period: 10s
 
   cerbos:
     image: ghcr.io/cerbos/cerbos:0.53.0
@@ -262,22 +353,25 @@ services:
     restart: unless-stopped
     command: ["server", "--config=/config/.cerbos.yaml"]
     environment:
-      CERBOS_ADMIN_USER: ${CERBOS_ADMIN_USER:-cerbos}
+      CERBOS_ADMIN_USER: ${CERBOS_ADMIN_USERNAME:-cerbos}
       CERBOS_ADMIN_PASSWORD_HASH: ${CERBOS_ADMIN_PASSWORD_HASH:-}
       CERBOS_PG_URL: ${CERBOS_PG_URL:-postgres://cerbos_user:cerbos_password@cerbos-db:5432/cerbos?search_path=cerbos&sslmode=disable}
     volumes:
+      # Repository-owned Cerbos runtime config and bundled policies/schemas.
       - ./cerbos/config/.cerbos.yaml:/config/.cerbos.yaml:ro
       - ./cerbos/policies:/policies:ro
     ports:
-      - "3592:3592" # HTTP/Admin API
-      - "3593:3593" # gRPC PDP
+      - "${CERBOS_HTTP_PORT:-3592}:3592"
+      - "${CERBOS_GRPC_PORT:-3593}:3593"
     depends_on:
       cerbos-db:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3592/_cerbos/health"]
       interval: 5s
+      timeout: 5s
       retries: 5
+      start_period: 10s
 
   cerbos-policy-sync:
     image: ghcr.io/cerbos/cerbosctl:0.53.0
@@ -286,15 +380,80 @@ services:
       cerbos:
         condition: service_healthy
     environment:
-      CERBOS_USERNAME: ${CERBOS_ADMIN_USER:-cerbos}
+      CERBOS_USERNAME: ${CERBOS_ADMIN_USERNAME:-cerbos}
       CERBOS_PASSWORD: ${CERBOS_ADMIN_PASSWORD:-}
     volumes:
+      # Sync the same repository policy bundle that local Cerbos reads from disk.
       - ./cerbos/policies:/policies:ro
     entrypoint: ["/bin/sh", "-c"]
-    command: >
-      cerbosctl --server=http://cerbos:3592 put policy --recursive /policies &&
-      cerbosctl --server=http://cerbos:3592 put schema --recursive /policies/_schemas &&
-      cerbosctl --server=http://cerbos:3592 store reload --wait
+    command:
+      - >-
+        cerbosctl --server=http://cerbos:3592 put policy --recursive /policies &&
+        cerbosctl --server=http://cerbos:3592 put schema --recursive /policies/_schemas &&
+        cerbosctl --server=http://cerbos:3592 store reload --wait
+
+  svix-db:
+    image: postgres:13.4
+    profiles: ["webhooks"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${SVIX_DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${SVIX_DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${SVIX_DB_DATABASE:-postgres}
+    volumes:
+      - svix_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  svix:
+    image: svix/svix-server:${SVIX_TAG:-latest}
+    profiles: ["webhooks"]
+    restart: unless-stopped
+    environment:
+      WAIT_FOR: "true"
+      SVIX_DB_DSN: ${SVIX_DB_DSN:-postgresql://postgres:postgres@svix-db:5432/postgres}
+      SVIX_REDIS_DSN: ${SVIX_REDIS_DSN:-redis://redis:6379}
+      SVIX_QUEUE_TYPE: ${SVIX_QUEUE_TYPE:-redis}
+      SVIX_JWT_SECRET: ${SVIX_JWT_SECRET:-local-dev-svix-jwt-secret-change-me}
+    ports:
+      - "${SVIX_HTTP_PORT:-8071}:8071"
+    depends_on:
+      svix-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "svix-server healthcheck http://localhost:8071"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  coop:
+    image: ${COOP_IMAGE:-ghcr.io/roostorg/coop-server:latest}
+    profiles: ["moderation"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${COOP_NODE_ENV:-development}
+      PORT: "8080"
+    ports:
+      - "${COOP_HTTP_PORT:-8082}:8080"
+
+  osprey:
+    image: ${OSPREY_IMAGE:-ghcr.io/roostorg/osprey:latest}
+    profiles: ["osprey"]
+    restart: unless-stopped
+    environment:
+      PORT: "5004"
+      DEBUG: ${OSPREY_DEBUG:-true}
+      FLASK_DEBUG: ${OSPREY_FLASK_DEBUG:-1}
+      FLASK_ENV: ${OSPREY_FLASK_ENV:-development}
+    ports:
+      - "${OSPREY_HTTP_PORT:-5004}:5004"
 
 volumes:
   postgres_data:
@@ -303,3 +462,4 @@ volumes:
   local_storage_data:
   minio_data:
   cerbos_data:
+  svix_postgres_data:

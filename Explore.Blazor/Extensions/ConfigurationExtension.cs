@@ -61,6 +61,9 @@ public static class ConfigurationExtensions
         var rawGoogleClientId = config["GOOGLE_CLIENT_ID"] ?? config["Google:ClientId"];
         var rawGoogleClientSecret = config["GOOGLE_CLIENT_SECRET"] ?? config["Google:ClientSecret"];
         var rawApiUrl = config["API_ENDPOINT"] ?? config["ExploreApi:BaseUrl"];
+        var hasAspireApiReference =
+            !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "https"))
+            || !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "http"));
         var baseUrl = config["KEYCLOAK_ENDPOINT"];
         var explicitAuthority = config["Keycloak:Authority"];
 
@@ -99,7 +102,9 @@ public static class ConfigurationExtensions
             !string.IsNullOrEmpty(rawClientSecret),
             !string.IsNullOrEmpty(rawGoogleClientId),
             !string.IsNullOrEmpty(rawGoogleClientSecret),
-            rawApiUrl ?? "(not set, will use default)");
+            hasAspireApiReference
+                ? "(not mapped, Aspire service discovery configured)"
+                : rawApiUrl ?? "(not set, will use default)");
 
         var mappedConfig = new Dictionary<string, string?>();
 
@@ -133,7 +138,7 @@ public static class ConfigurationExtensions
         }
 
         // API
-        if (!string.IsNullOrEmpty(rawApiUrl))
+        if (!hasAspireApiReference && !string.IsNullOrEmpty(rawApiUrl))
         {
             TrySet(mappedConfig, config, "ExploreApi:BaseUrl", rawApiUrl);
         }
@@ -143,4 +148,8 @@ public static class ConfigurationExtensions
                         .ToDictionary(kv => kv.Key, kv => kv.Value)!
         );
     }
+
+    private static string? GetAspireApiReference(IConfiguration config, string scheme) =>
+        config[$"services:explore-api:{scheme}:0"]
+        ?? config[$"services__explore-api__{scheme}__0"];
 }

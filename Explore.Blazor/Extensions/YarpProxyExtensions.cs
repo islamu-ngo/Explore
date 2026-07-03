@@ -140,13 +140,13 @@ public static class YarpProxyExtensions
             return explicitUrl.EndsWith('/') ? explicitUrl : explicitUrl + "/";
         }
 
-        var aspireHttps = configuration["services__explore-api__https__0"];
+        var aspireHttps = GetAspireApiReference(configuration, "https");
         if (!string.IsNullOrWhiteSpace(aspireHttps))
         {
             return aspireHttps.EndsWith('/') ? aspireHttps : aspireHttps + "/";
         }
 
-        var aspireHttp = configuration["services__explore-api__http__0"];
+        var aspireHttp = GetAspireApiReference(configuration, "http");
         if (!string.IsNullOrWhiteSpace(aspireHttp))
         {
             return aspireHttp.EndsWith('/') ? aspireHttp : aspireHttp + "/";
@@ -154,6 +154,10 @@ public static class YarpProxyExtensions
 
         return "https://localhost:7039/";
     }
+
+    private static string? GetAspireApiReference(IConfiguration configuration, string scheme) =>
+        configuration[$"services:explore-api:{scheme}:0"]
+        ?? configuration[$"services__explore-api__{scheme}__0"];
 
     private static async Task ForwardBearerTokenAsync(RequestTransformContext context)
     {

@@ -168,6 +168,7 @@ public static class ServiceRegistrationExtensions
         });
 
         services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
+        services.AddScoped<ISecretBindingRepository, SecretBindingRepository>();
 
         services.AddExploreDataProtection(connectionString);
     }
