@@ -16,7 +16,7 @@ public class EventModerationRecord : ITenantEntity
     public Tenant Tenant { get; private set; } = null!;
     public Guid EventId { get; private set; }
     public Event Event { get; private set; } = null!;
-    public Guid ModeratorUserId { get; private set; }
+    public Guid? ModeratorUserId { get; private set; }
     public EventModerationActionKind ActionKind { get; private set; }
     public string ReasonCode { get; private set; } = string.Empty;
     public int PreviousStatusId { get; private set; }
@@ -24,6 +24,10 @@ public class EventModerationRecord : ITenantEntity
     public bool IsIrreversible { get; private set; }
     public Guid? SourceModerationRecordId { get; private set; }
     public EventModerationRecord? SourceModerationRecord { get; private set; }
+    public Guid? SourceReportId { get; private set; }
+    public EventReport? SourceReport { get; private set; }
+    public Guid? SourceReportDecisionId { get; private set; }
+    public EventReportDecision? SourceReportDecision { get; private set; }
     public string? CorrelationId { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -35,7 +39,7 @@ public class EventModerationRecord : ITenantEntity
     public static EventModerationRecord CreateLightModeration(
         Guid tenantId,
         Guid eventId,
-        Guid moderatorUserId,
+        Guid? moderatorUserId,
         string reasonCode,
         int previousStatusId,
         string? correlationId,
@@ -58,7 +62,7 @@ public class EventModerationRecord : ITenantEntity
     public static EventModerationRecord CreateHeavyRedaction(
         Guid tenantId,
         Guid eventId,
-        Guid moderatorUserId,
+        Guid? moderatorUserId,
         string reasonCode,
         int previousStatusId,
         string? correlationId,
@@ -80,7 +84,7 @@ public class EventModerationRecord : ITenantEntity
 
     public static EventModerationRecord CreateUnmoderation(
         EventModerationRecord sourceRecord,
-        Guid moderatorUserId,
+        Guid? moderatorUserId,
         string reasonCode,
         string? correlationId,
         DateTimeOffset createdAt)
@@ -109,7 +113,7 @@ public class EventModerationRecord : ITenantEntity
     private static EventModerationRecord Create(
         Guid tenantId,
         Guid eventId,
-        Guid moderatorUserId,
+        Guid? moderatorUserId,
         EventModerationActionKind actionKind,
         string reasonCode,
         int previousStatusId,
@@ -152,6 +156,22 @@ public class EventModerationRecord : ITenantEntity
             CorrelationId = normalizedCorrelationId,
             CreatedAt = createdAt
         };
+    }
+
+    public void LinkSourceReportDecision(Guid sourceReportId, Guid sourceReportDecisionId)
+    {
+        if (sourceReportId == Guid.Empty)
+        {
+            throw new ArgumentException("Source report id is required.", nameof(sourceReportId));
+        }
+
+        if (sourceReportDecisionId == Guid.Empty)
+        {
+            throw new ArgumentException("Source report decision id is required.", nameof(sourceReportDecisionId));
+        }
+
+        SourceReportId = sourceReportId;
+        SourceReportDecisionId = sourceReportDecisionId;
     }
 
     private static string NormalizeRequired(string value, int maxLength, string parameterName)

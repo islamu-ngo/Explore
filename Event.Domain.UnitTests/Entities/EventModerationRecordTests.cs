@@ -115,6 +115,72 @@ public class EventModerationRecordTests
         await Assert.That(unmoderationRecord.AllowsUnmoderation).IsFalse();
     }
 
+    [Test]
+    public async Task LinkSourceReportDecision_StoresReportDecisionTraceability()
+    {
+        var record = EventModerationRecord.CreateLightModeration(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "policy_review",
+            (int)EventStatusEnum.Published,
+            null,
+            DateTimeOffset.UtcNow);
+        var reportId = Guid.NewGuid();
+        var decisionId = Guid.NewGuid();
+
+        record.LinkSourceReportDecision(reportId, decisionId);
+
+        await Assert.That(record.SourceReportId).IsEqualTo(reportId);
+        await Assert.That(record.SourceReportDecisionId).IsEqualTo(decisionId);
+    }
+
+    [Test]
+    public async Task CreateLightModeration_WithSourceDecision_AllowsNullModeratorForProviderEnforcement()
+    {
+        var record = EventModerationRecord.CreateLightModeration(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            moderatorUserId: null,
+            "coop_decision",
+            (int)EventStatusEnum.Published,
+            "coop-correlation",
+            DateTimeOffset.UtcNow);
+        var reportId = Guid.NewGuid();
+        var decisionId = Guid.NewGuid();
+
+        record.LinkSourceReportDecision(reportId, decisionId);
+
+        await Assert.That(record.ModeratorUserId).IsNull();
+        await Assert.That(record.SourceReportId).IsEqualTo(reportId);
+        await Assert.That(record.SourceReportDecisionId).IsEqualTo(decisionId);
+    }
+
+    [Test]
+    public async Task LinkSourceReportDecision_RejectsEmptyIds()
+    {
+        var record = EventModerationRecord.CreateLightModeration(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "policy_review",
+            (int)EventStatusEnum.Published,
+            null,
+            DateTimeOffset.UtcNow);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+        {
+            record.LinkSourceReportDecision(Guid.Empty, Guid.NewGuid());
+            return Task.CompletedTask;
+        });
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+        {
+            record.LinkSourceReportDecision(Guid.NewGuid(), Guid.Empty);
+            return Task.CompletedTask;
+        });
+    }
+
     private static IReadOnlyList<string> UnsafePayloadProperties()
     {
         string[] forbiddenFragments =
