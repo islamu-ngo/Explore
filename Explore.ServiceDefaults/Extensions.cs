@@ -1,7 +1,6 @@
 // ABOUTME: Provides shared Aspire service defaults, health endpoints, and OpenTelemetry setup.
 // ABOUTME: Registers safe platform meters and activity sources used by API, workers, and infrastructure adapters.
 
-using System.Text.Json;
 using Explore.ServiceDefaults.HealthChecks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -163,7 +162,7 @@ public static class Extensions
         var healthCheckOptions = new HealthCheckOptions
         {
             Predicate = r => r.Tags.Contains("ready"),
-            ResponseWriter = WriteHealthCheckResponse,
+            ResponseWriter = HealthCheckResponseWriter.WriteAsync,
             ResultStatusCodes =
             {
                 [HealthStatus.Healthy] = StatusCodes.Status200OK,
@@ -179,7 +178,7 @@ public static class Extensions
         app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
         {
             Predicate = r => r.Tags.Contains("live"),
-            ResponseWriter = WriteHealthCheckResponse,
+            ResponseWriter = HealthCheckResponseWriter.WriteAsync,
             ResultStatusCodes =
             {
                 [HealthStatus.Healthy] = StatusCodes.Status200OK,
@@ -193,45 +192,4 @@ public static class Extensions
         return app;
     }
 
-    private static async Task WriteHealthCheckResponse(HttpContext context, HealthReport report)
-    {
-        // Set headers for load balancer compatibility
-        context.Response.ContentType = "application/json; charset=utf-8";
-        context.Response.Headers["Connection"] = "close";
-        context.Response.Headers["Access-Control-Allow-Origin"] = "*";
-        context.Response.Headers["X-Health-Status"] = report.Status.ToString();
-        context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-        context.Response.Headers["Pragma"] = "no-cache";
-
-        var response = new
-        {
-            status = report.Status.ToString(),
-            message = report.Status switch
-            {
-                HealthStatus.Healthy => "Ok",
-                HealthStatus.Degraded => "Degraded",
-                HealthStatus.Unhealthy => "Service Unavailable",
-                _ => "Unknown"
-            },
-            totalDuration = report.TotalDuration.TotalMilliseconds,
-            checks = report.Entries.Select(e => new
-            {
-                name = e.Key,
-                status = e.Value.Status.ToString(),
-                description = e.Value.Description,
-                duration = e.Value.Duration.TotalMilliseconds,
-                error = e.Value.Exception?.Message,
-                data = e.Value.Data.Count > 0 ? e.Value.Data : null
-            })
-        };
-
-        var jsonOptions = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
-
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response, jsonOptions));
-    }
 }
