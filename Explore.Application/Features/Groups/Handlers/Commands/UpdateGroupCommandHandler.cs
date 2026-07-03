@@ -7,14 +7,13 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.Group.Validators;
 using Explore.Application.Exceptions;
+using Explore.Application.Features.Groups;
 using Explore.Application.Features.Groups.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
-
-using Explore.Application.Features.Groups;
 
 namespace Explore.Application.Features.Groups.Handlers.Commands;
 

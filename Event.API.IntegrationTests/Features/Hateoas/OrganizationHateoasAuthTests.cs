@@ -147,8 +147,8 @@ public class OrganizationHateoasAuthTests
 
         foreach (var item in items.EnumerateArray())
         {
-            if (item.TryGetProperty("id", out var idProp) && 
-                idProp.TryGetGuid(out var itemGuid) && 
+            if (item.TryGetProperty("id", out var idProp) &&
+                idProp.TryGetGuid(out var itemGuid) &&
                 itemGuid == id)
             {
                 matchedItem = item;

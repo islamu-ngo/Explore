@@ -1000,6 +1000,8 @@ public class AiAssistantGovernanceModel
     public bool AllowAnonymousAccess { get; set; }
     public bool ToolProposalsEnabled { get; set; } = true;
     public bool LockTenantAiAssistant { get; set; } = true;
+    public int MaxAiContextSensitivity { get; set; } = 1;
+    public bool PiiDisclosureEnabled { get; set; }
 }
 
 public class RenderPolicyModel

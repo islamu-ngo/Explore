@@ -1,21 +1,18 @@
 // ABOUTME: Integration coverage for actor subscription endpoints and HAL affordances.
 // ABOUTME: Seeds tenant-local membership and verifies subscription links flow through the API surface.
 
+using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Linq;
-
 using Event.Api.IntegrationTests.Builders;
 using Event.Api.IntegrationTests.Fixtures;
-
 using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

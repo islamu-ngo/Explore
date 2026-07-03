@@ -256,7 +256,7 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
     /// </summary>
     public bool SortDescending { get; set; } = true;
 
-    
+
     /// <summary>
     /// Gets or sets the temporal view filter.
     /// </summary>
