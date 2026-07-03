@@ -8,6 +8,7 @@ using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
 using Explore.Domain;
+using Explore.Infrastructure.Services.Moderation;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Infrastructure.Messaging;
@@ -16,6 +17,7 @@ public sealed class CompositeOutboxMessageDispatcher(
     MqContractOutboxMessageDispatcher mqContractDispatcher,
     IEventPublishedNotificationFanoutService notificationFanoutService,
     IEventModerationNotificationFanoutService moderationNotificationFanoutService,
+    IReportProviderSyncDispatcher reportProviderSyncDispatcher,
     ILogger<CompositeOutboxMessageDispatcher> logger) : IOutboxMessageDispatcher
 {
     public async Task DispatchAsync(OutboxMessage message, CancellationToken ct = default)
@@ -36,6 +38,10 @@ public sealed class CompositeOutboxMessageDispatcher(
 
             case EventModerationOutboxMessageFactory.EventHeavyRedactedNotificationFanoutRequestedEventType:
                 await DispatchHeavyRedactionNotificationFanoutAsync(message, ct);
+                return;
+
+            case EventReportOutboxMessageFactory.EventReportProviderSyncRequestedEventType:
+                await reportProviderSyncDispatcher.DispatchAsync(message, ct);
                 return;
 
             default:
