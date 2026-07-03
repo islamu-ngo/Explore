@@ -3,6 +3,7 @@
 
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.EmailDispatch;
+using Explore.Application.Features.EventReporting;
 using Explore.Application.Responses;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,6 +25,11 @@ internal static class CommandResponseResultMapper
         "aiAssistant",
         "AI assistant request failed",
         "AI assistant request failed.");
+
+    private static readonly ApiValidationProblemDescriptor EventReportValidationProblem = new(
+        "eventReport",
+        "Event report validation failed",
+        "Event report submission failed.");
 
     public static ActionResult ToCommandValidationProblem<TKey>(
         this ControllerBase controller,
@@ -201,6 +207,37 @@ internal static class CommandResponseResultMapper
         return ApiProblemFactory.ToProblemResult(problemDetails);
     }
 
+    public static ActionResult ToEventReportProblem(
+        this ControllerBase controller,
+        BaseCommandResponse<Guid> response)
+    {
+        var statusCode = ResolveEventReportStatusCode(response.FailureCode);
+
+        if (statusCode == StatusCodes.Status400BadRequest)
+        {
+            return controller.ToCommandValidationProblem(response, EventReportValidationProblem);
+        }
+
+        var problemDetails = ApiProblemFactory.CreateProblem(
+            controller.HttpContext,
+            statusCode,
+            ResolveEventReportTitle(statusCode, response.FailureCode),
+            ResolveEventReportType(statusCode, response.FailureCode),
+            response.Message ?? EventReportValidationProblem.FallbackDetail,
+            response.FailureCode ?? ApiProblemCodes.UnexpectedError);
+
+        problemDetails.Extensions["id"] = response.Id;
+        problemDetails.Extensions["success"] = response.Success;
+        problemDetails.Extensions["message"] = response.Message;
+
+        if (response.QuotaExceeded is not null)
+        {
+            problemDetails.Extensions["quota"] = response.QuotaExceeded;
+        }
+
+        return ApiProblemFactory.ToProblemResult(problemDetails);
+    }
+
     private static int ResolveStorageUploadStatusCode(string? failureCode)
         => failureCode switch
         {
@@ -237,6 +274,57 @@ internal static class CommandResponseResultMapper
                 StatusCodes.Status413PayloadTooLarge => ApiProblemTypes.PayloadTooLarge,
                 StatusCodes.Status422UnprocessableEntity => ApiProblemTypes.UnprocessableEntity,
                 StatusCodes.Status503ServiceUnavailable => ApiProblemTypes.ServiceUnavailable,
+                _ => ApiProblemTypes.BadRequest
+            };
+
+    private static int ResolveEventReportStatusCode(string? failureCode)
+        => failureCode switch
+        {
+            EventReportFailureCodes.UserUnresolved => StatusCodes.Status401Unauthorized,
+            EventReportFailureCodes.ReporterActorUnresolved => StatusCodes.Status403Forbidden,
+            EventReportFailureCodes.ModeratorUnavailable => StatusCodes.Status403Forbidden,
+            EventReportFailureCodes.AssigneeUnavailable => StatusCodes.Status403Forbidden,
+            EventReportFailureCodes.EventNotFound => StatusCodes.Status404NotFound,
+            EventReportFailureCodes.ReportNotFound => StatusCodes.Status404NotFound,
+            EventReportFailureCodes.CaseNotFound => StatusCodes.Status404NotFound,
+            EventReportFailureCodes.DecisionNotFound => StatusCodes.Status404NotFound,
+            EventReportFailureCodes.EventMismatch => StatusCodes.Status404NotFound,
+            EventReportFailureCodes.Duplicate => StatusCodes.Status409Conflict,
+            EventReportFailureCodes.EventInvalidStatus => StatusCodes.Status409Conflict,
+            EventReportFailureCodes.CaseConcurrencyConflict => StatusCodes.Status409Conflict,
+            EventReportFailureCodes.CaseInvalidStatus => StatusCodes.Status409Conflict,
+            EventReportFailureCodes.ReportInvalidStatus => StatusCodes.Status409Conflict,
+            EventReportFailureCodes.AssignmentMismatch => StatusCodes.Status409Conflict,
+            EventReportFailureCodes.DecisionInvalid => StatusCodes.Status409Conflict,
+            FailureCodes.QuotaExceeded => StatusCodes.Status422UnprocessableEntity,
+            EventReportFailureCodes.DecisionExecutionFailed => StatusCodes.Status503ServiceUnavailable,
+            _ => StatusCodes.Status400BadRequest
+        };
+
+    private static string ResolveEventReportTitle(int statusCode, string? failureCode)
+        => statusCode switch
+        {
+            StatusCodes.Status401Unauthorized => "Authentication required",
+            StatusCodes.Status403Forbidden => "Event report access denied",
+            StatusCodes.Status404NotFound => failureCode == EventReportFailureCodes.EventNotFound
+                ? "Event not found"
+                : "Event report not found",
+            StatusCodes.Status409Conflict => "Event report conflict",
+            StatusCodes.Status422UnprocessableEntity => "Event report quota exceeded",
+            StatusCodes.Status503ServiceUnavailable => "Event report decision execution failed",
+            _ => EventReportValidationProblem.Title
+        };
+
+    private static string ResolveEventReportType(int statusCode, string? failureCode)
+        => failureCode == FailureCodes.QuotaExceeded
+            ? "/problems/quota_exceeded"
+            : statusCode switch
+            {
+                StatusCodes.Status401Unauthorized => ApiProblemTypes.Unauthorized,
+                StatusCodes.Status403Forbidden => ApiProblemTypes.Forbidden,
+                StatusCodes.Status404NotFound => ApiProblemTypes.NotFound,
+                StatusCodes.Status409Conflict => ApiProblemTypes.Conflict,
+                StatusCodes.Status422UnprocessableEntity => ApiProblemTypes.UnprocessableEntity,
                 _ => ApiProblemTypes.BadRequest
             };
 

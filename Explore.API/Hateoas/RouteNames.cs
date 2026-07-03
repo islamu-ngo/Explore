@@ -55,6 +55,24 @@ public static class RouteNames
     public const string GetEventTemplateSyncHistory = "GetEventTemplateSyncHistory";
     #endregion
 
+    #region Event Report Routes
+
+    public const string GetEventReportOptions = "GetEventReportOptions";
+    public const string SubmitEventReport = "SubmitEventReport";
+    public const string GetMyEventReports = "GetMyEventReports";
+    public const string GetMyEventReport = "GetMyEventReport";
+    public const string GetModerationReportQueue = "GetModerationReportQueue";
+    public const string GetModerationReportDetail = "GetModerationReportDetail";
+    public const string TriageModerationReport = "TriageModerationReport";
+    public const string AssignModerationReport = "AssignModerationReport";
+    public const string DecideModerationReport = "DecideModerationReport";
+    public const string ExecuteModerationReportDecision = "ExecuteModerationReportDecision";
+    public const string ModerationIntegrationOspreyCallback = "ModerationIntegrationOspreyCallback";
+    public const string ModerationIntegrationCoopCallback = "ModerationIntegrationCoopCallback";
+    public const string IntegrationSvixOperationalCallback = "IntegrationSvixOperationalCallback";
+
+    #endregion
+
     #region Event Session Routes
 
     public const string GetEventSessions_List = "GetEventSessionsList";
@@ -247,6 +265,28 @@ public static class RouteNames
     public const string ResumeEmailDispatchTenant = "ResumeEmailDispatchTenant";
     public const string ParkEmailDispatch = "ParkEmailDispatch";
     public const string ReplayEmailDispatch = "ReplayEmailDispatch";
+
+    #endregion
+
+    #region Webhook Routes
+
+    public const string GetWebhookEventTypes = "GetWebhookEventTypes";
+    public const string GetWebhookConsumers = "GetWebhookConsumers";
+    public const string GetWebhookConsumerById = "GetWebhookConsumerById";
+    public const string CreateWebhookConsumer = "CreateWebhookConsumer";
+    public const string GetWebhookEndpoints = "GetWebhookEndpoints";
+    public const string GetWebhookEndpointById = "GetWebhookEndpointById";
+    public const string CreateWebhookEndpoint = "CreateWebhookEndpoint";
+    public const string UpdateWebhookEndpoint = "UpdateWebhookEndpoint";
+    public const string DeleteWebhookEndpoint = "DeleteWebhookEndpoint";
+    public const string RotateWebhookEndpointSecret = "RotateWebhookEndpointSecret";
+    public const string TestWebhookEndpoint = "TestWebhookEndpoint";
+    public const string GetWebhookMessages = "GetWebhookMessages";
+    public const string GetWebhookMessageById = "GetWebhookMessageById";
+    public const string GetWebhookDeliveryAttempts = "GetWebhookDeliveryAttempts";
+    public const string GetWebhookDeliveryAttemptById = "GetWebhookDeliveryAttemptById";
+    public const string RetryWebhookDeliveryAttempt = "RetryWebhookDeliveryAttempt";
+    public const string OpenSvixAppPortal = "OpenSvixAppPortal";
 
     #endregion
 

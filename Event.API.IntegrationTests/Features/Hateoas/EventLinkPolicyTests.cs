@@ -10,6 +10,7 @@ using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
+using Microsoft.AspNetCore.Routing;
 using TUnit.Core;
 
 public sealed class EventLinkPolicyTests
@@ -250,6 +251,47 @@ public sealed class EventLinkPolicyTests
         await Assert.That(links.Any(definition => definition.Rel == LinkRelations.Cancel)).IsTrue();
         await Assert.That(links.Any(definition => definition.Rel == LinkRelations.Publish)).IsFalse();
         await Assert.That(links.Any(definition => definition.Rel == LinkRelations.Archive)).IsFalse();
+    }
+
+    [Test]
+    public async Task PublishedEvent_AdvertisesReporterFacingReportAffordances()
+    {
+        var eventId = Guid.NewGuid();
+        var dto = CreateEventDto(
+            eventId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            status: EventStatusEnum.Published,
+            statusName: "Published",
+            statusCode: "PUBLISHED");
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        var options = links.Single(definition => definition.Rel == LinkRelations.EventReportOptions);
+        await Assert.That(options.RouteName).IsEqualTo(RouteNames.GetEventReportOptions);
+        await Assert.That(new RouteValueDictionary(options.RouteValues)["eventId"]).IsEqualTo(eventId);
+        await Assert.That(options.RequiresAuth).IsFalse();
+
+        var submit = links.Single(definition => definition.Rel == LinkRelations.ReportEvent);
+        await Assert.That(submit.RouteName).IsEqualTo(RouteNames.SubmitEventReport);
+        await Assert.That(submit.Method).IsEqualTo("POST");
+        await Assert.That(submit.RequiresAuth).IsTrue();
+        await Assert.That(submit.AdvertiseWhenAnonymous).IsTrue();
+    }
+
+    [Test]
+    public async Task DraftEvent_DoesNotAdvertiseReportAffordances()
+    {
+        var dto = CreateEventDto(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        await Assert.That(links.Any(definition => definition.Rel == LinkRelations.EventReportOptions)).IsFalse();
+        await Assert.That(links.Any(definition => definition.Rel == LinkRelations.ReportEvent)).IsFalse();
     }
 
     private static EventDto CreateEventDto(

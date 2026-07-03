@@ -348,6 +348,24 @@ public class HateoasAuthorizationEvaluatorTests
     }
 
     [Test]
+    [DisplayName("Anonymous-advertised authenticated link is allowed without permission evaluation")]
+    public async Task AdvertisedWhenAnonymous_Unauthenticated_Allowed()
+    {
+        var links = new List<LinkDefinition>
+        {
+            LinkDefinition.Action("report-event", "SubmitEventReport", "POST")
+                .AdvertisedWhenAnonymous(),
+        };
+
+        var result = await _sut.AreLinksAllowedAsync(links, null, _httpContext);
+
+        await Assert.That(result[0]).IsTrue();
+        await _authProvider.DidNotReceive().IsAllowedBatchAsync(
+            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     [DisplayName("Missing required role denies link")]
     public async Task MissingRole_Denied()
     {

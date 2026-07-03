@@ -137,8 +137,12 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
         if (definition.Condition is not null && !definition.Condition())
             return false;
 
-        if (definition.RequiresAuth && user?.Identity?.IsAuthenticated != true)
+        if (definition.RequiresAuth &&
+            user?.Identity?.IsAuthenticated != true &&
+            !definition.AdvertiseWhenAnonymous)
+        {
             return false;
+        }
 
         if (definition.RequiredRoles is { Length: > 0 })
         {

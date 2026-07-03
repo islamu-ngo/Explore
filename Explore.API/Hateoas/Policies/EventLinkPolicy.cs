@@ -150,6 +150,34 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Events.ViewManagement, ResourceDescriptors.Event, dto);
 
+        yield return new LinkDefinition(
+            LinkRelations.ModerationReports,
+            RouteNames.GetModerationReportQueue,
+            new { eventId = dto.Id },
+            "GET",
+            "Moderation reports",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Events.ViewManagement, ResourceDescriptors.Event, dto);
+
+        if (dto.EventStatusId == (int)EventStatusEnum.Published)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.EventReportOptions,
+                RouteNames.GetEventReportOptions,
+                new { eventId = dto.Id },
+                "GET",
+                "Event report options");
+
+            yield return new LinkDefinition(
+                LinkRelations.ReportEvent,
+                RouteNames.SubmitEventReport,
+                null,
+                "POST",
+                "Report event",
+                RequiresAuth: true)
+                .AdvertisedWhenAnonymous();
+        }
+
         // Aspect links - conditionally included based on available aspects
         if (dto.AvailableAspects?.Contains("Islamic") == true || dto.IslamicAspect != null)
         {
@@ -395,6 +423,25 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
             new { id = dto.ActorId },
             "GET",
             dto.ActorDisplayName);
+
+        if (dto.EventStatusId == (int)EventStatusEnum.Published)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.EventReportOptions,
+                RouteNames.GetEventReportOptions,
+                new { eventId = dto.Id },
+                "GET",
+                "Event report options");
+
+            yield return new LinkDefinition(
+                LinkRelations.ReportEvent,
+                RouteNames.SubmitEventReport,
+                null,
+                "POST",
+                "Report event",
+                RequiresAuth: true)
+                .AdvertisedWhenAnonymous();
+        }
 
         // Edit link - requires authentication and permission
         yield return new LinkDefinition(

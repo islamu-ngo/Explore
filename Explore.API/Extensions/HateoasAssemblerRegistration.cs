@@ -22,6 +22,7 @@ using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventRegistration;
+using Explore.Application.DTOs.EventReporting;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionCustomProperty;
@@ -44,6 +45,7 @@ using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.User;
+using Explore.Application.DTOs.Webhooks;
 
 /// <summary>
 /// Registers all HATEOAS resource assemblers and their link policies.
@@ -65,6 +67,16 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EventDto>, EventDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventListDto>, EventCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EventDto, EventListDto>, EventResourceAssembler>();
+
+        services.AddScoped<ILinkPolicy<EventReportOptionsDto>, EventReportOptionsDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventReportOptionsDto>, EventReportOptionsCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventReportOptionsDto, EventReportOptionsDto>, EventReportOptionsResourceAssembler>();
+        services.AddScoped<ILinkPolicy<MyEventReportDto>, MyEventReportDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<MyEventReportDto>, MyEventReportCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<MyEventReportDto, MyEventReportDto>, MyEventReportResourceAssembler>();
+        services.AddScoped<ILinkPolicy<ModerationReportDetailDto>, ModerationReportDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ModerationReportQueueItemDto>, ModerationReportQueueCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ModerationReportDetailDto, ModerationReportQueueItemDto>, ModerationReportResourceAssembler>();
 
         // EventSession
         services.AddScoped<ILinkPolicy<EventSessionDto>, EventSessionDetailLinkPolicy>();
@@ -227,6 +239,19 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EmailDispatchStatusDto>, EmailDispatchStatusDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EmailDispatchStatusDto>, EmailDispatchStatusCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EmailDispatchStatusDto, EmailDispatchStatusDto>, EmailDispatchStatusResourceAssembler>();
+
+        services.AddScoped<ILinkPolicy<WebhookConsumerDto>, WebhookConsumerDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<WebhookConsumerDto>, WebhookConsumerCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<WebhookConsumerDto, WebhookConsumerDto>, WebhookConsumerResourceAssembler>();
+        services.AddScoped<ILinkPolicy<WebhookEndpointDto>, WebhookEndpointDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<WebhookEndpointDto>, WebhookEndpointCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<WebhookEndpointDto, WebhookEndpointDto>, WebhookEndpointResourceAssembler>();
+        services.AddScoped<ILinkPolicy<WebhookMessageDto>, WebhookMessageDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<WebhookMessageDto>, WebhookMessageCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<WebhookMessageDto, WebhookMessageDto>, WebhookMessageResourceAssembler>();
+        services.AddScoped<ILinkPolicy<WebhookDeliveryAttemptDto>, WebhookDeliveryAttemptDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<WebhookDeliveryAttemptDto>, WebhookDeliveryAttemptCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<WebhookDeliveryAttemptDto, WebhookDeliveryAttemptDto>, WebhookDeliveryAttemptResourceAssembler>();
 
         // Custom Property Governance (D2 Operability)
         services.AddScoped<ICollectionLinkPolicy<CustomPropertyGovernanceRowDto>, CustomPropertyGovernanceCollectionLinkPolicy>();

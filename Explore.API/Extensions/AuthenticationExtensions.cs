@@ -209,6 +209,26 @@ public static class AuthenticationExtensions
                 .RequireAssertion(context => ApiKeyCallerHasAnyScopeOrIsUser(
                     context.User,
                     ExternalApiKeyScopes.McpPropose)))
+            .AddPolicy(ModerationIntegrationAuthorizationPolicies.OspreyCallback, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireAssertion(context => ApiKeyCallerPassesScopeGate(
+                    context.User,
+                    scopes => MachineScopeMapping.ScopesPermit(
+                        scopes,
+                        ResourceKinds.Event,
+                        AuthorizationActions.Events.ModerateLight))))
+            .AddPolicy(ModerationIntegrationAuthorizationPolicies.CoopCallback, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireAssertion(context => ApiKeyCallerPassesScopeGate(
+                    context.User,
+                    scopes => MachineScopeMapping.ScopesPermit(
+                                  scopes,
+                                  ResourceKinds.Event,
+                                  AuthorizationActions.Events.ModerateLight)
+                              || MachineScopeMapping.ScopesPermit(
+                                  scopes,
+                                  ResourceKinds.Event,
+                                  AuthorizationActions.Events.ModerateHeavy))))
             .AddPolicy(TickerQSchedulerOptions.InstanceAdminPolicyName, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireClaim(AdminClaimTypes.InstanceAdmin, "true"));
@@ -255,6 +275,30 @@ public static class AuthenticationExtensions
         if (string.IsNullOrWhiteSpace(apiKeyId))
         {
             return true;
+        }
+
+        var apiKeyScopes = principal
+            .FindAll(ApiAuthenticationClaimTypes.Scope)
+            .Select(claim => claim.Value)
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .ToArray();
+
+        return scopeGate(apiKeyScopes);
+    }
+
+    private static bool ApiKeyCallerPassesScopeGate(
+        ClaimsPrincipal principal,
+        Func<IReadOnlyList<string>, bool> scopeGate)
+    {
+        if (principal.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        var apiKeyId = principal.FindFirst(ApiAuthenticationClaimTypes.ApiKeyId)?.Value;
+        if (string.IsNullOrWhiteSpace(apiKeyId))
+        {
+            return false;
         }
 
         var apiKeyScopes = principal

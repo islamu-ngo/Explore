@@ -10,14 +10,17 @@ using Explore.API.HealthChecks;
 using Explore.API.Mcp;
 using Explore.API.Middleware;
 using Explore.API.OpenApi;
+using Explore.API.Services;
 using Explore.API.Services.Calendar;
 using Explore.Application;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.Infrastructure.HealthChecks;
 using Explore.Infrastructure.Messaging;
+using Explore.Infrastructure.Webhooks;
 using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
@@ -104,6 +107,11 @@ builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Le
 
 builder.Services.AddApiCaching();
 builder.Services.AddSingleton<IEventCalendarFileBuilder, IcalNetEventCalendarFileBuilder>();
+builder.Services.AddScoped<ICoopWebhookSignatureValidator, CoopWebhookSignatureValidator>();
+builder.Services.AddScoped<IIncomingWebhookVerifier, CoopIncomingWebhookVerifier>();
+builder.Services.AddScoped<IIncomingWebhookVerifier, SvixIncomingWebhookVerifier>();
+builder.Services.AddScoped<IIncomingWebhookVerifierRegistry, IncomingWebhookVerifierRegistry>();
+builder.Services.AddScoped<IIncomingWebhookIntakeService, IncomingWebhookIntakeService>();
 
 builder.Services.AddRouting(options =>
 {
@@ -139,6 +147,9 @@ var mcpAdapterSettings = builder.Configuration
 var emailDispatchProcessorSettings = builder.Configuration
     .GetSection(EmailDispatchProcessorSettings.SectionName)
     .Get<EmailDispatchProcessorSettings>() ?? new EmailDispatchProcessorSettings();
+var webhookDeliveryProcessorSettings = builder.Configuration
+    .GetSection(WebhookDeliveryProcessorSettings.SectionName)
+    .Get<WebhookDeliveryProcessorSettings>() ?? new WebhookDeliveryProcessorSettings();
 var emailDispatchRabbitMqSettings = builder.Configuration
     .GetSection(EmailDispatchRabbitMqSettings.SectionName)
     .Get<EmailDispatchRabbitMqSettings>() ?? new EmailDispatchRabbitMqSettings();
@@ -268,6 +279,17 @@ if (!isOpenApiGeneration)
         builder.Services.AddHostedService<EmailDispatchProcessor>();
     }
 
+    if (!builder.Environment.IsEnvironment("Testing") && webhookDeliveryProcessorSettings.Enabled)
+    {
+        builder.Services.AddHostedService<WebhookDeliveryProcessor>();
+    }
+
+    if (!builder.Environment.IsEnvironment("Testing"))
+    {
+        builder.Services.AddHostedService<WebhookEventTypeCatalogSyncWorker>();
+        builder.Services.AddHostedService<SvixWebhookEventTypeSyncWorker>();
+    }
+
     if (emailDispatchRabbitMqSettings.Enabled)
     {
         builder.Services.AddHostedService<EmailDispatchRabbitMqConsumerService>();
@@ -309,11 +331,16 @@ builder.Services.AddHsts(options =>
     //options.ExcludedHosts.Add("www.example.com");
 });
 
-// En dev, votre HTTPS local est sur 7039; en prod, laissez null (443 par d�faut)
+var httpsRedirectionEnabled = builder.Configuration.GetValue("HttpsRedirection:Enabled", true);
 builder.Services.AddHttpsRedirection(options =>
 {
     options.RedirectStatusCode = StatusCodes.Status308PermanentRedirect;
-    if (builder.Environment.IsDevelopment())
+    var configuredHttpsPort = builder.Configuration.GetValue<int?>("HttpsRedirection:HttpsPort");
+    if (configuredHttpsPort.HasValue)
+    {
+        options.HttpsPort = configuredHttpsPort.Value;
+    }
+    else if (builder.Environment.IsDevelopment())
     {
         options.HttpsPort = 7039;
     }
@@ -361,6 +388,10 @@ builder.Services.AddHealthChecks()
         "storage-reconciliation",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "storage", "reconciliation", "infrastructure"])
+    .AddCheck<LocalWebhookDeliveryHealthCheck>(
+        "webhook-local-delivery",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "webhooks", "local", "infrastructure"])
     .AddCheck<CerbosReadinessHealthCheck>(
         "cerbos",
         failureStatus: HealthStatus.Unhealthy,
@@ -588,7 +619,10 @@ app.UseCorrelationId();
 app.UseRequestLogging();
 
 app.UseResponseCompression();
-app.UseHttpsRedirection();
+if (httpsRedirectionEnabled)
+{
+    app.UseHttpsRedirection();
+}
 
 // HATEOAS: Process Prefer header for RFC 7240 support (return=minimal)
 app.UseHateoas();
