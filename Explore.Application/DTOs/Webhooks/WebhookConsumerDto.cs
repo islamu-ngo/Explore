@@ -1,0 +1,35 @@
+// ABOUTME: API DTO for tenant-scoped webhook consumers and provider mappings.
+// ABOUTME: Exposes normalized enum ids/names while keeping endpoint secrets out of management payloads.
+
+namespace Explore.Application.DTOs.Webhooks;
+
+public sealed class WebhookConsumerDto
+{
+    public Guid Id { get; init; }
+
+    public Guid TenantId { get; init; }
+
+    public Guid? OwnerActorId { get; init; }
+
+    public Guid? OwnerUserId { get; init; }
+
+    public int ConsumerKindId { get; init; }
+
+    public required string ConsumerKindName { get; init; }
+
+    public int StatusId { get; init; }
+
+    public required string StatusName { get; init; }
+
+    public int ProviderModeId { get; init; }
+
+    public required string ProviderModeName { get; init; }
+
+    public required string Name { get; init; }
+
+    public string? ExternalProviderAppId { get; init; }
+
+    public DateTime CreatedAt { get; init; }
+
+    public DateTime? UpdatedAt { get; init; }
+}

@@ -1,0 +1,30 @@
+// ABOUTME: Handles tenant-scoped webhook consumer detail reads for management APIs.
+// ABOUTME: Returns a nullable DTO so API owns the RFC 7807 not-found response.
+
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Webhooks;
+using Explore.Application.Features.Webhooks.Requests.Queries;
+using MediatR;
+
+namespace Explore.Application.Features.Webhooks.Handlers.Queries;
+
+public sealed class GetWebhookConsumerByIdQueryHandler(IWebhookConsumerRepository consumerRepository)
+    : IRequestHandler<GetWebhookConsumerByIdQuery, WebhookConsumerDto?>
+{
+    public async Task<WebhookConsumerDto?> Handle(
+        GetWebhookConsumerByIdQuery request,
+        CancellationToken cancellationToken)
+    {
+        if (request.TenantId == Guid.Empty || request.ConsumerId == Guid.Empty)
+        {
+            return null;
+        }
+
+        var consumer = await consumerRepository.GetByTenantAndIdAsync(
+            request.TenantId,
+            request.ConsumerId,
+            cancellationToken);
+
+        return consumer is null ? null : WebhookConsumerDtoMapper.Map(consumer);
+    }
+}
