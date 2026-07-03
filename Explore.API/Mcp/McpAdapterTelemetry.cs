@@ -22,6 +22,11 @@ public static class McpAdapterTelemetry
         unit: "s",
         description: "MCP tool-call duration by bounded tool name, outcome, and failure code.");
 
+    private static readonly Counter<long> GatewayInvocations = Meter.CreateCounter<long>(
+        "explore.mcp.gateway_invocations",
+        unit: "{call}",
+        description: "AI context gateway invocations by entity, outcome, and failure code.");
+
     public static Activity? StartToolCall(string? toolName, bool projected)
     {
         var activity = ActivitySource.StartActivity("mcp.tool.call", ActivityKind.Server);
@@ -56,6 +61,27 @@ public static class McpAdapterTelemetry
         {
             ToolCallDuration.Record(duration.TotalSeconds, tags);
         }
+    }
+
+    public static void RecordGatewayInvocation(
+        string? entityName,
+        string? outcome,
+        string? failureCode = null,
+        int disclosedFieldCount = 0,
+        int redactedFieldCount = 0,
+        int deniedFieldCount = 0)
+    {
+        var tags = new KeyValuePair<string, object?>[]
+        {
+            new("entity_name", NormalizeTag(entityName)),
+            new("outcome", NormalizeOutcomeForDiagnostics(outcome)),
+            new("failure_code", NormalizeFailureCodeForDiagnostics(failureCode)),
+            new("disclosed_fields", disclosedFieldCount),
+            new("redacted_fields", redactedFieldCount),
+            new("denied_fields", deniedFieldCount)
+        };
+
+        GatewayInvocations.Add(1, tags);
     }
 
     public static void MarkSuccess(Activity? activity)

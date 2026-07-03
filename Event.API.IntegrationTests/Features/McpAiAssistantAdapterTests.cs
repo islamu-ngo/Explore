@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.API.Mcp;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Queries;
 using Explore.Application.Responses;
@@ -17,6 +18,7 @@ namespace ApiIntegrationTests.Features;
 public sealed class McpAiAssistantAdapterTests
 {
     private readonly IMediator _mediator = Substitute.For<IMediator>();
+    private readonly IAiContextRedactor _redactor = Substitute.For<IAiContextRedactor>();
 
     [Test]
     public async Task ProposeAiToolActionAsync_DelegatesToMediatRAndReturnsSafeResult()
@@ -72,7 +74,7 @@ public sealed class McpAiAssistantAdapterTests
                 }
             ]);
 
-        var resources = new AiAssistantMcpResources(_mediator);
+        var resources = new AiAssistantMcpResources(_mediator, _redactor);
 
         var json = await resources.ListConversationsAsync(CancellationToken.None);
 
@@ -123,7 +125,7 @@ public sealed class McpAiAssistantAdapterTests
                 ]
             });
 
-        var resources = new AiAssistantMcpResources(_mediator);
+        var resources = new AiAssistantMcpResources(_mediator, _redactor);
 
         var json = await resources.GetConversationAsync(conversationId, CancellationToken.None);
 
