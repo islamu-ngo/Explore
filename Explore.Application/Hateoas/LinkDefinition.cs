@@ -20,6 +20,7 @@ using Explore.Application.Authorization;
 /// <param name="PermissionResourceId">Optional explicit resource identifier for permission checks.</param>
 /// <param name="PermissionResourceAttributes">Optional resource attributes passed to authorization provider.</param>
 /// <param name="PermissionScope">Optional tenant/org authorization scope passed to authorization provider.</param>
+/// <param name="AdvertiseWhenAnonymous">Whether an authenticated link may still be advertised to anonymous clients for login-intercept flows.</param>
 public sealed record LinkDefinition(
     string Rel,
     string RouteName,
@@ -33,7 +34,8 @@ public sealed record LinkDefinition(
     string? PermissionAction = null,
     string? PermissionResourceId = null,
     IReadOnlyDictionary<string, object>? PermissionResourceAttributes = null,
-    AuthorizationScope? PermissionScope = null)
+    AuthorizationScope? PermissionScope = null,
+    bool AdvertiseWhenAnonymous = false)
 {
     /// <summary>
     /// Creates a self link definition.
@@ -88,6 +90,13 @@ public sealed record LinkDefinition(
     /// </summary>
     public LinkDefinition Authenticated() =>
         this with { RequiresAuth = true };
+
+    /// <summary>
+    /// Keeps an authenticated affordance visible to anonymous clients so the UI can route through sign-in.
+    /// Endpoint authorization is unchanged; this only affects HAL visibility.
+    /// </summary>
+    public LinkDefinition AdvertisedWhenAnonymous() =>
+        this with { AdvertiseWhenAnonymous = true };
 
     /// <summary>
     /// Specifies roles required for this link.

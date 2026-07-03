@@ -276,6 +276,26 @@ public static class LinkRelations
     public const string ModerationHistory = "moderation-history";
 
     /// <summary>
+    /// Reporter-facing event-report option catalog for an event.
+    /// </summary>
+    public const string EventReportOptions = "event-report-options";
+
+    /// <summary>
+    /// Authenticated action for submitting a report about published event content.
+    /// </summary>
+    public const string ReportEvent = "report-event";
+
+    public const string ModerationReports = "moderation-reports";
+
+    public const string TriageReport = "triage-report";
+
+    public const string AssignReport = "assign-report";
+
+    public const string DecideReport = "decide-report";
+
+    public const string ExecuteReportDecision = "execute-report-decision";
+
+    /// <summary>
     /// Archive action for lifecycle-managed resources.
     /// </summary>
     public const string Archive = "archive";
@@ -284,6 +304,22 @@ public static class LinkRelations
     /// Revoke action for grants, invitations, or other auditable authority records.
     /// </summary>
     public const string Revoke = "revoke";
+
+    /// <summary>
+    /// Rotate an operational secret reference for a managed integration endpoint.
+    /// </summary>
+    public const string RotateSecret = "rotate-secret";
+
+    /// <summary>
+    /// Send or schedule a test request for a managed integration endpoint.
+    /// </summary>
+    public const string Test = "test";
+
+    public const string DeliveryAttempts = "delivery-attempts";
+
+    public const string Retry = "retry";
+
+    public const string OpenProviderPortal = "open-provider-portal";
 
     /// <summary>
     /// Action link for cancelling an AI provider run before it completes.

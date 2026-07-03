@@ -155,6 +155,16 @@ public class LinkDefinitionTests
     }
 
     [Test]
+    public async Task AdvertisedWhenAnonymous_ShouldKeepAuthenticationRequirement()
+    {
+        var definition = LinkDefinition.Action("report-event", "SubmitEventReport", "POST")
+            .AdvertisedWhenAnonymous();
+
+        await Assert.That(definition.RequiresAuth).IsTrue();
+        await Assert.That(definition.AdvertiseWhenAnonymous).IsTrue();
+    }
+
+    [Test]
     public async Task WithRoles_ShouldSetRequiredRoles()
     {
         // Arrange
