@@ -18,20 +18,21 @@ public sealed class KeycloakBootstrapBrowserFlowTests(
 
     [Test]
     [Timeout(420_000)]
-    public async Task AuthProviderOnboarding_BootstrapMode_SubmitsSetupGatedBootstrap()
+    public async Task AuthProviderOnboarding_BootstrapMode_SubmitsSetupGatedBootstrapAndAllowsLogin()
     {
         await appHost.ResetDatabaseAsync();
 
-        var page = await playwright.CreatePageAsync(nameof(AuthProviderOnboarding_BootstrapMode_SubmitsSetupGatedBootstrap));
+        var page = await playwright.CreatePageAsync(nameof(AuthProviderOnboarding_BootstrapMode_SubmitsSetupGatedBootstrapAndAllowsLogin));
         try
         {
             await PersistSetupSecretAsync(page);
             await SubmitKeycloakBootstrapFormAsync(page);
+            await BffCookieAuthHelper.LoginAsTestUserAsync(page, appHost);
             await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page, appHost.BlazorBaseUrl);
         }
         finally
         {
-            await playwright.ClosePageAsync(page, nameof(AuthProviderOnboarding_BootstrapMode_SubmitsSetupGatedBootstrap));
+            await playwright.ClosePageAsync(page, nameof(AuthProviderOnboarding_BootstrapMode_SubmitsSetupGatedBootstrapAndAllowsLogin));
         }
     }
 

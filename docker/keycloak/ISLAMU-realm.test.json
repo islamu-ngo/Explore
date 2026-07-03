@@ -252,7 +252,6 @@
       "enabled": true,
       "consentRequired": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "test-api-secret",
       "publicClient": false,
       "bearerOnly": true,
       "standardFlowEnabled": false,

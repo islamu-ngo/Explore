@@ -284,7 +284,6 @@
       "enabled": true,
       "consentRequired": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "islamu-event-api-secret",
       "publicClient": false,
       "bearerOnly": true,
       "standardFlowEnabled": false,
