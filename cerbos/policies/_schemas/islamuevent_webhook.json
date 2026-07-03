@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for tenant-scoped outgoing webhook consumers, endpoints, messages, delivery attempts, and provider portal sessions.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    },
+    "consumerId": {
+      "type": "string",
+      "description": "Optional webhook consumer identifier."
+    },
+    "endpointId": {
+      "type": "string",
+      "description": "Optional webhook endpoint identifier."
+    },
+    "messageId": {
+      "type": "string",
+      "description": "Optional webhook message identifier."
+    },
+    "provider": {
+      "type": "string",
+      "description": "Optional provider name, such as local or svix."
+    }
+  },
+  "required": ["tenantId"]
+}

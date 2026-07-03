@@ -1,0 +1,106 @@
+// ABOUTME: HAL link policies for webhook message and delivery attempt audit resources.
+// ABOUTME: Emits server-authorized delivery-history and retry affordances for webhook administration.
+
+using System.Security.Claims;
+using Explore.Application.Authorization;
+using Explore.Application.Contracts.Hateoas;
+using Explore.Application.DTOs.Webhooks;
+using Explore.Application.Hateoas;
+
+namespace Explore.API.Hateoas.Policies;
+
+public sealed class WebhookMessageDetailLinkPolicy : ILinkPolicy<WebhookMessageDto>
+{
+    public IEnumerable<LinkDefinition> GetLinks(WebhookMessageDto dto, ClaimsPrincipal? user)
+    {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetWebhookMessageById,
+            new { messageId = dto.Id },
+            "GET",
+            "Webhook message")
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookMessage, dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.DeliveryAttempts,
+            RouteNames.GetWebhookDeliveryAttempts,
+            new { messageId = dto.Id },
+            "GET",
+            "Webhook delivery attempts")
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookMessage, dto);
+    }
+}
+
+public sealed class WebhookMessageCollectionLinkPolicy : ICollectionLinkPolicy<WebhookMessageDto>
+{
+    private readonly WebhookMessageDetailLinkPolicy _detailPolicy = new();
+
+    public IEnumerable<LinkDefinition> GetItemLinks(WebhookMessageDto dto, ClaimsPrincipal? user) =>
+        _detailPolicy.GetLinks(dto, user);
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
+    {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetWebhookMessages,
+            null,
+            "GET",
+            "Webhook messages",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceKinds.Webhook);
+    }
+}
+
+public sealed class WebhookDeliveryAttemptDetailLinkPolicy : ILinkPolicy<WebhookDeliveryAttemptDto>
+{
+    public IEnumerable<LinkDefinition> GetLinks(WebhookDeliveryAttemptDto dto, ClaimsPrincipal? user)
+    {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetWebhookDeliveryAttemptById,
+            new { attemptId = dto.Id },
+            "GET",
+            "Webhook delivery attempt")
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookDeliveryAttempt, dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.Related,
+            RouteNames.GetWebhookMessageById,
+            new { messageId = dto.MessageId },
+            "GET",
+            "Webhook message")
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookDeliveryAttempt, dto);
+
+        if (string.Equals(dto.StatusName, "Failed", StringComparison.Ordinal) ||
+            string.Equals(dto.StatusName, "Abandoned", StringComparison.Ordinal))
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Retry,
+                RouteNames.RetryWebhookDeliveryAttempt,
+                new { attemptId = dto.Id },
+                "POST",
+                "Retry webhook delivery attempt")
+                .RequirePermission(AuthorizationActions.Webhooks.Retry, ResourceDescriptors.WebhookDeliveryAttempt, dto);
+        }
+    }
+}
+
+public sealed class WebhookDeliveryAttemptCollectionLinkPolicy : ICollectionLinkPolicy<WebhookDeliveryAttemptDto>
+{
+    private readonly WebhookDeliveryAttemptDetailLinkPolicy _detailPolicy = new();
+
+    public IEnumerable<LinkDefinition> GetItemLinks(WebhookDeliveryAttemptDto dto, ClaimsPrincipal? user) =>
+        _detailPolicy.GetLinks(dto, user);
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
+    {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetWebhookDeliveryAttempts,
+            null,
+            "GET",
+            "Webhook delivery attempts",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceKinds.Webhook);
+    }
+}
