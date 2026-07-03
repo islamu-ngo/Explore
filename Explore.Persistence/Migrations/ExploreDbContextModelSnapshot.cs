@@ -8758,6 +8758,114 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("idempotency_records", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.IncomingWebhookMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("EventType")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("FailureCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("failure_category");
+
+                    b.Property<string>("HeadersJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("headers_json");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("payload_hash");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("ProviderMessageId")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_message_id");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("SafeDetail")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("safe_detail");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incoming_webhook_messages");
+
+                    b.HasIndex("TenantId", "Provider", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_incoming_webhook_messages_tenant_provider_idempotency")
+                        .HasFilter("idempotency_key IS NOT NULL");
+
+                    b.HasIndex("TenantId", "Provider", "ProviderMessageId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_incoming_webhook_messages_tenant_provider_message");
+
+                    b.HasIndex("TenantId", "Status", "ReceivedAt")
+                        .HasDatabaseName("ix_incoming_webhook_messages_tenant_status_received");
+
+                    b.ToTable("incoming_webhook_messages", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.IndexedDid", b =>
                 {
                     b.Property<string>("Did")
@@ -13383,6 +13491,679 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("visibility_types", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.WebhookConsumer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<int>("ConsumerKind")
+                        .HasColumnType("integer")
+                        .HasColumnName("consumer_kind");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("ExternalProviderAppId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("external_provider_app_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("OwnerActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_actor_id");
+
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<int>("ProviderMode")
+                        .HasColumnType("integer")
+                        .HasColumnName("provider_mode");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_webhook_consumers");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_webhook_consumers_tenant_id_id");
+
+                    b.HasIndex("OwnerActorId")
+                        .HasDatabaseName("ix_webhook_consumers_owner_actor_id");
+
+                    b.HasIndex("OwnerUserId")
+                        .HasDatabaseName("ix_webhook_consumers_owner_user_id");
+
+                    b.HasIndex("TenantId", "ExternalProviderAppId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_consumers_tenant_external_app")
+                        .HasFilter("external_provider_app_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_consumers_tenant_name");
+
+                    b.HasIndex("TenantId", "Status", "ProviderMode")
+                        .HasDatabaseName("ix_webhook_consumers_tenant_status_provider");
+
+                    b.ToTable("webhook_consumers", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookDeliveryAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<int>("AttemptNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_number");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int?>("DurationMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_ms");
+
+                    b.Property<Guid>("EndpointId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("endpoint_id");
+
+                    b.Property<string>("FailureCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("failure_category");
+
+                    b.Property<int?>("HttpStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("http_status_code");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_retry_at");
+
+                    b.Property<Guid?>("ProcessingLeaseToken")
+                        .HasColumnType("uuid")
+                        .HasColumnName("processing_lease_token");
+
+                    b.Property<DateTime?>("ProcessingStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processing_started_at");
+
+                    b.Property<string>("ResponseBodyPreview")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("response_body_preview");
+
+                    b.Property<DateTime>("ScheduledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_at");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_webhook_delivery_attempts");
+
+                    b.HasIndex("TenantId", "MessageId")
+                        .HasDatabaseName("ix_webhook_delivery_attempts_tenant_id_message_id");
+
+                    b.HasIndex("MessageId", "EndpointId", "AttemptNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_delivery_attempts_message_endpoint_attempt");
+
+                    b.HasIndex("Status", "ScheduledAt", "CreatedAt")
+                        .HasDatabaseName("ix_webhook_delivery_attempts_worker_poll");
+
+                    b.HasIndex("TenantId", "EndpointId", "Status", "ScheduledAt")
+                        .HasDatabaseName("ix_webhook_delivery_attempts_tenant_endpoint_status");
+
+                    b.ToTable("webhook_delivery_attempts", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookEndpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid>("ConsumerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consumer_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime?>("LastFailureAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_failure_at");
+
+                    b.Property<DateTime?>("LastSuccessAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_success_at");
+
+                    b.Property<int>("MaxAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(8)
+                        .HasColumnName("max_attempts");
+
+                    b.Property<string>("PreviousSecretRef")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("previous_secret_ref");
+
+                    b.Property<DateTime?>("PreviousSecretValidUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("previous_secret_valid_until");
+
+                    b.Property<string>("ProviderEndpointId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_endpoint_id");
+
+                    b.Property<int?>("RateLimitPerMinute")
+                        .HasColumnType("integer")
+                        .HasColumnName("rate_limit_per_minute");
+
+                    b.Property<string>("SecretRef")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("secret_ref");
+
+                    b.Property<int>("SecretVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("secret_version");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<int>("TimeoutSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(15)
+                        .HasColumnName("timeout_seconds");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_webhook_endpoints");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_webhook_endpoints_tenant_id_id");
+
+                    b.HasIndex("TenantId", "ProviderEndpointId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_endpoints_tenant_provider_endpoint")
+                        .HasFilter("provider_endpoint_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "ConsumerId", "Status")
+                        .HasDatabaseName("ix_webhook_endpoints_tenant_consumer_status");
+
+                    b.ToTable("webhook_endpoints", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookEndpointSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EndpointId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("endpoint_id");
+
+                    b.Property<Guid>("EventTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_enabled");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_webhook_endpoint_subscriptions");
+
+                    b.HasIndex("EventTypeId")
+                        .HasDatabaseName("ix_webhook_endpoint_subscriptions_event_type_id");
+
+                    b.HasIndex("EndpointId", "EventTypeId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_endpoint_subscriptions_endpoint_event_type");
+
+                    b.HasIndex("TenantId", "EndpointId")
+                        .HasDatabaseName("ix_webhook_endpoint_subscriptions_tenant_id_endpoint_id");
+
+                    b.HasIndex("TenantId", "EventTypeId", "IsEnabled")
+                        .HasDatabaseName("ix_webhook_endpoint_subscriptions_tenant_event_type");
+
+                    b.ToTable("webhook_endpoint_subscriptions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookEventType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("GroupName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("group_name");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_public");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("PayloadRetentionDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(14)
+                        .HasColumnName("payload_retention_days");
+
+                    b.Property<string>("SchemaJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("schema_json");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_webhook_event_types");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_event_types_name");
+
+                    b.HasIndex("GroupName", "IsEnabled", "IsPublic")
+                        .HasDatabaseName("ix_webhook_event_types_group_enabled_public");
+
+                    b.ToTable("webhook_event_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid>("AggregateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aggregate_id");
+
+                    b.Property<string>("AggregateKind")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("aggregate_kind");
+
+                    b.Property<Guid?>("ConsumerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consumer_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("event_type");
+
+                    b.Property<DateTime?>("PayloadClearedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("payload_cleared_at");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("payload_hash");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<DateTime>("PayloadRetentionUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("payload_retention_until");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_message_id");
+
+                    b.Property<int>("ProviderMode")
+                        .HasColumnType("integer")
+                        .HasColumnName("provider_mode");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_webhook_messages");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_webhook_messages_tenant_id_id");
+
+                    b.HasIndex("TenantId", "ConsumerId")
+                        .HasDatabaseName("ix_webhook_messages_tenant_id_consumer_id");
+
+                    b.HasIndex("TenantId", "PayloadRetentionUntil")
+                        .HasDatabaseName("ix_webhook_messages_tenant_payload_retention")
+                        .HasFilter("payload_json IS NOT NULL");
+
+                    b.HasIndex("TenantId", "ProviderMessageId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_messages_tenant_provider_message")
+                        .HasFilter("provider_message_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "AggregateKind", "AggregateId")
+                        .HasDatabaseName("ix_webhook_messages_tenant_aggregate");
+
+                    b.HasIndex("TenantId", "EventType", "EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_messages_tenant_event");
+
+                    b.HasIndex("TenantId", "Status", "CreatedAt")
+                        .HasDatabaseName("ix_webhook_messages_tenant_status_created");
+
+                    b.ToTable("webhook_messages", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookProviderLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid?>("ConsumerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consumer_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid?>("EndpointId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("endpoint_id");
+
+                    b.Property<string>("ExternalAppId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("external_app_id");
+
+                    b.Property<string>("ExternalEndpointId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("external_endpoint_id");
+
+                    b.Property<string>("ExternalMessageId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("external_message_id");
+
+                    b.Property<string>("LastErrorCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_error_category");
+
+                    b.Property<DateTime?>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_synced_at");
+
+                    b.Property<Guid?>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<int>("Provider")
+                        .HasColumnType("integer")
+                        .HasColumnName("provider");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<int>("SyncState")
+                        .HasColumnType("integer")
+                        .HasColumnName("sync_state");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_webhook_provider_links");
+
+                    b.HasIndex("TenantId", "ConsumerId")
+                        .HasDatabaseName("ix_webhook_provider_links_tenant_id_consumer_id");
+
+                    b.HasIndex("TenantId", "EndpointId")
+                        .HasDatabaseName("ix_webhook_provider_links_tenant_id_endpoint_id");
+
+                    b.HasIndex("TenantId", "MessageId")
+                        .HasDatabaseName("ix_webhook_provider_links_tenant_id_message_id");
+
+                    b.HasIndex("Provider", "SyncState", "CreatedAt")
+                        .HasDatabaseName("ix_webhook_provider_links_provider_sync_state");
+
+                    b.HasIndex("TenantId", "Provider", "ExternalAppId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_provider_links_tenant_provider_app")
+                        .HasFilter("external_app_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "Provider", "ExternalEndpointId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_provider_links_tenant_provider_endpoint")
+                        .HasFilter("external_endpoint_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "Provider", "ExternalMessageId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhook_provider_links_tenant_provider_message")
+                        .HasFilter("external_message_id IS NOT NULL");
+
+                    b.ToTable("webhook_provider_links", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.Actor", b =>
                 {
                     b.HasOne("Explore.Domain.ActorType", "ActorType")
@@ -15872,6 +16653,18 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_group_setting_overrides_tenants_tenant_id");
 
                     b.Navigation("Group");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.IncomingWebhookMessage", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_incoming_webhook_messages_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -19811,6 +20604,179 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.WebhookConsumer", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "OwnerActor")
+                        .WithMany()
+                        .HasForeignKey("OwnerActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_webhook_consumers_actors_owner_actor_id");
+
+                    b.HasOne("Explore.Domain.User", "OwnerUser")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_webhook_consumers_users_owner_user_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_consumers_tenants_tenant_id");
+
+                    b.Navigation("OwnerActor");
+
+                    b.Navigation("OwnerUser");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookDeliveryAttempt", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_delivery_attempts_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.WebhookEndpoint", "Endpoint")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EndpointId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_delivery_attempts_webhook_endpoints_tenant_id_endpo");
+
+                    b.HasOne("Explore.Domain.WebhookMessage", "Message")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "MessageId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_delivery_attempts_webhook_messages_tenant_id_messag");
+
+                    b.Navigation("Endpoint");
+
+                    b.Navigation("Message");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookEndpoint", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_endpoints_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.WebhookConsumer", "Consumer")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ConsumerId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_endpoints_webhook_consumers_tenant_id_consumer_id");
+
+                    b.Navigation("Consumer");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookEndpointSubscription", b =>
+                {
+                    b.HasOne("Explore.Domain.WebhookEventType", "EventType")
+                        .WithMany()
+                        .HasForeignKey("EventTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_endpoint_subscriptions_webhook_event_types_event_ty");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_endpoint_subscriptions_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.WebhookEndpoint", "Endpoint")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("TenantId", "EndpointId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_endpoint_subscriptions_webhook_endpoints_tenant_id_");
+
+                    b.Navigation("Endpoint");
+
+                    b.Navigation("EventType");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookMessage", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_messages_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.WebhookConsumer", "Consumer")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ConsumerId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_webhook_messages_webhook_consumers_tenant_id_consumer_id");
+
+                    b.Navigation("Consumer");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookProviderLink", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_provider_links_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.WebhookConsumer", "Consumer")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ConsumerId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_webhook_provider_links_webhook_consumers_tenant_id_consumer");
+
+                    b.HasOne("Explore.Domain.WebhookEndpoint", "Endpoint")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EndpointId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_webhook_provider_links_webhook_endpoints_tenant_id_endpoint");
+
+                    b.HasOne("Explore.Domain.WebhookMessage", "Message")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "MessageId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_webhook_provider_links_webhook_messages_tenant_id_message_id");
+
+                    b.Navigation("Consumer");
+
+                    b.Navigation("Endpoint");
+
+                    b.Navigation("Message");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.Actor", b =>
                 {
                     b.Navigation("Pii")
@@ -19988,6 +20954,11 @@ namespace Explore.Persistence.Migrations
                 {
                     b.Navigation("Pii")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Explore.Domain.WebhookEndpoint", b =>
+                {
+                    b.Navigation("Subscriptions");
                 });
 #pragma warning restore 612, 618
         }

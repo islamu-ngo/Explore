@@ -188,6 +188,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventHeavyRedactionRepository, EventHeavyRedactionRepository>();
         services.AddScoped<IEventModerationRecordRepository, EventModerationRecordRepository>();
+        services.AddScoped<IEventReportRepository, EventReportRepository>();
         services.AddScoped<IEventSessionRepository, EventSessionRepository>();
         services.AddScoped<IEventSessionGroupRepository, EventSessionGroupRepository>();
         services.AddScoped<IEventSessionGroupSessionRepository, EventSessionGroupSessionRepository>();
@@ -277,6 +278,15 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IEmailDispatchOutboxRepository, EmailDispatchOutboxRepository>();
 
+        // Webhook Repositories
+        services.AddScoped<IWebhookConsumerRepository, WebhookConsumerRepository>();
+        services.AddScoped<IWebhookEventTypeRepository, WebhookEventTypeRepository>();
+        services.AddScoped<IWebhookEndpointRepository, WebhookEndpointRepository>();
+        services.AddScoped<IWebhookMessageRepository, WebhookMessageRepository>();
+        services.AddScoped<IWebhookDeliveryAttemptRepository, WebhookDeliveryAttemptRepository>();
+        services.AddScoped<IWebhookProviderLinkRepository, WebhookProviderLinkRepository>();
+        services.AddScoped<IIncomingWebhookMessageRepository, IncomingWebhookMessageRepository>();
+
         // Authorization (RBAC) Repositories
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
@@ -298,7 +308,7 @@ public static class PersistenceServicesRegistration
 
         // AI Assistant Repositories
         services.AddScoped<IAiConversationRepository, AiConversationRepository>();
-services.AddScoped<IAiConsentGrantRepository, AiConsentGrantRepository>();
+        services.AddScoped<IAiConsentGrantRepository, AiConsentGrantRepository>();
 
         return services;
     }

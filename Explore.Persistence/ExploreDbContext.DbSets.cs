@@ -99,6 +99,13 @@ public partial class ExploreDbContext
     public DbSet<EventSessionIslamicAspect> EventSessionIslamicAspects { get; set; }
     public DbSet<EventRegistration> EventRegistrations { get; set; }
     public DbSet<EventModerationRecord> EventModerationRecords { get; set; }
+    public DbSet<EventReport> EventReports { get; set; }
+    public DbSet<EventReportTarget> EventReportTargets { get; set; }
+    public DbSet<EventReportEvidence> EventReportEvidenceItems { get; set; }
+    public DbSet<EventReportCase> EventReportCases { get; set; }
+    public DbSet<EventReportSignal> EventReportSignals { get; set; }
+    public DbSet<EventReportDecision> EventReportDecisions { get; set; }
+    public DbSet<EventReportExternalLink> EventReportExternalLinks { get; set; }
     public DbSet<EventSessionLanguage> EventSessionLanguages { get; set; }
     public DbSet<EventSessionSpeaker> EventSessionSpeakers { get; set; }
     public DbSet<EventSessionAgendaItem> EventSessionAgendaItems { get; set; }
@@ -238,4 +245,14 @@ public partial class ExploreDbContext
     public DbSet<AiProviderKindLookup> AiProviderKinds { get; set; }
     public DbSet<AiToolExecution> AiToolExecutions { get; set; }
     public DbSet<AiConsentGrant> AiConsentGrants { get; set; }
+
+    // ===== Webhook Delivery =====
+    public DbSet<WebhookConsumer> WebhookConsumers { get; set; }
+    public DbSet<WebhookEventType> WebhookEventTypes { get; set; }
+    public DbSet<WebhookEndpoint> WebhookEndpoints { get; set; }
+    public DbSet<WebhookEndpointSubscription> WebhookEndpointSubscriptions { get; set; }
+    public DbSet<WebhookMessage> WebhookMessages { get; set; }
+    public DbSet<WebhookDeliveryAttempt> WebhookDeliveryAttempts { get; set; }
+    public DbSet<WebhookProviderLink> WebhookProviderLinks { get; set; }
+    public DbSet<IncomingWebhookMessage> IncomingWebhookMessages { get; set; }
 }

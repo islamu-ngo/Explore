@@ -59,6 +59,34 @@ public partial class ExploreDbContext
         modelBuilder.Entity<EventModerationRecord>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
+        modelBuilder.Entity<EventReport>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventReportTarget>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Report != null && !e.Report.IsDeleted);
+
+        modelBuilder.Entity<EventReportEvidence>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Report != null && !e.Report.IsDeleted);
+
+        modelBuilder.Entity<EventReportCase>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Report != null && !e.Report.IsDeleted);
+
+        modelBuilder.Entity<EventReportSignal>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.ReportId == null || (e.Report != null && !e.Report.IsDeleted));
+
+        modelBuilder.Entity<EventReportDecision>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Report != null && !e.Report.IsDeleted);
+
+        modelBuilder.Entity<EventReportExternalLink>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Report != null && !e.Report.IsDeleted);
+
         // ===== Event Scheduling Refactor - Phase 1 additive entities =====
         modelBuilder.Entity<EventDay>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
@@ -99,6 +127,27 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<EmailDispatchTenantControl>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<WebhookConsumer>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<WebhookEndpoint>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<WebhookEndpointSubscription>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<WebhookMessage>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<WebhookDeliveryAttempt>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<WebhookProviderLink>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<IncomingWebhookMessage>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<EventSessionIslamicAspect>()
