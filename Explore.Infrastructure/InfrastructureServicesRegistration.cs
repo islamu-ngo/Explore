@@ -1,6 +1,7 @@
 // ABOUTME: Registers Infrastructure services, providers, options, and validators for the platform.
 // ABOUTME: Keeps application contracts wired to concrete infrastructure implementations at composition time.
 
+using System.Net.Http;
 using System.Net.Sockets;
 using Amazon;
 using Amazon.S3;
@@ -14,10 +15,12 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Strategies;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Models;
 using Explore.Application.Utilities;
 using Explore.Infrastructure.Ai;
 using Explore.Infrastructure.Analytics;
+using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Localization;
 using Explore.Infrastructure.Localization.Resilience;
@@ -27,8 +30,11 @@ using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
 using Explore.Infrastructure.Services.Keycloak;
+using Explore.Infrastructure.Services.Moderation;
+using Explore.Infrastructure.Services.Moderation.Coop;
 using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
+using Explore.Infrastructure.Webhooks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -68,6 +74,81 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IUserContext, UserContext>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IPublicUrlBuilder, PublicUrlBuilder>();
+        services.AddScoped<IEventReportEvidenceProtector, EventReportEvidenceProtector>();
+        services.AddOptions<ModerationProviderOptions>()
+            .Bind(configuration.GetSection(ModerationProviderOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<ModerationProviderOptions>, ModerationProviderOptionsValidator>();
+        services.AddOptions<OspreyProviderOptions>()
+            .Bind(configuration.GetSection(OspreyProviderOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<OspreyProviderOptions>, OspreyProviderOptionsValidator>();
+        services.AddOptions<CoopProviderOptions>()
+            .Bind(configuration.GetSection(CoopProviderOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<CoopProviderOptions>, CoopProviderOptionsValidator>();
+        services.AddScoped<LocalEventReportProvider>();
+        services.AddScoped<NoopModerationSignalProvider>();
+        services.AddHttpClient(OspreyModerationSignalProvider.HttpClientName, client =>
+        {
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+        services.AddScoped<OspreyModerationSignalProvider>();
+        services.AddHttpClient(CoopReviewQueueProvider.HttpClientName, client =>
+        {
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+        services.AddScoped<CoopReviewQueueProvider>();
+        services.AddScoped<NoopReviewQueueProvider>();
+        services.AddScoped<CompositeEventReportProvider>(sp => new CompositeEventReportProvider(
+            sp.GetRequiredService<LocalEventReportProvider>(),
+            sp.GetRequiredService<OspreyModerationSignalProvider>(),
+            sp.GetRequiredService<CoopReviewQueueProvider>(),
+            sp.GetRequiredService<IOptionsMonitor<ModerationProviderOptions>>()));
+        services.AddScoped<RuntimeModerationProviderResolver>();
+        services.AddScoped<IReportProviderSyncDispatcher, ReportProviderSyncDispatcher>();
+        services.AddScoped<IEventReportProvider>(sp => sp.GetRequiredService<RuntimeModerationProviderResolver>());
+        services.AddScoped<IModerationSignalProvider>(sp => sp.GetRequiredService<RuntimeModerationProviderResolver>());
+        services.AddScoped<IReviewQueueProvider>(sp => sp.GetRequiredService<RuntimeModerationProviderResolver>());
+        services.AddScoped<IReportDecisionExecutor>(sp => sp.GetRequiredService<RuntimeModerationProviderResolver>());
+
+        // Webhook providers: Local is the self-hostable default; Runtime provider selects configured mode.
+        services.AddOptions<WebhookOptions>()
+            .Bind(configuration.GetSection(WebhookOptions.SectionName))
+            .ValidateOnStart();
+        services.AddOptions<WebhookDeliveryProcessorSettings>()
+            .Bind(configuration.GetSection(WebhookDeliveryProcessorSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<WebhookOptions>, WebhookOptionsValidator>();
+        services.AddSingleton<IValidateOptions<WebhookDeliveryProcessorSettings>, WebhookDeliveryProcessorSettingsValidator>();
+        services.AddSingleton<IWebhookSignatureService, WebhookSignatureService>();
+        services.AddSingleton<WebhookRetryScheduler>();
+        services.AddSingleton<WebhookEndpointSafetyPolicy>();
+        services.AddSingleton<WebhookEndpointSecretResolver>();
+        services.AddSingleton<IWebhookDeliveryDrainService, WebhookDeliveryDrainService>();
+        services.AddHttpClient(WebhookDeliveryDrainService.HttpClientName, client =>
+        {
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        })
+        .ConfigurePrimaryHttpMessageHandler(sp =>
+        {
+            var options = sp.GetRequiredService<IOptionsMonitor<WebhookOptions>>().CurrentValue;
+            return new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                ConnectTimeout = TimeSpan.FromSeconds(options.Local.ConnectTimeoutSeconds),
+                UseCookies = false
+            };
+        });
+        services.AddScoped<DisabledWebhookDeliveryProvider>();
+        services.AddScoped<DryRunWebhookDeliveryProvider>();
+        services.AddScoped<LocalWebhookDeliveryProvider>();
+        services.AddScoped<ISvixWebhookClient, SvixWebhookClient>();
+        services.AddScoped<SvixWebhookDeliveryProvider>();
+        services.AddScoped<IWebhookProviderPortalService, SvixAppPortalService>();
+        services.AddScoped<IWebhookProviderEventTypeSyncService, SvixEventTypeSyncService>();
+        services.AddScoped<RuntimeWebhookDeliveryProvider>();
+        services.AddScoped<IWebhookDeliveryProvider>(sp => sp.GetRequiredService<RuntimeWebhookDeliveryProvider>());
 
         // Memory cache for settings and module governance
         services.AddMemoryCache();

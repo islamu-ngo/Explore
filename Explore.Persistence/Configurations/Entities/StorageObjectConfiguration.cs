@@ -12,6 +12,8 @@ public class StorageObjectConfiguration : IEntityTypeConfiguration<StorageObject
     public void Configure(EntityTypeBuilder<StorageObject> builder)
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
+            .HasName("ak_storage_objects_tenant_id_id");
 
         builder.Property(e => e.Uri).HasMaxLength(1000).IsRequired();
         builder.Property(e => e.ObjectKey).HasMaxLength(1024);

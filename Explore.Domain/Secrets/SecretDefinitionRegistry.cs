@@ -108,6 +108,12 @@ public static class SecretDefinitionRegistry
             public const string CustomAdminPassword = InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword;
         }
 
+        public static class Webhooks
+        {
+            public const string SvixAuthToken = "webhooks.svix.auth_token";
+            public const string SvixOperationalWebhookSecret = "webhooks.svix.operational_webhook_secret";
+        }
+
         public static class Ai
         {
             public const string OpenAiApiKey = "ai.openai.api_key";
@@ -339,6 +345,30 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "CERBOS_ADMIN_PASSWORD",
                 IsBootstrapSecret = false,
                 Description = "Cerbos Admin API password used by server-side policy package sync.",
+            },
+
+            // --- webhooks/WEBHOOKS_SVIX_AUTH_TOKEN ---
+            new()
+            {
+                Key = Keys.Webhooks.SvixAuthToken,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/webhooks",
+                DefaultInfisicalKey = "WEBHOOKS_SVIX_AUTH_TOKEN",
+                DefaultEnvironmentVariableName = "WEBHOOKS_SVIX_AUTH_TOKEN",
+                IsBootstrapSecret = false,
+                Description = "Svix API token used by the backend-only outgoing webhook provider.",
+            },
+            new()
+            {
+                Key = Keys.Webhooks.SvixOperationalWebhookSecret,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/webhooks",
+                DefaultInfisicalKey = "WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET",
+                DefaultEnvironmentVariableName = "WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET",
+                IsBootstrapSecret = false,
+                Description = "Svix endpoint signing secret used to verify incoming operational callbacks.",
             },
 
             // --- postgresql/POSTGRESQL_* (ALL bootstrap) ---

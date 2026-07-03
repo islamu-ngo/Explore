@@ -123,6 +123,7 @@ public static class ServiceCollectionExtensions
     {
         // Add core secret provider
         services.AddSecretProvider(configuration);
+        services.AddSecretResolution();
 
         // Bind refresh options
         services.AddOptions<SecretRefreshOptions>()
@@ -160,6 +161,7 @@ public static class ServiceCollectionExtensions
     {
         // Add core secret provider with custom configuration
         services.AddSecretProvider(configuration, configureProvider ?? (_ => { }));
+        services.AddSecretResolution();
 
         // Bind refresh options with custom configuration
         var refreshOptionsBuilder = services.AddOptions<SecretRefreshOptions>()
