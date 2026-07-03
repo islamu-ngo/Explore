@@ -3,8 +3,28 @@
 
 # Endpoint Inventory
 
-Last Updated: 2026-06-13 Europe/Brussels
+Last Updated: 2026-07-03 Europe/Brussels
 
+## 2026-07-03 Current Reconciliation Snapshot
+
+The row-level operation table below is historical. Do not use it as the current implementation source of truth until it is regenerated from the current contract workflow.
+
+Current checked-in contract state:
+
+- `schemas/openapi.json` currently contains `359` paths and `500` operations, with `0` missing `operationId` values and `0` missing `x-endpoint-class` values. Classification breakdown: `Admin=13`, `Authenticated=365`, `Public=122`.
+- `docs/API_CONTRACT_INVENTORY.md` currently contains `355` paths and `496` operations, with `0` missing `operationId` values and `1` missing `x-endpoint-class` value. Classification breakdown: `Admin=13`, `Authenticated=360`, `Public=122`.
+- The Markdown inventory contains one operation absent from `schemas/openapi.json`: `POST /admin/migrate` (`ApplyDatabaseMigrations`). Source evidence: `Explore.API/Program.cs` maps this minimal endpoint only in Development/Testing, names it with `RouteNames.ApplyDatabaseMigrations`, requires authorization, and currently lacks endpoint-class metadata. This is tracked by R-015 and R-032.
+- `schemas/openapi.json` contains five operations absent from the Markdown inventory: `GET /api/webhooks/messages`, `GET /api/webhooks/messages/{messageId}`, `GET /api/webhooks/delivery-attempts`, `GET /api/webhooks/delivery-attempts/{attemptId}`, and `POST /api/webhooks/delivery-attempts/{attemptId}/retry`. Source evidence: `Explore.API/Controllers/WebhooksController.cs` exposes these under the class-level `[Authorize]` and `[EndpointClassification(EndpointClass.Authenticated)]` boundary. CodeGraph found no covering tests for the new webhook message query symbols, so R-033 remains open.
+
+New or materially changed endpoint families that must be included in the next row-level import:
+
+| Family | Current source evidence | Target posture | Risk |
+|---|---|---|---|
+| `EventReports` | `docs/API_CONTRACT_INVENTORY.md` rows for report options, submission, and current-user report reads; `Explore.API/Controllers/EventReportsController.cs` uses public options plus authenticated submission/current-user reads. | Public options only; all report submission/readback paths must preserve reporter privacy, tenant isolation, and bounded ProblemDetails. | R-035 |
+| `ModerationReport` | `docs/API_CONTRACT_INVENTORY.md` rows for queue/detail/triage/assign/decision/execute; `Explore.API/Controllers/ModerationReportController.cs` is authenticated. | Resource-authorized moderation queue/detail/actions, HAL-gated UI actions, no reporter evidence leakage to unauthorized principals. | R-035 |
+| `IncomingWebhooks` | `POST /api/integrations/svix/operational`; `IncomingWebhooksController.RecordSvixOperationalCallback` is an explicit anonymous mutating exception. | `PublicIngestion`, with Svix signature verification as the auth boundary, bounded body size, replay/idempotency posture, and no raw body/signature/error leakage. | R-034 |
+| `Webhooks` | `WebhooksController` has authenticated consumer/endpoint/message/delivery management plus public event-type lookup. | Tenant-scoped management, resource/action authorization, secret non-echo, safe audit DTOs, HAL-gated rotate/test/retry actions. | R-033 |
+| `VisibilityType` | Generated lookup rows in `docs/API_CONTRACT_INVENTORY.md` and `schemas/openapi.json`. | Public lookup with ProblemDetails metadata and lookup cache verification. | Low; no dedicated row yet. |
 
 ## 2026-06-13 Audit Overrides
 
@@ -27,9 +47,9 @@ Required columns:
 
 ## Completion Gate
 
-- [x] Import every operation from the current generated OpenAPI contract.
-- [x] Reconcile with `docs/API_CONTRACT_INVENTORY.md`.
-- [x] Preserve the generated inventory baseline: `270` paths, `399` operations, `0` missing operationIds, `0` missing `x-endpoint-class`, and classification breakdown `Admin=6`, `Authenticated=270`, `Public=123` until regenerated.
+- [ ] Regenerate or re-import the per-operation table from the current `500`-operation schema/runtime inventory.
+- [x] Reconcile `docs/API_CONTRACT_INVENTORY.md` with `schemas/openapi.json` at summary/diff level on 2026-07-03.
+- [x] Mark the old generated inventory baseline (`270` paths, `399` operations, `Admin=6`, `Authenticated=270`, `Public=123`) as historical rather than authoritative.
 - [x] Verify every named endpoint maps to `RouteNames.Xxx` and every `RouteNames` constant resolves to exactly one endpoint through active `RouteNameCoverageTests` coverage.
 - [ ] Record rate-limit and cache policy posture for every endpoint.
 - [ ] Link every high/critical row to `backend-contract-risk-register.md`.
@@ -46,9 +66,9 @@ Required columns:
 - Rate-limit policy constants currently include `Global`, `Authenticated`, `Write`, `SetupSecret`, and `AnalyticsRelay` in `Explore.API/Extensions/RateLimitingExtensions.cs`.
 - Output cache policies currently include `PublicData`, `LookupData`, `ListData`, `DetailData`, `TenantNav`, `PublicExperienceShell`, `SystemConfig`, and `SitemapData` in `Explore.API/Extensions/CachingExtensions.cs`.
 
-## Full Generated Operation Import — Phase 0A Baseline
+## Full Generated Operation Import — Historical Phase 0A Baseline
 
-This table is mechanically expanded from `docs/API_CONTRACT_INVENTORY.md`, generated from `/openapi/event-api.json` on 2026-05-07. It preserves all `399` operations and adds the Phase 0 planning columns required by this workstream. Values marked `verify` are intentionally conservative until Phase 0B source-code guardrails reconcile each row with controller attributes, handler authorization metadata, HAL policies, rate-limit attributes, and output-cache policies.
+This table is mechanically expanded from `docs/API_CONTRACT_INVENTORY.md`, generated from `/openapi/event-api.json` on 2026-05-07. It preserves all `399` operations and adds the Phase 0 planning columns required by this workstream. It is now stale against both `docs/API_CONTRACT_INVENTORY.md` and `schemas/openapi.json`; use the 2026-07-03 snapshot above for current planning until the table is regenerated. Values marked `verify` are intentionally conservative until source-code guardrails reconcile each row with controller attributes, handler authorization metadata, HAL policies, rate-limit attributes, and output-cache policies.
 
 | Endpoint | Method | Route | RouteName | Current Auth | Target Classification | AuthClassification | TenantMode | RateLimitPolicy | CachePolicy | HAL Links | OpenAPI OperationId | Risk | Action |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|

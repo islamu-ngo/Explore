@@ -66,6 +66,17 @@ This artifact defines the target classification model used by `endpoint-inventor
 - Admin/setup/download-sensitive endpoints declare explicit rate-limit policy.
 - Public ingestion endpoints declare abuse controls and a dedicated limiter rather than inheriting generic anonymous read semantics.
 
+## Documented Anonymous Mutating Exceptions
+
+These endpoints intentionally accept unauthenticated POST traffic because another control is the authentication boundary. They remain build-enforced exceptions and must keep narrow payloads, abuse controls, safe response bodies, and explicit tests.
+
+| Endpoint | Reason | Required Control |
+|---|---|---|
+| `InstanceOnboardingController.ValidateSecret` | Bootstrap/setup secret validation before a tenant admin identity exists. | Setup-secret validation path and no secret echo. |
+| `AnalyticsRelayController.Relay` | Anonymous browser analytics relay. | Dedicated analytics relay rate limit and relay payload validation. |
+| `EmailUnsubscribeController.Post` | One-click unsubscribe callback. | Signed/tokenized unsubscribe identity and no privileged mutation surface. |
+| `IncomingWebhooksController.RecordSvixOperationalCallback` | Svix operational callback where Svix-compatible signature headers are the authentication mechanism. | Raw body verification against `svix-id`, `svix-timestamp`, and `svix-signature`; bounded body size; rate limit; optional ledger capture only after verification. |
+
 ## 2026-06-13 Audit Reclassification Queue
 
 These endpoint families are not allowed to remain generic `Public` without DTO splitting or explicit approval. The 2026-06-13 Phase 1P first slice chose the fail-closed option for all three families: protect the identity-bearing read endpoints now, then decide later whether any safe public projection is needed.

@@ -1,15 +1,15 @@
 <!-- ABOUTME: Slice 1 contract decision log for validation boundary and error-shape choices. -->
-<!-- ABOUTME: Captures pending pre-v1 API/BFF/idempotency/rich-text decisions before implementation begins. -->
+<!-- ABOUTME: Captures API/BFF/idempotency/rich-text decisions for the validation hardening workstream. -->
 
 # Full User Input Validation & Sanitization Contract Decisions
 
-Last Updated: 2026-05-28 Europe/Brussels
+Last Updated: 2026-07-03 Europe/Brussels
 
 ## Purpose
 
-This file is the Slice 1 decision log for `full-input-validation-sanitization-plan.md`. Implementation must not begin until every `Pending` or `Needs design` decision below is resolved, assigned, and backed by a test strategy.
+This file is the decision log for `full-input-validation-sanitization-plan.md`. Implementation has already started in several slices, so future work must keep any touched decision accepted, deferred with rationale, or explicitly escalated before editing the matching seam.
 
-Current status: Slice 1 contract lock is complete. All decisions D-001 through D-018 are accepted and ready for implementation/test work.
+Current status: Contract lock is current through the 2026-07-03 rebaseline. All decisions D-001 through D-020 are accepted and ready for implementation/test work.
 
 Decision status values:
 
@@ -40,10 +40,12 @@ Decision status values:
 | D-016 | Rich text default | User-authored rich HTML is disabled by default. `PublicExperienceHomeBlockKind.RichText` is treated as plain-text/configured-content until a sanitizer decision record exists. `EmailMessage.HtmlBody` is system-template-only; interpolated user values must be context-encoded before insertion. Any future user-authored rich HTML requires an approved server-side sanitizer profile, patch policy, and XSS regression tests. | Accepted | Application/UI/Security | Dangerous tags, attributes, protocols, SVG/math, markdown/raw transforms, encoded email interpolation, public-experience rendering as text. |
 | D-017 | Validation telemetry | Validation telemetry may include endpoint/route, field name, validator code/category, length bucket, status, trace/correlation id, and safe tenant/resource ids only after authorization. It must not include raw input, request bodies, search terms, custom-property values, secrets, tokens, setup secrets, provider errors, presigned URLs, or arbitrary high-cardinality labels. | Accepted | API/Application/Observability | Log/metric assertions for raw payload/search/custom property/token/setup secret/provider errors/presigned URLs absent. |
 | D-018 | Blazor UI-local validation scope | Blazor validation is UX and accessibility only. UI-local validators may cover required, max length, simple date ordering, URL/email shape, and client-only form composition. Authorization, tenant scope, uniqueness, capacity, quota, dynamic custom-property rules, module enablement, and persistence checks stay server-only and map back into `EditContext`. `Explore.Blazor.Client` must not reference `Explore.Application` validators directly. | Accepted | Blazor/Application | Server error mapping, no Application validator reference, focus/alert/status behavior, HAL-only action affordance gating. |
+| D-019 | OpenAPI and generated client ownership | When API contracts change, the implementation agent owns OpenAPI/client regeneration using the documented repo commands, reviews generated diffs, and verifies generated clients compile. Required generation must not be delegated to the user as a task. Generated artifacts are never hand-edited. | Accepted | API/Blazor | OpenAPI generation command output, generated client diff review, Blazor client compile/test coverage for touched contract. |
+| D-020 | Raw markup and `MarkupString` seams | `MarkupString` and other raw-rendering seams are allowed only for controlled markup or dynamic content that is proven encoded/sanitized before raw rendering. Prefer component composition and normal Razor encoding. `AiAssistantRail.razor` prompt-reference highlight markup is a high-priority review item and must have malicious-payload component tests before the raw-rendering lane is complete. | Accepted | Blazor/Security | Component tests for script tags, event handlers, dangerous URLs, malformed labels/titles/excerpts, and encoded display behavior. |
 
 ## Release Gate
 
-Before Slice 3 DTO hardening begins:
+Before claiming any remaining slice complete:
 
 - Every decision above must be `Accepted` or `Deferred` with rationale.
 - Every accepted decision must name at least one regression test location.
