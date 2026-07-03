@@ -5,6 +5,8 @@ namespace Explore.Application.DTOs.Webhooks;
 
 public sealed class WebhookEventTypeDto
 {
+    public Guid? Id { get; init; }
+
     public required string Name { get; init; }
 
     public required string GroupName { get; init; }
