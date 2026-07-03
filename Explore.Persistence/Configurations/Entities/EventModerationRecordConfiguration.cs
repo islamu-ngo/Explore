@@ -18,6 +18,9 @@ public class EventModerationRecordConfiguration : IEntityTypeConfiguration<Event
             .HasConversion<int>()
             .IsRequired();
 
+        builder.Property(e => e.ModeratorUserId)
+            .IsRequired(false);
+
         builder.Property(e => e.ReasonCode)
             .HasMaxLength(100)
             .IsRequired();
@@ -44,6 +47,20 @@ public class EventModerationRecordConfiguration : IEntityTypeConfiguration<Event
             .HasForeignKey(e => e.SourceModerationRecordId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(e => e.SourceReport)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.SourceReportId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
+        builder.HasOne(e => e.SourceReportDecision)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.SourceReportId, e.SourceReportDecisionId })
+            .HasPrincipalKey(e => new { e.TenantId, e.ReportId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.CreatedAt })
             .HasDatabaseName("ix_event_moderation_records_tenant_event_created")
             .IsDescending(false, false, true);
@@ -57,6 +74,18 @@ public class EventModerationRecordConfiguration : IEntityTypeConfiguration<Event
             .IsUnique()
             .HasFilter("correlation_id IS NOT NULL");
 
+        builder.HasIndex(e => new { e.TenantId, e.SourceReportId })
+            .HasDatabaseName("ix_event_moderation_records_tenant_source_report")
+            .HasFilter("source_report_id IS NOT NULL");
+
+        builder.HasIndex(e => new { e.TenantId, e.SourceReportDecisionId })
+            .HasDatabaseName("ix_event_moderation_records_tenant_source_report_decision")
+            .HasFilter("source_report_decision_id IS NOT NULL");
+
+        builder.HasIndex(e => new { e.TenantId, e.SourceReportId, e.SourceReportDecisionId })
+            .HasDatabaseName("ix_event_moderation_records_tenant_source_report_decision_exact")
+            .HasFilter("source_report_id IS NOT NULL AND source_report_decision_id IS NOT NULL");
+
         builder.ToTable(t =>
         {
             t.HasCheckConstraint(
@@ -68,6 +97,9 @@ public class EventModerationRecordConfiguration : IEntityTypeConfiguration<Event
             t.HasCheckConstraint(
                 "ck_event_moderation_records_correlation_not_blank",
                 "correlation_id IS NULL OR length(btrim(correlation_id)) > 0");
+            t.HasCheckConstraint(
+                "ck_event_moderation_records_source_decision_requires_report",
+                "source_report_decision_id IS NULL OR source_report_id IS NOT NULL");
         });
     }
 }

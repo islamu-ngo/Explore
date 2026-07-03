@@ -124,6 +124,111 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
     }
 
+    [Test]
+    public async Task SaveChanges_WhenLinkedToReportDecision_PersistsTraceabilityNavigation()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var (tenant, @event, user) = await SetupEventAsync(context);
+        var (_, decision) = await CreateReportDecisionAsync(context, tenant.Id, @event.Id, user.Id);
+        var moderationRecord = EventModerationRecord.CreateLightModeration(
+            tenant.Id,
+            @event.Id,
+            user.Id,
+            "policy_review",
+            (int)EventStatusEnum.Published,
+            null,
+            DateTimeOffset.UtcNow);
+        moderationRecord.LinkSourceReportDecision(decision.ReportId, decision.Id);
+        context.EventModerationRecords.Add(moderationRecord);
+        await context.SaveChangesAsync();
+
+        await using var verifyContext = fixture.CreateTenantFilteredDbContext(new StaticTenantContext(tenant.Id));
+        var persisted = await verifyContext.EventModerationRecords
+            .Include(e => e.SourceReport)
+            .Include(e => e.SourceReportDecision)
+            .SingleAsync(e => e.Id == moderationRecord.Id);
+
+        await Assert.That(persisted.SourceReportId).IsEqualTo(decision.ReportId);
+        await Assert.That(persisted.SourceReportDecisionId).IsEqualTo(decision.Id);
+        await Assert.That(persisted.SourceReport).IsNotNull();
+        await Assert.That(persisted.SourceReport!.Id).IsEqualTo(decision.ReportId);
+        await Assert.That(persisted.SourceReportDecision).IsNotNull();
+        await Assert.That(persisted.SourceReportDecision!.Id).IsEqualTo(decision.Id);
+    }
+
+    [Test]
+    public async Task SaveChanges_ShouldRejectSourceReportDecisionFromAnotherTenant()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var (tenantA, eventA, userA) = await SetupEventAsync(context);
+        var (tenantB, eventB, userB) = await SetupEventAsync(context);
+        var (_, decisionA) = await CreateReportDecisionAsync(context, tenantA.Id, eventA.Id, userA.Id);
+        var moderationRecord = EventModerationRecord.CreateLightModeration(
+            tenantB.Id,
+            eventB.Id,
+            userB.Id,
+            "policy_review",
+            (int)EventStatusEnum.Published,
+            null,
+            DateTimeOffset.UtcNow);
+        moderationRecord.LinkSourceReportDecision(decisionA.ReportId, decisionA.Id);
+        context.EventModerationRecords.Add(moderationRecord);
+
+        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+    }
+
+    private static async Task<(EventReport Report, EventReportDecision Decision)> CreateReportDecisionAsync(
+        ExploreDbContext context,
+        Guid tenantId,
+        Guid eventId,
+        Guid userId)
+    {
+        var actorId = await context.Actors
+            .Where(a => a.TenantId == tenantId && a.UserId == userId)
+            .Select(a => a.Id)
+            .SingleAsync();
+        var report = EventReport.Create(
+            tenantId,
+            eventId,
+            userId,
+            actorId,
+            EventReporterKind.AuthenticatedUser,
+            EventReportSourceKind.UserReport,
+            "spam",
+            "misleading",
+            EventReportPriority.Normal,
+            EventReportSeverityHint.Medium,
+            reporterContactConsent: true,
+            "en",
+            "iphash-" + Guid.NewGuid().ToString("N")[..16],
+            "uahash-" + Guid.NewGuid().ToString("N")[..16]);
+        var reportCase = EventReportCase.Create(
+            tenantId,
+            report.Id,
+            "default",
+            EventReportPriority.Normal,
+            DateTime.UtcNow.AddHours(24));
+        var decision = EventReportDecision.Create(
+            tenantId,
+            reportCase.Id,
+            report.Id,
+            EventReportDecisionSource.LocalModerator,
+            EventReportDecisionKind.LightModerate,
+            "policy_review",
+            "Moderation action approved.",
+            userId,
+            externalDecisionId: null);
+
+        context.EventReports.Add(report);
+        context.EventReportCases.Add(reportCase);
+        context.EventReportDecisions.Add(decision);
+        await context.SaveChangesAsync();
+
+        return (report, decision);
+    }
+
     private static async Task<(Tenant tenant, Explore.Domain.Event @event, User user)> SetupEventAsync(ExploreDbContext context)
     {
         var tenant = new Tenant
