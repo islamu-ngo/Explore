@@ -8,9 +8,9 @@ Last Updated: 2026-07-03 Europe/Brussels
 ## Status Summary
 
 - **Overall status:** Implementation in progress.
-- **Completed in this implementation slice:** Plan/context/tasks rewritten; user implementation approval recorded; current worktree inspected; first source slice selected; health response redaction implemented; health path product-doc drift corrected.
-- **Current priority:** Finish Phase 0.3 endpoint inventory/risk-register reconciliation and Phase 0.4 full blocker recheck.
-- **Next recommended slice:** Phase 0.3 and 0.4 before Phase 1 security/HAL work.
+- **Completed in this implementation slice:** Plan/context/tasks rewritten; user implementation approval recorded; current worktree inspected; first source slice selected; health response redaction implemented; health path product-doc drift corrected; Phase 0.3 summary reconciliation recorded for the current schema/inventory mismatch.
+- **Current priority:** Finish Phase 0.3 row-level endpoint inventory regeneration/re-import and Phase 0.4 full blocker recheck.
+- **Next recommended slice:** Phase 0.4 blocker recheck, then either regenerate/re-import the 500-operation inventory table or fix the `/admin/migrate` inventory-source mismatch before Phase 1 security/HAL work.
 
 ## Implementation Maintenance Rules
 
@@ -42,7 +42,8 @@ Last Updated: 2026-07-03 Europe/Brussels
 - [ ] **0.3 Reconcile endpoint inventory and risk register with current source/OpenAPI.**
   - **Files:** `endpoint-inventory.md`, `backend-contract-risk-register.md`, generated OpenAPI/inventory artifacts only through documented generation commands if source contract changed.
   - **Acceptance:** Inventory rows are marked current or stale; high/critical rows link to risk IDs; no manual edits to generated `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, or `EventApiClient.g.cs`.
-  - **Validation:** Contract-generation workflow when needed; otherwise source/readback evidence.
+  - **Partial evidence 2026-07-03:** `endpoint-inventory.md` now records the current summary diff: `schemas/openapi.json` has `359` paths/`500` operations/`0` missing endpoint classes, while `docs/API_CONTRACT_INVENTORY.md` has `355` paths/`496` operations/`1` missing endpoint class. The only doc-only row is `POST /admin/migrate`; the five schema-only rows are webhook message/delivery-attempt operations. R-032 through R-035 now track contract drift, webhook management/audit, incoming webhook ingestion, and event-report/moderation privacy. The row-level table remains historical and still needs regeneration/re-import before Phase 1 uses it as authoritative.
+  - **Validation:** Contract-generation workflow when needed; otherwise source/readback evidence. Current snapshot was validated with `jq` over `schemas/openapi.json`, `awk` over `docs/API_CONTRACT_INVENTORY.md`, source reads of `Program.cs`/`WebhooksController.cs`, and CodeGraph exploration of webhook query handlers.
   - **Effort:** M.
   - **Dependencies:** 0.2.
 

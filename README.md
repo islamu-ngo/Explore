@@ -136,7 +136,28 @@ There are many ways you can contribute to ISLAMU Event:
 - 📊 Improve performance
 - 🎨 Enhance UI/UX
 
-Start with [Contributing](docs/CONTRIBUTING.md). Code contributors should also read [Governance](docs/GOVERNANCE.md), [Quick Reference](docs/QUICK_REFERENCE.md), and [Architecture](docs/ARCHITECTURE.md).
+## Quick Start
+
+For local contribution, use the full-local Aspire loop:
+
+```bash
+git clone https://github.com/islamu-ngo/Event.git
+cd Event
+cp .env.example .env
+aspire run
+```
+
+This starts local infrastructure, migrations, API, Blazor, and the Aspire dashboard. For Docker-only development:
+
+```bash
+cp .env.example .env
+docker compose config
+docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
+```
+
+Start with [Contributing](docs/CONTRIBUTING.md). Code contributors should also read
+[Getting Started](docs/GETTING_STARTED.md) for profile modes, optional Compose profiles, validation commands, and troubleshooting links,
+[Governance](docs/GOVERNANCE.md), [Quick Reference](docs/QUICK_REFERENCE.md), and [Architecture](docs/ARCHITECTURE.md).
 
 AI-assisted contributors should follow [`AGENTS.md`](AGENTS.md).
 
