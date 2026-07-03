@@ -16,7 +16,7 @@ public static class EventHeavyRedactionApplicator
 
     public static EventHeavyRedactionSummary Apply(
         EventHeavyRedactionGraph graph,
-        Guid moderatorUserId,
+        Guid? moderatorUserId,
         DateTimeOffset redactedAt)
     {
         ArgumentNullException.ThrowIfNull(graph);
@@ -103,7 +103,7 @@ public static class EventHeavyRedactionApplicator
         return new EventHeavyRedactionSummary(redactedImageObjectIds.Length);
     }
 
-    private static void RedactRootEvent(Event @event, Guid moderatorUserId, DateTime utcNow)
+    private static void RedactRootEvent(Event @event, Guid? moderatorUserId, DateTime utcNow)
     {
         @event.Title = EventRedactionSentinelPolicy.DisplayText;
         @event.Subtitle = EventRedactionSentinelPolicy.DisplayText;
@@ -133,7 +133,7 @@ public static class EventHeavyRedactionApplicator
     private static void RedactEventCustomProperties(
         IReadOnlyList<EventCustomPropertyDefinition> definitions,
         IReadOnlyList<EventCustomPropertyProjection> projections,
-        Guid moderatorUserId,
+        Guid? moderatorUserId,
         DateTime utcNow)
     {
         var definitionsById = definitions.ToDictionary(definition => definition.Id);
@@ -205,7 +205,7 @@ public static class EventHeavyRedactionApplicator
     private static void RedactSessionCustomProperties(
         IReadOnlyList<EventSessionCustomPropertyDefinition> definitions,
         IReadOnlyList<EventSessionCustomPropertyProjection> projections,
-        Guid moderatorUserId,
+        Guid? moderatorUserId,
         DateTime utcNow)
     {
         var definitionsById = definitions.ToDictionary(definition => definition.Id);
@@ -274,7 +274,7 @@ public static class EventHeavyRedactionApplicator
         }
     }
 
-    private static void Touch(IAuditableEntity entity, Guid moderatorUserId, DateTime utcNow)
+    private static void Touch(IAuditableEntity entity, Guid? moderatorUserId, DateTime utcNow)
     {
         entity.UpdatedAt = utcNow;
         entity.UpdatedBy = moderatorUserId;

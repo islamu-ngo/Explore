@@ -65,6 +65,8 @@ public sealed class ModerateEventCommandHandlerTests
     {
         var moderatorUserId = Guid.NewGuid();
         var @event = CreateEvent(EventStatusEnum.Published);
+        var sourceReportId = Guid.NewGuid();
+        var sourceReportDecisionId = Guid.NewGuid();
         const string reasonCode = "community_safety_review";
         const string correlationId = "case-123";
         var createdRecords = new List<EventModerationRecord>();
@@ -84,7 +86,9 @@ public sealed class ModerateEventCommandHandlerTests
         {
             Id = @event.Id,
             ReasonCode = reasonCode,
-            CorrelationId = correlationId
+            CorrelationId = correlationId,
+            SourceReportId = sourceReportId,
+            SourceReportDecisionId = sourceReportDecisionId
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
@@ -101,6 +105,8 @@ public sealed class ModerateEventCommandHandlerTests
         await Assert.That(record.ActionKind).IsEqualTo(EventModerationActionKind.LightModerated);
         await Assert.That(record.ReasonCode).IsEqualTo(reasonCode);
         await Assert.That(record.CorrelationId).IsEqualTo(correlationId);
+        await Assert.That(record.SourceReportId).IsEqualTo(sourceReportId);
+        await Assert.That(record.SourceReportDecisionId).IsEqualTo(sourceReportDecisionId);
         await Assert.That(record.PreviousStatusId).IsEqualTo((int)EventStatusEnum.Published);
         await Assert.That(record.ResultingStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
         await Assert.That(record.IsIrreversible).IsFalse();
@@ -136,6 +142,37 @@ public sealed class ModerateEventCommandHandlerTests
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+    }
+
+    [Test]
+    public async Task Handle_WithSourceReportDecisionAndNoCurrentUser_WritesProviderAuditRecord()
+    {
+        var @event = CreateEvent(EventStatusEnum.Published);
+        var sourceReportId = Guid.NewGuid();
+        var sourceReportDecisionId = Guid.NewGuid();
+        var createdRecords = new List<EventModerationRecord>();
+
+        _currentUserService.UserId.Returns((Guid?)null);
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _moderationRecordRepository.Create(Arg.Do<EventModerationRecord>(record => createdRecords.Add(record)))
+            .Returns(call => call.Arg<EventModerationRecord>());
+
+        var result = await _handler.Handle(new ModerateEventCommand
+        {
+            Id = @event.Id,
+            ReasonCode = "coop_decision",
+            CorrelationId = "coop-correlation",
+            SourceReportId = sourceReportId,
+            SourceReportDecisionId = sourceReportDecisionId
+        }, CancellationToken.None);
+
+        var record = createdRecords.Single();
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(record.ModeratorUserId).IsNull();
+        await Assert.That(record.SourceReportId).IsEqualTo(sourceReportId);
+        await Assert.That(record.SourceReportDecisionId).IsEqualTo(sourceReportDecisionId);
+        await Assert.That(record.ActionKind).IsEqualTo(EventModerationActionKind.LightModerated);
+        await _eventRepository.Received(1).Update(@event);
     }
 
     [Test]

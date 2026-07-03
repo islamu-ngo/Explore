@@ -17,6 +17,8 @@ public sealed class HeavyRedactEventCommand : IRequest<BaseCommandResponse<Guid>
     public Guid Id { get; set; }
     public string ReasonCode { get; set; } = DefaultReasonCode;
     public string? CorrelationId { get; set; }
+    public Guid? SourceReportId { get; set; }
+    public Guid? SourceReportDecisionId { get; set; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

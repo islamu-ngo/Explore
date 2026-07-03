@@ -35,7 +35,8 @@ public sealed class HeavyRedactEventCommandHandler(
 
     public async Task<BaseCommandResponse<Guid>> Handle(HeavyRedactEventCommand request, CancellationToken cancellationToken)
     {
-        if (currentUserService.UserId is not { } moderatorUserId)
+        var moderatorUserId = currentUserService.UserId;
+        if (moderatorUserId is null && !HasSourceReportDecision(request))
         {
             metrics.RecordEventModerationAction(null, ActionKind, "failed", "user_unresolved", irreversible: true);
             logger.LogWarning(
@@ -94,6 +95,15 @@ public sealed class HeavyRedactEventCommandHandler(
                 @event.EventStatusId,
                 request.CorrelationId,
                 redactedAt);
+
+            if (!TryLinkSourceReportDecision(moderationRecord, request.SourceReportId, request.SourceReportDecisionId, out var sourceLinkError))
+            {
+                return Failure(
+                    @event.Id,
+                    "Source report decision link is invalid.",
+                    [sourceLinkError],
+                    "event_heavy_redaction_source_report_decision_invalid");
+            }
 
             EventHeavyRedactionApplicator.Apply(graph, moderatorUserId, redactedAt);
 
@@ -181,4 +191,34 @@ public sealed class HeavyRedactEventCommandHandler(
             FailureCode = failureCode
         };
 
+    private static bool TryLinkSourceReportDecision(
+        EventModerationRecord moderationRecord,
+        Guid? sourceReportId,
+        Guid? sourceReportDecisionId,
+        out string error)
+    {
+        error = string.Empty;
+        if (sourceReportId is null && sourceReportDecisionId is null)
+        {
+            return true;
+        }
+
+        if (sourceReportId is not { } reportId || sourceReportDecisionId is not { } decisionId)
+        {
+            error = "SourceReportId and SourceReportDecisionId must be provided together.";
+            return false;
+        }
+
+        if (reportId == Guid.Empty || decisionId == Guid.Empty)
+        {
+            error = "Source report and decision ids cannot be empty.";
+            return false;
+        }
+
+        moderationRecord.LinkSourceReportDecision(reportId, decisionId);
+        return true;
+    }
+
+    private static bool HasSourceReportDecision(HeavyRedactEventCommand request) =>
+        request.SourceReportId.HasValue && request.SourceReportDecisionId.HasValue;
 }

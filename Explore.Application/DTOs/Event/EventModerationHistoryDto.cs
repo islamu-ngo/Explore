@@ -7,7 +7,7 @@ public sealed class EventModerationHistoryDto
 {
     public Guid Id { get; init; }
     public Guid EventId { get; init; }
-    public Guid ModeratorUserId { get; init; }
+    public Guid? ModeratorUserId { get; init; }
     public int ActionKindId { get; init; }
     public required string ActionKindName { get; init; }
     public required string ReasonCode { get; init; }

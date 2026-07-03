@@ -1,0 +1,28 @@
+// ABOUTME: Central machine-readable failure codes for event-report Application responses.
+// ABOUTME: Lets API ProblemDetails mapping stay stable without duplicating string literals.
+
+namespace Explore.Application.Features.EventReporting;
+
+public static class EventReportFailureCodes
+{
+    public const string ValidationFailed = "event_report_validation_failed";
+    public const string UserUnresolved = "event_report_user_unresolved";
+    public const string ReporterActorUnresolved = "event_report_actor_unresolved";
+    public const string TenantUnresolved = "event_report_tenant_unresolved";
+    public const string EventNotFound = "event_report_event_not_found";
+    public const string EventInvalidStatus = "event_report_event_invalid_status";
+    public const string Duplicate = "event_report_duplicate";
+    public const string ReportNotFound = "event_report_not_found";
+    public const string CaseNotFound = "event_report_case_not_found";
+    public const string EventMismatch = "event_report_event_mismatch";
+    public const string CaseConcurrencyConflict = "event_report_case_concurrency_conflict";
+    public const string CaseInvalidStatus = "event_report_case_invalid_status";
+    public const string ReportInvalidStatus = "event_report_invalid_status";
+    public const string ModeratorUnavailable = "event_report_moderator_unavailable";
+    public const string AssigneeUnavailable = "event_report_assignee_unavailable";
+    public const string AssignmentMismatch = "event_report_assignment_mismatch";
+    public const string DuplicateGroupRequired = "event_report_duplicate_group_required";
+    public const string DecisionNotFound = "event_report_decision_not_found";
+    public const string DecisionInvalid = "event_report_decision_invalid";
+    public const string DecisionExecutionFailed = "event_report_decision_execution_failed";
+}

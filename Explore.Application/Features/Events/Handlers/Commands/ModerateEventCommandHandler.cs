@@ -33,7 +33,8 @@ public sealed class ModerateEventCommandHandler(
 
     public async Task<BaseCommandResponse<Guid>> Handle(ModerateEventCommand request, CancellationToken cancellationToken)
     {
-        if (currentUserService.UserId is not { } moderatorUserId)
+        var moderatorUserId = currentUserService.UserId;
+        if (moderatorUserId is null && !HasSourceReportDecision(request))
         {
             metrics.RecordEventModerationAction(null, ActionKind, "failed", "user_unresolved", irreversible: false);
             logger.LogWarning(
@@ -104,6 +105,15 @@ public sealed class ModerateEventCommandHandler(
                 request.CorrelationId,
                 moderatedAt);
 
+            if (!TryLinkSourceReportDecision(moderationRecord, request.SourceReportId, request.SourceReportDecisionId, out var sourceLinkError))
+            {
+                return Failure(
+                    @event.Id,
+                    "Source report decision link is invalid.",
+                    [sourceLinkError],
+                    "event_light_moderation_source_report_decision_invalid");
+            }
+
             @event.EventStatusId = (int)EventStatusEnum.Moderated;
             @event.UpdatedAt = moderatedAt.UtcDateTime;
 
@@ -165,4 +175,35 @@ public sealed class ModerateEventCommandHandler(
             Errors = errors.ToList(),
             FailureCode = failureCode
         };
+
+    private static bool TryLinkSourceReportDecision(
+        EventModerationRecord moderationRecord,
+        Guid? sourceReportId,
+        Guid? sourceReportDecisionId,
+        out string error)
+    {
+        error = string.Empty;
+        if (sourceReportId is null && sourceReportDecisionId is null)
+        {
+            return true;
+        }
+
+        if (sourceReportId is not { } reportId || sourceReportDecisionId is not { } decisionId)
+        {
+            error = "SourceReportId and SourceReportDecisionId must be provided together.";
+            return false;
+        }
+
+        if (reportId == Guid.Empty || decisionId == Guid.Empty)
+        {
+            error = "Source report and decision ids cannot be empty.";
+            return false;
+        }
+
+        moderationRecord.LinkSourceReportDecision(reportId, decisionId);
+        return true;
+    }
+
+    private static bool HasSourceReportDecision(ModerateEventCommand request) =>
+        request.SourceReportId.HasValue && request.SourceReportDecisionId.HasValue;
 }

@@ -78,6 +78,8 @@ public sealed class HeavyRedactEventCommandHandlerTests
         var moderatorUserId = Guid.NewGuid();
         var image = CreateStorageObject();
         var @event = CreateEvent(EventStatusEnum.Published, image.Id);
+        var sourceReportId = Guid.NewGuid();
+        var sourceReportDecisionId = Guid.NewGuid();
         const string reasonCode = "illegal_image";
         const string correlationId = "case-heavy-123";
         var graph = new EventHeavyRedactionGraph(
@@ -109,7 +111,9 @@ public sealed class HeavyRedactEventCommandHandlerTests
         {
             Id = @event.Id,
             ReasonCode = reasonCode,
-            CorrelationId = correlationId
+            CorrelationId = correlationId,
+            SourceReportId = sourceReportId,
+            SourceReportDecisionId = sourceReportDecisionId
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
@@ -129,6 +133,8 @@ public sealed class HeavyRedactEventCommandHandlerTests
         await Assert.That(record.ModeratorUserId).IsEqualTo(moderatorUserId);
         await Assert.That(record.ReasonCode).IsEqualTo(reasonCode);
         await Assert.That(record.CorrelationId).IsEqualTo(correlationId);
+        await Assert.That(record.SourceReportId).IsEqualTo(sourceReportId);
+        await Assert.That(record.SourceReportDecisionId).IsEqualTo(sourceReportDecisionId);
 
         await Assert.That(createdMessages).Count().IsEqualTo(1);
         var message = createdMessages.Single();
@@ -193,6 +199,49 @@ public sealed class HeavyRedactEventCommandHandlerTests
             100,
             Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WithSourceReportDecisionAndNoCurrentUser_WritesProviderAuditRecord()
+    {
+        var image = CreateStorageObject();
+        var @event = CreateEvent(EventStatusEnum.Published, image.Id);
+        var sourceReportId = Guid.NewGuid();
+        var sourceReportDecisionId = Guid.NewGuid();
+        var graph = new EventHeavyRedactionGraph(@event, [], [], [], [], [], [], [], [], [], [image]);
+        var createdRecords = new List<EventModerationRecord>();
+
+        _currentUserService.UserId.Returns((Guid?)null);
+        _redactionRepository.GetForUpdateAsync(@event.Id, Arg.Any<CancellationToken>())
+            .Returns(graph);
+        _moderationRecordRepository.GetLatestByEventAsync(@event.TenantId, @event.Id, Arg.Any<CancellationToken>())
+            .Returns((EventModerationRecord?)null);
+        _moderationRecordRepository.Create(Arg.Do<EventModerationRecord>(record => createdRecords.Add(record)))
+            .Returns(call => call.Arg<EventModerationRecord>());
+
+        var result = await _handler.Handle(new HeavyRedactEventCommand
+        {
+            Id = @event.Id,
+            ReasonCode = "coop_decision",
+            CorrelationId = "coop-correlation",
+            SourceReportId = sourceReportId,
+            SourceReportDecisionId = sourceReportDecisionId
+        }, CancellationToken.None);
+
+        var record = createdRecords.Single();
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(record.ModeratorUserId).IsNull();
+        await Assert.That(record.SourceReportId).IsEqualTo(sourceReportId);
+        await Assert.That(record.SourceReportDecisionId).IsEqualTo(sourceReportDecisionId);
+        await Assert.That(record.ActionKind).IsEqualTo(EventModerationActionKind.HeavyRedacted);
+        await Assert.That(image.LifecycleState).IsEqualTo(StorageObjectLifecycleStates.DeleteRequested);
+        await _storageObjectDeletionService.Received(1).DeleteRequestedForResourceAsync(
+            @event.TenantId,
+            ResourceKinds.Event,
+            @event.Id,
+            null,
+            100,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
