@@ -358,6 +358,44 @@ public class IdempotencyMiddlewareTests(RealRuntimeApiFixture fixture)
         await Assert.That(nextCallCount).IsEqualTo(2);
     }
 
+    [Test]
+    public async Task Middleware_ForSvixAppPortalAccess_DoesNotPersistOrReplayShortLivedToken()
+    {
+        var repository = new InMemoryIdempotencyRepository();
+        var nextCallCount = 0;
+
+        var first = await InvokeMiddlewareAsync(
+            repository,
+            "{}",
+            async context =>
+            {
+                nextCallCount++;
+                context.Response.StatusCode = StatusCodes.Status200OK;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync("""{"url":"https://svix.example/first"}""");
+            },
+            path: "/api/webhooks/svix/app-portal");
+
+        var second = await InvokeMiddlewareAsync(
+            repository,
+            "{}",
+            async context =>
+            {
+                nextCallCount++;
+                context.Response.StatusCode = StatusCodes.Status200OK;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync("""{"url":"https://svix.example/second"}""");
+            },
+            path: "/api/webhooks/svix/app-portal");
+
+        await Assert.That(first.StatusCode).IsEqualTo(StatusCodes.Status200OK);
+        await Assert.That(second.StatusCode).IsEqualTo(StatusCodes.Status200OK);
+        await Assert.That(second.Body).IsEqualTo("""{"url":"https://svix.example/second"}""");
+        await Assert.That(second.Headers.ContainsKey("X-Idempotency-Replay")).IsFalse();
+        await Assert.That(repository.Records).IsEmpty();
+        await Assert.That(nextCallCount).IsEqualTo(2);
+    }
+
     private static async Task<MiddlewareResult> InvokeMiddlewareAsync(
         IIdempotencyRepository repository,
         string body,

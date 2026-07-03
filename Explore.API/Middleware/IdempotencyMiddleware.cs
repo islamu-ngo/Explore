@@ -58,7 +58,8 @@ public sealed class IdempotencyMiddleware
         // AI message sends persist run-level idempotency inside the Application handler.
         // Let that domain-specific record own replay/conflict semantics instead of
         // caching the HTTP response with a different request fingerprint.
-        if (IsApplicationManagedAiMessageSend(context.Request))
+        if (IsApplicationManagedAiMessageSend(context.Request)
+            || IsShortLivedWebhookPortalAccess(context.Request))
         {
             await _next(context);
             return;
@@ -217,6 +218,12 @@ public sealed class IdempotencyMiddleware
         return HttpMethods.IsPost(request.Method)
             && request.Path.StartsWithSegments("/api/ai/assistant/conversations", StringComparison.OrdinalIgnoreCase)
             && request.Path.Value?.EndsWith("/messages", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static bool IsShortLivedWebhookPortalAccess(HttpRequest request)
+    {
+        return HttpMethods.IsPost(request.Method)
+            && request.Path.Equals("/api/webhooks/svix/app-portal", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task WriteKeyReuseConflictAsync(HttpContext context)
