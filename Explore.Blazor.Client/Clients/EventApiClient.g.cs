@@ -89375,6 +89375,9 @@ namespace Explore.Blazor.Client.Clients
     public partial class WebhookEventTypeDto
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; } = default!;

@@ -85642,6 +85642,13 @@
         ],
         "type": "object",
         "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "name": {
             "type": "string"
           },
