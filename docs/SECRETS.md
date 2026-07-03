@@ -42,11 +42,11 @@ When `Provider = None`, secrets come exclusively from environment variables and 
 
 For local development, the projects share a unified .NET User Secrets ID defined in the `.csproj` files: `event-shared-secrets`.
 
-To enable local secret resolution, contributors must create or edit the shared `secrets.json` file:
+Maintainers using Infisical-backed Aspire profiles must create or edit the shared `secrets.json` file:
 - **Linux/macOS:** `/home/{user}/.microsoft/usersecrets/event-shared-secrets/secrets.json`
 - **Windows:** `%APPDATA%\Microsoft\UserSecrets\event-shared-secrets\secrets.json`
 
-Add the bootstrap credentials for your local developer environment inside this file:
+Add the bootstrap credentials for your maintainer developer environment inside this file:
 ```json
 {
   "Infisical:Url": "https://example.com",
@@ -58,10 +58,24 @@ Add the bootstrap credentials for your local developer environment inside this f
 ```
 
 > [!IMPORTANT]
-> The .NET Aspire AppHost (`Explore.AppHost`) does **not** launch or orchestrate PostgreSQL, Keycloak, or Cerbos container resources.
-> Developers must supply connection details and credentials for these dependencies.
-> - If **Infisical** is configured using the shared `secrets.json` file above, they will be loaded automatically at startup.
-> - If Infisical is not used (which is optional), you must configure them manually via environment variables (e.g., `POSTGRESQL_HOST`, `POSTGRESQL_PORT`, `POSTGRESQL_USERNAME`, `POSTGRESQL_PASSWORD`, Keycloak/Cerbos settings, etc.) in your local shell environment before running the AppHost.
+> The contributor default Aspire profile is `local-full`. It starts local infrastructure and sets `SecretProvider:Provider=None` for child projects, so contributors should not need Infisical credentials.
+> Maintainer profiles intentionally differ:
+> - `local-core` starts local PostgreSQL/Redis but loads auth, policy, storage, webhook, and provider settings from Infisical/config.
+> - `local-lite` starts only API and Blazor, with all infrastructure loaded from Infisical/config.
+> If Infisical is not used in a maintainer profile, supply equivalent settings through environment variables or appsettings before running the AppHost.
+
+### Docker Compose Environment Files
+
+The repository root `.env.example` mirrors the supported Infisical folder layout and documents which service consumes each key. Copy it to `.env` for local Compose runs; `.env` is intentionally ignored by git.
+
+Docker Compose uses `.env` for interpolation before starting containers. The Compose file then passes explicit `environment:` entries into each service. Do not rely on a broad `env_file: .env` import because it would place unrelated secrets into containers that do not need them.
+
+There are two Infisical paths through the application:
+
+- `SecretProvider:Provider=Infisical` controls the `ISecretResolver` provider used by settings/secret-binding resolution.
+- Non-empty bare `Infisical:*` bootstrap values enable the startup compatibility loaders that fetch Infisical paths directly into `IConfiguration`.
+
+For full local runs, keep `SECRET_PROVIDER=None` and leave `INFISICAL_*` blank so local `POSTGRESQL_*`, Keycloak, Cerbos, and storage values remain authoritative. If `INFISICAL_*` is populated, the PostgreSQL bootstrap loader can read `/postgresql` before local environment variables by design.
 
 ### SecretRefresh Section
 
@@ -103,7 +117,7 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 |---|---|
 | `/keycloak/REALM_NAME` | `Keycloak:RealmName` |
 | `/keycloak/KEYCLOAK_BLAZOR_CLIENT_SECRET` | Blazor BFF `Keycloak:ClientSecret` and Compose `keycloak-init` client-secret sync input |
-| `/keycloak/KEYCLOAK_API_CLIENT_SECRET` | Optional Compose `keycloak-init` sync input for the API resource-server client |
+| `/keycloak/KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future Compose `keycloak-init` sync input for deployments that intentionally make the API resource-server client confidential; not needed by the current bearer-only API audience client |
 | root or AI path + `AI_TOOL_PROPOSALS_ENABLED` | `AiProvider:ToolProposalsEnabled` |
 | `/postgresql/POSTGRESQL_HOST` | PostgreSQL bootstrap host |
 | `/postgresql/POSTGRESQL_PORT` | PostgreSQL bootstrap port |

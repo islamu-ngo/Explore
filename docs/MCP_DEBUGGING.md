@@ -45,7 +45,7 @@ Runtime governance checks:
 - Invalid, revoked, or missing API keys can still reach anonymous-safe discovery only, but they remain rate-limited by remote IP. Repeated bad-key smoke attempts should produce `429`/`Retry-After` without echoing the credential.
 - Instance admins configure `mcp.enabled`, `mcp.enable_legacy_sse`, `governance.lock_tenant_mcp`, and `governance.lock_tenant_mcp_legacy_sse` from instance administration. Tenant admins see MCP overrides only when the corresponding lock is open.
 - Endpoint path and stateless mode are never runtime settings. Legacy SSE remains unavailable even when both startup and runtime legacy-SSE values are true.
-- `/health/ready` exposes only bounded MCP booleans such as `startupEnabled`, `runtimeEnabled`, `legacySseRuntimeRequested`, and `legacySseRuntimeEnabled`; it must not include tenant IDs, endpoint URLs, keys, prompts, or raw protocol bodies.
+- `/health` exposes only bounded MCP booleans such as `startupEnabled`, `runtimeEnabled`, `legacySseRuntimeRequested`, and `legacySseRuntimeEnabled`; it must not include tenant IDs, endpoint URLs, keys, prompts, or raw protocol bodies.
 
 Before diagnosing missing tools, rebuild and restart both the API and the MCP client:
 
@@ -67,7 +67,7 @@ Set breakpoints in:
 Before exposing MCP outside local development:
 
 1. Serve `/mcp` only through the same production TLS boundary as the API. Do not document or support `curl -k` as a production workaround; fix certificate trust instead.
-2. Confirm `/health/ready` reports the bounded `mcp-adapter` posture and does not include endpoint URLs, API keys, tenant IDs, prompts, payloads, model IDs, or raw exceptions.
+2. Confirm `/health` reports the bounded `mcp-adapter` posture and does not include endpoint URLs, API keys, tenant IDs, prompts, payloads, model IDs, or raw exceptions.
 3. Confirm rate limiting is enabled in the target environment. Valid API keys must partition by key ID; no-key, blank-key, invalid-key, revoked-key, or inactive-key traffic must stay in the anonymous/IP partition.
 4. Confirm tenant binding matches the API edge. A tenant-bound key with a conflicting trusted tenant hint must fail closed rather than falling back to another tenant.
 5. Generate a disposable scoped API key with the minimum required scopes for the smoke scenario. Use `mcp:read` plus event read-equivalent scope for protected reads, and add `mcp:propose` only when proposal smoke is needed.

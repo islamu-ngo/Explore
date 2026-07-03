@@ -6,8 +6,8 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-06-25
-> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
+> **Last Verified:** 2026-07-02
+> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
 
@@ -72,6 +72,7 @@ Commonly consumed sections in code:
 - `IdempotencyCleanup:*` (expired write-retry replay-cache cleanup)
 - `AiRetentionCleanup:*` (scheduled tenant-scoped AI conversation retention cleanup)
 - `AiProvider:*` (AI provider readiness/egress validation foundation)
+- `Reporting:*` (local event-report submission limits, evidence retention, and provider runtime mode)
 - `Mcp:*` (optional Model Context Protocol adapter posture)
 - `Persistence:*` (database runtime options)
 
@@ -129,6 +130,75 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 | `AiProvider:RetentionDays` | `30` | Retention seed; enforcement is separate from provider health. |
 | `AiProvider:DailyMessageLimit` | `50` | Abuse/cost-control seed; enforcement is separate from provider health. |
 
+### Reporting Static Configuration
+
+`Reporting:*` controls local event-report intake and the moderation-provider runtime mode introduced by the event-reporting bounded context. Submission remains local-first: it creates the canonical report, event target, encrypted reporter-text evidence, local case, and provider-sync outbox intent before any external integration can run.
+
+Provider runtime keys are infrastructure-only switches. They control `RuntimeModerationProviderResolver` and do not disable local report submission:
+
+| Key | Default | Description |
+|---|---:|---|
+| `Reporting:Enabled` | `true` | Enables provider synchronization contracts. `false` returns provider-disabled results for external sync/evaluation paths while local intake and queue management remain available. |
+| `Reporting:Mode` | `LocalOnly` | Active provider mode. Supported values: `Disabled`, `LocalOnly`, `Osprey`, `Coop`, and `Composite`. `LocalOnly` performs no network calls. |
+| `Reporting:SyncReports` | `true` | Allows report-sync contract execution when provider mode is not disabled. Set `false` to keep outbox dispatch from attempting provider sync work. |
+| `Reporting:EvaluateSignals` | `false` | Enables safety-signal evaluation only for `Osprey` or `Composite` modes. When enabled with a configured Osprey endpoint, the runtime resolver calls the Osprey signal adapter after local report sync. |
+| `Reporting:MirrorReviewQueue` | `false` | Enables external review-case mirroring only for `Coop` or `Composite` modes. When enabled with a configured Coop endpoint, the runtime resolver mirrors local report cases after local report sync. |
+| `Reporting:ExecuteDecisions` | `true` | Allows provider decision execution to delegate to the local decision executor. Set `false` to fail decision execution contracts with a non-retryable disabled result. |
+| `Reporting:EvidenceMode` | `MetadataOnly` | Evidence-sharing posture for provider envelopes. Supported values are `MetadataOnly`, `SafeSummaryOnly`, and `ReporterText`; `ReporterText` is rejected for `Disabled` and `LocalOnly` modes. |
+
+Osprey adapter keys live under `Reporting:Osprey:*`. The adapter is Infrastructure-only and posts a safe JSON evaluation request to the configured endpoint; the request contains tenant/report/event/case IDs, normalized report/case/priority codes, timestamps, idempotency/correlation IDs, and evidence mode only. It does not send reporter text, reporter IP hashes, user-agent hashes, raw provider payloads, event titles, slugs, or URLs. Public research did not identify an official .NET Osprey SDK or stable public REST contract, so the current adapter targets a configurable Osprey-compatible HTTP JSON/RPC facade and can be swapped to generated gRPC/proto wiring once a deployment supplies that contract.
+
+| Key | Default | Description |
+|---|---:|---|
+| `Reporting:Osprey:Enabled` | `false` | Enables the concrete Osprey signal adapter. `Reporting:Mode` must still be `Osprey` or `Composite`, and `Reporting:EvaluateSignals` must be `true` before runtime signal evaluation happens. |
+| `Reporting:Osprey:EndpointUrl` | unset | Deployment-controlled Osprey-compatible base URL. Required when the adapter is enabled. Must be HTTP/HTTPS, absolute, and must not include embedded credentials, query string, or fragment. Local/private endpoints require explicit opt-in. |
+| `Reporting:Osprey:EvaluatePath` | `/api/v1/evaluate` | Relative evaluation path appended to `EndpointUrl` unless the endpoint already ends with the same path. Must start with `/`. |
+| `Reporting:Osprey:ApiKey` | unset | Optional sensitive credential. If configured with the default header name, it is sent as `Authorization: Bearer <token>`. Never expose this value in browser payloads, health data, logs, metrics, traces, screenshots, or issue templates. |
+| `Reporting:Osprey:ApiKeyHeaderName` | `Authorization` | Header used for `ApiKey`. Custom names are allowed only when they are valid HTTP header names. |
+| `Reporting:Osprey:EventType` | `event_report` | Stable event type sent in the evaluation body so an Osprey-compatible facade can route rules. |
+| `Reporting:Osprey:TimeoutSeconds` | `10` | Per-request timeout budget. Must be between 1 and 300. Timeouts are treated as retryable provider failures. |
+| `Reporting:Osprey:AllowLocalProviderEndpoints` | `false` | Allows loopback/link-local/private provider URLs for deliberate self-hosted deployments. Keep `false` for public/provider-hosted endpoints. |
+
+Asynchronous Osprey signal callbacks are accepted at `POST /api/integrations/moderation/osprey/callback`. This endpoint does not use the outbound `Reporting:Osprey:ApiKey`; it uses the platform API-key authentication scheme (`X-API-Key`) plus the `ModerationIntegration.OspreyCallback` authorization policy. Provision a tenant-scoped API key with event moderation authority, such as `events:write`, tenant admin, or instance admin equivalent scope, for the external Osprey-compatible callback worker. Callback payloads must include tenant, report, and event identifiers; the Application layer rechecks that they match the ambient API-key tenant before recording signals. The endpoint stores bounded signal metadata and external sync markers only; it must not receive or log raw provider payloads, reporter text, event titles, slugs, URLs, IP hashes, user-agent hashes, or provider secrets.
+
+Coop adapter keys live under `Reporting:Coop:*`. The adapter is Infrastructure-only and posts local report-case metadata to a configurable Coop-compatible review queue ingest endpoint. Public ROOST Coop sources describe REST-style ingest and decision webhooks but do not publish a stable OpenAPI/GraphQL contract, authentication scheme, error catalog, or rate-limit policy; this implementation therefore uses a conservative JSON envelope and flexible response mapping until a deployment supplies a stricter contract. The mirror request contains tenant/report/event/case IDs, queue/status/priority/reason codes, timestamps, idempotency/correlation IDs, and an evidence descriptor. It does not send reporter text, reporter IP hashes, user-agent hashes, raw provider payloads, event titles, slugs, or URLs.
+
+| Key | Default | Description |
+|---|---:|---|
+| `Reporting:Coop:Enabled` | `false` | Enables the concrete Coop review queue adapter. `Reporting:Mode` must still be `Coop` or `Composite`, and `Reporting:MirrorReviewQueue` must be `true` before runtime mirroring happens. |
+| `Reporting:Coop:EndpointUrl` | unset | Deployment-controlled Coop-compatible base URL. Required when the adapter is enabled. Must be HTTP/HTTPS, absolute, and must not include embedded credentials, query string, or fragment. Local/private endpoints require explicit opt-in. |
+| `Reporting:Coop:MirrorPath` | `/api/v1/items` | Relative review-case ingest path appended to `EndpointUrl` unless the endpoint already ends with the same path. Must start with `/`. |
+| `Reporting:Coop:ApiKey` | unset | Optional sensitive credential. If configured with the default header name, it is sent as `Authorization: Bearer <token>`. Never expose this value in browser payloads, health data, logs, metrics, traces, screenshots, or issue templates. |
+| `Reporting:Coop:ApiKeyHeaderName` | `Authorization` | Header used for `ApiKey`. Custom names are allowed only when they are valid HTTP header names. |
+| `Reporting:Coop:ItemType` | `event_report` | Stable item type sent in the mirror body so a Coop-compatible facade can route report cases. |
+| `Reporting:Coop:TimeoutSeconds` | `10` | Per-request timeout budget. Must be between 1 and 300. Timeouts are treated as retryable provider failures. |
+| `Reporting:Coop:AllowLocalProviderEndpoints` | `false` | Allows loopback/link-local/private provider URLs for deliberate self-hosted deployments. Keep `false` for public/provider-hosted endpoints. |
+| `Reporting:Coop:WebhookSecret` | unset | Required for inbound Coop decision callbacks. The API rejects callbacks with `503` until this shared secret is configured. Treat it as a deployment secret; never expose it to browsers, logs, health checks, traces, screenshots, or issue templates. |
+| `Reporting:Coop:WebhookSignatureHeaderName` | `X-Coop-Signature` | Header containing the HMAC-SHA256 signature. Valid values are raw hex/base64, `sha256=<signature>`, or `v1=<signature>`; multiple comma-separated candidates are supported for rotation windows. |
+| `Reporting:Coop:WebhookTimestampHeaderName` | `X-Coop-Timestamp` | Header containing the signed timestamp. Unix seconds and invariant-culture date/time values are accepted. |
+| `Reporting:Coop:WebhookToleranceSeconds` | `300` | Maximum absolute clock skew for signed callbacks. Must be between 30 and 86400. |
+| `Reporting:Coop:WebhookMaxBodyBytes` | `65536` | Raw callback body size limit before JSON parsing. Must be between 1024 and 1048576. |
+
+Coop decisions are accepted at `POST /api/integrations/moderation/coop/callback`. The endpoint requires both platform API-key authentication (`X-API-Key`) through `ModerationIntegration.CoopCallback` and timestamped HMAC-SHA256 verification over `timestamp + "." + rawBody`. The HMAC check uses fixed-time comparison and validates the raw body before JSON parsing. A valid callback records an `EventReportDecision` with source `CoopReviewer`, marks the report case decision-ready, then dispatches `ExecuteReportDecisionCommand` so local light moderation/heavy redaction keep using the existing audit, outbox, cache, and storage-deletion paths. Provider-backed enforcement creates `EventModerationRecord` rows with nullable `ModeratorUserId` and non-null source report/decision links. The callback body must include tenant, report, event, case, and action metadata and may use the public Coop-style `item`/`action`/`policies`/`rules` shape plus ISLAMU local identifiers.
+
+Local report-intake keys are application-layer submission controls:
+
+| Key | Default | Description |
+|---|---:|---|
+| `Reporting:RequireAuthenticatedReporter` | `true` | Requires a resolved authenticated user before accepting a report. Keep enabled for the initial user-facing flow. |
+| `Reporting:MaxReportsPerUserPerHour` | `10` | Per-reporter hourly ceiling across event reports. `0` disables this pre-write quota. |
+| `Reporting:MaxReportsPerEventPerUserPerDay` | `3` | Per-reporter, per-event daily ceiling. `0` disables this pre-write quota. |
+| `Reporting:DuplicateWindowHours` | `24` | Window for rejecting duplicate reports with the same reporter identity, event, and reason code. Values below `1` are normalized to `1`. |
+| `Reporting:ReporterTextRetentionDays` | `180` | Retention horizon stamped on reporter-text evidence. Values below `1` are normalized to `1`. |
+| `Reporting:MaxReporterTextLength` | `4000` | Maximum reporter text length accepted by the command validator. Values below `1` are normalized to `1`. |
+| `Reporting:DefaultQueueCode` | `default` | Local report-case queue assigned at intake. Blank values normalize to `default`. |
+| `Reporting:CaseSlaHours` | `48` | Initial SLA due timestamp offset for the local report case. Values below `1` are normalized to `1`. |
+| `Reporting:ReporterFingerprintPepper` | empty | Optional deployment secret used by the API to HMAC tenant-scoped reporter IP and User-Agent fingerprints before they reach the Application layer. Set this in production/self-hosted deployments. |
+
+Reporter text is protected through ASP.NET Core Data Protection before persistence and stored only in `EventReportEvidence.TextBodyEncrypted`. The outbox payload intentionally excludes reporter text, reporter IP hash, and user-agent hash. Reporting metrics use bounded outcome/failure tags and must not include reporter content, event titles, slugs, URLs, provider payloads, or raw errors.
+
+Event-report observability uses `Explore.Business` counters with bounded labels only: `explore.event_reports.submissions` (`tenant_id`, `outcome`, `failure_category`), `explore.event_reports.workflow_actions` (`tenant_id`, `action`, `outcome`, `failure_category`), `explore.event_reports.provider_syncs` (`tenant_id`, `provider`, `outcome`, `failure_category`), and `explore.event_reports.provider_callbacks` (`tenant_id`, `provider`, `outcome`, `failure_category`). Controller and dispatcher logs may include tenant/report/event/case IDs, action/provider/outcome/failure codes, and retryability flags, but must not log reporter text, IP/User-Agent values or hashes, event titles, slugs, URLs, provider payload bodies, provider credentials, raw callback signatures, or raw exception text.
+
 ### MCP Adapter Static Configuration
 
 The Model Context Protocol adapter is enabled by default in development and self-hosted startup configuration, unless `Mcp:Enabled=false`/`MCP_ENABLED=false` is set. The API composes the official MCP SDK services and maps the Streamable HTTP endpoint at `/mcp` by default. Use [MCP_DEBUGGING.md](MCP_DEBUGGING.md) for redacted local client templates and smoke guidance. It remains an adapter over the AI Tool Contract Registry rather than a second tool authority. The implementation wires configuration, health, endpoint registration, read-only registry discovery, anonymous-safe public event reads, authenticated event-management reads/resources, first-class registry-projected proposal tools, safe AI conversation resources, event-management confirmation prompts, and proposal-first tool mutation through the normal MediatR/API confirmation path.
@@ -163,7 +233,7 @@ Operational expectations:
 - For production, expose MCP only through the same trusted HTTPS boundary as the API. Do not rely on local certificate bypasses or `curl -k` in production client instructions.
 - Treat projected `propose_*` MCP tools as ergonomic wrappers only. Their payload fields come from ATCR JSON schemas, SDK annotations are hints, and execution still persists a proposed action for API/HAL confirmation.
 - Treat MCP protocol evolution as ADR-gated. There is no configuration-only switch for stateful sessions, resource subscriptions, sampling, elicitation, roots, progress notifications, list-changed notifications, or client-specific compatibility shims.
-- Verify `/health/ready` includes `mcp-adapter` before exposing MCP. Disabled MCP reports intentional degraded readiness posture; enabled MCP reports healthy configuration posture with `enabled`, `startupEnabled`, `runtimeEnabled`, `legacySseStartupCeiling`, `legacySseRuntimeRequested`, and `legacySseRuntimeEnabled` safe booleans, not tenant IDs or secrets.
+- Verify `/health` includes `mcp-adapter` before exposing MCP. Disabled MCP reports intentional degraded readiness posture; enabled MCP reports healthy configuration posture with `enabled`, `startupEnabled`, `runtimeEnabled`, `legacySseStartupCeiling`, `legacySseRuntimeRequested`, and `legacySseRuntimeEnabled` safe booleans, not tenant IDs or secrets.
 
 The `ai-provider` readiness check reports safe booleans such as `endpointConfigured`, `apiKeyConfigured`, and `modelConfigured`; it never reports raw endpoint URLs, API keys, prompts, responses, model IDs, provider request IDs, or provider exception bodies.
 
@@ -175,6 +245,8 @@ Cerbos runtime settings are the first implemented consumer of the shared secrets
 - `Cerbos:UsePolicyScope` defaults to `false`. Keep it false for bundled root policies; enable it only when the PDP has tenant-scoped policy files and `engine.lenientScopeSearch=true`.
 - `Cerbos:AdminApi:*` configures policy package sync/status operations, not runtime authorization checks. Admin API credentials are secret-bearing and must be treated as write-only/redacted in UI and API responses.
 - `Secrets:Ownership:DeploymentManagedKeys` can mark `cerbos.grpc_endpoint`, `Cerbos:AdminApi:AdminUsername`, `Cerbos:AdminApi:AdminPassword`, or `*` as deployment-managed. Deployment-managed fields are read-only in UI and ignore application-managed DB values for that field.
+
+For a Coolify-managed external Cerbos PDP, use [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) for the Docker Image tag, PostgreSQL schema bootstrap, Admin API password hash, gRPC routing, and `cerbosctl` upload flow. Compose and Aspire local infrastructure use the repository `cerbos/` folder directly.
 - Governance settings select the active provider (`AuthorizationProvider`), whether tenant customization is enabled, and per-tenant BYO values such as `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, custom Admin API endpoint, and custom Admin API credentials.
 
 Endpoint and secret safety rules:
@@ -354,7 +426,7 @@ Important behavior:
 - `Keycloak:ClientSecret` is explicitly overridden when `KEYCLOAK_BLAZOR_CLIENT_SECRET` (Infisical) is present.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` map to `Google:ClientId` and `Google:ClientSecret`.
 
-Compose-managed Keycloak adds one bootstrap-specific rule: `docker/keycloak/keycloak-init.sh` writes `KEYCLOAK_BLAZOR_CLIENT_SECRET` into the imported `islamu-event-blazor` client before API/Blazor startup is allowed to complete. `KEYCLOAK_API_CLIENT_SECRET` is optional and only updates the `islamu-event-api` resource-server client when provided; the current API bearer-token validation path does not consume an API client secret. The Keycloak admin username/password are used only by the one-shot Compose init job and must not be stored as runtime application settings.
+Compose-managed Keycloak adds one bootstrap-specific rule: `docker/keycloak/keycloak-init.sh` writes `KEYCLOAK_BLAZOR_CLIENT_SECRET` into the imported `islamu-event-blazor` client before API/Blazor startup is allowed to complete. `KEYCLOAK_API_CLIENT_SECRET` is a legacy/future optional sync input only; the checked-in realm export treats `islamu-event-api` as a bearer-only audience target with no static client secret, and the current API bearer-token validation path does not consume an API client secret. The Keycloak admin username/password are used only by the one-shot Compose init job and must not be stored as runtime application settings.
 - `Keycloak:RequireHttpsMetadata` is set to `true` when Keycloak input is mapped.
 
 External-Keycloak onboarding uses a different secret boundary. The setup UI can send a one-time Keycloak bootstrap username/password to `POST /api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap` through the BFF. That credential is request-scoped input for the Infrastructure Keycloak Admin API adapter; it is not a configuration key, not a governance setting, not a secret-provider key, and not persisted by ISLAMU. Successful bootstrap persists only the normal runtime Keycloak auth-provider configuration: authority, Blazor client ID, and Blazor client secret.

@@ -141,6 +141,8 @@ Event publication also uses the general `OutboxMessage` table for two separate s
 
 Event moderation uses the same general `OutboxMessage` table for attendee fanout. Light moderation writes `EventLightModeratedNotificationFanoutRequested`, which may include event context because the event content is preserved. Heavy redaction writes `EventHeavyRedactedNotificationFanoutRequested`, which omits event id, title, slug, URL, image URI, object key, and original content from the payload; the fanout service resolves the event id from the safe moderation record only for recipient lookup. Heavy attendee notifications are generic, linkless in-app rows.
 
+Event reporting uses the general `OutboxMessage` table for provider synchronization. Report intake writes `EventReportProviderSyncRequested` with safe report/case metadata only. `CompositeOutboxMessageDispatcher` routes that message to `ReportProviderSyncDispatcher`, which derives a stable idempotency key from the outbox message id, calls the runtime moderation provider after commit, and persists local `EventReportExternalLink` / `EventReportSignal` outcomes. Retryable provider failures throw after recording bounded local failure metadata so the existing outbox retry/dead-letter policy remains authoritative.
+
 Non-negotiable boundary: handlers, controllers, automation executors, sequence processors, and domain services may create durable outbox intent only. They must not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly.
 
 ## Monitoring

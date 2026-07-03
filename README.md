@@ -22,8 +22,6 @@ ISLAMU Event powers ISLAMU’s Islamic events instance, but the software itself 
 
 </div>
 
----
-
 ## About ISLAMU Event
 
 ISLAMU Event is a **self-hostable event discovery and management platform** for publishing, discovering, and operating events across one organization or many isolated tenants.

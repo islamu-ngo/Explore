@@ -13,9 +13,13 @@ ABOUTME: Uses current repository paths, service names, ports, and seed/dev auth 
 
 1. Clone and enter the repo:
    `git clone https://github.com/islamu-ngo/Event.git && cd Event`
-2. Start core services:
-   `docker compose up -d`
-3. Open:
+2. Create local environment defaults:
+   `cp .env.example .env`
+3. Validate the resolved Compose model:
+   `docker compose config`
+4. Start core services:
+   `docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui`
+5. Open:
    - Blazor UI: `http://localhost:7002`
    - API: `http://localhost:7039`
    - Swagger: `http://localhost:7039/swagger`
@@ -28,17 +32,19 @@ First run note:
 Optional profiles:
 - Storage: `docker compose --profile storage up -d`
 - Cerbos: `docker compose --profile authz up -d`
+- Coop moderation: `docker compose --profile moderation up -d`
+- Osprey signal provider: `docker compose --profile osprey up -d` after setting an accessible `OSPREY_IMAGE`
 
 ## Option 2: Local Aspire Orchestration
 
 Run:
-- `dotnet run --project Explore.AppHost`
+- `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj`
 
-This starts migration, API, and Blazor with local development wiring.
+This starts full local infrastructure, migration, API, and Blazor with local development wiring.
 
 Expected local URLs:
-- Blazor: `https://localhost:7177`
-- API: `https://localhost:7039`
+- Use the Aspire dashboard output for exact dynamic Blazor and API endpoints.
+- Keycloak local full mode uses `http://localhost:8080/auth`.
 
 ## Development Test User (Keycloak Realm Import)
 

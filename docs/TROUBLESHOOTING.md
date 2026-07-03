@@ -6,8 +6,8 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 > **Audience:** Operators | Contributors | Admins
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-06-23
-> **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
+> **Last Verified:** 2026-07-03
+> **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/`, `Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Use this page when you have a symptom. For planned work, installation, backup, restore, upgrade, or rollback procedures, use the linked runbooks instead of copying procedures into this file.
 
@@ -139,6 +139,20 @@ Checks:
 2. Confirm reverse-proxy public origin matches the Blazor client redirect URIs and web origins in Keycloak.
 3. Trigger `/bff/auth/refresh-schemes` or restart the Blazor BFF if testing outside the setup UI. The onboarding UI calls the refresh path after successful bootstrap.
 4. If `KEYCLOAK_BLAZOR_CLIENT_SECRET` is also configured as deployment-managed, confirm the saved application-managed value is not being overridden by deployment config.
+
+### Post-onboarding Keycloak doctor or sync reports drift
+
+Symptoms:
+- the admin auth-provider panel reports missing `offline_access`, missing API audience mapper, missing redirect/web origin entries, or blocked sync operations.
+- sync apply is unavailable or returns a blocked plan.
+
+Checks:
+1. Run the read-only realm doctor first. Basic mode should verify saved runtime config and OIDC discovery without admin credentials.
+2. For drift-aware inspection, enter a temporary Keycloak admin or service-account credential with permission to read realm clients, scopes, roles, protocol mappers, and client settings. ISLAMU uses it only for the active request.
+3. Review the sync preview before applying. The plan must be additive; it should not propose deleting a realm, user, group, unrelated client, redirect origin, or operator-managed customization.
+4. Before sync apply, confirm a current Keycloak database backup. Apply blocks without backup confirmation and temporary admin credentials.
+5. For client-secret rotation, check whether the secret is application-managed or deployment-managed. Deployment-managed secrets must be rotated in environment variables, Infisical, or the owning secret provider rather than overwritten from the app UI.
+6. Do not paste temporary admin credentials, Keycloak access tokens, client secrets, raw Admin API response bodies, or screenshots containing secrets into support tickets. Use the safe finding/operation codes from the doctor or sync plan.
 
 ## Setup Secret Failures
 

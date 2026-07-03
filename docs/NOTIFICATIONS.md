@@ -6,8 +6,8 @@ ABOUTME: Separates in-app notifications from SMTP email delivery and unsupported
 > **Audience:** Admins | Integrators | Contributors
 > **Status:** Implemented
 > **Owner:** Product/Admin
-> **Last Verified:** 2026-06-23
-> **Source Anchors:** `Explore.Application/Features/Notifications/`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationOutboxMessageFactory.cs`, `Explore.Application/Services/NotificationRefreshStreamService.cs`, `Explore.Application/Features/Events/Handlers/Commands/PublishEventCommandHandler.cs`, `Explore.Application/Features/Events/Handlers/Commands/ModerateEventCommandHandler.cs`, `Explore.Application/Features/Events/Handlers/Commands/HeavyRedactEventCommandHandler.cs`, `Explore.API/Controllers/NotificationController.cs`, `Explore.API/Controllers/ActorSubscriptionController.cs`, `Explore.Blazor.Client/Services/Interop/NotificationRefreshStreamClient.cs`, `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`, `Explore.Blazor.Client/Helpers/NotificationNavigationHelper.cs`, `Explore.Blazor.Client/Pages/Notifications/Notifications.razor`, `docs/EMAIL_NOTIFICATIONS.md`
+> **Last Verified:** 2026-07-02
+> **Source Anchors:** `Explore.Application/Features/Notifications/`, `Explore.Application/Features/EventReporting/`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationOutboxMessageFactory.cs`, `Explore.Application/Services/NotificationRefreshStreamService.cs`, `Explore.Application/Features/Events/Handlers/Commands/PublishEventCommandHandler.cs`, `Explore.Application/Features/Events/Handlers/Commands/ModerateEventCommandHandler.cs`, `Explore.Application/Features/Events/Handlers/Commands/HeavyRedactEventCommandHandler.cs`, `Explore.Application/Features/EventReporting/Handlers/Commands/ExecuteReportDecisionCommandHandler.cs`, `Explore.API/Controllers/NotificationController.cs`, `Explore.API/Controllers/ActorSubscriptionController.cs`, `Explore.Blazor.Client/Services/Interop/NotificationRefreshStreamClient.cs`, `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`, `Explore.Blazor.Client/Helpers/NotificationNavigationHelper.cs`, `Explore.Blazor.Client/Pages/Notifications/Notifications.razor`, `docs/EMAIL_NOTIFICATIONS.md`
 
 Notifications are authenticated, user-owned, tenant-scoped in-app records. They power the notification bell, notification panel, and full inbox page. Event-published actor-subscription fanout and event-moderation attendee fanout are implemented through the transactional outbox and create durable in-app `Notification` rows. The SSE stream is a one-way refresh hint for unread count/inbox state; it does not replace durable notification rows, list/detail APIs, SMTP email delivery, push delivery, or external delivery receipts.
 
@@ -73,6 +73,8 @@ Light moderation and heavy redaction deliberately use different notification con
 
 Heavy fanout resolves the event id internally from the safe `EventModerationRecord` using an explicit tenant/id repository lookup, then scans registration intents for recipients. The event id is used only for recipient lookup and fanout-run progress. It is not written into attendee-facing notification title/body/entity fields, and the notification item has no route because `NotificationNavigationHelper` only navigates when entity metadata is present.
 
+Event-report intake, triage, assignment, decision capture, provider sync, and provider callbacks do not create user notifications by themselves. Notifications are created only when an `EventReportDecision` is executed through the existing light moderation or heavy redaction command path. Report-driven enforcement links `EventModerationRecord.SourceReportId` and `SourceReportDecisionId` for auditability, but notification payloads still follow the same light/heavy contracts above and must not include reporter text, report IDs, provider payloads, provider case IDs, or reviewer notes.
+
 Moderation fanout is in-app only. It does not call SMTP, push providers, or external brokers for attendee delivery.
 
 ## SSE Refresh Hints
@@ -88,6 +90,7 @@ In-app notifications are separate from SMTP email delivery:
 - The notification feature does not call `IEmailService` or the SMTP implementation.
 - Actor-subscription fanout creates in-app `Notification` rows only; it does not send email digests or SMTP messages.
 - Light and heavy moderation attendee fanout create in-app `Notification` rows only; they do not send SMTP messages.
+- Event-report intake, report workflow actions, provider sync, and provider callbacks do not send SMTP messages and do not create in-app notifications unless they execute an existing moderation command.
 - `docs/EMAIL_NOTIFICATIONS.md` documents direct SMTP delivery and explicitly states notification-to-email fanout is not implemented.
 - Do not claim push notifications, email digests, SMTP delivery, external delivery tracking, or email unsubscribe behavior for in-app notifications.
 

@@ -456,6 +456,7 @@ Every change — human or agent — routes through the Contribution Contract bef
 | 401/403 BFF/API auth issue | `bff-auth-bug` | `auth-patterns`, `blazor-bff-patterns`, `docs/SECURITY-MODEL.md` |
 | Cerbos policy change | `cerbos-policy-change` | `docs/AUTHORIZATION_PATTERNS.md`, `auth-patterns` |
 | OpenAPI contract / breaking change | `openapi-contract-change` | `docs/API.md`, `docs/API_CHANGELOG.md` |
+| Setup-time external provider or infrastructure bootstrap | `external-infrastructure-bootstrap` | `docs/SECURITY-MODEL.md`, `docs/SECRETS.md`, `auth-patterns` |
 
 If no intent matches, stop and propose a new one per `.claude/contract/README.md`. Do not improvise.
 

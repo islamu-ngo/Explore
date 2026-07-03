@@ -6,7 +6,7 @@ ABOUTME: Links deeper docs instead of duplicating self-hosting, testing, and con
 > **Audience:** Contributors | Evaluators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-07-03
 > **Source Anchors:** `global.json`, `Explore.AppHost/AppHost.cs`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/TESTING.md`
 
 Use this page for the shortest safe local path. For production-style hosting, start with [SELF_HOSTING.md](SELF_HOSTING.md) instead.
@@ -16,35 +16,40 @@ Use this page for the shortest safe local path. For production-style hosting, st
 | Tool | Version | Purpose |
 |---|---|---|
 | .NET SDK | `10.0.300` or compatible SDK from `global.json` | Build and run the solution. |
-| Docker / Docker Compose v2 | Current | Local infrastructure and self-hosting stack. |
-| .NET Aspire workload | Current compatible workload | Local AppHost orchestration. |
+| Docker / Docker Compose v2 | Current | Local Aspire infrastructure and self-hosting stack. |
+| .NET Aspire CLI | Current compatible CLI | Preferred local development loop; `dotnet run --project Explore.AppHost` remains the fallback/IDE launch path. |
 
-Install the Aspire workload if it is not already installed:
-
-```bash
-dotnet workload install aspire
-```
-
-## Clone And Build
+## Clone And Run
 
 ```bash
 git clone https://github.com/islamu-ngo/Event.git
 cd Event
+cp .env.example .env
+aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+```
+
+That command starts the default full-local Aspire topology. Aspire builds the AppHost, starts local infrastructure, runs migrations, starts API and Blazor, and prints the dashboard URL. Press `Ctrl+C` to stop the interactive run.
+
+Run the build separately before opening a PR or when diagnosing compile failures:
+
+```bash
 dotnet build --configuration Release --verbosity quiet
 ```
 
 Build errors must be fixed before continuing. For recurring failures, use [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
-## Local Secrets & External Dependencies
+## Local Secrets & Infrastructure Profiles
 
-For local development (especially when running Option A), the applications share a single .NET User Secrets ID: `event-shared-secrets`.
+For local development, the applications share a single .NET User Secrets ID: `event-shared-secrets`.
 
-Contributors should configure local credentials or Infisical bootstrap settings in the shared user secrets file:
+Maintainers using external infrastructure can configure Infisical bootstrap settings in the shared user secrets file:
 - **Linux/macOS:** `/home/{user}/.microsoft/usersecrets/event-shared-secrets/secrets.json`
 - **Windows:** `%APPDATA%\Microsoft\UserSecrets\event-shared-secrets\secrets.json`
 
-### Infisical Configuration (Optional)
-If using Infisical, configure your local bootstrap credentials inside the `secrets.json` file:
+### Infisical Configuration (Maintainers Only)
+`local-full` does not require Infisical because Aspire starts local infrastructure and the AppHost sets `SecretProvider:Provider=None` for child projects while clearing Infisical bootstrap identifiers. Use Infisical only for maintainer workflows that intentionally depend on shared external infrastructure.
+
+If using external infrastructure with `local-core` or `local-lite`, configure your local bootstrap credentials inside the `secrets.json` file:
 ```json
 {
   "Infisical:Url": "https://example.com",
@@ -55,30 +60,62 @@ If using Infisical, configure your local bootstrap credentials inside the `secre
 }
 ```
 
-### External Services (PostgreSQL, Cerbos, Keycloak)
-The .NET Aspire AppHost does **not** launch or orchestrate PostgreSQL, Keycloak, or Cerbos container resources.
-Therefore, connection details and keys for these dependencies must be provided by the developer. They can be supplied in one of two ways:
-1. **Infisical (Preferred):** Populated automatically by the `Explore.Secrets` library when bootstrap credentials are provided in the shared `secrets.json` file.
-2. **Environment Variables:** If Infisical is not used (which is optional), you must define the connection details for these dependencies in your environment variables (e.g., `POSTGRESQL_HOST`, `POSTGRESQL_PORT`, `POSTGRESQL_USERNAME`, `POSTGRESQL_PASSWORD`, Keycloak/Cerbos settings, etc.) in the local shell environment before launching.
+### Aspire Profiles
+
+| Profile | Use When | Infrastructure Ownership |
+|---|---|---|
+| `local-full` | Contributor default, smoke checks, first clone | Aspire starts PostgreSQL, Redis, RabbitMQ, CockroachDB, Phase Two Keycloak, Cerbos, MinIO, Svix, Coop, Prometheus, Grafana, and configured Osprey locally. |
+| `local-core` | Maintainers debugging data/cache issues | Aspire starts PostgreSQL, Redis, and migrations locally; Keycloak, Cerbos, storage, webhooks, and moderation providers come from Infisical/config. |
+| `local-lite` | Maintainers on the fast daily loop | Aspire starts only API and Blazor; all infrastructure comes from Infisical/config. |
+
+`local-full` uses persistent containers and named volumes so repeated runs do not recreate the database, Keycloak, MinIO, RabbitMQ, or observability data from scratch. Keycloak keeps stable local ports for OIDC browser cookies and callbacks.
+
+Osprey is intentionally image-configured. The AppHost starts an `osprey` container when `OSPREY_IMAGE` is supplied, with `OSPREY_TAG` defaulting to `latest`; this avoids making contributor startup depend on an unverified public image name.
 
 For more detailed information, see [SECRETS.md](SECRETS.md) and [CONFIGURATION.md](CONFIGURATION.md).
 
 ## Option A: Run The Aspire Development Loop
 
-Aspire is the preferred local development loop because `Explore.AppHost` starts the migration service before API and Blazor, then wires API discovery into Blazor without hardcoded ports.
+Aspire is the preferred local development loop because `Explore.AppHost` starts infrastructure, runs the migration service before API and Blazor, then wires API discovery into Blazor without hardcoded ports.
 
 ```bash
-dotnet run --project Explore.AppHost
+aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
 ```
 
-Use the Aspire dashboard output to find exact dynamic endpoints. Do not assume the AppHost uses the same ports as Docker Compose.
+The default mode is `FullLocal`, so contributors do not need to remember a launch-profile name. Use the Aspire dashboard output to find exact dynamic endpoints. Do not assume the AppHost uses the same ports as Docker Compose.
+
+Background run and stop:
+
+```bash
+aspire start --apphost Explore.AppHost/Explore.AppHost.csproj
+aspire stop --apphost Explore.AppHost/Explore.AppHost.csproj
+```
+
+Maintainer-only alternate modes:
+
+```bash
+ISLAMU_ASPIRE_MODE=LocalDataExternalPlatform aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+ISLAMU_ASPIRE_MODE=ExternalInfra aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+```
+
+Launch profiles remain available for IDEs or older workflows:
+
+```bash
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-core
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-lite
+```
+
+Priority rule: `ConnectionStrings:DefaultConnection` wins first, so Aspire `WithReference` owns the local database connection in `FullLocal` and `LocalDataExternalPlatform`. When no connection string is supplied, the bootstrap chain is Infisical `/postgresql` first, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration. If Infisical bootstrap credentials exist and you want env-only local behavior, remove or blank those credentials for that shell/profile.
 
 ## Option B: Run The Compose Stack
 
 Use Compose when you want the self-hosting topology locally:
 
 ```bash
-API_ENDPOINT=http://islamu-event-api:8080/ docker compose up -d postgres redis keycloak-db keycloak islamu-event-api islamu-event-ui
+cp .env.example .env
+docker compose config
+docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
 ```
 
 Default Compose endpoints:
@@ -95,7 +132,12 @@ Optional profiles:
 ```bash
 docker compose --profile storage up -d
 docker compose --profile authz up -d
+docker compose --profile webhooks up -d
+docker compose --profile moderation up -d
+docker compose --profile osprey up -d
 ```
+
+`moderation` starts Coop. `osprey` is separate because the sample Osprey image may require registry access or a verified replacement image.
 
 For setup-secret behavior, Keycloak, reverse proxy, migrations, storage, and backups, use [SELF_HOSTING.md](SELF_HOSTING.md).
 

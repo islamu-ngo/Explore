@@ -95,6 +95,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [AI_AGENT_EXPERIENCE_HARDENING.md](AI_AGENT_EXPERIENCE_HARDENING.md) - guarded context summaries, proposal-only plan previews, and fake/replay AI usability reports.
 - [MCP_DEBUGGING.md](MCP_DEBUGGING.md) - redacted local MCP debugging, Inspector/Copilot smoke, JSON-RPC tests, and compatibility gates.
 - [SELF_HOSTING.md](SELF_HOSTING.md) - Docker Compose, Keycloak, local storage volume, optional MinIO, reverse proxy.
+- [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) - Coolify deployment runbook for external Cerbos PDP, PostgreSQL storage, gRPC routing, and policy upload.
 - [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) - backup, restore, upgrade, and rollback runbook.
 - [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) - release readiness and documentation contract.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - practical issue resolution.

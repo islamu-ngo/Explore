@@ -297,6 +297,57 @@ Contract rules:
 - Grant changes are create/revoke, not update-in-place. HAL detail resources may expose `revoke`; collection resources may expose `create`; clients must render actions from `_links`.
 - Cerbos/local authorization uses resource kind `islamuevent_tenant_user_role_grant`.
 
+### Webhook Management
+
+Outgoing product webhooks are managed under `/api/webhooks`. These routes configure ISLAMU Event sending webhook events to external systems through the selected outgoing provider (`Disabled`, `Local`, `Svix`, `Composite`, or `DryRun`). Incoming provider callbacks such as Coop, Osprey, payment, email, or future Svix operational callbacks remain separate integration endpoints under `/api/integrations/*`; they do not require the outgoing provider to be enabled.
+
+| Verb | Route | Route Name | Purpose | Response |
+|---|---|---|---|---|
+| `GET` | `/api/webhooks/event-types` | `GetWebhookEventTypes` | Public canonical event catalog with schema/example metadata. | `IReadOnlyList<WebhookEventTypeDto>` |
+| `GET` | `/api/webhooks/consumers` | `GetWebhookConsumers` | Tenant-scoped webhook consumers/integration owners visible to the caller. | HAL collection of `WebhookConsumerDto` |
+| `GET` | `/api/webhooks/consumers/{consumerId}` | `GetWebhookConsumerById` | One tenant-scoped webhook consumer. | HAL resource of `WebhookConsumerDto` |
+| `POST` | `/api/webhooks/consumers` | `CreateWebhookConsumer` | Create a tenant-scoped consumer for Local/Svix/Composite/DryRun/Disabled mode. | `BaseCommandResponse<Guid>` |
+| `GET` | `/api/webhooks/endpoints` | `GetWebhookEndpoints` | Tenant-scoped webhook endpoints, optionally filtered by consumer. | HAL collection of `WebhookEndpointDto` |
+| `GET` | `/api/webhooks/endpoints/{endpointId}` | `GetWebhookEndpointById` | One tenant-scoped webhook endpoint with enabled event subscriptions. | HAL resource of `WebhookEndpointDto` |
+| `POST` | `/api/webhooks/endpoints` | `CreateWebhookEndpoint` | Create a Local/Svix-mirrored endpoint and subscribe it to enabled event types. | `BaseCommandResponse<Guid>` |
+| `PUT` | `/api/webhooks/endpoints/{endpointId}` | `UpdateWebhookEndpoint` | Update a tenant-scoped webhook endpoint URL, delivery controls, and event type subscriptions. | `BaseCommandResponse<Guid>` |
+| `DELETE` | `/api/webhooks/endpoints/{endpointId}` | `DeleteWebhookEndpoint` | Archive a tenant-scoped webhook endpoint while preserving delivery history. | `204 No Content` |
+| `POST` | `/api/webhooks/endpoints/{endpointId}/rotate-secret` | `RotateWebhookEndpointSecret` | Rotate the endpoint signing secret reference while preserving a bounded previous-secret overlap window. | `BaseCommandResponse<Guid>` |
+| `POST` | `/api/webhooks/endpoints/{endpointId}/test` | `TestWebhookEndpoint` | Schedule a signed LocalProvider test delivery for one active tenant-scoped endpoint. | `BaseCommandResponse<Guid>` |
+| `POST` | `/api/webhooks/svix/app-portal` | `OpenSvixAppPortal` | Generate short-lived backend-only Svix App Portal access. | `WebhookProviderPortalAccessDto` |
+
+Contract rules:
+
+- `GET /event-types` is anonymous and cacheable lookup data. Consumer management reads are authenticated, tenant-scoped, and return HAL affordances.
+- Consumer DTOs expose normalized `consumerKindId/name`, `statusId/name`, and `providerModeId/name`; they never expose endpoint secrets.
+- Consumer create derives `tenantId` from `ITenantContext`, validates domain enum IDs in the Application handler, sets status to `Active`, and returns conflict ProblemDetails for duplicate tenant-local names.
+- Endpoint DTOs expose normalized status fields, provider endpoint ids, bounded timeout/retry/rate-limit settings, last success/failure timestamps, and enabled subscription event types. They never expose `secretRef` or secret material.
+- Endpoint create derives `tenantId` from `ITenantContext`, requires an active tenant-local consumer, validates an absolute HTTP(S) URL, stores only the supplied secret reference, rejects duplicate tenant/consumer URLs, and fails closed when requested event type IDs are missing, duplicated, disabled, or unknown.
+- Endpoint update replaces URL, delivery controls, and the enabled event-type subscription set after validating all requested event types. It does not rotate signing secrets; secret rotation remains a separate route.
+- Endpoint delete is a soft archive operation. Archived endpoints leave active lists and lose mutation HAL affordances while preserving canonical delivery history.
+- Endpoint secret rotation accepts `newSecretRef` and optional `previousSecretValidForSeconds` only. It never accepts or returns raw signing secret material, rejects unchanged secret references, increments `secretVersion`, stores the old reference as `previousSecretRef`, and sets a bounded `previousSecretValidUntil` transition window. Repeated calls without an `Idempotency-Key` create distinct rotations.
+- Endpoint test scheduling creates a canonical `webhook.test` message plus one LocalProvider delivery attempt for the target endpoint. It requires an active Local or Composite consumer endpoint; Svix-managed endpoint tests belong in the Svix App Portal because Svix owns provider-side endpoint delivery/replay semantics.
+- HAL collection resources may expose `create`; active endpoint detail resources may expose `update`, `rotate-secret`, `test`, and `delete`; archived endpoint detail resources expose no mutation affordances. Svix or Composite consumer detail resources may expose `open-provider-portal`. Clients must render webhook actions from `_links`, not client-side role checks.
+- The Svix App Portal route returns only short-lived URL/token data. The Svix API token is resolved server-side through the configured secret provider and is never sent to Blazor.
+
+### Incoming Integration Webhooks
+
+Incoming webhooks are provider callbacks received by ISLAMU Event. They are separate from outgoing product webhooks and continue to work when the outgoing provider is `Disabled`, `Local`, `Svix`, `Composite`, or `DryRun`.
+
+| Verb | Route | Route Name | Auth | Purpose |
+|---|---|---|---|---|
+| `POST` | `/api/integrations/moderation/osprey/callback` | `ModerationIntegrationOspreyCallback` | API-key policy `ModerationIntegration.OspreyCallback` | Records bounded Osprey-compatible moderation signals on the local report without executing moderation actions. |
+| `POST` | `/api/integrations/moderation/coop/callback` | `ModerationIntegrationCoopCallback` | API-key policy `ModerationIntegration.CoopCallback` plus signed raw-body HMAC verification | Captures the verified callback in `incoming_webhook_messages`, then dispatches the Coop decision command idempotently. |
+| `POST` | `/api/integrations/svix/operational` | `IntegrationSvixOperationalCallback` | `[AllowAnonymous]` with Svix-compatible signature verification as authentication | Accepts Svix operational callbacks without requiring the outgoing provider mode to be Svix. Tenant-addressed payloads are captured in the incoming webhook ledger; instance-level operational payloads are verified and acknowledged without side effects. |
+
+Incoming callback rules:
+
+- Raw request bodies are read before JSON parsing and verified against provider signatures where the provider supplies a signature.
+- Signed callbacks enforce bounded body sizes, timestamp tolerance, and constant-time signature comparison.
+- Verified tenant-scoped callbacks are stored in `incoming_webhook_messages` before Application commands perform side effects.
+- Duplicate provider message IDs are treated idempotently and do not re-run side effects.
+- Safe logs and ledger rows store provider, tenant, message IDs, payload hashes, bounded status/failure metadata, and redacted headers only; raw payloads, signature headers, secrets, tokens, authorization headers, and raw provider errors are not persisted by default.
+
 ---
 
 ## HAL / HATEOAS Implementation
@@ -562,6 +613,10 @@ Meter name: `Explore.Business`. Tags vary by counter and include dimensions such
 | `explore.idempotency.cleanup_rows` | Expired idempotency cleanup eligible/deleted row counts by bounded `mode` and `outcome` tags |
 | `explore.notifications.fanout_runs` | Notification fanout run outcomes by bounded `tenant_id`, `fanout_kind`, and `outcome` tags |
 | `explore.notifications.fanout_subscribers` | Aggregate notification fanout subscriber decisions by bounded `tenant_id`, `fanout_kind`, and `outcome` tags |
+| `explore.event_reports.submissions` | Event-report intake outcomes by bounded `tenant_id`, `outcome`, and `failure_category` tags |
+| `explore.event_reports.workflow_actions` | Moderation report triage/assign/decide/execute outcomes by bounded `tenant_id`, `action`, `outcome`, and `failure_category` tags |
+| `explore.event_reports.provider_syncs` | Osprey/Coop provider sync outcomes by bounded `tenant_id`, `provider`, `outcome`, and `failure_category` tags |
+| `explore.event_reports.provider_callbacks` | Moderation provider callback outcomes by bounded `tenant_id`, `provider`, `outcome`, and `failure_category` tags |
 | `event_role_assignment.changed` | Event role assignment changes |
 
 Authorization decisions are also traced via `ActivitySource` named `Explore.Authorization` with `resource.kind`, `resource.action`, and `request.type` tags.

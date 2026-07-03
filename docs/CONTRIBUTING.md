@@ -6,7 +6,7 @@ ABOUTME: Includes architecture test requirements, CSS rules, DTO sync flow, and 
 > **Audience:** Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-07-03
 > **Source Anchors:** `docs/FIRST_CONTRIBUTION.md`, `docs/TESTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/`, `dev/HANDOFF_TEMPLATE.md`
 
 ## Prerequisites
@@ -15,13 +15,22 @@ ABOUTME: Includes architecture test requirements, CSS rules, DTO sync flow, and 
 |------|---------|---------|
 | .NET SDK | 10.0+ (pinned by `global.json`) | Build and test |
 | Docker Desktop | Latest | Infrastructure services |
-| .NET Aspire workload | Latest | Service orchestration |
+| .NET Aspire CLI/workload | Latest | Service orchestration |
 
 See [GETTING_STARTED.md](GETTING_STARTED.md) for complete setup instructions.
 
 ## Starting Point
 
 If this is your first contribution, start with [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md). It gives the shortest safe path for docs-only and small-bug PRs without duplicating this full workflow.
+
+For code changes, first prove the local stack can start from a clean checkout:
+
+```bash
+cp .env.example .env
+aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+```
+
+This starts the full local Aspire topology by default. Contributors should use this path unless they intentionally need the Docker-only stack or a maintainer-specific external-infrastructure profile.
 
 Use the GitHub templates to keep requests and reviews actionable:
 

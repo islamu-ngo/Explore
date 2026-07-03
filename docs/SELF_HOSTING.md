@@ -6,8 +6,8 @@ ABOUTME: Covers infrastructure services, setup secret, migrations, health checks
 > **Audience:** Operators
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-06-02
-> **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Event.MigrationService/`, `Explore.API/Program.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
+> **Last Verified:** 2026-07-03
+> **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Event.MigrationService/`, `Explore.API/Program.cs`, `Explore.API/Controllers/InstanceSettingsController.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
 
 This guide covers running ISLAMU Event outside the Aspire developer loop. The repository `docker-compose.yml` is the current self-hosting source of truth.
 
@@ -24,12 +24,18 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 | Blazor BFF | Yes | `islamu-event-ui` | Server host and YARP proxy to API | `7002:8080` |
 | MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile when an instance selects optional S3 mode | `9005:9000`, `9006:9001` |
 | Cerbos | Optional | `cerbos` | External authorization PDP profile | `3592:3592`, `3593:3593` |
+| Svix | Optional | `svix-db`, `svix` | Outgoing webhook provider profile | `8071:8071` |
+| Coop | Optional | `coop` | Moderation review queue profile | `8082:8080` |
+| Osprey | Optional | `osprey` | Moderation signal provider profile | `5004:5004` |
 | AI provider | Optional | external/self-hosted | Official, compatible, or fake AI assistant provider selected by `AiProvider:*` plus tenant governance settings | deployment-specific |
 
 Profiles:
 
 - `storage` starts MinIO and creates the configured bucket for optional S3-compatible mode. It is not required for local-first storage.
-- `authz` starts Cerbos for deployments that select Cerbos authorization.
+- `authz` starts Cerbos for deployments that select Cerbos authorization. It mounts `cerbos/config/.cerbos.yaml`, `cerbos/init/cerbos-schema.sql`, and `cerbos/policies/` from this repository so local infrastructure always uses the checked-in policy package.
+- `webhooks` starts local Svix and its PostgreSQL database for outgoing webhook-provider testing.
+- `moderation` starts local Coop for moderation review-queue testing. Keep `REPORTING_MODE=LocalOnly` unless provider endpoints are intentionally enabled.
+- `osprey` starts the configured Osprey-compatible signal provider image. Enable it only after `OSPREY_IMAGE` points to an image your registry credentials can pull.
 
 Email dispatch modes:
 
@@ -39,10 +45,21 @@ Email dispatch modes:
 ## Start The Stack
 
 1. Create an environment file with secrets required by `docker-compose.yml`.
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   `.env` is ignored by git and is used by Docker Compose for interpolation. `.env.example` contains disposable local defaults that should run a first local stack; replace them before using any shared, staged, or production environment. Before starting containers, inspect the resolved Compose model:
+
+   ```bash
+   docker compose config
+   ```
+
 2. Start the required stack:
 
    ```bash
-docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
+   docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
    ```
 
 3. Add optional MinIO only when S3-compatible storage is selected or tested:
@@ -57,7 +74,25 @@ docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-ev
    docker compose --profile authz up -d
    ```
 
-5. Open Blazor at `http://localhost:7002` and API at `http://localhost:7039`.
+5. Add optional Svix when using the outgoing webhook provider:
+
+   ```bash
+   docker compose --profile webhooks up -d
+   ```
+
+6. Add optional Coop for moderation integration testing:
+
+   ```bash
+   docker compose --profile moderation up -d
+   ```
+
+7. Add optional Osprey-compatible signal provider only after configuring an accessible image:
+
+   ```bash
+   docker compose --profile osprey up -d
+   ```
+
+8. Open Blazor at `http://localhost:7002` and API at `http://localhost:7039`.
 
 ## Required Environment Keys
 
@@ -69,24 +104,44 @@ Use the key names consumed by the Compose file and source code. Do not invent ge
 
 | Key | Purpose |
 |---|---|
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Container bootstrap for `postgres`. |
 | `POSTGRESQL_HOST` | Application DB host, normally `postgres`. |
 | `POSTGRESQL_PORT` | Application DB port, normally `5432`. |
 | `POSTGRESQL_DATABASE` | Application DB name. |
 | `POSTGRESQL_USERNAME` | Application DB username. |
 | `POSTGRESQL_PASSWORD` | Application DB password. |
 
+Compose derives the local `postgres` container bootstrap values from `POSTGRESQL_DATABASE`, `POSTGRESQL_USERNAME`, and `POSTGRESQL_PASSWORD` so the container and application use the same credentials.
+
 ### Keycloak
 
 | Key | Purpose |
 |---|---|
-| `KC_DB`, `KC_DB_URL`, `KC_DB_USERNAME`, `KC_DB_PASSWORD` | Keycloak database configuration. |
+| `KEYCLOAK_DB_DATABASE`, `KEYCLOAK_DB_USERNAME`, `KEYCLOAK_DB_PASSWORD` | Local Keycloak database bootstrap values. |
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | Initial Keycloak admin account. |
 | `KEYCLOAK_ENDPOINT` | Base Keycloak endpoint used to derive API/Blazor authority values. |
 | `KEYCLOAK_REALM` | Realm name. |
 | `KEYCLOAK_BLAZOR_CLIENT_SECRET` | Required Blazor confidential client secret. `keycloak-init` writes this into the `islamu-event-blazor` Keycloak client after realm import. |
-| `KEYCLOAK_API_CLIENT_SECRET` | Optional API resource-server client secret. Current bearer-token validation does not require it; if set, `keycloak-init` writes it into the `islamu-event-api` Keycloak client. |
+| `KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future API resource-server client secret. Current bearer-token validation does not require it, and the checked-in realm export does not include a static API client secret. Set it only if a deployment intentionally makes the API client confidential. |
 | `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET` | Optional local-development escape hatch. Set to `true` only for throwaway local stacks that intentionally use the static realm-export default secret. |
+
+### Cerbos
+
+Local Compose Cerbos uses repository-owned files:
+
+- `cerbos/config/.cerbos.yaml` for Cerbos server configuration;
+- `cerbos/init/cerbos-schema.sql` for local Cerbos PostgreSQL initialization;
+- `cerbos/policies/` for derived roles, resource policies, and `_schemas/`.
+
+For Coolify-managed external Cerbos, use [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) instead of copying Compose commands manually.
+
+| Key | Purpose |
+|---|---|
+| `CERBOS_GRPC_ENDPOINT` | API PDP endpoint. Local profile default is `http://cerbos:3593`. |
+| `CERBOS_HTTP_ENDPOINT` | API/Admin endpoint. Local profile default is `http://cerbos:3592`. |
+| `CERBOS_USE_TLS` / `CERBOS_PLAINTEXT_MODE` | TLS posture for runtime API connections. Keep local defaults for Compose; use TLS in production. |
+| `CERBOS_ADMIN_USERNAME` | Cerbos Admin API username. |
+| `CERBOS_ADMIN_PASSWORD_HASH` | Base64 bcrypt hash consumed by the Cerbos server. Generate it with the process in [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md#admin-password-hash). |
+| `CERBOS_ADMIN_PASSWORD` | Plaintext Admin API password used only by `cerbosctl` policy sync/API package publishing. Keep blank unless sync is enabled. It must correspond to `CERBOS_ADMIN_PASSWORD_HASH`. |
 
 ### Storage
 
@@ -97,18 +152,18 @@ Local-first storage is available in the required API service without MinIO. Comp
 | `LOCAL_STORAGE_ROOT_PATH` | `Storage:Local:RootPath` | Optional override for the API local storage root. The Compose default is `/app/storage-data/local`. |
 | `LOCAL_STORAGE_CREATE_ROOT_IF_MISSING` | `Storage:Local:CreateRootIfMissing` | Optional override for allowing the API to create the root. The Compose default is `true`. |
 
-Optional S3-compatible settings bind to `S3Settings:*`.
+Optional S3-compatible settings use the Infisical-compatible `STORAGE_S3_*` family. Compose maps those raw values into `S3Settings:*` for the API.
 
 | Compose/API Key | Canonical .NET Key |
 |---|---|
-| `S3Settings__Endpoint` | `S3Settings:Endpoint` |
-| `S3Settings__PublicEndpoint` | `S3Settings:PublicEndpoint` |
-| `S3Settings__Region` | `S3Settings:Region` |
-| `S3Settings__BucketName` | `S3Settings:BucketName` |
-| `S3Settings__AccessKeyId` | `S3Settings:AccessKeyId` |
-| `S3Settings__SecretAccessKey` | `S3Settings:SecretAccessKey` |
+| `STORAGE_S3_ENDPOINT` | `S3Settings:Endpoint` |
+| `STORAGE_S3_PUBLIC_ENDPOINT` | `S3Settings:PublicEndpoint` |
+| `STORAGE_S3_REGION` | `S3Settings:Region` |
+| `STORAGE_S3_BUCKET_NAME` | `S3Settings:BucketName` |
+| `STORAGE_S3_ACCESS_KEY_ID` | `S3Settings:AccessKeyId` |
+| `STORAGE_S3_SECRET_ACCESS_KEY` | `S3Settings:SecretAccessKey` |
 
-Infisical/domain secret definitions use the `STORAGE_S3_*` family under storage paths. Keep optional S3 docs and secret-provider values aligned with `S3Settings:*`; do not use stale generic S3 aliases such as `Storage__Endpoint`.
+Infisical/domain secret definitions use the `STORAGE_S3_*` family under storage paths. Keep optional S3 docs and secret-provider values aligned with those names; do not use stale generic S3 aliases such as `Storage__Endpoint`.
 
 ### Storage Reconciliation
 
@@ -131,6 +186,7 @@ Enable destructive cleanup only after reviewing dry-run output, confirming backu
 | `DEPLOYMENT_MODE` | API | Optional first-run mode; omit for single-tenant, set `multi_tenant` before first launch for multi-tenant. |
 | `SETUP_SECRET` | API | Optional fixed setup secret. If absent, API generates and logs a temporary secret. |
 | `SETUP_SECRET_REQUIRED` | API | Optional. Defaults to `true`; `false` only takes effect with trusted managed-provider provisioning keys and never makes setup endpoints anonymous. |
+| `USE_COMMERCIAL_LUCKYPENNY`, `LUCKYPENNY_LICENSE_KEY`, `AUTOMAPPER_COMMERCIAL_VERSION`, `MEDIATR_COMMERCIAL_VERSION` | API | Optional commercial package/license controls. Keep disabled unless intentionally using commercial AutoMapper/MediatR builds. |
 | `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
 
 `docker-compose.yml` sets Blazor `API_ENDPOINT` with a default of `http://islamu-event-api:8080/`, matching the Compose API service name. Operators only need to override `API_ENDPOINT` when routing the BFF to a different API host.
@@ -138,6 +194,8 @@ Enable destructive cleanup only after reviewing dry-run output, confirming backu
 ### AI Assistant
 
 The AI assistant is optional. Self-hosted deployments can run with AI disabled, with the deterministic fake provider for smoke tests, with the first-class OpenAI Responses API provider, with the first-class Anthropic Messages API provider, with explicitly configured compatible endpoints, or with Azure OpenAI.
+
+Compose accepts the Infisical-compatible `/ai` keys `AI_PROVIDER`, `AI_ENDPOINT`, `AI_MODEL_ID`, `AI_API_KEY`, and `AI_TOOL_PROPOSALS_ENABLED`; the API maps them to `AiProvider:*` during startup.
 
 | Canonical .NET Key | Purpose |
 |---|---|
@@ -182,7 +240,9 @@ Managed hosting operators that provision through the authorized managed-provider
 
 ## Keycloak Realm
 
-The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak, then runs the one-shot `keycloak-init` service. The init job authenticates with the Compose Keycloak admin account, locates clients by `clientId`, and synchronizes the confidential Blazor BFF client secret from `KEYCLOAK_BLAZOR_CLIENT_SECRET`. Operators should set the secret once in environment variables or the configured secret provider; they should not manually edit the Keycloak UI to match the BFF secret.
+The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak, then runs the one-shot `keycloak-init` service. Aspire `local-full` imports the same checked-in realm export. The init job authenticates with the Compose Keycloak admin account, locates clients by `clientId`, and synchronizes the confidential Blazor BFF client secret from `KEYCLOAK_BLAZOR_CLIENT_SECRET`. Operators should set the Blazor secret once in environment variables or the configured secret provider; they should not manually edit the Keycloak UI to match the BFF secret. The API client is a bearer-only audience target in the checked-in realm export and has no static client secret by default.
+
+Keycloak startup import is not a migration system. When a realm with the same name already exists in the persistent Keycloak database, startup import is skipped to avoid overwriting existing data. For disposable local stacks, remove the Keycloak database volume before expecting changes in `docker/keycloak/realm-export.json` to reapply.
 
 For production, verify:
 
@@ -191,7 +251,7 @@ For production, verify:
 - redirect URIs and web origins match the public reverse-proxy host;
 - API audience and metadata address match the Keycloak endpoint exposed to the API.
 
-`KEYCLOAK_BLAZOR_CLIENT_SECRET` is fail-closed for Compose startup: `keycloak-init` exits non-zero when it is missing. To use the repository's static local default in disposable development, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true`. Do not enable that flag in production or shared environments. Rerun `docker compose run --rm keycloak-init` after rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET` or optional `KEYCLOAK_API_CLIENT_SECRET`.
+`KEYCLOAK_BLAZOR_CLIENT_SECRET` is fail-closed for Compose startup: `keycloak-init` exits non-zero when it is missing. To use the repository's static local default in disposable development, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true`. Do not enable that flag in production or shared environments. Rerun `docker compose run --rm keycloak-init` after rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET`. If a deployment intentionally sets `KEYCLOAK_API_CLIENT_SECRET` for a non-bearer-only API client, rerun the init job after rotating that value too.
 
 ### External Keycloak Bootstrap
 
@@ -203,13 +263,26 @@ Recommended external-Keycloak operator flow:
 
 1. Create a temporary Keycloak admin or service account scoped to the target realm-management operations.
 2. In `/onboarding/auth-provider`, enable Keycloak and select **Let ISLAMU configure Keycloak clients now**.
-3. Enter the Keycloak base URL, target realm, Blazor BFF client ID/secret, optional API client ID/secret, and the temporary bootstrap credential.
+3. Enter the Keycloak base URL, target realm, Blazor BFF client ID/secret, optional API client ID, an API client secret only when that client is intentionally confidential, and the temporary bootstrap credential.
 4. Submit once. On success, the UI clears the one-time bootstrap credential fields and continues setup.
 5. Disable or rotate the temporary Keycloak bootstrap credential after setup succeeds.
 
 Use **Use an already configured Keycloak realm** when the operator has already created clients, redirect URIs, web origins, protocol mappers, and client secrets in Keycloak. In that mode ISLAMU only stores the runtime OIDC authority/client settings and does not call the Keycloak Admin API.
 
 External bootstrap is idempotent for client lookup/update: rerunning setup against the same realm locates existing clients by `clientId` and updates their secrets. It does not delete existing realms, users, roles, or unrelated clients. Keep a Keycloak database backup before using create mode in shared environments.
+
+### Post-Onboarding Keycloak Maintenance
+
+After onboarding, instance administrators can use the admin auth-provider settings panel to diagnose and repair Keycloak drift without storing permanent Keycloak admin credentials.
+
+Available operations:
+
+- **Realm doctor** is read-only in basic mode and verifies saved runtime configuration plus OIDC discovery. With temporary admin credentials, it also checks realm/client availability, authorization-code settings, refresh-token settings, `offline_access` role/scope mappings, and the optional API audience target.
+- **Sync preview** builds an additive `RealmSyncPlan`. Without temporary admin credentials it shows desired state only; with temporary credentials it compares the current realm and returns safe drift operations.
+- **Sync apply** requires instance-admin authorization, temporary admin credentials, and explicit Keycloak backup confirmation. It only adds or updates ISLAMU-owned clients, scopes, protocol mappers, redirect URIs, web origins, and `offline_access` mappings. It does not delete realms, users, groups, unrelated clients, redirect origins, or operator-managed customizations.
+- **Client-secret rotation** targets the configured Blazor confidential client. Application-managed rotation writes the new secret to Keycloak first and persists the ISLAMU runtime secret only after Keycloak accepts it. Deployment-managed secrets return operator instructions instead of being silently overwritten.
+
+Temporary Keycloak admin usernames/passwords are used only for the active doctor, preview, apply, or rotation request. They must not be saved to appsettings, environment variables, Infisical, database settings, logs, screenshots, support bundles, or browser storage. Before applying a sync plan, back up the Keycloak PostgreSQL database and keep the backup until login and admin access have been verified after the repair.
 
 ## Migrations
 
@@ -288,5 +361,6 @@ Use [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for the full runbook 
 - [CONFIGURATION.md](CONFIGURATION.md) — runtime configuration sources and key mappings.
 - [SECRETS.md](SECRETS.md) — secret provider behavior and key mapping.
 - [OPERATIONS.md](OPERATIONS.md) — health, startup, shutdown, and runtime safeguards.
+- [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) — Coolify-specific Cerbos PDP deployment runbook.
 - [SECURITY.md](SECURITY.md) — authentication and authorization architecture.
 - [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) — backup, restore, upgrade, rollback.

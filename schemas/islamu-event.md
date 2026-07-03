@@ -3336,6 +3336,213 @@ Table "event_contact_share_export_items" {
 
 
 // ============================================================
+// Event Reporting & Moderation Review
+// ============================================================
+
+Table "event_reports" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "reporter_user_id" uuid
+  "reporter_actor_id" uuid
+  "reporter_kind" int [not null]
+  "source_kind" int [not null]
+  "reason_code" varchar(100) [not null]
+  "subcategory_code" varchar(100)
+  "status" int [not null]
+  "priority" int [not null]
+  "severity_hint" int
+  "duplicate_group_id" uuid
+  "reporter_contact_consent" boolean [not null]
+  "reporter_locale" varchar(10)
+  "reporter_ip_hash" varchar(64)
+  "reporter_user_agent_hash" varchar(64)
+  "closed_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_event_reports_tenant_id_id']
+    (tenant_id, event_id, id) [unique, name: 'ak_event_reports_tenant_id_event_id_id']
+    reporter_user_id [name: 'ix_event_reports_reporter_user_id']
+    (tenant_id, reporter_actor_id) [name: 'ix_event_reports_tenant_id_reporter_actor_id']
+    (tenant_id, duplicate_group_id) [name: 'ix_event_reports_tenant_duplicate_group', note: 'filter: duplicate_group_id IS NOT NULL']
+    (tenant_id, event_id, status, created_at) [name: 'ix_event_reports_tenant_event_status_created', note: 'descending: created_at']
+    (tenant_id, priority, status, created_at) [name: 'ix_event_reports_tenant_priority_status_created', note: 'descending: created_at']
+    (tenant_id, reporter_user_id, event_id, reason_code, created_at) [name: 'ix_event_reports_tenant_reporter_event_reason_created', note: 'filter: reporter_user_id IS NOT NULL; descending: created_at']
+  }
+
+  Note: 'Tenant-scoped event-report aggregate. Checks enforce non-blank reason/subcategory/fingerprint values when present, enum ranges for reporter/source/status/priority/severity, and closed_at only for terminal statuses.'
+}
+
+Table "event_report_cases" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "report_id" uuid [not null]
+  "queue_code" varchar(50) [not null]
+  "status" int [not null]
+  "priority" int [not null]
+  "assigned_moderator_user_id" uuid
+  "sla_due_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_event_report_cases_tenant_id_id']
+    (tenant_id, report_id, id) [unique, name: 'ak_event_report_cases_tenant_id_report_id_id']
+    assigned_moderator_user_id [name: 'ix_event_report_cases_assigned_moderator_user_id']
+    (tenant_id, assigned_moderator_user_id, status, updated_at) [name: 'ix_event_report_cases_tenant_assignee_status_updated', note: 'filter: assigned_moderator_user_id IS NOT NULL; descending: updated_at']
+    (tenant_id, queue_code, status, priority, created_at) [name: 'ix_event_report_cases_tenant_queue_status_priority_created', note: 'descending: created_at']
+    (tenant_id, sla_due_at) [name: 'ix_event_report_cases_tenant_sla_due_at', note: 'filter: sla_due_at IS NOT NULL']
+  }
+
+  Note: 'Local moderation queue case for an event report. Checks enforce non-blank queue code and status/priority ranges; concurrency_stamp is the optimistic workflow guard.'
+}
+
+Table "event_report_evidence" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "report_id" uuid [not null]
+  "evidence_kind" int [not null]
+  "text_body_encrypted" text
+  "storage_object_id" uuid
+  "content_hash" varchar(128)
+  "classification" int [not null]
+  "retention_until" timestamptz
+  "created_by_user_id" uuid
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    created_by_user_id [name: 'ix_event_report_evidence_created_by_user_id']
+    (tenant_id, storage_object_id) [name: 'ix_event_report_evidence_tenant_id_storage_object_id']
+    (tenant_id, content_hash) [name: 'ix_event_report_evidence_tenant_content_hash', note: 'filter: content_hash IS NOT NULL']
+    (tenant_id, report_id, evidence_kind, created_at) [name: 'ix_event_report_evidence_tenant_report_kind_created', note: 'descending: created_at']
+    (tenant_id, retention_until) [name: 'ix_event_report_evidence_tenant_retention_until', note: 'filter: retention_until IS NOT NULL']
+  }
+
+  Note: 'Sensitive report evidence. Reporter-text evidence stores encrypted text only; checks enforce evidence/classification ranges, required encrypted reporter text for text evidence, and non-blank content_hash when present.'
+}
+
+Table "event_report_targets" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "report_id" uuid [not null]
+  "target_kind" int [not null]
+  "target_id" uuid [not null]
+  "field_path" varchar(200)
+  "storage_object_id" uuid
+
+  indexes {
+    (tenant_id, storage_object_id) [name: 'ix_event_report_targets_tenant_id_storage_object_id']
+    (tenant_id, report_id, target_kind, target_id) [name: 'ix_event_report_targets_tenant_report_target']
+    (tenant_id, target_kind, target_id) [name: 'ix_event_report_targets_tenant_target']
+  }
+
+  Note: 'Report target references for event/session/field/storage-object targets. Checks enforce target_kind range and non-blank field_path when present.'
+}
+
+Table "event_report_signals" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "report_id" uuid
+  "event_id" uuid [not null]
+  "provider" int [not null]
+  "signal_type" varchar(100) [not null]
+  "policy_code" varchar(100) [not null]
+  "score" numeric(5,4)
+  "verdict" int [not null]
+  "recommended_action" int
+  "safe_summary" varchar(500)
+  "external_signal_id" varchar(200)
+  "correlation_id" varchar(100) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, event_id, report_id) [name: 'ix_event_report_signals_tenant_id_event_id_report_id']
+    (tenant_id, event_id, provider, created_at) [name: 'ix_event_report_signals_tenant_event_provider_created', note: 'descending: created_at']
+    (tenant_id, report_id, provider, created_at) [name: 'ix_event_report_signals_tenant_report_provider_created', note: 'filter: report_id IS NOT NULL; descending: created_at']
+    (tenant_id, provider, correlation_id) [unique, name: 'ux_event_report_signals_tenant_provider_correlation']
+    (tenant_id, provider, external_signal_id) [unique, name: 'ux_event_report_signals_tenant_provider_external_signal', note: 'filter: external_signal_id IS NOT NULL']
+  }
+
+  Note: 'Bounded moderation provider signal metadata. Checks enforce provider/verdict/recommended_action ranges, score 0..1, non-blank signal/policy/correlation IDs, and no raw provider payload storage.'
+}
+
+Table "event_report_decisions" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "case_id" uuid [not null]
+  "report_id" uuid [not null]
+  "decision_source" int [not null]
+  "decision_kind" int [not null]
+  "reason_code" varchar(100) [not null]
+  "safe_note" varchar(1000)
+  "moderator_user_id" uuid
+  "external_decision_id" varchar(200)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, report_id, id) [unique, name: 'ak_event_report_decisions_tenant_id_report_id_id']
+    moderator_user_id [name: 'ix_event_report_decisions_moderator_user_id']
+    (tenant_id, report_id, case_id) [name: 'ix_event_report_decisions_tenant_id_report_id_case_id']
+    (tenant_id, case_id, created_at) [name: 'ix_event_report_decisions_tenant_case_created', note: 'descending: created_at']
+    (tenant_id, report_id, created_at) [name: 'ix_event_report_decisions_tenant_report_created', note: 'descending: created_at']
+    (tenant_id, decision_source, external_decision_id) [unique, name: 'ux_event_report_decisions_tenant_source_external', note: 'filter: external_decision_id IS NOT NULL']
+  }
+
+  Note: 'Review decision before enforcement. Checks enforce source/kind ranges, non-blank reason/safe-note/external IDs when present, and local moderator identity for local decisions.'
+}
+
+Table "event_report_external_links" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "report_id" uuid [not null]
+  "case_id" uuid
+  "provider" int [not null]
+  "provider_case_id" varchar(200)
+  "provider_signal_id" varchar(200)
+  "provider_url" varchar(500)
+  "sync_state" int [not null]
+  "last_synced_at" timestamptz
+  "last_error_category" varchar(100)
+  "retry_count" int [not null]
+  "correlation_id" varchar(100) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, report_id, case_id) [name: 'ix_event_report_external_links_tenant_id_report_id_case_id']
+    (tenant_id, provider, sync_state, created_at) [name: 'ix_event_report_external_links_tenant_provider_state_created', note: 'descending: created_at']
+    (tenant_id, provider, provider_case_id) [unique, name: 'ux_event_report_external_links_tenant_provider_case', note: 'filter: provider_case_id IS NOT NULL']
+    (tenant_id, provider, correlation_id) [unique, name: 'ux_event_report_external_links_tenant_provider_correlation']
+    (tenant_id, provider, provider_signal_id) [unique, name: 'ux_event_report_external_links_tenant_provider_signal', note: 'filter: provider_signal_id IS NOT NULL']
+  }
+
+  Note: 'External provider sync marker for report/case/signal mirroring. Checks enforce provider/sync_state ranges, retry_count >= 0, non-blank external IDs/URLs/error categories/correlation IDs when present.'
+}
+
+
+// ============================================================
 // Audit & Notifications
 // ============================================================
 
@@ -3732,6 +3939,32 @@ Ref: "event_contact_share_exports".("tenant_id", "event_id") > "events".("tenant
 Ref: "event_contact_share_exports"."exported_by_user_id" > "users"."id" [delete: restrict]
 Ref: "event_contact_share_export_items"."export_id" > "event_contact_share_exports"."id" [delete: cascade]
 Ref: "event_contact_share_export_items"."consent_id" > "event_contact_share_consents"."id" [delete: restrict]
+
+// Event Reporting & Moderation Review
+Ref: "event_reports"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_reports".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "event_reports"."reporter_user_id" > "users"."id" [delete: restrict]
+Ref: "event_reports".("tenant_id", "reporter_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_cases"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_report_cases".("tenant_id", "report_id") > "event_reports".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_cases"."assigned_moderator_user_id" > "users"."id" [delete: restrict]
+Ref: "event_report_evidence"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_report_evidence".("tenant_id", "report_id") > "event_reports".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_evidence".("tenant_id", "storage_object_id") > "storage_objects".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_evidence"."created_by_user_id" > "users"."id" [delete: restrict]
+Ref: "event_report_targets"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_report_targets".("tenant_id", "report_id") > "event_reports".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_targets".("tenant_id", "storage_object_id") > "storage_objects".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_signals"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_report_signals".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_signals".("tenant_id", "event_id", "report_id") > "event_reports".("tenant_id", "event_id", "id") [delete: restrict]
+Ref: "event_report_decisions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_report_decisions".("tenant_id", "report_id") > "event_reports".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_decisions".("tenant_id", "report_id", "case_id") > "event_report_cases".("tenant_id", "report_id", "id") [delete: restrict]
+Ref: "event_report_decisions"."moderator_user_id" > "users"."id" [delete: restrict]
+Ref: "event_report_external_links"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_report_external_links".("tenant_id", "report_id") > "event_reports".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_external_links".("tenant_id", "report_id", "case_id") > "event_report_cases".("tenant_id", "report_id", "id") [delete: restrict]
 
 // Custom Properties (EAV)
 Ref: "custom_property_definitions"."default_option_id" > "custom_property_options"."id" [delete: cascade]

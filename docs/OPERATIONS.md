@@ -6,7 +6,7 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-06-23
+> **Last Verified:** 2026-07-03
 > **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.API/HealthChecks/StorageReconciliationHealthCheck.cs`, `Explore.API/BackgroundServices/StorageReconciliationProcessor.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
 
 This page is the operational reference for implemented runtime behavior. Task procedures should live in dedicated runbooks and be linked from here.
@@ -46,16 +46,71 @@ Sensitive values are redacted before output. Do not add checks that print raw co
 
 ## Local Startup Topology (Aspire)
 
-`Explore.AppHost/AppHost.cs` starts services in this order:
+`Explore.AppHost/AppHost.cs` selects topology from `ISLAMU_ASPIRE_MODE`, normally through `Explore.AppHost/Properties/launchSettings.json`:
 
-1. RabbitMQ resource `messaging` for optional local RabbitMQ Dispatch Mode experiments
-2. `Event.MigrationService`
-3. `Explore.API` (waits for migration completion, Redis, and RabbitMQ in Aspire local development)
-4. `Explore.Blazor` (waits for migration completion and API readiness)
+| Launch profile | Mode | Started by Aspire |
+|---|---|---|
+| `local-full` | `FullLocal` | PostgreSQL `postgres`/`explore`, Redis `cache`, RabbitMQ `messaging`, CockroachDB `crdb`, Phase Two Keycloak `keycloak`, Cerbos database/PDP, MinIO, Svix, Coop, configured Osprey, Prometheus, Grafana, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. |
+| `local-core` | `LocalDataExternalPlatform` | PostgreSQL `postgres`/`explore`, Redis `cache`, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. Auth, policy, storage, webhooks, and moderation providers come from Infisical/config. |
+| `local-lite` | `ExternalInfra` | `Explore.API` and `Explore.Blazor` only. All infrastructure comes from Infisical/config. |
+
+Contributor default:
+
+```bash
+aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+```
+
+`AspireRunModeExtensions.Parse` defaults a missing `ISLAMU_ASPIRE_MODE` to `FullLocal`, so the contributor path does not require a launch-profile name. `aspire run` is interactive and exits when you press `Ctrl+C`.
+
+Background run and stop:
+
+```bash
+aspire start --apphost Explore.AppHost/Explore.AppHost.csproj
+aspire stop --apphost Explore.AppHost/Explore.AppHost.csproj
+```
+
+Maintainer modes:
+
+```bash
+ISLAMU_ASPIRE_MODE=FullLocal aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+ISLAMU_ASPIRE_MODE=LocalDataExternalPlatform aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+ISLAMU_ASPIRE_MODE=ExternalInfra aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+```
+
+Launch profiles remain available through `dotnet run` for IDEs and compatibility:
+
+```bash
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-core
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-lite
+```
+
+`local-full` uses persistent container lifetimes and named volumes for heavy stateful resources so local database, Keycloak, MinIO, RabbitMQ, and observability state survive AppHost restarts. Keycloak is pinned to stable local HTTP and management ports because browser cookies, OIDC callbacks, and issuer metadata are port-sensitive during development.
+
+Secret and connection priority:
+
+- `local-full` forces `SecretProvider__Provider=None` for child projects, clears Infisical bootstrap identifiers, and supplies local Keycloak, Cerbos, MinIO, Svix, Coop, storage, and database settings. Contributors should not need Infisical credentials.
+- `ConnectionStrings:DefaultConnection` has first priority for EF Core; Aspire `WithReference` supplies it in `local-full` and `local-core`.
+- When no connection string is supplied, `BootstrapSecretLoader` resolves PostgreSQL fields from Infisical `/postgresql`, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration.
+- `local-core` and `local-lite` are maintainer modes. If Infisical bootstrap credentials are present in user secrets or environment variables, raw Infisical bootstrap values can outrank local `POSTGRESQL_*` fallback values. Blank the Infisical bootstrap keys for env-only local debugging.
+
+Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize configured client secrets. Keycloak skips startup import when the realm already exists in the persistent database, so reset the Keycloak database volume before expecting changes in the JSON export to reapply automatically.
+
+Startup dependencies are explicit:
+
+1. Local data profiles create PostgreSQL and Redis first.
+2. `local-full` creates platform infrastructure, including CockroachDB before Phase Two Keycloak and Cerbos PostgreSQL before Cerbos.
+3. `Event.MigrationService` receives the local database through Aspire `WithReference(database, "EventMigrationService")` and `WithReference(database, "DefaultConnection")`, then waits for PostgreSQL.
+4. `Explore.API` waits for migration completion, local data/cache, and `local-full` platform resources when those resources exist.
+5. `Explore.Blazor` waits for API readiness and receives API service discovery through Aspire.
 
 The Blazor app resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Do not hardcode the Compose/API host port into AppHost documentation.
 
-Aspire local development uses the local filesystem storage provider by default. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`, so local upload/download flows do not require MinIO or S3-compatible settings.
+Aspire local development uses the local filesystem storage provider by default unless a profile supplies S3-compatible settings. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`; `local-full` also supplies MinIO-compatible `S3Settings` for workflows that exercise S3 behavior.
+
+Cerbos local infrastructure uses the repository `cerbos/` folder as its source of truth. Aspire and Docker Compose mount `cerbos/config/.cerbos.yaml` into the Cerbos container, mount `cerbos/policies/` read-only for derived roles, policies, and `_schemas`, and initialize the local Cerbos PostgreSQL store from `cerbos/init/cerbos-schema.sql`. Do not copy policy files into container images for local development; update the repo-owned `cerbos/` tree and restart or sync the local Cerbos service.
+
+Osprey is image-configured in `local-full`. Set `OSPREY_IMAGE` and optionally `OSPREY_TAG` when you have a verified Osprey container image; otherwise the AppHost does not create an Osprey container and API moderation provider configuration should remain disabled or external.
 
 ## API Startup Behavior
 
@@ -327,6 +382,10 @@ Current counters include:
 - `explore.email_dispatch.rabbitmq.consumes` (`tenant_id`, `outcome`, `failure_category`) — future manual-ack RabbitMQ delivery outcomes; labels intentionally exclude recipient, subject, body, provider message ID, publish event ID, delivery tag, raw broker error text, and connection strings.
 - `explore.notifications.fanout_runs` (`tenant_id`, `fanout_kind`, `outcome`) — notification fanout run outcomes; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
 - `explore.notifications.fanout_subscribers` (`tenant_id`, `fanout_kind`, `outcome`) — aggregate subscriber decisions for notification fanout; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
+- `explore.event_reports.submissions` (`tenant_id`, `outcome`, `failure_category`) — event-report intake outcomes; labels intentionally exclude reporter text, reporter IP/User-Agent values or hashes, event titles, slugs, URLs, report IDs, and raw validation/provider errors.
+- `explore.event_reports.workflow_actions` (`tenant_id`, `action`, `outcome`, `failure_category`) — moderation report triage/assign/decide/execute outcomes; labels intentionally exclude report IDs, case IDs, decision IDs, moderator IDs, reporter evidence, safe notes, and raw errors.
+- `explore.event_reports.provider_syncs` (`tenant_id`, `provider`, `outcome`, `failure_category`) — report provider sync outcomes for local/Osprey/Coop/composite paths; labels intentionally exclude provider URLs, credentials, external case/signal IDs, payload bodies, reporter evidence, and raw provider errors.
+- `explore.event_reports.provider_callbacks` (`tenant_id`, `provider`, `outcome`, `failure_category`) — moderation provider callback outcomes; labels intentionally exclude callback bodies, signatures, provider decision IDs, report IDs, event IDs, case IDs, reporter evidence, and raw parse/auth errors.
 - `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, tenant/user IDs, and raw errors.
 - `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, raw tool payloads, model IDs, endpoint URLs, API keys, provider request IDs, and raw provider errors.
 - `explore.ai.provider.request_duration` (`provider`, `outcome`, `failure_category`) — AI provider request duration histogram in seconds; labels intentionally use the same bounded dimensions as provider request counters.
@@ -456,7 +515,8 @@ Package delivery paths:
 | Path | Trigger | Notes |
 |---|---|---|
 | GitHub Actions production publish | `Cerbos Policy Validation` on `push` to `main` after policy validation succeeds | Production CI/CD path. Uses the `production` GitHub Environment approval gate, digest-pinned `cerbosctl`, and repository secrets `CERBOS_SERVER`, `CERBOS_USERNAME`, `CERBOS_PASSWORD`, plus optional `CERBOS_CA_CERT_PEM`. Uploads `_schemas` before policies and retains `cerbos-policy-publish-evidence`. |
-| Docker Compose one-shot sync | `docker compose --profile authz run --rm cerbos-policy-sync` | Recommended self-hosting path. Starts the `authz` profile with `cerbos-db`, uses server-side `CERBOS_ADMIN_USER` / `CERBOS_ADMIN_PASSWORD`, recursively uploads policies and `_schemas`, then requests store reload. Set `CERBOS_ADMIN_PASSWORD_HASH` to the hash matching `CERBOS_ADMIN_PASSWORD` before using Admin API sync. |
+| Docker Compose one-shot sync | `docker compose --profile authz run --rm cerbos-policy-sync` | Recommended self-hosting path. Starts the `authz` profile with `cerbos-db`, maps `.env` `CERBOS_ADMIN_USERNAME` to the Cerbos server's `CERBOS_ADMIN_USER` variable, uses `CERBOS_ADMIN_PASSWORD`, recursively uploads policies and `_schemas`, then requests store reload. Set `CERBOS_ADMIN_PASSWORD_HASH` to the hash matching `CERBOS_ADMIN_PASSWORD` before using Admin API sync. |
+| Coolify external Cerbos | [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) | Separate PDP deployment path for Coolify Docker Image resources. Uses PostgreSQL-backed policy storage, a mounted `conf.yaml`, gRPC h2c routing, and manual or CI `cerbosctl` upload from this repo's `cerbos/policies/` tree. |
 | Zero-touch boot sync | API startup when complete instance Admin API config exists | Skips safely when endpoint or credentials are incomplete. |
 | Setup/Admin UI sync | Operator-triggered setup or admin action | Advanced path shown only when server-side Admin API credentials are already configured; the browser does not collect Cerbos Admin API passwords. Returns safe issue codes for missing config, auth failure, unavailable/rejected package, reload failure, or unknown package status. |
 | Manual ZIP fallback | Setup/Admin download endpoint | Always visible in onboarding, including Local RBAC mode. Exports the same bundled package for `cerbosctl put policy --recursive .` and `cerbosctl put schema --recursive _schemas` when Admin API sync is unavailable or intentionally disabled. |
