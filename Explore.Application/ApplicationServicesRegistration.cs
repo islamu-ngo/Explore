@@ -7,12 +7,15 @@ using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Tools;
+using Explore.Application.Features.EventReporting;
 using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
 using Explore.Application.Settings;
+using Explore.Application.Webhooks;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Configuration;
@@ -58,10 +61,13 @@ public static class ApplicationServicesRegistration
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+        services.Configure<EventReportSubmissionOptions>(configuration.GetSection(EventReportSubmissionOptions.SectionName));
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());
         services.AddScoped<IAiAssistantActorContextService, AiAssistantActorContextService>();
-services.AddScoped<IAiContextGateway, AiContextGateway>();
-services.AddScoped<IAiProviderTrustResolver, DefaultAiProviderTrustResolver>();
+        services.AddScoped<IAiContextGateway, AiContextGateway>();
+        services.AddScoped<IAiProviderTrustResolver, DefaultAiProviderTrustResolver>();
+        services.AddScoped<IAiContextRedactor, AiContextRedactor>();
+        services.AddScoped<IAiContextHygieneService, AiContextHygieneService>();
 
         // Onboarding Services
         services.AddScoped<ITenantPolicySettingService, TenantPolicySettingService>();
@@ -107,6 +113,11 @@ services.AddScoped<IAiProviderTrustResolver, DefaultAiProviderTrustResolver>();
         services.AddScoped<IEventLifecycleReadinessEvaluator, EventLifecycleReadinessEvaluator>();
         services.AddScoped<IScheduledEmailDispatchTrigger, NoOpScheduledEmailDispatchTrigger>();
         services.AddSingleton<IScheduledJobRegistry, ScheduledJobRegistry>();
+        services.AddSingleton<IWebhookEventTypeRegistry, WebhookEventTypeRegistry>();
+        services.AddSingleton<IWebhookEventSchemaProvider, WebhookEventSchemaProvider>();
+        services.AddSingleton<IWebhookPayloadBuilder, DefaultWebhookPayloadBuilder>();
+        services.AddScoped<IWebhookEventTypeCatalogSyncService, WebhookEventTypeCatalogSyncService>();
+        services.AddScoped<IWebhookEventPublisher, DefaultWebhookEventPublisher>();
 
         // Scheduling domain services (stateless, safe as singleton).
         services.AddSingleton<IEventScheduleProjectionCalculator, EventScheduleProjectionCalculator>();

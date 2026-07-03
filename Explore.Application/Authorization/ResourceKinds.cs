@@ -42,6 +42,7 @@ public static class ResourceKinds
     public const string CustomPropertyProjection = "islamuevent_custom_property_projection";
     public const string CustomPropertyGovernance = "islamuevent_custom_property_governance";
     public const string EmailDispatch = "islamuevent_email_dispatch";
+    public const string Webhook = "islamuevent_webhook";
     public const string PlatformNamespace = "islamuevent_platform_namespace";
     public const string Notification = "islamuevent_notification";
     public const string Actor = "islamuevent_actor";

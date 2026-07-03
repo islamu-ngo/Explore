@@ -103,6 +103,7 @@ public static class MachineScopeMapping
             case ResourceKinds.TenantUserRoleGrant:
             case ResourceKinds.TenantSetting:
             case ResourceKinds.EmailDispatch:
+            case ResourceKinds.Webhook:
                 return HasAny(scopeSet, ExternalApiKeyScopes.AdminTenant);
 
             case ResourceKinds.InstanceSetting:
@@ -145,6 +146,14 @@ public static class MachineScopeMapping
         AuthorizationActions.RejectAction => true,
         AuthorizationActions.CancelRun => true,
         AuthorizationActions.ProposeAction => true,
+        AuthorizationActions.Webhooks.Create => true,
+        AuthorizationActions.Webhooks.Update => true,
+        AuthorizationActions.Webhooks.Delete => true,
+        AuthorizationActions.Webhooks.RotateSecret => true,
+        AuthorizationActions.Webhooks.Test => true,
+        AuthorizationActions.Webhooks.Retry => true,
+        AuthorizationActions.Webhooks.ManageProvider => true,
+        AuthorizationActions.Webhooks.OpenProviderPortal => true,
         _ => false
     };
 

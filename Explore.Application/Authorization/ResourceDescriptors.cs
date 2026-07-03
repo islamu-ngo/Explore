@@ -32,6 +32,7 @@ using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.User;
+using Explore.Application.DTOs.Webhooks;
 
 namespace Explore.Application.Authorization;
 
@@ -115,6 +116,56 @@ public static class ResourceDescriptors
             ["tenantId"] = dto.TenantId.ToString(),
             ["tenantUserId"] = dto.TenantUserId.ToString(),
             ["userId"] = dto.UserId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<WebhookConsumerDto> WebhookConsumer = new(
+        ResourceKinds.Webhook,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["consumerId"] = dto.Id.ToString(),
+            ["consumerKind"] = dto.ConsumerKindName,
+            ["providerMode"] = dto.ProviderModeName,
+            ["status"] = dto.StatusName
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<WebhookEndpointDto> WebhookEndpoint = new(
+        ResourceKinds.Webhook,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["consumerId"] = dto.ConsumerId.ToString(),
+            ["endpointId"] = dto.Id.ToString(),
+            ["status"] = dto.StatusName
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<WebhookMessageDto> WebhookMessage = new(
+        ResourceKinds.Webhook,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["messageId"] = dto.Id.ToString(),
+            ["eventType"] = dto.EventType,
+            ["status"] = dto.StatusName
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<WebhookDeliveryAttemptDto> WebhookDeliveryAttempt = new(
+        ResourceKinds.Webhook,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["attemptId"] = dto.Id.ToString(),
+            ["messageId"] = dto.MessageId.ToString(),
+            ["endpointId"] = dto.EndpointId.ToString(),
+            ["status"] = dto.StatusName
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 

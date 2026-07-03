@@ -20,6 +20,10 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _eventsCreated;
     private readonly Counter<long> _eventsPublished;
     private readonly Counter<long> _eventModerationActions;
+    private readonly Counter<long> _eventReportSubmissions;
+    private readonly Counter<long> _eventReportWorkflowActions;
+    private readonly Counter<long> _eventReportProviderSyncs;
+    private readonly Counter<long> _eventReportProviderCallbacks;
     private readonly Counter<long> _registrationsCreated;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
@@ -35,6 +39,12 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _emailDispatchRabbitMqConsumes;
     private readonly Counter<long> _notificationFanoutRuns;
     private readonly Counter<long> _notificationFanoutSubscribers;
+    private readonly Counter<long> _webhookMessagesCreated;
+    private readonly Counter<long> _webhookDeliveryAttempts;
+    private readonly Counter<long> _webhookDeliverySuccess;
+    private readonly Counter<long> _webhookDeliveryFailure;
+    private readonly Counter<long> _webhookEndpointDisabled;
+    private readonly Counter<long> _webhookManualRetries;
     private readonly Counter<long> _customPropertyPurgeDecisions;
     private readonly Counter<long> _idempotencyCleanupRuns;
     private readonly Counter<long> _idempotencyCleanupRows;
@@ -75,6 +85,26 @@ public sealed class BusinessMetrics : IDisposable
             "explore.events.moderation_actions",
             unit: "{action}",
             description: "Total event moderation lifecycle decisions by bounded action kind, outcome, and failure category");
+
+        _eventReportSubmissions = meter.CreateCounter<long>(
+            "explore.event_reports.submissions",
+            unit: "{submission}",
+            description: "Total event-report submission outcomes by bounded failure category");
+
+        _eventReportWorkflowActions = meter.CreateCounter<long>(
+            "explore.event_reports.workflow_actions",
+            unit: "{action}",
+            description: "Total event-report moderation workflow actions by bounded action, outcome, and failure category");
+
+        _eventReportProviderSyncs = meter.CreateCounter<long>(
+            "explore.event_reports.provider_syncs",
+            unit: "{sync}",
+            description: "Total event-report provider sync outcomes by bounded provider, outcome, and failure category");
+
+        _eventReportProviderCallbacks = meter.CreateCounter<long>(
+            "explore.event_reports.provider_callbacks",
+            unit: "{callback}",
+            description: "Total moderation provider callback outcomes by bounded provider, outcome, and failure category");
 
         _registrationsCreated = meter.CreateCounter<long>(
             "explore.registrations.created",
@@ -150,6 +180,36 @@ public sealed class BusinessMetrics : IDisposable
             "explore.notifications.fanout_subscribers",
             unit: "{subscriber}",
             description: "Total notification fanout subscriber decisions by kind and bounded outcome");
+
+        _webhookMessagesCreated = meter.CreateCounter<long>(
+            "explore.webhooks.messages_created",
+            unit: "{message}",
+            description: "Total canonical webhook messages created by event type, provider, and bounded outcome");
+
+        _webhookDeliveryAttempts = meter.CreateCounter<long>(
+            "explore.webhooks.delivery_attempts",
+            unit: "{attempt}",
+            description: "Total LocalProvider webhook delivery attempt settlements by event type and bounded outcome");
+
+        _webhookDeliverySuccess = meter.CreateCounter<long>(
+            "explore.webhooks.delivery_success",
+            unit: "{delivery}",
+            description: "Total LocalProvider webhook delivery successes by event type");
+
+        _webhookDeliveryFailure = meter.CreateCounter<long>(
+            "explore.webhooks.delivery_failure",
+            unit: "{delivery}",
+            description: "Total LocalProvider webhook delivery failures by event type, bounded outcome, and failure category");
+
+        _webhookEndpointDisabled = meter.CreateCounter<long>(
+            "explore.webhooks.endpoint_disabled",
+            unit: "{endpoint}",
+            description: "Total LocalProvider webhook endpoint disable decisions by bounded failure category");
+
+        _webhookManualRetries = meter.CreateCounter<long>(
+            "explore.webhooks.manual_retries",
+            unit: "{retry}",
+            description: "Total LocalProvider manual retry scheduling decisions by bounded outcome and failure category");
 
         _customPropertyPurgeDecisions = meter.CreateCounter<long>(
             "explore.custom_properties.purge_decisions",
@@ -285,6 +345,56 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("irreversible", irreversible?.ToString().ToLowerInvariant() ?? "unknown"));
     }
 
+    public void RecordEventReportSubmission(
+        string? tenantId,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        _eventReportSubmissions.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("outcome", NormalizeEventReportSubmissionOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeEventReportSubmissionFailureCategory(failureCategory)));
+    }
+
+    public void RecordEventReportWorkflowAction(
+        string? tenantId,
+        string? action,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        _eventReportWorkflowActions.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("action", NormalizeEventReportWorkflowAction(action)),
+            new KeyValuePair<string, object?>("outcome", NormalizeEventReportOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeEventReportFailureCategory(failureCategory)));
+    }
+
+    public void RecordEventReportProviderSync(
+        string? tenantId,
+        string? provider,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        _eventReportProviderSyncs.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("provider", NormalizeEventReportProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeEventReportOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeEventReportFailureCategory(failureCategory)));
+    }
+
+    public void RecordEventReportProviderCallback(
+        string? tenantId,
+        string? provider,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        _eventReportProviderCallbacks.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("provider", NormalizeEventReportProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeEventReportOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeEventReportFailureCategory(failureCategory)));
+    }
+
     public void RecordRegistrationCreated(string? tenantId = null)
     {
         _registrationsCreated.Add(1,
@@ -400,6 +510,72 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("fanout_kind", NormalizeTag(fanoutKind)),
             new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
+    }
+
+    public void RecordWebhookMessageCreated(
+        string? tenantId,
+        string? eventType,
+        string? provider,
+        string? outcome)
+    {
+        _webhookMessagesCreated.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
+            new KeyValuePair<string, object?>("provider", NormalizeWebhookProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)));
+    }
+
+    public void RecordWebhookDeliveryAttempt(
+        string? tenantId,
+        string? eventType,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        _webhookDeliveryAttempts.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
+            new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
+    }
+
+    public void RecordWebhookDeliverySuccess(string? tenantId, string? eventType)
+    {
+        _webhookDeliverySuccess.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)));
+    }
+
+    public void RecordWebhookDeliveryFailure(
+        string? tenantId,
+        string? eventType,
+        string? outcome,
+        string? failureCategory)
+    {
+        _webhookDeliveryFailure.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
+            new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
+    }
+
+    public void RecordWebhookEndpointDisabled(string? tenantId, string? failureCategory)
+    {
+        _webhookEndpointDisabled.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
+    }
+
+    public void RecordWebhookManualRetry(
+        string? tenantId,
+        string? eventType,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        _webhookManualRetries.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
+            new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
     }
 
     public void RecordCustomPropertyPurgeDecision(string? tenantId, string scope, string outcome, string blockerCategory)
@@ -642,6 +818,88 @@ public sealed class BusinessMetrics : IDisposable
             : value.Trim().ToLowerInvariant();
     }
 
+    private static string NormalizeWebhookEventType(string? eventType)
+    {
+        var normalized = NormalizeTag(eventType);
+        if (normalized is "unknown" || normalized.Length > 100)
+        {
+            return "unknown";
+        }
+
+        foreach (var current in normalized)
+        {
+            if (!char.IsAsciiLetterOrDigit(current) && current is not '.' and not '_' and not '-')
+            {
+                return "unknown";
+            }
+        }
+
+        return normalized;
+    }
+
+    private static string NormalizeWebhookProvider(string? provider)
+    {
+        return NormalizeTag(provider) switch
+        {
+            "disabled" => "disabled",
+            "local" => "local",
+            "svix" => "svix",
+            "composite" => "composite",
+            "dryrun" or "dry_run" => "dry_run",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeWebhookOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "created" => "created",
+            "queued" => "queued",
+            "succeeded" or "success" => "succeeded",
+            "retry_scheduled" or "retry" => "retry_scheduled",
+            "abandoned" => "abandoned",
+            "failed" or "failure" => "failed",
+            "skipped" => "skipped",
+            "missing" => "missing",
+            "already_claimed" => "already_claimed",
+            "already_settled" => "already_settled",
+            "deferred" => "deferred",
+            "disabled" => "disabled",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeWebhookFailureCategory(string? failureCategory)
+    {
+        return NormalizeTag(failureCategory ?? "none") switch
+        {
+            "none" => "none",
+            "provider_disabled" => "provider_disabled",
+            "processing_lease_expired" => "processing_lease_expired",
+            "missing_endpoint" => "missing_endpoint",
+            "missing_message" => "missing_message",
+            "endpoint_not_active" => "endpoint_not_active",
+            "payload_unavailable" => "payload_unavailable",
+            "payload_too_large" => "payload_too_large",
+            "missing_secret" => "missing_secret",
+            "invalid_secret" => "invalid_secret",
+            "invalid_url" => "invalid_url",
+            "redirect_response" => "redirect_response",
+            "http_non_success" => "http_non_success",
+            "timeout" => "timeout",
+            "network_error" => "network_error",
+            "private_network_blocked" => "private_network_blocked",
+            "localhost_blocked" => "localhost_blocked",
+            "metadata_address_blocked" => "metadata_address_blocked",
+            "dns_resolution_failed" => "dns_resolution_failed",
+            "endpoint_status_not_retryable" => "endpoint_status_not_retryable",
+            "attempt_status_not_retryable" => "attempt_status_not_retryable",
+            "message_payload_cleared" => "message_payload_cleared",
+            _ => "unknown"
+        };
+    }
+
     private static string NormalizeStorageProvider(string? provider)
     {
         return NormalizeTag(provider) switch
@@ -832,6 +1090,118 @@ public sealed class BusinessMetrics : IDisposable
             "not_reversible" => "not_reversible",
             "user_unresolved" => "user_unresolved",
             "storage_deletion_pending" => "storage_deletion_pending",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeEventReportSubmissionOutcome(string? outcome)
+    {
+        return NormalizeEventReportOutcome(outcome) switch
+        {
+            "succeeded" => "succeeded",
+            "failed" => "failed",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeEventReportSubmissionFailureCategory(string? failureCategory)
+    {
+        return NormalizeEventReportFailureCategory(failureCategory) switch
+        {
+            "none" => "none",
+            "validation_failed" => "validation_failed",
+            "tenant_unresolved" => "tenant_unresolved",
+            "user_unresolved" => "user_unresolved",
+            "actor_unresolved" => "actor_unresolved",
+            "event_not_found" => "event_not_found",
+            "invalid_status" => "invalid_status",
+            "duplicate" => "duplicate",
+            FailureCodes.QuotaExceeded => FailureCodes.QuotaExceeded,
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeEventReportWorkflowAction(string? action)
+    {
+        return NormalizeTag(action) switch
+        {
+            "triage" or "triage_report" or "triagereport" => "triage",
+            "assign" or "assign_report" or "assignreport" => "assign",
+            "decide" or "decision" or "decide_report" or "decidereport" => "decide",
+            "execute" or "execute_decision" or "execute_report_decision" or "executereportdecision" => "execute",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeEventReportProvider(string? provider)
+    {
+        return NormalizeTag(provider) switch
+        {
+            "local" or "localonly" or "local_only" => "local",
+            "osprey" => "osprey",
+            "coop" => "coop",
+            "composite" => "composite",
+            "none" or "disabled" => "none",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeEventReportOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "succeeded" or "success" => "succeeded",
+            "failed" or "failure" => "failed",
+            "retryable_failure" or "retryable" => "retryable_failure",
+            "nonretryable_failure" or "non_retryable_failure" or "nonretryable" => "nonretryable_failure",
+            "disabled" => "disabled",
+            "skipped" => "skipped",
+            "idempotent" => "idempotent",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeEventReportFailureCategory(string? failureCategory)
+    {
+        return NormalizeTag(failureCategory ?? "none") switch
+        {
+            "none" => "none",
+            "validation_failed" => "validation_failed",
+            "tenant_unresolved" => "tenant_unresolved",
+            "user_unresolved" => "user_unresolved",
+            "actor_unresolved" => "actor_unresolved",
+            "event_not_found" => "event_not_found",
+            "event_mismatch" => "event_mismatch",
+            "report_not_found" => "report_not_found",
+            "case_not_found" => "case_not_found",
+            "case_concurrency_conflict" => "case_concurrency_conflict",
+            "case_invalid_status" => "case_invalid_status",
+            "report_invalid_status" => "report_invalid_status",
+            "moderator_unavailable" => "moderator_unavailable",
+            "assignee_unavailable" => "assignee_unavailable",
+            "assignment_mismatch" => "assignment_mismatch",
+            "duplicate_group_required" => "duplicate_group_required",
+            "decision_not_found" => "decision_not_found",
+            "decision_invalid" => "decision_invalid",
+            "decision_execution_failed" => "decision_execution_failed",
+            "duplicate" => "duplicate",
+            FailureCodes.QuotaExceeded => FailureCodes.QuotaExceeded,
+            "provider_disabled" => "provider_disabled",
+            "provider_sync_failed" => "provider_sync_failed",
+            "provider_timeout" => "provider_timeout",
+            "provider_unreachable" => "provider_unreachable",
+            "provider_auth_failed" => "provider_auth_failed",
+            "provider_invalid_request" => "provider_invalid_request",
+            "provider_conflict" => "provider_conflict",
+            "provider_rate_limited" => "provider_rate_limited",
+            "provider_transient_http" => "provider_transient_http",
+            "provider_invalid_response" => "provider_invalid_response",
+            "coop_timeout" => "provider_timeout",
+            "coop_webhook_signature_invalid" => "webhook_signature_invalid",
+            "coop_webhook_secret_missing" => "webhook_secret_missing",
+            "coop_webhook_body_too_large" => "webhook_body_too_large",
+            "coop_webhook_json_invalid" => "webhook_json_invalid",
+            "coop_webhook_body_required" => "webhook_body_required",
             _ => "unknown"
         };
     }

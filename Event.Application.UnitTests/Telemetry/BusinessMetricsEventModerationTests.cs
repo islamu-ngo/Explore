@@ -72,6 +72,101 @@ public sealed class BusinessMetricsEventModerationTests
         await Assert.That(tagValues).DoesNotContain("case-");
     }
 
+    [Test]
+    public async Task RecordEventReportWorkflowActionRecordsExpectedSafeTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+
+        metrics.RecordEventReportWorkflowAction(
+            "tenant-a",
+            "execute_report_decision",
+            "failed",
+            "decision_execution_failed");
+
+        var measurement = await metricsCapture.SingleAsync("explore.event_reports.workflow_actions");
+
+        await Assert.That(measurement.Value).IsEqualTo(1);
+        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo("tenant-a");
+        await Assert.That(measurement.Tags["action"]?.ToString()).IsEqualTo("execute");
+        await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("failed");
+        await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("decision_execution_failed");
+    }
+
+    [Test]
+    public async Task RecordEventReportProviderSyncRecordsExpectedSafeTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+
+        metrics.RecordEventReportProviderSync(
+            "tenant-a",
+            "coop",
+            "retryable_failure",
+            "coop_timeout");
+
+        var measurement = await metricsCapture.SingleAsync("explore.event_reports.provider_syncs");
+
+        await Assert.That(measurement.Value).IsEqualTo(1);
+        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo("tenant-a");
+        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("coop");
+        await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("retryable_failure");
+        await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("provider_timeout");
+    }
+
+    [Test]
+    public async Task RecordEventReportProviderCallbackRecordsExpectedSafeTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+
+        metrics.RecordEventReportProviderCallback(
+            "tenant-a",
+            "osprey",
+            "succeeded");
+
+        var measurement = await metricsCapture.SingleAsync("explore.event_reports.provider_callbacks");
+
+        await Assert.That(measurement.Value).IsEqualTo(1);
+        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo("tenant-a");
+        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("osprey");
+        await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("succeeded");
+        await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("none");
+    }
+
+    [Test]
+    public async Task EventReportMetricsDoNotEmitUnsafeOrHighCardinalityTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+        var rawIdentifier = Guid.NewGuid().ToString("N");
+
+        metrics.RecordEventReportProviderCallback(
+            "tenant-a",
+            $"https://provider.example/{rawIdentifier}?secret=value",
+            $"reporter text {rawIdentifier}",
+            $"raw provider payload {rawIdentifier}");
+
+        var measurement = await metricsCapture.SingleAsync("explore.event_reports.provider_callbacks");
+        var tagKeys = measurement.Tags.Keys.ToArray();
+        var tagValues = string.Join(" ", measurement.Tags.Values.Select(value => value?.ToString()));
+
+        await Assert.That(tagKeys).DoesNotContain("event_id");
+        await Assert.That(tagKeys).DoesNotContain("report_id");
+        await Assert.That(tagKeys).DoesNotContain("case_id");
+        await Assert.That(tagKeys).DoesNotContain("decision_id");
+        await Assert.That(tagKeys).DoesNotContain("reporter_text");
+        await Assert.That(tagKeys).DoesNotContain("provider_payload");
+        await Assert.That(tagKeys).DoesNotContain("provider_url");
+        await Assert.That(tagKeys).DoesNotContain("correlation_id");
+        await Assert.That(tagKeys).DoesNotContain("error");
+
+        await Assert.That(tagValues).DoesNotContain(rawIdentifier);
+        await Assert.That(tagValues).DoesNotContain("provider.example");
+        await Assert.That(tagValues).DoesNotContain("reporter text");
+        await Assert.That(tagValues).DoesNotContain("provider payload");
+    }
+
     private static BusinessMetrics CreateMetrics()
     {
         var meterFactory = Substitute.For<IMeterFactory>();

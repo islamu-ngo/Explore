@@ -379,6 +379,20 @@ public static class AuthorizationActions
         public const string Update = AuthorizationActions.Update;
     }
 
+    public static class Webhooks
+    {
+        public const string View = "webhook:view";
+        public const string Create = "webhook:create";
+        public const string Update = "webhook:update";
+        public const string Delete = "webhook:delete";
+        public const string RotateSecret = "webhook:rotate-secret";
+        public const string Test = "webhook:test";
+        public const string Retry = "webhook:retry";
+        public const string ViewDelivery = "webhook:view-delivery";
+        public const string ManageProvider = "webhook:manage-provider";
+        public const string OpenProviderPortal = "webhook:open-provider-portal";
+    }
+
     /// <summary>
     /// Valid actions for the <c>platform_namespace</c> resource kind.
     /// Default deny — only instance admins (platform operators) can write.
