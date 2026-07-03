@@ -340,6 +340,83 @@ intents:
       - architect-agent
       - quality-verifier-agent
 
+  - id: external-infrastructure-bootstrap
+    title: "Automate external infrastructure bootstrap or onboarding"
+    category: infrastructure
+    triggers:
+      - "bootstrap external infrastructure"
+      - "automate Keycloak bootstrap"
+      - "configure existing Keycloak"
+      - "setup-time infrastructure onboarding"
+      - "external provider bootstrap"
+    must_read_docs:
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/SECURITY-MODEL.md
+      - docs/SECRETS.md
+      - docs/CONFIGURATION.md
+      - docs/SELF_HOSTING.md
+      - docs/TESTING.md
+    load_skills:
+      - auth-patterns
+      - blazor-bff-patterns
+      - clean-architecture-rules
+    load_rules:
+      - .claude/rules/api-controllers.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/blazor-server.md
+      - .claude/rules/blazor-client.md
+      - .claude/rules/tests.md
+    paths_in_scope:
+      - "docker-compose.yml"
+      - "docker/**"
+      - "Explore.Application/Contracts/Services/**/*.cs"
+      - "Explore.Application/DTOs/Onboarding/**/*.cs"
+      - "Explore.Application/Features/InstanceOnboarding/**/*.cs"
+      - "Explore.Infrastructure/Services/**/*.cs"
+      - "Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "Explore.API/Controllers/**/*Settings*.cs"
+      - "Explore.API/Controllers/**/*Onboarding*.cs"
+      - "Explore.API/Hateoas/RouteNames.cs"
+      - "Explore.Blazor/**/*.cs"
+      - "Explore.Blazor.Client/**/*.razor"
+      - "Explore.Blazor.Client/Services/**/*.cs"
+      - "Event.*Tests/**/*.cs"
+      - "Explore.*Tests/**/*.cs"
+      - "docs/CONFIGURATION.md"
+      - "docs/SECRETS.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/TROUBLESHOOTING.md"
+      - "dev/active/**"
+    minimum_tests:
+      - Event.Application.UnitTests
+      - Explore.Infrastructure.Tests
+      - Event.API.IntegrationTests
+      - Explore.Blazor.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/CONFIGURATION.md
+      - docs/SECRETS.md
+      - docs/SELF_HOSTING.md
+      - docs/TROUBLESHOOTING.md
+    unique_acceptance:
+      - "Bootstrap credentials are request-scoped or job-scoped and never persisted as runtime application secrets"
+      - "Browser-controlled privileged headers are stripped and replaced only from trusted BFF/server sources"
+      - "External-provider admin API responses, tokens, passwords, and client secrets stay out of logs, DTOs, traces, and support artifacts"
+      - "Existing external resources are patched additively; destructive delete/reimport workflows require explicit approval"
+      - "Operator docs cover rerun, rotation, backup, and failure recovery paths"
+    forbidden_without_approval:
+      - "Persisting provider admin credentials or service-account secrets for background reuse"
+      - "Deleting or reimporting an existing external realm/resource as a repair strategy"
+      - "Trusting browser-supplied setup/admin headers for bootstrap authority"
+      - "Silently overriding deployment-managed secrets with application-managed values"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - presentation-engineer-agent
+      - quality-verifier-agent
+
   - id: create-agent-context-skill
     title: "Create or update an agent-context skill"
     category: cross-cutting

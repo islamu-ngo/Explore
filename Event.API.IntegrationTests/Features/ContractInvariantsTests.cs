@@ -265,6 +265,8 @@ public class ContractInvariantsTests
         var catalogedSchemaNames = new[]
         {
             "HalResourceOfEventDto",
+            "HalResourceOfEventReportOptionsDto",
+            "HalResourceOfMyEventReportDto",
             "HalResourceOfEventSessionDto",
             "HalResourceOfEventSessionGroupDto",
             "HalResourceOfCategoryDto",

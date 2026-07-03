@@ -1,4 +1,4 @@
-# ABOUTME: Eight cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
+# ABOUTME: Nine cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
 # ABOUTME: Each scenario is a self-contained task a fresh AI agent should be able to complete using only AGENTS.md + the context system.
 # Schema: see README.md §3. Validated by Event.Architecture.Tests.AgentContextIntentManifestTests.
 # Version: 1 (synthetic). Target: replace each with real issue-based scenario within 4–6 weeks.
@@ -268,3 +268,55 @@ scenarios:
       - "`create`/`update`/`delete` require role `AnnouncementManager`."
       - "`AuthorizationParityTests` lists the new resource."
       - "No existing policies weakened."
+
+  - id: external-infrastructure-bootstrap
+    intent_id: external-infrastructure-bootstrap
+    summary: |
+      Add a setup-time bootstrap flow for an existing external identity provider without storing admin credentials.
+    prompt: |
+      Add a setup-time bootstrap flow for an existing Keycloak deployment. The operator provides
+      a Keycloak base URL, target realm, Blazor client ID/secret, and a one-time temporary admin
+      credential. The server must patch or create only ISLAMU-owned clients/scopes, persist only
+      runtime OIDC configuration, refresh BFF auth schemes after success, and never store the
+      temporary admin credential or raw Keycloak Admin API responses.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/SECRETS.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/SELF_HOSTING.md"
+      - ".claude/rules/api-controllers.md"
+      - ".claude/rules/blazor-server.md"
+      - ".agents/skills/auth-patterns/SKILL.md"
+      - ".agents/skills/blazor-bff-patterns/SKILL.md"
+      - ".agents/skills/clean-architecture-rules/SKILL.md"
+    expected_paths_in_scope:
+      - "docker-compose.yml"
+      - "docker/**"
+      - "Explore.Application/Contracts/Services/**/*.cs"
+      - "Explore.Application/DTOs/Onboarding/**/*.cs"
+      - "Explore.Application/Features/InstanceOnboarding/**/*.cs"
+      - "Explore.Infrastructure/Services/**/*.cs"
+      - "Explore.API/Controllers/**/*Onboarding*.cs"
+      - "Explore.Blazor/**/*.cs"
+      - "Explore.Blazor.Client/**/*.razor"
+      - "docs/SELF_HOSTING.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/SECRETS.md"
+      - "docs/TROUBLESHOOTING.md"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "Application owns DTOs, commands, validators, and service contracts; Infrastructure owns provider HTTP/Admin API details."
+      - "The one-time admin credential is passed only through the active request/job and is never persisted or returned."
+      - "BFF setup-secret forwarding strips browser-supplied privileged headers and forwards only trusted resolver output."
+      - "Provider mutation is additive/idempotent and does not delete existing realms, users, groups, or unrelated clients."
+      - "Auth schemes refresh only after successful runtime OIDC configuration persistence."
+      - "Docs describe secret ownership, rerun behavior, backup requirements, and safe troubleshooting evidence."

@@ -45,7 +45,8 @@ public class EndpointClassificationArchitectureTests
     {
         "InstanceOnboardingController.ValidateSecret",
         "AnalyticsRelayController.Relay",
-        "EmailUnsubscribeController.Post"
+        "EmailUnsubscribeController.Post",
+        "IncomingWebhooksController.RecordSvixOperationalCallback"
     };
 
     [Test]
