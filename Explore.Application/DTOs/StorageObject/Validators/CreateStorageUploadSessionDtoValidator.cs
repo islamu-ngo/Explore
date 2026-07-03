@@ -1,6 +1,7 @@
 // ABOUTME: FluentValidation rules for local-first upload session reservation payloads.
 // ABOUTME: Validates metadata, quota-safe byte counts, and idempotency before handlers mutate counters.
 
+using System.Net.Http.Headers;
 using Explore.Domain;
 using FluentValidation;
 
@@ -23,19 +24,28 @@ public class CreateStorageUploadSessionDtoValidator : AbstractValidator<CreateSt
             .NotEmpty().WithMessage("{PropertyName} is required")
             .MaximumLength(MaxContentTypeLength).WithMessage("{PropertyName} must not exceed 255 characters")
             .Must(NotContainControlCharacters).WithMessage("{PropertyName} must not contain control characters")
-            .Must(ContainMediaTypeSeparator).WithMessage("{PropertyName} must be a valid media type");
+            .Must(BeValidContentType).WithMessage("{PropertyName} must be a valid MIME type");
 
         RuleFor(x => x.OriginalFileName)
             .MaximumLength(MaxFileNameLength).WithMessage("{PropertyName} must not exceed 500 characters")
-            .Must(NotContainPathSeparators).WithMessage("{PropertyName} must not contain path separators");
+            .Must(NotContainControlCharacters).WithMessage("{PropertyName} must not contain control characters")
+            .Must(NotContainPathSeparators).WithMessage("{PropertyName} must not contain path separators")
+            .Must(NotBeDotSegment).WithMessage("{PropertyName} must be a simple file name")
+            .Must(NotBeReservedFileName).WithMessage("{PropertyName} must not be a reserved file name");
 
         RuleFor(x => x.SafeDisplayName)
             .MaximumLength(MaxFileNameLength).WithMessage("{PropertyName} must not exceed 500 characters")
-            .Must(NotContainPathSeparators).WithMessage("{PropertyName} must not contain path separators");
+            .Must(NotContainControlCharacters).WithMessage("{PropertyName} must not contain control characters")
+            .Must(NotContainPathSeparators).WithMessage("{PropertyName} must not contain path separators")
+            .Must(NotBeDotSegment).WithMessage("{PropertyName} must be a simple file name")
+            .Must(NotBeReservedFileName).WithMessage("{PropertyName} must not be a reserved file name");
 
         RuleFor(x => x.Extension)
             .MaximumLength(MaxExtensionLength).WithMessage("{PropertyName} must not exceed 50 characters")
-            .Must(NotContainPathSeparators).WithMessage("{PropertyName} must not contain path separators");
+            .Must(NotContainControlCharacters).WithMessage("{PropertyName} must not contain control characters")
+            .Must(NotContainPathSeparators).WithMessage("{PropertyName} must not contain path separators")
+            .Must(NotBeDotSegment).WithMessage("{PropertyName} must be a simple extension")
+            .Must(BeValidExtension).WithMessage("{PropertyName} contains unsupported characters");
 
         RuleFor(x => x.Purpose)
             .NotEmpty().WithMessage("{PropertyName} is required")
@@ -62,12 +72,83 @@ public class CreateStorageUploadSessionDtoValidator : AbstractValidator<CreateSt
             .Matches("^[A-Za-z0-9._:-]+$").WithMessage("{PropertyName} contains unsupported characters");
     }
 
-    private static bool ContainMediaTypeSeparator(string? value)
-        => !string.IsNullOrWhiteSpace(value) && value.Contains('/', StringComparison.Ordinal);
+    private static bool BeValidContentType(string? value)
+    {
+        var candidate = value?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(candidate) ||
+            !MediaTypeHeaderValue.TryParse(candidate, out var mediaTypeHeader) ||
+            string.IsNullOrWhiteSpace(mediaTypeHeader.MediaType))
+        {
+            return false;
+        }
+
+        var mediaTypeParts = mediaTypeHeader.MediaType.Split('/', 2, StringSplitOptions.TrimEntries);
+        return mediaTypeParts is [{ Length: > 0 }, { Length: > 0 }] &&
+            mediaTypeParts.All(part => !part.Contains("*", StringComparison.Ordinal));
+    }
 
     private static bool NotContainControlCharacters(string? value)
         => value is null || !value.Any(char.IsControl);
 
     private static bool NotContainPathSeparators(string? value)
-        => value is null || (!value.Contains('/', StringComparison.Ordinal) && !value.Contains('\\', StringComparison.Ordinal));
+        => value is null || (!value.Contains("/", StringComparison.Ordinal) && !value.Contains("\\", StringComparison.Ordinal));
+
+    private static bool NotBeDotSegment(string? value)
+    {
+        var candidate = value?.Trim();
+        return string.IsNullOrWhiteSpace(candidate) || candidate is not "." and not "..";
+    }
+
+    private static bool NotBeReservedFileName(string? value)
+    {
+        var candidate = value?.Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return true;
+        }
+
+        var stem = candidate.Split('.', 2)[0];
+        return !ReservedFileNames.Contains(stem, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool BeValidExtension(string? value)
+    {
+        var candidate = value?.Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return true;
+        }
+
+        var extension = candidate.StartsWith('.')
+            ? candidate[1..]
+            : candidate;
+        return extension.Length > 0 &&
+            extension.All(character => char.IsLetterOrDigit(character) || character is '_' or '-');
+    }
+
+    private static readonly string[] ReservedFileNames =
+    [
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "COM1",
+        "COM2",
+        "COM3",
+        "COM4",
+        "COM5",
+        "COM6",
+        "COM7",
+        "COM8",
+        "COM9",
+        "LPT1",
+        "LPT2",
+        "LPT3",
+        "LPT4",
+        "LPT5",
+        "LPT6",
+        "LPT7",
+        "LPT8",
+        "LPT9"
+    ];
 }

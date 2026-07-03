@@ -291,7 +291,7 @@ public class CreateStorageUploadSessionCommandHandler
         => new(
             dto.Purpose,
             dto.Visibility,
-            dto.ContentType,
+            NormalizeContentType(dto.ContentType),
             dto.OwningResourceKind,
             dto.OwningResourceId,
             dto.ExpectedSizeBytes);

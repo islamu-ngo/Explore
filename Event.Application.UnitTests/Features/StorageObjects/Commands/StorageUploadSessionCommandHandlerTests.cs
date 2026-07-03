@@ -96,6 +96,51 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     }
 
     [Test]
+    public async Task CreateHandle_NormalizesContentTypeBeforePolicyResolutionAndPersistence()
+    {
+        var policy = CreatePolicy(
+            maxUploadBytes: 80,
+            quotaBytes: 1_000,
+            provider: StorageProviders.S3Compatible,
+            routeKey: StorageRouteKeys.Documents,
+            policyVersion: 7);
+        _storagePolicyResolver
+            .ResolveAsync(_tenantId, Arg.Is<StoragePolicyIntent>(request =>
+                request.ContentType == "application/pdf"), Arg.Any<CancellationToken>())
+            .Returns(policy);
+        var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.S3Compatible };
+        _usageCounterRepository.GetOrCreateAsync(_tenantId, StorageProviders.S3Compatible, Arg.Any<CancellationToken>()).Returns(counter);
+        _uploadSessionRepository.Create(Arg.Any<StorageUploadSession>()).Returns(call =>
+        {
+            var session = call.Arg<StorageUploadSession>();
+            session.Id = Guid.CreateVersion7();
+            return session;
+        });
+
+        var result = await CreateCreateHandler().Handle(
+            new CreateStorageUploadSessionCommand
+            {
+                UploadSessionDto = CreateUploadDto(
+                    expectedSizeBytes: 42,
+                    originalFileName: "Report.PDF",
+                    purpose: StorageObjectPurposes.Document,
+                    contentType: " Application/PDF ")
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id!.Provider).IsEqualTo(StorageProviders.S3Compatible);
+        await Assert.That(result.Id.ContentType).IsEqualTo("application/pdf");
+
+        await _storagePolicyResolver.Received(1).ResolveAsync(
+            _tenantId,
+            Arg.Is<StoragePolicyIntent>(request => request.ContentType == "application/pdf"),
+            Arg.Any<CancellationToken>());
+        await _uploadSessionRepository.Received(1).Create(Arg.Is<StorageUploadSession>(session =>
+            session.ContentType == "application/pdf"));
+    }
+
+    [Test]
     public async Task CreateHandle_WhenExpectedSizeExceedsPolicy_ReturnsUploadTooLargeFailure()
     {
         var result = await CreateCreateHandler().Handle(
