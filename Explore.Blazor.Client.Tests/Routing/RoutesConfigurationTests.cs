@@ -101,6 +101,19 @@ public class RoutesConfigurationTests
     }
 
     [Test]
+    public async Task ModerationReportQueueRoute_ShouldBind_EventId_ParameterName()
+    {
+        var routesFilePath = FindRoutesFilePath();
+        var routesContent = await File.ReadAllTextAsync(routesFilePath);
+
+        const string moderationReportsRoute =
+            "Path = \"/events/:EventId/moderation/reports\", Component = typeof(ModerationReportQueuePage)";
+
+        await Assert.That(routesContent).Contains(moderationReportsRoute);
+        await Assert.That(routesContent).DoesNotContain("Path = \"/events/:eventId/moderation/reports\"");
+    }
+
+    [Test]
     public async Task EventSessionDetail_ShouldNotExpose_EventModerationActions()
     {
         var sourcePath = FindClientFilePath("Pages", "Events", "Sessions", "EventSessionDetail.razor");

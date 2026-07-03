@@ -1,0 +1,164 @@
+// ABOUTME: Component tests for the moderation report detail panel.
+// ABOUTME: Verifies HAL-gated workflow affordances and safe rendering of detail evidence.
+
+using Explore.Blazor.Client.Components.Moderation;
+
+namespace Explore.Blazor.Client.Tests.Components.Moderation;
+
+public sealed class ModerationReportDetailPanelTests : IDisposable
+{
+    private readonly BlazorTestContext _ctx = new();
+
+    [Test]
+    public async Task Render_WhenActionLinksMissing_HidesWorkflowAffordances()
+    {
+        var detail = CreateDetailResource();
+
+        var cut = _ctx.RenderMudComponent<ModerationReportDetailPanel>(parameters => parameters
+            .Add(component => component.Report, detail));
+
+        await Assert.That(cut.Markup.Contains("Available Workflow", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains(">Triage<", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup).Contains("Reporter evidence text");
+    }
+
+    [Test]
+    public async Task Render_WhenActionLinksPresent_ShowsOnlyHalAdvertisedWorkflowAffordances()
+    {
+        var detail = CreateDetailResource("triage-report", "assign-report");
+
+        var cut = _ctx.RenderMudComponent<ModerationReportDetailPanel>(parameters => parameters
+            .Add(component => component.Report, detail));
+
+        await Assert.That(cut.Markup).Contains("Available Workflow");
+        await Assert.That(cut.Markup).Contains("Triage");
+        await Assert.That(cut.Markup).Contains("Assign");
+        await Assert.That(cut.Markup.Contains(">Decide<", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains(">Execute<", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenActionButtonClicked_EmitsHalAdvertisedAction()
+    {
+        var detail = CreateDetailResource("triage-report");
+        ModerationReportActionKind? requestedAction = null;
+
+        var cut = _ctx.RenderMudComponent<ModerationReportDetailPanel>(parameters => parameters
+            .Add(component => component.Report, detail)
+            .Add(
+                component => component.OnActionRequested,
+                EventCallback.Factory.Create<ModerationReportActionKind>(
+                    this,
+                    action => requestedAction = action)));
+
+        var triageButton = cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Triage", StringComparison.Ordinal));
+        await cut.InvokeAsync(() => triageButton.Click());
+
+        await Assert.That(requestedAction).IsEqualTo(ModerationReportActionKind.Triage);
+    }
+
+    [Test]
+    public async Task Render_StatusBadgesExposeAccessibleLabels()
+    {
+        var detail = CreateDetailResource();
+
+        var cut = _ctx.RenderMudComponent<ModerationReportDetailPanel>(parameters => parameters
+            .Add(component => component.Report, detail));
+
+        await Assert.That(cut.Markup).Contains("aria-label=\"Report status: Submitted\"");
+        await Assert.That(cut.Markup).Contains("aria-label=\"Priority: Urgent\"");
+    }
+
+    public void Dispose() => _ctx.Dispose();
+
+    private static HalResourceOfModerationReportDetailDto CreateDetailResource(params string[] linkRels)
+    {
+        var eventId = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+        return new HalResourceOfModerationReportDetailDto
+        {
+            Id = reportId,
+            EventId = eventId,
+            ReporterKindId = 1,
+            ReporterKindCode = "user",
+            ReporterKindName = "User",
+            SourceKindId = 1,
+            SourceKindCode = "web",
+            SourceKindName = "Web",
+            StatusId = 1,
+            StatusCode = "submitted",
+            StatusName = "Submitted",
+            PriorityId = 4,
+            PriorityCode = "urgent",
+            PriorityName = "Urgent",
+            ReasonId = 1,
+            ReasonCode = "spam",
+            ReasonName = "Spam",
+            ReporterContactConsent = true,
+            ReporterLocale = "en",
+            SubmittedAtUtc = DateTimeOffset.UtcNow,
+            ConcurrencyStamp = Guid.NewGuid(),
+            CurrentCase = new CurrentCase
+            {
+                Id = caseId,
+                ReportId = reportId,
+                QueueCode = "safety",
+                StatusId = 1,
+                StatusCode = "open",
+                StatusName = "Open",
+                PriorityId = 4,
+                PriorityCode = "urgent",
+                PriorityName = "Urgent",
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                ConcurrencyStamp = Guid.NewGuid()
+            },
+            EvidenceItems =
+            [
+                new EvidenceItems
+                {
+                    Id = Guid.NewGuid(),
+                    ReportId = reportId,
+                    EvidenceKindId = 1,
+                    EvidenceKindCode = "reporter_text",
+                    EvidenceKindName = "Reporter text",
+                    TextBody = "Reporter evidence text",
+                    HasTextBody = true,
+                    IsTextUnavailable = false,
+                    ClassificationId = 1,
+                    ClassificationCode = "user_submitted",
+                    ClassificationName = "User submitted",
+                    CreatedAtUtc = DateTimeOffset.UtcNow
+                }
+            ],
+            Signals =
+            [
+                new Signals
+                {
+                    Id = Guid.NewGuid(),
+                    ReportId = reportId,
+                    EventId = eventId,
+                    ProviderId = 1,
+                    ProviderCode = "local",
+                    ProviderName = "Local",
+                    SignalType = "policy",
+                    PolicyCode = "spam",
+                    Score = 0.9,
+                    VerdictId = 1,
+                    VerdictCode = "flagged",
+                    VerdictName = "Flagged",
+                    RecommendedActionName = "Review",
+                    CorrelationId = "correlation-1",
+                    CreatedAtUtc = DateTimeOffset.UtcNow
+                }
+            ],
+            Decisions = [],
+            ExternalLinks = [],
+            Targets = [],
+            _links = linkRels.ToDictionary(
+                rel => rel,
+                _ => new Anonymous44 { Href = "/api/events/event/moderation/reports/report", Method = "POST" })
+        };
+    }
+}

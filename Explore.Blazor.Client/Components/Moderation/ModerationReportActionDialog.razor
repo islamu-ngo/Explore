@@ -1,0 +1,134 @@
+@* ABOUTME: MudBlazor dialog for moderator report triage, assignment, decision, and execution actions. *@
+@* ABOUTME: Collects only bounded command metadata and returns a typed action result to the host page. *@
+
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+
+<MudDialog Class="moderation-report-action-dialog" DefaultFocus="DefaultFocus.FirstChild">
+    <TitleContent>
+        <div class="moderation-report-action-dialog__title">
+            <MudIcon Icon="@ActionIcon" Color="@ActionColor" />
+            <MudText Typo="Typo.h6">@ActionTitle</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="moderation-report-action-dialog__body">
+            <div class="moderation-report-action-dialog__summary">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@ReportLabel</MudText>
+                <MudText Typo="Typo.body2">@CurrentCaseLabel</MudText>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">
+                    @_errorMessage
+                </MudAlert>
+            }
+
+            @switch (ActionKind)
+            {
+                case ModerationReportActionKind.Triage:
+                    <MudTextField T="string"
+                                  Label="Queue"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  MaxLength="@MaxQueueCodeLength"
+                                  Immediate="true"
+                                  @bind-Value="_queueCode" />
+                    <MudSelect T="EventReportPriority"
+                               Label="Priority"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Dense="true"
+                               @bind-Value="_priority">
+                        @foreach (var option in PriorityOptions)
+                        {
+                            <MudSelectItem T="EventReportPriority" Value="@option.Value">@option.Label</MudSelectItem>
+                        }
+                    </MudSelect>
+                    break;
+                case ModerationReportActionKind.Assign:
+                    <MudTextField T="string"
+                                  Label="Assignee user id"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Immediate="true"
+                                  @bind-Value="_assigneeUserId" />
+                    break;
+                case ModerationReportActionKind.Decide:
+                    <MudSelect T="EventReportDecisionKind"
+                               Label="Decision"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Dense="true"
+                               @bind-Value="_decisionKind">
+                        @foreach (var option in DecisionOptions)
+                        {
+                            <MudSelectItem T="EventReportDecisionKind" Value="@option.Value">@option.Label</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudTextField T="string"
+                                  Label="Reason code"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  MaxLength="@MaxReasonCodeLength"
+                                  Immediate="true"
+                                  @bind-Value="_reasonCode" />
+                    <MudTextField T="string"
+                                  Label="Safe note"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Lines="3"
+                                  MaxLength="@MaxSafeNoteLength"
+                                  Immediate="true"
+                                  @bind-Value="_safeNote" />
+                    @if (_decisionKind == EventReportDecisionKind.Duplicate)
+                    {
+                        <MudTextField T="string"
+                                      Label="Duplicate group id"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Immediate="true"
+                                      @bind-Value="_duplicateGroupId" />
+                    }
+                    @if (_decisionKind == EventReportDecisionKind.HeavyRedact)
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true">
+                            Heavy redaction is irreversible.
+                        </MudAlert>
+                        <MudCheckBox T="bool"
+                                     @bind-Value="_confirmedIrreversible"
+                                     Color="Color.Error"
+                                     Label="I understand this action cannot be undone." />
+                    }
+                    break;
+                case ModerationReportActionKind.Execute:
+                    <MudTextField T="string"
+                                  Label="Decision id"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Immediate="true"
+                                  @bind-Value="_decisionId" />
+                    <MudTextField T="string"
+                                  Label="Correlation id"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  MaxLength="@MaxCorrelationIdLength"
+                                  Immediate="true"
+                                  @bind-Value="_correlationId" />
+                    break;
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="@ActionColor"
+                   StartIcon="@ActionIcon"
+                   OnClick="Submit">
+            @ConfirmText
+        </MudButton>
+    </DialogActions>
+</MudDialog>

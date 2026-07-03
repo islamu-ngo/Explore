@@ -2,10 +2,15 @@
 // ABOUTME: Verifies storage-backed event images render when API responses include an image id without a resolved URI.
 
 using System.Reflection;
+using System.Security.Claims;
 using System.Text.Json;
 using Blazouter.Services;
+using Explore.Blazor.Client.Components.EventReporting;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Shared;
 using Microsoft.AspNetCore.Components.Authorization;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -102,6 +107,152 @@ public sealed class EventDetailTests : IDisposable
         await Assert.That(cut.Markup.Contains("Return to Edit", StringComparison.Ordinal)).IsFalse();
         await Assert.That(cut.Markup.Contains("Publish", StringComparison.Ordinal)).IsFalse();
         await Assert.That(cut.Markup.Contains("Archive", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenReportEventLinkReturned_ShowsHeaderReportAction()
+    {
+        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published", "report-event"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => cut.Markup.Contains("Report Event", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("event-detail-header-actions__report");
+        await Assert.That(cut.Markup).Contains("event-detail-header-actions__report-button");
+        await Assert.That(cut.Markup).Contains("Report Event");
+        await Assert.That(cut.Markup.Contains("event-sidebar-link--button", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenReportEventLinkMissing_HidesHeaderReportAction()
+    {
+        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup.Contains("Report Event", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains("event-detail-header-actions__report", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains("event-sidebar-link--button", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task BuildReportReturnPath_WhenCurrentEventPage_AddsReportIntent()
+    {
+        var eventId = Guid.NewGuid();
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/events/{eventId}");
+        var component = new EventDetail();
+        SetProperty(component, "Navigation", navigation);
+        SetProperty(component, "EventId", eventId);
+
+        var returnPath = InvokePrivate<string>(component, "BuildReportReturnPath");
+
+        await Assert.That(returnPath).IsEqualTo($"/events/{eventId}?report=1");
+    }
+
+    [Test]
+    public async Task OpenReportEventDialogAsync_WhenAnonymous_ShowsReportSpecificLoginPrompt()
+    {
+        var eventId = Guid.NewGuid();
+        _ctx.SetAnonymousUser();
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/events/{eventId}");
+        var dialogReference = Substitute.For<IDialogReference>();
+        var dialogService = Substitute.For<IDialogService>();
+        dialogService
+            .ShowAsync<LoginPromptDialog>(
+                Arg.Any<string>(),
+                Arg.Any<DialogParameters>(),
+                Arg.Any<DialogOptions>())
+            .Returns(Task.FromResult(dialogReference));
+
+        var component = new EventDetail();
+        SetProperty(component, "Navigation", navigation);
+        SetProperty(component, "DialogService", dialogService);
+        SetProperty(component, "AccessibilityFocusService", CreateFocusService());
+        SetProperty(component, "AuthStateProvider", CreateAuthStateProvider(isAuthenticated: false));
+        SetProperty(component, "EventId", eventId);
+        SetField(component, "_eventDetails", CreateEventDto("PUBLISHED", "Published", "report-event"));
+        SetField(component, "_canReport", true);
+        SetField(component, "_isAuthenticated", false);
+
+        await InvokePrivateTaskAsync(component, "OpenReportEventDialogAsync");
+
+        await dialogService.Received(1).ShowAsync<LoginPromptDialog>(
+            "Sign in",
+            Arg.Is<DialogParameters>(parameters =>
+                parameters.Get<string>("ReturnUrl") == $"/events/{eventId}?report=1" &&
+                parameters.Get<string>("Title") == "Need to report this?" &&
+                parameters.Get<string>("Message") == "Sign in to report content that breaks our rules. You can also file a legal complaint without signing in." &&
+                parameters.Get<string>("PrimaryActionText") == "Sign in" &&
+                parameters.Get<string>("SecondaryActionText") == "Cancel"),
+            Arg.Any<DialogOptions>());
+    }
+
+    [Test]
+    public async Task TryOpenPendingReportDialogAsync_WhenAuthenticatedReportIntent_OpensDialogAndClearsIntent()
+    {
+        var eventId = Guid.NewGuid();
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/events/{eventId}?report=1");
+        var dialogReference = Substitute.For<IDialogReference>();
+        dialogReference.Result.Returns(DialogResult.Cancel());
+        var dialogService = Substitute.For<IDialogService>();
+        dialogService
+            .ShowAsync<ReportEventDialog>(
+                Arg.Any<string>(),
+                Arg.Any<DialogParameters>(),
+                Arg.Any<DialogOptions>())
+            .Returns(Task.FromResult(dialogReference));
+        var authStateProvider = CreateAuthStateProvider(isAuthenticated: true);
+
+        var component = new EventDetail();
+        SetProperty(component, "Navigation", navigation);
+        SetProperty(component, "DialogService", dialogService);
+        SetProperty(component, "AccessibilityFocusService", CreateFocusService());
+        SetProperty(component, "AuthStateProvider", authStateProvider);
+        SetProperty(component, "EventId", eventId);
+        SetProperty(component, "ReportIntent", "1");
+        SetField(component, "_eventDetails", CreateEventDto("PUBLISHED", "Published", "report-event"));
+        SetField(component, "_canReport", true);
+
+        await InvokePrivateTaskAsync(component, "TryOpenPendingReportDialogAsync");
+        await Assert.That(GetField<bool>(component, "_hasHandledReportIntent")).IsTrue();
+
+        await dialogService.Received(1).ShowAsync<ReportEventDialog>(
+            "Report Event",
+            Arg.Any<DialogParameters>(),
+            Arg.Any<DialogOptions>());
+        await Assert.That(navigation.Uri.Contains("report=1", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenModerationReportsLinkReturned_ShowsManagementReportsNavigation()
+    {
+        var eventDto = CreateEventDto("PUBLISHED", "Published", "moderation-reports");
+        var eventId = eventDto.Id!.Value;
+        RegisterEventDetailServices(eventDto);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => cut.Markup.Contains("Moderation Reports", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("event-detail-action-bar");
+        await Assert.That(cut.Markup).Contains("Reports");
+        await Assert.That(cut.Markup).Contains("Moderation Reports");
+        await Assert.That(cut.Markup).Contains($"/events/{eventId}/moderation/reports");
+    }
+
+    [Test]
+    public async Task Render_WhenModerationReportsLinkMissing_HidesManagementReportsNavigation()
+    {
+        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup.Contains("Moderation Reports", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains("/moderation/reports", StringComparison.Ordinal)).IsFalse();
     }
 
     [Test]
@@ -339,6 +490,30 @@ public sealed class EventDetailTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<ICategoryService>());
         _ctx.Services.AddScoped<MainContentAppearanceState>();
         _ctx.Services.AddSingleton(Substitute.For<ILogger<EventDetail>>());
+    }
+
+    private static IAccessibilityFocusService CreateFocusService()
+    {
+        var focusService = Substitute.For<IAccessibilityFocusService>();
+        focusService.SaveFocusAsync().Returns(Task.CompletedTask);
+        focusService.RestoreFocusAsync(null).ReturnsForAnyArgs(Task.CompletedTask);
+        return focusService;
+    }
+
+    private static AuthenticationStateProvider CreateAuthStateProvider(bool isAuthenticated)
+    {
+        var identity = isAuthenticated
+            ? new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())],
+                authenticationType: "TestAuth")
+            : new ClaimsIdentity();
+        return new FixedAuthenticationStateProvider(new AuthenticationState(new ClaimsPrincipal(identity)));
+    }
+
+    private sealed class FixedAuthenticationStateProvider(AuthenticationState authenticationState) : AuthenticationStateProvider
+    {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(authenticationState);
     }
 
     private static EventDto CreateEventDto(string statusCode, string statusName, params string[] linkRels)

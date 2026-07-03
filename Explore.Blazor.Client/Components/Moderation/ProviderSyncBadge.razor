@@ -1,0 +1,13 @@
+@* ABOUTME: Provider sync state badge for moderation report external-link rows. *@
+@* ABOUTME: Gives reviewer-visible sync status without exposing raw provider payloads. *@
+
+@using MudBlazor
+
+<MudChip T="string"
+         Size="Size.Small"
+         Color="@BadgeColor"
+         Variant="Variant.Outlined"
+         Icon="@BadgeIcon"
+         aria-label="@AriaLabel">
+    @DisplayLabel
+</MudChip>

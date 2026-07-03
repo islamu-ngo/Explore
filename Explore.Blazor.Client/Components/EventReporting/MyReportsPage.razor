@@ -1,0 +1,128 @@
+@* ABOUTME: Authenticated reporter-facing page for reviewing submitted event report statuses. *@
+@* ABOUTME: Renders paged HAL report resources without exposing moderation evidence or provider internals. *@
+
+@page "/my/reports"
+@using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@rendermode InteractiveAuto
+@attribute [Authorize]
+
+<PageTitle>My Reports</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="my-reports-page py-8">
+    <div class="my-reports-page__header">
+        <div>
+            <MudText Typo="Typo.h4" HtmlTag="h1" Class="my-reports-page__title">My Reports</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Track the status of event reports you submitted.</MudText>
+        </div>
+        <div class="my-reports-page__actions">
+            <MudButton Elevation="0"
+                       Variant="Variant.Outlined"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       Href="/my/profile">
+                Profile
+            </MudButton>
+            <MudButton Elevation="0"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Disabled="_isLoading"
+                       OnClick="RefreshAsync">
+                Refresh
+            </MudButton>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="my-reports-page__alert">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    <MudPaper Elevation="0" Class="my-reports-page__surface">
+        @if (_isLoading)
+        {
+            <div class="my-reports-page__loading">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Loading reports...</MudText>
+            </div>
+        }
+        else if (_reports.Count == 0)
+        {
+            <div class="my-reports-page__empty">
+                <MudIcon Icon="@Icons.Material.Outlined.Flag" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.h6">No reports submitted</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Submitted event reports will appear here with their latest status.</MudText>
+            </div>
+        }
+        else
+        {
+            <MudTable T="HalResourceOfMyEventReportDto"
+                      Items="_reports"
+                      Dense="true"
+                      Hover="true"
+                      Breakpoint="Breakpoint.Sm"
+                      Class="my-reports-page__table">
+                <HeaderContent>
+                    <MudTh>Event</MudTh>
+                    <MudTh>Reason</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Submitted</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Event">
+                        <MudLink Href="@GetEventHref(context)" Underline="Underline.Hover">
+                            @FormatEventId(context.EventId)
+                        </MudLink>
+                    </MudTd>
+                    <MudTd DataLabel="Reason">@context.ReasonName</MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@GetStatusColor(context.StatusCode)"
+                                 Variant="Variant.Outlined">
+                            @context.StatusName
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Submitted">@FormatDate(context.SubmittedAtUtc)</MudTd>
+                    <MudTd Class="my-reports-page__row-action">
+                        <MudButton Elevation="0"
+                                   Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Href="@GetEventHref(context)"
+                                   StartIcon="@Icons.Material.Filled.OpenInNew">
+                            View event
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <div class="my-reports-page__pagination" aria-label="Report list pagination">
+                <MudButton Elevation="0"
+                           Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           Disabled="@(!_hasPrevious || _isLoading)"
+                           OnClick="PreviousPageAsync"
+                           StartIcon="@Icons.Material.Filled.ChevronLeft">
+                    Previous
+                </MudButton>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Page @_pageNumber of @Math.Max(1, _totalPages)
+                </MudText>
+                <MudButton Elevation="0"
+                           Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           Disabled="@(!_hasNext || _isLoading)"
+                           OnClick="NextPageAsync"
+                           EndIcon="@Icons.Material.Filled.ChevronRight">
+                    Next
+                </MudButton>
+            </div>
+        }
+    </MudPaper>
+</MudContainer>

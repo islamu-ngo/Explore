@@ -6,6 +6,7 @@ using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
+using Explore.Blazor.Client.Contracts.Services.EventReporting;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
@@ -96,6 +97,8 @@ public static class ServiceCollectionExtensions
 
         // Event-specific services
         services.AddScoped<IEventRegistrationService, EventRegistrationService>();
+        services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventReporting.IEventReportingService, EventReportingService>();
+        services.AddScoped<IEventReportModerationService, EventReportModerationService>();
         services.AddScoped<IEventSessionLanguageService, EventSessionLanguageService>();
         services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
         services.AddScoped<IEventSessionAgendaItemService, EventSessionAgendaItemService>();

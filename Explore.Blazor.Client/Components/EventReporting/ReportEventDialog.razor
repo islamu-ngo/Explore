@@ -1,0 +1,105 @@
+@* ABOUTME: MudBlazor dialog for submitting an authenticated report against a single event. *@
+@* ABOUTME: Loads server-provided report options and posts only the reporter-facing submission DTO. *@
+
+@using System.Globalization
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.EventReporting
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components
+@using MudBlazor
+
+<MudDialog Class="report-event-dialog">
+    <TitleContent>
+        <div class="report-event-dialog__title">
+            <MudIcon Icon="@Icons.Material.Outlined.Flag" Color="Color.Warning" />
+            <MudText Typo="Typo.h6">Report event</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="report-event-dialog__body">
+            @if (_isLoadingOptions)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            else if (_options is null)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                    Reporting is unavailable for this event.
+                </MudAlert>
+            }
+            else if (_options.IsReportable != true)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    @GetUnavailableMessage()
+                </MudAlert>
+            }
+            else
+            {
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="report-event-dialog__alert">
+                        @_errorMessage
+                    </MudAlert>
+                }
+
+                <MudSelect T="string"
+                           Label="Reason"
+                           Variant="Variant.Outlined"
+                           Required="true"
+                           Disabled="_isSubmitting"
+                           @bind-Value="_selectedReasonCode">
+                    @foreach (var option in ReasonOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option.ReasonCode">
+                            @option.ReasonName
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+
+                @if (SelectedReason is not null && !string.IsNullOrWhiteSpace(SelectedReason.Description))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="report-event-dialog__reason-copy">
+                        @SelectedReason.Description
+                    </MudText>
+                }
+
+                <AppTextField T="string"
+                              Label="Details"
+                              Placeholder="Add context for the moderation team."
+                              Value="_reporterText"
+                              ValueChanged="OnReporterTextChanged"
+                              Lines="4"
+                              MaxLength="@MaxReporterTextLength"
+                              Required="true"
+                              FullWidth="true"
+                              Disabled="_isSubmitting"
+                              Immediate="true" />
+
+                <div class="report-event-dialog__counter">
+                    <MudText Typo="Typo.caption" Color="@CounterColor">
+                        @ReporterTextLength / @MaxReporterTextLength
+                    </MudText>
+                </div>
+
+                <MudCheckBox T="bool"
+                             @bind-Value="_reporterContactConsent"
+                             Disabled="_isSubmitting"
+                             Color="Color.Primary"
+                             Label="I can be contacted about this report if more context is needed." />
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel" Disabled="_isSubmitting">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Warning"
+                   StartIcon="@Icons.Material.Filled.Report"
+                   Disabled="@(!CanSubmit)"
+                   OnClick="SubmitAsync">
+            @(_isSubmitting ? "Submitting..." : "Submit report")
+        </MudButton>
+    </DialogActions>
+</MudDialog>

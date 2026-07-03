@@ -22,6 +22,8 @@
 @using Explore.Blazor.Client.Pages.About
 @using Explore.Blazor.Client.Pages.Onboarding
 @using Explore.Blazor.Client.Pages.Events.Sessions
+@using Explore.Blazor.Client.Components.EventReporting
+@using Explore.Blazor.Client.Components.Moderation
 @using Explore.Blazor.Client.Providers
 @using Explore.Blazor.Client.Routing.Guards
 @using Microsoft.AspNetCore.Components.Authorization
@@ -86,6 +88,7 @@
             // User authenticated routes
             new RouteConfig { Path = "/my/profile", Component = typeof(UserProfile), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/my/reviews", Component = typeof(MyReviews), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/my/reports", Component = typeof(MyReportsPage), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/settings", Component = typeof(Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             // Organization management routes
             new RouteConfig { Path = "/my/organizations", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
@@ -103,6 +106,7 @@
             // Event management routes — specific literals before parameterized at same depth
             new RouteConfig { Path = "/events/create", Component = typeof(CreateEvent), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/events/:eventId/edit", Component = typeof(EventEdit), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/events/:EventId/moderation/reports", Component = typeof(ModerationReportQueuePage), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/events/:eventId/sessions/create", Component = typeof(CreateSession), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/events/:eventId/sessions/:sessionId/edit", Component = typeof(EditSession), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/events/:eventId/sessions/:sessionId", Component = typeof(EventSessionDetail), Transition = RouteTransition.Fade },

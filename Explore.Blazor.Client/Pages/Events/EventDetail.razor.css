@@ -67,6 +67,18 @@
     overflow-x: auto;
 }
 
+.event-detail-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+    margin-block-end: var(--isl-space-4);
+}
+
+.event-detail-header-actions__report {
+    flex: 0 0 auto;
+}
+
 .event-cover-image-wrapper {
     position: relative;
     width: 100%;
@@ -307,6 +319,11 @@
 @media (max-width: 600px) {
     .event-detail-wrapper {
         --event-detail-container-gutter: var(--isl-space-3);
+    }
+
+    .event-detail-header-actions {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .event-detail-action-bar__inner {

@@ -1,0 +1,13 @@
+@* ABOUTME: Small status badge component for moderation report states and priorities. *@
+@* ABOUTME: Centralizes color and icon choices for queue and detail moderation chips. *@
+
+@using MudBlazor
+
+<MudChip T="string"
+         Size="Size.Small"
+         Color="@BadgeColor"
+         Variant="@BadgeVariant"
+         Icon="@BadgeIcon"
+         aria-label="@AriaLabel">
+    @DisplayLabel
+</MudChip>

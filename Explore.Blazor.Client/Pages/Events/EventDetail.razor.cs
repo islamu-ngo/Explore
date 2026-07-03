@@ -3,7 +3,9 @@
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.EventReporting;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.EventReporting;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Helpers;
@@ -44,6 +46,12 @@ public partial class EventDetail : ComponentBase, IDisposable
     private const string AddSessionLinkRelation = "add-session";
     private const string AddSessionGroupLinkRelation = "add-session-group";
     private const string ModerationHistoryLinkRelation = "moderation-history";
+    private const string ModerationReportsLinkRelation = "moderation-reports";
+    private const string ReportEventLinkRelation = "report-event";
+    private const string ReportIntentQueryParameter = "report";
+    private const string ReportIntentQueryValue = "1";
+    private const string ReportLoginPromptTitle = "Need to report this?";
+    private const string ReportLoginPromptMessage = "Sign in to report content that breaks our rules. You can also file a legal complaint without signing in.";
 
     private static readonly IReadOnlyList<EventModerationReasonOption> LightModerationReasonOptions =
     [
@@ -83,6 +91,9 @@ public partial class EventDetail : ComponentBase, IDisposable
     [PersistentState]
     public EventDetailState? PersistedState { get; set; }
 
+    [SupplyParameterFromQuery(Name = ReportIntentQueryParameter)]
+    public string? ReportIntent { get; set; }
+
     // Changed from private to protected to be accessible by Razor view
     [Inject] protected ILogger<EventDetail> Logger { get; set; } = default!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
@@ -108,6 +119,8 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool _canModerateHeavy = false;
     private bool _canUnmoderate = false;
     private bool _canArchive = false;
+    private bool _canReport = false;
+    private bool _canViewModerationReports = false;
     private bool _isProcessingEventAction = false;
     private bool _isAuthenticated = false;
     private bool _isCheckingAuth = true;
@@ -115,6 +128,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool _imageLoadFailed;
     private Guid _lastRenderedEventId;
     private bool _wasLoading = true;
+    private bool _hasHandledReportIntent;
 
     private ICollection<EventDayListDto>? _eventDays;
 
@@ -133,7 +147,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool HasManagementTopBar =>
         _eventDetails != null &&
         !_isCheckingAuth &&
-        (_canEdit || _canPublish || _canCancel || _canModerateLight || _canModerateHeavy || _canUnmoderate || _canArchive);
+        (_canEdit || _canViewModerationReports || _canPublish || _canCancel || _canModerateLight || _canModerateHeavy || _canUnmoderate || _canArchive);
 
     private bool CanRequestManagedSessions =>
         _eventDetails is not null &&
@@ -147,7 +161,8 @@ public partial class EventDetail : ComponentBase, IDisposable
          _canArchive ||
          _eventDetails.HasHalLink(AddSessionLinkRelation) ||
          _eventDetails.HasHalLink(AddSessionGroupLinkRelation) ||
-         _eventDetails.HasHalLink(ModerationHistoryLinkRelation));
+         _eventDetails.HasHalLink(ModerationHistoryLinkRelation) ||
+         _eventDetails.HasHalLink(ModerationReportsLinkRelation));
 
     private bool HasMultipleSessions => _eventSessions?.Count > 1;
 
@@ -190,6 +205,11 @@ public partial class EventDetail : ComponentBase, IDisposable
             {
                 Logger.LogWarning(ex, "Failed to scroll to top on navigation");
             }
+        }
+
+        if (!_isLoading && _eventDetails is not null)
+        {
+            await TryOpenPendingReportDialogAsync();
         }
     }
 
@@ -541,6 +561,8 @@ public partial class EventDetail : ComponentBase, IDisposable
             _canModerateHeavy = false;
             _canUnmoderate = false;
             _canArchive = false;
+            _canReport = false;
+            _canViewModerationReports = false;
             return;
         }
 
@@ -553,8 +575,10 @@ public partial class EventDetail : ComponentBase, IDisposable
         _canModerateHeavy = _eventDetails.HasHalLink(ModerateHeavyLinkRelation);
         _canUnmoderate = _eventDetails.HasHalLink(UnmoderateLinkRelation);
         _canArchive = _eventDetails.HasHalLink(ArchiveLinkRelation);
+        _canReport = _eventDetails.HasHalLink(ReportEventLinkRelation);
+        _canViewModerationReports = _eventDetails.HasHalLink(ModerationReportsLinkRelation);
         Logger.LogDebug(
-            "HAL link authorization for event {EventId}: CanEdit={CanEdit}, CanDelete={CanDelete}, CanManageTeam={CanManageTeam}, CanPublish={CanPublish}, CanCancel={CanCancel}, CanModerateLight={CanModerateLight}, CanModerateHeavy={CanModerateHeavy}, CanUnmoderate={CanUnmoderate}, CanArchive={CanArchive}",
+            "HAL link authorization for event {EventId}: CanEdit={CanEdit}, CanDelete={CanDelete}, CanManageTeam={CanManageTeam}, CanPublish={CanPublish}, CanCancel={CanCancel}, CanModerateLight={CanModerateLight}, CanModerateHeavy={CanModerateHeavy}, CanUnmoderate={CanUnmoderate}, CanArchive={CanArchive}, CanReport={CanReport}, CanViewModerationReports={CanViewModerationReports}",
             EventId,
             _canEdit,
             _canDelete,
@@ -564,7 +588,9 @@ public partial class EventDetail : ComponentBase, IDisposable
             _canModerateLight,
             _canModerateHeavy,
             _canUnmoderate,
-            _canArchive);
+            _canArchive,
+            _canReport,
+            _canViewModerationReports);
     }
 
     /// <summary>
@@ -699,6 +725,12 @@ public partial class EventDetail : ComponentBase, IDisposable
         return _eventDetails?.ActorDisplayName ?? "Unknown Organizer";
     }
 
+    private string GetModerationReportsHref()
+    {
+        var eventId = _eventDetails?.Id is { } id && id != Guid.Empty ? id : EventId;
+        return $"/events/{eventId}/moderation/reports";
+    }
+
     /// <summary>
     /// Gets the organizer profile picture URL.
     /// </summary>
@@ -745,7 +777,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     {
         if (_eventDetails == null) return;
 
-        if (!_isAuthenticated)
+        if (!await IsAuthenticatedForProtectedActionAsync())
         {
             await AccessibilityFocusService.SaveFocusAsync();
             await LoginPromptDialog.ShowAsync(
@@ -1415,6 +1447,92 @@ public partial class EventDetail : ComponentBase, IDisposable
         {
             await AccessibilityFocusService.RestoreFocusAsync();
         }
+    }
+
+    private async Task OpenReportEventDialogAsync()
+    {
+        if (!_canReport || _eventDetails is null)
+        {
+            return;
+        }
+
+        if (!await IsAuthenticatedForProtectedActionAsync())
+        {
+            await AccessibilityFocusService.SaveFocusAsync();
+            await LoginPromptDialog.ShowAsync(
+                DialogService,
+                BuildReportReturnPath(),
+                ReportLoginPromptMessage,
+                ReportLoginPromptTitle,
+                "Sign in",
+                "Cancel");
+            await AccessibilityFocusService.RestoreFocusAsync();
+            return;
+        }
+
+        var parameters = new DialogParameters<ReportEventDialog>
+        {
+            { dialog => dialog.EventId, EventId },
+            { dialog => dialog.EventTitle, _eventDetails.Title }
+        };
+
+        await AccessibilityFocusService.SaveFocusAsync();
+        try
+        {
+            var dialog = await ReportEventDialog.ShowAsync(
+                DialogService,
+                "Report Event",
+                parameters,
+                DialogOptionsFactory.Medium());
+            var result = await dialog.Result;
+            if (result is { Canceled: false, Data: EventReportSubmissionResult { Success: true } reportResult })
+            {
+                Snackbar.Add("Event report submitted.", Severity.Success);
+                if (reportResult.ReportId is not null)
+                {
+                    await AnnouncerService.AnnouncePoliteAsync("Event report submitted. You can track it from My Reports.");
+                }
+            }
+        }
+        finally
+        {
+            await AccessibilityFocusService.RestoreFocusAsync();
+        }
+    }
+
+    private async Task<bool> IsAuthenticatedForProtectedActionAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+        return _isAuthenticated;
+    }
+
+    private async Task TryOpenPendingReportDialogAsync()
+    {
+        if (_hasHandledReportIntent || !HasReportIntent() || !_canReport || _eventDetails is null)
+        {
+            return;
+        }
+
+        _hasHandledReportIntent = true;
+        RemoveReportIntentFromUrl();
+        await OpenReportEventDialogAsync();
+    }
+
+    private bool HasReportIntent()
+        => string.Equals(ReportIntent, ReportIntentQueryValue, StringComparison.OrdinalIgnoreCase) ||
+           string.Equals(ReportIntent, "true", StringComparison.OrdinalIgnoreCase);
+
+    private string BuildReportReturnPath()
+    {
+        var reportUri = Navigation.GetUriWithQueryParameter(ReportIntentQueryParameter, ReportIntentQueryValue);
+        return Navigation.ToAbsoluteUri(reportUri).PathAndQuery;
+    }
+
+    private void RemoveReportIntentFromUrl()
+    {
+        var cleanUri = Navigation.GetUriWithQueryParameter(ReportIntentQueryParameter, (string?)null);
+        Navigation.NavigateTo(cleanUri, replace: true);
     }
 
     private async Task ConfirmAndExecuteLifecycleActionAsync(

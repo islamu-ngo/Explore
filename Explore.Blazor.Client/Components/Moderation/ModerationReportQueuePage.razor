@@ -1,0 +1,282 @@
+@* ABOUTME: Moderator-facing event-report queue page for event-scoped review work. *@
+@* ABOUTME: Renders HAL-gated queue rows and loads privileged report detail on demand. *@
+
+@page "/events/{EventId:guid}/moderation/reports"
+@using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@rendermode InteractiveAuto
+@attribute [Authorize]
+
+<PageTitle>Moderation Reports</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="moderation-report-queue-page py-6">
+    <div class="moderation-report-queue-page__header">
+        <div>
+            <MudText Typo="Typo.h4" HtmlTag="h1" Class="moderation-report-queue-page__title">Moderation Reports</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Review event reports, signal context, and provider sync status.</MudText>
+        </div>
+        <div class="moderation-report-queue-page__actions">
+            <MudButton Elevation="0"
+                       Variant="Variant.Outlined"
+                       Color="Color.Secondary"
+                       Href="@($"/events/{EventId}")"
+                       StartIcon="@Icons.Material.Filled.ArrowBack">
+                Event
+            </MudButton>
+            <MudButton Elevation="0"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="_isLoading"
+                       OnClick="RefreshAsync"
+                       StartIcon="@Icons.Material.Filled.Refresh">
+                Refresh
+            </MudButton>
+        </div>
+    </div>
+
+    <MudPaper Elevation="0" Class="moderation-report-queue-page__filters">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6" md="3" lg="2">
+                <MudSelect T="string"
+                           Label="Report status"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Dense="true"
+                           @bind-Value="_statusCode">
+                    @foreach (var option in StatusOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option.Value">@option.Label</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3" lg="2">
+                <MudSelect T="string"
+                           Label="Case status"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Dense="true"
+                           @bind-Value="_caseStatusCode">
+                    @foreach (var option in CaseStatusOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option.Value">@option.Label</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3" lg="2">
+                <MudSelect T="string"
+                           Label="Priority"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Dense="true"
+                           @bind-Value="_priorityCode">
+                    @foreach (var option in PriorityOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option.Value">@option.Label</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3" lg="2">
+                <MudSelect T="string"
+                           Label="Sort"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Dense="true"
+                           @bind-Value="_sortBy">
+                    @foreach (var option in SortOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option.Value">@option.Label</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3" lg="2">
+                <MudTextField T="string"
+                              Label="Queue"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Dense="true"
+                              @bind-Value="_queueCode" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3" lg="2">
+                <MudTextField T="string"
+                              Label="Reason code"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Dense="true"
+                              @bind-Value="_reasonCode" />
+            </MudItem>
+            <MudItem xs="12" md="6" lg="4">
+                <div class="moderation-report-queue-page__filter-toggles">
+                    <MudCheckBox T="bool"
+                                 @bind-Value="_openOnly"
+                                 Color="Color.Primary"
+                                 Label="Open only" />
+                    <MudCheckBox T="bool"
+                                 @bind-Value="_unassignedOnly"
+                                 Color="Color.Primary"
+                                 Label="Unassigned only" />
+                    <MudCheckBox T="bool"
+                                 @bind-Value="_sortDescending"
+                                 Color="Color.Primary"
+                                 Label="Newest first" />
+                </div>
+            </MudItem>
+            <MudItem xs="12" md="6" lg="8">
+                <div class="moderation-report-queue-page__filter-actions">
+                    <MudButton Elevation="0"
+                               Variant="Variant.Text"
+                               Color="Color.Secondary"
+                               Disabled="_isLoading"
+                               OnClick="ClearFiltersAsync"
+                               StartIcon="@Icons.Material.Filled.FilterAltOff">
+                        Clear
+                    </MudButton>
+                    <MudButton Elevation="0"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="_isLoading"
+                               OnClick="ApplyFiltersAsync"
+                               StartIcon="@Icons.Material.Filled.FilterAlt">
+                        Apply
+                    </MudButton>
+                </div>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="moderation-report-queue-page__alert">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    <div class="moderation-report-queue-page__layout">
+        <MudPaper Elevation="0" Class="moderation-report-queue-page__queue-surface">
+            <div class="moderation-report-queue-page__surface-header">
+                <div>
+                    <MudText Typo="Typo.h6" HtmlTag="h2">Queue</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@GetQueueSummary()</MudText>
+                </div>
+            </div>
+
+            @if (_isLoading)
+            {
+                <div class="moderation-report-queue-page__loading">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Loading queue...</MudText>
+                </div>
+            }
+            else if (_reports.Count == 0)
+            {
+                <div class="moderation-report-queue-page__empty">
+                    <MudIcon Icon="@Icons.Material.Outlined.FactCheck" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h6">No reports in this view</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Adjust filters or refresh the queue.</MudText>
+                </div>
+            }
+            else
+            {
+                <MudTable T="HalResourceOfModerationReportQueueItemDto"
+                          Items="_reports"
+                          Dense="true"
+                          Hover="true"
+                          Breakpoint="Breakpoint.Md"
+                          Class="moderation-report-queue-page__table">
+                    <HeaderContent>
+                        <MudTh>Report</MudTh>
+                        <MudTh>Reason</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Case</MudTh>
+                        <MudTh>Signals</MudTh>
+                        <MudTh>Submitted</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Report">
+                            <div class="moderation-report-queue-page__report-cell">
+                                <span class="moderation-report-queue-page__report-id">@FormatReportId(context.Id)</span>
+                                <span class="moderation-report-queue-page__muted">@context.ReporterKindName · @context.SourceKindName</span>
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Reason">
+                            <div class="moderation-report-queue-page__report-cell">
+                                <span>@context.ReasonName</span>
+                                @if (!string.IsNullOrWhiteSpace(context.SubcategoryCode))
+                                {
+                                    <span class="moderation-report-queue-page__muted">@context.SubcategoryCode</span>
+                                }
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Status">
+                            <div class="moderation-report-queue-page__chips">
+                                <ModerationStatusBadge Kind="ModerationStatusBadgeKind.ReportStatus" Code="@context.StatusCode" Label="@context.StatusName" />
+                                <ModerationStatusBadge Kind="ModerationStatusBadgeKind.Priority" Code="@context.PriorityCode" Label="@context.PriorityName" />
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Case">
+                            @if (context.CurrentCase is null)
+                            {
+                                <span class="moderation-report-queue-page__muted">No case</span>
+                            }
+                            else
+                            {
+                                <div class="moderation-report-queue-page__report-cell">
+                                    <span>@context.CurrentCase.StatusName</span>
+                                    <span class="moderation-report-queue-page__muted">@context.CurrentCase.QueueCode</span>
+                                </div>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Signals">
+                            <div class="moderation-report-queue-page__count-strip" aria-label="Report related counts">
+                                <span>@context.SignalCount signal(s)</span>
+                                <span>@context.DecisionCount decision(s)</span>
+                                <span>@context.ExternalLinkCount sync link(s)</span>
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Submitted">@FormatDate(context.SubmittedAtUtc)</MudTd>
+                        <MudTd Class="moderation-report-queue-page__row-action">
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       Disabled="@(context.Id is null || _isDetailLoading)"
+                                       OnClick="@(() => OpenReportAsync(context))"
+                                       aria-label="@($"Open {FormatReportId(context.Id)}")"
+                                       StartIcon="@Icons.Material.Filled.OpenInNew">
+                                Open
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <div class="moderation-report-queue-page__pagination" aria-label="Moderation report queue pagination">
+                    <MudButton Elevation="0"
+                               Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               Disabled="@(!_hasPrevious || _isLoading)"
+                               OnClick="PreviousPageAsync"
+                               StartIcon="@Icons.Material.Filled.ChevronLeft">
+                        Previous
+                    </MudButton>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Page @_pageNumber of @Math.Max(1, _totalPages)</MudText>
+                    <MudButton Elevation="0"
+                               Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               Disabled="@(!_hasNext || _isLoading)"
+                               OnClick="NextPageAsync"
+                               EndIcon="@Icons.Material.Filled.ChevronRight">
+                        Next
+                    </MudButton>
+                </div>
+            }
+        </MudPaper>
+
+        <ModerationReportDetailPanel Report="_selectedDetail"
+                                     IsLoading="_isDetailLoading"
+                                     IsActionRunning="_isActionRunning"
+                                     ErrorMessage="_detailErrorMessage"
+                                     OnRefreshRequested="RefreshSelectedDetailAsync"
+                                     OnActionRequested="OpenActionDialogAsync" />
+    </div>
+</MudContainer>

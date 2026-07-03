@@ -1,0 +1,72 @@
+/* ABOUTME: Scoped BEM styling for the authenticated reporter report-status page. */
+/* ABOUTME: Keeps dense operational report rows readable across desktop and mobile breakpoints. */
+
+.my-reports-page__header {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--isl-space-4, 1rem);
+    justify-content: space-between;
+    margin-block-end: var(--isl-space-6, 1.5rem);
+}
+
+.my-reports-page__title {
+    font-weight: 800;
+}
+
+.my-reports-page__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2, 0.5rem);
+    justify-content: flex-end;
+}
+
+.my-reports-page__alert {
+    margin-block-end: var(--isl-space-4, 1rem);
+}
+
+.my-reports-page__surface {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.my-reports-page__loading,
+.my-reports-page__empty {
+    align-items: center;
+    display: grid;
+    gap: var(--isl-space-3, 0.75rem);
+    justify-items: center;
+    min-height: 16rem;
+    padding: var(--isl-space-8, 2rem);
+    text-align: center;
+}
+
+.my-reports-page__table {
+    width: 100%;
+}
+
+.my-reports-page__row-action {
+    text-align: end;
+}
+
+.my-reports-page__pagination {
+    align-items: center;
+    border-block-start: 1px solid var(--mud-palette-lines-default);
+    display: flex;
+    gap: var(--isl-space-3, 0.75rem);
+    justify-content: flex-end;
+    padding: var(--isl-space-3, 0.75rem) var(--isl-space-4, 1rem);
+}
+
+@media (max-width: 600px) {
+    .my-reports-page__header,
+    .my-reports-page__actions,
+    .my-reports-page__pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .my-reports-page__row-action {
+        text-align: start;
+    }
+}

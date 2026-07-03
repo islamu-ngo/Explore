@@ -11,6 +11,7 @@
 @using Explore.Blazor.Client.Pages.Events.Components
 @using Explore.Blazor.Client.Pages.Events.Dialogs
 @using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Components.EventReporting
 
 <PageTitle>@(_eventDetails?.Title ?? "Event Detail")</PageTitle>
 
@@ -46,6 +47,17 @@
                                        StartIcon="@Icons.Material.Filled.Edit"
                                        Class="event-detail-action-bar__edit-link">
                                 @GetEditActionLabel()
+                            </MudButton>
+                        }
+                        @if (_canViewModerationReports)
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       Href="@GetModerationReportsHref()"
+                                       StartIcon="@Icons.Material.Filled.Policy"
+                                       Class="event-detail-action-bar__edit-link">
+                                Reports
                             </MudButton>
                         }
                     </div>
@@ -267,6 +279,13 @@
                                 <span>External Registration</span>
                             </a>
                         }
+                        @if (_canViewModerationReports)
+                        {
+                            <a href="@GetModerationReportsHref()" class="event-sidebar-link d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Policy" Size="Size.Small" />
+                                <span>Moderation Reports</span>
+                            </a>
+                        }
                     </div>
 
                 </MudItem>
@@ -274,17 +293,31 @@
                 @* ── Right Column: Event Details & Registration ── *@
                 <MudItem xs="12" md="7" lg="8">
                     
-                    @* Back / Breadcrumb (Optional, Luma doesn't have it but it's good for navigation) *@
-                    <div class="mb-4">
+                    @* Back / page actions *@
+                    <div class="event-detail-header-actions">
                         <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.ArrowBack"
                                    Variant="Variant.Text"
                                    Color="Color.Default"
                                    Href="/events"
                                    Size="Size.Small"
-                                   Class="px-0"
+                                   Class="event-detail-header-actions__back px-0"
                                    Style="color: var(--mud-palette-text-secondary);">
                             Back to Events
                         </MudButton>
+                        @if (_canReport)
+                        {
+                            <div class="event-detail-header-actions__report">
+                                <MudButton Elevation="0"
+                                           Variant="Variant.Outlined"
+                                           Color="Color.Warning"
+                                           StartIcon="@Icons.Material.Outlined.Flag"
+                                           Size="Size.Small"
+                                           OnClick="OpenReportEventDialogAsync"
+                                           Class="event-detail-header-actions__report-button">
+                                    Report Event
+                                </MudButton>
+                            </div>
+                        }
                     </div>
 
                     @* Cancelled Alert *@
@@ -324,7 +357,7 @@
                         }
                     </div>
 
-                    <MudText Typo="Typo.h2" HtmlTag="h1" Style="font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;" Class="mb-3">
+                    <MudText Typo="Typo.h2" HtmlTag="h1" Style="font-weight: 800; line-height: 1.1; letter-spacing: 0;" Class="mb-3">
                         @_eventDetails.Title
                     </MudText>
 

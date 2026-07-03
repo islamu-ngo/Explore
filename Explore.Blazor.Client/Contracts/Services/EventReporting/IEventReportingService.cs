@@ -1,0 +1,26 @@
+// ABOUTME: Client contract for reporter-facing event-report submission and status reads.
+// ABOUTME: Keeps generated API exceptions behind explicit service result models for UI components.
+
+using Explore.Blazor.Client.Clients;
+
+namespace Explore.Blazor.Client.Contracts.Services.EventReporting;
+
+public interface IEventReportingService
+{
+    Task<HalResourceOfEventReportOptionsDto?> GetOptionsAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default);
+
+    Task<EventReportSubmissionResult> SubmitAsync(
+        SubmitEventReportDto request,
+        CancellationToken cancellationToken = default);
+
+    Task<EventReportPageResult> GetMyReportsAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    Task<HalResourceOfMyEventReportDto?> GetMyReportAsync(
+        Guid reportId,
+        CancellationToken cancellationToken = default);
+}

@@ -1,0 +1,300 @@
+@* ABOUTME: Detail panel for one event-report moderation case file. *@
+@* ABOUTME: Shows evidence, decisions, signals, and sync state only after a privileged detail read. *@
+
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+
+<section class="moderation-report-detail-panel" aria-label="Moderation report detail">
+    <div class="moderation-report-detail-panel__header">
+        <div>
+            <MudText Typo="Typo.h6" HtmlTag="h2">Report Detail</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@GetSubtitle()</MudText>
+        </div>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                       Color="Color.Secondary"
+                       Size="Size.Small"
+                       Disabled="@(IsLoading || Report is null || !OnRefreshRequested.HasDelegate)"
+                       OnClick="OnRefreshRequested"
+                       aria-label="Refresh moderation report detail" />
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="moderation-report-detail-panel__loading">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Loading detail...</MudText>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="moderation-report-detail-panel__alert">
+            @ErrorMessage
+        </MudAlert>
+    }
+    else if (Report is null)
+    {
+        <div class="moderation-report-detail-panel__empty">
+            <MudIcon Icon="@Icons.Material.Outlined.ManageSearch" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6">Select a report</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Open a queue row to review reporter evidence and moderation context.</MudText>
+        </div>
+    }
+    else
+    {
+        <div class="moderation-report-detail-panel__body">
+                <div class="moderation-report-detail-panel__summary">
+                <div class="moderation-report-detail-panel__chips">
+                    <ModerationStatusBadge Kind="ModerationStatusBadgeKind.ReportStatus" Code="@Report.StatusCode" Label="@Report.StatusName" />
+                    <ModerationStatusBadge Kind="ModerationStatusBadgeKind.Priority" Code="@Report.PriorityCode" Label="@Report.PriorityName" />
+                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">@Report.ReasonName</MudChip>
+                </div>
+                <dl class="moderation-report-detail-panel__definition-list">
+                    <div>
+                        <dt>Submitted</dt>
+                        <dd>@FormatDate(Report.SubmittedAtUtc)</dd>
+                    </div>
+                    <div>
+                        <dt>Reporter</dt>
+                        <dd>@Report.ReporterKindName</dd>
+                    </div>
+                    <div>
+                        <dt>Contact consent</dt>
+                        <dd>@(Report.ReporterContactConsent == true ? "Granted" : "Not granted")</dd>
+                    </div>
+                    <div>
+                        <dt>Locale</dt>
+                        <dd>@FormatText(Report.ReporterLocale)</dd>
+                    </div>
+                </dl>
+            </div>
+
+            @if (AvailableActionCount > 0)
+            {
+                <div class="moderation-report-detail-panel__section" aria-label="Available workflow affordances">
+                    <MudText Typo="Typo.subtitle2" HtmlTag="h3">Available Workflow</MudText>
+                    <div class="moderation-report-detail-panel__actions">
+                        @foreach (var action in GetAvailableActionAffordances())
+                        {
+                            <MudButton Elevation="0"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       Disabled="@(IsLoading || IsActionRunning || !OnActionRequested.HasDelegate)"
+                                       StartIcon="@action.Icon"
+                                       OnClick="@(() => RequestActionAsync(action.ActionKind))">
+                                @action.Label
+                            </MudButton>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="moderation-report-detail-panel__section">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Current Case</MudText>
+                @if (Report.CurrentCase is null)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No case is currently attached.</MudText>
+                }
+                else
+                {
+                    <dl class="moderation-report-detail-panel__definition-list">
+                        <div>
+                            <dt>Status</dt>
+                            <dd>
+                                <ModerationStatusBadge Kind="ModerationStatusBadgeKind.CaseStatus" Code="@Report.CurrentCase.StatusCode" Label="@Report.CurrentCase.StatusName" />
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Queue</dt>
+                            <dd>@Report.CurrentCase.QueueCode</dd>
+                        </div>
+                        <div>
+                            <dt>Priority</dt>
+                            <dd>
+                                <ModerationStatusBadge Kind="ModerationStatusBadgeKind.Priority" Code="@Report.CurrentCase.PriorityCode" Label="@Report.CurrentCase.PriorityName" />
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Assignee</dt>
+                            <dd>@FormatGuid(Report.CurrentCase.AssignedModeratorUserId)</dd>
+                        </div>
+                        <div>
+                            <dt>SLA</dt>
+                            <dd>@FormatDate(Report.CurrentCase.SlaDueAtUtc)</dd>
+                        </div>
+                    </dl>
+                }
+            </div>
+
+            <div class="moderation-report-detail-panel__section">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Targets</MudText>
+                @if (TargetItems.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No targets recorded.</MudText>
+                }
+                else
+                {
+                    <div class="moderation-report-detail-panel__target-list">
+                        @foreach (var target in TargetItems)
+                        {
+                            <div class="moderation-report-detail-panel__target">
+                                <span>@target.TargetKindName</span>
+                                <span>@FormatGuid(target.TargetId)</span>
+                                @if (!string.IsNullOrWhiteSpace(target.FieldPath))
+                                {
+                                    <span class="moderation-report-detail-panel__muted">@target.FieldPath</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="moderation-report-detail-panel__section">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Reporter Evidence</MudText>
+                @if (EvidenceItems.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No evidence submitted.</MudText>
+                }
+                else
+                {
+                    <div class="moderation-report-detail-panel__evidence-list">
+                        @foreach (var evidence in EvidenceItems)
+                        {
+                            <article class="moderation-report-detail-panel__evidence">
+                                <div class="moderation-report-detail-panel__evidence-header">
+                                    <span>@evidence.EvidenceKindName</span>
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">@evidence.ClassificationName</MudChip>
+                                </div>
+                                @if (evidence.IsTextUnavailable == true)
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Evidence text unavailable.</MudText>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(evidence.TextBody))
+                                {
+                                    <pre class="moderation-report-detail-panel__evidence-text">@evidence.TextBody</pre>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">No text body.</MudText>
+                                }
+                                <dl class="moderation-report-detail-panel__definition-list moderation-report-detail-panel__definition-list--compact">
+                                    <div>
+                                        <dt>Created</dt>
+                                        <dd>@FormatDate(evidence.CreatedAtUtc)</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Retention</dt>
+                                        <dd>@FormatDate(evidence.RetentionUntilUtc)</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Hash</dt>
+                                        <dd>@FormatText(evidence.ContentHash)</dd>
+                                    </div>
+                                </dl>
+                            </article>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="moderation-report-detail-panel__section">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Signals</MudText>
+                @if (SignalItems.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No provider signals recorded.</MudText>
+                }
+                else
+                {
+                    <div class="moderation-report-detail-panel__table-wrap">
+                        <table class="moderation-report-detail-panel__table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Provider</th>
+                                    <th scope="col">Verdict</th>
+                                    <th scope="col">Score</th>
+                                    <th scope="col">Recommendation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var signal in SignalItems)
+                                {
+                                    <tr>
+                                        <td>@signal.ProviderName</td>
+                                        <td>@signal.VerdictName</td>
+                                        <td>@FormatScore(signal.Score)</td>
+                                        <td>@FormatText(signal.RecommendedActionName ?? signal.SafeSummary)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <div class="moderation-report-detail-panel__section">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Decisions</MudText>
+                @if (DecisionItems.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No decisions recorded.</MudText>
+                }
+                else
+                {
+                    <div class="moderation-report-detail-panel__timeline">
+                        @foreach (var decision in DecisionItems)
+                        {
+                            <article class="moderation-report-detail-panel__timeline-item">
+                                <div>
+                                    <span>@decision.DecisionKindName</span>
+                                    <span class="moderation-report-detail-panel__muted">@decision.DecisionSourceName · @FormatDate(decision.CreatedAtUtc)</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(decision.SafeNote))
+                                {
+                                    <p>@decision.SafeNote</p>
+                                }
+                            </article>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="moderation-report-detail-panel__section">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Provider Sync</MudText>
+                @if (ExternalLinkItems.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No provider sync links recorded.</MudText>
+                }
+                else
+                {
+                    <div class="moderation-report-detail-panel__table-wrap">
+                        <table class="moderation-report-detail-panel__table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Provider</th>
+                                    <th scope="col">State</th>
+                                    <th scope="col">Retries</th>
+                                    <th scope="col">Last sync</th>
+                                    <th scope="col">Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var link in ExternalLinkItems)
+                                {
+                                    <tr>
+                                        <td>@link.ProviderName</td>
+                                        <td>
+                                            <ProviderSyncBadge StateCode="@link.SyncStateCode" StateName="@link.SyncStateName" />
+                                        </td>
+                                        <td>@(link.RetryCount ?? 0)</td>
+                                        <td>@FormatDate(link.LastSyncedAtUtc)</td>
+                                        <td>@FormatText(link.LastErrorCategory)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</section>

@@ -1,0 +1,35 @@
+/* ABOUTME: Scoped layout for the event reporting dialog form. */
+/* ABOUTME: Uses BEM-style selectors so dialog internals remain locally maintainable. */
+
+.report-event-dialog__title {
+    align-items: center;
+    display: flex;
+    gap: var(--isl-space-2, 0.5rem);
+}
+
+.report-event-dialog__body {
+    display: grid;
+    gap: var(--isl-space-4, 1rem);
+    min-width: min(32rem, 82vw);
+}
+
+.report-event-dialog__alert {
+    margin-block-end: var(--isl-space-1, 0.25rem);
+}
+
+.report-event-dialog__reason-copy {
+    display: block;
+    margin-block-start: calc(var(--isl-space-3, 0.75rem) * -1);
+}
+
+.report-event-dialog__counter {
+    display: flex;
+    justify-content: flex-end;
+    margin-block-start: calc(var(--isl-space-4, 1rem) * -1);
+}
+
+@media (max-width: 600px) {
+    .report-event-dialog__body {
+        min-width: 0;
+    }
+}

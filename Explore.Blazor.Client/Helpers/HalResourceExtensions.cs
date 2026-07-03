@@ -219,6 +219,22 @@ public static class HalResourceExtensions
         return JsonSerializer.Deserialize<ActorSubscriptionDto>(json, JsonOptions) ?? new ActorSubscriptionDto();
     }
 
+    public static ICollection<HalResourceOfMyEventReportDto> GetItems(this HalCollectionResourceOfMyEventReportDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<HalResourceOfMyEventReportDto>();
+
+        return collection._embedded.Items.ToList();
+    }
+
+    public static ICollection<HalResourceOfModerationReportQueueItemDto> GetItems(this HalCollectionResourceOfModerationReportQueueItemDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<HalResourceOfModerationReportQueueItemDto>();
+
+        return collection._embedded.Items.ToList();
+    }
+
     // ========== LINQ-like Extensions for HAL Collections ==========
 
     /// <summary>
@@ -738,6 +754,15 @@ public static class HalResourceExtensions
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
     public static bool HasLink(this HalResourceOfActorSubscriptionDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    public static bool HasLink(this HalResourceOfMyEventReportDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    public static bool HasLink(this HalResourceOfModerationReportQueueItemDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    public static bool HasLink(this HalResourceOfModerationReportDetailDto dto, string linkRel)
         => dto._links?.ContainsKey(linkRel) == true;
 
     // ========== Helper Methods ==========

@@ -1,0 +1,22 @@
+/* ABOUTME: CSS-isolated layout for the moderation report action dialog. */
+/* ABOUTME: Keeps action inputs compact and consistent with operational moderation surfaces. */
+
+.moderation-report-action-dialog__title {
+    align-items: center;
+    display: flex;
+    gap: var(--isl-space-2, 0.5rem);
+}
+
+.moderation-report-action-dialog__body {
+    display: grid;
+    gap: var(--isl-space-3, 0.75rem);
+    min-inline-size: min(100%, 24rem);
+}
+
+.moderation-report-action-dialog__summary {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-sm, 6px);
+    display: grid;
+    gap: var(--isl-space-1, 0.25rem);
+    padding: var(--isl-space-3, 0.75rem);
+}
