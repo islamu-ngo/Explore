@@ -32,6 +32,7 @@
     <PackageReference Include="OpenFeature" />
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Refit.HttpClientFactory" />
+    <PackageReference Include="Svix" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 

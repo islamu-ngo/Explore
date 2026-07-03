@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Explore.API\Explore.API.csproj" />
+    <ProjectReference Include="..\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

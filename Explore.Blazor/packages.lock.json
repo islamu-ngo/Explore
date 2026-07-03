@@ -700,6 +700,7 @@
           "Polly": "[8.6.6, )",
           "RabbitMQ.Client": "[7.2.1, )",
           "Refit.HttpClientFactory": "[10.2.0, )",
+          "Svix": "[1.96.1, )",
           "YamlDotNet": "[17.1.0, )"
         }
       },
@@ -1013,6 +1014,12 @@
         "resolved": "9.4.0",
         "contentHash": "p6BF8zmt4c/yi/hD9hP7yPioUK5loOnif19gwIEANq6I46407QnSu0HTW1NuALC5seRKcWb2pBP5LwC8aBE2Mg=="
       },
+      "Newtonsoft.Json": {
+        "type": "CentralTransitive",
+        "requested": "[13.0.5-beta1, )",
+        "resolved": "13.0.1",
+        "contentHash": "ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A=="
+      },
       "Npgsql": {
         "type": "CentralTransitive",
         "requested": "[10.0.2, )",
@@ -1121,6 +1128,16 @@
         "contentHash": "pDd73YQWLFxqwP01H4vpXqu6BJAPKJrci7+Nmlhx+Xg5asklGhmoAUVAeGeEKAqyOMQeN7wl5tCKcihus+Gzmw==",
         "dependencies": {
           "Refit": "10.2.0"
+        }
+      },
+      "Svix": {
+        "type": "CentralTransitive",
+        "requested": "[1.96.1, )",
+        "resolved": "1.96.1",
+        "contentHash": "O8mmJWK5OzQh5R4rmi8gcgQV1UKMcox4GiM6Cws2MMohQhmU2zXMI/lSxi80N72amD6qPpZr3XFSyaOMeTHNKA==",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.1",
+          "Polly": "7.2.3"
         }
       },
       "System.IdentityModel.Tokens.Jwt": {

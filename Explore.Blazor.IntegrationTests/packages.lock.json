@@ -1113,6 +1113,7 @@
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[10.0.7, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.7, )",
+          "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.7, )",
           "OpenFeature": "[2.11.1, )"
         }
       },
@@ -1186,6 +1187,7 @@
           "Polly": "[8.6.6, )",
           "RabbitMQ.Client": "[7.2.1, )",
           "Refit.HttpClientFactory": "[10.2.0, )",
+          "Svix": "[1.96.1, )",
           "YamlDotNet": "[17.1.0, )"
         }
       },
@@ -1770,6 +1772,12 @@
           "Microsoft.Extensions.Localization": "10.0.1"
         }
       },
+      "Newtonsoft.Json": {
+        "type": "CentralTransitive",
+        "requested": "[13.0.5-beta1, )",
+        "resolved": "13.0.1",
+        "contentHash": "ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A=="
+      },
       "Npgsql": {
         "type": "CentralTransitive",
         "requested": "[10.0.2, )",
@@ -1955,6 +1963,17 @@
           "Microsoft.Extensions.Configuration.Binder": "10.0.0",
           "Microsoft.Extensions.DependencyModel": "10.0.0",
           "Serilog": "4.3.0"
+        }
+      },
+      "Svix": {
+        "type": "CentralTransitive",
+        "requested": "[1.96.1, )",
+        "resolved": "1.96.1",
+        "contentHash": "O8mmJWK5OzQh5R4rmi8gcgQV1UKMcox4GiM6Cws2MMohQhmU2zXMI/lSxi80N72amD6qPpZr3XFSyaOMeTHNKA==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "6.0.0",
+          "Newtonsoft.Json": "13.0.1",
+          "Polly": "7.2.3"
         }
       },
       "System.IdentityModel.Tokens.Jwt": {
