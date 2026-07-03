@@ -11,12 +11,13 @@
             <MudIconButton Icon="@Icons.Material.Filled.Close"
                            Size="Size.Small"
                            Class="login-prompt__close"
-                           OnClick="Close" />
+                           OnClick="Close"
+                           aria-label="Close sign in prompt" />
 
             <div class="login-prompt__header">
                 <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Primary" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="login-prompt__title">
-                    Sign in required
+                    @Title
                 </MudText>
                 <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="login-prompt__message">
                     @Message
@@ -31,7 +32,7 @@
                            StartIcon="@Icons.Material.Filled.Login"
                            OnClick="ContinueToLogin"
                            Class="login-prompt__btn login-prompt__btn--primary">
-                    Continue to Login
+                    @PrimaryActionText
                 </MudButton>
 
                 <MudButton Elevation="0" Variant="Variant.Text"
@@ -39,7 +40,7 @@
                            FullWidth="true"
                            OnClick="Close"
                            Class="login-prompt__btn login-prompt__btn--cancel">
-                    Not now
+                    @SecondaryActionText
                 </MudButton>
             </div>
         </div>
@@ -55,6 +56,15 @@
 
     [Parameter]
     public string Message { get; set; } = "You need to sign in before continuing.";
+
+    [Parameter]
+    public string Title { get; set; } = "Sign in required";
+
+    [Parameter]
+    public string PrimaryActionText { get; set; } = "Continue to Login";
+
+    [Parameter]
+    public string SecondaryActionText { get; set; } = "Not now";
 
     private void Close()
     {
@@ -74,12 +84,18 @@
     public static async Task<IDialogReference> ShowAsync(
         IDialogService dialogService,
         string? returnUrl = null,
-        string? message = null)
+        string? message = null,
+        string? title = null,
+        string? primaryActionText = null,
+        string? secondaryActionText = null)
     {
         var parameters = new DialogParameters
         {
             ["ReturnUrl"] = returnUrl,
-            ["Message"] = message ?? "You need to sign in before continuing."
+            ["Message"] = message ?? "You need to sign in before continuing.",
+            ["Title"] = title ?? "Sign in required",
+            ["PrimaryActionText"] = primaryActionText ?? "Continue to Login",
+            ["SecondaryActionText"] = secondaryActionText ?? "Not now"
         };
         return await dialogService.ShowAsync<LoginPromptDialog>("Sign in", parameters, DialogOptionsFactory.LoginPrompt());
     }
