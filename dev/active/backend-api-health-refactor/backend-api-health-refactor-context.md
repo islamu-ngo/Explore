@@ -22,18 +22,21 @@ Last Updated: 2026-07-03 Europe/Brussels
 - Added focused API integration tests for the shared health JSON writer.
 - Reconciled the stale product-doc health path references in `docs/MCP_DEBUGGING.md` and `docs/CONFIGURATION.md` from `/health/ready` to `/health`.
 - Fixed a pre-existing compile blocker in `CreateStorageUploadSessionDtoValidator` by changing `char` plus `StringComparison` calls to string overloads.
+- Reconciled Phase 0.3 at summary level against the current generated artifacts: `schemas/openapi.json` now has `359` paths and `500` operations; `docs/API_CONTRACT_INVENTORY.md` has `355` paths and `496` operations. The diff is doc-only `POST /admin/migrate` plus five schema-only webhook message/delivery-attempt operations.
+- Updated `endpoint-inventory.md` to mark the old 399-operation table as historical, record the current 500-operation schema snapshot, and identify new/changed endpoint families: `EventReports`, `ModerationReport`, `IncomingWebhooks`, `Webhooks`, and `VisibilityType`.
+- Updated `backend-contract-risk-register.md` with R-032 through R-035 for contract inventory drift, webhook management/audit safety, anonymous incoming webhook ingestion, and event-report/moderation privacy. R-015 was tightened with current `/admin/migrate` source evidence.
 
 ### In Progress
 
 - Full plan implementation remains active.
-- Phase 0.3 endpoint inventory/risk-register reconciliation is still open.
+- Phase 0.3 endpoint inventory/risk-register reconciliation is partially complete. The summary diff and risk rows are current, but the row-level operation table is still historical and must be regenerated/re-imported before Phase 1 uses it as authoritative.
 - Phase 0.4 full blocker recheck is still partial: this slice proved ServiceDefaults/Application/API health-test build paths and the repo-level Release build, but did not run architecture tests, Docker/Testcontainers tests, or the whole API integration suite.
 
 ### Next
 
-1. Reconcile `endpoint-inventory.md` and `backend-contract-risk-register.md` with current source/OpenAPI.
-2. Recheck architecture context failures, Blazor build state, and Docker/Testcontainers API integration blockers.
-3. Select the next small slice from Phase 1 or Phase 2 after inventory/risk reconciliation.
+1. Recheck architecture context failures, Blazor build state, and Docker/Testcontainers/API integration blockers.
+2. Decide whether to fix the inventory-generator source mismatch first (`/admin/migrate` Testing-only route versus build-time schema) or regenerate/re-import the current 500-operation row table.
+3. Select the next small Phase 1 or Phase 2 slice after inventory/risk reconciliation is authoritative enough for that endpoint family.
 
 ### Blockers
 
@@ -112,7 +115,10 @@ Do not use solution-level `dotnet test`.
 ## Current Known Risks / Unknowns
 
 - The worktree has many unrelated changes. Future agents must avoid reverting or normalizing them.
-- The endpoint inventory is likely stale relative to current source and generated OpenAPI.
+- The endpoint inventory is stale relative to current source and generated OpenAPI. Current snapshot: `schemas/openapi.json` has `359` paths/`500` operations and `docs/API_CONTRACT_INVENTORY.md` has `355` paths/`496` operations. The diff is tracked in R-032.
+- `/admin/migrate` is a Testing/Development-only minimal API endpoint that appears in the Markdown inventory but not in the build-time schema. It lacks endpoint classification and returns raw migration exception text in its failure ProblemDetails path. R-015/R-032 decide whether to delete it or retain it behind an explicit Admin/HostAdministration posture.
+- Webhook message and delivery-attempt endpoints are present in `schemas/openapi.json` but missing from the Markdown inventory. They are authenticated and tenant-scoped in source, but need row-level inventory import and risk-focused API/Application tests before broad approval. R-033 owns this.
+- Incoming webhook ingestion and event-report/moderation surfaces are present and security-sensitive. R-034/R-035 own signature-as-auth, replay/idempotency, reporter privacy, moderation authority, HAL affordance, and DTO/log redaction checks.
 - Shared health response redaction is implemented and covered by focused tests; remaining risk is individual health checks adding new sensitive `Data` keys that should be caught by the writer tests or future targeted tests.
 - Product docs were updated from `/health/ready` to `/health`; workstream docs still mention `/health/ready` only as rejected/deferred examples. `Explore.AppHost` still probes external infrastructure paths such as Cerbos/MinIO and should not be treated as API readiness aliases.
 - Prior verification blockers may be stale or caused by unrelated worktree state.

@@ -45,6 +45,10 @@ Out of scope for this plan: Blazor visual redesign, broad design-system changes,
 | Microsoft guidance supports OpenTelemetry/Prometheus `/metrics`. | Tavily extracted Microsoft Learn ASP.NET Core metrics docs; repo maps `/metrics`. | High | Keep metrics low-cardinality per repo observability rules. |
 | API and operations docs define `/alive`, `/health`, `/metrics`. | `docs/API.md`, `docs/OPERATIONS.md`, `docs/SELF_HOSTING.md`, `docs/MCP_DEBUGGING.md`, `docs/CONFIGURATION.md`. | High | Product-doc `/health/ready` drift was corrected on 2026-07-03. |
 | Phase 0 support artifacts exist. | `endpoint-inventory.md`, `endpoint-classification.md`, `backend-contract-risk-register.md`, `authorization-policy-matrix.md`, `tenant-execution-model.md`, `api-error-catalog.md`. | High | They remain useful but some are stale and need regeneration/reconciliation. |
+| Current generated artifacts disagree. | 2026-07-03 `jq`/Markdown diff: `schemas/openapi.json` has `359` paths and `500` operations with no missing endpoint classes; `docs/API_CONTRACT_INVENTORY.md` has `355` paths and `496` operations with one missing endpoint class. | High | R-032 owns the inventory source-of-truth correction. Do not use the historical operation table as authoritative. |
+| `/admin/migrate` is the only Markdown-only operation. | CodeGraph/source read: `Explore.API/Program.cs` maps `POST /admin/migrate` only in Development/Testing, requires authorization, lacks endpoint classification, and returns raw migration exception text on failure. | High | R-015/R-032 decide deletion versus explicit Admin/HostAdministration posture. |
+| Five webhook message/delivery operations are schema-only. | `schemas/openapi.json` includes `GET /api/webhooks/messages`, `GET /api/webhooks/messages/{messageId}`, `GET /api/webhooks/delivery-attempts`, `GET /api/webhooks/delivery-attempts/{attemptId}`, and `POST /api/webhooks/delivery-attempts/{attemptId}/retry`; `docs/API_CONTRACT_INVENTORY.md` does not. | High | Source shows `WebhooksController` is authenticated/classified; R-033 owns row import and risk tests. |
+| New report/moderation/webhook families are security-sensitive. | Source/search evidence for `EventReportsController`, `ModerationReportController`, `IncomingWebhooksController`, and `WebhooksController`; generated artifacts expose these operation families. | High | R-033, R-034, and R-035 own least-privilege auth, HAL gating, signature-as-auth, replay/idempotency, and privacy checks. |
 | Tenant filters now fail closed. | `backend-api-health-refactor-context.md` records 2026-06-14 verification; `docs/MULTI_TENANCY.md` states missing tenant no longer broadens to all tenant rows. | Medium-High | Future work should prove bypass call sites, not reimplement fail-closed filters from scratch. |
 | Route-name bidirectional guardrails were reportedly closed. | Context and risk register record 452/452 constants resolved and guardrail active. | Medium | Future agents must confirm against current source because the worktree is dirty. |
 | API ProblemDetails centralization is largely implemented. | Context and risk register record `ApiProblemCodes`, `ApiProblemFactory`, `CommandResponseResultMapper`, and many controller slices. | Medium | Remaining work should be verification and targeted unmigrated paths, not another broad mapper design. |
@@ -95,7 +99,7 @@ Relevant docs/contracts:
 ### 2.5 Current Pain Points / Improvement Areas
 
 1. **Plan artifact drift.** The old plan dated 2026-06-13/14 mixes implementation notes, historical progress, and future tasks. This makes it hard for a future agent to know the real next slice.
-2. **Inventory drift.** `endpoint-inventory.md` records generated baseline plus manual overrides. Future contract work must regenerate or reconcile it from current source/OpenAPI before relying on classifications.
+2. **Inventory drift.** `endpoint-inventory.md` records a historical 399-operation baseline plus manual overrides. On 2026-07-03 the current schema/inventory artifacts differ: `schemas/openapi.json` has 500 operations, while `docs/API_CONTRACT_INVENTORY.md` has 496. Future contract work must fix the inventory source mismatch and regenerate/re-import the row-level table before relying on classifications.
 3. **Health endpoint docs drift.** Product docs were corrected on 2026-07-03. Workstream docs still mention `/health/ready` only as a rejected/deferred endpoint alias; `Explore.AppHost` still contains intentional external infrastructure health checks such as MinIO/Cerbos.
 4. **Health payload redaction risk.** The shared response writer now redacts raw exceptions and suspicious data. Individual checks must still prefer bounded provider/status/failure-code data so operator output stays useful.
 5. **Overbroad architecture-test tasks.** Behavior such as idempotency, concurrency, audit emission, and field-shape privacy should be proven with targeted unit/integration tests first. Architecture tests should guard structural invariants only.
@@ -109,7 +113,8 @@ Relevant docs/contracts:
 
 - Which current dirty worktree changes are intentional user work versus incomplete implementation slices. Future agents must inspect before editing source.
 - Whether current `Event.Architecture.Tests`, `Event.API.IntegrationTests`, and build blockers still reproduce on 2026-07-03.
-- Whether `endpoint-inventory.md` and `backend-contract-risk-register.md` reflect the current OpenAPI/runtime endpoint surface after the many source changes in the worktree.
+- Whether the inventory generator should exclude Testing/Development-only minimal endpoints such as `/admin/migrate`, include them with explicit Admin/HostAdministration metadata, or switch the Markdown inventory to the same build-time OpenAPI source used by `schemas/openapi.json`.
+- Whether the five schema-only webhook message/delivery operations already have enough behavior coverage or need new API/Application tests before being accepted into the governed contract.
 - Whether every readiness check's data/exception output is bounded and production-safe.
 - Whether each remaining P0/P1 auth/HAL risk still exists after current untracked/modified work.
 
@@ -198,7 +203,7 @@ The target is not a giant "make backend enterprise-grade" PR. The target is a se
   - The user approves or corrects this re-baselined plan.
   - Current `git status` and unrelated dirty files are recorded in context before implementation.
   - Current blockers are rechecked: architecture context failures, API integration/Docker issues, Blazor build issue.
-  - Endpoint inventory and risk register are reconciled with the current branch or explicitly marked stale.
+  - Endpoint inventory and risk register are reconciled with the current branch or explicitly marked stale. As of 2026-07-03 the summary diff is recorded, but the row-level operation table remains historical until regenerated/re-imported.
 - **Verification:** docs consistency grep; no source tests required unless generated artifacts are touched.
 
 ### Phase 1 - Security, Authorization, Tenant, and HAL Corrections
