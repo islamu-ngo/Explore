@@ -222,6 +222,7 @@ public partial class FallbackAuthorizationService
         || resourceKind == ResourceKinds.CustomPropertyTemplate
         || resourceKind == ResourceKinds.CustomPropertyProjection
         || resourceKind == ResourceKinds.CustomPropertyGovernance
+        || resourceKind == ResourceKinds.Webhook
         || resourceKind == ResourceKinds.Actor;
 
     private static bool IsOrganizationScopedResource(string resourceKind) =>

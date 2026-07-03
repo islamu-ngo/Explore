@@ -121,6 +121,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             "islamuevent_custom_property_projection" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_custom_property_governance" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_email_dispatch" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_webhook" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_platform_namespace" => action is "view",
 
             // Org-scoped: tenant admin or org admin
