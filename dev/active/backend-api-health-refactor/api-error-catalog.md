@@ -3,7 +3,7 @@
 
 # API Error Catalog
 
-Last Updated: 2026-05-07 Europe/Brussels
+Last Updated: 2026-07-04 Europe/Brussels
 
 ## Purpose
 
@@ -43,6 +43,23 @@ Security-sensitive production errors must avoid leaking implementation detail.
 - Bool delete failures map to `resource_not_found` unless the command exposes a more specific failure.
 - Idempotency and optimistic-concurrency outcomes use dedicated codes.
 - Rate limiting uses RFC 6585 semantics and includes `Retry-After` when available.
+
+## Implementation Checkpoint
+
+2026-07-04 Phase 2.1 source audit:
+
+- Context7 `/dotnet/aspnetcore.docs` confirmed ASP.NET Core support for centralized RFC 7807 `ProblemDetails`, `ValidationProblemDetails`, `IProblemDetailsService`, and explicit `ProblemDetails` response metadata.
+- Tavily returned OWASP error-handling guidance to avoid returning internal diagnostic details to clients.
+- Direct controller raw-helper sweeps are clean under `Explore.API/Controllers`: no direct `BadRequest`, `Unauthorized`, `Forbid`, `NotFound`, `Conflict`, `Problem`, `StatusCode`, or `ValidationProblem` calls remain for the audited patterns.
+- `EventSessionLanguageController.Update` was the final direct validation helper path; missing or invalid `If-Match` now maps through `ToValidationProblem` with `code=validation_failed`, standard trace/timestamp extensions, and `errors.If-Match`.
+- No `BaseCommandResponse` 4xx response metadata remains under controllers. Successful command responses may still legitimately use `BaseCommandResponse<T>` until a separate contract-normalization task changes command success contracts.
+
+2026-07-04 Phase 2.2 behavior coverage:
+
+- Context7 `/dotnet/aspnetcore.docs` confirmed `IProblemDetailsService` for RFC 7807 responses and `IAuthorizationMiddlewareResultHandler` as the supported ASP.NET Core hook for challenge/forbid customization.
+- Tavily returned OWASP Improper Error Handling and Error Handling Cheat Sheet guidance: client-facing errors should remain generic and must not expose stack traces, SQL/server paths, raw provider details, or internal diagnostics.
+- `ProblemDetailsContractTests` now locks representative 400, 401, 403, 404, 409, 429, and 500 shapes. The new middleware examples cover authorization-middleware `authentication_required` and `forbidden`; the rate-limit example covers an API-key partition returning `429`, `code=rate_limited`, `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining`.
+- The direct controller migration task remains closed for audited patterns. Reopen R-005 only for a concrete source-backed gap or a new ProblemDetails family.
 
 ## Canonical Payload Examples
 

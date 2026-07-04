@@ -3,7 +3,7 @@
 
 # Full Input Validation & Sanitization - Implementation Plan
 
-Last Updated: 2026-07-03 Europe/Brussels
+Last Updated: 2026-07-04 Europe/Brussels
 Status: Re-baselined for implementation
 Planning mode: Senior CTO feedback rewrite
 Primary workstream: `dev/active/full-input-validation-sanitization/`
@@ -126,14 +126,15 @@ This section distinguishes verified codebase reality from the desired future sta
 | API model-state normalization | `Explore.API/Program.cs` configures JSON unknown-member rejection and a custom `InvalidModelStateResponseFactory`. `Explore.API/ExceptionHandling/ApiValidationProblemDetailsFactory.cs` owns the canonical shape. | Implemented baseline. Extend through tests, do not duplicate in controllers. |
 | Public query validation | `Explore.API/Models/EventFilterRequest.cs`, `EventSessionFilterRequest.cs`, `PaginatedQueryRequests.cs`, and `QueryValidationRules.cs` implement query validation. `Event.API.IntegrationTests` include public query validation coverage. | Implemented baseline. Audit remaining query DTOs before declaring complete. |
 | Idempotency validation | `Explore.API/Middleware/IdempotencyRequestIdentity.cs` and `IdempotencyMiddleware.cs` compute and enforce request identity. Tests exist for fingerprint mismatch behavior. | Implemented baseline. Keep aligned with documented idempotency contract and IETF semantics. |
-| Direct upload validation | `Explore.Application/DTOs/StorageObject/Validators/UploadRequestDtoValidator.cs`, `CreateStorageUploadSessionDtoValidator.cs`, and storage upload tests exist. Upload-session reservation metadata now validates MIME syntax, unsafe filenames/display names, unsafe extension tokens, and normalizes content type before storage policy resolution. | Partially implemented. Needs semantic storage-object, object-key, metadata key/value/count, ownership, and logging hardening. |
+| Direct upload validation | `Explore.Application/DTOs/StorageObject/Validators/UploadRequestDtoValidator.cs`, `CreateStorageUploadSessionDtoValidator.cs`, storage metadata validators, and storage upload tests exist. Upload-session reservation metadata now validates MIME syntax, unsafe filenames/display names, unsafe extension tokens, and normalizes content type before storage policy resolution. Storage object create/update metadata now rejects traversal object keys, unsafe file/display names, unsafe extensions, malformed MIME hints, non-hex checksums, and incomplete owning-resource pairs. Finalize/cancel upload-session handlers now mask wrong-user and same-user wrong-tenant sessions as not found before usage-counter, provider, metadata, quota-release, or session-state side effects. Focused Application tests also prove finalized upload-session replay is idempotent without provider replay and canceled upload sessions cannot be finalized without side effects. Runtime API tests now prove missing upload-session finalize/cancel returns safe 404 ProblemDetails, canceled upload-session finalization returns safe 409 invalid-state ProblemDetails, and finalized upload-session cancellation returns safe 409 finalized-session ProblemDetails without echoing tenant/provider/object-key/file/checksum metadata. Finalize now validates known image/document byte signatures and extension allowlists before provider writes, including replaying inspected prefixes for non-seekable request streams. Finalize also validates provider write metadata before storage object creation: provider, tenant-scoped object key, byte count, content type, and SHA-256 digest must match the reserved session contract. By-ID presigned downloads now read metadata first, enforce active lifecycle and visibility/current-user read semantics, sign only the persisted provider object key, bound expiration to 1-60 minutes, suppress provider object-key response echo, and return safe 404 ProblemDetails when inaccessible. BFF upload-session issuance now rejects expired API reservation responses, BFF proxy tests prove unknown/expired opaque sessions fail before downstream finalization, runtime API tests prove storage object route/body ID mismatch returns safe validation ProblemDetails, private-owner content/presigned runtime tests prove different-user reads return safe 404 responses without storage metadata echo, cross-tenant metadata/content/presigned runtime tests prove secondary-tenant storage objects return safe 404 responses without tenant/provider/object-key/file metadata echo, storage presentation/content/proxy/by-ID presign failure logs use bounded `FailureType` buckets instead of raw provider/proxy exception payloads, and storage content responses use persisted validated `StorageObject.ContentType` instead of provider-returned MIME hints. | Partially implemented. Needs Blazor/display hardening beyond content-response metadata authority, any matrix-backed residual storage endpoint seams, and broader non-storage logging review. |
 | Blazor server-error mapping | `Explore.Blazor.Client/Components/Forms/ServerValidationErrorStore.cs` exists and multiple forms use `FormSubmissionGuard`, `AppValidationSummary`, and `EditContext`. | Implemented baseline. Extend convergence after backend field keys are stable. |
 | Blazor form governance | Existing forms such as organization details, event create/edit, session create/edit, template editor, and API key dialog use the repo's form primitives. | Partially converged. Do not introduce `MudForm`. |
-| BFF boundary hardening | Auth setup, preference, storage proxy, and YARP security tests exist in the Blazor integration suite. | Partially implemented. Audit residual endpoints and document exceptions. |
-| Raw markup rendering | `CommunityGuidelines.razor` was previously reviewed as controlled markup. `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor` now also uses `MarkupString` for prompt-reference highlight markup. | Risk changed. Add a high-priority raw-rendering review and tests. |
+| Blazor image upload UX | `ImageUploadClientPolicy` now centralizes accepted image formats, UX-only MIME checks, max-size messages, safe upload errors, browser filename sanitization, and log buckets. `ImageFileReaderService` sanitizes `IBrowserFile.Name` before downstream upload/BFF/API use. `ImageUploadClient`, `ImageStorageService`, and `ImageStorageRecordClient` avoid raw upload filenames, raw upload URLs, raw BFF/provider bodies, raw ProblemDetails text, and raw exception messages in upload-path logs. `ImageUpload.razor`, event create/edit upload handlers, and organization logo upload handlers use shared policy and safe generic errors. | Implemented for current image upload surfaces. Browser checks remain UX only; authoritative validation stays in BFF/API/Application. Future upload surfaces must be added to the input matrix and follow the same policy/error/log contract. |
+| BFF boundary hardening | Auth setup, preference, storage proxy, and YARP security tests exist in the Blazor integration suite. BFF storage upload-session/proxy endpoints now reject reserved device filenames, malformed multi-segment MIME hints, unknown opaque upload-session IDs, expired cached sessions, and expired API reservation responses before downstream API/finalize work; storage proxy logs no longer include raw API upload-session IDs or raw downstream exception payloads. | Partially implemented. Audit residual BFF endpoints and remaining storage edge cases without duplicating Application command validation. |
+| Raw markup rendering and JS execution seams | `CommunityGuidelines.razor` remains the only `MarkupString` found under `Explore.Blazor`/`Explore.Blazor.Client`; it escapes tenant-configured markdown-like text before emitting a constrained HTML subset and now has malicious-content bUnit coverage. `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor` no longer uses `MarkupString`; prompt-reference highlights render through a `RenderFragment` and Blazor `AddContent` encoding, with malicious display-name bUnit coverage. `ProjectionStatusSection.razor` no longer builds status rows with `AddMarkupContent`; projection error text now flows through `RenderTreeBuilder.AddContent` with malicious error-message coverage. `ExposureGovernanceSection.razor` no longer uses raw markup for its static flag-header span. Browser share/copy/scroll/download actions now use `IBrowserActionInterop` plus `/js/browser-actions.js`, not `eval` or legacy global helpers. Public home `RichText` blocks are rendered as encoded text through normal Razor/MudText content and now have malicious-content bUnit coverage. `EventLifecycleEmailOutboxFactory` keeps fixed lifecycle email snippets as trusted template HTML and HTML-encodes organizer/user text before insertion into `EmailDispatchOutbox.HtmlBody`. | AI rail, admin status raw-markup, browser action `eval`, and legacy global download seams removed; Community Guidelines seam classified as controlled escaped markup; public rich text, current email HTML seams, projection status error display, and browser action interop are classified/tested. Current Blazor raw/execution scan reports no `eval`, DOM HTML sink, or `downloadFileFromBase64` matches; remaining work is residual non-eval JS module/DOM input review and any future sanitizer decision. |
 | Generated API clients | Repo docs define OpenAPI/client generation. | Must be implementer-owned when contracts change. Remove any task that delegates this to the user. |
 | Tenant-aware semantic validation | Tenant isolation is documented and tested in key areas, but this workstream has not fully proven every validation path fails closed before persistence. | Remaining work. |
-| Logging/redaction | OWASP logging guidance and repo security docs require safe validation failure logs. | Remaining audit. |
+| Logging/redaction | OWASP logging guidance and repo security docs require safe validation failure logs. Storage presentation URL, storage content-read, and BFF upload-proxy failures now log safe failure categories instead of raw provider/proxy exception objects. | Partially implemented. Continue the broader cross-endpoint audit for validation, auth, tenant mismatch, idempotency, and sanitizer failures. |
 
 ---
 
@@ -251,11 +252,11 @@ Do not sanitize structured data, identifiers, URLs, filenames, object keys, or J
 
 ### A7. Idempotency Is Part Of Input Validation
 
-Idempotency keys and fingerprints validate retry intent. Behavior must align with the repo contract and IETF draft semantics:
+Idempotency keys and fingerprints validate retry intent. Behavior must align with the repo contract and be intentionally compared against IETF draft semantics:
 
 - Same key + same fingerprint may replay the stored result after completion.
-- Same key + different fingerprint is a conflict.
-- Same key while the original request is still in progress is a conflict or documented pending response.
+- Same key + different fingerprint is rejected as the repo's current `409 idempotency_key_reuse` contract. The current IETF draft examples use `422` for this case; changing status code would be an API contract migration requiring docs, OpenAPI/client review, and compatibility handling.
+- Same key while the original request is still in progress is a `409` conflict or a documented pending response.
 - Expiry behavior is explicit and tested.
 
 ### A8. Generated Artifacts Are Implementation-Owned
@@ -307,25 +308,43 @@ Primary tests:
 
 Goal: Finish high-risk validation for direct-upload and storage metadata boundaries.
 
-2026-07-03 progress:
+2026-07-03 and 2026-07-04 progress:
 
 - Upload-session reservation metadata validation now rejects malformed or wildcard MIME hints, control characters, path separators, dot segments, reserved Windows device names for file/display names, and unsafe extension tokens.
 - Upload-session creation now normalizes `ContentType` before both storage policy resolution and persistence, so routing decisions match the stored session contract.
 - Regression coverage exists in `CreateStorageUploadSessionDtoValidatorTests` and `StorageUploadSessionCommandHandlerTests`.
-- Remaining Phase 2 work still includes direct `UploadRequestDtoValidator` review, metadata key/value/count limits, object-key validation, tenant/user/session ownership checks, BFF residual upload boundaries, and storage logging/display safety.
+- Storage metadata validators now share strict predicates for relative object keys, reserved filenames, simple extension tokens, MIME hints, SHA-256 hex digests, and owning-resource pair consistency. The current storage metadata DTO/domain model has no arbitrary metadata dictionary, so key/value/count validation is not a code seam until such a contract is introduced.
+- Upload-session finalize/cancel handlers now enforce current-user ownership in addition to tenant ownership and return `StorageUploadSessionNotFound` for wrong-user sessions before quota release, provider writes, object metadata creation, or session-state mutation.
+- Focused Application tests now prove same-user wrong-tenant finalize/cancel attempts are masked as `StorageUploadSessionNotFound` before side effects, finalized upload-session replay returns idempotent success without provider replay or quota/storage mutation, and canceled upload sessions cannot be finalized.
+- BFF storage upload-session/proxy endpoints now reject reserved Windows device filenames and malformed multi-segment MIME hints before forwarding/finalizing, and storage proxy failure logs avoid raw API upload-session IDs.
+- By-ID presigned downloads now validate expiration bounds before lookup, load storage metadata by ID, enforce active lifecycle plus visibility/current-user read semantics, sign only the persisted provider object key, suppress provider object-key response echo, map null handler results to safe 404 ProblemDetails, and bucket provider signing failures without raw exception payloads.
+- Upload-session finalization now validates provider write results before metadata persistence and quota commit: reserved provider, tenant object-key namespace, reserved byte count, reserved content type, and SHA-256 digest must be valid or the session fails closed.
+- Storage upload failure-code mapping is now covered through `StorageObjectController.UploadSessionContent` for not-found, expired, size mismatch, content-type mismatch, and provider/write-result failure ProblemDetails.
+- `StoragePresentationUrlResolver` now centralizes presentation URL resolution for event detail, tag/category event lists, group projections, actor projections, organization projections, event-list/managed-events/my-events projections, and user profile projections: it signs only validated relative object keys, passes absolute HTTP(S) URLs through without treating URI paths as provider keys, allows local `/api/storageobject/...` paths, rejects unsafe relative references, and logs without raw storage references.
+- Upload-session finalization now enforces the server content policy before provider writes: known image/document MIME types require matching extension allowlists and byte signatures, unsupported `image/*` types fail closed, spoofed bytes fail as validation, and non-seekable request bodies replay the inspected prefix to the provider.
+- Runtime API integration coverage now proves upload-session create/finalize/cancel endpoints require authentication and malformed finalize/cancel upload-session IDs are rejected by GUID route constraints before controller dispatch.
+- Runtime API integration coverage now proves missing upload-session finalize/cancel, canceled-session finalize, and finalized-session cancel return safe ProblemDetails status/code/title values without echoing tenant IDs, provider names, object-key prefixes, raw file names, checksums, or private visibility metadata.
+- Storage content/download responses now use the persisted validated `StorageObject.ContentType` as the response content type even if the storage provider returns a different MIME hint while opening the object stream.
+- Runtime API integration coverage now proves private-owner storage content and presigned reads by a different authenticated user return the same safe 404 ProblemDetails shape without echoing owner IDs, provider names, object keys, tenant object-key prefixes, file names, or private visibility values.
+- Runtime API integration coverage now proves secondary-tenant storage detail, content, and presigned reads from the default tenant return the same safe 404 ProblemDetails shape without echoing tenant IDs, provider names, object keys, tenant object-key prefixes, file names, or authenticated-tenant visibility values.
+- Remaining Phase 2 work still includes Blazor/display safety beyond content-response metadata authority, matrix-backed endpoint seams discovered in future storage audits, and broader non-storage log audit beyond the BFF upload-session ID, missing/expired opaque-session, API upload-session missing/canceled/finalized semantic runtime coverage, storage object ID-mismatch, private-owner runtime masking, cross-tenant runtime masking, provider-result, controller mapping, runtime auth/route-constraint, projection-helper migration, by-ID presign, content-signature, storage failure-bucket, and storage content-type authority fixes.
 
 Scope:
 
 - Validate user-supplied filename display values, content type hints, byte sizes, object-key references, provider metadata, upload-session IDs, and storage object IDs.
 - Treat `Content-Type` and filenames as untrusted.
 - Use server-generated storage names/object keys where possible.
-- Ensure storage objects are bound to tenant/user/session before issue, proxy, completion, and download.
+- Ensure storage objects are bound to tenant/user/session before issue, proxy, completion, and download. Upload-session finalization now validates provider metadata against the reserved session, and by-ID presigned downloads are already guarded through storage metadata lifecycle, visibility, and current-user checks.
 - Ensure logs do not write raw object keys, filenames, or metadata values without safe encoding/redaction.
 
 Acceptance:
 
 - Invalid metadata fails before presign/session issuance.
-- Spoofed content type, extension mismatch, oversize values, invalid object IDs, tenant mismatch, and replayed session cases are covered.
+- Known image/document uploads with spoofed bytes or mismatched extensions fail before provider writes.
+- Invalid provider write metadata fails before storage object creation or quota commit.
+- By-ID presigned downloads use metadata-derived object keys only and return safe 404 responses for invalid, inaccessible, or missing metadata.
+- Projection helpers never parse object keys out of arbitrary absolute URLs, never sign unsafe relative references, and never log raw object keys or URIs.
+- Spoofed content type, extension mismatch, oversize values, invalid object IDs, tenant mismatch, missing upload sessions, canceled upload sessions, finalized upload-session replay/cancel behavior, and BFF unknown/expired opaque sessions are covered in their owning layers. Any remaining endpoint/BFF semantic runtime cases must be matrix-backed before broad Phase 2 completion.
 - The UI displays filenames through normal encoding and never uses them as markup.
 
 Primary tests:
@@ -333,6 +352,16 @@ Primary tests:
 - `Event.Application.UnitTests` for validators and handlers.
 - `Event.API.IntegrationTests` for upload and storage endpoints.
 - `Explore.Blazor.IntegrationTests` for storage proxy boundaries.
+
+Latest API upload-session semantic runtime verification:
+
+- `dotnet format whitespace --include Event.API.IntegrationTests/Features/StorageObjectControllerTests.cs --verbosity quiet` completed successfully.
+- The three new API runtime cases passed individually for missing upload-session finalize/cancel, canceled-session finalize conflict, and finalized-session cancel conflict.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/StorageObjectControllerTests/*" --minimum-expected-tests 1` passed the full focused storage object runtime lane: 23 tests.
+- LSP diagnostics found no issues in `Event.API.IntegrationTests/Features/StorageObjectControllerTests.cs`.
+- Focused architecture hygiene filters passed: `CleanArchitectureTests` ran 13 tests, `CodeHygieneTests` ran 4 tests, and `NamingConventionTests` ran 10 tests.
+- `git diff --check -- Event.API.IntegrationTests/Features/StorageObjectControllerTests.cs` completed successfully.
+- Test output still emits existing NuGet audit/package and analyzer warnings before execution.
 
 ### Phase 3 - Tenant-Aware Semantic Validation And Persistence Backstops
 
@@ -366,6 +395,7 @@ Scope:
 - Audit Blazor Server endpoints, YARP transforms, setup endpoint, preference API, auth diagnostics, and upload proxy.
 - Verify unsafe BFF routes use antiforgery or a documented exception with compensating controls from `docs/SECURITY-MODEL.md`.
 - Validate BFF-specific headers, route parameters, setup secrets, continuation paths, and proxy target paths.
+- Preserve the completed BFF storage boundary contract: browser requests provide only BFF upload-session IDs and file metadata; reserved filenames, malformed MIME hints, unknown opaque sessions, expired cached sessions, and expired API reservations fail before downstream finalization; raw API upload-session IDs and raw downstream exception payloads are not written to BFF failure logs.
 - Confirm tokens never cross into `Explore.Blazor.Client`.
 - Confirm validation and auth failures return safe problem details or safe Blazor errors.
 
@@ -390,6 +420,9 @@ Scope:
 - Map API problem-details field keys to the matching `EditContext` fields.
 - Ensure focus moves to the validation summary or first invalid field as the local pattern requires.
 - Gate action buttons by HAL `_links`.
+- Inventory Blazor file upload controls and handlers. Client-side checks may reject obviously wrong content type/size for UX, but must not replace BFF/API/Application validation.
+- Do not surface raw exception messages, provider details, raw filenames, upload-session IDs, or object keys in Blazor error text.
+- Do not log raw `IBrowserFile.Name` from browser-controlled file metadata; log safe categories, lengths, size buckets, or storage object IDs after authorization instead.
 
 Out of scope:
 
@@ -415,21 +448,27 @@ Goal: Reduce XSS risk by eliminating unnecessary raw rendering and documenting a
 Scope:
 
 - Inventory all `MarkupString`, `RenderFragment` from user-controlled values, raw HTML display, Markdown-to-HTML, email HTML, template HTML, and JavaScript interop DOM injection.
-- Promote `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor` to high-priority review because it now builds prompt-reference highlight markup with `MarkupString`.
-- Re-check `CommunityGuidelines.razor` as controlled static/known markup.
-- Classify `PublicExperienceHomeBlockKind.RichText` and `EmailMessage.HtmlBody` as renderable content seams requiring decision records.
+- Treat `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor` as completed for this phase: the prompt-reference highlight no longer builds raw HTML and now uses component composition with renderer encoding.
+- Treat `CommunityGuidelines.razor` as controlled escaped markup with bUnit malicious-content coverage.
+- Treat `Explore.Blazor.Client/Pages/Admin/CustomProperties/Components/ProjectionStatusSection.razor` as completed for the current status display seam: status rows use renderer element/content calls and dangerous `LastErrorMessage` values are encoded rather than injected into raw markup.
+- Treat `Explore.Blazor.Client/Pages/Admin/CustomProperties/Components/ExposureGovernanceSection.razor` as completed for the current static flag-header seam: the header span uses renderer element/content calls instead of raw markup.
+- Treat `PublicExperienceHomeBlockKind.RichText` as currently completed for public rendering: configured values render as encoded text and must not become raw HTML without a sanitizer decision.
+- Treat current `EmailMessage.HtmlBody` composition as completed for lifecycle/organizer emails: template-owned tags are trusted, dynamic values are encoded before insertion, and future email-template sources need equivalent tests.
+- Treat event share/copy, event ICS download, shared-contact export download, authorization policy package download, and anonymous landing-page smooth-scroll browser actions as completed for the current direct-eval/global-helper seam: Blazor components use `IBrowserActionInterop`, the implementation imports `/js/browser-actions.js`, and regression tests block `eval`, DOM HTML-injection sinks, and the legacy global download helper.
 - Prefer replacing raw markup with component composition and normal Razor encoding.
 - If rich HTML must remain, select a sanitizer in the owning layer and add allowlist tests.
 
 Acceptance:
 
-- Every raw-rendering seam is classified as controlled, encoded, sanitized, or removed.
+- Every raw-rendering seam is classified as controlled, encoded, sanitized, or removed; public home rich text, current email HTML body construction, and admin projection status display are classified and tested for current behavior.
 - User-controlled text is never inserted into raw HTML without encoding or sanitization.
+- Browser action interop must pass structured values to named JS module functions; Blazor component code must not call `eval` or legacy global file-download helpers.
 - Tests include script tags, event handlers, dangerous URLs, malformed markup, and encoded display cases.
 
 Primary tests:
 
 - `Explore.Blazor.Client.Tests` for component rendering.
+- `BrowserActionInteropTests` and `BrowserInteropSafetyTests` for JS-module browser action interop.
 - Application/unit tests for sanitizer services if introduced.
 - Architecture/static checks if a reusable raw-markup rule is added.
 
@@ -441,7 +480,7 @@ Scope:
 
 - Audit logs around validation failures, upload failures, auth/BFF failures, tenant mismatch, idempotency conflicts, and sanitizer rejections.
 - Use structured event names and safe identifiers.
-- Avoid raw request bodies, tokens, cookies, setup secrets, full object keys, raw filenames, and rich text in logs.
+- Avoid raw request bodies, tokens, cookies, setup secrets, full object keys, raw browser filenames, exception messages that contain user input, and rich text in logs.
 - Ensure user-facing messages are stable and non-sensitive.
 
 Acceptance:
@@ -496,7 +535,7 @@ Full final verification follows `docs/OPERATIONS.md` and `.agents/skills/source-
 | Application handlers | Tenant mismatch, invalid aggregate state, duplicate/race-sensitive rules, side-effect ordering. | `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests` |
 | API model binding | Unknown JSON members, malformed JSON, invalid queries/routes, problem-details shape. | `Event.API.IntegrationTests` |
 | API middleware | Idempotency key/fingerprint conflict, replay, pending/in-progress behavior, expiry. | `Event.API.IntegrationTests` |
-| Storage/upload | Spoofed content type, invalid extension, size limits, invalid object keys, session ownership. | `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Explore.Blazor.IntegrationTests` |
+| Storage/upload | Spoofed content type, invalid extension, size limits, invalid object keys, session ownership, presigned-download metadata access. | `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Explore.Blazor.IntegrationTests` |
 | BFF | Antiforgery or documented exceptions, token isolation, proxy path/header validation. | `Explore.Blazor.IntegrationTests` |
 | Blazor forms | Local UX validation, server error mapping, duplicate-submit guard, validation summary/focus. | `Explore.Blazor.Client.Tests` |
 | HAL UI | Actions are shown/hidden by `_links`, not roles/claims. | `Explore.Blazor.Client.Tests`, API integration tests when HAL changes. |
@@ -591,8 +630,9 @@ Product:
 |---|---|---|
 | Blazor-only validation gives a false sense of security. | High | Keep server validators authoritative. Add API/Application tests for each rule. |
 | Global sanitization corrupts valid data or misses context-specific XSS. | High | Do not add global sanitizer. Use output encoding and seam-specific sanitizer decisions. |
-| Raw `MarkupString` displays user-controlled values. | High | Inventory, classify, and test all raw-rendering seams, especially `AiAssistantRail.razor`. |
-| Storage metadata or object keys allow tenant confusion or unsafe logs. | High | Server-generated keys, ownership checks, metadata validation, redaction tests. |
+| Raw markup or DOM insertion displays user-controlled values. | High | Inventory, classify, and test all raw-rendering/execution seams. `AiAssistantRail.razor`, admin custom-property status `AddMarkupContent`, browser action `eval`, and legacy global download seams have been removed from the raw/execution set; `CommunityGuidelines.razor`, public home rich text, current email HTML composition, projection status error display, and browser action module interop are classified/tested for current behavior. Current Blazor raw/execution scan reports no `eval`, DOM HTML sink, or `downloadFileFromBase64` matches; remaining work focuses on residual non-eval JS module/DOM input review and future sanitizer decisions. |
+| Storage metadata or object keys allow tenant confusion or unsafe logs. | High | Server-generated keys, ownership checks, metadata validation, persisted-object-key signing, response suppression, and redaction tests. |
+| Future Blazor upload handlers might treat browser file metadata or exception messages as safe. | High | Current image upload surfaces now use shared UX-only policy, browser filename sanitization, safe log buckets, and safe generic/allowlisted upload errors. Future upload surfaces must be added to the matrix and follow the same BFF/API/Application authority boundary. |
 | API field keys drift from Blazor forms. | Medium | Stabilize problem-details keys before Blazor convergence; test `ServerValidationErrorStore` mapping. |
 | Generated clients drift from API contracts. | Medium | Implementer runs OpenAPI/client generation and reviews diffs. |
 | Tenant validation exists only in UI. | High | Add Application/API/persistence tests proving fail-closed behavior. |
@@ -647,10 +687,12 @@ Tavily MCP research:
 - OWASP Cross-Site Scripting Prevention Cheat Sheet: use framework output encoding and context-aware encoding; sanitization is needed for safe HTML, but global/interceptor-style approaches are fragile.
 - OWASP File Upload Cheat Sheet: validate extension, content type, signature, filename safety, size, storage location, and authorization; treat client-provided `Content-Type` as spoofable.
 - OWASP Logging Cheat Sheet: validate/sanitize/encode event data before logging and avoid logging sensitive data.
-- IETF HTTPAPI Idempotency-Key draft: idempotency keys protect retried POST/PATCH requests; fingerprint mismatch and concurrent same-key requests require explicit conflict behavior.
+- IETF HTTPAPI Idempotency-Key draft: idempotency keys protect retried POST/PATCH requests; the draft examples use same-fingerprint replay, 422 for key reuse with a different payload, and 409 for concurrent in-progress retries. This repo currently locks different-payload reuse to `409 idempotency_key_reuse`; keep that as a deliberate API contract unless a migration is planned.
+- 2026-07-04 continuation note: a fresh Tavily OWASP eval/DOM-sink query returned usage-limit status `432`, so this slice did not add new Tavily evidence beyond the previously incorporated OWASP/IETF guidance.
 
 Context7 MCP documentation:
 
-- ASP.NET Core docs support the existing use of `[ApiController]`, `InvalidModelStateResponseFactory`, `ProblemDetails`, Blazor `EditContext`, `ValidationMessageStore`, antiforgery, and secure file-upload validation.
+- ASP.NET Core docs support the existing use of `[ApiController]`, `InvalidModelStateResponseFactory`, `ProblemDetails`, Blazor `EditContext`, `ValidationMessageStore`, antiforgery, and secure file-upload validation. File upload examples treat uploaded filenames as untrusted, HTML-encode names for display, enforce size/count limits, and use trusted storage names.
+- ASP.NET Core Blazor JS interop docs support importing ES modules and invoking module functions through `IJSObjectReference`; use JS modules for browser actions instead of global script execution.
 - FluentValidation docs support manual validation and `ValidateAsync`; automatic MVC validation is not suitable for async rules and conflicts with this repo's manual-validator invariant.
 - MudBlazor docs show generic `MudForm` support, but this repo's UI governance is more specific and authoritative for this codebase.

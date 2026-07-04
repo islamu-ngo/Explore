@@ -3,11 +3,46 @@
 
 # Webhooks Local/Svix Provider Context
 
-Last Updated: 2026-07-03 Europe/Brussels
+Last Updated: 2026-07-04 Europe/Brussels
 
 ## Purpose
 
 This file preserves the context used to write `webhooks-local-svix-provider-plan.md`. Implementation agents should update it whenever they discover facts that materially affect the design, scope, tests, security posture, or migration path.
+
+## 2026-07-04 Phase 6 Re-Audit
+
+Phase 6 incoming webhook framework is implemented and remains closed after a fresh audit against the latest request.
+
+Verified current files:
+
+- `Explore.Application/Contracts/Webhooks/IncomingWebhookContracts.cs` owns provider-neutral incoming callback context, verification result, verifier, and processing handler contracts.
+- `Explore.Domain/IncomingWebhookMessage.cs`, `Explore.Persistence/Configurations/Entities/IncomingWebhookMessageConfiguration.cs`, and `Explore.Persistence/Repositories/IncomingWebhookMessageRepository.cs` own the tenant-scoped incoming callback idempotency/audit ledger.
+- `Explore.API/Services/IncomingWebhookIntakeService.cs` reads and buffers the raw request body with `HttpRequest.EnableBuffering`, enforces body limits, rewinds the stream, verifies before JSON parsing, hashes payloads, redacts sensitive headers, captures idempotency rows, and marks processing outcomes.
+- `Explore.API/Services/CoopIncomingWebhookVerifier.cs` validates Coop timestamped HMAC callbacks with fixed-time comparison.
+- `Explore.API/Services/SvixIncomingWebhookVerifier.cs` validates Svix operational callbacks through `IWebhookSignatureService`, `ISecretResolver`, and the configured `Webhooks:Svix:OperationalWebhookSecretRef`.
+- `Explore.API/Controllers/ModerationIntegrationController.cs` routes Coop callbacks through shared intake/capture before dispatching `ProcessCoopDecisionCallbackCommand`; duplicate captures return success without re-dispatch.
+- `Explore.API/Controllers/IncomingWebhooksController.cs` exposes `POST /api/integrations/svix/operational` as an anonymous-at-edge, signature-authenticated operational callback independent of outgoing webhook provider mode.
+
+External documentation checked through Context7:
+
+- ASP.NET Core docs identify `HttpRequest.EnableBuffering` as the supported way to enable multiple request-body reads and rewinds.
+- Svix docs require raw-body verification with `svix-id`, `svix-timestamp`, and `svix-signature` headers because framework JSON parsing/re-serialization can break signatures.
+
+Fresh verification:
+
+- `dotnet build --configuration Release --verbosity quiet` passed with existing warning noise.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/IncomingWebhookFrameworkTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 4 tests.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/ModerationIntegrationControllerTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 6 tests.
+- `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/WebhookPersistenceTests/IncomingWebhookRepository_TryCreate_IsIdempotentPerTenantProviderMessage" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 1 test.
+
+Latest verification at 2026-07-04 01:42 CEST:
+
+- `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false -m:1` passed with 0 errors and 68 existing warnings.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/IncomingWebhookFrameworkTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 10/10.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/ModerationIntegrationControllerTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 6/6.
+- `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/WebhookPersistenceTests/IncomingWebhookRepository_TryCreate_IsIdempotentPerTenantProviderMessage" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 1/1.
+
+No source changes were needed for Phase 6 on 2026-07-04. Continue from Phase 7 or the next unchecked item unless the user asks for deeper hardening such as encrypted payload retention, Osprey signed-callback unification, or a background dispatcher for additional incoming providers.
 
 ## Research Summary
 

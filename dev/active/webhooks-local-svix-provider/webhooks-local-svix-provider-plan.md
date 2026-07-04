@@ -3,14 +3,14 @@
 
 # Webhooks Local/Svix Provider Implementation Plan
 
-Last Updated: 2026-07-02 Europe/Brussels
+Last Updated: 2026-07-04 Europe/Brussels
 
 ## Status
 
-- State: Implementation started; Phase 1 Application-layer foundation and Phase 2 canonical Domain/Persistence model are implemented and verified.
+- State: Implementation started; Phases 1-6 are implemented and verified for their current acceptance criteria. Phase 6 incoming webhook framework was re-audited again on 2026-07-04 at 01:42 CEST with fresh API build, incoming webhook API tests, moderation integration tests, and persistence idempotency verification; no source changes were required.
 - Request: implement outgoing webhooks with `LocalWebhookProvider` and `SvixWebhookProvider`, plus a separate incoming webhook framework.
 - Primary planning output: this plan, the companion context file, and the companion task checklist under `dev/active/webhooks-local-svix-provider/`.
-- Implemented slice: provider-neutral webhook contracts, canonical event catalog, schema provider, payload builder, canonical webhook domain entities, EF Core mappings, repository contracts/implementations, migration, DI registration, and focused unit/integration tests.
+- Implemented slice: provider-neutral webhook contracts, canonical event catalog, schema provider, payload builder, canonical webhook domain entities, EF Core mappings, repository contracts/implementations, migration, DI registration, local delivery foundation, Svix delivery/App Portal foundations, incoming webhook framework, and focused unit/integration tests.
 - Backward compatibility: not required. The repository is in development mode, so the implementation should prefer clean architecture over compatibility shims.
 - Product posture: self-hostable by default, enterprise-capable when Svix is configured.
 

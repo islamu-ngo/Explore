@@ -3,13 +3,13 @@
 
 # Webhooks Local/Svix Provider Tasks
 
-Last Updated: 2026-07-03 Europe/Brussels
+Last Updated: 2026-07-04 Europe/Brussels
 
 ## Current State
 
 - Overall status: implementation started.
 - Planning artifacts: complete for initial review.
-- Code changes: Phase 1 Application-layer foundation and canonical publisher, Phase 2 canonical Domain/Persistence model, Phase 3 LocalProvider delivery foundation/worker/manual-retry/observability slices, Phase 4 event catalog, consumer management, and endpoint list/detail/create/update/archive API/HAL surfaces, Phase 5 Svix delivery-provider/App Portal service/event-type sync cores, and the backend Svix App Portal API route with webhook authorization policy are implemented.
+- Code changes: Phase 1 Application-layer foundation and canonical publisher, Phase 2 canonical Domain/Persistence model, Phase 3 LocalProvider delivery foundation/worker/manual-retry/observability slices, Phase 4 event catalog, consumer management, and endpoint list/detail/create/update/archive API/HAL surfaces, Phase 5 Svix delivery-provider/App Portal service/event-type sync cores, the backend Svix App Portal API route with webhook authorization policy, and Phase 6 incoming webhook framework are implemented.
 - Migrations: `20260702192022_AddWebhookSubsystem` generated and applied by PostgreSQL integration tests.
 - Tests: affected Application/Persistence/Infrastructure/API/Blazor client project builds pass; full release solution build passes; Application unit tests, Infrastructure tests, API integration tests, Persistence integration tests, Architecture tests, Blazor client tests, LSP diagnostics, and `git diff --check` pass for the implemented slices.
 
@@ -323,16 +323,16 @@ Acceptance:
 - [x] Add command to update endpoint.
 - [x] Add command to archive/delete endpoint.
 - [x] Add command to rotate endpoint secret.
-- [ ] Add command to send test webhook.
-- [ ] Add query for messages.
-- [ ] Add query for message detail.
-- [ ] Add command to retry message.
-- [ ] Add query for delivery attempts.
+- [x] Add command to send test webhook.
+- [x] Add query for messages.
+- [x] Add query for message detail.
+- [x] Add command to retry failed/abandoned delivery attempts.
+- [x] Add query for delivery attempts.
 - [ ] Add manual validators for every command/query that needs validation.
 
 ### API controllers and routes
 
-- [ ] Add route names for all webhook routes.
+- [x] Add route names for all webhook routes.
 - [x] Add route name for event type catalog route.
 - [x] Add route names for consumer management routes.
 - [x] Add route name for Svix App Portal access route.
@@ -347,11 +347,12 @@ Acceptance:
 - [x] Add `PUT /api/webhooks/endpoints/{id}`.
 - [x] Add `DELETE /api/webhooks/endpoints/{id}`.
 - [x] Add `POST /api/webhooks/endpoints/{id}/rotate-secret`.
-- [ ] Add `POST /api/webhooks/endpoints/{id}/test`.
-- [ ] Add `GET /api/webhooks/messages`.
-- [ ] Add `GET /api/webhooks/messages/{id}`.
-- [ ] Add `POST /api/webhooks/messages/{id}/retry`.
-- [ ] Add `GET /api/webhooks/delivery-attempts`.
+- [x] Add `POST /api/webhooks/endpoints/{id}/test`.
+- [x] Add `GET /api/webhooks/messages`.
+- [x] Add `GET /api/webhooks/messages/{id}`.
+- [x] Add `POST /api/webhooks/delivery-attempts/{id}/retry`.
+- [x] Add `GET /api/webhooks/delivery-attempts`.
+- [x] Add `GET /api/webhooks/delivery-attempts/{id}`.
 - [x] Add explicit response metadata and ProblemDetails metadata for Svix App Portal route.
 - [x] Add endpoint classification and write rate limit for Svix App Portal route.
 
@@ -470,10 +471,10 @@ Acceptance:
 
 ### Health and operations
 
-- [ ] Add Svix health/readiness check.
+- [x] Add Svix health/readiness check.
 - [ ] Add metrics for provider publish failures.
-- [ ] Add docs for self-hosted Svix dependencies.
-- [ ] Add optional Aspire composition notes if accepted.
+- [x] Add docs for self-hosted Svix dependencies.
+- [x] Add optional Aspire composition notes if accepted.
 
 Validation:
 
@@ -528,6 +529,7 @@ Acceptance:
 - [x] App Portal route is backend-only and authorized.
 - [x] Svix token is resolved through secret provider only.
 - [x] Svix mode does not break LocalProvider mode.
+- [x] Local-full config supplies a deterministic local Svix JWT secret and server-side API token binding for disposable development.
 
 ## Phase 6 - Incoming Webhook Framework
 
@@ -583,35 +585,79 @@ Progress 2026-07-03:
 - Added `SvixIncomingWebhookVerifier`, `Webhooks:Svix:OperationalWebhookSecretRef`, and `POST /api/integrations/svix/operational` / `IntegrationSvixOperationalCallback`. The route verifies Svix-compatible signatures and is independent of outgoing webhook provider mode.
 - Added focused API integration tests for route metadata, Coop verification, Svix signature verification, raw-body reset, safe header capture, and duplicate Coop idempotency.
 
+Audit 2026-07-03:
+
+- Confirmed Phase 6 is already implemented well enough to remain closed. The implementation keeps incoming callbacks separate from outgoing provider modes, verifies raw bodies before JSON parsing, captures tenant-scoped `incoming_webhook_messages` rows before Coop side effects, stores payload hashes instead of raw payloads by default, redacts sensitive headers from the ledger, and treats duplicate provider message IDs idempotently.
+- Confirmed Coop callbacks enter through API-key policy authorization plus shared HMAC verifier, then dispatch Application-layer moderation commands after capture. The local command path persists the provider decision first and delegates moderation execution through the existing report-decision command/outbox-backed moderation flow rather than mutating the event directly in the controller.
+- Confirmed Svix operational callbacks are `[AllowAnonymous]` only at the HTTP edge; Svix-compatible signature headers are the authentication boundary, and tenant-addressed payloads are optionally captured without coupling to `Local`, `Svix`, `Composite`, `DryRun`, or `Disabled` outgoing provider modes.
+- Verification passed:
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/IncomingWebhookFrameworkTests/*" --minimum-expected-tests 1 --log-level Error --no-progress`
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/ModerationIntegrationControllerTests/*" --minimum-expected-tests 1 --log-level Error --no-progress`
+  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/WebhookPersistenceTests/IncomingWebhookRepository_TryCreate_IsIdempotentPerTenantProviderMessage" --minimum-expected-tests 1 --log-level Error --no-progress`
+
+Re-audit 2026-07-04:
+
+- Re-checked Phase 6 against the latest user request and confirmed no new source changes are needed for this phase. `IncomingWebhookIntakeService` uses ASP.NET Core request buffering to read the raw body once, rewinds the stream, verifies signatures before JSON parsing, enforces provider body-size limits, captures only payload hashes plus safe headers, and writes tenant-scoped idempotency rows before Coop side effects.
+- Re-checked current official docs through Context7: ASP.NET Core documents `HttpRequest.EnableBuffering` as the supported multiple-read raw-body path, and Svix documents raw-body verification with `svix-id`, `svix-timestamp`, and `svix-signature` headers.
+- Fresh verification passed:
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/IncomingWebhookFrameworkTests/*" --minimum-expected-tests 1 --log-level Error --no-progress`
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/ModerationIntegrationControllerTests/*" --minimum-expected-tests 1 --log-level Error --no-progress`
+  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/WebhookPersistenceTests/IncomingWebhookRepository_TryCreate_IsIdempotentPerTenantProviderMessage" --minimum-expected-tests 1 --log-level Error --no-progress`
+
+Latest Phase 6 verification 2026-07-04 01:42 CEST:
+
+- Confirmed Phase 6 remains implemented and closed; no source changes were needed for incoming webhooks.
+- Reconfirmed through Context7 that Svix receiving verification requires the raw body and `svix-id`, `svix-timestamp`, and `svix-signature` headers. The current `SvixIncomingWebhookVerifier` delegates those semantics to the shared Svix-compatible signature service.
+- Reconfirmed the repository implementation owns the expected Phase 6 boundaries:
+  - `IncomingWebhookIntakeService` reads and rewinds raw request bodies, verifies before JSON parsing, enforces body limits, filters sensitive headers, hashes payloads, and persists tenant-scoped idempotency rows.
+  - `ModerationIntegrationController.RecordCoopCallback` captures a verified incoming message before dispatching `ProcessCoopDecisionCallbackCommand`; duplicates return a successful idempotent response without re-running the command.
+  - `IncomingWebhooksController.RecordSvixOperationalCallback` accepts anonymous-at-edge Svix operational callbacks authenticated by signature and independent from outgoing provider mode.
+- Fresh verification passed:
+  - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false -m:1` passed: 0 errors, 68 existing warnings.
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/IncomingWebhookFrameworkTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 10/10.
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/ModerationIntegrationControllerTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 6/6.
+  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/WebhookPersistenceTests/IncomingWebhookRepository_TryCreate_IsIdempotentPerTenantProviderMessage" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 1/1.
+
+Latest Phase 6 verification 2026-07-04 03:18 CEST:
+
+- Rechecked the latest user request to start Phase 6 and confirmed Phase 6 is already implemented and remains closed. No incoming-webhook source changes were needed in this pass.
+- Verified the implemented boundary still matches the plan: incoming Coop/Svix callbacks are normal API ingestion endpoints, raw request bodies are verified before JSON processing, duplicate provider message IDs are idempotent, and incoming callbacks stay independent from outgoing `Disabled`, `Local`, `Svix`, `Composite`, and `DryRun` delivery modes.
+- Fresh focused verification passed:
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/IncomingWebhookFrameworkTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 10/10.
+  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/WebhookPersistenceTests/IncomingWebhookRepository_TryCreate_IsIdempotentPerTenantProviderMessage" --minimum-expected-tests 1 --log-level Error --no-progress` passed: 1/1.
+  - Existing package/analyzer warnings remain, including `NU1903` for `AutoMapper`/`Microsoft.OpenApi` and existing domain analyzer warnings; no Phase 6 test failures.
+
 ## Phase 7 - Blazor Management UI
 
 ### Pages and components
 
-- [ ] Add webhook settings page.
-- [ ] Add event type catalog view.
-- [ ] Add consumer list/detail if exposed in UI.
-- [ ] Add endpoint list.
-- [ ] Add endpoint detail.
-- [ ] Add create endpoint dialog.
-- [ ] Add update endpoint dialog.
-- [ ] Add secret rotation UI.
-- [ ] Add test event action.
-- [ ] Add message list/detail.
-- [ ] Add delivery attempts table.
-- [ ] Add manual retry action.
-- [ ] Add provider health/status surface.
-- [ ] Add "Open Advanced Webhook Portal" action for Svix.
+- [x] Add webhook settings page.
+- [x] Add event type catalog view.
+- [x] Add consumer list/detail if exposed in UI.
+- [x] Add endpoint list.
+- [x] Add endpoint detail.
+- [x] Add create endpoint dialog.
+- [x] Add update endpoint dialog.
+- [x] Add secret rotation UI.
+- [x] Add test event action.
+- [x] Add message list/detail.
+- [x] Add delivery attempts table.
+- [x] Add manual retry action.
+- [x] Add provider health/status surface.
+- [x] Add "Open Advanced Webhook Portal" action for Svix.
 
 ### UI rules
 
-- [ ] Use generated client/service layer.
-- [ ] Preserve HAL links from API responses.
-- [ ] Render actions only from HAL links.
-- [ ] Do not inspect browser-side roles or claims.
-- [ ] Do not display secret material after the allowed one-time reveal pattern.
-- [ ] Use MudBlazor v9 and project wrapper components.
-- [ ] Add CSS isolation with BEM naming where new component CSS is needed.
-- [ ] Ensure keyboard accessibility and responsive layout.
+- [x] Use generated client/service layer.
+- [x] Preserve HAL links from API responses.
+- [x] Render actions only from HAL links.
+- [x] Do not inspect browser-side roles or claims.
+- [x] Do not display secret material after the allowed one-time reveal pattern.
+- [x] Use MudBlazor v9 and project wrapper components.
+- [x] Add CSS isolation with BEM naming where new component CSS is needed.
+- [x] Ensure keyboard accessibility and responsive layout.
 
 Validation:
 
@@ -622,63 +668,96 @@ dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.cspr
 
 Manual QA gate:
 
-- [ ] Run the app locally.
-- [ ] Navigate to webhook settings.
+- [x] Run the app locally.
+- [x] Navigate to webhook settings.
 - [ ] Confirm unauthorized actions are absent.
-- [ ] Create a local endpoint.
-- [ ] Rotate secret and confirm no old secret exposure.
-- [ ] Trigger a test webhook and observe delivery attempt status.
-- [ ] Retry a failed webhook from HAL affordance.
+- [x] Create a local endpoint.
+- [x] Rotate secret and confirm no old secret exposure.
+- [x] Trigger a test webhook and observe delivery attempt status.
+- [x] Retry a failed webhook from HAL affordance.
 - [ ] Switch to DryRun and confirm no outbound request is sent.
 - [ ] In Svix mode, open provider portal when configured.
 
 Acceptance:
 
-- [ ] UI is action-complete for LocalProvider V1.
-- [ ] Svix advanced management is delegated to portal.
-- [ ] No client-side authorization inference exists.
-- [ ] Visual QA confirms no layout overlap on desktop/mobile.
+- [x] UI is action-complete for LocalProvider V1.
+- [x] Svix advanced management is delegated to portal.
+- [x] No client-side authorization inference exists.
+- [x] Visual QA confirms no layout overlap on desktop/mobile.
+
+Latest Phase 7 verification 2026-07-04 13:36 CEST:
+
+- Completed responsive Blazor UI hardening for the webhook management surface:
+  - Required dialog fields now update immediately, so create/rotate actions enable without blur-dependent flakiness.
+  - Delivery messages and attempts stack vertically on large screens and render as explicit mobile cards on phone widths instead of relying on clipped MudTable responsive rows.
+  - Mobile cards preserve HAL-gated action buttons and use deterministic `data-testid` values for retry controls while keeping `aria-label` button accessibility.
+  - MudTabs now uses `MinimumTabWidth="0px"` with scoped phone styling so the selected tab strip no longer shows squeezed label fragments.
+- Added/updated E2E coverage for the instance-admin webhook management flow:
+  - logs in through Keycloak/BFF,
+  - navigates to settings -> Webhooks,
+  - verifies the initial consumer/endpoint/event/delivery surface,
+  - creates a LocalProvider endpoint,
+  - verifies DryRun endpoints do not expose local test actions,
+  - rotates the local endpoint secret without exposing old or new secret refs,
+  - schedules a test webhook,
+  - retries the deterministic seeded failed attempt from the HAL affordance,
+  - captures desktop, tablet, and mobile screenshots.
+- Fresh visual evidence:
+  - `Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/playwright-artifacts/webhooks/webhook-management-desktop-1280x900.png`
+  - `Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/playwright-artifacts/webhooks/webhook-management-tablet-768x1024.png`
+  - `Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/playwright-artifacts/webhooks/webhook-management-mobile-375x900.png`
+- Verification commands:
+  - `dotnet build --configuration Release --verbosity quiet` - passed, 25 projects, existing package warnings only.
+  - `dotnet build Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false -m:1` - passed.
+  - `TESTCONTAINERS_RYUK_DISABLED=true dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/WebhookManagementFlowTests/*" --minimum-expected-tests 1 --log-level Error --no-progress --maximum-parallel-tests 1 --report-trx --report-trx-filename webhooks-phase7.trx` - passed, 1 test.
+  - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/WebhookManagementPanelTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` - passed, 3 tests.
+  - `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AdminClaimsTransformationTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` - passed, 15 tests.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` - passed, 239 succeeded / 1 known skipped response-metadata test.
+  - `git diff --check` - passed.
+- Not exercised in this browser pass:
+  - live Svix App Portal open, because no Svix backend is configured in the E2E app host.
+  - switching provider mode to DryRun from the browser, though the seeded DryRun endpoint action absence is asserted.
 
 ## Phase 8 - Docs, Operations, and Rollout
 
 ### Documentation
 
-- [ ] Create `docs/WEBHOOKS.md`.
-- [ ] Update `docs/INTEGRATIONS.md`.
-- [ ] Update `docs/OPERATIONS.md`.
-- [ ] Update `docs/CONFIGURATION.md`.
-- [ ] Update `docs/SECURITY-MODEL.md`.
-- [ ] Update `docs/API.md`.
-- [ ] Update `docs/API_CHANGELOG.md`.
-- [ ] Update `docs/BLAZOR.md`.
-- [ ] Update `README.md` webhook wording if needed.
+- [x] Create `docs/WEBHOOKS.md`.
+- [x] Update `docs/INTEGRATIONS.md`.
+- [x] Update `docs/OPERATIONS.md`.
+- [x] Update `docs/CONFIGURATION.md`.
+- [x] Update `docs/SECURITY-MODEL.md`.
+- [x] Update `docs/API.md`.
+- [x] Update `docs/API_CHANGELOG.md`.
+- [x] Update `docs/BLAZOR.md`.
+- [x] Update `README.md` webhook wording if needed.
 
 Docs must explain:
 
-- [ ] outgoing versus incoming webhooks.
-- [ ] provider modes.
-- [ ] LocalProvider limits.
-- [ ] SvixProvider advanced path.
-- [ ] signature format.
-- [ ] payload envelope and event catalog.
-- [ ] heavy moderation minimization.
-- [ ] SSRF defaults and operator allow-list.
-- [ ] secret rotation.
-- [ ] retry schedule.
-- [ ] delivery attempts and manual retry.
-- [ ] provider switching.
-- [ ] self-hosting requirements.
+- [x] outgoing versus incoming webhooks.
+- [x] provider modes.
+- [x] LocalProvider limits.
+- [x] SvixProvider advanced path.
+- [x] signature format.
+- [x] payload envelope and event catalog.
+- [x] heavy moderation minimization.
+- [x] SSRF defaults and operator allow-list.
+- [x] secret rotation.
+- [x] retry schedule.
+- [x] delivery attempts and manual retry.
+- [x] provider switching.
+- [x] self-hosting requirements.
 
 ### Operations
 
-- [ ] Add configuration examples.
-- [ ] Add secret ref examples.
-- [ ] Add health check docs.
-- [ ] Add metric docs.
-- [ ] Add safe logging notes.
-- [ ] Add retention cleanup operation.
-- [ ] Add provider switching runbook.
-- [ ] Add optional Svix server/Aspire notes if accepted.
+- [x] Add configuration examples.
+- [x] Add secret ref examples.
+- [x] Add health check docs.
+- [x] Add metric docs.
+- [x] Add safe logging notes.
+- [x] Add retention cleanup operation.
+- [x] Add provider switching runbook.
+- [x] Add optional Svix server/Aspire notes if accepted.
 
 Validation:
 
@@ -689,22 +768,22 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 
 Acceptance:
 
-- [ ] Self-hosters can configure LocalProvider without Svix.
-- [ ] Operators can configure SvixProvider without exposing secrets to the frontend.
-- [ ] Docs state that incoming callbacks do not depend on outgoing provider mode.
+- [x] Self-hosters can configure LocalProvider without Svix.
+- [x] Operators can configure SvixProvider without exposing secrets to the frontend.
+- [x] Docs state that incoming callbacks do not depend on outgoing provider mode.
 
 ## Final Verification Checklist
 
 Run before claiming the implementation complete:
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release`
 - [ ] `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release`
 - [ ] `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release`
-- [ ] `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release`
+- [x] `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release`
 - [ ] `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release`
 - [ ] `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release`
-- [ ] `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release`
+- [x] `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release`
 
 If a project does not exist, replace it with the closest project-specific test and record the substitution here.
 
@@ -716,7 +795,7 @@ Manual final QA:
 - [ ] Manual retry works through HAL.
 - [ ] Secret rotation works without leaking old secret.
 - [ ] DryRun records canonical message but sends no outbound request.
-- [ ] SvixProvider fake client publishes message with event type, event id, payload, retention, and idempotency key.
+- [x] SvixProvider fake client publishes message with event type, event id, payload, retention, and idempotency key.
 - [x] Svix App Portal URL route is backend-only and authorized.
 - [ ] Incoming Svix/Coop webhook rejects invalid signature.
 - [ ] Incoming Svix/Coop webhook accepts valid signature once and treats duplicates idempotently.
@@ -738,6 +817,26 @@ Manual final QA:
 ## Implementation Notes Log
 
 Use this section for dated progress notes during implementation.
+
+### 2026-07-04 Europe/Brussels - local-full Svix config, readiness, and docs
+
+- Confirmed `local-full` has a first-class Svix server resource in `Explore.AppHost` with PostgreSQL, Redis-backed queue/cache, `SVIX_JWT_SECRET`, and API env wiring for `Webhooks:Svix:BaseUrl`, `webhooks.svix.auth_token`, and `webhooks.svix.operational_webhook_secret`.
+- Added development seeding for Svix secret bindings from `WEBHOOKS_SVIX_AUTH_TOKEN` and `WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET`; `.env`, `.env.example`, and `docker-compose.yml` now use the canonical secret refs.
+- Added `webhook-svix-provider` readiness through `SvixWebhookProviderHealthCheck`; it verifies server-side secret resolution for Svix/Composite mode and reports only safe booleans, not tokens, secret refs, provider URLs, or endpoint URLs.
+- Removed the persistent lifetime from the stateless Svix server container in AppHost. The stale persistent server container had kept an old random host port while API config expected `http://localhost:8071`; Svix state remains in the persistent Svix PostgreSQL volume.
+- Added `docs/WEBHOOKS.md` and `docs/INTEGRATIONS.md`; updated `docs/CONFIGURATION.md`, `docs/OPERATIONS.md`, `docs/SECURITY-MODEL.md`, `docs/BLAZOR.md`, `docs/index.md`, and `README.md` for LocalProvider/SvixProvider behavior, incoming callback separation, local-full Svix, security, metrics, and provider switching.
+- Live Svix container check succeeded against the running local server: `GET /api/v1/health` returned 200, `POST /api/v1/app/` returned 201 with the local dev JWT, and `POST /api/v1/app/{uid}/msg/` returned 202 for an `event.published` message. A later runtime check showed `aspire ps --format Json` returns `[]`, while the old container `svix-4ccf7fcf` remains healthy on `127.0.0.1:38795`; `http://localhost:8071` is not currently listening.
+- Aspire live QA remains partially blocked: `aspire start --apphost Explore.AppHost/Explore.AppHost.csproj` starts resources briefly but DCP watcher streams end with `ResponseEnded`, then AppHost exits and `aspire ps` is empty. API App Portal route and browser-level Svix-mode QA still need a stable AppHost run.
+- Validation passed:
+  - `dotnet build Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
+  - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
+  - `dotnet build Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+  - focused `DatabaseSeederTests/*SeedsSvixSecretBindingsFromEnvironment`
+  - `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --no-build --verbosity quiet -- --minimum-expected-tests 580 --log-level Error --no-progress` passed: 663 tests.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --log-level Error --no-progress` passed: 242/243, 1 known skipped.
+  - `dotnet build Explore.AppHost/Explore.AppHost.csproj --configuration Release --verbosity quiet`
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `git diff --check`
 
 ### 2026-07-02 Europe/Brussels
 
@@ -818,10 +917,32 @@ Use this section for dated progress notes during implementation.
 - Validation passed:
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
-  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
-  - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
-  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
-  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+
+### 2026-07-03 Europe/Brussels - message/attempt API and Phase 7 Blazor UI slice
+
+- Added safe `WebhookMessageDto` and `WebhookDeliveryAttemptDto` read models, tenant-scoped message/attempt queries, and an attempt-level manual retry command that delegates to `IWebhookDeliveryDrainService`.
+- Added `GET /api/webhooks/messages`, `GET /api/webhooks/messages/{messageId}`, `GET /api/webhooks/delivery-attempts`, `GET /api/webhooks/delivery-attempts/{attemptId}`, and `POST /api/webhooks/delivery-attempts/{attemptId}/retry` with route names, HAL assemblers, resource descriptors, retry affordance policy, OpenAPI HAL schema entries, and source-generated JSON metadata.
+- Added `WebhookEventTypeCatalogSyncService` plus an API startup worker so canonical registry event types are upserted into `webhook_event_types`; `GET /api/webhooks/event-types` now includes persisted IDs for endpoint subscription forms while retaining registry-driven schemas and examples.
+- Regenerated `Explore.Blazor.Client/Clients/EventApiClient.g.cs` so Blazor has typed webhook event type IDs, message/attempt HAL resources, and retry/test/portal methods.
+- Added `IWebhookManagementService` and `WebhookManagementService` as the generated-client anti-corruption layer for the Blazor UI. The service normalizes HAL collections, returns explicit action results, and keeps API exception handling out of Razor.
+- Replaced the single-tenant instance settings webhooks placeholder with `WebhookManagementPanel`, covering status metrics, event catalog, consumer/provider portal actions, endpoint create/update/archive/test/rotation dialogs, message activity, delivery attempts, and HAL-gated manual retry. Secret rotation accepts only secret references and never displays secret material.
+- Added CSS isolation for the webhook panel with dense responsive grids, stable table/action-cell sizing, and BEM-style class names.
+- Validation passed:
+  - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
+  - `dotnet msbuild Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1 /v:minimal`
+  - `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet`
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/WebhookEventTypeCatalogSyncServiceTests/*|/*/*/GetWebhookEventTypesQueryHandlerTests/*|/*/*/WebhookConsumerHandlersTests/*" --minimum-expected-tests 1 --log-level Error --no-progress`
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -- --treenode-filter "/*/*/WebhooksControllerTests/*" --minimum-expected-tests 1 --log-level Error --no-progress`
+  - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-restore --verbosity quiet -- --log-level Error --no-progress`
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `git diff --check`
+- Architecture verification attempted:
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-restore --verbosity quiet -- --log-level Error --no-progress`
+  - Result: failed on unrelated missing AI context disclosure docs (`dev/active/ai-context-disclosure-policy/field-classification-matrix.md` and `dev/active/ai-context-disclosure-policy/ai-context-disclosure-policy-plan.md`), not on webhook architecture rules.
+- Browser visual QA attempted:
+  - `dotnet run --project Explore.Blazor/Explore.Blazor.csproj --configuration Release --no-build --urls http://localhost:5144`
+  - `dotnet run --project Explore.API/Explore.API.csproj --configuration Release --no-build --launch-profile https`
+  - Result: blocked before the webhook settings panel could render because the API/BFF repeatedly failed database calls against `tcp://188.245.51.97:5434` for `islamu_event_db`; the admin page remained behind the unhealthy runtime stack. The desktop/mobile visual-overlap gate remains open.
 
 ### 2026-07-03 Europe/Brussels - endpoint secret rotation API slice
 
