@@ -6,6 +6,7 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components.Forms
+@using Explore.Domain.Constants
 
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IUserService UserService
@@ -13,6 +14,7 @@
 @inject ITenantPublicExperienceAdminService TenantPublicExperienceAdminService
 @inject AiAssistantState AiAssistantState
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 
 <div class="settings-layout">
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
@@ -187,6 +189,10 @@
                         {
                             <SupportAccessConsoleSection />
                         }
+                        else if (_currentSection == "support-access-evidence")
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantSupportAccessEvidenceSection TenantId="PlatformDefaults.DefaultTenantId" />
+                        }
                         else if (_currentSection == "webhooks" && IsSingleTenantMode)
                         {
                             <Explore.Blazor.Client.Components.Webhooks.WebhookManagementPanel />
@@ -355,6 +361,8 @@
             _hasAnnouncementBar = HasUsableAnnouncementBar(_tenantModel);
             _publicExperienceModel = await TenantPublicExperienceAdminService.GetSettingsAsync();
         }
+
+        ApplySectionFromQuery();
 
         _isLoading = false;
     }
@@ -607,8 +615,9 @@
                 new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
                 new("footer",           Icons.Material.Filled.ViewAgenda,      "Footer"),
                 new("localization",     Icons.Material.Filled.Translate,       "Localization"),
-            new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
-            new("support-access",   Icons.Material.Filled.SupportAgent,    "Support Access", Group: "Operations"),
+            new("advanced",                 Icons.Material.Filled.DisplaySettings, "Advanced"),
+            new("support-access",           Icons.Material.Filled.SupportAgent,    "Support Access",   Group: "Operations"),
+            new("support-access-evidence",  Icons.Material.Filled.ReceiptLong,     "Support Evidence", Group: "Operations"),
             new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
             new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
         ];
@@ -630,6 +639,7 @@
             new("ai",               Icons.Material.Filled.SmartToy,        "AI"),
             new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
             new("support-access",   Icons.Material.Filled.SupportAgent,    "Support Access", Group: "Operations"),
+            new("support-access-evidence", Icons.Material.Filled.ReceiptLong, "Support Evidence", Group: "Operations"),
             new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
         ];
     }
@@ -638,6 +648,54 @@
     {
         _currentSection = section;
         _showMobileMenu = false;
+    }
+
+    private void ApplySectionFromQuery()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var section = ParseSectionFromQuery(uri.Query);
+        if (section is null)
+        {
+            return;
+        }
+
+        var navItems = BuildNavItems(IsSingleTenantMode);
+        if (!navItems.Any(item => string.Equals(item.Key, section, StringComparison.Ordinal)))
+        {
+            return;
+        }
+
+        _currentSection = section;
+        _showMobileMenu = false;
+    }
+
+    private static string? ParseSectionFromQuery(string query)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return null;
+        }
+
+        var trimmed = query.StartsWith('?') ? query[1..] : query;
+        foreach (var pair in trimmed.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = pair.IndexOf('=');
+            if (eq <= 0)
+            {
+                continue;
+            }
+
+            var key = Uri.UnescapeDataString(pair[..eq]);
+            if (!string.Equals(key, "section", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var value = Uri.UnescapeDataString(pair[(eq + 1)..]);
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        return null;
     }
     
     private void BackToMenu()

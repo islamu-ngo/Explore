@@ -1,6 +1,7 @@
 // ABOUTME: Component tests verifying OrganizationDetails page surfaces Edit controls only when the API
 // ABOUTME: returns an `_links.edit` HAL affordance, and never pre-fetches members data on load.
 
+using System.Reflection;
 using System.Text.Json;
 using Blazouter.Services;
 using Explore.Blazor.Client.Pages.Organizations;
@@ -31,6 +32,7 @@ public class OrganizationDetailsHateoasTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<ILogger<OrganizationDetails>>());
 
         _eventService.GetPublicEventsByActorAsync(Arg.Any<Guid>()).Returns(new List<EventListDto>());
+        _eventService.GetPublicEventsByOrganizationAsync(Arg.Any<Guid>()).Returns(new List<EventListDto>());
     }
 
     public void Dispose()
@@ -78,6 +80,61 @@ public class OrganizationDetailsHateoasTests : IDisposable
         await _organizationMemberService.DidNotReceiveWithAnyArgs().GetMembersAsync(default);
     }
 
+    [Test]
+    public async Task EditSubmit_WithInvalidEmail_ShowsClientValidationAndDoesNotCallService()
+    {
+        var cut = RenderInEditMode();
+        SetEditModelProperty(cut, "Email", "not-an-email");
+
+        await InvokeSaveChangesAsync(cut);
+        cut.Render();
+
+        await _organizationService.DidNotReceiveWithAnyArgs().UpdateOrganizationAsync(default, default, default!);
+        await Assert.That(cut.Markup).Contains("Enter a valid contact email.");
+    }
+
+    [Test]
+    public async Task EditSubmit_WithValidationProblemDetails_MapsServerErrorsIntoSummary()
+    {
+        _organizationService.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>())
+            .ThrowsAsync(new ApiException<ValidationProblemDetails>(
+                "Bad Request",
+                400,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                new ValidationProblemDetails
+                {
+                    Errors = new Dictionary<string, ICollection<string>>
+                    {
+                        ["Email.Value"] = new[] { "Use an organization-owned email address." }
+                    }
+                },
+                null));
+        var cut = RenderInEditMode();
+
+        await InvokeSaveChangesAsync(cut);
+        cut.Render();
+
+        await Assert.That(cut.Markup).Contains("Please fix the validation errors below.");
+        await Assert.That(cut.Markup).Contains("Use an organization-owned email address.");
+    }
+
+    [Test]
+    public async Task EditSubmit_WithUnexpectedException_DoesNotEchoRawExceptionMessage()
+    {
+        const string rawProviderMessage = "database rejected <script>alert(1)</script> secret";
+        _organizationService.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>())
+            .ThrowsAsync(new InvalidOperationException(rawProviderMessage));
+        var cut = RenderInEditMode();
+
+        await InvokeSaveChangesAsync(cut);
+        cut.Render();
+
+        await Assert.That(cut.Markup).Contains("Organization could not be updated. Please try again.");
+        await Assert.That(cut.Markup).DoesNotContain(rawProviderMessage);
+        await Assert.That(cut.Markup).DoesNotContain("<script>");
+    }
+
     private static OrganizationDto CreateOrganization(bool withEditLink)
     {
         var dto = new OrganizationDto
@@ -85,8 +142,14 @@ public class OrganizationDetailsHateoasTests : IDisposable
             Id = Guid.NewGuid(),
             FullName = "Test Organization",
             Email = "test@example.com",
+            WebsiteUrl = "https://example.org",
+            Address = "1 Main Street",
+            Postcode = "12345",
+            City = "Brussels",
+            Country = "Belgium",
             ApprovalStatusId = 2,
             ApprovalStatusFullName = "Approved",
+            ConcurrencyStamp = Guid.NewGuid(),
             AdditionalProperties = new Dictionary<string, object>()
         };
 
@@ -99,4 +162,48 @@ public class OrganizationDetailsHateoasTests : IDisposable
 
         return dto;
     }
+
+    private IRenderedComponent<OrganizationDetails> RenderInEditMode()
+    {
+        _organizationService.GetOrganizationByIdAsync(Arg.Any<Guid>())
+            .Returns(CreateOrganization(withEditLink: true));
+
+        var cut = _ctx.RenderMudComponent<OrganizationDetails>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+        InvokePrivate(cut.Instance, "ToggleEditMode");
+        cut.Render();
+
+        return cut;
+    }
+
+    private static async Task InvokeSaveChangesAsync(IRenderedComponent<OrganizationDetails> cut)
+    {
+        var method = typeof(OrganizationDetails)
+            .GetMethod("SaveChanges", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("SaveChanges method was not found.");
+
+        await cut.InvokeAsync(() => (Task)method.Invoke(cut.Instance, null)!);
+    }
+
+    private static void SetEditModelProperty(IRenderedComponent<OrganizationDetails> cut, string propertyName, object? value)
+    {
+        var model = GetField(cut.Instance, "editModel");
+        model.GetType()
+            .GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)!
+            .SetValue(model, value);
+    }
+
+    private static void InvokePrivate(object instance, string methodName)
+    {
+        instance
+            .GetType()
+            .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(instance, null);
+    }
+
+    private static object GetField(object instance, string name) =>
+        instance
+            .GetType()
+            .GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(instance)!;
 }

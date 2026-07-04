@@ -1,5 +1,6 @@
 @* ABOUTME: Top navigation shell with tenant links, search, preferences, and profile/admin dropdown. *@
 @* ABOUTME: Uses BFF/API-backed status models for admin affordance visibility instead of browser claims. *@
+@using Event.ControlPlane.Client.Routing
 @*
     NavMenu Component - BEM Methodology
     Block: navbar
@@ -272,9 +273,9 @@
 
                                     @if (IsInstanceAdmin(context.User) && !_isSingleTenantMode)
                                     {
-                                        <a href="/admin/instance/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                        <a href="@ControlPlaneRoutes.Overview" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" />
-                                            Instance Administration
+                                            Instance Console
                                         </a>
                                     }
 

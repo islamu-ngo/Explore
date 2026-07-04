@@ -1,5 +1,8 @@
+@* ABOUTME: Authenticated organization creation wizard with guarded submission and validation summary. *@
+@* ABOUTME: Maps Blazor-side syntactic checks and API validation failures into the shared EditContext. *@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Forms
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Shared
 @using Microsoft.AspNetCore.Components.Forms
@@ -27,19 +30,16 @@
         </div>
 
         <div class="pa-6">
-            @if (!string.IsNullOrWhiteSpace(errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
-                    @errorMessage
-                </MudAlert>
-            }
-
             @if (submitSuccess)
             {
                 <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-6 rounded-lg">
                     Organization successfully submitted for review! Redirecting...
                 </MudAlert>
             }
+
+            <EditForm EditContext="_editContext" OnValidSubmit="@HandleSubmit">
+                <FormSubmissionGuard State="@_submitState">
+                <AppValidationSummary />
 
             <MudStepper OnPreviewInteraction="OnPreviewStepInteraction">
                 <MudStep Title="Basic Info" Icon="@Icons.Material.Filled.Info">
@@ -227,10 +227,10 @@
                         <div class="d-flex justify-end mt-8">
                             <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large"
                                        StartIcon="@Icons.Material.Filled.Send"
-                                       OnClick="@HandleSubmit"
-                                       Disabled="@(!CanSubmit() || isSubmitting)"
+                                       ButtonType="ButtonType.Submit"
+                                       Disabled="@(!CanSubmit() || _submitState.IsSubmitting)"
                                        Class="rounded-pill px-8">
-                                @if (isSubmitting)
+                                @if (_submitState.IsSubmitting)
                                 {
                                     <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                                     <span>Submitting...</span>
@@ -244,6 +244,8 @@
                     </div>
                 </MudStep>
             </MudStepper>
+                </FormSubmissionGuard>
+            </EditForm>
         </div>
     </MudCard>
 </MudContainer>

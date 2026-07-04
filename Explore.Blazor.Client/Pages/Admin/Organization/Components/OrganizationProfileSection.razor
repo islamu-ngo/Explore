@@ -3,8 +3,10 @@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Forms
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components.Forms
 
 @inject IOrganizationService OrganizationService
 @inject ISnackbar Snackbar
@@ -36,115 +38,121 @@
             </MudAlert>
         }
 
-        <MudGrid Spacing="3">
-            <MudItem xs="12">
-                <MudTextField T="string" @bind-Value="_model.FullName"
-                              Label="Organization Name"
-                              Variant="Variant.Outlined"
-                              Required="true" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudTextField T="string" @bind-Value="_model.Email"
-                              Label="Email"
-                              Variant="Variant.Outlined"
-                              Required="true"
-                              InputType="InputType.Email" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudTextField T="string" @bind-Value="_model.WebsiteUrl"
-                              Label="Website URL"
-                              Variant="Variant.Outlined" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudTextField T="string" @bind-Value="_model.Address"
-                              Label="Address"
-                              Variant="Variant.Outlined"
-                              Required="true" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudNumericField @bind-Value="_model.Postcode"
-                                 Label="Postcode"
-                                 Variant="Variant.Outlined"
-                                 HideSpinButtons="true"
-                                 Min="0" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudTextField T="string" @bind-Value="_model.City"
-                              Label="City"
-                              Variant="Variant.Outlined"
-                              Required="true" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudTextField T="string" @bind-Value="_model.Country"
-                              Label="Country"
-                              Variant="Variant.Outlined"
-                              Required="true" />
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField T="string" Value="@_organization?.ActorProfilePictureUri"
-                              Label="Profile Image URL (managed via Actor)"
-                              Variant="Variant.Outlined"
-                              ReadOnly="true"
-                              Placeholder="Set through Actor settings" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudTextField T="string" @bind-Value="_appearance.BackgroundColor"
-                              Label="Banner Color"
-                              Variant="Variant.Outlined"
-                              InputType="InputType.Color" />
-            </MudItem>
-            <MudItem xs="12" sm="8">
-                <MudTextField T="string" @bind-Value="_appearance.ImageUri"
-                              Label="Banner Picture URL"
-                              Variant="Variant.Outlined"
-                              Placeholder="https://... (image or GIF)" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudSelect T="string"
-                           Label="Banner Effect"
-                           Variant="Variant.Outlined"
-                           @bind-Value="_appearance.BackgroundEffect">
-                    <MudSelectItem Value="@("None")">None</MudSelectItem>
-                    <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
-                    <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
-                    <MudSelectItem Value="@("Blur")">Blur</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-        </MudGrid>
+        <EditForm EditContext="_editContext" OnValidSubmit="SaveAsync">
+            <FormSubmissionGuard State="@_submitState">
+                <AppValidationSummary />
 
-        <MudDivider Class="my-4" />
+                <MudGrid Spacing="3">
+                    <MudItem xs="12">
+                        <MudTextField T="string" @bind-Value="_model.FullName"
+                                      Label="Organization Name"
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="_model.Email"
+                                      Label="Email"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      InputType="InputType.Email" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="_model.WebsiteUrl"
+                                      Label="Website URL"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="_model.Address"
+                                      Label="Address"
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField @bind-Value="_model.Postcode"
+                                         Label="Postcode"
+                                         Variant="Variant.Outlined"
+                                         HideSpinButtons="true"
+                                         Min="0" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="_model.City"
+                                      Label="City"
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="_model.Country"
+                                      Label="Country"
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField T="string" Value="@_organization?.ActorProfilePictureUri"
+                                      Label="Profile Image URL (managed via Actor)"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true"
+                                      Placeholder="Set through Actor settings" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField T="string" @bind-Value="_appearance.BackgroundColor"
+                                      Label="Banner Color"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Color" />
+                    </MudItem>
+                    <MudItem xs="12" sm="8">
+                        <MudTextField T="string" @bind-Value="_appearance.ImageUri"
+                                      Label="Banner Picture URL"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="https://... (image or GIF)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="string"
+                                   Label="Banner Effect"
+                                   Variant="Variant.Outlined"
+                                   @bind-Value="_appearance.BackgroundEffect">
+                            <MudSelectItem Value="@("None")">None</MudSelectItem>
+                            <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
+                            <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
+                            <MudSelectItem Value="@("Blur")">Blur</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
 
-        <MudText Typo="Typo.subtitle2" Class="mb-2">Preview</MudText>
-        <MudPaper Elevation="0"
-                  Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default"
-                  Style="@AppearanceStyleBuilder.BuildBannerStyle(_appearance, "#1f6feb")">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                @if (!string.IsNullOrWhiteSpace(GetProfileImageUri()))
-                {
-                    <MudAvatar Size="Size.Large" Rounded="true">
-                        <MudImage Src="@GetProfileImageUri()" Alt="@_model.FullName" ObjectFit="ObjectFit.Cover" />
-                    </MudAvatar>
-                }
-                else
-                {
-                    <MudAvatar Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled" Rounded="true">
-                        @(_model.FullName.Length > 0 ? _model.FullName[..1].ToUpperInvariant() : "O")
-                    </MudAvatar>
-                }
-                <div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 700; color: white;">@_model.FullName</MudText>
-                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">@_model.City, @_model.Country</MudText>
-                </div>
-            </MudStack>
-        </MudPaper>
+                <MudDivider Class="my-4" />
 
-        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
-                       Disabled="@_saving"
-                       StartIcon="@(_saving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                @(_saving ? "Saving..." : "Save Organization Settings")
-            </MudButton>
-        </MudStack>
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Preview</MudText>
+                <MudPaper Elevation="0"
+                          Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default"
+                          Style="@AppearanceStyleBuilder.BuildBannerStyle(_appearance, "#1f6feb")">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        @if (!string.IsNullOrWhiteSpace(GetProfileImageUri()))
+                        {
+                            <MudAvatar Size="Size.Large" Rounded="true">
+                                <MudImage Src="@GetProfileImageUri()" Alt="@_model.FullName" ObjectFit="ObjectFit.Cover" />
+                            </MudAvatar>
+                        }
+                        else
+                        {
+                            <MudAvatar Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled" Rounded="true">
+                                @(_model.FullName.Length > 0 ? _model.FullName[..1].ToUpperInvariant() : "O")
+                            </MudAvatar>
+                        }
+                        <div>
+                            <MudText Typo="Typo.h6" Style="font-weight: 700; color: white;">@_model.FullName</MudText>
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">@_model.City, @_model.Country</MudText>
+                        </div>
+                    </MudStack>
+                </MudPaper>
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" ButtonType="ButtonType.Submit"
+                               Disabled="@_submitState.IsSubmitting"
+                               StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                        @(_submitState.IsSubmitting ? "Saving..." : "Save Organization Settings")
+                    </MudButton>
+                </MudStack>
+            </FormSubmissionGuard>
+        </EditForm>
     }
 </div>
 
@@ -156,8 +164,10 @@
     private OrganizationProfileEditModel _model = new();
     private AppearanceSettings _appearance = new();
     private bool _loading = true;
-    private bool _saving;
     private string? _errorMessage;
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -189,11 +199,12 @@
                     ImageUri = _organization.ActorBannerPictureUri ?? string.Empty,
                     BackgroundEffect = _organization.ActorBackgroundEffect ?? string.Empty
                 };
+                InitializeEditContext();
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Failed to load organization profile: {ex.Message}";
+            _errorMessage = "Organization profile could not be loaded. Please try again.";
         }
         finally
         {
@@ -203,23 +214,24 @@
 
     private async Task SaveAsync()
     {
-        if (string.IsNullOrWhiteSpace(_model.FullName)
-            || string.IsNullOrWhiteSpace(_model.Email)
-            || string.IsNullOrWhiteSpace(_model.Address)
-            || string.IsNullOrWhiteSpace(_model.City)
-            || string.IsNullOrWhiteSpace(_model.Country))
+        if (_submitState.IsSubmitting)
         {
-            _errorMessage = "Please complete all required fields.";
             return;
         }
 
-        _saving = true;
+        _submitState.Start();
         _errorMessage = null;
+        if (!ValidateOrganizationProfile())
+        {
+            _submitState.Fail("Please fix the validation errors below.");
+            return;
+        }
+
         try
         {
             if (_organization.ConcurrencyStamp is not { } concurrencyStamp || concurrencyStamp == Guid.Empty)
             {
-                _errorMessage = "Reload the organization profile before saving changes.";
+                _submitState.Fail("Reload the organization profile before saving changes.");
                 return;
             }
 
@@ -231,23 +243,115 @@
             if (response?.Success == true)
             {
                 Snackbar.Add("Organization profile updated.", Severity.Success);
+                _submitState.Complete();
                 await LoadOrganizationAsync();
                 return;
             }
 
-            _errorMessage = string.IsNullOrWhiteSpace(response?.Message)
+            _submitState.Fail(string.IsNullOrWhiteSpace(response?.Message)
                 ? "Failed to update organization profile."
-                : response!.Message;
+                : response!.Message);
+        }
+        catch (ApiException ex)
+        {
+            if (_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail("Please fix the validation errors below.");
+            }
+            else
+            {
+                _submitState.Fail("Organization profile could not be updated. Please try again.");
+            }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Failed to update organization profile: {ex.Message}";
-        }
-        finally
-        {
-            _saving = false;
+            _submitState.Fail("Organization profile could not be updated. Please try again.");
         }
     }
+
+    private void InitializeEditContext()
+    {
+        _editContext = new EditContext(_model);
+        _submitState.Reset();
+        _errorStore.Init(_editContext);
+    }
+
+    private bool ValidateOrganizationProfile()
+    {
+        var errors = GetValidationErrors();
+        if (errors.Count == 0)
+        {
+            _errorStore.ClearErrors();
+            return true;
+        }
+
+        _errorStore.DisplayErrors(errors);
+        return false;
+    }
+
+    private Dictionary<string, ICollection<string>> GetValidationErrors()
+    {
+        var errors = new Dictionary<string, ICollection<string>>();
+
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.FullName), _model.FullName, "Organization name is required.");
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.Email), _model.Email, "Email is required.");
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.Address), _model.Address, "Address is required.");
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.City), _model.City, "City is required.");
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.Country), _model.Country, "Country is required.");
+
+        if (!string.IsNullOrWhiteSpace(_model.Email) && !IsLikelyEmailAddress(_model.Email))
+        {
+            AddError(errors, nameof(OrganizationProfileEditModel.Email), "Enter a valid contact email.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_model.WebsiteUrl) && !IsHttpUrl(_model.WebsiteUrl))
+        {
+            AddError(errors, nameof(OrganizationProfileEditModel.WebsiteUrl), "Website URL must start with http:// or https://.");
+        }
+
+        if (_model.Postcode <= 0)
+        {
+            AddError(errors, nameof(OrganizationProfileEditModel.Postcode), "Postal code is required.");
+        }
+
+        return errors;
+    }
+
+    private static void AddRequiredError(
+        IDictionary<string, ICollection<string>> errors,
+        string fieldName,
+        string? value,
+        string message)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            AddError(errors, fieldName, message);
+        }
+    }
+
+    private static void AddError(IDictionary<string, ICollection<string>> errors, string fieldName, string message)
+    {
+        if (!errors.TryGetValue(fieldName, out var messages))
+        {
+            messages = new List<string>();
+            errors[fieldName] = messages;
+        }
+
+        messages.Add(message);
+    }
+
+    private static bool IsLikelyEmailAddress(string value)
+    {
+        var atIndex = value.IndexOf('@', StringComparison.Ordinal);
+        return atIndex > 0
+            && atIndex < value.Length - 1
+            && value.IndexOf('@', atIndex + 1) < 0
+            && value[(atIndex + 1)..].Contains('.', StringComparison.Ordinal);
+    }
+
+    private static bool IsHttpUrl(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
     private string? GetProfileImageUri()
     {

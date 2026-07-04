@@ -40,6 +40,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Console");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
         await Assert.That(cut.Markup).DoesNotContain("Organization Settings");
@@ -58,6 +59,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Console");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
         await Assert.That(cut.Markup).DoesNotContain("Organization Settings");
@@ -119,6 +121,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert -- serialized/browser claims are not treated as admin authority
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Console");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
     }
 
@@ -139,6 +142,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert -- serialized/browser claims are not treated as admin authority
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Console");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
     }
@@ -162,6 +166,7 @@ public class NavMenuAdminTests : IDisposable
         await Assert.That(cut.Markup).DoesNotContain("Organization Settings");
         await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId}/settings");
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Console");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
     }
@@ -206,6 +211,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert -- serialized/browser claims do not create admin links
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Console");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
         await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId}/settings");
     }
@@ -227,6 +233,25 @@ public class NavMenuAdminTests : IDisposable
         // Assert
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/tenant/settings\"");
+    }
+
+    [Test]
+    public async Task NavMenu_MultiTenantInstanceAdmin_ShowsEmbeddedInstanceConsole()
+    {
+        // Arrange
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Instance Admin");
+        SetupNavMenuServices(
+            deploymentMode: "MultiTenant",
+            isCurrentUserInstanceAdmin: true);
+
+        // Act
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("Instance Console");
+        await Assert.That(cut.Markup).Contains("href=\"/admin/instance\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
     }
 
     [Test]
@@ -266,6 +291,8 @@ public class NavMenuAdminTests : IDisposable
         // Assert -- onboarding grants are visible even before the serialized auth claims rehydrate.
         await Assert.That(cut.Markup).Contains("Administration");
         await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Console");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance\"");
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
     }
 
@@ -334,6 +361,8 @@ public class NavMenuAdminTests : IDisposable
         // Assert
         await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
         await Assert.That(cut.Markup).Contains("Administration");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Console");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance\"");
     }
 
     private IRenderedComponent<DynamicComponent> RenderNavMenu()

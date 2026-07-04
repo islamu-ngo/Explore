@@ -35,7 +35,7 @@ public sealed class EventTemplateHalResourceExtensionsTests
                         IsPublished = true,
                         IsActive = true,
                         DefinitionCount = 4,
-                        _links = new Dictionary<string, Anonymous33>
+                        _links = new Dictionary<string, Anonymous40>
                         {
                             ["edit"] = new() { Href = $"/api/EventTemplate/{templateId}", Method = "PUT", Title = "Edit" },
                             ["delete"] = new() { Href = $"/api/EventTemplate/{templateId}", Method = "DELETE", Title = "Delete" }

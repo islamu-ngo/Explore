@@ -176,6 +176,48 @@ public class SharedComponentAccessibilityTests : IDisposable
     }
 
     [Test]
+    public async Task StorageImage_RendersCustomAltAsAttributeOnly_WhenMetadataContainsMarkup()
+    {
+        // Arrange
+        const string altText = "poster \" onerror=\"alert(1)";
+        var imageService = Substitute.For<IImageStorageService>();
+        _ctx.Services.AddSingleton(imageService);
+
+        // Act
+        var cut = _ctx.Render<StorageImage>(p =>
+            p.Add(x => x.ImageUrl, "https://example.com/photo.jpg")
+             .Add(x => x.Alt, altText));
+
+        // Assert
+        var image = cut.Find("img.storage-image__media");
+        await Assert.That(image.GetAttribute("alt")).IsEqualTo(altText);
+        await Assert.That(image.HasAttribute("onerror")).IsFalse();
+    }
+
+    [Test]
+    public async Task StorageImage_RendersErrorTextAsEncodedText_WhenMetadataContainsMarkup()
+    {
+        // Arrange
+        const string errorText = "<img src=x onerror=alert(1)>";
+        var imageService = Substitute.For<IImageStorageService>();
+        imageService.GetPresignedUrlByIdAsync(Arg.Any<Guid>())
+            .Returns((string?)null);
+        _ctx.Services.AddSingleton(imageService);
+
+        // Act
+        var cut = _ctx.Render<StorageImage>(p =>
+            p.Add(x => x.StorageObjectId, Guid.NewGuid())
+             .Add(x => x.ErrorText, errorText));
+
+        // Assert
+        var errorContainer = cut.Find(".storage-image__error");
+        await Assert.That(errorContainer.TextContent).Contains(errorText);
+        await Assert.That(errorContainer.InnerHtml).Contains("&lt;img src=x onerror=alert(1)&gt;");
+        await Assert.That(cut.FindAll("img[src='x']")).IsEmpty();
+        await Assert.That(cut.FindAll("script")).IsEmpty();
+    }
+
+    [Test]
     public async Task StorageImage_ShowsPlaceholder_WhenNoImageReferenceExists()
     {
         // Arrange — no image URL or key = placeholder state

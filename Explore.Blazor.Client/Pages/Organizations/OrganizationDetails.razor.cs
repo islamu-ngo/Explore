@@ -126,8 +126,8 @@ public partial class OrganizationDetails
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load organization: {ex.Message}";
             Logger.LogError(ex, "Failed to load organization {OrganizationId}", Id);
+            errorMessage = "Organization details could not be loaded. Please try again.";
         }
         finally
         {
@@ -159,6 +159,12 @@ public partial class OrganizationDetails
             errorMessage = string.Empty;
             successMessage = string.Empty;
 
+            if (!ValidateOrganizationForm())
+            {
+                _submitState.Fail("Please fix the validation errors below.");
+                return;
+            }
+
             if (organization.ConcurrencyStamp is not { } concurrencyStamp || concurrencyStamp == Guid.Empty)
             {
                 _submitState.Fail("Reload the organization before saving changes.");
@@ -185,7 +191,7 @@ public partial class OrganizationDetails
         {
             if (!_errorStore.HandleApiError(ex))
             {
-                _submitState.Fail($"Failed to update organization: {ex.Message}");
+                _submitState.Fail("Organization could not be updated. Please try again.");
             }
             else
             {
@@ -196,7 +202,7 @@ public partial class OrganizationDetails
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error updating organization {OrganizationId}", Id);
-            _submitState.Fail($"Failed to update organization: {ex.Message}");
+            _submitState.Fail("Organization could not be updated. Please try again.");
         }
         finally
         {
@@ -212,11 +218,88 @@ public partial class OrganizationDetails
         if (string.IsNullOrEmpty(email))
             return "Email is required";
 
-        if (!email.Contains("@"))
+        if (!IsLikelyEmailAddress(email))
             return "Invalid email format";
 
         return null;
     }
+
+    private bool ValidateOrganizationForm()
+    {
+        var errors = GetValidationErrors();
+        if (errors.Count == 0)
+        {
+            _errorStore.ClearErrors();
+            return true;
+        }
+
+        _errorStore.DisplayErrors(errors);
+        return false;
+    }
+
+    private Dictionary<string, ICollection<string>> GetValidationErrors()
+    {
+        var errors = new Dictionary<string, ICollection<string>>();
+
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.FullName), editModel.FullName, "Organization name is required.");
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.Email), editModel.Email, "Email is required.");
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.Address), editModel.Address, "Address is required.");
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.City), editModel.City, "City is required.");
+        AddRequiredError(errors, nameof(OrganizationProfileEditModel.Country), editModel.Country, "Country is required.");
+
+        if (!string.IsNullOrWhiteSpace(editModel.Email) && !IsLikelyEmailAddress(editModel.Email))
+        {
+            AddError(errors, nameof(OrganizationProfileEditModel.Email), "Enter a valid contact email.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(editModel.WebsiteUrl) && !IsHttpUrl(editModel.WebsiteUrl))
+        {
+            AddError(errors, nameof(OrganizationProfileEditModel.WebsiteUrl), "Website URL must start with http:// or https://.");
+        }
+
+        if (editModel.Postcode <= 0)
+        {
+            AddError(errors, nameof(OrganizationProfileEditModel.Postcode), "Postal code is required.");
+        }
+
+        return errors;
+    }
+
+    private static void AddRequiredError(
+        IDictionary<string, ICollection<string>> errors,
+        string fieldName,
+        string? value,
+        string message)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            AddError(errors, fieldName, message);
+        }
+    }
+
+    private static void AddError(IDictionary<string, ICollection<string>> errors, string fieldName, string message)
+    {
+        if (!errors.TryGetValue(fieldName, out var messages))
+        {
+            messages = new List<string>();
+            errors[fieldName] = messages;
+        }
+
+        messages.Add(message);
+    }
+
+    private static bool IsLikelyEmailAddress(string value)
+    {
+        var atIndex = value.IndexOf('@', StringComparison.Ordinal);
+        return atIndex > 0
+            && atIndex < value.Length - 1
+            && value.IndexOf('@', atIndex + 1) < 0
+            && value[(atIndex + 1)..].Contains('.', StringComparison.Ordinal);
+    }
+
+    private static bool IsHttpUrl(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
     private static UpdateOrganizationDto BuildUpdateDto(OrganizationProfileEditModel model)
     {

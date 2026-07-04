@@ -2,6 +2,7 @@
 // ABOUTME: Handles organization submission, upload state, preview synchronization, and step validation.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Forms;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Shared;
@@ -14,6 +15,8 @@ namespace Explore.Blazor.Client.Pages.Organizations;
 
 public partial class CreateOrganization
 {
+    private const string GenericSubmitFailureMessage = "Organization could not be submitted. Please try again.";
+
     [Inject] protected NavigationManager NavigationManager { get; set; } = null!;
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
@@ -23,7 +26,6 @@ public partial class CreateOrganization
     private CreateOrganizationDto organization = new();
     private bool acceptTerms = false;
     private bool confirmInformation = false;
-    private bool isSubmitting = false;
     private string logoPreview = string.Empty;
 
     private ImageUpload? _imageUpload;
@@ -34,20 +36,31 @@ public partial class CreateOrganization
     private AppearanceSettings _appearance = new();
 
     private bool submitSuccess = false;
-    private string errorMessage = string.Empty;
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     protected override async Task OnInitializedAsync()
     {
-        organization = new CreateOrganizationDto();
+        organization = CreateEmptyOrganization();
+        _editContext = new EditContext(organization);
+        _errorStore.Init(_editContext);
         await base.OnInitializedAsync();
     }
 
     private async Task HandleSubmit()
     {
-        if (!CanSubmit()) return;
+        if (_submitState.IsSubmitting)
+        {
+            return;
+        }
 
-        isSubmitting = true;
-        errorMessage = string.Empty;
+        if (!ValidateOrganizationForm(displaySubmitError: true))
+        {
+            return;
+        }
+
+        _submitState.Start();
 
         try
         {
@@ -55,6 +68,7 @@ public partial class CreateOrganization
 
             if (createdOrganization != null)
             {
+                _submitState.Complete();
                 submitSuccess = true;
                 Logger.LogInformation("Organization successfully created with ID: {OrganizationId}", createdOrganization.Id);
                 await Task.Delay(1000);
@@ -62,17 +76,25 @@ public partial class CreateOrganization
             }
             else
             {
-                errorMessage = "An error occurred while creating the organization. Please try again.";
+                _submitState.Fail(GenericSubmitFailureMessage);
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail("Please fix the validation errors below.");
+            }
+            else
+            {
+                Logger.LogError(ex, "API error during organization creation. StatusCode={StatusCode}", ex.StatusCode);
+                _submitState.Fail(GenericSubmitFailureMessage);
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error creating organization: {ex.Message}";
             Logger.LogError(ex, "Exception during organization creation");
-        }
-        finally
-        {
-            isSubmitting = false;
+            _submitState.Fail(GenericSubmitFailureMessage);
         }
     }
 
@@ -133,7 +155,10 @@ public partial class CreateOrganization
                 await _imageUpload.RemoveImage();
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Unable to clear organization logo upload UI state.");
+        }
 
         _selectedLogoData = null;
         _uploadedLogoStorageObjectId = null;
@@ -150,33 +175,13 @@ public partial class CreateOrganization
         if (args.Action != StepAction.Complete)
             return Task.CompletedTask;
 
-        var errors = new List<string>();
-
-        switch (args.StepIndex)
-        {
-            case 0: // Basic Info
-                if (string.IsNullOrWhiteSpace(organization.FullName))
-                    errors.Add("Organization Name is required.");
-                break;
-
-            case 1: // Contact & Address
-                if (string.IsNullOrWhiteSpace(organization.Email))
-                    errors.Add("Contact Email is required.");
-                if (string.IsNullOrWhiteSpace(organization.Address))
-                    errors.Add("Street Address is required.");
-                if (organization.Postcode <= 0)
-                    errors.Add("Postal Code is required.");
-                if (string.IsNullOrWhiteSpace(organization.City))
-                    errors.Add("City is required.");
-                if (string.IsNullOrWhiteSpace(organization.Country))
-                    errors.Add("Country is required.");
-                break;
-        }
+        var errors = GetValidationErrorsForStep(args.StepIndex);
 
         if (errors.Count > 0)
         {
             args.Cancel = true;
-            Snackbar.Add(string.Join(" ", errors), Severity.Warning);
+            _errorStore.DisplayErrors(errors);
+            Snackbar.Add(string.Join(" ", errors.SelectMany(error => error.Value)), Severity.Warning);
         }
 
         return Task.CompletedTask;
@@ -194,4 +199,127 @@ public partial class CreateOrganization
                organization.Postcode > 0 &&
                !_isUploadingLogo;
     }
+
+    private bool ValidateOrganizationForm(bool displaySubmitError)
+    {
+        var errors = GetValidationErrors();
+        if (errors.Count == 0)
+        {
+            _errorStore.ClearErrors();
+            _submitState.Reset();
+            return true;
+        }
+
+        _errorStore.DisplayErrors(errors);
+        if (displaySubmitError)
+        {
+            _submitState.Fail("Please fix the validation errors below.");
+        }
+
+        return false;
+    }
+
+    private Dictionary<string, ICollection<string>> GetValidationErrorsForStep(int stepIndex)
+    {
+        var allErrors = GetValidationErrors();
+
+        return stepIndex switch
+        {
+            0 => allErrors
+                .Where(error => error.Key is nameof(CreateOrganizationDto.FullName) or nameof(CreateOrganizationDto.WebsiteUrl))
+                .ToDictionary(error => error.Key, error => error.Value),
+            1 => allErrors
+                .Where(error => error.Key is nameof(CreateOrganizationDto.Email)
+                    or nameof(CreateOrganizationDto.Address)
+                    or nameof(CreateOrganizationDto.Postcode)
+                    or nameof(CreateOrganizationDto.City)
+                    or nameof(CreateOrganizationDto.Country))
+                .ToDictionary(error => error.Key, error => error.Value),
+            _ => new Dictionary<string, ICollection<string>>()
+        };
+    }
+
+    private Dictionary<string, ICollection<string>> GetValidationErrors()
+    {
+        var errors = new Dictionary<string, ICollection<string>>();
+
+        AddRequiredError(errors, nameof(CreateOrganizationDto.FullName), organization.FullName, "Organization name is required.");
+        AddRequiredError(errors, nameof(CreateOrganizationDto.Email), organization.Email, "Contact email is required.");
+        AddRequiredError(errors, nameof(CreateOrganizationDto.Address), organization.Address, "Street address is required.");
+        AddRequiredError(errors, nameof(CreateOrganizationDto.City), organization.City, "City is required.");
+        AddRequiredError(errors, nameof(CreateOrganizationDto.Country), organization.Country, "Country is required.");
+
+        if (!string.IsNullOrWhiteSpace(organization.Email) && !IsLikelyEmailAddress(organization.Email))
+        {
+            AddError(errors, nameof(CreateOrganizationDto.Email), "Enter a valid contact email.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(organization.WebsiteUrl) && !IsHttpUrl(organization.WebsiteUrl))
+        {
+            AddError(errors, nameof(CreateOrganizationDto.WebsiteUrl), "Website URL must start with http:// or https://.");
+        }
+
+        if (organization.Postcode is null or <= 0)
+        {
+            AddError(errors, nameof(CreateOrganizationDto.Postcode), "Postal code is required.");
+        }
+
+        if (!acceptTerms)
+        {
+            AddError(errors, string.Empty, "Accept the terms and conditions.");
+        }
+
+        if (!confirmInformation)
+        {
+            AddError(errors, string.Empty, "Confirm that the information is accurate.");
+        }
+
+        return errors;
+    }
+
+    private static void AddRequiredError(
+        IDictionary<string, ICollection<string>> errors,
+        string fieldName,
+        string? value,
+        string message)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            AddError(errors, fieldName, message);
+        }
+    }
+
+    private static void AddError(IDictionary<string, ICollection<string>> errors, string fieldName, string message)
+    {
+        if (!errors.TryGetValue(fieldName, out var messages))
+        {
+            messages = new List<string>();
+            errors[fieldName] = messages;
+        }
+
+        messages.Add(message);
+    }
+
+    private static bool IsLikelyEmailAddress(string value)
+    {
+        var atIndex = value.IndexOf('@', StringComparison.Ordinal);
+        return atIndex > 0
+            && atIndex < value.Length - 1
+            && value.IndexOf('@', atIndex + 1) < 0
+            && value[(atIndex + 1)..].Contains('.', StringComparison.Ordinal);
+    }
+
+    private static bool IsHttpUrl(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
+    private static CreateOrganizationDto CreateEmptyOrganization() =>
+        new()
+        {
+            FullName = string.Empty,
+            Email = string.Empty,
+            Address = string.Empty,
+            City = string.Empty,
+            Country = string.Empty
+        };
 }
