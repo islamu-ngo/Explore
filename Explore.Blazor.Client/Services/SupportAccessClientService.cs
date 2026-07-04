@@ -373,8 +373,8 @@ public sealed class SupportAccessClientService(
             MapLinks(resource._links));
     }
 
-    private static IReadOnlyDictionary<string, SupportAccessLink> MapLinks(
-        IDictionary<string, HalLink>? links)
+    private static IReadOnlyDictionary<string, SupportAccessLink> MapLinks<TLink>(
+        IDictionary<string, TLink>? links)
     {
         return links is null
             ? SupportAccessLinkLookup.Empty
@@ -382,41 +382,14 @@ public sealed class SupportAccessClientService(
                 pair => pair.Key,
                 pair => new SupportAccessLink(
                     pair.Key,
-                    pair.Value.Href,
-                    pair.Value.Method,
-                    pair.Value.Title),
+                    ReadLinkProperty(pair.Value, nameof(HalLink.Href)) ?? string.Empty,
+                    ReadLinkProperty(pair.Value, nameof(HalLink.Method)),
+                    ReadLinkProperty(pair.Value, nameof(HalLink.Title))),
                 StringComparer.OrdinalIgnoreCase);
     }
 
-    private static IReadOnlyDictionary<string, SupportAccessLink> MapLinks(
-        IDictionary<string, Anonymous55>? links)
-    {
-        return links is null
-            ? SupportAccessLinkLookup.Empty
-            : links.ToDictionary(
-                pair => pair.Key,
-                pair => new SupportAccessLink(
-                    pair.Key,
-                    pair.Value.Href,
-                    pair.Value.Method,
-                    pair.Value.Title),
-                StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static IReadOnlyDictionary<string, SupportAccessLink> MapLinks(
-        IDictionary<string, Anonymous56>? links)
-    {
-        return links is null
-            ? SupportAccessLinkLookup.Empty
-            : links.ToDictionary(
-                pair => pair.Key,
-                pair => new SupportAccessLink(
-                    pair.Key,
-                    pair.Value.Href,
-                    pair.Value.Method,
-                    pair.Value.Title),
-                StringComparer.OrdinalIgnoreCase);
-    }
+    private static string? ReadLinkProperty<TLink>(TLink link, string propertyName)
+        => link?.GetType().GetProperty(propertyName)?.GetValue(link)?.ToString();
 
     private static SupportAccessSessionDto? MapSessionFromEnvelope(HalResourceOfSupportAccessSessionDto resource)
     {

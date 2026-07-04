@@ -8,9 +8,9 @@ using Explore.Application.DTOs.SupportAccess;
 using Explore.Application.Hateoas;
 using Explore.Blazor.Services;
 using Explore.Domain.Enums;
-using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
@@ -125,15 +125,12 @@ public sealed class BffSupportAccessEndpointsTests
             },
             services =>
             {
-                var antiforgery = Substitute.For<IAntiforgery>();
-                antiforgery.ValidateRequestAsync(Arg.Any<HttpContext>()).Returns(Task.CompletedTask);
-                services.RemoveAll<IAntiforgery>();
-                services.AddSingleton(antiforgery);
                 services.RemoveAll<IBffSupportAccessSessionStore>();
                 services.AddSingleton(store);
             });
         using var client = CreateClient(factory);
         using var request = CreateAuthenticatedRequest(HttpMethod.Post, "/bff/support-access/sessions", actorUserId);
+        AddSelfCallToken(factory, client, request, actorUserId);
         request.Content = new StringContent(
             $$"""
             {
@@ -208,10 +205,6 @@ public sealed class BffSupportAccessEndpointsTests
             },
             services =>
             {
-                var antiforgery = Substitute.For<IAntiforgery>();
-                antiforgery.ValidateRequestAsync(Arg.Any<HttpContext>()).Returns(Task.CompletedTask);
-                services.RemoveAll<IAntiforgery>();
-                services.AddSingleton(antiforgery);
                 services.RemoveAll<IBffSupportAccessSessionStore>();
                 services.AddSingleton(store);
             });
@@ -220,6 +213,7 @@ public sealed class BffSupportAccessEndpointsTests
             HttpMethod.Post,
             $"/bff/support-access/sessions/{sessionId:D}/force-stop",
             actorUserId);
+        AddSelfCallToken(factory, client, request, actorUserId);
         request.Content = JsonContent.Create(new ForceStopSupportAccessSessionRequestDto
         {
             EndReasonText = endReason
@@ -272,6 +266,34 @@ public sealed class BffSupportAccessEndpointsTests
             TestAuthHandler.CreateInstanceAdminHeaderValue(actorUserId ?? Guid.NewGuid()));
         return request;
     }
+
+    private static void AddSelfCallToken(
+        WebApplicationFactory<Program> factory,
+        HttpClient client,
+        HttpRequestMessage request,
+        Guid actorUserId)
+    {
+        var tokenService = factory.Services.GetRequiredService<IBffSelfCallTokenService>();
+        var issueContext = new DefaultHttpContext
+        {
+            RequestServices = factory.Services,
+            User = CreatePrincipal(actorUserId)
+        };
+        using var outboundRequest = new HttpRequestMessage(
+            request.Method,
+            new Uri(client.BaseAddress!, request.RequestUri!));
+        var token = tokenService.Issue(issueContext, outboundRequest)
+            ?? throw new InvalidOperationException("Could not issue BFF self-call token for test request.");
+
+        request.Headers.Add(BffSelfCallHeaders.Token, token);
+    }
+
+    private static ClaimsPrincipal CreatePrincipal(Guid actorUserId) => new(new ClaimsIdentity(
+        [
+            new Claim("sub", actorUserId.ToString("D")),
+            new Claim(ClaimTypes.NameIdentifier, actorUserId.ToString("D"))
+        ],
+        "Test"));
 
     private static HttpResponseMessage JsonResponse<T>(T payload) => new(HttpStatusCode.OK)
     {

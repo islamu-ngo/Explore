@@ -3,12 +3,54 @@
 
 .support-access-console {
     display: block;
+    min-inline-size: 0;
 }
 
 .support-access-console__header,
 .support-access-console__active-session-content,
 .support-access-console__target-row {
-    gap: 1rem;
+    display: flex;
+    gap: var(--isl-space-4);
+    min-inline-size: 0;
+}
+
+.support-access-console__header {
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.support-access-console__header-copy,
+.support-access-console__active-session-summary {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+}
+
+.support-access-console__header-action,
+.support-access-console__target-action,
+.support-access-console__stop-action {
+    flex: 0 0 auto;
+}
+
+.support-access-console__active-session-content {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.support-access-console__active-session-actions {
+    display: flex;
+    flex: 0 1 22rem;
+    align-items: center;
+    gap: var(--isl-space-2);
+    min-inline-size: 16rem;
+}
+
+.support-access-console__active-session-actions ::deep .mud-input-control {
+    flex: 1 1 12rem;
+    min-inline-size: 0;
+}
+
+.support-access-console__target-row {
+    align-items: flex-end;
 }
 
 .support-access-console__live-region {
@@ -21,27 +63,34 @@
 }
 
 .support-access-console__loading {
-    padding-block: 3rem;
+    padding-block: calc(var(--isl-space-6) * 2);
 }
 
 .support-access-console__alert,
 .support-access-console__active-session {
-    margin-block-end: 1rem;
+    margin-block-end: var(--isl-space-4);
+}
+
+.support-access-console__active-session ::deep .mud-alert-message {
+    inline-size: 100%;
+    min-inline-size: 0;
 }
 
 .support-access-console__panel {
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: var(--mud-default-border-radius);
-    padding: 1rem;
+    padding: var(--isl-space-4);
     background: var(--mud-palette-surface);
+    min-inline-size: 0;
 }
 
 .support-access-console__panel-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    margin-block-end: 1rem;
+    gap: var(--isl-space-4);
+    margin-block-end: var(--isl-space-4);
+    min-inline-size: 0;
 }
 
 .support-access-console__tenant-select {
@@ -50,13 +99,38 @@
 }
 
 .support-access-console__actions {
-    margin-block-start: 1rem;
+    margin-block-start: var(--isl-space-4);
 }
 
-.support-access-console__table {
+.support-access-console__table-shell {
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: var(--mud-default-border-radius);
     overflow: hidden;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+}
+
+.support-access-console__table-shell ::deep .mud-table-root,
+.support-access-console__table-shell ::deep .mud-table-container,
+.support-access-console__table-shell ::deep table {
+    max-inline-size: 100%;
+}
+
+.support-access-console__table-shell ::deep .mud-table-cell {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.support-access-console__table-shell ::deep .mud-table-cell > * {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+}
+
+.support-access-console__table-shell ::deep .mud-stack {
+    flex-wrap: wrap;
 }
 
 @media (max-width: 59.997em) {
@@ -67,7 +141,55 @@
         flex-direction: column;
     }
 
+    .support-access-console__active-session-content {
+        justify-content: flex-start;
+    }
+
+    .support-access-console__active-session-actions {
+        flex: 0 1 auto;
+        inline-size: 100%;
+        min-inline-size: 0;
+    }
+
     .support-access-console__panel {
-        padding: 0.875rem;
+        padding: var(--isl-space-3);
+    }
+}
+
+@media (max-width: 37.5em) {
+    .support-access-console__active-session-content,
+    .support-access-console__active-session-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: var(--isl-space-3);
+    }
+
+    .support-access-console__header-action,
+    .support-access-console__target-action,
+    .support-access-console__stop-action {
+        inline-size: 100%;
+    }
+
+    .support-access-console__header-action ::deep .mud-button-root,
+    .support-access-console__target-action ::deep .mud-button-root,
+    .support-access-console__stop-action ::deep .mud-button-root {
+        inline-size: 100%;
+    }
+
+    .support-access-console__active-session-actions ::deep .mud-input-control {
+        inline-size: 100%;
+    }
+
+    .support-access-console__table-shell ::deep .mud-table-cell {
+        display: grid;
+        grid-template-columns: minmax(4.75rem, 36%) minmax(0, 1fr);
+        align-items: start;
+        column-gap: var(--isl-space-3);
+        inline-size: 100%;
+    }
+
+    .support-access-console__table-shell ::deep .mud-table-cell::before {
+        min-inline-size: 0;
+        overflow-wrap: break-word;
     }
 }

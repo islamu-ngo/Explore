@@ -10,8 +10,8 @@
 @inject IAccessibilityAnnouncerService AccessibilityAnnouncerService
 
 <div class="settings-section tenant-support-evidence">
-    <div class="settings-section-header">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="tenant-support-evidence__header">
+    <div class="settings-section-header tenant-support-evidence__header">
+        <div class="tenant-support-evidence__header-content">
             <div>
                 <MudText Typo="Typo.h5" HtmlTag="h2" Style="font-weight: 700;">Support Access Evidence</MudText>
                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
@@ -26,7 +26,7 @@
                        OnClick="RefreshFromClickAsync">
                 Refresh
             </AppButton>
-        </MudStack>
+        </div>
     </div>
 
     <div class="tenant-support-evidence__live-region" aria-live="polite" aria-atomic="true">@_announcement</div>
@@ -92,49 +92,50 @@
                 }
                 else
                 {
-                    <MudTable T="SupportAccessSessionResource"
-                              Items="_sessions.Items"
-                              Hover="true"
-                              Dense="true"
-                              Elevation="0"
-                              Breakpoint="Breakpoint.Sm"
-                              Class="tenant-support-evidence__table">
-                        <HeaderContent>
-                            <MudTh>Status</MudTh>
-                            <MudTh>Mode</MudTh>
-                            <MudTh>Started</MudTh>
-                            <MudTh>Ended</MudTh>
-                            <MudTh>Reason</MudTh>
-                            <MudTh>Ticket</MudTh>
-                            <MudTh>Audit</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Status">
-                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetSessionColor(context.Session)">
-                                    @GetStatusLabel(context.Session)
-                                </MudChip>
-                            </MudTd>
-                            <MudTd DataLabel="Mode">@GetModeLabel(context.Session)</MudTd>
-                            <MudTd DataLabel="Started">@FormatDate(context.Session.StartedAtUtc)</MudTd>
-                            <MudTd DataLabel="Ended">@FormatDate(context.Session.EndedAtUtc)</MudTd>
-                            <MudTd DataLabel="Reason">@FormatText(context.Session.ReasonCode)</MudTd>
-                            <MudTd DataLabel="Ticket">@FormatText(context.Session.TicketReference)</MudTd>
-                            <MudTd DataLabel="Audit">
-                                @if (context.CanViewAudit)
-                                {
-                                    <AppIconButton Icon="@Icons.Material.Filled.ReceiptLong"
-                                                   Color="Color.Primary"
-                                                   Size="Size.Small"
-                                                   OnClick="@(() => SelectAuditAsync(context))"
-                                                   aria-label="@($"View audit events for support session {FormatShortId(context.Session.Id)}")" />
-                                }
-                                else
-                                {
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Unavailable</MudText>
-                                }
-                            </MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                    <div class="tenant-support-evidence__table">
+                        <MudTable T="SupportAccessSessionResource"
+                                  Items="_sessions.Items"
+                                  Hover="true"
+                                  Dense="true"
+                                  Elevation="0"
+                                  Breakpoint="Breakpoint.Sm">
+                            <HeaderContent>
+                                <MudTh>Status</MudTh>
+                                <MudTh>Mode</MudTh>
+                                <MudTh>Started</MudTh>
+                                <MudTh>Ended</MudTh>
+                                <MudTh>Reason</MudTh>
+                                <MudTh>Ticket</MudTh>
+                                <MudTh>Audit</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Status">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetSessionColor(context.Session)">
+                                        @GetStatusLabel(context.Session)
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Mode">@GetModeLabel(context.Session)</MudTd>
+                                <MudTd DataLabel="Started">@FormatDate(context.Session.StartedAtUtc)</MudTd>
+                                <MudTd DataLabel="Ended">@FormatDate(context.Session.EndedAtUtc)</MudTd>
+                                <MudTd DataLabel="Reason">@FormatText(context.Session.ReasonCode)</MudTd>
+                                <MudTd DataLabel="Ticket">@FormatText(context.Session.TicketReference)</MudTd>
+                                <MudTd DataLabel="Audit">
+                                    @if (context.CanViewAudit)
+                                    {
+                                        <AppIconButton Icon="@Icons.Material.Filled.ReceiptLong"
+                                                       Color="Color.Primary"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => SelectAuditAsync(context))"
+                                                       aria-label="@($"View audit events for support session {FormatShortId(context.Session.Id)}")" />
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Unavailable</MudText>
+                                    }
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </div>
                 }
             </section>
 
@@ -169,30 +170,31 @@
                 }
                 else
                 {
-                    <MudTable T="SupportAccessAuditEventResource"
-                              Items="_auditEvents.Items"
-                              Hover="true"
-                              Dense="true"
-                              Elevation="0"
-                              Breakpoint="Breakpoint.Sm"
-                              Class="tenant-support-evidence__table">
-                        <HeaderContent>
-                            <MudTh>Time</MudTh>
-                            <MudTh>Event</MudTh>
-                            <MudTh>Request</MudTh>
-                            <MudTh>Action</MudTh>
-                            <MudTh>Outcome</MudTh>
-                            <MudTh>Status</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Time">@FormatDate(context.Event.OccurredAtUtc)</MudTd>
-                            <MudTd DataLabel="Event">@FormatText(context.Event.EventTypeName)</MudTd>
-                            <MudTd DataLabel="Request">@FormatRequest(context.Event)</MudTd>
-                            <MudTd DataLabel="Action">@FormatText(context.Event.Action)</MudTd>
-                            <MudTd DataLabel="Outcome">@FormatText(context.Event.Outcome)</MudTd>
-                            <MudTd DataLabel="Status">@FormatStatusCode(context.Event.HttpStatusCode)</MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                    <div class="tenant-support-evidence__table">
+                        <MudTable T="SupportAccessAuditEventResource"
+                                  Items="_auditEvents.Items"
+                                  Hover="true"
+                                  Dense="true"
+                                  Elevation="0"
+                                  Breakpoint="Breakpoint.Sm">
+                            <HeaderContent>
+                                <MudTh>Time</MudTh>
+                                <MudTh>Event</MudTh>
+                                <MudTh>Request</MudTh>
+                                <MudTh>Action</MudTh>
+                                <MudTh>Outcome</MudTh>
+                                <MudTh>Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Time">@FormatDate(context.Event.OccurredAtUtc)</MudTd>
+                                <MudTd DataLabel="Event">@FormatText(context.Event.EventTypeName)</MudTd>
+                                <MudTd DataLabel="Request">@FormatRequest(context.Event)</MudTd>
+                                <MudTd DataLabel="Action">@FormatText(context.Event.Action)</MudTd>
+                                <MudTd DataLabel="Outcome">@FormatText(context.Event.Outcome)</MudTd>
+                                <MudTd DataLabel="Status">@FormatStatusCode(context.Event.HttpStatusCode)</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </div>
                 }
             </section>
         </MudStack>
@@ -201,6 +203,9 @@
 
 @code {
     private const int SessionLimit = 100;
+
+    [Parameter]
+    public Guid? TenantId { get; set; }
 
     private Guid? _tenantId;
     private SupportAccessSessionCollection _sessions = SupportAccessSessionCollection.Empty();
@@ -230,10 +235,17 @@
 
         try
         {
-            var status = await TenantOnboardingService.GetStatusAsync();
-            _tenantId = status?.TenantId is { } tenantId && tenantId != Guid.Empty
-                ? tenantId
-                : null;
+            if (TenantId is { } suppliedTenantId && suppliedTenantId != Guid.Empty)
+            {
+                _tenantId = suppliedTenantId;
+            }
+            else
+            {
+                var status = await TenantOnboardingService.GetStatusAsync();
+                _tenantId = status?.TenantId is { } tenantId && tenantId != Guid.Empty
+                    ? tenantId
+                    : null;
+            }
         }
         catch (Exception ex)
         {

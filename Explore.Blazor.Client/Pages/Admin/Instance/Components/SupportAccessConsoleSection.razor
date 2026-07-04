@@ -13,22 +13,24 @@
 
 <div class="settings-section support-access-console">
     <div class="settings-section-header">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="support-access-console__header">
-            <div>
+        <div class="support-access-console__header">
+            <div class="support-access-console__header-copy">
                 <MudText Typo="Typo.h5" HtmlTag="h2" Style="font-weight: 700;">Support Access</MudText>
                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
                     Start bounded tenant support sessions, review activity, and revoke active access.
                 </MudText>
             </div>
-            <AppButton Variant="Variant.Outlined"
-                       Color="Color.Primary"
-                       Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Refresh"
-                       Disabled="_isLoading || _isLoadingSessions"
-                       OnClick="RefreshFromClickAsync">
-                Refresh
-            </AppButton>
-        </MudStack>
+            <div class="support-access-console__header-action">
+                <AppButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           Disabled="_isLoading || _isLoadingSessions"
+                           OnClick="RefreshFromClickAsync">
+                    Refresh
+                </AppButton>
+            </div>
+        </div>
     </div>
 
     <div class="support-access-console__live-region" aria-live="polite" aria-atomic="true">@_announcement</div>
@@ -61,14 +63,14 @@
                 <MudAlert Severity="@(currentSession.AllowsWrites == true ? Severity.Error : Severity.Warning)"
                           Variant="Variant.Outlined"
                           Class="support-access-console__active-session">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="support-access-console__active-session-content">
-                        <div>
+                    <div class="support-access-console__active-session-content">
+                        <div class="support-access-console__active-session-summary">
                             <MudText Typo="Typo.subtitle2">Current support session</MudText>
                             <MudText Typo="Typo.body2">
                                 @GetModeLabel(currentSession) for tenant @FormatShortId(currentSession.TargetTenantId) · @GetExpiryText(currentSession)
                             </MudText>
                         </div>
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <div class="support-access-console__active-session-actions">
                             <MudTextField T="string"
                                           @bind-Value="_currentStopReason"
                                           Variant="Variant.Outlined"
@@ -76,21 +78,23 @@
                                           MaxLength="@MaxEndReasonTextLength"
                                           Placeholder="End reason"
                                           aria-label="Current support access end reason" />
-                            <AppButton Variant="Variant.Outlined"
-                                       Color="@(currentSession.AllowsWrites == true ? Color.Error : Color.Warning)"
-                                       Size="Size.Small"
-                                       StartIcon="@Icons.Material.Filled.Logout"
-                                       Disabled="SupportAccessClientService.IsStopping"
-                                       OnClick="StopCurrentFromClickAsync">
-                                @(SupportAccessClientService.IsStopping ? "Stopping" : "Stop")
-                            </AppButton>
-                        </MudStack>
-                    </MudStack>
+                            <div class="support-access-console__stop-action">
+                                <AppButton Variant="Variant.Outlined"
+                                           Color="@(currentSession.AllowsWrites == true ? Color.Error : Color.Warning)"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Logout"
+                                           Disabled="SupportAccessClientService.IsStopping"
+                                           OnClick="StopCurrentFromClickAsync">
+                                    @(SupportAccessClientService.IsStopping ? "Stopping" : "Stop")
+                                </AppButton>
+                            </div>
+                        </div>
+                    </div>
                 </MudAlert>
             }
 
             <section class="support-access-console__panel" aria-labelledby="support-access-target-heading">
-                <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2" Class="support-access-console__target-row">
+                <div class="support-access-console__target-row">
                     <MudSelect T="string"
                                Label="Target tenant"
                                Value="_selectedTenantIdText"
@@ -106,14 +110,16 @@
                             </MudSelectItem>
                         }
                     </MudSelect>
-                    <AppButton Variant="Variant.Outlined"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.ManageSearch"
-                               Disabled="@(!SelectedTenantId.HasValue || _isLoadingSessions)"
-                               OnClick="LoadSessionsFromClickAsync">
-                        Load Sessions
-                    </AppButton>
-                </MudStack>
+                    <div class="support-access-console__target-action">
+                        <AppButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.ManageSearch"
+                                   Disabled="@(!SelectedTenantId.HasValue || _isLoadingSessions)"
+                                   OnClick="LoadSessionsFromClickAsync">
+                            Load Sessions
+                        </AppButton>
+                    </div>
+                </div>
             </section>
 
             <section class="support-access-console__panel" aria-labelledby="support-access-start-heading">
@@ -232,56 +238,59 @@
                 }
                 else
                 {
-                    <MudTable T="SupportAccessSessionResource"
-                              Items="_sessions.Items"
-                              Hover="true"
-                              Dense="true"
-                              Elevation="0"
-                              Class="support-access-console__table">
-                        <HeaderContent>
-                            <MudTh>Status</MudTh>
-                            <MudTh>Mode</MudTh>
-                            <MudTh>Started</MudTh>
-                            <MudTh>Expires</MudTh>
-                            <MudTh>Reason</MudTh>
-                            <MudTh>Ticket</MudTh>
-                            <MudTh>Actions</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Status">
-                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetSessionColor(context.Session)">
-                                    @GetStatusLabel(context.Session)
-                                </MudChip>
-                            </MudTd>
-                            <MudTd DataLabel="Mode">@GetModeLabel(context.Session)</MudTd>
-                            <MudTd DataLabel="Started">@FormatDate(context.Session.StartedAtUtc)</MudTd>
-                            <MudTd DataLabel="Expires">@FormatDate(context.Session.ExpiresAtUtc)</MudTd>
-                            <MudTd DataLabel="Reason">@context.Session.ReasonCode</MudTd>
-                            <MudTd DataLabel="Ticket">@FormatText(context.Session.TicketReference)</MudTd>
-                            <MudTd DataLabel="Actions">
-                                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                                    @if (context.CanViewAudit)
-                                    {
-                                        <AppIconButton Icon="@Icons.Material.Filled.ReceiptLong"
-                                                       Color="Color.Primary"
+                    <div class="support-access-console__table-shell">
+                        <MudTable T="SupportAccessSessionResource"
+                                  Items="_sessions.Items"
+                                  Hover="true"
+                                  Dense="true"
+                                  Elevation="0"
+                                  Breakpoint="Breakpoint.Sm"
+                                  Class="support-access-console__table">
+                            <HeaderContent>
+                                <MudTh>Status</MudTh>
+                                <MudTh>Mode</MudTh>
+                                <MudTh>Started</MudTh>
+                                <MudTh>Expires</MudTh>
+                                <MudTh>Reason</MudTh>
+                                <MudTh>Ticket</MudTh>
+                                <MudTh>Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Status">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetSessionColor(context.Session)">
+                                        @GetStatusLabel(context.Session)
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Mode">@GetModeLabel(context.Session)</MudTd>
+                                <MudTd DataLabel="Started">@FormatDate(context.Session.StartedAtUtc)</MudTd>
+                                <MudTd DataLabel="Expires">@FormatDate(context.Session.ExpiresAtUtc)</MudTd>
+                                <MudTd DataLabel="Reason">@context.Session.ReasonCode</MudTd>
+                                <MudTd DataLabel="Ticket">@FormatText(context.Session.TicketReference)</MudTd>
+                                <MudTd DataLabel="Actions">
+                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                        @if (context.CanViewAudit)
+                                        {
+                                            <AppIconButton Icon="@Icons.Material.Filled.ReceiptLong"
+                                                           Color="Color.Primary"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => SelectAuditAsync(context))"
+                                                           aria-label="@($"View audit events for support session {FormatShortId(context.Session.Id)}")" />
+                                        }
+                                        @if (context.CanForceStop)
+                                        {
+                                            <AppButton Variant="Variant.Outlined"
+                                                       Color="Color.Error"
                                                        Size="Size.Small"
-                                                       OnClick="@(() => SelectAuditAsync(context))"
-                                                       aria-label="@($"View audit events for support session {FormatShortId(context.Session.Id)}")" />
-                                    }
-                                    @if (context.CanForceStop)
-                                    {
-                                        <AppButton Variant="Variant.Outlined"
-                                                   Color="Color.Error"
-                                                   Size="Size.Small"
-                                                   StartIcon="@Icons.Material.Filled.Block"
-                                                   OnClick="@(_ => OpenForceStopDialog(context))">
-                                            Force-stop
-                                        </AppButton>
-                                    }
-                                </MudStack>
-                            </MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                                                       StartIcon="@Icons.Material.Filled.Block"
+                                                       OnClick="@(_ => OpenForceStopDialog(context))">
+                                                Force-stop
+                                            </AppButton>
+                                        }
+                                    </MudStack>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </div>
                 }
             </section>
 
@@ -316,29 +325,32 @@
                 }
                 else
                 {
-                    <MudTable T="SupportAccessAuditEventResource"
-                              Items="_auditEvents.Items"
-                              Hover="true"
-                              Dense="true"
-                              Elevation="0"
-                              Class="support-access-console__table">
-                        <HeaderContent>
-                            <MudTh>Time</MudTh>
-                            <MudTh>Event</MudTh>
-                            <MudTh>Request</MudTh>
-                            <MudTh>Action</MudTh>
-                            <MudTh>Outcome</MudTh>
-                            <MudTh>Status</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Time">@FormatDate(context.Event.OccurredAtUtc)</MudTd>
-                            <MudTd DataLabel="Event">@FormatText(context.Event.EventTypeName)</MudTd>
-                            <MudTd DataLabel="Request">@FormatRequest(context.Event)</MudTd>
-                            <MudTd DataLabel="Action">@FormatText(context.Event.Action)</MudTd>
-                            <MudTd DataLabel="Outcome">@FormatText(context.Event.Outcome)</MudTd>
-                            <MudTd DataLabel="Status">@FormatStatusCode(context.Event.HttpStatusCode)</MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                    <div class="support-access-console__table-shell">
+                        <MudTable T="SupportAccessAuditEventResource"
+                                  Items="_auditEvents.Items"
+                                  Hover="true"
+                                  Dense="true"
+                                  Elevation="0"
+                                  Breakpoint="Breakpoint.Sm"
+                                  Class="support-access-console__table">
+                            <HeaderContent>
+                                <MudTh>Time</MudTh>
+                                <MudTh>Event</MudTh>
+                                <MudTh>Request</MudTh>
+                                <MudTh>Action</MudTh>
+                                <MudTh>Outcome</MudTh>
+                                <MudTh>Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Time">@FormatDate(context.Event.OccurredAtUtc)</MudTd>
+                                <MudTd DataLabel="Event">@FormatText(context.Event.EventTypeName)</MudTd>
+                                <MudTd DataLabel="Request">@FormatRequest(context.Event)</MudTd>
+                                <MudTd DataLabel="Action">@FormatText(context.Event.Action)</MudTd>
+                                <MudTd DataLabel="Outcome">@FormatText(context.Event.Outcome)</MudTd>
+                                <MudTd DataLabel="Status">@FormatStatusCode(context.Event.HttpStatusCode)</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </div>
                 }
             </section>
         </MudStack>

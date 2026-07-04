@@ -5,7 +5,10 @@
     display: block;
 }
 
-.tenant-support-evidence__header {
+.tenant-support-evidence__header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 1rem;
 }
 
@@ -58,6 +61,27 @@
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: var(--mud-default-border-radius);
     overflow: hidden;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+}
+
+.tenant-support-evidence__table ::deep .mud-table-root,
+.tenant-support-evidence__table ::deep .mud-table-container,
+.tenant-support-evidence__table ::deep table {
+    max-inline-size: 100%;
+}
+
+.tenant-support-evidence__table ::deep .mud-table-cell {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.tenant-support-evidence__table ::deep .mud-table-cell > * {
+    min-inline-size: 0;
+    max-inline-size: 100%;
 }
 
 @media (max-width: 59.997em) {
@@ -77,7 +101,40 @@
 }
 
 @media (max-width: 37.5em) {
+    .tenant-support-evidence__header-content {
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+
+    .tenant-support-evidence__header ::deep .mud-button-root {
+        inline-size: fit-content;
+    }
+
     .tenant-support-evidence__summary {
         grid-template-columns: 1fr;
+    }
+
+    .tenant-support-evidence__table ::deep .mud-table-cell {
+        display: grid !important;
+        grid-template-columns: minmax(4.75rem, 36%) minmax(0, 1fr);
+        align-items: start;
+        column-gap: var(--isl-space-3);
+        inline-size: 100%;
+        text-align: start !important;
+    }
+
+    .tenant-support-evidence__table ::deep .mud-table-cell::before {
+        min-inline-size: 0;
+        overflow-wrap: break-word;
+        position: static !important;
+        text-align: start;
+        white-space: normal;
+        width: auto !important;
+    }
+
+    .tenant-support-evidence__table ::deep .mud-table-cell > * {
+        justify-self: start;
+        text-align: start;
     }
 }

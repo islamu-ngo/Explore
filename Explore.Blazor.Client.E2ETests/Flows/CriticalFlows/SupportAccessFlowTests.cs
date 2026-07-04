@@ -3,9 +3,9 @@
 
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Explore.Application.Constants;
 using Explore.Blazor.Client.E2ETests.Fixtures;
 using Explore.Blazor.Client.E2ETests.Seeds;
-using Explore.Domain.Constants;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
@@ -54,29 +54,32 @@ public sealed class SupportAccessFlowTests(
         var page = await playwright.CreatePageAsync(nameof(InstanceAdminSupportAccess_StartsAuditedSessionStopsAndCapturesResponsiveScreenshots));
         try
         {
-            await BffCookieAuthHelper.LoginAsTestAdminAsync(page, appHost, "/auth/status");
-            var syncedBrowserUserId = await SyncBrowserUserAsync(page);
-            var currentUserSnapshot = await SnapshotApiCurrentUserAsync(page);
+            await BffCookieAuthHelper.LoginAsTestAdminAsync(page, appHost, TenantPath(seed, "/auth/status"));
+            var syncedBrowserUserId = await SyncBrowserUserAsync(page, seed);
+            var currentUserSnapshot = await SnapshotApiCurrentUserAsync(page, seed);
             var apiResolvedUserId = currentUserSnapshot.ResolvedUserId ??
                 throw new InvalidOperationException(
                     $"API current-user snapshot did not resolve a user id. Snapshot={currentUserSnapshot}");
             await using (var context = appHost.CreateDbContext())
             {
                 await SupportAccessScenarioSeed.GrantInstanceAdminAsync(context, syncedBrowserUserId);
+                await SupportAccessScenarioSeed.GrantTenantAdminAsync(context, seed.TenantId, syncedBrowserUserId);
                 if (apiResolvedUserId != syncedBrowserUserId)
                 {
                     await SupportAccessScenarioSeed.GrantInstanceAdminAsync(context, apiResolvedUserId);
+                    await SupportAccessScenarioSeed.GrantTenantAdminAsync(context, seed.TenantId, apiResolvedUserId);
                 }
             }
 
-            await InvalidateApiAdminCacheAsync(page, syncedBrowserUserId);
+            await InvalidateApiAdminCacheAsync(page, seed, syncedBrowserUserId);
             if (apiResolvedUserId != syncedBrowserUserId)
             {
-                await InvalidateApiAdminCacheAsync(page, apiResolvedUserId);
+                await InvalidateApiAdminCacheAsync(page, seed, apiResolvedUserId);
             }
 
             await AssertAdminAuthorityAsync(page, seed, adminProviderSubjects, syncedBrowserUserId, currentUserSnapshot);
-            await OpenSupportAccessConsoleAsync(page);
+            await AssertTenantAdminAuthorityAsync(page, seed);
+            await OpenSupportAccessConsoleAsync(page, seed);
             await StartSupportAccessAsync(page);
 
             var activeSessionId = await AssertCurrentSupportSessionAsync(page, seed);
@@ -84,8 +87,11 @@ public sealed class SupportAccessFlowTests(
             await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page, appHost.BlazorBaseUrl);
             await CaptureResponsiveScreenshotsAsync(page);
 
-            await StopCurrentSupportAccessAsync(page, activeSessionId);
-            await AssertNoCurrentSupportSessionAsync(page);
+            await StopCurrentSupportAccessAsync(page, seed, activeSessionId);
+            await AssertNoCurrentSupportSessionAsync(page, seed);
+            await OpenTenantSupportEvidenceAsync(page, seed);
+            await AssertTenantSupportEvidenceAsync(page, activeSessionId);
+            await CaptureTenantEvidenceResponsiveScreenshotsAsync(page);
             await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page, appHost.BlazorBaseUrl);
         }
         finally
@@ -96,9 +102,46 @@ public sealed class SupportAccessFlowTests(
         }
     }
 
-    private async Task<Guid> SyncBrowserUserAsync(IPage page)
+    private string TenantUrl(SupportAccessScenarioSeed.Result seed, string path) =>
+        $"{appHost.BlazorBaseUrl}{TenantPath(seed, path)}";
+
+    private static string TenantPath(SupportAccessScenarioSeed.Result seed, string path)
     {
-        var response = await page.Context.APIRequest.PostAsync($"{appHost.BlazorBaseUrl}/api/user/sync");
+        var normalizedPath = path.StartsWith('/') ? path : "/" + path;
+        return normalizedPath;
+    }
+
+    private async Task AssertTenantAdminAuthorityAsync(
+        IPage page,
+        SupportAccessScenarioSeed.Result seed)
+    {
+        var response = await page.Context.APIRequest.GetAsync(TenantUrl(seed, "/api/user/admin-authority"));
+        var content = await response.TextAsync();
+        if (response.Status != (int)HttpStatusCode.OK)
+        {
+            throw new InvalidOperationException(
+                $"Expected admin-authority to return OK for tenant-admin proof. Status={response.Status}. Body={content}");
+        }
+
+        using var payload = JsonDocument.Parse(content);
+        var root = payload.RootElement;
+        var isTenantAdmin = root.TryGetProperty("adminTenantIds", out var tenantIds)
+            && tenantIds.ValueKind == JsonValueKind.Array
+            && tenantIds.EnumerateArray().Any(value => value.ValueKind == JsonValueKind.String
+                && Guid.TryParse(value.GetString(), out var tenantId)
+                && tenantId == seed.TenantId);
+
+        if (!isTenantAdmin)
+        {
+            throw new InvalidOperationException(
+                "Expected admin-authority to prove tenant-admin authority. " +
+                $"ExpectedTenantId={seed.TenantId}. Body={content}");
+        }
+    }
+
+    private async Task<Guid> SyncBrowserUserAsync(IPage page, SupportAccessScenarioSeed.Result seed)
+    {
+        var response = await page.Context.APIRequest.PostAsync(TenantUrl(seed, "/api/user/sync"));
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.OK)
         {
@@ -116,10 +159,13 @@ public sealed class SupportAccessFlowTests(
         throw new InvalidOperationException($"Browser user sync response did not include a user id. Body={content}");
     }
 
-    private async Task InvalidateApiAdminCacheAsync(IPage page, Guid userId)
+    private async Task InvalidateApiAdminCacheAsync(
+        IPage page,
+        SupportAccessScenarioSeed.Result seed,
+        Guid userId)
     {
         var response = await page.Context.APIRequest.PostAsync(
-            $"{appHost.BlazorBaseUrl}/api/_internal/admin-cache/users/{userId:D}/invalidate");
+            TenantUrl(seed, $"/api/_internal/admin-cache/users/{userId:D}/invalidate"));
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.NoContent)
         {
@@ -128,10 +174,12 @@ public sealed class SupportAccessFlowTests(
         }
     }
 
-    private async Task<ApiCurrentUserSnapshot> SnapshotApiCurrentUserAsync(IPage page)
+    private async Task<ApiCurrentUserSnapshot> SnapshotApiCurrentUserAsync(
+        IPage page,
+        SupportAccessScenarioSeed.Result seed)
     {
         var response = await page.Context.APIRequest.PostAsync(
-            $"{appHost.BlazorBaseUrl}/api/_internal/admin-cache/current-user/snapshot");
+            TenantUrl(seed, "/api/_internal/admin-cache/current-user/snapshot"));
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.OK)
         {
@@ -150,7 +198,7 @@ public sealed class SupportAccessFlowTests(
         Guid syncedBrowserUserId,
         ApiCurrentUserSnapshot currentUserSnapshot)
     {
-        var response = await page.Context.APIRequest.GetAsync($"{appHost.BlazorBaseUrl}/api/user/admin-authority");
+        var response = await page.Context.APIRequest.GetAsync(TenantUrl(seed, "/api/user/admin-authority"));
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.OK)
         {
@@ -182,6 +230,7 @@ public sealed class SupportAccessFlowTests(
     {
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        httpClient.DefaultRequestHeaders.Add(TenantHeaderNames.TenantSlug, seed.TenantSlug);
 
         using var response = await httpClient.GetAsync($"{appHost.ApiBaseUrl}/api/user/admin-authority");
         var content = await response.Content.ReadAsStringAsync();
@@ -215,9 +264,9 @@ public sealed class SupportAccessFlowTests(
         }
     }
 
-    private async Task OpenSupportAccessConsoleAsync(IPage page)
+    private async Task OpenSupportAccessConsoleAsync(IPage page, SupportAccessScenarioSeed.Result seed)
     {
-        await page.GotoAsync($"{appHost.BlazorBaseUrl}/admin/instance/settings", new PageGotoOptions
+        await page.GotoAsync(TenantUrl(seed, "/admin/instance/settings"), new PageGotoOptions
         {
             Timeout = BrowserTimeoutMilliseconds,
             WaitUntil = WaitUntilState.DOMContentLoaded
@@ -241,26 +290,45 @@ public sealed class SupportAccessFlowTests(
         {
             try
             {
-                var supportAccessLink = page.Locator(".settings-sidebar")
-                    .GetByText("Support Access", new LocatorGetByTextOptions { Exact = true })
+                var supportAccessLink = page.Locator(".settings-sidebar .mud-list-item")
+                    .Filter(new LocatorFilterOptions { HasTextString = "Support Access" })
                     .First;
 
                 await supportAccessLink.ScrollIntoViewIfNeededAsync(new LocatorScrollIntoViewIfNeededOptions
                 {
                     Timeout = BrowserTimeoutMilliseconds
                 });
-                await supportAccessLink.ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+                await supportAccessLink.ClickAsync(new LocatorClickOptions
+                {
+                    Timeout = BrowserTimeoutMilliseconds,
+                    Force = attempt > 1
+                });
 
-                await page.Locator(".settings-sidebar .settings-nav-active")
-                    .GetByText("Support Access", new LocatorGetByTextOptions { Exact = true })
-                    .WaitForAsync(new LocatorWaitForOptions { Timeout = 5_000 });
-
-                return;
+                if (await TryWaitForSupportAccessConsoleAsync(page, 5_000))
+                {
+                    return;
+                }
             }
             catch (PlaywrightException) when (attempt < maxAttempts)
             {
                 await page.WaitForTimeoutAsync(250);
             }
+        }
+
+        await WaitForSupportAccessConsoleAsync(page);
+    }
+
+    private static async Task<bool> TryWaitForSupportAccessConsoleAsync(IPage page, float timeoutMilliseconds)
+    {
+        try
+        {
+            await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { NameString = "Support Access" })
+                .WaitForAsync(new LocatorWaitForOptions { Timeout = timeoutMilliseconds });
+            return true;
+        }
+        catch (Exception ex) when (ex is PlaywrightException or TimeoutException)
+        {
+            return false;
         }
     }
 
@@ -300,7 +368,7 @@ public sealed class SupportAccessFlowTests(
         IPage page,
         SupportAccessScenarioSeed.Result seed)
     {
-        var response = await page.Context.APIRequest.GetAsync($"{appHost.BlazorBaseUrl}/bff/support-access/current");
+        var response = await page.Context.APIRequest.GetAsync(TenantUrl(seed, "/bff/support-access/current"));
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.OK)
         {
@@ -357,7 +425,124 @@ public sealed class SupportAccessFlowTests(
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
     }
 
-    private async Task StopCurrentSupportAccessAsync(IPage page, Guid activeSessionId)
+    private async Task OpenTenantSupportEvidenceAsync(IPage page, SupportAccessScenarioSeed.Result seed)
+    {
+        await page.SetViewportSizeAsync(1280, 900);
+        await page.GotoAsync(TenantUrl(seed, "/admin/instance/settings"), new PageGotoOptions
+        {
+            Timeout = BrowserTimeoutMilliseconds,
+            WaitUntil = WaitUntilState.DOMContentLoaded
+        });
+
+        await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions
+        {
+            NameRegex = new Regex("^(Administration|Instance Administration|Tenant Administration)$")
+        }).WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+
+        await ClickTenantSupportEvidenceNavItemAsync(page);
+        await WaitForTenantSupportEvidenceAsync(page);
+        await CloseShellSidebarIfOpenAsync(page);
+    }
+
+    private static async Task ClickTenantSupportEvidenceNavItemAsync(IPage page)
+    {
+        const int maxAttempts = 3;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                var supportEvidenceLink = page.Locator(".settings-sidebar .mud-list-item")
+                    .Filter(new LocatorFilterOptions { HasTextString = "Support Evidence" })
+                    .First;
+
+                await supportEvidenceLink.ScrollIntoViewIfNeededAsync(new LocatorScrollIntoViewIfNeededOptions
+                {
+                    Timeout = BrowserTimeoutMilliseconds
+                });
+                await supportEvidenceLink.ClickAsync(new LocatorClickOptions
+                {
+                    Timeout = BrowserTimeoutMilliseconds,
+                    Force = attempt > 1
+                });
+
+                if (await TryWaitForTenantSupportEvidenceAsync(page, 5_000))
+                {
+                    return;
+                }
+            }
+            catch (PlaywrightException) when (attempt < maxAttempts)
+            {
+                await page.WaitForTimeoutAsync(250);
+            }
+        }
+
+        await WaitForTenantSupportEvidenceAsync(page);
+    }
+
+    private static async Task<bool> TryWaitForTenantSupportEvidenceAsync(IPage page, float timeoutMilliseconds)
+    {
+        try
+        {
+            await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { NameString = "Support Access Evidence" })
+                .WaitForAsync(new LocatorWaitForOptions { Timeout = timeoutMilliseconds });
+            return true;
+        }
+        catch (Exception ex) when (ex is PlaywrightException or TimeoutException)
+        {
+            return false;
+        }
+    }
+
+    private static async Task WaitForTenantSupportEvidenceAsync(IPage page)
+    {
+        await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { NameString = "Support Access Evidence" })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { NameString = "Support Sessions" })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+    }
+
+    private static async Task AssertTenantSupportEvidenceAsync(IPage page, Guid sessionId)
+    {
+        await page.GetByText("SUP-E2E-001", new PageGetByTextOptions { Exact = true })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByText("customer_support_e2e", new PageGetByTextOptions { Exact = true })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByText("Stopped", new PageGetByTextOptions { Exact = true })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+
+        var shortSessionId = sessionId.ToString("N")[..8];
+        var auditButton = page.GetByRole(AriaRole.Button, new PageGetByRoleOptions
+        {
+            NameRegex = new Regex($"^View audit events for support session {Regex.Escape(shortSessionId)}")
+        }).First;
+
+        if (await auditButton.CountAsync() == 0)
+        {
+            auditButton = page.GetByRole(AriaRole.Button, new PageGetByRoleOptions
+            {
+                NameRegex = new Regex("^View audit events for support session")
+            }).First;
+        }
+
+        await auditButton.ScrollIntoViewIfNeededAsync(new LocatorScrollIntoViewIfNeededOptions
+        {
+            Timeout = BrowserTimeoutMilliseconds
+        });
+        await auditButton.ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+
+        await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { NameString = "Audit Evidence" })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByText("Started", new PageGetByTextOptions { Exact = true })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByText("Stopped", new PageGetByTextOptions { Exact = true })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+    }
+
+    private async Task StopCurrentSupportAccessAsync(
+        IPage page,
+        SupportAccessScenarioSeed.Result seed,
+        Guid activeSessionId)
     {
         await page.GetByLabel("Current support access end reason")
             .FillAsync("E2E support verification complete.", new LocatorFillOptions
@@ -365,22 +550,26 @@ public sealed class SupportAccessFlowTests(
                 Timeout = BrowserTimeoutMilliseconds
             });
 
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameString = "Stop" })
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameString = "Stop", Exact = true })
             .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
 
         await SupportSessionRow(page, "SUP-E2E-001")
             .GetByText("Stopped", new LocatorGetByTextOptions { Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
-        var response = await page.Context.APIRequest.GetAsync($"{appHost.BlazorBaseUrl}/bff/support-access/tenants/{PlatformDefaults.DefaultTenantId:D}/sessions/{activeSessionId:D}/audit-events?limit=100");
+        var response = await page.Context.APIRequest.GetAsync(TenantUrl(
+            seed,
+            $"/bff/support-access/tenants/{seed.TenantId:D}/sessions/{activeSessionId:D}/audit-events?limit=100"));
         await Assert.That(response.Status).IsEqualTo((int)HttpStatusCode.OK);
         var content = await response.TextAsync();
         await Assert.That(content).Contains("Stopped");
     }
 
-    private async Task AssertNoCurrentSupportSessionAsync(IPage page)
+    private async Task AssertNoCurrentSupportSessionAsync(
+        IPage page,
+        SupportAccessScenarioSeed.Result seed)
     {
-        var response = await page.Context.APIRequest.GetAsync($"{appHost.BlazorBaseUrl}/bff/support-access/current");
+        var response = await page.Context.APIRequest.GetAsync(TenantUrl(seed, "/bff/support-access/current"));
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.OK)
         {
@@ -397,6 +586,13 @@ public sealed class SupportAccessFlowTests(
         await CaptureViewportAsync(page, "desktop", 1280, 900);
         await CaptureViewportAsync(page, "tablet", 768, 1024);
         await CaptureViewportAsync(page, "mobile", 375, 900);
+    }
+
+    private static async Task CaptureTenantEvidenceResponsiveScreenshotsAsync(IPage page)
+    {
+        await CaptureTenantEvidenceViewportAsync(page, "desktop", 1280, 900);
+        await CaptureTenantEvidenceViewportAsync(page, "tablet", 768, 1024);
+        await CaptureTenantEvidenceViewportAsync(page, "mobile", 375, 900);
     }
 
     private static async Task CaptureViewportAsync(IPage page, string name, int width, int height)
@@ -424,11 +620,37 @@ public sealed class SupportAccessFlowTests(
         });
     }
 
+    private static async Task CaptureTenantEvidenceViewportAsync(IPage page, string name, int width, int height)
+    {
+        await page.SetViewportSizeAsync(width, height);
+        await PrepareForVisualCaptureAsync(page);
+        await WaitForTenantSupportEvidenceAsync(page);
+
+        var hasHorizontalOverflow = await page.EvaluateAsync<bool>(
+            "() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1");
+        await Assert.That(hasHorizontalOverflow).IsFalse();
+
+        var screenshotDirectory = Path.Combine(
+            AppContext.BaseDirectory,
+            "TestResults",
+            "playwright-artifacts",
+            "support-access");
+        Directory.CreateDirectory(screenshotDirectory);
+
+        await page.ScreenshotAsync(new PageScreenshotOptions
+        {
+            Path = Path.Combine(screenshotDirectory, $"support-access-tenant-evidence-{name}-{width}x{height}.png"),
+            FullPage = true,
+            Animations = ScreenshotAnimations.Disabled
+        });
+    }
+
     private static async Task PrepareForVisualCaptureAsync(IPage page)
     {
         await page.WaitForTimeoutAsync(300);
         await CloseShellSidebarIfOpenAsync(page);
         await DismissSnackbarsAsync(page);
+        await page.EvaluateAsync("() => window.scrollTo(0, 0)");
         await page.WaitForTimeoutAsync(300);
     }
 

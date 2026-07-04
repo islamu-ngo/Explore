@@ -5,6 +5,7 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.QueryFilters;
 
 namespace Explore.Blazor.Client.E2ETests.Seeds;
 
@@ -108,6 +109,95 @@ public static class SupportAccessScenarioSeed
         await context.SaveChangesAsync();
     }
 
+    public static async Task GrantTenantAdminAsync(ExploreDbContext context, Guid tenantId, Guid userId)
+    {
+        var now = DateTime.UtcNow;
+        var tenantAdminRole = EnsureTenantAdminRole(context);
+        var tenant = context.Tenants.Local.FirstOrDefault(candidate => candidate.Id == tenantId)
+            ?? context.Tenants.FirstOrDefault(candidate => candidate.Id == tenantId)
+            ?? throw new InvalidOperationException($"Cannot grant tenant admin authority because tenant {tenantId} was not found.");
+        var user = context.Users.Local.FirstOrDefault(candidate => candidate.Id == userId)
+            ?? context.Users.FirstOrDefault(candidate => candidate.Id == userId)
+            ?? throw new InvalidOperationException($"Cannot grant tenant admin authority because user {userId} was not found.");
+
+        var actor = context.Actors.Local.FirstOrDefault(candidate =>
+                candidate.TenantId == tenantId && candidate.UserId == userId) ??
+            context.Actors
+                .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                .FirstOrDefault(candidate => candidate.TenantId == tenantId && candidate.UserId == userId);
+        if (actor is null)
+        {
+            actor = CreateAdminActor(tenantId, userId, now);
+            actor.Tenant = tenant;
+            actor.User = user;
+            context.Actors.Add(actor);
+        }
+
+        var tenantUser = context.TenantUsers.Local.FirstOrDefault(candidate =>
+                candidate.TenantId == tenantId && candidate.UserId == userId) ??
+            context.TenantUsers
+                .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                .FirstOrDefault(candidate => candidate.TenantId == tenantId && candidate.UserId == userId);
+        if (tenantUser is null)
+        {
+            tenantUser = new TenantUser
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenantId,
+                Tenant = tenant,
+                UserId = userId,
+                User = user,
+                ActorId = actor.Id,
+                Actor = actor,
+                StatusId = (int)TenantUserStatusEnum.Active,
+                JoinedAt = now,
+                CreatedAt = now
+            };
+            context.TenantUsers.Add(tenantUser);
+        }
+        else
+        {
+            tenantUser.StatusId = (int)TenantUserStatusEnum.Active;
+            tenantUser.IsDeleted = false;
+            tenantUser.DeletedAt = null;
+            tenantUser.DeletedBy = null;
+            tenantUser.ActorId ??= actor.Id;
+            tenantUser.JoinedAt ??= now;
+            tenantUser.UpdatedAt = now;
+        }
+
+        var hasTenantAdminGrant = context.TenantUserRoleGrants.Local.Any(grant =>
+                grant.TenantId == tenantId &&
+                grant.TenantUserId == tenantUser.Id &&
+                grant.RoleId == (int)RoleEnum.TenantAdmin &&
+                grant.RevokedAt is null) ||
+            context.TenantUserRoleGrants
+                .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                .Any(grant =>
+                    grant.TenantId == tenantId &&
+                    grant.TenantUserId == tenantUser.Id &&
+                    grant.RoleId == (int)RoleEnum.TenantAdmin &&
+                    grant.RevokedAt == null);
+        if (!hasTenantAdminGrant)
+        {
+            context.TenantUserRoleGrants.Add(new TenantUserRoleGrant
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenantId,
+                Tenant = tenant,
+                TenantUserId = tenantUser.Id,
+                TenantUser = tenantUser,
+                RoleId = (int)RoleEnum.TenantAdmin,
+                Role = tenantAdminRole,
+                RoleScopeId = (int)RoleScopeEnum.Tenant,
+                GrantedAt = now,
+                CreatedAt = now
+            });
+        }
+
+        await context.SaveChangesAsync();
+    }
+
     private static Role EnsurePlatformAdminRole(ExploreDbContext context)
     {
         var roleScope = context.RoleScopes.Local.FirstOrDefault(scope => scope.Id == (int)RoleScopeEnum.Platform)
@@ -148,6 +238,53 @@ public static class SupportAccessScenarioSeed
             role.MasterCode = "platform.admin";
             role.FullName = "Platform Admin";
             role.RoleScopeId = (int)RoleScopeEnum.Platform;
+            role.RoleScope = roleScope;
+            role.IsSystem = true;
+        }
+
+        return role;
+    }
+
+    private static Role EnsureTenantAdminRole(ExploreDbContext context)
+    {
+        var roleScope = context.RoleScopes.Local.FirstOrDefault(scope => scope.Id == (int)RoleScopeEnum.Tenant)
+            ?? context.RoleScopes.FirstOrDefault(scope => scope.Id == (int)RoleScopeEnum.Tenant);
+        if (roleScope is null)
+        {
+            roleScope = new RoleScope
+            {
+                Id = (int)RoleScopeEnum.Tenant,
+                MasterCode = "TENANT",
+                FullName = "Tenant"
+            };
+            context.RoleScopes.Add(roleScope);
+        }
+        else
+        {
+            roleScope.MasterCode = "TENANT";
+            roleScope.FullName = "Tenant";
+        }
+
+        var role = context.Roles.Local.FirstOrDefault(candidate => candidate.Id == (int)RoleEnum.TenantAdmin)
+            ?? context.Roles.FirstOrDefault(candidate => candidate.Id == (int)RoleEnum.TenantAdmin);
+        if (role is null)
+        {
+            role = new Role
+            {
+                Id = (int)RoleEnum.TenantAdmin,
+                MasterCode = "tenant.admin",
+                FullName = "Admin",
+                RoleScopeId = (int)RoleScopeEnum.Tenant,
+                RoleScope = roleScope,
+                IsSystem = true
+            };
+            context.Roles.Add(role);
+        }
+        else
+        {
+            role.MasterCode = "tenant.admin";
+            role.FullName = "Admin";
+            role.RoleScopeId = (int)RoleScopeEnum.Tenant;
             role.RoleScope = roleScope;
             role.IsSystem = true;
         }

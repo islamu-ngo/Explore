@@ -61,7 +61,7 @@ public sealed class SupportAccessClientServiceTests
                             AllowsWrites = true,
                             ModeName = "Write",
                             StatusName = "Active",
-                            _links = new Dictionary<string, Anonymous56>
+                            _links = new Dictionary<string, Anonymous63>
                             {
                                 ["audit-events"] = new() { Href = "/audit", Method = "GET", Title = "Audit events" },
                                 ["force-stop"] = new() { Href = "/force-stop", Method = "POST", Title = "Force-stop" }
