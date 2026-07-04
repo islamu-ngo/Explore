@@ -20,7 +20,9 @@ public sealed class TenantPolicySettingServiceTests
     public TenantPolicySettingServiceTests()
     {
         _systemSettings.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
+        _systemSettings.GetAllSettings(Arg.Any<string?>()).Returns([]);
         _tenantSettings.GetByTenantAndKey(Arg.Any<Guid>(), Arg.Any<string>()).Returns((TenantSetting?)null);
+        _tenantSettings.GetAllForTenant(Arg.Any<Guid>()).Returns([]);
         _tenants.GetById(Arg.Any<Guid>()).Returns((Tenant?)null);
 
         _service = new TenantPolicySettingService(
@@ -43,14 +45,11 @@ public sealed class TenantPolicySettingServiceTests
     public async Task ReadEffectiveTenantSettingsAsync_WhenMcpLocked_IgnoresTenantOverride()
     {
         var tenantId = Guid.NewGuid();
-        _systemSettings.GetByKey(GovernanceSettingKeys.Deployment.Mode)
-            .Returns(CreateSystemSetting(GovernanceSettingKeys.Deployment.Mode, "\"MultiTenant\""));
-        _systemSettings.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcp)
-            .Returns(CreateSystemSetting(GovernanceSettingKeys.TenantDelegation.LockMcp, "true"));
-        _systemSettings.GetByKey(GovernanceSettingKeys.Mcp.Enabled)
-            .Returns(CreateSystemSetting(GovernanceSettingKeys.Mcp.Enabled, "true"));
-        _tenantSettings.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Mcp.Enabled)
-            .Returns(CreateTenantSetting(tenantId, GovernanceSettingKeys.Mcp.Enabled, "false"));
+        UseSystemSettings(
+            CreateSystemSetting(GovernanceSettingKeys.Deployment.Mode, "\"MultiTenant\""),
+            CreateSystemSetting(GovernanceSettingKeys.TenantDelegation.LockMcp, "true"),
+            CreateSystemSetting(GovernanceSettingKeys.Mcp.Enabled, "true"));
+        UseTenantSettings(tenantId, CreateTenantSetting(tenantId, GovernanceSettingKeys.Mcp.Enabled, "false"));
 
         var result = await _service.ReadEffectiveTenantSettingsAsync(tenantId);
 
@@ -62,19 +61,39 @@ public sealed class TenantPolicySettingServiceTests
     public async Task ReadEffectiveTenantSettingsAsync_WhenMcpUnlocked_AppliesTenantOverride()
     {
         var tenantId = Guid.NewGuid();
-        _systemSettings.GetByKey(GovernanceSettingKeys.Deployment.Mode)
-            .Returns(CreateSystemSetting(GovernanceSettingKeys.Deployment.Mode, "\"MultiTenant\""));
-        _systemSettings.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcp)
-            .Returns(CreateSystemSetting(GovernanceSettingKeys.TenantDelegation.LockMcp, "false"));
-        _systemSettings.GetByKey(GovernanceSettingKeys.Mcp.Enabled)
-            .Returns(CreateSystemSetting(GovernanceSettingKeys.Mcp.Enabled, "true"));
-        _tenantSettings.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Mcp.Enabled)
-            .Returns(CreateTenantSetting(tenantId, GovernanceSettingKeys.Mcp.Enabled, "false"));
+        UseSystemSettings(
+            CreateSystemSetting(GovernanceSettingKeys.Deployment.Mode, "\"MultiTenant\""),
+            CreateSystemSetting(GovernanceSettingKeys.TenantDelegation.LockMcp, "false"),
+            CreateSystemSetting(GovernanceSettingKeys.Mcp.Enabled, "true"));
+        UseTenantSettings(tenantId, CreateTenantSetting(tenantId, GovernanceSettingKeys.Mcp.Enabled, "false"));
 
         var result = await _service.ReadEffectiveTenantSettingsAsync(tenantId);
 
         await Assert.That(result.CanOverrideMcp).IsTrue();
         await Assert.That(result.McpEnabled).IsFalse();
+    }
+
+    [Test]
+    public async Task ReadEffectiveTenantSettingsAsync_UsesBatchedSettingReads()
+    {
+        var tenantId = Guid.NewGuid();
+
+        await _service.ReadEffectiveTenantSettingsAsync(tenantId);
+
+        await _systemSettings.Received(1).GetAllSettings(Arg.Any<string?>());
+        await _tenantSettings.Received(1).GetAllForTenant(tenantId);
+        await _systemSettings.DidNotReceive().GetByKey(Arg.Any<string>());
+        await _tenantSettings.DidNotReceive().GetByTenantAndKey(Arg.Any<Guid>(), Arg.Any<string>());
+    }
+
+    private void UseSystemSettings(params SystemSetting[] settings)
+    {
+        _systemSettings.GetAllSettings(Arg.Any<string?>()).Returns(settings.ToList());
+    }
+
+    private void UseTenantSettings(Guid tenantId, params TenantSetting[] settings)
+    {
+        _tenantSettings.GetAllForTenant(tenantId).Returns(settings.ToList());
     }
 
     private static SystemSetting CreateSystemSetting(string key, string value) => new()

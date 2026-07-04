@@ -25,7 +25,7 @@ public sealed class GetSystemOnboardingStatusQueryHandler
 
     public async Task<SystemOnboardingStatusDto> Handle(GetSystemOnboardingStatusQuery request, CancellationToken cancellationToken)
     {
-        var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
+        var bootstrap = await _instanceBootstrapStateRepository.GetCurrent(cancellationToken);
         var requiresOnboarding = bootstrap?.IsCompleted != true;
         var deploymentMode = requiresOnboarding
             ? await _deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken)

@@ -51,7 +51,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
                 return op!(CancellationToken.None);
             });
 
-        _bootstrapRepository.GetCurrent().Returns(new InstanceBootstrapState
+        _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(new InstanceBootstrapState
         {
             Id = Guid.NewGuid(),
             IsCompleted = false,
@@ -141,9 +141,11 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             }
         };
 
-        var result = await _handler.Handle(command, CancellationToken.None);
+        using var cancellationSource = new CancellationTokenSource();
+        var result = await _handler.Handle(command, cancellationSource.Token);
 
         await Assert.That(result.Success).IsTrue();
+        await _bootstrapRepository.Received(1).GetCurrent(cancellationSource.Token);
         await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName

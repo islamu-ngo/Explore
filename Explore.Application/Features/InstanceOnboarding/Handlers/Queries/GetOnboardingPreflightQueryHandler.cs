@@ -24,7 +24,7 @@ public sealed class GetOnboardingPreflightQueryHandler(
     public async Task<OnboardingPreflightDto> Handle(GetOnboardingPreflightQuery request, CancellationToken cancellationToken)
     {
         var result = new OnboardingPreflightDto();
-        var bootstrap = await instanceBootstrapStateRepository.GetCurrent();
+        var bootstrap = await instanceBootstrapStateRepository.GetCurrent(cancellationToken);
         var onboardingCompleted = bootstrap?.IsCompleted == true;
         var deploymentMode = onboardingCompleted
             ? await deploymentModeProvider.GetCurrentModeAsync(cancellationToken)

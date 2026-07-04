@@ -2,6 +2,7 @@
 // ABOUTME: Partial class containing ReadEffectiveTenantSettingsAsync and its governance flag computations.
 
 using Explore.Application.DTOs.Onboarding;
+using Explore.Domain;
 using Explore.Domain.Constants;
 
 namespace Explore.Application.Services;
@@ -10,87 +11,95 @@ public partial class TenantPolicySettingService
 {
     public async Task<TenantPolicySettingsDto> ReadEffectiveTenantSettingsAsync(Guid tenantId)
     {
-        var systemUserSubmission = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.UserSubmissionEnabled);
-        var systemOrgSubmission = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
-        var systemGroupSubmission = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
-        var systemRequireApproval = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.RequireApproval);
-        var systemEventCardClickOpensDetailPage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
-        var systemRequireVerification = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.VerificationRequired);
-        var systemTenantCanOmitVerification = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
-        var systemOrgSelfRegistration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
-        var systemGroupSelfRegistration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
-        var systemDeploymentMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
-        var systemTenantWhiteLabeling = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Tenants.WhiteLabelingEnabled);
-        var systemHomePage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
-        var systemInstanceBaseDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.InstanceBaseDomain);
-        var systemAllowCustomDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
-        var systemTenantSubdomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantSubdomain);
-        var systemTenantCustomDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantCustomDomain);
-        var systemBrandDisplayName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.DisplayName);
-        var systemBrandLogoUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.LogoUrl);
-        var systemBrandFaviconUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.FaviconUrl);
-        var systemBrandCustomCssUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.CustomCssUrl);
-        var systemAllowTenantRenderOverride = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride);
-        var systemLockPublicSeo = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo);
-        var systemLockOperational = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational);
-        var systemLockAdmin = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin);
-        var systemLockSmtp = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockSmtp);
-        var systemLockStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockStorage);
-        var systemLockAnalytics = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAnalytics);
-        var systemLockAiAssistant = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
-        var systemLockMcp = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcp);
-        var systemLockMcpLegacySse = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse);
-        var systemAiAssistantEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.Enabled);
-        var systemAiAssistantProvider = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.Provider);
-        var systemAiAssistantEndpointUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.EndpointUrl);
-        var systemAiAssistantApiKey = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ApiKey);
-        var systemAiAssistantModelId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ModelId);
-        var systemAiAssistantAllowedModelIds = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.AllowedModelIds);
-        var systemAiAssistantAllowAnonymousAccess = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
-        var systemMcpEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Mcp.Enabled);
-        var systemMcpEnableLegacySse = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Mcp.EnableLegacySse);
-        var systemCommunityGuidelines = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
-        var systemRenderPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Preset);
-        var systemRenderAdvanced = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled);
-        var systemGlobalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode);
-        var systemGlobalPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled);
-        var systemPublicSeoRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.RenderMode);
-        var systemPublicSeoPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.PrerenderEnabled);
-        var systemOperationalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Operational.RenderMode);
-        var systemOperationalPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Operational.PrerenderEnabled);
-        var systemAdminRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Admin.RenderMode);
-        var systemAdminPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled);
+        var systemSettings = (await _systemSettingRepository.GetAllSettings())
+            .ToDictionary(setting => setting.SettingKey, StringComparer.Ordinal);
+        var tenantSettings = (await _tenantSettingRepository.GetAllForTenant(tenantId))
+            .ToDictionary(setting => setting.SettingKey, StringComparer.Ordinal);
 
-        var tenantUserSubmission = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.UserSubmissionEnabled);
-        var tenantOrgSubmission = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
-        var tenantGroupSubmission = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.GroupSubmissionEnabled);
-        var tenantRequireApproval = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.RequireApproval);
-        var tenantEventCardClickOpensDetailPage = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.CardClickOpensDetailPage);
-        var tenantRequireVerification = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Organizations.VerificationRequired);
-        var tenantOrgSelfRegistration = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
-        var tenantGroupSelfRegistration = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
-        var tenantHomePage = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.DefaultPublicHomePage);
-        var tenantSubdomain = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Domains.TenantSubdomain);
-        var tenantCustomDomain = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Domains.TenantCustomDomain);
-        var tenantBrandDisplayName = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.DisplayName);
-        var tenantBrandLogoUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.LogoUrl);
-        var tenantBrandFaviconUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.FaviconUrl);
-        var tenantBrandCustomCssUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.CustomCssUrl);
-        var tenantAnnouncementEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled);
-        var tenantAnnouncementMessage = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarMessage);
-        var tenantAnnouncementLinkText = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkText);
-        var tenantAnnouncementLinkUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkUrl);
-        var tenantAnnouncementRevision = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision);
-        var tenantAiAssistantEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.Enabled);
-        var tenantAiAssistantProvider = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.Provider);
-        var tenantAiAssistantEndpointUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.EndpointUrl);
-        var tenantAiAssistantApiKey = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ApiKey);
-        var tenantAiAssistantModelId = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ModelId);
-        var tenantAiAssistantAllowedModelIds = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.AllowedModelIds);
-        var tenantAiAssistantAllowAnonymousAccess = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
-        var tenantMcpEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Mcp.Enabled);
-        var tenantMcpEnableLegacySse = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Mcp.EnableLegacySse);
-        var tenantCommunityGuidelines = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
+        SystemSetting? GetSystem(string key) => systemSettings.GetValueOrDefault(key);
+        TenantSetting? GetTenant(string key) => tenantSettings.GetValueOrDefault(key);
+
+        var systemUserSubmission = GetSystem(GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        var systemOrgSubmission = GetSystem(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        var systemGroupSubmission = GetSystem(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        var systemRequireApproval = GetSystem(GovernanceSettingKeys.Events.RequireApproval);
+        var systemEventCardClickOpensDetailPage = GetSystem(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
+        var systemRequireVerification = GetSystem(GovernanceSettingKeys.Organizations.VerificationRequired);
+        var systemTenantCanOmitVerification = GetSystem(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
+        var systemOrgSelfRegistration = GetSystem(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
+        var systemGroupSelfRegistration = GetSystem(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
+        var systemDeploymentMode = GetSystem(GovernanceSettingKeys.Deployment.Mode);
+        var systemTenantWhiteLabeling = GetSystem(GovernanceSettingKeys.Tenants.WhiteLabelingEnabled);
+        var systemHomePage = GetSystem(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
+        var systemInstanceBaseDomain = GetSystem(GovernanceSettingKeys.Domains.InstanceBaseDomain);
+        var systemAllowCustomDomain = GetSystem(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
+        var systemTenantSubdomain = GetSystem(GovernanceSettingKeys.Domains.TenantSubdomain);
+        var systemTenantCustomDomain = GetSystem(GovernanceSettingKeys.Domains.TenantCustomDomain);
+        var systemBrandDisplayName = GetSystem(GovernanceSettingKeys.Branding.DisplayName);
+        var systemBrandLogoUrl = GetSystem(GovernanceSettingKeys.Branding.LogoUrl);
+        var systemBrandFaviconUrl = GetSystem(GovernanceSettingKeys.Branding.FaviconUrl);
+        var systemBrandCustomCssUrl = GetSystem(GovernanceSettingKeys.Branding.CustomCssUrl);
+        var systemAllowTenantRenderOverride = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride);
+        var systemLockPublicSeo = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo);
+        var systemLockOperational = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational);
+        var systemLockAdmin = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin);
+        var systemLockSmtp = GetSystem(GovernanceSettingKeys.TenantDelegation.LockSmtp);
+        var systemLockStorage = GetSystem(GovernanceSettingKeys.TenantDelegation.LockStorage);
+        var systemLockAnalytics = GetSystem(GovernanceSettingKeys.TenantDelegation.LockAnalytics);
+        var systemLockAiAssistant = GetSystem(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
+        var systemLockMcp = GetSystem(GovernanceSettingKeys.TenantDelegation.LockMcp);
+        var systemLockMcpLegacySse = GetSystem(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse);
+        var systemAiAssistantEnabled = GetSystem(GovernanceSettingKeys.AiAssistant.Enabled);
+        var systemAiAssistantProvider = GetSystem(GovernanceSettingKeys.AiAssistant.Provider);
+        var systemAiAssistantEndpointUrl = GetSystem(GovernanceSettingKeys.AiAssistant.EndpointUrl);
+        var systemAiAssistantApiKey = GetSystem(GovernanceSettingKeys.AiAssistant.ApiKey);
+        var systemAiAssistantModelId = GetSystem(GovernanceSettingKeys.AiAssistant.ModelId);
+        var systemAiAssistantAllowedModelIds = GetSystem(GovernanceSettingKeys.AiAssistant.AllowedModelIds);
+        var systemAiAssistantAllowAnonymousAccess = GetSystem(GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
+        var systemMcpEnabled = GetSystem(GovernanceSettingKeys.Mcp.Enabled);
+        var systemMcpEnableLegacySse = GetSystem(GovernanceSettingKeys.Mcp.EnableLegacySse);
+        var systemCommunityGuidelines = GetSystem(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
+        var systemRenderPreset = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.Preset);
+        var systemRenderAdvanced = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled);
+        var systemGlobalRenderMode = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode);
+        var systemGlobalPrerender = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled);
+        var systemPublicSeoRenderMode = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.RenderMode);
+        var systemPublicSeoPrerender = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.PrerenderEnabled);
+        var systemOperationalRenderMode = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.Operational.RenderMode);
+        var systemOperationalPrerender = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.Operational.PrerenderEnabled);
+        var systemAdminRenderMode = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.Admin.RenderMode);
+        var systemAdminPrerender = GetSystem(GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled);
+
+        var tenantUserSubmission = GetTenant(GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        var tenantOrgSubmission = GetTenant(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        var tenantGroupSubmission = GetTenant(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        var tenantRequireApproval = GetTenant(GovernanceSettingKeys.Events.RequireApproval);
+        var tenantEventCardClickOpensDetailPage = GetTenant(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
+        var tenantRequireVerification = GetTenant(GovernanceSettingKeys.Organizations.VerificationRequired);
+        var tenantOrgSelfRegistration = GetTenant(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
+        var tenantGroupSelfRegistration = GetTenant(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
+        var tenantHomePage = GetTenant(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
+        var tenantSubdomain = GetTenant(GovernanceSettingKeys.Domains.TenantSubdomain);
+        var tenantCustomDomain = GetTenant(GovernanceSettingKeys.Domains.TenantCustomDomain);
+        var tenantBrandDisplayName = GetTenant(GovernanceSettingKeys.Branding.DisplayName);
+        var tenantBrandLogoUrl = GetTenant(GovernanceSettingKeys.Branding.LogoUrl);
+        var tenantBrandFaviconUrl = GetTenant(GovernanceSettingKeys.Branding.FaviconUrl);
+        var tenantBrandCustomCssUrl = GetTenant(GovernanceSettingKeys.Branding.CustomCssUrl);
+        var tenantAnnouncementEnabled = GetTenant(GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled);
+        var tenantAnnouncementMessage = GetTenant(GovernanceSettingKeys.PublicExperience.AnnouncementBarMessage);
+        var tenantAnnouncementLinkText = GetTenant(GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkText);
+        var tenantAnnouncementLinkUrl = GetTenant(GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkUrl);
+        var tenantAnnouncementRevision = GetTenant(GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision);
+        var tenantAiAssistantEnabled = GetTenant(GovernanceSettingKeys.AiAssistant.Enabled);
+        var tenantAiAssistantProvider = GetTenant(GovernanceSettingKeys.AiAssistant.Provider);
+        var tenantAiAssistantEndpointUrl = GetTenant(GovernanceSettingKeys.AiAssistant.EndpointUrl);
+        var tenantAiAssistantApiKey = GetTenant(GovernanceSettingKeys.AiAssistant.ApiKey);
+        var tenantAiAssistantModelId = GetTenant(GovernanceSettingKeys.AiAssistant.ModelId);
+        var tenantAiAssistantAllowedModelIds = GetTenant(GovernanceSettingKeys.AiAssistant.AllowedModelIds);
+        var tenantAiAssistantAllowAnonymousAccess = GetTenant(GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
+        var tenantMcpEnabled = GetTenant(GovernanceSettingKeys.Mcp.Enabled);
+        var tenantMcpEnableLegacySse = GetTenant(GovernanceSettingKeys.Mcp.EnableLegacySse);
+        var tenantCommunityGuidelines = GetTenant(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
 
         var isMultiTenant = DeserializeString(systemDeploymentMode?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
@@ -220,61 +229,61 @@ public partial class TenantPolicySettingService
             CanOverrideBrandCustomCssUrl = isTenantWhiteLabelingEnabled && systemBrandCustomCssUrl?.IsLocked != true,
             CanOverrideEventCardClickBehavior = canOverrideEventCardClickBehavior,
             RenderPolicyPreset = ResolveString(
-                allowTenantRenderOverride ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Preset))?.Value : null,
+                allowTenantRenderOverride ? GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.Preset)?.Value : null,
                 systemRenderPreset?.Value,
                 "AllInteractiveServer",
                 allowTenantRenderOverride),
             EnableAdvancedRenderPolicyOverrides = allowTenantRenderOverride
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled))?.Value,
+                    GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled)?.Value,
                     systemRenderAdvanced?.Value,
                     false,
                     true)
                 : DeserializeBoolean(systemRenderAdvanced?.Value, false),
             GlobalRenderMode = ResolveString(
-                allowTenantRenderOverride ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode))?.Value : null,
+                allowTenantRenderOverride ? GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode)?.Value : null,
                 systemGlobalRenderMode?.Value,
                 "InteractiveServer",
                 allowTenantRenderOverride),
             GlobalPrerenderEnabled = allowTenantRenderOverride
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled))?.Value,
+                    GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled)?.Value,
                     systemGlobalPrerender?.Value,
                     false,
                     true)
                 : DeserializeBoolean(systemGlobalPrerender?.Value, false),
             PublicSeoRenderMode = ResolveString(
-                canOverridePublicSeo ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.RenderMode))?.Value : null,
+                canOverridePublicSeo ? GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.RenderMode)?.Value : null,
                 systemPublicSeoRenderMode?.Value,
                 string.Empty,
                 canOverridePublicSeo),
             PublicSeoPrerenderEnabled = canOverridePublicSeo
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.PrerenderEnabled))?.Value,
+                    GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.PrerenderEnabled)?.Value,
                     systemPublicSeoPrerender?.Value,
                     false,
                     true)
                 : DeserializeBoolean(systemPublicSeoPrerender?.Value, false),
             OperationalRenderMode = ResolveString(
-                canOverrideOperational ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Operational.RenderMode))?.Value : null,
+                canOverrideOperational ? GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.Operational.RenderMode)?.Value : null,
                 systemOperationalRenderMode?.Value,
                 string.Empty,
                 canOverrideOperational),
             OperationalPrerenderEnabled = canOverrideOperational
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Operational.PrerenderEnabled))?.Value,
+                    GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.Operational.PrerenderEnabled)?.Value,
                     systemOperationalPrerender?.Value,
                     false,
                     true)
                 : DeserializeBoolean(systemOperationalPrerender?.Value, false),
             AdminRenderMode = ResolveString(
-                canOverrideAdmin ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Admin.RenderMode))?.Value : null,
+                canOverrideAdmin ? GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.Admin.RenderMode)?.Value : null,
                 systemAdminRenderMode?.Value,
                 string.Empty,
                 canOverrideAdmin),
             AdminPrerenderEnabled = canOverrideAdmin
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled))?.Value,
+                    GetTenant(GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled)?.Value,
                     systemAdminPrerender?.Value,
                     false,
                     true)

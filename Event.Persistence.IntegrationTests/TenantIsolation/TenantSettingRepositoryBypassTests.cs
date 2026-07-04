@@ -105,6 +105,30 @@ public class TenantSettingRepositoryBypassTests(PostgreSqlContainerFixture fixtu
         await Assert.That(tenantBVisibleAfterMutations).IsEquivalentTo([tenantB.Id, tenantB.Id, tenantB.Id]);
     }
 
+    [Test]
+    public async Task GetAllForTenant_WithAmbientTenant_ReturnsExplicitTenantRowsWithoutTracking()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+
+        var tenantA = CreateTenant("settings-read-a");
+        var tenantB = CreateTenant("settings-read-b");
+        seedContext.Tenants.AddRange(tenantA, tenantB);
+        await seedContext.SaveChangesAsync();
+        seedContext.TenantSettingOverrides.AddRange(
+            CreateSetting(tenantA.Id, "tenant.settings.read-a", "tenant-a-value", isLocked: false),
+            CreateSetting(tenantB.Id, "tenant.settings.read-b", "tenant-b-value", isLocked: false));
+        await seedContext.SaveChangesAsync();
+
+        await using var tenantBContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantB.Id));
+        var repository = new TenantSettingRepository(tenantBContext);
+
+        var tenantASettings = await repository.GetAllForTenant(tenantA.Id);
+
+        await Assert.That(tenantASettings.Select(setting => setting.TenantId)).IsEquivalentTo([tenantA.Id]);
+        await Assert.That(tenantBContext.ChangeTracker.Entries<TenantSetting>()).IsEmpty();
+    }
+
     private static Tenant CreateTenant(string slugPrefix)
     {
         return new Tenant

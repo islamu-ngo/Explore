@@ -24,15 +24,18 @@ public class GetInstanceOnboardingStatusQueryHandlerTests
     [Test]
     public async Task Handle_WhenGeneratedSetupSecretActive_ReturnsStartupLogGuidance()
     {
+        _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns((Explore.Domain.InstanceBootstrapState?)null);
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
         _setupSecretProvider.IsSetupModeActive.Returns(true);
         _setupSecretProvider.IsFromEnvironmentVariable.Returns(false);
         _setupSecretProvider.IsTimedOut.Returns(false);
 
-        var result = await CreateHandler().Handle(new GetInstanceOnboardingStatusQuery(), CancellationToken.None);
+        using var cancellationSource = new CancellationTokenSource();
+        var result = await CreateHandler().Handle(new GetInstanceOnboardingStatusQuery(), cancellationSource.Token);
 
         await Assert.That(result.SetupSecretState).IsEqualTo("Generated");
         await Assert.That(result.SetupSecretGuidance).Contains("startup logs");
+        await _bootstrapRepository.Received(1).GetCurrent(cancellationSource.Token);
     }
 
     [Test]

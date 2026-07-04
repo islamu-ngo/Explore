@@ -32,7 +32,7 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
             ["PublicBaseUrl"] = "https://events.example.org"
         });
 
-        _bootstrapRepository.GetCurrent().Returns((InstanceBootstrapState?)null);
+        _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns((InstanceBootstrapState?)null);
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
         _setupSecretProvider.IsSetupModeActive.Returns(true);
         _setupSecretProvider.IsTimedOut.Returns(false);
@@ -40,7 +40,8 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
         _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns((Tenant?)null);
         _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
 
-        var result = await handler.Handle(new GetOnboardingPreflightQuery(), CancellationToken.None);
+        using var cancellationSource = new CancellationTokenSource();
+        var result = await handler.Handle(new GetOnboardingPreflightQuery(), cancellationSource.Token);
 
         await Assert.That(result.DeploymentMode).IsEqualTo("SingleTenant");
         await Assert.That(result.IsReadyToLaunch).IsTrue();
@@ -50,6 +51,7 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
         await Assert.That(result.BlockingChecks).Contains(check => check.Code == "canonical_host" && check.Status == OnboardingPreflightCheckStatus.Pass);
         await Assert.That(result.WarningChecks).Contains(check => check.Code == "smtp" && check.Status == OnboardingPreflightCheckStatus.Warning);
         await Assert.That(result.WarningChecks).Contains(check => check.Code == "object_storage" && check.Status == OnboardingPreflightCheckStatus.Warning);
+        await _bootstrapRepository.Received(1).GetCurrent(cancellationSource.Token);
     }
 
     [Test]
@@ -57,7 +59,7 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
     {
         var handler = CreateHandler();
 
-        _bootstrapRepository.GetCurrent().Returns((InstanceBootstrapState?)null);
+        _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns((InstanceBootstrapState?)null);
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
         _setupSecretProvider.IsSetupModeActive.Returns(false);
         _setupSecretProvider.IsTimedOut.Returns(true);

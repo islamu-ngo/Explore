@@ -16,11 +16,11 @@ public class InstanceBootstrapStateRepository : GenericRepository<InstanceBootst
         _dbContext = dbContext;
     }
 
-    public async Task<InstanceBootstrapState?> GetCurrent()
+    public async Task<InstanceBootstrapState?> GetCurrent(CancellationToken cancellationToken = default)
     {
         return await _dbContext.InstanceBootstrapStates
             .AsNoTracking()
             .OrderByDescending(x => x.CreatedAt)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

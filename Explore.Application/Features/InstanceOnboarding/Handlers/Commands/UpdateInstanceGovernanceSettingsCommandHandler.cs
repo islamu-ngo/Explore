@@ -75,7 +75,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
             return response;
         }
 
-        var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
+        var bootstrap = await _instanceBootstrapStateRepository.GetCurrent(cancellationToken);
         var currentMode = ResolvePersistedMode(bootstrap?.SelectedDeploymentMode);
         if (deploymentMode != currentMode)
         {

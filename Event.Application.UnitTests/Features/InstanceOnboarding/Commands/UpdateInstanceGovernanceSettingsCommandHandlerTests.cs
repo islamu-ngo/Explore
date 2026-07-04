@@ -75,7 +75,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
 
         var existingBootstrapId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000112");
-        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
+        _bootstrapStateRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(new InstanceBootstrapState
         {
             Id = existingBootstrapId,
             CreatedAt = DateTime.UtcNow
@@ -88,10 +88,12 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
         settings.RenderPolicy.OnboardingRenderMode = "InteractiveServer";
         settings.RenderPolicy.DisallowInteractiveServerOnOnboarding = false;
 
-        var result = await _handler.Handle(CreateCommand(settings), CancellationToken.None);
+        using var cancellationSource = new CancellationTokenSource();
+        var result = await _handler.Handle(CreateCommand(settings), cancellationSource.Token);
 
         await Assert.That(result.Success).IsTrue();
         await _governanceSettingService.Received(1).ApplySettingsAsync(PlatformDefaults.DefaultTenantId, Arg.Any<InstanceGovernanceSettings>(), TestUserId);
+        await _bootstrapStateRepository.Received(1).GetCurrent(cancellationSource.Token);
     }
 
     [Test]
@@ -100,7 +102,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
 
         var existingBootstrapId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000112");
-        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
+        _bootstrapStateRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(new InstanceBootstrapState
         {
             Id = existingBootstrapId,
             CreatedAt = DateTime.UtcNow
@@ -122,7 +124,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
     public async Task Handle_WhenChangingDeploymentMode_ReturnsOperatorControlledFailure()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
-        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
+        _bootstrapStateRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(new InstanceBootstrapState
         {
             Id = Guid.NewGuid(),
             SelectedDeploymentMode = "MultiTenant",
@@ -141,7 +143,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
     public async Task Handle_WhenKeepingMultiTenantMode_SucceedsWithoutActiveTenantCountCheck()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
-        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
+        _bootstrapStateRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(new InstanceBootstrapState
         {
             Id = Guid.NewGuid(),
             SelectedDeploymentMode = "MultiTenant",
@@ -159,7 +161,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
     public async Task Handle_WhenChangingFromSingleToMultiTenant_ReturnsOperatorControlledFailure()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
-        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
+        _bootstrapStateRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(new InstanceBootstrapState
         {
             Id = Guid.NewGuid(),
             SelectedDeploymentMode = "SingleTenant",
@@ -177,7 +179,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
     public async Task Handle_WhenBootstrapModeMissing_UsesSingleTenantConvention()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
-        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
+        _bootstrapStateRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(new InstanceBootstrapState
         {
             Id = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow
@@ -197,7 +199,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
     public async Task Handle_WhenKeepingSingleTenantMode_DoesNotCheckActiveTenantCount()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
-        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
+        _bootstrapStateRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(new InstanceBootstrapState
         {
             Id = Guid.NewGuid(),
             SelectedDeploymentMode = "SingleTenant",

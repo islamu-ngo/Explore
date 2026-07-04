@@ -85,7 +85,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
+        var bootstrap = await _instanceBootstrapStateRepository.GetCurrent(cancellationToken);
         if (bootstrap?.IsCompleted == true)
         {
             response.Success = false;
