@@ -269,7 +269,7 @@ Non-interactive callers authenticate with long-lived API keys. Each key is bound
 | `Organization` (2) | Required | Organization admin for the owning org | No |
 | `Group` (3) | Required | Group admin for the owning group | No |
 | `Tenant` (4) | Required | Tenant admin for the bound tenant | No |
-| `InstanceAdmin` (5) | **Null** | Instance admin | **Yes** — bypasses tenant isolation |
+| `InstanceAdmin` (5) | **Nullable credential; execution tenant required for tenant-scoped API/MCP calls** | Instance admin | Platform authority; tenantless execution only for explicit host-administration API routes |
 
 ### Scope Ceilings
 

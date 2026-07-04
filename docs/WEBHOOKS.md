@@ -117,7 +117,7 @@ Mapping:
 
 ## Local-Full Svix
 
-`local-full` starts a local `svix/svix-server` through Aspire with PostgreSQL, Redis queue/cache, and port `localhost:8071`.
+`local-full` starts a local `svix/svix-server` through Aspire with PostgreSQL and Redis queue/cache. Aspire injects the current Svix HTTP endpoint into the API as `Webhooks:Svix:BaseUrl`; use `aspire describe --format Json` to inspect the actual host port for the running session.
 
 The local AppHost also supplies:
 
@@ -176,6 +176,7 @@ Business metrics use bounded labels:
 - `explore.webhooks.delivery_failure`
 - `explore.webhooks.endpoint_disabled`
 - `explore.webhooks.manual_retries`
+- `explore.webhooks.provider_publish_failure`
 
 Payload retention is stored per message as `payload_retention_until`. The repository operation `IWebhookMessageRepository.ClearExpiredPayloadsAsync` clears expired payload bodies in bounded batches while preserving audit rows and hashes. Run cleanup only from trusted scheduler/operator code that keeps tenant scoping and safe logging intact.
 

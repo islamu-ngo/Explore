@@ -61,7 +61,7 @@ Add the bootstrap credentials for your maintainer developer environment inside t
 > The contributor default Aspire profile is `local-full`. It starts local infrastructure and sets `SecretProvider:Provider=None` for child projects, so contributors should not need Infisical credentials.
 > Maintainer profiles intentionally differ:
 > - `local-core` starts local PostgreSQL/Redis but loads auth, policy, storage, webhook, and provider settings from Infisical/config.
-> - `local-lite` starts only API and Blazor, with all infrastructure loaded from Infisical/config.
+> - `local-lite` starts only API, Blazor, and the optional control-plane BFF when present, with all infrastructure loaded from Infisical/config.
 > If Infisical is not used in a maintainer profile, supply equivalent settings through environment variables or appsettings before running the AppHost.
 
 ### Docker Compose Environment Files
@@ -117,7 +117,11 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 |---|---|
 | `/keycloak/REALM_NAME` | `Keycloak:RealmName` |
 | `/keycloak/KEYCLOAK_BLAZOR_CLIENT_SECRET` | Blazor BFF `Keycloak:ClientSecret` and Compose `keycloak-init` client-secret sync input |
+| `/keycloak/KEYCLOAK_CONTROL_PLANE_CLIENT_ID` | Control-plane BFF `Bff:Authentication:ClientId`; defaults to `islamu-event-control-plane` when absent |
+| `/keycloak/KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` | Control-plane BFF `Bff:Authentication:ClientSecret` and Compose `keycloak-init` client-secret sync input for `islamu-event-control-plane` |
+| `/keycloak/KEYCLOAK_CONTROL_PLANE_AUTHORITY` | Optional control-plane BFF `Bff:Authentication:Authority`; otherwise derived from `KEYCLOAK_ENDPOINT` and `KEYCLOAK_REALM` |
 | `/keycloak/KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future Compose `keycloak-init` sync input for deployments that intentionally make the API resource-server client confidential; not needed by the current bearer-only API audience client |
+| `/control-plane/CONTROL_PLANE_API_ENDPOINT` | Control-plane BFF `ExploreApi:BaseUrl` / API proxy target |
 | root or AI path + `AI_TOOL_PROPOSALS_ENABLED` | `AiProvider:ToolProposalsEnabled` |
 | `/postgresql/POSTGRESQL_HOST` | PostgreSQL bootstrap host |
 | `/postgresql/POSTGRESQL_PORT` | PostgreSQL bootstrap port |
@@ -138,7 +142,7 @@ Environment variable format uses double-underscore separators for .NET keys, for
 
 Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be stored in governance settings or copied into support artifacts. The init logs redact client secret values.
 
-External-Keycloak setup bootstrap accepts a one-time Keycloak admin or service-account username/password through the setup UI. Treat that credential as operator input for a single setup request, not as an ISLAMU-managed secret. ISLAMU must not save it to appsettings, environment variables, Infisical paths, database governance settings, logs, traces, screenshots, or support bundles. After a successful bootstrap, only the runtime Keycloak OIDC values and the Blazor BFF client secret are stored according to the normal authentication secret ownership model.
+External-Keycloak setup bootstrap accepts a one-time Keycloak admin or service-account username/password through the setup UI. Treat that credential as operator input for a single setup request, not as an ISLAMU-managed secret. ISLAMU must not save it to appsettings, environment variables, Infisical paths, database governance settings, logs, traces, screenshots, or support bundles. After a successful bootstrap, only the runtime Keycloak OIDC values and BFF client secrets are stored according to the normal authentication secret ownership model. The separate control-plane BFF uses its own confidential Keycloak client secret and must not reuse setup secrets, API keys, or browser-stored bearer tokens for operator login.
 
 
 ## Ownership Model

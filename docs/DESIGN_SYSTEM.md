@@ -79,6 +79,8 @@ Scoped tokens for specific components, consuming semantic tokens.
 
 Located in `Explore.Blazor.Client/Components/Common/`. Each wraps a MudBlazor component with project defaults.
 
+`Event.ControlPlane.Client` does not reference `Explore.Blazor.Client`, so shared control-plane pages use local `ControlPlane*` primitives in `Event.ControlPlane.Client/Components/Common/`. These primitives follow the same token, BEM, CSS isolation, and MudBlazor v9 conventions, but remain scoped to the control-plane RCL to avoid a public-shell dependency cycle.
+
 ### AppButton
 
 Wraps `MudButton` with consistent defaults.
@@ -145,6 +147,8 @@ BEM classes: `__header`, `__body`, `__actions`.
 ### Styling Pattern
 
 All wrappers use `display: contents` + `::deep` to style MudBlazor internals via CSS isolation. This preserves the MudBlazor DOM structure while allowing scoped CSS customization.
+
+Control-plane primitives use the same isolation pattern where they wrap MudBlazor controls. Structural primitives such as `ControlPlanePageHeader` and `ControlPlanePanel` prefer plain semantic HTML so headings, landmarks, and HAL-gated action slots can be reused by both embedded and separate control-plane hosts.
 
 ## DialogOptionsFactory
 

@@ -6,7 +6,7 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 > **Audience:** Operators | Contributors | Admins
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-03
+> **Last Verified:** 2026-07-04
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/`, `Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Use this page when you have a symptom. For planned work, installation, backup, restore, upgrade, or rollback procedures, use the linked runbooks instead of copying procedures into this file.
@@ -99,14 +99,17 @@ Check:
 
 Cause:
 - the Blazor BFF confidential client secret does not match the `islamu-event-blazor` client secret stored in Keycloak.
+- for the separate control-plane BFF, `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` does not match the `islamu-event-control-plane` client secret stored in Keycloak, or the operator host callback/logout URI is missing from that client.
 
 Checks:
 1. Confirm `KEYCLOAK_BLAZOR_CLIENT_SECRET` is set for the Compose environment. Production/self-hosted deployments should not rely on the realm export's static default.
-2. Check `docker compose logs keycloak-init` for a successful redacted sync message. The log must not include raw secret values.
-3. Rerun `docker compose run --rm keycloak-init` after changing or rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET`.
-4. If this is a disposable local stack and no secret is configured, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true` intentionally, then rerun `keycloak-init`. Do not use that flag in production.
-5. If the client is missing, verify `docker/keycloak/realm-export.json` imported successfully and that `KEYCLOAK_REALM` matches the imported realm name.
-6. For external Keycloak setup, rerun `/onboarding/auth-provider` bootstrap mode with the same Blazor client ID and the intended runtime client secret. The setup flow updates existing clients by `clientId`; it does not require manually editing the Keycloak UI when the bootstrap credential has client-secret update permission.
+2. When using `docker compose --profile control-plane`, confirm `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` is set and `KEYCLOAK_CONTROL_PLANE_CLIENT_ID` matches the Keycloak client, normally `islamu-event-control-plane`.
+3. Check `docker compose logs keycloak-init` for successful redacted sync messages. The log must not include raw secret values.
+4. Rerun `docker compose run --rm keycloak-init` after changing or rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET` or `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET`.
+5. If this is a disposable local stack and no secret is configured, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true` intentionally, then rerun `keycloak-init`. Do not use that flag in production.
+6. If the client is missing, verify `docker/keycloak/realm-export.json` imported successfully and that `KEYCLOAK_REALM` matches the imported realm name. Existing Keycloak realms are not overwritten by startup import; reset the disposable Keycloak database volume before expecting realm-export changes to apply.
+7. For external Keycloak setup, rerun `/onboarding/auth-provider` bootstrap mode with the same Blazor client ID and the intended runtime client secret. The setup flow updates existing clients by `clientId`; it does not require manually editing the Keycloak UI when the bootstrap credential has client-secret update permission.
+8. For a dedicated control-plane hostname, confirm the Keycloak control-plane client allows the public callback path `/signin-oidc` and logout callback path `/signout-callback-oidc` for the operator host.
 
 ### External Keycloak bootstrap fails before contacting Keycloak
 
@@ -263,12 +266,23 @@ Checks:
 **Symptoms:** Registration confirmation email does not arrive, `email-dispatch` readiness is degraded/unhealthy, or RabbitMQ dispatch/DLQ counts grow.
 
 Checks:
-1. For local development, open Mailpit at `http://localhost:8025` and verify SMTP resolves to `localhost:1025` for Aspire or `mailpit:1025` for Compose.
-2. Check `/health`: `email-dispatch` covers Basic Dispatch trigger readiness, while `email-dispatch-rabbitmq` covers optional broker topology only when RabbitMQ mode is enabled.
+1. For local development, open Mailpit at the Aspire-discovered UI endpoint or Compose default `http://localhost:8025`. Non-isolated Aspire normally uses SMTP `localhost:1025`; isolated Aspire assigns dynamic ports, so run `aspire describe mailpit --apphost Explore.AppHost/Explore.AppHost.csproj --format Json` and verify API `email.smtp_port` matches the current Mailpit SMTP endpoint. Compose uses `mailpit:1025` from API containers.
+2. Check `/health`: `smtp` covers configured SMTP/Mailpit connectivity, `email-dispatch` covers Basic Dispatch trigger readiness, and `email-dispatch-rabbitmq` covers optional broker topology only when RabbitMQ mode is enabled. If Mailpit is stopped in FullLocal, API `/health` should return HTTP 503 with `smtp` Unhealthy. The SMTP readiness probe is bounded to five seconds; the 2026-07-04 local proof returned in `5.014s`.
 3. Inspect HAL-gated EmailDispatch admin status before replaying rows. Replay and park actions must be driven by `_links`; do not infer permissions from local roles.
 4. Query `email_dispatch_outbox` by status and tenant. `Unknown` rows are inspectable crash-window outcomes; `DeadLettered` rows require operator review; `Skipped` rows are terminal preference/compliance outcomes.
 5. In RabbitMQ mode, verify broker connectivity, dispatch/DLX/parking topology, and bounded logs. Broker payloads must contain only pointer fields, never recipient, subject, body, SMTP credentials, provider IDs, or raw errors.
 6. Use `docs/EMAIL_NOTIFICATIONS.md` for focused Mailpit and RabbitMQ verification commands.
+
+## Aspire Detached Lifecycle Issues
+
+**Symptoms:** `aspire start --format Json --isolated` or `aspire run --detach --format Json --isolated` returns AppHost/CLI PIDs and a dashboard URL, but an immediate `aspire ps --format Json` returns `[]`, `aspire describe` reports no running AppHost, and the returned AppHost PID no longer exists.
+
+Checks:
+1. Confirm the foreground proof path works first: `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj --isolated`. Use that path for launch runtime evidence.
+2. Inspect the detached child log printed in the JSON output. The 2026-07-04 local `13.4.6` reproduction reached resource readiness and logged `Notifying AppHost startup readiness`, then the process disappeared before `aspire ps` could inspect it.
+3. Verify `Event.ControlPlane.Blazor` builds if AppHost startup fails during build; `Event.ControlPlane.Blazor/Components/App.razor` needs the direct `RenderMode` static import for `InteractiveServer` root render-mode attributes.
+4. Treat repeated empty `aspire ps` after detached startup as an Aspire CLI/tooling lifecycle issue, not as proof that the API or Blazor cannot run. Foreground FullLocal startup, health, and public smoke are the current trusted readiness evidence.
+5. Re-test detached mode only after updating the Aspire CLI or when explicitly investigating CLI lifecycle behavior.
 
 ## Footer Settings Issues
 

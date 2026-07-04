@@ -6,8 +6,8 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-02
-> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
+> **Last Verified:** 2026-07-04
+> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.ControlPlane.Blazor/Extensions/ConfigurationExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
 
@@ -55,6 +55,7 @@ Keep the existing secret names until the deploy workflows are consolidated. If n
 Commonly consumed sections in code:
 
 - `Keycloak:*` (authority, metadata, client IDs/secrets)
+- `Bff:Authentication:*` (separate control-plane BFF authority, metadata, client ID/secret, callback paths, cookie policy)
 - `ConnectionStrings:DefaultConnection`
 - `Cors:AllowedOrigins`
 - `ForwardedHeadersTrust:*`
@@ -152,7 +153,7 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 | `Webhooks:Local:ConnectTimeoutSeconds` | `3` | LocalProvider connect timeout. |
 | `Webhooks:Local:BlockPrivateNetworks` | `true` | Blocks loopback, private, link-local, metadata, localhost, and internal DNS destinations by default. |
 | `Webhooks:Local:AllowedPrivateCidrs` | empty | Operator allow-list for deliberate private-network delivery. Keep empty for public/SaaS deployments. |
-| `Webhooks:Svix:BaseUrl` | unset | Self-hosted Svix base URL. Local-full Aspire uses `http://localhost:8071`; Compose uses `http://svix:8071`. |
+| `Webhooks:Svix:BaseUrl` | unset | Optional absolute HTTP(S) self-hosted Svix base URL. Local-full Aspire injects the current Svix endpoint into the API; Compose uses `http://svix:8071`. |
 | `Webhooks:Svix:AuthTokenSecretRef` | `webhooks.svix.auth_token` | Server-side secret binding for the Svix API token. |
 | `Webhooks:Svix:OperationalWebhookSecretRef` | `webhooks.svix.operational_webhook_secret` | Secret binding for incoming Svix operational callback verification. |
 | `Webhooks:Svix:AppPortalEnabled` | `true` | Enables backend-only App Portal access URL generation. |
@@ -302,10 +303,15 @@ Static dispatch settings bind from `EmailDispatchProcessor` and are validated at
 | `InitialRetryDelaySeconds` | `5` | Base retry delay for failed SMTP dispatch. Must be greater than zero. |
 | `MaxRetryDelaySeconds` | `3600` | Maximum retry delay cap. Must be greater than or equal to `InitialRetryDelaySeconds`. |
 | `ProcessingLeaseTimeoutSeconds` | `900` | Maximum age for a `Processing` row before the recovery scan marks it `Unknown` for operator review. Must be greater than zero. |
+| `HealthDueDispatchWarningThreshold` | `1000` | Degrades `email-dispatch` readiness when due `Pending`/`RetryScheduled` outbox rows reach this count. Must be between 1 and 100000. |
+| `HealthStaleProcessingWarningThreshold` | `1` | Degrades `email-dispatch` readiness when stale `Processing` rows reach this count. Must be between 1 and 10000. |
+| `HealthDeadLetterWarningThreshold` | `1` | Degrades `email-dispatch` readiness when `DeadLettered` rows reach this count. Must be between 1 and 10000. |
 | `ConsumerId` | machine name | Drain identity recorded in receipts and logs. Must not be blank. |
 | `VerboseLogging` | `false` | Enables additional drain logs when troubleshooting. Logs must remain free of bodies, recipients, and secrets. |
 
-SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. Local development defaults are seeded from `MAIL_SMTP_*`, then `SMTP_*` aliases, then local Mailpit values when the instance SMTP host is empty. RabbitMQ Dispatch Mode is not part of Basic mode.
+SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. Local development defaults are seeded from `MAIL_SMTP_*`, then `SMTP_*` aliases, then local Mailpit values when the instance SMTP host is empty. In Aspire `FullLocal` mode, Development seeding refreshes those SMTP rows on each run so persistent local database volumes follow the current `--isolated` Mailpit SMTP port. RabbitMQ Dispatch Mode is not part of Basic mode.
+
+The `email-dispatch` readiness payload reports `dueDispatchCount`, `retryScheduledCount`, `staleProcessingCount`, and `deadLetteredCount`. Future `RetryScheduled` rows are visible for operator context, but only due rows count toward `HealthDueDispatchWarningThreshold`; scheduled future retries are normal backoff state.
 
 TickerQ host settings bind from `Scheduler:TickerQ`:
 
@@ -459,12 +465,28 @@ Important behavior:
 - `Keycloak:ClientSecret` is explicitly overridden when `KEYCLOAK_BLAZOR_CLIENT_SECRET` (Infisical) is present.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` map to `Google:ClientId` and `Google:ClientSecret`.
 
-Compose-managed Keycloak adds one bootstrap-specific rule: `docker/keycloak/keycloak-init.sh` writes `KEYCLOAK_BLAZOR_CLIENT_SECRET` into the imported `islamu-event-blazor` client before API/Blazor startup is allowed to complete. `KEYCLOAK_API_CLIENT_SECRET` is a legacy/future optional sync input only; the checked-in realm export treats `islamu-event-api` as a bearer-only audience target with no static client secret, and the current API bearer-token validation path does not consume an API client secret. The Keycloak admin username/password are used only by the one-shot Compose init job and must not be stored as runtime application settings.
+Compose-managed Keycloak adds one bootstrap-specific rule: `docker/keycloak/keycloak-init.sh` writes `KEYCLOAK_BLAZOR_CLIENT_SECRET` into the imported `islamu-event-blazor` client before API/Blazor startup is allowed to complete. When the optional control-plane profile is used, the same init job writes `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` into the imported `islamu-event-control-plane` client. `KEYCLOAK_API_CLIENT_SECRET` is a legacy/future optional sync input only; the checked-in realm export treats `islamu-event-api` as a bearer-only audience target with no static client secret, and the current API bearer-token validation path does not consume an API client secret. The Keycloak admin username/password are used only by the one-shot Compose init job and must not be stored as runtime application settings.
 - `Keycloak:RequireHttpsMetadata` is set to `true` when Keycloak input is mapped.
 
 External-Keycloak onboarding uses a different secret boundary. The setup UI can send a one-time Keycloak bootstrap username/password to `POST /api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap` through the BFF. That credential is request-scoped input for the Infrastructure Keycloak Admin API adapter; it is not a configuration key, not a governance setting, not a secret-provider key, and not persisted by ISLAMU. Successful bootstrap persists only the normal runtime Keycloak auth-provider configuration: authority, Blazor client ID, and Blazor client secret.
 
 External bootstrap URL safety is enforced before network calls. Keycloak base URLs must be absolute HTTP/HTTPS URLs without embedded user info, query string, or fragment. Literal localhost, loopback, link-local, unspecified, and multicast IP hosts are rejected by the Infrastructure adapter; self-hosted/internal DNS hostnames remain allowed so operators can use private Keycloak service names intentionally.
+
+## Control Plane BFF Compatibility Mapping
+
+`Event.ControlPlane.Blazor.Extensions.ConfigurationExtensions` loads Infisical-compatible paths `/keycloak`, `/control-plane`, and `/blazor`, then maps dedicated control-plane names into the canonical `Event.Web.BffHosting` configuration shape.
+
+API base URL: `CONTROL_PLANE_API_ENDPOINT` maps into `ExploreApi:BaseUrl`. The shared BFF proxy resolver then checks `ExploreApi:BaseUrl`, Aspire service discovery keys `services__explore-api__https__0` and `services__explore-api__http__0`, then a local development fallback when no value is configured.
+
+Authentication mapping:
+
+- `KEYCLOAK_CONTROL_PLANE_CLIENT_ID` maps to `Bff:Authentication:ClientId`; when omitted, the control-plane app defaults to `islamu-event-control-plane`.
+- `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` maps to `Bff:Authentication:ClientSecret`; the separate app fails closed when the confidential client secret is missing.
+- `KEYCLOAK_CONTROL_PLANE_AUTHORITY` maps to `Bff:Authentication:Authority`. When omitted, `KEYCLOAK_ENDPOINT` plus `KEYCLOAK_REALM` derives `<keycloak-endpoint>/realms/<realm>`.
+- `Bff:Authentication:MetadataAddress` may be set directly. Compose uses this to point server-side OIDC discovery at the internal Keycloak service URL while browser redirects still use the public authority.
+- `Bff:Authentication:RequireHttpsMetadata` should be `true` outside local development; Compose sets it from `KEYCLOAK_REQUIRE_HTTPS_METADATA`.
+
+The control-plane BFF uses a dedicated cookie name from the `ControlPlane` BFF profile and never serializes access tokens, refresh tokens, client secrets, or instance-admin authority claims into browser-visible authentication state. Browser-visible control-plane actions must still come from API/HAL/status endpoints, not local role inspection.
 
 ## Governance Settings (Database)
 

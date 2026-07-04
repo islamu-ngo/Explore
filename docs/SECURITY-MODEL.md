@@ -6,14 +6,15 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Security
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.API/Extensions/AuthenticationExtensions.cs`, `Explore.API/Extensions/CorsExtensions.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Application/Services/ApiKeyHashing.cs`, `Explore.Application/Telemetry/BusinessMetrics.cs`, `Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs`, `Explore.Infrastructure/Services/FallbackAuthorizationService.cs`, `docs/AUTHORIZATION.md`
+> **Last Verified:** 2026-07-04
+> **Source Anchors:** `Explore.API/Extensions/AuthenticationExtensions.cs`, `Explore.API/Extensions/CorsExtensions.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffAuthenticationExtensions.cs`, `Event.Web.BffHosting/Proxy/EventApiProxyExtensions.cs`, `Event.ControlPlane.Blazor/Program.cs`, `Explore.Application/Services/ApiKeyHashing.cs`, `Explore.Application/Telemetry/BusinessMetrics.cs`, `Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs`, `Explore.Infrastructure/Services/FallbackAuthorizationService.cs`, `docs/AUTHORIZATION.md`
 
 ## Security Model
 
 The platform uses a BFF model:
 
 - `Explore.Blazor` (server) handles OIDC and session cookies.
+- `Event.ControlPlane.Blazor` uses the same shared BFF hosting primitives for the separate self-hostable control-plane host, but with a dedicated Keycloak confidential client, a separate cookie name, and a coarse instance-admin-only control-plane policy.
 - `Explore.Blazor.Client` (WASM) does not directly manage access tokens.
 - `Explore.API` authorizes bearer-token requests and applies resource-level checks in Application layer.
 
@@ -31,10 +32,11 @@ Current security gates:
 
 ## Authentication Flow (Current)
 
-1. User authenticates through BFF OpenID Connect flow.
-2. BFF stores auth session in cookie.
-3. Calls to `/api/*` are proxied by YARP from BFF to API.
-4. BFF adds bearer token to proxied API requests (`YarpProxyExtensions.ForwardBearerTokenAsync`).
+1. User authenticates through a browser BFF OpenID Connect flow.
+2. The BFF stores the auth session in an HttpOnly cookie.
+3. Calls to `/api/*` are proxied by YARP from the BFF to the API.
+4. The BFF adds the server-held bearer token to proxied API requests through the shared BFF hosting token-forwarding path.
+5. `Event.ControlPlane.Blazor` uses the same flow with the `islamu-event-control-plane` Keycloak confidential client. It must not support setup-secret, API-key, or browser-stored bearer-token login for operators.
 
 ## JWT Bearer Configuration (API)
 
@@ -69,6 +71,21 @@ In YARP transforms:
 - Inbound request headers are never trusted as setup-secret sources. Browser-controlled `X-Setup-Secret` values must be stripped and ignored by both YARP and server-side forwarding handlers.
 
 This prevents stale outgoing proxy headers and browser-controlled privileged headers from leaking across requests. Treat the setup secret as bootstrap-only sensitive material; the BFF protects the setup cookie with ASP.NET Core Data Protection and forwards only resolver output to downstream API calls.
+
+## Control Plane BFF Boundary
+
+The separate control-plane app is a browser BFF, not a native client and not a management API. Its security boundary is:
+
+- `Event.ControlPlane.Blazor` authenticates through Keycloak OIDC Authorization Code flow plus PKCE using a dedicated confidential client.
+- The control-plane client secret is server-side only through environment variables, appsettings, user secrets, or Infisical-compatible startup loading.
+- The separate host is Interactive Server-only: it registers only the server component render mode and applies `@rendermode="InteractiveServer"` to `HeadOutlet` and `Routes`.
+- InteractiveAuto and WebAssembly render modes must not be added to `Event.ControlPlane.Blazor`; privileged control-plane features must not ship as a WASM client bundle.
+- The browser receives only the HttpOnly BFF session cookie and display-safe page payloads. It must not receive access tokens, refresh tokens, client secrets, setup secrets, API keys, instance-admin authority claims, or raw OIDC diagnostics.
+- The BFF enforces a coarse `ControlPlaneAccess` policy before rendering the shell, but `Explore.API` and Application/MediatR authorization remain the authoritative boundary for every control-plane action.
+- Control-plane UI affordances must still come from API/HAL `_links` or server-confirmed status endpoints. Local claim checks are UX hints only and must not unlock actions.
+- Browser-supplied privileged headers are stripped before proxying. Trusted tenant hints, setup-secret forwarding, and support-access forwarding remain server-owned BFF adapter decisions.
+
+A separate control-plane UI host does not guarantee operational rescue if the shared API, database, or reverse proxy is saturated. Reserved-resource management APIs/workers are a future management-plane concern, not something implied by this BFF split.
 
 ## Support Access Trust Boundary
 
@@ -134,8 +151,9 @@ Cookie-authenticated unsafe BFF endpoints must validate antiforgery tokens becau
 - Browser client path: `BrowserCredentialsMessageHandler` attaches browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.
 - Server self-call path: `BffCookieForwardingHandler` forwards captured cookies and mirrors `XSRF-TOKEN` into `X-CSRF-TOKEN` when InteractiveServer code calls BFF endpoints.
 - Endpoint validation: unsafe minimal BFF endpoints call `.ValidateAntiforgery()`, which returns `400 Antiforgery validation failed` for missing or invalid tokens.
-- Protected endpoint families include auth refresh, support-access start/stop, storage upload proxy, preference mutations, and appearance profile mutations.
-- Documented exceptions are setup-secret bootstrap endpoints, `/bff/auth/refresh-session/internal`, and the storage upload session/proxy endpoints (`/bff/storage/upload-session`, `/bff/storage/upload-proxy`); these remain constrained by setup credentials, authorization, per-user session ownership binding (`IStorageUploadSessionStore`), cryptographically random short-lived session IDs, server-side stream-to-API proxying (browser never reaches the storage provider), and rate limiting because they are used before, outside, or via InteractiveServer circuit self-calls where browser antiforgery semantics cannot be reliably satisfied.
+- Protected endpoint families include auth refresh, support-access start/stop, storage upload session/proxy, preference mutations, and appearance profile mutations.
+- InteractiveServer storage upload self-calls use a short-lived Data Protection protected `X-ISLAMU-BFF-SELF-CALL` token bound to method, path, host, and authenticated user. That token lets same-process server calls satisfy the same endpoint filter without turning browser-originated storage uploads into an antiforgery exception.
+- Documented exceptions are setup-secret bootstrap endpoints and `/bff/auth/refresh-session/internal`; these remain constrained by setup credentials, server-owned setup/session state, authorization where applicable, and rate limiting because they run before or outside normal browser antiforgery semantics.
 
 Do not add new unsafe `/bff/*` endpoints without either `.ValidateAntiforgery()` or a documented bootstrap/internal exception with equivalent compensating controls.
 
@@ -431,9 +449,10 @@ Non-interactive callers (direct API consumers, integrations, automation) authent
 
 ### Tenant Isolation
 
-- API key rows are tenant-scoped (`TenantId` FK) except for `InstanceAdmin` keys (nullable). Every non-auth query applies the `Tenant` query filter.
+- API key rows are tenant-scoped (`TenantId` FK) except for `InstanceAdmin` keys, whose credential row is nullable because it belongs to the platform operator rather than one tenant. Every non-auth query applies the `Tenant` query filter.
 - API-key auth lookups are the **only API-key path** permitted to bypass the tenant filter — narrowly scoped to `GetByKeyIdForAuthentication` via `IgnoreTenantFilter`.
 - `ApiTenantPostAuthenticationMiddleware` enforces that the API-key `TenantId` matches the resolved request tenant. Mismatches return `404 Not Found` (not `401` — to avoid leaking tenant existence).
+- `InstanceAdmin` API keys do not implicitly make tenant-scoped API/MCP execution tenantless. If the request carries an explicit tenant hint, post-auth middleware binds that tenant for the request. If a tenant-scoped API or MCP request has no resolved tenant, it fails closed with `404` and `code=tenant_required`. Only explicit host-administration API routes may continue without tenant context.
 - Tenant user authority is rooted in `TenantUserRoleGrant`, which must reference a matching `(TenantId, TenantUserId)` pair and a tenant-scoped role. Effective tenant-admin checks also require the linked `TenantUser` to be active and not soft-deleted.
 - Organization membership reads are administrative, identity-bearing resources. `OrganizationMemberDto` includes tenant, organization, user, email/name, role, and position data; list/detail routes therefore require authenticated `islamuevent_organization_member:view` authorization and are denied to regular authenticated users. Do not reuse this DTO for public organization profile display; add a separate safe public projection if product requirements later need anonymous member/profile data.
 - Footer management writes are tenant-administration actions. The API must resolve the current user and current tenant before dispatch, then footer link-group/link/reorder/settings commands authorize as `ResourceKinds.Tenant` with `AuthorizationActions.Update` and tenant attributes. A missing actor fails as authentication required; a signed-in user without tenant-admin or instance-admin authority receives `403 Forbidden`.

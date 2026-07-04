@@ -39,7 +39,7 @@ Request host source:
 
 For standard authenticated-browser requests, the middleware binds the resolved tenant into the request-scoped tenant context accessor immediately.
 
-For API-key requests, `ApiTenantResolutionMiddleware` can store a requested tenant hint in `HttpContext.Items["__requested_tenant_id"]` and defer final tenant binding to `ApiTenantPostAuthenticationMiddleware` after authentication succeeds.
+For API-key requests, `ApiTenantResolutionMiddleware` can store a requested tenant hint in `HttpContext.Items["__requested_tenant_id"]` and defer final tenant binding to `ApiTenantPostAuthenticationMiddleware` after authentication succeeds. Tenant-bound API keys bind their persisted tenant when no mismatch exists. `InstanceAdmin` API keys are nullable credentials, but tenant-scoped API and MCP requests still require an execution tenant: an explicit tenant hint binds that tenant, single-tenant mode binds the configured default tenant, and unresolved tenant-scoped API/MCP requests fail closed with `404` and `code=tenant_required`. Only explicit host-administration API routes may continue without tenant context.
 
 ## Default Tenant Fallback
 

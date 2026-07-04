@@ -6,7 +6,7 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-03
+> **Last Verified:** 2026-07-04
 > **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.API/HealthChecks/StorageReconciliationHealthCheck.cs`, `Explore.API/BackgroundServices/StorageReconciliationProcessor.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
 
 This page is the operational reference for implemented runtime behavior. Task procedures should live in dedicated runbooks and be linked from here.
@@ -51,9 +51,9 @@ Sensitive values are redacted before output. Do not add checks that print raw co
 | Launch profile | Mode | Started by Aspire |
 |---|---|---|
 | `https` | `FullLocal` | Compatibility alias for the contributor full-local topology. |
-| `local-full` | `FullLocal` | PostgreSQL `postgres`/`explore`, Redis `cache`, RabbitMQ `messaging`, Mailpit, CockroachDB `crdb`, Phase Two Keycloak `keycloak`, Cerbos database/PDP, MinIO, Svix, Coop, Osprey, Prometheus, Grafana, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. |
-| `local-core` | `LocalDataExternalPlatform` | PostgreSQL `postgres`/`explore`, Redis `cache`, Mailpit, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. Auth, policy, storage, webhooks, and moderation providers come from Infisical/config. |
-| `local-lite` | `ExternalInfra` | Mailpit, `Explore.API`, and `Explore.Blazor`. All other infrastructure comes from Infisical/config. |
+| `local-full` | `FullLocal` | PostgreSQL `postgres`/`explore`, Redis `cache`, RabbitMQ `messaging`, Mailpit, CockroachDB `crdb`, Phase Two Keycloak `keycloak`, Cerbos database/PDP, MinIO, Svix, Coop, Osprey, Prometheus, Grafana, `Event.MigrationService`, `Explore.API`, `Explore.Blazor`, and `Event.ControlPlane.Blazor`. |
+| `local-core` | `LocalDataExternalPlatform` | PostgreSQL `postgres`/`explore`, Redis `cache`, Mailpit, `Event.MigrationService`, `Explore.API`, `Explore.Blazor`, and `Event.ControlPlane.Blazor`. Auth, policy, storage, webhooks, and moderation providers come from Infisical/config. |
+| `local-lite` | `ExternalInfra` | Mailpit, `Explore.API`, `Explore.Blazor`, and `Event.ControlPlane.Blazor`. All other infrastructure comes from Infisical/config. |
 
 Contributor default:
 
@@ -69,12 +69,21 @@ curl -sSL https://aspire.dev/install.sh | bash
 
 `AspireRunModeExtensions.Parse` defaults a missing `ISLAMU_ASPIRE_MODE` to `FullLocal`, so the contributor path does not require a launch-profile name. `aspire run` is interactive and exits when you press `Ctrl+C`.
 
-Background run and stop:
+Foreground isolated run for repeatable local launch proof:
 
 ```bash
-aspire start --apphost Explore.AppHost/Explore.AppHost.csproj
-aspire stop --apphost Explore.AppHost/Explore.AppHost.csproj
+aspire run --apphost Explore.AppHost/Explore.AppHost.csproj --isolated
 ```
+
+For concurrent worktrees or repeated local proofs, isolate the Aspire run and discover ports from Aspire resource metadata in another shell while the foreground run is alive:
+
+```bash
+aspire ps --format Json
+aspire describe explore-api --apphost Explore.AppHost/Explore.AppHost.csproj --format Json
+aspire describe mailpit --apphost Explore.AppHost/Explore.AppHost.csproj --format Json
+```
+
+Detached Aspire commands remain useful for CLI lifecycle investigation, but they are not the current canonical launch proof path for this workspace. Official Aspire CLI documentation says `aspire start` starts an AppHost in the background and leaves it inspectable with `aspire ps`, `aspire describe`, `aspire logs`, and `aspire stop`. On 2026-07-04, local Aspire CLI `13.4.6` repeatedly returned detached startup JSON after AppHost readiness, then the AppHost process disappeared and `aspire ps --format Json` returned `[]`. If that reproduces, use the foreground `aspire run --isolated` path above and inspect the detached child log under `~/.aspire/logs/`.
 
 Maintainer modes:
 
@@ -95,17 +104,17 @@ dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile loc
 
 The `https` profile is the intuitive full-local alias for contributors who are used to the standard ASP.NET launch profile name.
 
-`local-full` uses persistent container lifetimes and named volumes for heavy stateful resources so local database, Keycloak, MinIO, RabbitMQ, and observability state survive AppHost restarts. Keycloak is pinned to stable local HTTP and management ports because browser cookies, OIDC callbacks, and issuer metadata are port-sensitive during development.
+`local-full` uses persistent container lifetimes and named volumes for heavy stateful resources so local database, Keycloak, MinIO, RabbitMQ, and observability state survive AppHost restarts. Non-isolated local runs use the configured development host ports where present. Isolated runs publish dynamic localhost ports, so use `aspire describe <resource> --format Json` instead of hardcoding Mailpit, Keycloak, MinIO, API, Blazor, or control-plane ports.
 
 Secret and connection priority:
 
-- `local-full` forces `SecretProvider__Provider=None` for child projects, clears Infisical bootstrap identifiers, and supplies local Keycloak, Cerbos, MinIO, Svix, Coop, Mailpit SMTP, storage, and database settings. Contributors should not need Infisical credentials.
+- `local-full` forces `SecretProvider__Provider=None` for child projects, clears Infisical bootstrap identifiers, and supplies local Keycloak, Cerbos, MinIO, Svix, Coop, Mailpit SMTP, storage, database, and control-plane BFF settings. Contributors should not need Infisical credentials.
 - `ConnectionStrings:DefaultConnection` has first priority for EF Core; Aspire `WithReference` supplies it in `local-full` and `local-core`.
-- Mailpit SMTP is local in every Aspire profile. AppHost starts `mailpit` on SMTP `localhost:1025` and web UI `http://localhost:8025`; Development database seeding uses `MAIL_SMTP_*` values, then `SMTP_*` aliases, then these local defaults when `email.smtp_host` is empty or still set to the retired `mailpit.openislamu.org` default.
+- Mailpit SMTP is local in every Aspire profile. Non-isolated runs use the configured development Mailpit ports; isolated runs use Aspire-assigned dynamic ports. Development database seeding uses `MAIL_SMTP_*` values, then `SMTP_*` aliases, then local defaults when `email.smtp_host` is empty or still set to the retired `mailpit.openislamu.org` default. In `ISLAMU_ASPIRE_MODE=FullLocal`, seeding refreshes those Development SMTP rows on each run so persistent local database volumes follow the current isolated Mailpit port.
 - When no connection string is supplied, `BootstrapSecretLoader` resolves PostgreSQL fields from Infisical `/postgresql`, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration.
 - `local-core` and `local-lite` are maintainer modes. If Infisical bootstrap credentials are present in user secrets or environment variables, raw Infisical bootstrap values can outrank local `POSTGRESQL_*` fallback values. Blank the Infisical bootstrap keys for env-only local debugging.
 
-Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize configured client secrets. Aspire sets `KC_HTTP_RELATIVE_PATH=/auth`, so its management readiness probe is `/auth/health/ready`. Keycloak skips startup import when the realm already exists in the persistent database, so reset the Keycloak database volume before expecting changes in the JSON export to reapply automatically.
+Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize configured public Blazor and optional control-plane BFF client secrets. Aspire sets `KC_HTTP_RELATIVE_PATH=/auth`, so its management readiness probe is `/auth/health/ready` and the full-local control-plane resource receives `/auth/realms/ISLAMU` authority/metadata settings. Keycloak skips startup import when the realm already exists in the persistent database, so reset the Keycloak database volume before expecting changes in the JSON export to reapply automatically.
 
 Startup dependencies are explicit:
 
@@ -114,10 +123,11 @@ Startup dependencies are explicit:
 3. `Event.MigrationService` receives the local database through Aspire `WithReference(database, "EventMigrationService")` and `WithReference(database, "DefaultConnection")`, then waits for PostgreSQL.
 4. `Explore.API` waits for migration completion, local data/cache, and `local-full` platform resources when those resources exist.
 5. `Explore.Blazor` waits for API readiness and receives API service discovery through Aspire.
+6. `Event.ControlPlane.Blazor` waits for API readiness, receives API service discovery through Aspire, and in `local-full` receives the dedicated local Keycloak control-plane client id/secret plus OIDC metadata settings.
 
-The Blazor app resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Do not hardcode the Compose/API host port into AppHost documentation.
+The Blazor apps resolve the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Compose uses `API_ENDPOINT` for the public Blazor BFF and `CONTROL_PLANE_API_ENDPOINT` for the separate control-plane BFF, both defaulting to the internal `islamu-event-api:8080` service. Do not hardcode the Compose/API host port into AppHost documentation.
 
-Aspire local development uses the local filesystem storage provider by default unless a profile supplies S3-compatible settings. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`; `local-full` also supplies MinIO-compatible `S3Settings` for workflows that exercise S3 behavior. Local Svix uses the Aspire Redis plaintext container endpoint with the generated Redis password, while .NET projects continue to consume Redis through normal Aspire references. AppHost sets a deterministic development `SVIX_JWT_SECRET`, supplies a matching `WEBHOOKS_SVIX_AUTH_TOKEN` to the API, and Development seeding binds that value to `webhooks.svix.auth_token`; rotate all local defaults outside disposable development. Local Coop uses an isolated PostgreSQL container plus development-only `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics settings so the review-queue provider can boot without external ClickHouse or production secrets.
+Aspire local development uses the local filesystem storage provider by default unless a profile supplies S3-compatible settings. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`; `local-full` also supplies MinIO-compatible `S3Settings` for workflows that exercise S3 behavior, and bootstraps the `explore` bucket before the API starts. Local Svix uses the Aspire Redis plaintext container endpoint with the generated Redis password, while .NET projects continue to consume Redis through normal Aspire references. AppHost sets a deterministic development `SVIX_JWT_SECRET`, supplies a matching `WEBHOOKS_SVIX_AUTH_TOKEN` to the API, and Development seeding binds that value to `webhooks.svix.auth_token`; rotate all local defaults outside disposable development. Local Coop uses an isolated PostgreSQL container plus development-only `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics settings so the review-queue provider can boot without external ClickHouse or production secrets.
 
 Cerbos local infrastructure uses the repository `cerbos/` folder as its source of truth. Aspire and Docker Compose mount `cerbos/config/.cerbos.yaml` into the Cerbos container, mount `cerbos/policies/` read-only for derived roles, policies, and `_schemas`, and initialize the local Cerbos PostgreSQL store from `cerbos/init/cerbos-schema.sql`. The local Cerbos PostgreSQL container uses the Postgres 18 parent data mount (`/var/lib/postgresql`) rather than the legacy direct `data` mount. Do not copy policy files into container images for local development; update the repo-owned `cerbos/` tree and restart or sync the local Cerbos service.
 
@@ -157,6 +167,22 @@ dotnet ef migrations add init --context ExploreDbContext --project Explore.Persi
 
 This preserves the dedicated data-protection migration path before the primary `ExploreDbContext` bootstrap migration.
 
+Data Protection key persistence is launch-critical for the Blazor BFF. `Explore.Blazor`
+stores authentication cookies, setup-secret cookies, antiforgery state, and other
+protected payloads with ASP.NET Core Data Protection. The BFF configures a stable
+application name and persists the key ring through `DataProtectionKeyContext`, while
+`Event.MigrationService` migrates that dedicated context before the app depends on it.
+If the database and `DataProtectionKeys` rows are preserved, a fresh BFF host can read
+cookie tickets protected by the previous host. If those rows are lost, existing BFF
+auth/setup/antiforgery cookies are intentionally invalid and users must authenticate or
+repeat setup actions again. Treat unexpected mass cookie invalidation after restart as a
+database/key-ring persistence incident before debugging Keycloak or browser storage.
+The Blazor readiness check named `data-protection-keys` queries the same
+`DataProtectionKeyContext` key table. If the table or backing database is
+unreachable, Blazor `/health` returns unhealthy and logs only the bounded
+failure type; health payloads never expose key XML, connection strings, or
+database endpoints.
+
 Event/session lifecycle migration notes:
 
 - `20260623101543_AddEventSessionStatusAndNullableSchedule` adds the `event_session_statuses` lookup, backfills existing `event_sessions` to `DRAFT`, and makes session schedule/local projection columns nullable so draft sessions do not need fake times.
@@ -181,12 +207,13 @@ Readiness interpretation:
 
 | Check | Host | Healthy | Degraded | Unhealthy |
 |---|---|---|---|---|
-| `shutdown` | API, Blazor | Process is accepting traffic | Not used | Graceful shutdown is active; remove from load balancer |
+| `shutdown` | API, Blazor, Control Plane BFF | Process is accepting traffic | Not used | Graceful shutdown is active; remove from load balancer |
 | `database` | API, Blazor | EF Core can reach PostgreSQL | Not used | Database unavailable or migration/runtime connectivity failed |
-| `distributed-cache` | API, Blazor | Effective cache round-trip works | Configured Redis fell back to in-memory cache | Effective cache round-trip failed |
-| `oidc-discovery` | API, Blazor | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
+| `data-protection-keys` | Blazor | Persisted ASP.NET Core Data Protection key table is reachable | Not used | BFF key-ring table or backing database is unavailable; existing cookies may fail after restart |
+| `distributed-cache` | API, Blazor, Control Plane BFF | Effective cache round-trip works | Configured Redis fell back to in-memory cache | Effective cache round-trip failed |
+| `oidc-discovery` | API, Blazor, Control Plane BFF | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
-| `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`TickerQ` scheduler or hosted-service fallback) | Dispatch is intentionally disabled | TickerQ mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
+| `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`TickerQ` scheduler or hosted-service fallback) and outbox counts are below warning thresholds | Dispatch is intentionally disabled, due dispatch backlog crosses threshold, stale `Processing` rows cross threshold, or `DeadLettered` rows cross threshold | TickerQ mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
 | `email-dispatch-rabbitmq` | API | RabbitMQ Dispatch Mode is disabled, or enabled and topology can be declared | Not used | RabbitMQ mode is enabled but the broker/topology is unreachable or invalid |
 | `idempotency-cleanup` | API | Expired idempotency cleanup is enabled in delete or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
 | `ai-retention-cleanup` | API | AI retention cleanup is enabled in redaction or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
@@ -194,17 +221,19 @@ Readiness interpretation:
 | `storage-reconciliation` | API | Storage reconciliation worker is enabled in dry-run or mutation mode | Reconciliation is intentionally disabled | Invalid reconciliation options fail startup |
 | `ai-provider` | API | AI provider integration is disabled, deterministic fake provider is enabled, or OpenAI Responses/OpenAI-compatible/Anthropic/Anthropic-compatible/Azure OpenAI settings are valid | Not used | AI provider is enabled but no runnable provider is configured, or provider endpoint/settings fail egress validation |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
-| `islamu-event-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
-| `secret_provider` | API, Blazor | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
+| `islamu-event-api` | Blazor, Control Plane BFF | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
+| `secret_provider` | API, Blazor, Control Plane BFF | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
 
 Operational rules:
 
 - Point load balancer readiness checks at `/health` and liveness checks at `/alive`.
 - Treat `Degraded` as deployable only when the affected dependency is optional for the deployment mode and the response body clearly identifies the dependency.
 - Treat `Unhealthy` as non-deployable for rolling updates; fix the dependency or intentionally switch the related feature/provider off.
+- Treat `data-protection-keys` unhealthy as a BFF session-continuity blocker. Preserve or restore the `data_protection_keys` table before investigating Keycloak, browser storage, or cookie middleware.
+- SMTP readiness is launch-critical when email is enabled. A 2026-07-04 FullLocal proof stopped Mailpit through `aspire resource mailpit stop` and API `/health` correctly returned HTTP 503 with `smtp` Unhealthy, then returned HTTP 200 Healthy after Mailpit restart. The SMTP readiness registration is bounded to five seconds; the follow-up proof returned HTTP 503 in `5.014s` with `smtp` Unhealthy and recovered to HTTP 200 after Mailpit restart.
 - Instance Cerbos readiness follows authorization fail-closed semantics: if the operator selected `authorization.provider=cerbos`, an unreachable PDP makes `/health` unhealthy rather than silently falling back to local RBAC.
 - Local authorization mode skips Cerbos readiness, so self-hosted/local deployments do not need a Cerbos PDP unless explicitly selected.
-- Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only. The default trigger is TickerQ `email-dispatch-drain`; the hosted service mode is a fallback over the same drain service.
+- Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only. The default trigger is TickerQ `email-dispatch-drain`; the hosted service mode is a fallback over the same drain service. The `email-dispatch` readiness payload also reports safe aggregate outbox counts for due dispatch backlog, retry-scheduled rows, stale processing leases, and dead-letter rows.
 - RabbitMQ Dispatch Mode is optional transport infrastructure. When `EmailDispatchRabbitMq:Enabled=false`, the `email-dispatch-rabbitmq` check is healthy without opening a broker connection. When enabled, missing broker connectivity or failed topology declaration is unhealthy because the operator explicitly selected RabbitMQ transport.
 - Idempotency cleanup is an optional operational worker over the PostgreSQL replay cache. `Degraded` means cleanup is intentionally disabled; stale rows remain ignored for replay but are not physically deleted until cleanup is re-enabled.
 - AI retention cleanup is an optional operational worker over tenant-owned AI assistant history. `Degraded` means cleanup is intentionally disabled; expired conversations remain readable until cleanup is re-enabled. Dry-run is healthy and records counts without redaction.
@@ -420,6 +449,7 @@ Current counters include:
 - `explore.webhooks.delivery_failure` (`tenant_id`, `event_type`, `outcome`, `failure_category`) — LocalProvider failed delivery count with bounded failure categories only.
 - `explore.webhooks.endpoint_disabled` (`tenant_id`, `failure_category`) — endpoint auto-disable count; labels intentionally exclude endpoint URLs and secrets.
 - `explore.webhooks.manual_retries` (`tenant_id`, `event_type`, `outcome`, `failure_category`) — manual retry scheduling outcomes; labels intentionally exclude message IDs, endpoint IDs, and payloads.
+- `explore.webhooks.provider_publish_failure` (`tenant_id`, `event_type`, `provider`, `failure_category`) — outgoing provider handoff failures before provider-owned fanout; labels intentionally exclude message IDs, provider message IDs, endpoint URLs, payloads, secrets, and raw provider errors.
 - `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, tenant/user IDs, and raw errors.
 - `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, raw tool payloads, model IDs, endpoint URLs, API keys, provider request IDs, and raw provider errors.
 - `explore.ai.provider.request_duration` (`provider`, `outcome`, `failure_category`) — AI provider request duration histogram in seconds; labels intentionally use the same bounded dimensions as provider request counters.
@@ -518,7 +548,7 @@ Operator signals:
 
 | Signal | Meaning |
 |---|---|
-| `email-dispatch` health check | Selected dispatch mode, TickerQ enabled state, dashboard enabled state, and safe dispatch settings. |
+| `email-dispatch` health check | Selected dispatch mode, TickerQ enabled state, dashboard enabled state, safe dispatch settings, threshold values, and aggregate outbox counts (`dueDispatchCount`, `retryScheduledCount`, `staleProcessingCount`, `deadLetteredCount`). |
 | `explore.email_dispatch.attempts` | Outcome counter for sent, skipped, tenant paused, unknown, retry-scheduled, and dead-lettered attempts. |
 | TickerQ dashboard | Optional instance-admin-only scheduler internals. It is disabled by default and is not the product/operator source of truth for email delivery state. |
 | Structured drain logs | Include dispatch/outbox IDs, tenant IDs, outcomes, retry delay, and normalized failure category; do not include bodies, recipients, subjects, secrets, provider message IDs, or raw SMTP error text. |

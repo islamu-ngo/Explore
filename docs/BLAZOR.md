@@ -7,11 +7,11 @@ ABOUTME: Keeps token handling, proxying, render policy, service state, and clien
 > **Status:** Implemented
 > **Owner:** Frontend
 > **Last Verified:** 2026-07-04
-> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
+> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Event.ControlPlane.Blazor/Program.cs`, `Event.ControlPlane.Blazor/Components/App.razor`, `Event.ControlPlane.Client/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
 
 ## Scope
 
-This document is the contributor-facing guide for `Explore.Blazor` and `Explore.Blazor.Client`. It focuses on the BFF trust boundary, proxy behavior, render-policy consumption, service/state patterns, and generated API client workflow.
+This document is the contributor-facing guide for `Explore.Blazor`, `Explore.Blazor.Client`, `Event.ControlPlane.Blazor`, and `Event.ControlPlane.Client`. It focuses on the BFF trust boundary, proxy behavior, render-policy consumption, service/state patterns, and generated API client workflow.
 
 Use the specialized docs for deep detail:
 
@@ -31,8 +31,22 @@ Use the specialized docs for deep detail:
 |---|---|---|
 | `Explore.Blazor` | Server/BFF host: OIDC login, HttpOnly cookie session, YARP proxy, BFF endpoints, token forwarding, antiforgery, rate limiting. | Raw domain logic or browser token storage. |
 | `Explore.Blazor.Client` | Razor UI, pages/components, scoped UI state, typed service layer, generated API DTO consumption. | API authorization decisions, raw access-token persistence, or direct controller logic. |
+| `Event.ControlPlane.Blazor` | Separate self-hostable control-plane BFF host: Keycloak OIDC confidential-client login, HttpOnly cookie session, shared BFF hosting, control-plane proxy, and protected root shell. | Public/tenant shell logic, browser token storage, setup-secret/API-key operator login, or WebAssembly/Auto render-mode hosting. |
+| `Event.ControlPlane.Client` | Host-neutral control-plane Razor class library shared by embedded and separate shells. | Host render-mode selection, BFF security primitives, local authorization decisions, or direct public Blazor shell dependencies. |
 
 The browser never owns access tokens. Interactive UI calls go through the BFF or generated client services; API remains the hard authorization boundary.
+
+## Render Mode Boundary
+
+`Explore.Blazor` may keep its render-policy-controlled public app behavior, including the existing configurable Interactive Server, WebAssembly, or Auto paths documented in [RENDER_POLICIES.md](RENDER_POLICIES.md).
+
+`Event.ControlPlane.Blazor` is different: the separate control-plane host is Interactive Server-only. Its `Program.cs` registers `AddInteractiveServerComponents()` and maps `AddInteractiveServerRenderMode()`, while `Components/App.razor` applies `@rendermode="InteractiveServer"` to both `HeadOutlet` and `Routes`. Do not add InteractiveAuto or InteractiveWebAssembly hosting to the separate control-plane app.
+
+`Event.ControlPlane.Client` stays render-mode neutral. Shared control-plane components must not declare `@rendermode` or depend on host-specific render-mode services; the embedding host chooses how those components are activated.
+
+The shared control-plane RCL also owns its own small `ControlPlane*` UI primitives. It may use MudBlazor and the Event design tokens directly, but it must not reference `Explore.Blazor.Client` or its `App*` wrapper components. This keeps embedded and separate control-plane shells on the same component implementation without creating a public-client dependency cycle.
+
+Hosts that render `Event.ControlPlane.Client` components must provide MudBlazor host services, providers, and static assets. The separate `Event.ControlPlane.Blazor` host registers `AddMudServices`, includes the MudBlazor CSS/JS static assets, and renders `MudThemeProvider`, `MudPopoverProvider`, `MudDialogProvider`, and `MudSnackbarProvider` in its operator layout.
 
 ## BFF Endpoint Families
 
@@ -114,8 +128,9 @@ Cookie-authenticated BFF mutations use a double-submit-style antiforgery contrac
 3. `BrowserCredentialsMessageHandler` sends browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests when the token cookie is present.
 4. `BffCookieForwardingHandler` preserves cookie/XSRF context for InteractiveServer self-calls that legitimately call BFF endpoints from the server.
 5. Unsafe preference and appearance BFF endpoints must call `.ValidateAntiforgery()`. Missing or invalid tokens return `400` with `Antiforgery validation failed`.
-6. Positive protected examples include `/bff/auth/refresh-schemes`, `/bff/auth/refresh-session`, `/bff/support-access/sessions`, `/bff/support-access/sessions/current/stop`, `/bff/support-access/sessions/{sessionId}/force-stop`, `/bff/storage/upload-proxy`, and the preference/appearance mutation endpoints.
-7. Documented exceptions are setup-secret bootstrap endpoints and `/bff/auth/refresh-session/internal`; these use separate credentials/authorization constraints because initial setup and server-side onboarding calls cannot reliably satisfy browser antiforgery semantics.
+6. Positive protected examples include `/bff/auth/refresh-schemes`, `/bff/auth/refresh-session`, `/bff/support-access/sessions`, `/bff/support-access/sessions/current/stop`, `/bff/support-access/sessions/{sessionId}/force-stop`, `/bff/storage/upload-session`, `/bff/storage/upload-proxy`, and the preference/appearance mutation endpoints.
+7. InteractiveServer storage-upload self-calls use a short-lived Data Protection protected `X-ISLAMU-BFF-SELF-CALL` token bound to the method, path, host, and authenticated user so they can pass the same endpoint filter without exposing browser tokens or setup secrets.
+8. Documented exceptions are setup-secret bootstrap endpoints and `/bff/auth/refresh-session/internal`; these use separate credentials/authorization constraints because initial setup and server-side onboarding calls cannot reliably satisfy browser antiforgery semantics.
 
 ## Storage Upload Proxy Boundary
 
