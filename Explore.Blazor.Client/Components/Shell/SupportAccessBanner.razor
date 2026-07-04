@@ -1,0 +1,158 @@
+@* ABOUTME: Shell banner that exposes active support-access state and the stop action. *@
+@* ABOUTME: Uses BFF-confirmed session state and avoids browser-side role or claim authority. *@
+
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.SupportAccess
+@implements IDisposable
+@inject ISupportAccessClientService SupportAccessClientService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IAccessibilityAnnouncerService AccessibilityAnnouncerService
+@inject ISnackbar Snackbar
+
+@if (IsVisible)
+{
+    <section class="support-access-banner @ModeClass"
+             role="status"
+             aria-live="polite"
+             aria-label="Support access is active">
+        <div class="support-access-banner__content">
+            <MudIcon Icon="@ModeIcon"
+                     Color="@ModeColor"
+                     Size="Size.Small"
+                     Class="support-access-banner__icon" />
+
+            <div class="support-access-banner__text">
+                <MudText Typo="Typo.body2" Class="support-access-banner__title">
+                    Support access active
+                </MudText>
+                <MudText Typo="Typo.caption" Class="support-access-banner__meta">
+                    @ModeLabel for tenant @FormatId(Session?.TargetTenantId) · @ExpiryText
+                </MudText>
+            </div>
+
+            <div class="support-access-banner__action">
+                <AppButton Variant="Variant.Outlined"
+                           Color="@ModeColor"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Logout"
+                           Disabled="@SupportAccessClientService.IsStopping"
+                           OnClick="StopAsync"
+                           aria-label="Stop support access">
+                    @(SupportAccessClientService.IsStopping ? "Stopping" : "Stop")
+                </AppButton>
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public EventCallback<bool> OnVisibilityChanged { get; set; }
+
+    private bool _isAuthenticated;
+    private bool _lastVisibility;
+
+    private SupportAccessSessionDto? Session => SupportAccessClientService.CurrentSession;
+
+    private bool IsVisible => _isAuthenticated && SupportAccessClientService.IsActive && Session is not null;
+
+    private string ModeClass => Session?.AllowsWrites == true
+        ? "support-access-banner--write"
+        : "support-access-banner--read-only";
+
+    private string ModeLabel => Session?.AllowsWrites == true ? "Write mode" : "Read-only mode";
+
+    private string ModeIcon => Session?.AllowsWrites == true
+        ? Icons.Material.Filled.Warning
+        : Icons.Material.Filled.Visibility;
+
+    private Color ModeColor => Session?.AllowsWrites == true ? Color.Error : Color.Warning;
+
+    private string ExpiryText
+    {
+        get
+        {
+            if (Session?.ExpiresAtUtc is null)
+            {
+                return "expiry unavailable";
+            }
+
+            var remaining = Session.ExpiresAtUtc.Value - DateTimeOffset.UtcNow;
+            if (remaining <= TimeSpan.Zero)
+            {
+                return "expired";
+            }
+
+            if (remaining.TotalMinutes < 60)
+            {
+                return $"expires in {Math.Ceiling(remaining.TotalMinutes)} min";
+            }
+
+            return $"expires {Session.ExpiresAtUtc.Value.ToLocalTime():g}";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        SupportAccessClientService.Changed += OnSupportAccessChanged;
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+
+        if (_isAuthenticated)
+        {
+            await SupportAccessClientService.RefreshAsync();
+        }
+
+        await NotifyVisibilityChangedIfNeededAsync();
+    }
+
+    public void Dispose()
+    {
+        SupportAccessClientService.Changed -= OnSupportAccessChanged;
+    }
+
+    private void OnSupportAccessChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await NotifyVisibilityChangedIfNeededAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task StopAsync()
+    {
+        var result = await SupportAccessClientService.StopCurrentAsync(
+            "Stopped by the support operator from the global banner.");
+
+        if (result.Success)
+        {
+            Snackbar.Add("Support access stopped.", Severity.Success);
+            await AccessibilityAnnouncerService.AnnouncePoliteAsync("Support access stopped.");
+            await NotifyVisibilityChangedIfNeededAsync();
+            return;
+        }
+
+        var message = result.ErrorMessage ?? "Support access could not be stopped.";
+        Snackbar.Add(message, Severity.Error);
+        await AccessibilityAnnouncerService.AnnounceAssertiveAsync(message);
+    }
+
+    private async Task NotifyVisibilityChangedIfNeededAsync()
+    {
+        var current = IsVisible;
+        if (current == _lastVisibility)
+        {
+            return;
+        }
+
+        _lastVisibility = current;
+        await OnVisibilityChanged.InvokeAsync(current);
+    }
+
+    private static string FormatId(Guid? value)
+    {
+        return value.HasValue ? value.Value.ToString("N")[..8] : "unknown";
+    }
+}

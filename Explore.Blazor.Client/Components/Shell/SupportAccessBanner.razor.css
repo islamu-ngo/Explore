@@ -1,0 +1,62 @@
+/* ABOUTME: Scoped shell styles for the active support-access banner.
+   ABOUTME: Uses design tokens, logical properties, and stable dimensions for header offset calculations. */
+
+.support-access-banner {
+    min-block-size: 3.5rem;
+    background: color-mix(in oklch, var(--isl-color-warning) 14%, var(--isl-color-surface));
+    border-block-end: 1px solid color-mix(in oklch, var(--isl-color-warning) 42%, var(--isl-color-border));
+    color: var(--isl-color-text);
+}
+
+.support-access-banner--write {
+    background: color-mix(in oklch, var(--isl-color-error) 12%, var(--isl-color-surface));
+    border-block-end-color: color-mix(in oklch, var(--isl-color-error) 42%, var(--isl-color-border));
+}
+
+.support-access-banner__content {
+    min-block-size: 3.5rem;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--isl-space-3);
+    inline-size: 100%;
+    padding-block: var(--isl-space-2);
+    padding-inline: max(var(--isl-space-4), 4%);
+}
+
+.support-access-banner__icon {
+    flex: 0 0 auto;
+}
+
+.support-access-banner__text {
+    min-inline-size: 0;
+}
+
+.support-access-banner__title {
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.support-access-banner__meta {
+    display: block;
+    color: var(--isl-color-text-secondary);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.support-access-banner__action {
+    justify-self: end;
+}
+
+@media (max-width: 36rem) {
+    .support-access-banner__content {
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: var(--isl-space-2);
+        padding-inline: var(--isl-space-3);
+    }
+
+    .support-access-banner__action {
+        grid-column: 1 / -1;
+        justify-self: stretch;
+    }
+}

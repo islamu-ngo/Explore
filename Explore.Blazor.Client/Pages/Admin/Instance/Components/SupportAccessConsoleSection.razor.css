@@ -1,0 +1,73 @@
+/* ABOUTME: Scoped styles for the instance support-access console. */
+/* ABOUTME: Uses BEM classes and design tokens for dense operational admin workflows. */
+
+.support-access-console {
+    display: block;
+}
+
+.support-access-console__header,
+.support-access-console__active-session-content,
+.support-access-console__target-row {
+    gap: 1rem;
+}
+
+.support-access-console__live-region {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.support-access-console__loading {
+    padding-block: 3rem;
+}
+
+.support-access-console__alert,
+.support-access-console__active-session {
+    margin-block-end: 1rem;
+}
+
+.support-access-console__panel {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-border-radius);
+    padding: 1rem;
+    background: var(--mud-palette-surface);
+}
+
+.support-access-console__panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-block-end: 1rem;
+}
+
+.support-access-console__tenant-select {
+    flex: 1 1 22rem;
+    min-inline-size: min(100%, 18rem);
+}
+
+.support-access-console__actions {
+    margin-block-start: 1rem;
+}
+
+.support-access-console__table {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-border-radius);
+    overflow: hidden;
+}
+
+@media (max-width: 59.997em) {
+    .support-access-console__header,
+    .support-access-console__active-session-content,
+    .support-access-console__target-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .support-access-console__panel {
+        padding: 0.875rem;
+    }
+}

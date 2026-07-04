@@ -1,0 +1,262 @@
+// ABOUTME: bUnit tests for tenant-facing support-access evidence review.
+// ABOUTME: Verifies tenant scoping, read-only UX, and HAL-gated audit affordances.
+
+using AngleSharp.Dom;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.SupportAccess;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Explore.Blazor.Client.Tests.Pages.Admin;
+
+public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
+{
+    private readonly Guid _tenantId = Guid.NewGuid();
+    private readonly BlazorTestContext _ctx;
+    private readonly ITenantOnboardingService _tenantOnboardingService;
+    private readonly IInstanceOnboardingService _instanceOnboardingService;
+    private readonly ITenantPublicExperienceAdminService _publicExperienceAdminService;
+    private readonly ITenantBrandingSettingsAdminService _brandingSettingsAdminService;
+    private readonly ITenantStorageSettingsAdminService _storageSettingsAdminService;
+    private readonly ISupportAccessClientService _supportAccessClientService;
+    private readonly IAccessibilityAnnouncerService _announcer;
+
+    public TenantSupportAccessEvidenceSectionTests()
+    {
+        _ctx = new BlazorTestContext();
+        _ctx.AddShellStateMocks();
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Tenant Admin", "tenant-admin@example.com", _tenantId);
+
+        _tenantOnboardingService = _ctx.AddMockService<ITenantOnboardingService>();
+        _instanceOnboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
+        _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
+        _brandingSettingsAdminService = _ctx.AddMockService<ITenantBrandingSettingsAdminService>();
+        _storageSettingsAdminService = _ctx.AddMockService<ITenantStorageSettingsAdminService>();
+        _supportAccessClientService = _ctx.AddMockService<ISupportAccessClientService>();
+        _announcer = Substitute.For<IAccessibilityAnnouncerService>();
+        _announcer.AnnouncePoliteAsync(Arg.Any<string>()).Returns(Task.CompletedTask);
+        _announcer.AnnounceAssertiveAsync(Arg.Any<string>()).Returns(Task.CompletedTask);
+
+        _ctx.Services.RemoveAll<IAccessibilityAnnouncerService>();
+        _ctx.Services.AddSingleton(_announcer);
+
+        ConfigureDefaults();
+    }
+
+    public void Dispose() => _ctx.Dispose();
+
+    [Test]
+    public async Task EvidenceSection_WithAuditHalLink_RendersAuditAffordanceAndLoadsEvents()
+    {
+        var sessionId = Guid.NewGuid();
+        var session = CreateSessionResource(sessionId, withAuditLink: true, allowsWrites: true, isActive: true);
+        var auditEvents = new SupportAccessAuditEventCollection(
+            [CreateAuditEvent(sessionId, "SessionStarted")],
+            new Dictionary<string, SupportAccessLink>(StringComparer.OrdinalIgnoreCase),
+            1,
+            100);
+        _supportAccessClientService.GetSessionsAsync(_tenantId, Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new SupportAccessSessionCollection(
+                [session],
+                new Dictionary<string, SupportAccessLink>(StringComparer.OrdinalIgnoreCase),
+                1,
+                100));
+        _supportAccessClientService.GetAuditEventsAsync(_tenantId, sessionId, Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(auditEvents);
+
+        var cut = RenderEvidenceSection();
+        cut.WaitForAssertion(() =>
+        {
+            if (FindAuditButtons(cut).Count != 1)
+            {
+                throw new InvalidOperationException("Audit affordance was not rendered from the HAL link.");
+            }
+        });
+
+        await cut.InvokeAsync(() => FindAuditButtons(cut).Single().Click());
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("SessionStarted", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Audit event row was not rendered.");
+            }
+        });
+        await _supportAccessClientService.Received(1)
+            .GetAuditEventsAsync(_tenantId, sessionId, 100, Arg.Any<CancellationToken>());
+        await _announcer.Received(1).AnnouncePoliteAsync("1 audit events loaded.");
+    }
+
+    [Test]
+    public async Task EvidenceSection_WithoutAuditHalLink_DoesNotExposeAuditOrOperatorActions()
+    {
+        var session = CreateSessionResource(Guid.NewGuid(), withAuditLink: false, allowsWrites: true, isActive: true);
+        _supportAccessClientService.GetSessionsAsync(_tenantId, Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new SupportAccessSessionCollection(
+                [session],
+                new Dictionary<string, SupportAccessLink>(StringComparer.OrdinalIgnoreCase),
+                1,
+                100));
+
+        var cut = RenderEvidenceSection();
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("customer_support", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Support session row was not rendered.");
+            }
+        });
+
+        await Assert.That(FindAuditButtons(cut)).IsEmpty();
+        await Assert.That(cut.Markup).DoesNotContain("Start Support Access", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("Force-stop", StringComparison.OrdinalIgnoreCase);
+        await _supportAccessClientService.DidNotReceive()
+            .GetAuditEventsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task TenantSettingsLayout_SupportEvidenceSection_IsReadOnlyAndRemovesSaveFooter()
+    {
+        _supportAccessClientService.GetSessionsAsync(_tenantId, Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(SupportAccessSessionCollection.Empty());
+
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetComponentType("TenantAdminSettingsLayout")));
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Support Evidence", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Support Evidence navigation item was not rendered.");
+            }
+        });
+
+        object layout = cut.Instance.Instance
+            ?? throw new InvalidOperationException("Dynamic component did not expose the rendered layout instance.");
+        SetPrivateField(layout, "_currentSection", "support-access-evidence");
+        SetPrivateField(layout, "_showMobileMenu", false);
+        await cut.InvokeAsync(() => typeof(ComponentBase)
+            .GetMethod("StateHasChanged", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(layout, null));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Support Access Evidence", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Support access evidence section was not rendered.");
+            }
+        });
+        await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ConfigureDefaults()
+    {
+        _tenantOnboardingService.GetStatusAsync()
+            .Returns(Task.FromResult<TenantOnboardingStatusModel?>(new TenantOnboardingStatusModel
+            {
+                IsCompleted = true,
+                IsAuthenticated = true,
+                IsCurrentUserTenantAdministrator = true,
+                TenantId = _tenantId
+            }));
+        _tenantOnboardingService.GetSettingsAsync()
+            .Returns(Task.FromResult(new TenantPolicySettingsModel()));
+        _instanceOnboardingService.GetStatusAsync()
+            .Returns(Task.FromResult<InstanceOnboardingStatusModel?>(new InstanceOnboardingStatusModel
+            {
+                IsCompleted = true,
+                IsAuthenticated = true,
+                IsCurrentUserInstanceAdmin = false,
+                SelectedDeploymentMode = "MultiTenant"
+            }));
+        _publicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(Arg.Any<TenantPolicySettingsModel>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new TenantPublicExperienceAdminModel()));
+        _brandingSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new TenantBrandingSettingsAdminModel { Exists = true, CanReplace = true }));
+        _storageSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new TenantStorageSettingsModel()));
+        _supportAccessClientService.GetSessionsAsync(_tenantId, Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(SupportAccessSessionCollection.Empty());
+        _supportAccessClientService.GetAuditEventsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(SupportAccessAuditEventCollection.Empty());
+    }
+
+    private IRenderedComponent<DynamicComponent> RenderEvidenceSection()
+    {
+        return _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetComponentType("TenantSupportAccessEvidenceSection")));
+    }
+
+    private SupportAccessSessionResource CreateSessionResource(
+        Guid sessionId,
+        bool withAuditLink,
+        bool allowsWrites,
+        bool isActive)
+    {
+        Dictionary<string, SupportAccessLink> links = new(StringComparer.OrdinalIgnoreCase);
+        if (withAuditLink)
+        {
+            links["audit-events"] = new SupportAccessLink(
+                "audit-events",
+                $"/api/support-access/tenants/{_tenantId:D}/sessions/{sessionId:D}/audit-events",
+                HttpMethod.Get.Method,
+                "Support-access audit events");
+        }
+
+        return new SupportAccessSessionResource(
+            new SupportAccessSessionDto
+            {
+                Id = sessionId,
+                TargetTenantId = _tenantId,
+                IsActive = isActive,
+                AllowsWrites = allowsWrites,
+                ModeName = allowsWrites ? "Write" : "ReadOnly",
+                StatusName = isActive ? "Active" : "Ended",
+                ReasonCode = "customer_support",
+                TicketReference = "SUP-123",
+                StartedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10),
+                ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(20),
+                EndedAtUtc = isActive ? null : DateTimeOffset.UtcNow.AddMinutes(-1)
+            },
+            links);
+    }
+
+    private SupportAccessAuditEventResource CreateAuditEvent(Guid sessionId, string eventTypeName)
+    {
+        return new SupportAccessAuditEventResource(
+            new SupportAccessAuditEventDto
+            {
+                Id = Guid.NewGuid(),
+                SupportAccessSessionId = sessionId,
+                TargetTenantId = _tenantId,
+                OccurredAtUtc = DateTimeOffset.UtcNow,
+                EventTypeName = eventTypeName,
+                RouteName = "ListTenantEvents",
+                Action = "read",
+                Outcome = "allowed",
+                HttpStatusCode = 200
+            },
+            new Dictionary<string, SupportAccessLink>(StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static IReadOnlyList<IElement> FindAuditButtons(IRenderedComponent<DynamicComponent> cut) =>
+        cut.FindAll("button")
+            .Where(button => button.GetAttribute("aria-label")?.StartsWith("View audit events", StringComparison.Ordinal) == true)
+            .ToList();
+
+    private static Type GetComponentType(string componentName)
+    {
+        var componentType = typeof(ITenantOnboardingService).Assembly
+            .GetTypes()
+            .FirstOrDefault(type => type.Name == componentName && typeof(IComponent).IsAssignableFrom(type));
+
+        return componentType ?? throw new InvalidOperationException($"Could not find component type '{componentName}'.");
+    }
+
+    private static void SetPrivateField(object instance, string fieldName, object? value)
+    {
+        instance.GetType()
+            .GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .SetValue(instance, value);
+    }
+}

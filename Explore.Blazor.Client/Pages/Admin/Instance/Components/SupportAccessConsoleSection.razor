@@ -1,0 +1,765 @@
+@* ABOUTME: Instance-admin support-access console for operator session lifecycle and audit review. *@
+@* ABOUTME: Uses BFF-mediated services and HAL links as the sole source for mutating affordances. *@
+
+@using System.Globalization
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.SupportAccess
+@implements IDisposable
+
+@inject IAdminService AdminService
+@inject ISupportAccessClientService SupportAccessClientService
+@inject IAccessibilityAnnouncerService AccessibilityAnnouncerService
+@inject ISnackbar Snackbar
+
+<div class="settings-section support-access-console">
+    <div class="settings-section-header">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="support-access-console__header">
+            <div>
+                <MudText Typo="Typo.h5" HtmlTag="h2" Style="font-weight: 700;">Support Access</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                    Start bounded tenant support sessions, review activity, and revoke active access.
+                </MudText>
+            </div>
+            <AppButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Disabled="_isLoading || _isLoadingSessions"
+                       OnClick="RefreshFromClickAsync">
+                Refresh
+            </AppButton>
+        </MudStack>
+    </div>
+
+    <div class="support-access-console__live-region" aria-live="polite" aria-atomic="true">@_announcement</div>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="support-access-console__alert" ShowCloseIcon="true" CloseIconClicked="() => _errorMessage = null">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="support-access-console__loading">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading support access console...</MudText>
+        </MudStack>
+    }
+    else if (_tenants.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="support-access-console__alert">
+            No tenants are available for support access.
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="4">
+            @if (SupportAccessClientService.IsActive && SupportAccessClientService.CurrentSession is { } currentSession)
+            {
+                <MudAlert Severity="@(currentSession.AllowsWrites == true ? Severity.Error : Severity.Warning)"
+                          Variant="Variant.Outlined"
+                          Class="support-access-console__active-session">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="support-access-console__active-session-content">
+                        <div>
+                            <MudText Typo="Typo.subtitle2">Current support session</MudText>
+                            <MudText Typo="Typo.body2">
+                                @GetModeLabel(currentSession) for tenant @FormatShortId(currentSession.TargetTenantId) · @GetExpiryText(currentSession)
+                            </MudText>
+                        </div>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudTextField T="string"
+                                          @bind-Value="_currentStopReason"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          MaxLength="@MaxEndReasonTextLength"
+                                          Placeholder="End reason"
+                                          aria-label="Current support access end reason" />
+                            <AppButton Variant="Variant.Outlined"
+                                       Color="@(currentSession.AllowsWrites == true ? Color.Error : Color.Warning)"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Logout"
+                                       Disabled="SupportAccessClientService.IsStopping"
+                                       OnClick="StopCurrentFromClickAsync">
+                                @(SupportAccessClientService.IsStopping ? "Stopping" : "Stop")
+                            </AppButton>
+                        </MudStack>
+                    </MudStack>
+                </MudAlert>
+            }
+
+            <section class="support-access-console__panel" aria-labelledby="support-access-target-heading">
+                <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2" Class="support-access-console__target-row">
+                    <MudSelect T="string"
+                               Label="Target tenant"
+                               Value="_selectedTenantIdText"
+                               ValueChanged="OnTenantSelectionChangedAsync"
+                               Variant="Variant.Outlined"
+                               Dense="true"
+                               Class="support-access-console__tenant-select">
+                        @foreach (var tenant in _tenants.Where(tenant => tenant.Id.HasValue))
+                        {
+                            var tenantId = tenant.Id!.Value.ToString("D");
+                            <MudSelectItem T="string" Value="@tenantId" Disabled="@(tenant.IsActive != true)">
+                                @tenant.FullName (@tenant.Slug)
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                    <AppButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ManageSearch"
+                               Disabled="@(!SelectedTenantId.HasValue || _isLoadingSessions)"
+                               OnClick="LoadSessionsFromClickAsync">
+                        Load Sessions
+                    </AppButton>
+                </MudStack>
+            </section>
+
+            <section class="support-access-console__panel" aria-labelledby="support-access-start-heading">
+                <div class="support-access-console__panel-heading">
+                    <MudText Typo="Typo.h6" HtmlTag="h3" Id="support-access-start-heading">Start Session</MudText>
+                    @if (!_sessions.CanStart)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Unavailable</MudChip>
+                    }
+                </div>
+
+                @if (_sessions.CanStart)
+                {
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="SupportAccessModeEnum"
+                                       Label="Mode"
+                                       @bind-Value="_startMode"
+                                       Variant="Variant.Outlined"
+                                       Dense="true">
+                                <MudSelectItem T="SupportAccessModeEnum" Value="SupportAccessModeEnum.ReadOnly">Read-only</MudSelectItem>
+                                <MudSelectItem T="SupportAccessModeEnum" Value="SupportAccessModeEnum.Write">Write</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudNumericField T="int"
+                                             Label="Duration minutes"
+                                             @bind-Value="_durationMinutes"
+                                             Variant="Variant.Outlined"
+                                             Dense="true"
+                                             Min="1"
+                                             Max="240"
+                                             Step="5" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudTextField T="string"
+                                          Label="Target tenant user id"
+                                          @bind-Value="_targetTenantUserIdText"
+                                          Variant="Variant.Outlined"
+                                          Dense="true"
+                                          HelperText="Optional"
+                                          Immediate="true" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Reason code"
+                                          @bind-Value="_reasonCode"
+                                          Variant="Variant.Outlined"
+                                          Dense="true"
+                                          Required="true"
+                                          MaxLength="@MaxReasonCodeLength"
+                                          Immediate="true" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Label="Ticket reference"
+                                          @bind-Value="_ticketReference"
+                                          Variant="Variant.Outlined"
+                                          Dense="true"
+                                          MaxLength="@MaxTicketReferenceLength"
+                                          Immediate="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          Label="Reason"
+                                          @bind-Value="_reasonText"
+                                          Variant="Variant.Outlined"
+                                          Lines="3"
+                                          Required="true"
+                                          MaxLength="@MaxReasonTextLength"
+                                          Immediate="true" />
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (_startMode == SupportAccessModeEnum.Write)
+                    {
+                        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="support-access-console__alert">
+                            Write mode is governed by support-access policy and may be disabled by instance settings.
+                        </MudAlert>
+                    }
+
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Class="support-access-console__actions">
+                        <AppButton Color="@(_startMode == SupportAccessModeEnum.Write ? Color.Error : Color.Primary)"
+                                   StartIcon="@(_isStarting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.PlayArrow)"
+                                   Disabled="@(!CanSubmitStart)"
+                                   OnClick="StartFromClickAsync">
+                            @(_isStarting ? "Starting" : "Start Support Access")
+                        </AppButton>
+                    </MudStack>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="support-access-console__alert">
+                        The API did not provide a start affordance for the selected context.
+                    </MudAlert>
+                }
+            </section>
+
+            <section class="support-access-console__panel" aria-labelledby="support-access-history-heading">
+                <div class="support-access-console__panel-heading">
+                    <MudText Typo="Typo.h6" HtmlTag="h3" Id="support-access-history-heading">Session History</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_sessions.TotalCount total</MudText>
+                </div>
+
+                @if (_isLoadingSessions)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                }
+                else if (!string.IsNullOrWhiteSpace(_sessions.ErrorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_sessions.ErrorMessage</MudAlert>
+                }
+                else if (_sessions.Items.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No support-access sessions were found for this tenant.</MudAlert>
+                }
+                else
+                {
+                    <MudTable T="SupportAccessSessionResource"
+                              Items="_sessions.Items"
+                              Hover="true"
+                              Dense="true"
+                              Elevation="0"
+                              Class="support-access-console__table">
+                        <HeaderContent>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Mode</MudTh>
+                            <MudTh>Started</MudTh>
+                            <MudTh>Expires</MudTh>
+                            <MudTh>Reason</MudTh>
+                            <MudTh>Ticket</MudTh>
+                            <MudTh>Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Status">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetSessionColor(context.Session)">
+                                    @GetStatusLabel(context.Session)
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Mode">@GetModeLabel(context.Session)</MudTd>
+                            <MudTd DataLabel="Started">@FormatDate(context.Session.StartedAtUtc)</MudTd>
+                            <MudTd DataLabel="Expires">@FormatDate(context.Session.ExpiresAtUtc)</MudTd>
+                            <MudTd DataLabel="Reason">@context.Session.ReasonCode</MudTd>
+                            <MudTd DataLabel="Ticket">@FormatText(context.Session.TicketReference)</MudTd>
+                            <MudTd DataLabel="Actions">
+                                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                    @if (context.CanViewAudit)
+                                    {
+                                        <AppIconButton Icon="@Icons.Material.Filled.ReceiptLong"
+                                                       Color="Color.Primary"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => SelectAuditAsync(context))"
+                                                       aria-label="@($"View audit events for support session {FormatShortId(context.Session.Id)}")" />
+                                    }
+                                    @if (context.CanForceStop)
+                                    {
+                                        <AppButton Variant="Variant.Outlined"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   StartIcon="@Icons.Material.Filled.Block"
+                                                   OnClick="@(_ => OpenForceStopDialog(context))">
+                                            Force-stop
+                                        </AppButton>
+                                    }
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </section>
+
+            <section class="support-access-console__panel" aria-labelledby="support-access-audit-heading">
+                <div class="support-access-console__panel-heading">
+                    <div>
+                        <MudText Typo="Typo.h6" HtmlTag="h3" Id="support-access-audit-heading">Audit Evidence</MudText>
+                        @if (_selectedAuditSession is not null)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Session @FormatShortId(_selectedAuditSession.Session.Id)
+                            </MudText>
+                        }
+                    </div>
+                </div>
+
+                @if (_selectedAuditSession is null)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Select a session with audit access to view evidence.</MudAlert>
+                }
+                else if (_isLoadingAudit)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                }
+                else if (!string.IsNullOrWhiteSpace(_auditEvents.ErrorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_auditEvents.ErrorMessage</MudAlert>
+                }
+                else if (_auditEvents.Items.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No audit events are available for this session.</MudAlert>
+                }
+                else
+                {
+                    <MudTable T="SupportAccessAuditEventResource"
+                              Items="_auditEvents.Items"
+                              Hover="true"
+                              Dense="true"
+                              Elevation="0"
+                              Class="support-access-console__table">
+                        <HeaderContent>
+                            <MudTh>Time</MudTh>
+                            <MudTh>Event</MudTh>
+                            <MudTh>Request</MudTh>
+                            <MudTh>Action</MudTh>
+                            <MudTh>Outcome</MudTh>
+                            <MudTh>Status</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Time">@FormatDate(context.Event.OccurredAtUtc)</MudTd>
+                            <MudTd DataLabel="Event">@FormatText(context.Event.EventTypeName)</MudTd>
+                            <MudTd DataLabel="Request">@FormatRequest(context.Event)</MudTd>
+                            <MudTd DataLabel="Action">@FormatText(context.Event.Action)</MudTd>
+                            <MudTd DataLabel="Outcome">@FormatText(context.Event.Outcome)</MudTd>
+                            <MudTd DataLabel="Status">@FormatStatusCode(context.Event.HttpStatusCode)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </section>
+        </MudStack>
+    }
+
+    <MudDialog @bind-Visible="_showForceStopDialog">
+        <TitleContent>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" />
+                <MudText Typo="Typo.h6">Force-stop support access</MudText>
+            </MudStack>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body2">
+                    Session @FormatShortId(_forceStopSession?.Session.Id) for tenant @FormatShortId(_forceStopSession?.Session.TargetTenantId)
+                </MudText>
+                <MudTextField T="string"
+                              Label="Revocation reason"
+                              @bind-Value="_forceStopReason"
+                              Variant="Variant.Outlined"
+                              Lines="3"
+                              MaxLength="@MaxEndReasonTextLength"
+                              Required="true" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <AppButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(_ => CloseForceStopDialog())">Cancel</AppButton>
+            <AppButton Color="Color.Error"
+                       StartIcon="@(_isForceStopping ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Block)"
+                       Disabled="@(_isForceStopping || string.IsNullOrWhiteSpace(_forceStopReason))"
+                       OnClick="ForceStopFromClickAsync">
+                @(_isForceStopping ? "Revoking" : "Force-stop")
+            </AppButton>
+        </DialogActions>
+    </MudDialog>
+</div>
+
+@code {
+    private const int SessionLimit = 100;
+    private const int MaxReasonCodeLength = 100;
+    private const int MaxReasonTextLength = 1000;
+    private const int MaxTicketReferenceLength = 200;
+    private const int MaxEndReasonTextLength = 200;
+
+    private ICollection<TenantListDto> _tenants = new List<TenantListDto>();
+    private SupportAccessSessionCollection _sessions = SupportAccessSessionCollection.Empty();
+    private SupportAccessAuditEventCollection _auditEvents = SupportAccessAuditEventCollection.Empty();
+    private SupportAccessSessionResource? _selectedAuditSession;
+    private SupportAccessSessionResource? _forceStopSession;
+    private string? _selectedTenantIdText;
+    private string? _targetTenantUserIdText;
+    private string _reasonCode = "customer_support";
+    private string _reasonText = string.Empty;
+    private string? _ticketReference;
+    private string? _currentStopReason;
+    private string? _forceStopReason;
+    private string? _errorMessage;
+    private string _announcement = string.Empty;
+    private SupportAccessModeEnum _startMode = SupportAccessModeEnum.ReadOnly;
+    private int _durationMinutes = 30;
+    private bool _isLoading = true;
+    private bool _isLoadingSessions;
+    private bool _isLoadingAudit;
+    private bool _isStarting;
+    private bool _isForceStopping;
+    private bool _showForceStopDialog;
+
+    private Guid? SelectedTenantId =>
+        Guid.TryParse(_selectedTenantIdText, out var tenantId) ? tenantId : null;
+
+    private bool CanSubmitStart =>
+        _sessions.CanStart
+        && !_isStarting
+        && SelectedTenantId.HasValue
+        && _durationMinutes is >= 1 and <= 240
+        && !string.IsNullOrWhiteSpace(_reasonCode)
+        && !string.IsNullOrWhiteSpace(_reasonText)
+        && HasValidOptionalGuid(_targetTenantUserIdText);
+
+    protected override async Task OnInitializedAsync()
+    {
+        SupportAccessClientService.Changed += OnSupportAccessChanged;
+        await LoadInitialStateAsync();
+    }
+
+    public void Dispose()
+    {
+        SupportAccessClientService.Changed -= OnSupportAccessChanged;
+    }
+
+    private async Task LoadInitialStateAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var tenantsTask = AdminService.GetTenantsAsync();
+            var currentTask = SupportAccessClientService.RefreshAsync();
+
+            await Task.WhenAll(tenantsTask, currentTask);
+
+            _tenants = tenantsTask.Result
+                .Where(tenant => tenant.Id.HasValue)
+                .OrderByDescending(tenant => tenant.IsActive == true)
+                .ThenBy(tenant => tenant.FullName, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            _selectedTenantIdText = ResolveInitialTenantId();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load support access console: {ex.Message}";
+            _tenants = new List<TenantListDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+
+        if (SelectedTenantId.HasValue)
+        {
+            await LoadSessionsAsync();
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        await SupportAccessClientService.RefreshAsync();
+        await LoadSessionsAsync();
+        _announcement = "Support access console refreshed.";
+        await AccessibilityAnnouncerService.AnnouncePoliteAsync(_announcement);
+    }
+
+    private async Task LoadSessionsAsync()
+    {
+        if (SelectedTenantId is not { } tenantId)
+        {
+            _sessions = SupportAccessSessionCollection.Empty();
+            _auditEvents = SupportAccessAuditEventCollection.Empty();
+            _selectedAuditSession = null;
+            return;
+        }
+
+        _isLoadingSessions = true;
+        _errorMessage = null;
+
+        try
+        {
+            _sessions = await SupportAccessClientService.GetSessionsAsync(tenantId, SessionLimit);
+            _errorMessage = _sessions.ErrorMessage;
+
+            if (_selectedAuditSession is not null)
+            {
+                _selectedAuditSession = _sessions.Items.FirstOrDefault(item => item.Session.Id == _selectedAuditSession.Session.Id);
+                if (_selectedAuditSession?.CanViewAudit == true)
+                {
+                    await LoadAuditEventsAsync(_selectedAuditSession);
+                }
+                else
+                {
+                    _auditEvents = SupportAccessAuditEventCollection.Empty();
+                }
+            }
+        }
+        finally
+        {
+            _isLoadingSessions = false;
+        }
+    }
+
+    private async Task LoadAuditEventsAsync(SupportAccessSessionResource session)
+    {
+        if (session.Session.TargetTenantId is not { } tenantId || session.Session.Id is not { } sessionId)
+        {
+            _auditEvents = SupportAccessAuditEventCollection.Failed("The selected support session is missing identifiers.");
+            return;
+        }
+
+        _isLoadingAudit = true;
+        _selectedAuditSession = session;
+
+        try
+        {
+            _auditEvents = await SupportAccessClientService.GetAuditEventsAsync(tenantId, sessionId, SessionLimit);
+            _announcement = $"{_auditEvents.Items.Count} audit events loaded.";
+            await AccessibilityAnnouncerService.AnnouncePoliteAsync(_announcement);
+        }
+        finally
+        {
+            _isLoadingAudit = false;
+        }
+    }
+
+    private async Task StartAsync()
+    {
+        if (!CanSubmitStart || SelectedTenantId is not { } tenantId)
+        {
+            return;
+        }
+
+        if (!TryGetTargetTenantUserId(out var targetTenantUserId))
+        {
+            _errorMessage = "Target tenant user id must be a valid GUID when provided.";
+            await AccessibilityAnnouncerService.AnnounceAssertiveAsync(_errorMessage);
+            return;
+        }
+
+        _isStarting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await SupportAccessClientService.StartAsync(new StartSupportAccessSessionRequestDto
+            {
+                TargetTenantId = tenantId,
+                TargetTenantUserId = targetTenantUserId,
+                Mode = _startMode,
+                DurationMinutes = _durationMinutes,
+                ReasonCode = _reasonCode.Trim(),
+                ReasonText = _reasonText.Trim(),
+                TicketReference = string.IsNullOrWhiteSpace(_ticketReference) ? null : _ticketReference.Trim()
+            });
+
+            if (!result.Success)
+            {
+                _errorMessage = result.ErrorMessage ?? "Support access could not be started.";
+                Snackbar.Add(_errorMessage, Severity.Error);
+                await AccessibilityAnnouncerService.AnnounceAssertiveAsync(_errorMessage);
+                return;
+            }
+
+            Snackbar.Add("Support access started.", Severity.Success);
+            _announcement = "Support access started.";
+            await AccessibilityAnnouncerService.AnnouncePoliteAsync(_announcement);
+            _reasonText = string.Empty;
+            await LoadSessionsAsync();
+        }
+        finally
+        {
+            _isStarting = false;
+        }
+    }
+
+    private async Task StopCurrentAsync()
+    {
+        var result = await SupportAccessClientService.StopCurrentAsync(_currentStopReason);
+        if (!result.Success)
+        {
+            _errorMessage = result.ErrorMessage ?? "Support access could not be stopped.";
+            Snackbar.Add(_errorMessage, Severity.Error);
+            await AccessibilityAnnouncerService.AnnounceAssertiveAsync(_errorMessage);
+            return;
+        }
+
+        _currentStopReason = null;
+        Snackbar.Add("Support access stopped.", Severity.Success);
+        _announcement = "Support access stopped.";
+        await AccessibilityAnnouncerService.AnnouncePoliteAsync(_announcement);
+        await LoadSessionsAsync();
+    }
+
+    private void OpenForceStopDialog(SupportAccessSessionResource session)
+    {
+        _forceStopSession = session;
+        _forceStopReason = "Emergency support access revocation.";
+        _showForceStopDialog = true;
+    }
+
+    private void CloseForceStopDialog()
+    {
+        _showForceStopDialog = false;
+        _forceStopSession = null;
+        _forceStopReason = null;
+    }
+
+    private async Task ForceStopAsync()
+    {
+        if (_forceStopSession?.Session.Id is not { } sessionId)
+        {
+            return;
+        }
+
+        _isForceStopping = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await SupportAccessClientService.ForceStopAsync(sessionId, _forceStopReason);
+            if (!result.Success)
+            {
+                _errorMessage = result.ErrorMessage ?? "Support access could not be force-stopped.";
+                Snackbar.Add(_errorMessage, Severity.Error);
+                await AccessibilityAnnouncerService.AnnounceAssertiveAsync(_errorMessage);
+                return;
+            }
+
+            Snackbar.Add("Support access force-stopped.", Severity.Warning);
+            _announcement = "Support access force-stopped.";
+            await AccessibilityAnnouncerService.AnnouncePoliteAsync(_announcement);
+            CloseForceStopDialog();
+            await SupportAccessClientService.RefreshAsync();
+            await LoadSessionsAsync();
+        }
+        finally
+        {
+            _isForceStopping = false;
+        }
+    }
+
+    private async Task OnTenantSelectionChangedAsync(string? value)
+    {
+        _selectedTenantIdText = value;
+        _selectedAuditSession = null;
+        _auditEvents = SupportAccessAuditEventCollection.Empty();
+        await LoadSessionsAsync();
+    }
+
+    private Task RefreshFromClickAsync(MouseEventArgs _) => RefreshAsync();
+
+    private Task LoadSessionsFromClickAsync(MouseEventArgs _) => LoadSessionsAsync();
+
+    private Task StartFromClickAsync(MouseEventArgs _) => StartAsync();
+
+    private Task StopCurrentFromClickAsync(MouseEventArgs _) => StopCurrentAsync();
+
+    private Task ForceStopFromClickAsync(MouseEventArgs _) => ForceStopAsync();
+
+    private Task SelectAuditAsync(SupportAccessSessionResource session) => LoadAuditEventsAsync(session);
+
+    private void OnSupportAccessChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string? ResolveInitialTenantId()
+    {
+        var currentTarget = SupportAccessClientService.CurrentSession?.TargetTenantId;
+        if (currentTarget.HasValue && _tenants.Any(tenant => tenant.Id == currentTarget))
+        {
+            return currentTarget.Value.ToString("D");
+        }
+
+        return _tenants.FirstOrDefault(tenant => tenant.IsActive == true)?.Id?.ToString("D")
+            ?? _tenants.FirstOrDefault()?.Id?.ToString("D");
+    }
+
+    private bool TryGetTargetTenantUserId(out Guid? targetTenantUserId)
+    {
+        targetTenantUserId = null;
+        if (string.IsNullOrWhiteSpace(_targetTenantUserIdText))
+        {
+            return true;
+        }
+
+        if (!Guid.TryParse(_targetTenantUserIdText, out var parsed) || parsed == Guid.Empty)
+        {
+            return false;
+        }
+
+        targetTenantUserId = parsed;
+        return true;
+    }
+
+    private static bool HasValidOptionalGuid(string? value) =>
+        string.IsNullOrWhiteSpace(value)
+        || (Guid.TryParse(value, out var parsed) && parsed != Guid.Empty);
+
+    private static string FormatShortId(Guid? value) =>
+        value.HasValue ? value.Value.ToString("N")[..8] : "unknown";
+
+    private static string FormatDate(DateTimeOffset? value) =>
+        value.HasValue ? value.Value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) : "not recorded";
+
+    private static string FormatText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "not recorded" : value.Trim();
+
+    private static string FormatStatusCode(int? statusCode) =>
+        statusCode.HasValue ? statusCode.Value.ToString(CultureInfo.InvariantCulture) : "not recorded";
+
+    private static string FormatRequest(SupportAccessAuditEventDto auditEvent) =>
+        !string.IsNullOrWhiteSpace(auditEvent.RouteName)
+            ? auditEvent.RouteName
+            : FormatText(auditEvent.RequestName);
+
+    private static string GetStatusLabel(SupportAccessSessionDto session) =>
+        !string.IsNullOrWhiteSpace(session.StatusName)
+            ? session.StatusName
+            : session.IsActive == true ? "Active" : "Ended";
+
+    private static string GetModeLabel(SupportAccessSessionDto session) =>
+        session.AllowsWrites == true || string.Equals(session.ModeName, "Write", StringComparison.OrdinalIgnoreCase)
+            ? "Write"
+            : "Read-only";
+
+    private static Color GetSessionColor(SupportAccessSessionDto session)
+    {
+        if (session.IsActive != true)
+        {
+            return Color.Default;
+        }
+
+        return session.AllowsWrites == true ? Color.Error : Color.Warning;
+    }
+
+    private static string GetExpiryText(SupportAccessSessionDto session)
+    {
+        if (session.ExpiresAtUtc is null)
+        {
+            return "expiry unavailable";
+        }
+
+        var remaining = session.ExpiresAtUtc.Value - DateTimeOffset.UtcNow;
+        if (remaining <= TimeSpan.Zero)
+        {
+            return "expired";
+        }
+
+        return remaining.TotalMinutes < 60
+            ? $"expires in {Math.Ceiling(remaining.TotalMinutes)} min"
+            : $"expires {session.ExpiresAtUtc.Value.ToLocalTime():g}";
+    }
+}
