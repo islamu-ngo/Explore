@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Net;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using Explore.API.ExceptionHandling;
 using Explore.Application.Authentication;
 using Explore.Application.Telemetry;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,7 @@ public static class RateLimitingExtensions
     public const string GlobalPolicy = "Global";
     public const string AuthenticatedPolicy = "Authenticated";
     public const string WritePolicy = "Write";
+    public const string PublicIngestionPolicy = "PublicIngestion";
     public const string SetupSecretPolicy = "SetupSecret";
     public const string AnalyticsRelayPolicy = "AnalyticsRelay";
     public const string AiAssistantPolicy = "AiAssistant";
@@ -49,6 +51,8 @@ public static class RateLimitingExtensions
                 options.AddPolicy(AuthenticatedPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(WritePolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(PublicIngestionPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(SetupSecretPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
@@ -76,6 +80,9 @@ public static class RateLimitingExtensions
         // Write limits
         var writePermitLimit = section.GetValue("Write:PermitLimit", 30);
         var writeWindowSeconds = section.GetValue("Write:WindowSeconds", 60);
+
+        var publicIngestionPermitLimit = section.GetValue("PublicIngestion:PermitLimit", 60);
+        var publicIngestionWindowSeconds = section.GetValue("PublicIngestion:WindowSeconds", 60);
 
         // Analytics relay limits
         var analyticsRelayPermitLimit = section.GetValue("AnalyticsRelay:PermitLimit", 120);
@@ -136,7 +143,11 @@ public static class RateLimitingExtensions
                         Title = "Too Many Requests",
                         Status = StatusCodes.Status429TooManyRequests,
                         Detail = "Rate limit exceeded. Please retry after the period indicated in the Retry-After header.",
-                        Instance = ctx.HttpContext.Request.Path
+                        Instance = ctx.HttpContext.Request.Path,
+                        Extensions =
+                        {
+                            ["code"] = ApiProblemCodes.RateLimited
+                        }
                     }
                 });
             };
@@ -173,6 +184,20 @@ public static class RateLimitingExtensions
                     {
                         PermitLimit = writePermitLimit,
                         Window = TimeSpan.FromSeconds(writeWindowSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    });
+            });
+
+            options.AddPolicy(PublicIngestionPolicy, httpContext =>
+            {
+                var ip = ResolveClientIp(httpContext)?.ToString() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter($"public-ingestion:{ip}", _ =>
+                    new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = publicIngestionPermitLimit,
+                        Window = TimeSpan.FromSeconds(publicIngestionWindowSeconds),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0,
                         AutoReplenishment = true
@@ -268,6 +293,7 @@ public static class RateLimitingExtensions
         {
             AuthenticatedPolicy => authPermitLimit,
             WritePolicy => writePermitLimit,
+            PublicIngestionPolicy => publicIngestionPermitLimit,
             SetupSecretPolicy => setupSecretPermitLimit,
             AnalyticsRelayPolicy => analyticsRelayPermitLimit,
             AiAssistantPolicy => aiAssistantPermitLimit,
@@ -294,6 +320,11 @@ public static class RateLimitingExtensions
         if (context.Request.Path.StartsWithSegments("/api/analytics", StringComparison.OrdinalIgnoreCase))
         {
             return AnalyticsRelayPolicy;
+        }
+
+        if (context.Request.Path.StartsWithSegments("/api/integrations", StringComparison.OrdinalIgnoreCase))
+        {
+            return PublicIngestionPolicy;
         }
 
         if (context.Request.Path.StartsWithSegments("/api/ai/assistant", StringComparison.OrdinalIgnoreCase))

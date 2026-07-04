@@ -54,17 +54,17 @@ public class TenantControllerTests
     #region TenantUserRoleGrant Controller
 
     [Test]
-    public async Task TenantUserRoleGrant_GetAll_ShouldNotReturnServerError()
+    public async Task TenantUserRoleGrant_GetAll_WithoutAuth_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/tenant-user-role-grants");
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
-    public async Task TenantUserRoleGrant_GetById_WithRandomId_ShouldNotReturnServerError()
+    public async Task TenantUserRoleGrant_GetById_WithoutAuth_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync($"/api/tenant-user-role-grants/{Guid.NewGuid()}");
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]

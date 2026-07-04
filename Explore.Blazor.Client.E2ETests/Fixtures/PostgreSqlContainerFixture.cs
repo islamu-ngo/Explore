@@ -32,6 +32,9 @@ public sealed class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDispos
         await context.Database.MigrateAsync();
         await LookupTableSeeder.SeedAsync(context);
 
+        await using var dataProtectionContext = CreateDataProtectionKeyContext();
+        await dataProtectionContext.Database.MigrateAsync();
+
         await using var connection = new NpgsqlConnection(ConnectionString);
         await connection.OpenAsync();
 
@@ -66,6 +69,17 @@ public sealed class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDispos
         return new ExploreDbContext(options);
     }
 
+    private DataProtectionKeyContext CreateDataProtectionKeyContext()
+    {
+        var options = new DbContextOptionsBuilder<DataProtectionKeyContext>()
+            .UseNpgsql(ConnectionString)
+            .UseSnakeCaseNamingConvention()
+            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
+            .Options;
+
+        return new DataProtectionKeyContext(options);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _container.StopAsync();
@@ -75,6 +89,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDispos
     private static readonly Table[] LookupTables =
     [
         new("__EFMigrationsHistory"),
+        new("data_protection_keys"),
         new("ai_conversation_statuses"),
         new("ai_message_roles"),
         new("ai_proposed_action_kinds"),
@@ -114,6 +129,10 @@ public sealed class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDispos
         new("secret_validation_statuses"),
         new("setting_scopes"),
         new("setting_value_types"),
+        new("support_access_audit_event_types"),
+        new("support_access_end_reasons"),
+        new("support_access_modes"),
+        new("support_access_session_statuses"),
         new("system_settings"),
         new("tag_types"),
         new("tenant_footer_link_groups"),

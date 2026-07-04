@@ -76,12 +76,44 @@ x-mcp-env: &mcp-env
   MCP_ENABLE_LEGACY_SSE: ${MCP_ENABLE_LEGACY_SSE:-true}
 
 x-smtp-env: &smtp-env
-  MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-}
-  MAIL_SMTP_PORT: ${MAIL_SMTP_PORT:-587}
+  MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-mailpit}
+  MAIL_SMTP_PORT: ${MAIL_SMTP_PORT:-1025}
   MAIL_SMTP_USERNAME: ${MAIL_SMTP_USERNAME:-}
   MAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:-}
-  MAIL_SMTP_ENCRYPTION: ${MAIL_SMTP_ENCRYPTION:-starttls}
-  MAIL_SMTP_FROM_ADDRESS: ${MAIL_SMTP_FROM_ADDRESS:-}
+  MAIL_SMTP_ENCRYPTION: ${MAIL_SMTP_ENCRYPTION:-None}
+  MAIL_SMTP_FROM_ADDRESS: ${MAIL_SMTP_FROM_ADDRESS:-noreply@localhost}
+  MAIL_SMTP_FROM_NAME: ${MAIL_SMTP_FROM_NAME:-ISLAMU Event Dev}
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_SECURITY: ${SMTP_SECURITY:-None}
+  SMTP_FROM_ADDRESS: ${SMTP_FROM_ADDRESS:-noreply@localhost}
+  SMTP_FROM_NAME: ${SMTP_FROM_NAME:-ISLAMU Event Dev}
+
+x-email-dispatch-rabbitmq-env: &email-dispatch-rabbitmq-env
+  ConnectionStrings__messaging: ${MESSAGING_URI:-}
+  EmailDispatchRabbitMq__Enabled: ${EMAIL_DISPATCH_RABBITMQ_ENABLED:-false}
+  EmailDispatchRabbitMq__ConnectionStringName: ${EMAIL_DISPATCH_RABBITMQ_CONNECTION_STRING_NAME:-messaging}
+  EmailDispatchRabbitMq__ConnectionString: ${EMAIL_DISPATCH_RABBITMQ_CONNECTION_STRING:-}
+  EmailDispatchRabbitMq__ExchangeName: ${EMAIL_DISPATCH_RABBITMQ_EXCHANGE_NAME:-explore.email-dispatch}
+  EmailDispatchRabbitMq__DispatchQueueName: ${EMAIL_DISPATCH_RABBITMQ_DISPATCH_QUEUE_NAME:-explore.email-dispatch.dispatch}
+  EmailDispatchRabbitMq__DispatchRoutingKey: ${EMAIL_DISPATCH_RABBITMQ_DISPATCH_ROUTING_KEY:-email-dispatch.dispatch}
+  EmailDispatchRabbitMq__DeadLetterExchangeName: ${EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_EXCHANGE_NAME:-explore.email-dispatch.dlx}
+  EmailDispatchRabbitMq__DeadLetterQueueName: ${EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_QUEUE_NAME:-explore.email-dispatch.dead-letter}
+  EmailDispatchRabbitMq__DeadLetterRoutingKey: ${EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_ROUTING_KEY:-email-dispatch.dead-letter}
+  EmailDispatchRabbitMq__ParkingQueueName: ${EMAIL_DISPATCH_RABBITMQ_PARKING_QUEUE_NAME:-explore.email-dispatch.parking}
+  EmailDispatchRabbitMq__ParkingRoutingKey: ${EMAIL_DISPATCH_RABBITMQ_PARKING_ROUTING_KEY:-email-dispatch.parking}
+  EmailDispatchRabbitMq__ClientProvidedName: ${EMAIL_DISPATCH_RABBITMQ_CLIENT_PROVIDED_NAME:-explore-email-dispatch-rabbitmq}
+  EmailDispatchRabbitMq__ConsumerId: ${EMAIL_DISPATCH_RABBITMQ_CONSUMER_ID:-explore-email-dispatch-rabbitmq-consumer}
+  EmailDispatchRabbitMq__PrefetchCount: ${EMAIL_DISPATCH_RABBITMQ_PREFETCH_COUNT:-10}
+  EmailDispatchRabbitMq__DeadLetterReplayEnabled: ${EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_REPLAY_ENABLED:-false}
+  EmailDispatchRabbitMq__DeadLetterReplayConsumerId: ${EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_REPLAY_CONSUMER_ID:-explore-email-dispatch-dlq-replay}
+  EmailDispatchRabbitMq__DeadLetterReplayPrefetchCount: ${EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_REPLAY_PREFETCH_COUNT:-5}
+  EmailDispatchRabbitMq__PublishTimeoutSeconds: ${EMAIL_DISPATCH_RABBITMQ_PUBLISH_TIMEOUT_SECONDS:-15}
+  EmailDispatchRabbitMq__PublisherPollingIntervalSeconds: ${EMAIL_DISPATCH_RABBITMQ_PUBLISHER_POLLING_INTERVAL_SECONDS:-5}
+  EmailDispatchRabbitMq__PublisherBatchSize: ${EMAIL_DISPATCH_RABBITMQ_PUBLISHER_BATCH_SIZE:-100}
+  EmailDispatchRabbitMq__PublisherRetryDelaySeconds: ${EMAIL_DISPATCH_RABBITMQ_PUBLISHER_RETRY_DELAY_SECONDS:-30}
 
 x-reporting-env: &reporting-env
   Reporting__Enabled: ${REPORTING_ENABLED:-true}
@@ -91,7 +123,7 @@ x-reporting-env: &reporting-env
   Reporting__MirrorReviewQueue: ${REPORTING_MIRROR_REVIEW_QUEUE:-false}
   Reporting__ExecuteDecisions: ${REPORTING_EXECUTE_DECISIONS:-true}
   Reporting__Osprey__Enabled: ${REPORTING_OSPREY_ENABLED:-false}
-  Reporting__Osprey__EndpointUrl: ${REPORTING_OSPREY_ENDPOINT_URL:-http://osprey:5004}
+  Reporting__Osprey__EndpointUrl: ${REPORTING_OSPREY_ENDPOINT_URL:-}
   Reporting__Osprey__ApiKey: ${REPORTING_OSPREY_API_KEY:-}
   Reporting__Osprey__AllowLocalProviderEndpoints: ${REPORTING_OSPREY_ALLOW_LOCAL_PROVIDER_ENDPOINTS:-true}
   Reporting__Coop__Enabled: ${REPORTING_COOP_ENABLED:-false}
@@ -104,9 +136,10 @@ x-webhooks-env: &webhooks-env
   Webhooks__Enabled: ${WEBHOOKS_ENABLED:-true}
   Webhooks__Provider: ${WEBHOOKS_PROVIDER:-Local}
   Webhooks__Svix__BaseUrl: ${WEBHOOKS_SVIX_BASE_URL:-http://svix:8071}
-  Webhooks__Svix__AuthTokenSecretRef: ${WEBHOOKS_SVIX_AUTH_TOKEN_SECRET_REF:-webhooks.svix_auth_token}
+  Webhooks__Svix__AuthTokenSecretRef: ${WEBHOOKS_SVIX_AUTH_TOKEN_SECRET_REF:-webhooks.svix.auth_token}
+  Webhooks__Svix__OperationalWebhookSecretRef: ${WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET_REF:-webhooks.svix.operational_webhook_secret}
   WEBHOOKS_SVIX_AUTH_TOKEN: ${WEBHOOKS_SVIX_AUTH_TOKEN:-}
-  WEBHOOKS__SVIX_AUTH_TOKEN: ${WEBHOOKS_SVIX_AUTH_TOKEN:-}
+  WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET: ${WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET:-}
 
 x-local-storage-env: &local-storage-env
   Storage__Local__RootPath: ${LOCAL_STORAGE_ROOT_PATH:-/app/storage-data/local}
@@ -143,6 +176,21 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  mailpit:
+    image: axllent/mailpit:${MAILPIT_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: ${MAILPIT_MAX_MESSAGES:-5000}
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+      MP_DISABLE_VERSION_CHECK: "true"
+    volumes:
+      - mailpit_data:/data
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
 
   keycloak-db:
     image: postgres:18-alpine
@@ -219,7 +267,7 @@ services:
       context: .
       dockerfile: Explore.API/Dockerfile
     environment:
-      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *postgres-bootstrap-env, *api-runtime-env, *ai-env, *mcp-env, *smtp-env, *reporting-env, *webhooks-env]
+      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *postgres-bootstrap-env, *api-runtime-env, *ai-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *reporting-env, *webhooks-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
@@ -250,6 +298,8 @@ services:
         condition: service_healthy
       keycloak-init:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
       minio:
         condition: service_healthy
         required: false
@@ -337,7 +387,7 @@ services:
       POSTGRES_PASSWORD: ${CERBOS_POSTGRES_PASSWORD:-cerbos_password}
       POSTGRES_DB: ${CERBOS_POSTGRES_DB:-cerbos}
     volumes:
-      - cerbos_data:/var/lib/postgresql/data
+      - cerbos_data:/var/lib/postgresql
       # Repository-owned Cerbos PostgreSQL schema used by local infrastructure.
       - ./cerbos/init/cerbos-schema.sql:/docker-entrypoint-initdb.d/cerbos-schema.sql:ro
     healthcheck:
@@ -439,27 +489,71 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${COOP_NODE_ENV:-development}
+      OTEL_SERVICE_NAME: ${COOP_OTEL_SERVICE_NAME:-coop}
       PORT: "8080"
+      UI_URL: ${COOP_UI_URL:-http://localhost:8082}
+      SESSION_SECRET: ${COOP_SESSION_SECRET:-local-dev-coop-session-secret}
+      DATABASE_HOST: coop-db
+      DATABASE_READ_ONLY_HOST: coop-db
+      DATABASE_PORT: "5432"
+      DATABASE_USER: ${COOP_DATABASE_USER:-coop}
+      DATABASE_PASSWORD: ${COOP_DATABASE_PASSWORD:-coop_password}
+      DATABASE_NAME: ${COOP_DATABASE_NAME:-coop}
+      WAREHOUSE_ADAPTER: ${COOP_WAREHOUSE_ADAPTER:-noop}
+      ANALYTICS_ADAPTER: ${COOP_ANALYTICS_ADAPTER:-noop}
+      SCYLLA_HOSTS: ${COOP_SCYLLA_HOSTS:-coop-scylla}
+      SCYLLA_USERNAME: ${COOP_SCYLLA_USERNAME:-cassandra}
+      SCYLLA_PASSWORD: ${COOP_SCYLLA_PASSWORD:-cassandra}
+      SCYLLA_LOCAL_DATACENTER: ${COOP_SCYLLA_LOCAL_DATACENTER:-datacenter1}
+      SCYLLA_SSL: ${COOP_SCYLLA_SSL:-false}
+      REDIS_USE_CLUSTER: "false"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
     ports:
       - "${COOP_HTTP_PORT:-8082}:8080"
+    depends_on:
+      coop-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  coop-db:
+    image: postgres:18-alpine
+    profiles: ["moderation"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${COOP_DATABASE_USER:-coop}
+      POSTGRES_PASSWORD: ${COOP_DATABASE_PASSWORD:-coop_password}
+      POSTGRES_DB: ${COOP_DATABASE_NAME:-coop}
+    volumes:
+      - coop_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${COOP_DATABASE_USER:-coop} -d ${COOP_DATABASE_NAME:-coop}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   osprey:
-    image: ${OSPREY_IMAGE:-ghcr.io/roostorg/osprey:latest}
+    image: ${OSPREY_IMAGE:-ghcr.io/roostorg/osprey/osprey-coordinator:latest}
     profiles: ["osprey"]
     restart: unless-stopped
     environment:
-      PORT: "5004"
-      DEBUG: ${OSPREY_DEBUG:-true}
-      FLASK_DEBUG: ${OSPREY_FLASK_DEBUG:-1}
-      FLASK_ENV: ${OSPREY_FLASK_ENV:-development}
+      RUST_LOG: ${OSPREY_RUST_LOG:-info}
+      OSPREY_COORDINATOR_BIDI_STREAM_PORT: "19950"
+      OSPREY_COORDINATOR_SYNC_ACTION_PORT: "19951"
+      POD_IP: ${OSPREY_POD_IP:-osprey}
     ports:
-      - "${OSPREY_HTTP_PORT:-5004}:5004"
+      - "${OSPREY_BIDI_STREAM_PORT:-19950}:19950"
+      - "${OSPREY_SYNC_ACTION_PORT:-19951}:19951"
 
 volumes:
   postgres_data:
   redis_data:
   keycloak_data:
+  mailpit_data:
   local_storage_data:
   minio_data:
   cerbos_data:
   svix_postgres_data:
+  coop_postgres_data:

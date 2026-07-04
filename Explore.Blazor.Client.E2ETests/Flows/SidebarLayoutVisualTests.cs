@@ -5,6 +5,8 @@ using Explore.Blazor.Client.E2ETests.Fixtures;
 
 namespace Explore.Blazor.Client.E2ETests.Flows;
 
+[Category(E2ETestCategories.E2E)]
+[Category(E2ETestCategories.Manual)]
 [ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
 [ParallelLimiter<BrowserParallelLimit>]
 public class SidebarLayoutVisualTests(

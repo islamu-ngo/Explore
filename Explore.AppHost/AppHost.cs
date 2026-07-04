@@ -12,6 +12,14 @@ const string LocalCerbosAdminUsername = "cerbos";
 const string LocalCerbosAdminPassword = "cerbos";
 const string LocalCerbosAdminPasswordHash =
     "JDJiJDEwJGxUWWVjblZpTlRseTZvUkhQS3Y5U2VKZGpwZzdqWkFRcGV2S2Ezbkxpbk55bDF5U1dEZVkyCg==";
+const string LocalOspreyImage = "ghcr.io/roostorg/osprey/osprey-coordinator";
+const string LocalOspreyTag = "latest";
+const string LocalMailpitImage = "axllent/mailpit";
+const string LocalMailpitTag = "latest";
+const string LocalSvixJwtSecret = "local-dev-svix-jwt-secret-change-me";
+const string LocalSvixAuthToken =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJvcmdfMjNyYjhZZEdxTVQwcUl6cGdHd2RYZkhpck11In0.8DdxojyqoHnAeZBEL6M1Tcf5i5hnbAmezaRlPxuBXp8";
+const string LocalSvixOperationalWebhookSecret = "whsec_bG9jYWwtZGV2LXN2aXgtb3BlcmF0aW9uYWwtc2VjcmV0";
 
 var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
@@ -42,6 +50,7 @@ IResourceBuilder<PostgresDatabaseResource>? database = null;
 IResourceBuilder<RedisResource>? cache = null;
 IResourceBuilder<RabbitMQServerResource>? messaging = null;
 FullLocalResources? fullLocalResources = null;
+var mailpit = AddMailpit(builder);
 
 if (runMode.UsesLocalData())
 {
@@ -88,6 +97,8 @@ if (database is not null)
         .WithReference(database, connectionName: "EventMigrationService")
         .WithReference(database, connectionName: "DefaultConnection")
         .WaitFor(database);
+
+    migrations = ConfigureLocalMailpitSmtp(migrations);
 }
 
 var exploreAPI = WithProfileSecretMode(
@@ -102,7 +113,10 @@ var exploreAPI = WithProfileSecretMode(
     .WithEnvironment("Storage__Local__RootPath", localStorageRootPath)
     .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
     .WithEnvironment("StorageReconciliation__Enabled", "true")
-    .WithEnvironment("StorageReconciliation__DryRun", "true");
+    .WithEnvironment("StorageReconciliation__DryRun", "true")
+    .WaitFor(mailpit);
+
+exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI);
 
 if (migrations is not null)
 {
@@ -249,7 +263,7 @@ static FullLocalResources AddFullLocalPlatform(
         .WithBindMount(keycloakRealmExportPath, "/opt/keycloak/data/import/realm-export.json", isReadOnly: true)
         .WithHttpEndpoint(targetPort: 8080, port: 8080, name: "http")
         .WithHttpEndpoint(targetPort: 9000, port: 9000, name: "mgmt")
-        .WithHttpHealthCheck("/health/ready", endpointName: "mgmt")
+        .WithHttpHealthCheck("/auth/health/ready", endpointName: "mgmt")
         .WithLifetime(ContainerLifetime.Persistent)
         .WaitFor(crdb);
 
@@ -257,7 +271,7 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEnvironment("POSTGRES_USER", "cerbos_user")
         .WithEnvironment("POSTGRES_PASSWORD", "cerbos_password")
         .WithEnvironment("POSTGRES_DB", "cerbos")
-        .WithVolume("islamu-event-cerbos-data", "/var/lib/postgresql/data")
+        .WithVolume("islamu-event-cerbos-data", "/var/lib/postgresql")
         .WithBindMount(cerbosSchemaPath, "/docker-entrypoint-initdb.d/cerbos-schema.sql", isReadOnly: true)
         .WithLifetime(ContainerLifetime.Persistent);
 
@@ -301,35 +315,75 @@ static FullLocalResources AddFullLocalPlatform(
     var svix = builder.AddContainer("svix", "svix/svix-server", "latest")
         .WithEnvironment("WAIT_FOR", "true")
         .WithEnvironment("SVIX_DB_DSN", "postgresql://postgres:postgres@svix-postgres:5432/postgres")
-        .WithEnvironment("SVIX_REDIS_DSN", "redis://cache:6379")
         .WithEnvironment("SVIX_QUEUE_TYPE", "redis")
-        .WithEnvironment("SVIX_JWT_SECRET", "local-dev-svix-jwt-secret-change-me")
+        .WithEnvironment("SVIX_JWT_SECRET", LocalSvixJwtSecret)
         .WithHttpEndpoint(targetPort: 8071, port: 8071, name: "http")
-        .WithLifetime(ContainerLifetime.Persistent)
         .WaitFor(svixDb);
 
     if (cache is not null)
     {
-        svix = svix.WaitFor(cache);
+        svix = svix
+            .WithEnvironment(
+                "SVIX_REDIS_DSN",
+                ReferenceExpression.Create($"redis://:{cache.Resource.PasswordParameter}@cache:6380"))
+            .WaitFor(cache);
     }
+    else
+    {
+        svix = svix.WithEnvironment("SVIX_REDIS_DSN", "redis://cache:6379");
+    }
+
+    var coopDb = builder.AddContainer("coop-postgres", "postgres", "18-alpine")
+        .WithEnvironment("POSTGRES_USER", "coop")
+        .WithEnvironment("POSTGRES_PASSWORD", "coop_password")
+        .WithEnvironment("POSTGRES_DB", "coop")
+        .WithVolume("islamu-event-coop-postgres-data", "/var/lib/postgresql")
+        .WithLifetime(ContainerLifetime.Persistent);
 
     var coop = builder.AddContainer("coop", "ghcr.io/roostorg/coop-server", "latest")
         .WithEnvironment("NODE_ENV", "development")
+        .WithEnvironment("OTEL_SERVICE_NAME", "coop")
         .WithEnvironment("PORT", "8080")
+        .WithEnvironment("UI_URL", "http://localhost:8082")
+        .WithEnvironment("SESSION_SECRET", "local-dev-coop-session-secret")
+        .WithEnvironment("DATABASE_HOST", "coop-postgres")
+        .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
+        .WithEnvironment("DATABASE_PORT", "5432")
+        .WithEnvironment("DATABASE_USER", "coop")
+        .WithEnvironment("DATABASE_PASSWORD", "coop_password")
+        .WithEnvironment("DATABASE_NAME", "coop")
+        .WithEnvironment("WAREHOUSE_ADAPTER", "noop")
+        .WithEnvironment("ANALYTICS_ADAPTER", "noop")
+        .WithEnvironment("SCYLLA_HOSTS", "coop-scylla")
+        .WithEnvironment("SCYLLA_USERNAME", "cassandra")
+        .WithEnvironment("SCYLLA_PASSWORD", "cassandra")
+        .WithEnvironment("SCYLLA_LOCAL_DATACENTER", "datacenter1")
+        .WithEnvironment("SCYLLA_SSL", "false")
         .WithHttpEndpoint(targetPort: 8080, port: 8082, name: "http")
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithLifetime(ContainerLifetime.Persistent)
+        .WaitFor(coopDb);
 
-    var ospreyImage = builder.Configuration["OSPREY_IMAGE"];
-    var ospreyTag = builder.Configuration["OSPREY_TAG"] ?? "latest";
-    var osprey = string.IsNullOrWhiteSpace(ospreyImage)
-        ? null
-        : builder.AddContainer("osprey", ospreyImage, ospreyTag)
-            .WithEnvironment("PORT", "5004")
-            .WithEnvironment("DEBUG", "true")
-            .WithEnvironment("FLASK_DEBUG", "1")
-            .WithEnvironment("FLASK_ENV", "development")
-            .WithHttpEndpoint(targetPort: 5004, port: 5004, name: "http")
-            .WithLifetime(ContainerLifetime.Persistent);
+    if (cache is not null)
+    {
+        coop = coop
+            .WithEnvironment("REDIS_USE_CLUSTER", "false")
+            .WithEnvironment("REDIS_HOST", "cache")
+            .WithEnvironment("REDIS_PORT", "6380")
+            .WithEnvironment("REDIS_PASSWORD", cache.Resource.PasswordParameter)
+            .WaitFor(cache);
+    }
+
+    var (ospreyImage, ospreyTag) = ResolveImageAndTag(
+        builder.Configuration["OSPREY_IMAGE"] ?? LocalOspreyImage,
+        builder.Configuration["OSPREY_TAG"] ?? LocalOspreyTag);
+    var osprey = builder.AddContainer("osprey", ospreyImage, ospreyTag)
+        .WithEnvironment("RUST_LOG", "info")
+        .WithEnvironment("OSPREY_COORDINATOR_BIDI_STREAM_PORT", "19950")
+        .WithEnvironment("OSPREY_COORDINATOR_SYNC_ACTION_PORT", "19951")
+        .WithEnvironment("POD_IP", "osprey")
+        .WithEndpoint(targetPort: 19950, port: 19950, name: "bidi-stream", protocol: ProtocolType.Tcp)
+        .WithEndpoint(targetPort: 19951, port: 19951, name: "sync-action", protocol: ProtocolType.Tcp)
+        .WithLifetime(ContainerLifetime.Persistent);
 
     var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.2.1")
         .WithBindMount(prometheusConfigPath, "/etc/prometheus/prometheus.yaml", isReadOnly: true)
@@ -355,9 +409,47 @@ static FullLocalResources AddFullLocalPlatform(
         Grafana: grafana);
 }
 
+static IResourceBuilder<ContainerResource> AddMailpit(IDistributedApplicationBuilder builder)
+{
+    return builder.AddContainer("mailpit", LocalMailpitImage, LocalMailpitTag)
+        .WithEnvironment("MP_MAX_MESSAGES", "5000")
+        .WithEnvironment("MP_DATABASE", "/data/mailpit.db")
+        .WithEnvironment("MP_SMTP_AUTH_ACCEPT_ANY", "1")
+        .WithEnvironment("MP_SMTP_AUTH_ALLOW_INSECURE", "1")
+        .WithEnvironment("MP_DISABLE_VERSION_CHECK", "true")
+        .WithVolume("islamu-event-mailpit-data", "/data")
+        .WithEndpoint(
+            targetPort: 1025,
+            port: 1025,
+            name: "smtp",
+            protocol: ProtocolType.Tcp)
+        .WithHttpEndpoint(targetPort: 8025, port: 8025, name: "http")
+        .WithLifetime(ContainerLifetime.Persistent);
+}
+
 static void ExcludeProjectLaunchProfile(ProjectResourceOptions options)
 {
     options.ExcludeLaunchProfile = true;
+}
+
+static IResourceBuilder<ProjectResource> ConfigureLocalMailpitSmtp(
+    IResourceBuilder<ProjectResource> project)
+{
+    return project
+        .WithEnvironment("MAIL_SMTP_HOST", "localhost")
+        .WithEnvironment("MAIL_SMTP_PORT", "1025")
+        .WithEnvironment("MAIL_SMTP_USERNAME", "")
+        .WithEnvironment("MAIL_SMTP_PASSWORD", "")
+        .WithEnvironment("MAIL_SMTP_ENCRYPTION", "None")
+        .WithEnvironment("MAIL_SMTP_FROM_ADDRESS", "noreply@localhost")
+        .WithEnvironment("MAIL_SMTP_FROM_NAME", "ISLAMU Event Dev")
+        .WithEnvironment("SMTP_HOST", "localhost")
+        .WithEnvironment("SMTP_PORT", "1025")
+        .WithEnvironment("SMTP_USERNAME", "")
+        .WithEnvironment("SMTP_PASSWORD", "")
+        .WithEnvironment("SMTP_SECURITY", "None")
+        .WithEnvironment("SMTP_FROM_ADDRESS", "noreply@localhost")
+        .WithEnvironment("SMTP_FROM_NAME", "ISLAMU Event Dev");
 }
 
 static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
@@ -397,21 +489,20 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
         .WithEnvironment("S3Settings__BucketName", "explore")
         .WithEnvironment("S3Settings__AccessKeyId", "minioadmin")
         .WithEnvironment("S3Settings__SecretAccessKey", "minioadmin")
-        .WithEnvironment("Reporting__Osprey__EndpointUrl", "http://localhost:5004")
+        .WithEnvironment("Reporting__Osprey__Enabled", "false")
         .WithEnvironment("Reporting__Osprey__AllowLocalProviderEndpoints", "true")
         .WithEnvironment("Reporting__Coop__EndpointUrl", "http://localhost:8082")
         .WithEnvironment("Reporting__Coop__AllowLocalProviderEndpoints", "true")
         .WithEnvironment("Reporting__Coop__WebhookSecret", "local-dev-coop-webhook-secret")
-        .WithEnvironment("Webhooks__Svix__BaseUrl", "http://localhost:8071");
+        .WithEnvironment("Webhooks__Svix__BaseUrl", "http://localhost:8071")
+        .WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", "webhooks.svix.auth_token")
+        .WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", "webhooks.svix.operational_webhook_secret")
+        .WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", LocalSvixAuthToken)
+        .WithEnvironment("WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET", LocalSvixOperationalWebhookSecret);
 
     api = api
         .WaitFor(resources.Svix)
         .WaitFor(resources.Coop);
-
-    if (resources.Osprey is not null)
-    {
-        api = api.WaitFor(resources.Osprey);
-    }
 
     return api;
 }
@@ -508,6 +599,20 @@ static string FindRepositoryRoot(string startDirectory)
     }
 
     return startDirectory;
+}
+
+static (string Image, string Tag) ResolveImageAndTag(string image, string defaultTag)
+{
+    var trimmed = image.Trim();
+    var lastSlash = trimmed.LastIndexOf('/');
+    var lastColon = trimmed.LastIndexOf(':');
+
+    if (lastColon > lastSlash && lastColon < trimmed.Length - 1)
+    {
+        return (trimmed[..lastColon], trimmed[(lastColon + 1)..]);
+    }
+
+    return (trimmed, defaultTag);
 }
 
 internal enum AspireRunMode

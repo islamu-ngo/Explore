@@ -17,7 +17,7 @@ public static class ConfigurationExtensions
         configBuilder.AddInfisical(bootstrapConfig, source =>
         {
             source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/postgresql", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage"]);
+            source.Paths.AddRange(["/keycloak", "/postgresql", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp"]);
             source.ThrowOnFirstLoadFailure = false;
         });
 
@@ -32,10 +32,11 @@ public static class ConfigurationExtensions
     /// Canonical Infisical keys:
     ///   /api:      DEPLOYMENT_MODE (single_tenant or multi_tenant)
     ///   /keycloak: KEYCLOAK_ENDPOINT, KEYCLOAK_REALM
-    ///   /cerbos:   CERBOS_GRPC_ENDPOINT, CERBOS_USE_POLICY_SCOPE
+    ///   /cerbos:   CERBOS_GRPC_ENDPOINT, CERBOS_HTTP_ENDPOINT, CERBOS_USE_POLICY_SCOPE
     ///   /api|/mcp: MCP_ENABLED, MCP_ENDPOINT_PATH, MCP_STATELESS, MCP_ENABLE_LEGACY_SSE
     ///   /ai:       AI_ENDPOINT, AI_MODEL_ID, AI_API_KEY, AI_PROVIDER
     ///   /storage:  STORAGE_S3_ENDPOINT, STORAGE_S3_BUCKET_NAME, STORAGE_S3_ACCESS_KEY_ID, etc.
+    ///   /smtp:     MAIL_SMTP_HOST, MAIL_SMTP_PORT, MAIL_SMTP_USERNAME, MAIL_SMTP_PASSWORD, etc.
     ///   /api:      USE_COMMERCIAL_LUCKYPENNY, LUCKYPENNY_LICENSE_KEY (Lucky Penny dual-versioning)
     ///   S3 legacy: ISLAMU_EVENT_S3_ENDPOINT, ISLAMU_EVENT_REGION, etc.
     /// Postgres is handled by BootstrapSecretLoader from discrete POSTGRESQL_* secrets.
@@ -62,12 +63,27 @@ public static class ConfigurationExtensions
         // Preserve the operator's raw input (bare host:port or full URL). Normalization happens only
         // at gRPC channel creation time so we don't surface a misleading scheme back to the UI/storage.
         var cerbosGrpcEndpoint = config["CERBOS_GRPC_ENDPOINT"]?.Trim();
+        var cerbosHttpEndpoint = ReadFirst(config, "CERBOS_HTTP_ENDPOINT", "Cerbos:HttpEndpoint")?.Trim();
         var cerbosUsePolicyScope = NormalizeBoolean(
             ReadFirst(
                 config,
                 "CERBOS_USE_POLICY_SCOPE",
                 "CERBOS__USE_POLICY_SCOPE",
                 "Cerbos:UsePolicyScope"));
+        var cerbosUseTls = NormalizeBoolean(
+            ReadFirst(
+                config,
+                "CERBOS_USE_TLS",
+                "CERBOS__USE_TLS",
+                "Cerbos:UseTls"));
+        var cerbosPlaintextMode = NormalizeBoolean(
+            ReadFirst(
+                config,
+                "CERBOS_PLAINTEXT_MODE",
+                "CERBOS__PLAINTEXT_MODE",
+                "Cerbos:PlaintextMode"));
+        var cerbosAdminUsername = ReadFirst(config, "CERBOS_ADMIN_USERNAME", "Cerbos:AdminApi:AdminUsername");
+        var cerbosAdminPassword = ReadFirst(config, "CERBOS_ADMIN_PASSWORD", "Cerbos:AdminApi:AdminPassword");
         var deploymentMode = NormalizeDeploymentMode(config["DEPLOYMENT_MODE"]);
         var mcpEnabled = NormalizeBoolean(
             ReadFirst(
@@ -105,6 +121,13 @@ public static class ConfigurationExtensions
         var aiProviderDefaultsAvailable = aiProviderMasterCode is "OPENAI" or "ANTHROPIC"
             ? !string.IsNullOrWhiteSpace(aiApiKey) && !string.IsNullOrWhiteSpace(aiModelId)
             : !string.IsNullOrWhiteSpace(aiEndpointUrl) && !string.IsNullOrWhiteSpace(aiModelId);
+        var smtpHost = ReadFirst(config, "MAIL_SMTP_HOST", "SMTP_HOST", "Smtp:Host");
+        var smtpPort = ReadFirst(config, "MAIL_SMTP_PORT", "SMTP_PORT", "Smtp:Port");
+        var smtpUsername = ReadFirst(config, "MAIL_SMTP_USERNAME", "SMTP_USERNAME", "Smtp:Username");
+        var smtpPassword = ReadFirst(config, "MAIL_SMTP_PASSWORD", "SMTP_PASSWORD", "Smtp:Password");
+        var smtpEncryption = ReadFirst(config, "MAIL_SMTP_ENCRYPTION", "SMTP_SECURITY", "Smtp:Encryption");
+        var smtpFromAddress = ReadFirst(config, "MAIL_SMTP_FROM_ADDRESS", "SMTP_FROM_ADDRESS", "Smtp:FromAddress");
+        var smtpFromName = ReadFirst(config, "MAIL_SMTP_FROM_NAME", "SMTP_FROM_NAME", "Smtp:FromName");
 
         var mappedConfig = new Dictionary<string, string?>();
 
@@ -130,12 +153,29 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "S3Settings:Endpoint", ReadFirst(config, "STORAGE_S3_ENDPOINT", "Storage:S3Endpoint", "Storage:S3:Endpoint", "ISLAMU_EVENT_S3_ENDPOINT"));
         TrySet(mappedConfig, config, "S3Settings:PublicEndpoint", ReadFirst(config, "STORAGE_S3_PUBLIC_ENDPOINT", "Storage:S3PublicEndpoint", "Storage:S3:PublicEndpoint", "ISLAMU_EVENT_S3_PUBLIC_ENDPOINT"));
 
+        TrySet(mappedConfig, config, "Smtp:Host", smtpHost);
+        TrySet(mappedConfig, config, "Smtp:Port", smtpPort);
+        TrySet(mappedConfig, config, "Smtp:Username", smtpUsername);
+        TrySet(mappedConfig, config, "Smtp:Password", smtpPassword);
+        TrySet(mappedConfig, config, "Smtp:Encryption", smtpEncryption);
+        TrySet(mappedConfig, config, "Smtp:FromAddress", smtpFromAddress);
+        TrySet(mappedConfig, config, "Smtp:FromName", smtpFromName);
+
         // Cerbos
         if (!string.IsNullOrWhiteSpace(cerbosGrpcEndpoint))
         {
             mappedConfig["Cerbos:GrpcEndpoint"] = cerbosGrpcEndpoint;
         }
+        if (!string.IsNullOrWhiteSpace(cerbosHttpEndpoint))
+        {
+            mappedConfig["Cerbos:HttpEndpoint"] = cerbosHttpEndpoint;
+            mappedConfig["Cerbos:AdminApi:Endpoints:0"] = cerbosHttpEndpoint;
+        }
         TrySet(mappedConfig, config, "Cerbos:UsePolicyScope", cerbosUsePolicyScope);
+        TrySet(mappedConfig, config, "Cerbos:UseTls", cerbosUseTls);
+        TrySet(mappedConfig, config, "Cerbos:PlaintextMode", cerbosPlaintextMode);
+        TrySet(mappedConfig, config, "Cerbos:AdminApi:AdminUsername", cerbosAdminUsername);
+        TrySet(mappedConfig, config, "Cerbos:AdminApi:AdminPassword", cerbosAdminPassword);
 
         // Deployment
         TrySet(mappedConfig, config, "Deployment:Mode", deploymentMode);

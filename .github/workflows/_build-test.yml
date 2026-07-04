@@ -115,7 +115,7 @@ jobs:
       - name: Unit Tests — Infrastructure
         if: ${{ inputs.run-fast-tests }}
         id: test_infrastructure
-        run: dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Infrastructure.Tests.trx
+        run: dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Infrastructure.Tests.trx --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
 
       - name: Blazor Client Tests
         if: ${{ inputs.run-fast-tests }}
@@ -229,6 +229,38 @@ jobs:
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=event_test;Username=postgres;Password=password"
 
+      - name: Infrastructure Email Runtime Tests
+        id: test_infrastructure_email
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/runtime
+          dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Infrastructure.Tests.Email.trx --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1 2>&1 | tee artifacts/runtime/infrastructure-email.log
+
+      - name: Infrastructure RabbitMQ Runtime Tests
+        id: test_infrastructure_rabbitmq
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/runtime
+          dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Infrastructure.Tests.RabbitMQ.trx --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1 2>&1 | tee artifacts/runtime/infrastructure-rabbitmq.log
+
+      - name: Capture Runtime Container Diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/runtime/docker
+
+          docker ps -a > artifacts/runtime/docker/containers.txt || true
+          docker images > artifacts/runtime/docker/images.txt || true
+
+          while read -r container_id container_name; do
+            [ -n "$container_id" ] || continue
+            safe_name="${container_name//[^A-Za-z0-9_.-]/-}"
+            docker logs "$container_id" > "artifacts/runtime/docker/${safe_name}.log" 2>&1 || true
+          done < <(docker ps -a --format '{{.ID}} {{.Names}}' || true)
+
       - name: Upload Integration Test Results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -237,6 +269,7 @@ jobs:
           path: |
             '**/TestResults/**/*.trx'
             artifacts/build/integration-build.log
+            artifacts/runtime/**
           if-no-files-found: warn
           retention-days: 14
 
@@ -245,6 +278,8 @@ jobs:
         env:
           PERSISTENCE_OUTCOME: ${{ steps.test_persistence_integration.outcome }}
           API_OUTCOME: ${{ steps.test_api_integration.outcome }}
+          INFRASTRUCTURE_EMAIL_OUTCOME: ${{ steps.test_infrastructure_email.outcome }}
+          INFRASTRUCTURE_RABBITMQ_OUTCOME: ${{ steps.test_infrastructure_rabbitmq.outcome }}
         run: |
           {
             echo "## Integration Test Evidence"
@@ -256,6 +291,8 @@ jobs:
             echo "|---|---|"
             echo "| Event.Persistence.IntegrationTests | ${PERSISTENCE_OUTCOME:-not-run} |"
             echo "| Event.API.IntegrationTests | ${API_OUTCOME:-not-run} |"
+            echo "| Explore.Infrastructure.Tests Email | ${INFRASTRUCTURE_EMAIL_OUTCOME:-not-run} |"
+            echo "| Explore.Infrastructure.Tests RabbitMQ | ${INFRASTRUCTURE_RABBITMQ_OUTCOME:-not-run} |"
             echo
-            echo "Inspect the uploaded \`test-results-integration\` artifact for project-specific TRX files and build/analyzer warning output."
+            echo "Inspect the uploaded \`test-results-integration\` artifact for project-specific TRX files, runtime command logs, container diagnostics, and build/analyzer warning output."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -2,12 +2,15 @@
 // ABOUTME: Ensures GlobalExceptionHandler and ValidationExceptionHandler return RFC 7807 compliant responses.
 
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.Application.Exceptions;
 using Explore.Application.Responses;
+using Explore.Application.Services;
+using Explore.Domain.Enums;
 using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -68,6 +71,90 @@ public class ProblemDetailsContractTests
         using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
         var detail = document.RootElement.GetProperty("detail").GetString();
         await Assert.That(detail).IsEqualTo("Invalid input data");
+    }
+
+    [Test]
+    public async Task AuthorizationMiddleware_WhenAuthenticationIsMissing_ReturnsProblemDetails401()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        using var request = CreatePurgeCustomPropertyRequest(Guid.NewGuid());
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Unauthorized, "Authentication required");
+        await AssertProblemCodeAndTypeAsync(
+            response,
+            "authentication_required",
+            "https://tools.ietf.org/html/rfc9110#section-15.5.2");
+    }
+
+    [Test]
+    public async Task AuthorizationMiddleware_WhenRoleRequirementFails_ReturnsProblemDetails403()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        using var request = CreatePurgeCustomPropertyRequest(Guid.NewGuid());
+        request.Headers.Add(
+            TestAuthHandler.AuthHeaderName,
+            TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Forbidden");
+        await AssertProblemCodeAndTypeAsync(
+            response,
+            "forbidden",
+            "https://tools.ietf.org/html/rfc9110#section-15.5.4");
+    }
+
+    [Test]
+    public async Task RateLimiter_WhenGlobalLimitIsExceeded_ReturnsProblemDetails429()
+    {
+        var tenantId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        const string keyId = "problem-details-rate-limit";
+        const string secret = "problem-details-rate-limit-secret";
+        var apiKey = ApiKeyHashing.FormatPersistedApiKey(keyId, secret);
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DisableRateLimitingInTesting = false,
+            GlobalRateLimitTokenLimit = 1,
+            GlobalRateLimitTokensPerPeriod = 1,
+            GlobalRateLimitReplenishPeriodSeconds = 60,
+            PersistedApiKeys =
+            [
+                new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
+                {
+                    KeyId = keyId,
+                    Secret = secret,
+                    TenantId = tenantId,
+                    OwnerId = ownerId,
+                    OwnerType = ExternalApiKeyOwnerType.User,
+                    Scopes = ["events:read"]
+                }
+            ]
+        };
+
+        using var client = factory.CreateClient();
+        using var firstRequest = CreateApiKeyProbeRequest(apiKey);
+        using var firstResponse = await client.SendAsync(firstRequest);
+        await Assert.That(firstResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var throttledRequest = CreateApiKeyProbeRequest(apiKey);
+        using var response = await client.SendAsync(throttledRequest);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.TooManyRequests, "Too Many Requests");
+        await AssertProblemCodeAndTypeAsync(
+            response,
+            "rate_limited",
+            "https://tools.ietf.org/html/rfc6585#section-4");
+        await Assert.That(response.Headers.Contains("Retry-After")).IsTrue();
+        await Assert.That(response.Headers.TryGetValues("X-RateLimit-Limit", out var limits)).IsTrue();
+        await Assert.That(limits).Contains("1");
+        await Assert.That(response.Headers.TryGetValues("X-RateLimit-Remaining", out var remaining)).IsTrue();
+        await Assert.That(remaining).Contains("0");
     }
 
     [Test]
@@ -440,6 +527,33 @@ public class ProblemDetailsContractTests
         });
 
         return app.CreateClient();
+    }
+
+    private static HttpRequestMessage CreatePurgeCustomPropertyRequest(Guid id)
+        => new(HttpMethod.Delete, $"/api/CustomPropertyDefinition/{id}/purge")
+        {
+            Content = JsonContent.Create(new { Reason = "problem-details-contract" })
+        };
+
+    private static HttpRequestMessage CreateApiKeyProbeRequest(string apiKey)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/_internal/auth-probe/secure");
+        request.Headers.Add("X-API-Key", apiKey);
+        return request;
+    }
+
+    private static async Task AssertProblemCodeAndTypeAsync(
+        HttpResponseMessage response,
+        string expectedCode,
+        string expectedType)
+    {
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo(expectedCode);
+        await Assert.That(root.GetProperty("type").GetString()).IsEqualTo(expectedType);
+        await Assert.That(root.TryGetProperty("instance", out var instance)).IsTrue();
+        await Assert.That(instance.GetString()).IsNotNull();
     }
 
     private sealed class TestController : ControllerBase;

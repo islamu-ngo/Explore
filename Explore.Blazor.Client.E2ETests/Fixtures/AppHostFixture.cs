@@ -2,6 +2,8 @@
 // ABOUTME: Provides the Blazor frontend URL to Playwright tests.
 
 using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
@@ -22,10 +24,10 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     private readonly MailpitContainerFixture _mailpit = new();
     private DistributedApplication? _app;
 
-    public string BlazorBaseUrl => _app?.GetEndpoint("explore-blazor", "https")?.ToString().TrimEnd('/')
+    public string BlazorBaseUrl => _app?.GetEndpoint("explore-blazor", "http")?.ToString().TrimEnd('/')
         ?? throw new InvalidOperationException("Blazor app not started");
 
-    public string ApiBaseUrl => _app?.GetEndpoint("explore-api", "https")?.ToString().TrimEnd('/')
+    public string ApiBaseUrl => _app?.GetEndpoint("explore-api", "http")?.ToString().TrimEnd('/')
         ?? throw new InvalidOperationException("API app not started");
 
     public string KeycloakBaseUrl => _keycloak.BaseUrl;
@@ -47,6 +49,9 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     public Task<string> GetTestUserAccessTokenAsync(CancellationToken cancellationToken = default)
         => _keycloak.GetTestUserAccessTokenAsync(cancellationToken);
 
+    public Task<BffKeycloakFixture.TokenSet> GetTestAdminTokensAsync(CancellationToken cancellationToken = default)
+        => _keycloak.GetTestAdminTokensAsync(cancellationToken);
+
     public async Task InitializeAsync()
     {
         await _database.InitializeAsync();
@@ -55,18 +60,33 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         await PreconfigureMailpitSmtpAsync();
         await _keycloak.InitializeAsync();
 
-        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Explore_AppHost>();
+        var previousAspireMode = Environment.GetEnvironmentVariable("ISLAMU_ASPIRE_MODE");
+        Environment.SetEnvironmentVariable("ISLAMU_ASPIRE_MODE", "ExternalInfra");
 
-        builder.Services.ConfigureHttpClientDefaults(c =>
-            c.ConfigureHttpClient(h => h.BaseAddress = null));
+        IDistributedApplicationTestingBuilder builder;
+        try
+        {
+            builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Explore_AppHost>();
 
-        ConfigureDatabase(builder, _database.ConnectionString);
-        ConfigureKeycloak(builder, _keycloak);
-        ConfigureSetupSecret(builder);
-        ConfigureEmailDispatch(builder);
-        ConfigureApiEndpoint(builder);
+            builder.Services.ConfigureHttpClientDefaults(c =>
+                c.ConfigureHttpClient(h => h.BaseAddress = null));
 
-        _app = await builder.BuildAsync();
+            ConfigureDatabase(builder, _database.ConnectionString);
+            ConfigureCache(builder);
+            ConfigureKeycloak(builder, _keycloak);
+            ConfigureSetupSecret(builder);
+            ConfigureEmailDispatch(builder);
+            ConfigureDiagnostics(builder);
+            ConfigureProjectHttpEndpoint(builder, "explore-api");
+            ConfigureProjectHttpEndpoint(builder, "explore-blazor");
+            ConfigureApiEndpoint(builder);
+
+            _app = await builder.BuildAsync();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ISLAMU_ASPIRE_MODE", previousAspireMode);
+        }
         var resourceNotificationService = _app.Services.GetRequiredService<ResourceNotificationService>();
 
         await _app.StartAsync();
@@ -103,6 +123,13 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         api.WithEnvironment("EmailDispatchProcessor__PollingIntervalSeconds", "1");
         api.WithEnvironment("EmailDispatchProcessor__InitialRetryDelaySeconds", "1");
         api.WithEnvironment("EmailDispatchProcessor__BatchSize", "25");
+    }
+
+    private static void ConfigureDiagnostics(IDistributedApplicationTestingBuilder builder)
+    {
+        var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
+
+        api.WithEnvironment("Diagnostics__EnableAdminCacheInvalidation", "true");
     }
 
     private static void ConfigureKeycloak(
@@ -163,12 +190,6 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         IDistributedApplicationTestingBuilder builder,
         string connectionString)
     {
-        ConfigureProjectDatabase(
-            builder,
-            "event-migrationservice",
-            connectionString,
-            includeMigrationServiceConnectionString: true);
-
         ConfigureProjectDatabase(builder, "explore-api", connectionString);
         ConfigureProjectDatabase(builder, "explore-blazor", connectionString);
     }
@@ -176,25 +197,49 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     private static void ConfigureProjectDatabase(
         IDistributedApplicationTestingBuilder builder,
         string resourceName,
-        string connectionString,
-        bool includeMigrationServiceConnectionString = false)
+        string connectionString)
     {
         var resource = builder.CreateResourceBuilder<ProjectResource>(resourceName);
 
         resource.WithEnvironment("ConnectionStrings__DefaultConnection", connectionString);
         resource.WithEnvironment("Testing__DisableDeploymentModeCache", "true");
+        resource.WithEnvironment("Testing__DisableDevelopmentDataSeed", "true");
+    }
 
-        if (includeMigrationServiceConnectionString)
-        {
-            resource.WithEnvironment("ConnectionStrings__EventMigrationService", connectionString);
-        }
+    private static void ConfigureCache(IDistributedApplicationTestingBuilder builder)
+    {
+        var cache = builder.AddRedis("cache")
+            .WithLifetime(ContainerLifetime.Session);
+
+        builder.CreateResourceBuilder<ProjectResource>("explore-api")
+            .WithReference(cache)
+            .WaitFor(cache);
+
+        builder.CreateResourceBuilder<ProjectResource>("explore-blazor")
+            .WithReference(cache)
+            .WaitFor(cache);
+    }
+
+    private static void ConfigureProjectHttpEndpoint(
+        IDistributedApplicationTestingBuilder builder,
+        string resourceName)
+    {
+        var resource = builder.CreateResourceBuilder<ProjectResource>(resourceName);
+        resource.WithHttpEndpoint(port: AllocateAvailableTcpPort(), name: "http");
+    }
+
+    private static int AllocateAvailableTcpPort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
     private static void ConfigureApiEndpoint(IDistributedApplicationTestingBuilder builder)
     {
         var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
         var blazor = builder.CreateResourceBuilder<ProjectResource>("explore-blazor");
-        var apiEndpoint = api.GetEndpoint("https");
+        var apiEndpoint = api.GetEndpoint("http");
 
         blazor.WithEnvironment("API_ENDPOINT", apiEndpoint);
         blazor.WithEnvironment("ExploreApi__BaseUrl", apiEndpoint);

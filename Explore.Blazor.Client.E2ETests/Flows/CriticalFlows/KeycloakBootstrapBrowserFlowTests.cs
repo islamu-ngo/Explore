@@ -6,7 +6,7 @@ using Explore.Blazor.Client.E2ETests.Fixtures;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
-[Category("E2E")]
+[Category(E2ETestCategories.E2E)]
 [ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
 [NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]

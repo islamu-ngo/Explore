@@ -258,6 +258,46 @@ public sealed class PublicQueryValidationTests
     }
 
     [Test]
+    public async Task ContactShareConsentExportQueryRequest_WhenFormatIsUnknown_IsInvalid()
+    {
+        var request = new ContactShareConsentExportQueryRequest
+        {
+            Format = "json"
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(ContactShareConsentExportQueryRequest.Format)))).IsTrue();
+    }
+
+    [Test]
+    public async Task ContactShareConsentExportQueryRequest_WhenFormatContainsControlCharacter_IsInvalid()
+    {
+        var request = new ContactShareConsentExportQueryRequest
+        {
+            Format = "csv\n"
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(ContactShareConsentExportQueryRequest.Format)))).IsTrue();
+    }
+
+    [Test]
+    public async Task ContactShareConsentExportQueryRequest_WhenFormatIsSupported_NormalizesFormat()
+    {
+        var request = new ContactShareConsentExportQueryRequest
+        {
+            Format = " TSV "
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results).IsEmpty();
+        await Assert.That(request.GetNormalizedFormat()).IsEqualTo("tsv");
+    }
+
+    [Test]
     public async Task CustomPropertyGovernanceReportQueryRequest_WhenTenantAndEnumAreInvalid_IsInvalid()
     {
         var request = new CustomPropertyGovernanceReportQueryRequest

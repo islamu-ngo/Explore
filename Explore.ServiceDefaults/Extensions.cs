@@ -78,7 +78,6 @@ public static class Extensions
                     .AddSource("Explore.Ai.Provider")
                     .AddSource("Explore.Hateoas.Authorization")
                     .AddSource("Explore.Mcp")
-                    .AddSource("MQContract")
                     .AddSource("TickerQ")
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing

@@ -1,12 +1,11 @@
 // ABOUTME: Defines test category constants for the hybrid test taxonomy.
-// ABOUTME: Used with TUnit [Category] attribute to selectively run Fast, Security, PolicyContract, or E2E tests.
+// ABOUTME: Used with TUnit [Category] attribute to selectively run fast, runtime, security, and messaging tests.
 
 namespace Event.Api.IntegrationTests.Fixtures;
 
 /// <summary>
 /// Test category constants for the hybrid test taxonomy.
 /// Use <c>[Category(TestCategories.Fast)]</c> to tag tests.
-/// Run selective TUnit categories via <c>dotnet test --treenode-filter "////[Category=Security]"</c>.
 /// </summary>
 public static class TestCategories
 {
@@ -27,6 +26,16 @@ public static class TestCategories
     /// Does not go through the API layer; validates policy decisions in isolation.
     /// </summary>
     public const string PolicyContract = "PolicyContract";
+
+    public const string Email = "Email";
+
+    public const string RabbitMQ = "RabbitMQ";
+
+    public const string Runtime = "Runtime";
+
+    public const string Slow = "Slow";
+
+    public const string Manual = "Manual";
 
     /// <summary>
     /// End-to-end tests running the full stack (Playwright + Blazor + API + Keycloak + Cerbos + Postgres).
