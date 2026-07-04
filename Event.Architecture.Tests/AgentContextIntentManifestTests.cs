@@ -38,6 +38,7 @@ public class AgentContextIntentManifestTests
         "Event.Architecture.Tests",
         "Event.Persistence.IntegrationTests",
         "Event.API.IntegrationTests",
+        "Explore.Infrastructure.Tests",
         "Explore.Blazor.IntegrationTests",
         "Explore.Blazor.Client.Tests",
         "Explore.Blazor.Client.E2ETests",

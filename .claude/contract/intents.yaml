@@ -390,7 +390,6 @@ intents:
       - "dev/active/**"
     minimum_tests:
       - Event.Application.UnitTests
-      - Explore.Infrastructure.Tests
       - Event.API.IntegrationTests
       - Explore.Blazor.IntegrationTests
       - Explore.Blazor.Client.Tests

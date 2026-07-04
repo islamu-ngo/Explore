@@ -615,3 +615,62 @@
 - [x] Candidate for skill update: `auth-patterns`
 - [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
 - [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-07-04 Europe/Brussels] — Name same-column EF partial indexes explicitly
+
+**Context**: While implementing Phase 3 MVP launch registration duplicate tests under the `update-repository-query` and `add-ef-migration` intents, the event-scope duplicate PostgreSQL test inserted a second active event registration intent instead of returning the existing one.
+
+**Symptom / Observation**: `CreateWithChildrenAndCapacityAsync_DuplicateEventScopeIntent_ReturnsExistingIntent` failed because `duplicate.WasExisting` was `False`. The EF configuration declared `ix_event_registration_intents_unique_event_scope`, but migration search and `ExploreDbContextModelSnapshot` only contained `ix_event_registration_intents_unique_session_selection_scope` and `ix_event_registration_intents_unique_day_scope`.
+
+**Root Cause**: EF Core returns the existing unnamed index when `HasIndex` is called again for the same property set. `EventRegistrationIntentConfiguration` declared both event-scope and session-selection partial unique indexes over `(TenantId, EventId, UserId)` without distinct EF model index names, so the later session-selection configuration replaced the earlier event-scope index in the EF model and generated migrations.
+
+**Resolution**: Gave the event and session-selection indexes distinct EF model names with `HasIndex(expression, name)`, updated the model snapshot registration-intent index section, and added `AddEventRegistrationEventScopeUniqueIndex` to create `ix_event_registration_intents_unique_event_scope` with a clear duplicate-data preflight exception. Verification passed with focused PostgreSQL registration tests, focused API registration controller tests, architecture tests, Release build, LSP diagnostics, and diff whitespace checks.
+
+**Why This Matters for Future Work**: PostgreSQL can have multiple partial indexes over the same columns, but EF Core needs distinct model index names to represent them. Any future filtered/partial index pair over the same property set must use `HasIndex(..., "<model index name>")`, or migrations may silently omit one database invariant.
+
+**References**:
+- `Explore.Persistence/Configurations/Entities/EventRegistrationIntentConfiguration.cs:71`
+- `Explore.Persistence/Configurations/Entities/EventRegistrationIntentConfiguration.cs:85`
+- `Explore.Persistence/Migrations/20260704120000_AddEventRegistrationEventScopeUniqueIndex.cs:18`
+- `Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs:4567`
+- `Event.Persistence.IntegrationTests/Repositories/EventRegistrationIntentRepositoryTests.cs:89`
+- `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
+- `.claude/rules/efcore-migrations.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `dotnet-efcore-guidelines`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-07-04 Europe/Brussels] — Preserve original transaction failures on rollback cleanup
+
+**Context**: While completing Phase 3 MVP launch registration duplicate dispatch-row proof under the `update-repository-query` intent, the focused PostgreSQL registration-intent test class exposed a retry-path failure in `EventRegistrationIntentRepository`.
+
+**Symptom / Observation**: `CreateWithChildrenAndCapacityAsync_ConcurrentCapacityOneRegistrations_CreatesSingleApprovedRow` failed with `InvalidOperationException: This NpgsqlTransaction has completed; it is no longer usable.` The stack trace pointed at `EventRegistrationIntentRepository.cs:187` during `RollbackAsync`, after a serializable transaction failure.
+
+**Root Cause**: EF Core execution strategies can replay a user-initiated transaction only when the original retryable failure escapes the execution-strategy delegate. The repository catch block always called `RollbackAsync`; when PostgreSQL/Npgsql had already completed or aborted the transaction, rollback threw `InvalidOperationException` and masked the original retryable transaction failure, preventing the intended retry path.
+
+**Resolution**: Added bounded rollback cleanup in `EventRegistrationIntentRepository.RollbackIfPendingAsync(...)`: it preserves the original exception when Npgsql reports an already-completed transaction and still lets other rollback failures surface. Verification passed with `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/EventRegistrationIntentRepositoryTests/*" --minimum-expected-tests 1 --no-progress` returning 6/6.
+
+**Why This Matters for Future Work**: In execution-strategy-wrapped EF transactions, rollback is cleanup, not the business failure. Cleanup exceptions that only mean "the database already ended this transaction" must not replace the original transient/serialization failure, or retryable concurrency paths become flaky and misleading.
+
+**References**:
+- `Explore.Persistence/Repositories/EventRegistrationIntentRepository.cs:186`
+- `Explore.Persistence/Repositories/EventRegistrationIntentRepository.cs:194`
+- `Event.Persistence.IntegrationTests/Repositories/EventRegistrationIntentRepositoryTests.cs:23`
+- `Event.Persistence.IntegrationTests/Repositories/EventRegistrationIntentRepositoryTests.cs:90`
+- `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
+- `.claude/rules/efcore-persistence.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `dotnet-efcore-guidelines`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
