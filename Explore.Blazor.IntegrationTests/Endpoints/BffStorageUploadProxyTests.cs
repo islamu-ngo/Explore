@@ -63,6 +63,61 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task UploadSession_WithoutAntiforgeryOrSelfCallToken_ReturnsBadRequest()
+    {
+        using var factory = CreateStorageBoundaryFactory(new StorageApiHandler());
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+        using var request = CreateBoundaryUploadSessionRequest();
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("Antiforgery validation failed");
+    }
+
+    [Test]
+    public async Task UploadProxy_WithoutAntiforgeryOrSelfCallToken_ReturnsBadRequest()
+    {
+        using var factory = CreateStorageBoundaryFactory(new StorageApiHandler());
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+        using var request = CreateBoundaryUploadProxyRequest();
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("Antiforgery validation failed");
+    }
+
+    [Test]
+    public async Task UploadSession_WithValidSelfCallTokenWithoutCsrf_ReturnsOk()
+    {
+        var apiHandler = new StorageApiHandler();
+        using var factory = CreateStorageBoundaryFactory(apiHandler);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+        using var request = CreateBoundaryUploadSessionRequest();
+        AddSelfCallToken(factory, client, request, _userId);
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        apiHandler.ReserveCallCount.Should().Be(1);
+    }
+
+    [Test]
     public async Task UploadProxy_WithArbitraryPresignedLookingHttpsUrl_ReturnsBadRequest()
     {
         using var request = CreateUploadRequest();
@@ -308,6 +363,20 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         return request;
     }
 
+    private HttpRequestMessage CreateBoundaryUploadSessionRequest()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/bff/storage/upload-session");
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, _authHeader);
+        request.Content = JsonContent.Create(new
+        {
+            fileName = "probe.png",
+            contentType = "image/png",
+            expectedSizeBytes = 4L
+        });
+
+        return request;
+    }
+
     private HttpRequestMessage CreateUploadProxyRequest(
         string uploadSessionId,
         string declaredContentType,
@@ -325,6 +394,23 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         var fileContent = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47]);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(fileContentType);
         form.Add(fileContent, "file", fileName);
+        request.Content = form;
+
+        return request;
+    }
+
+    private HttpRequestMessage CreateBoundaryUploadProxyRequest()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/bff/storage/upload-proxy");
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, _authHeader);
+
+        var form = new MultipartFormDataContent();
+        form.Add(new StringContent("abcdefabcdefabcdefabcdefabcdefab"), "uploadSessionId");
+        form.Add(new StringContent("image/png"), "contentType");
+
+        var fileContent = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47]);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(fileContent, "file", "probe.png");
         request.Content = form;
 
         return request;
@@ -349,6 +435,46 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         request.Headers.Add("X-CSRF-TOKEN", "test-token");
         request.Headers.Add(TestAuthHandler.AuthHeaderName, authHeader ?? _authHeader);
     }
+
+    private static WebApplicationFactory<Program> CreateStorageBoundaryFactory(StorageApiHandler apiHandler)
+    {
+        return new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IHttpClientFactory>();
+                services.AddSingleton<IHttpClientFactory>(new StorageHttpClientFactory(apiHandler));
+            });
+        });
+    }
+
+    private static void AddSelfCallToken(
+        WebApplicationFactory<Program> factory,
+        HttpClient client,
+        HttpRequestMessage request,
+        Guid actorUserId)
+    {
+        var tokenService = factory.Services.GetRequiredService<IBffSelfCallTokenService>();
+        var issueContext = new DefaultHttpContext
+        {
+            RequestServices = factory.Services,
+            User = CreatePrincipal(actorUserId)
+        };
+        using var outboundRequest = new HttpRequestMessage(
+            request.Method,
+            new Uri(client.BaseAddress!, request.RequestUri!));
+        var token = tokenService.Issue(issueContext, outboundRequest)
+            ?? throw new InvalidOperationException("Could not issue BFF self-call token for test request.");
+
+        request.Headers.Add(BffSelfCallHeaders.Token, token);
+    }
+
+    private static ClaimsPrincipal CreatePrincipal(Guid actorUserId) => new(new ClaimsIdentity(
+        [
+            new Claim("sub", actorUserId.ToString("D")),
+            new Claim(ClaimTypes.NameIdentifier, actorUserId.ToString("D"))
+        ],
+        "Test"));
 
     private sealed class StorageHttpClientFactory(
         StorageApiHandler apiHandler) : IHttpClientFactory

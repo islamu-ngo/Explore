@@ -70,6 +70,11 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
         int limit,
         CancellationToken cancellationToken)
     {
+        if (limit <= 0)
+        {
+            return [];
+        }
+
         return await BaseReconciliationQuery()
             .Where(storageObject =>
                 storageObject.LifecycleState == StorageObjectLifecycleStates.Active &&
@@ -84,6 +89,11 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
         int limit,
         CancellationToken cancellationToken)
     {
+        if (limit <= 0)
+        {
+            return [];
+        }
+
         return await BaseReconciliationQuery()
             .Where(storageObject =>
                 (storageObject.LifecycleState == StorageObjectLifecycleStates.Quarantined &&
@@ -128,7 +138,7 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
         IReadOnlyCollection<string> objectKeys,
         CancellationToken cancellationToken)
     {
-        if (objectKeys.Count == 0)
+        if (string.IsNullOrWhiteSpace(provider) || objectKeys.Count == 0)
         {
             return [];
         }

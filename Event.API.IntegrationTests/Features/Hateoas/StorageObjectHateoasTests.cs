@@ -13,14 +13,14 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// HATEOAS-specific tests for StorageObjectController.
 /// Validates storage object links for file management operations.
 /// </summary>
-[NotInParallel("ApiTestFixture")]
-[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
+[NotInParallel("ContractApiFixture")]
+[ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public class StorageObjectHateoasTests
 {
-    private readonly ApiTestFixture _fixture;
+    private readonly ContractApiFixture _fixture;
     private const string BaseUrl = "/api/storageobject";
 
-    public StorageObjectHateoasTests(ApiTestFixture fixture)
+    public StorageObjectHateoasTests(ContractApiFixture fixture)
     {
         _fixture = fixture;
     }
@@ -28,7 +28,8 @@ public class StorageObjectHateoasTests
     [Test]
     public async Task GetAll_ShouldIncludeHalStructure()
     {
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        using var request = CreateAuthenticatedRequest();
+        var response = await _fixture.Client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
@@ -43,7 +44,8 @@ public class StorageObjectHateoasTests
     [Test]
     public async Task GetAll_ShouldIncludeSelfLink()
     {
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        using var request = CreateAuthenticatedRequest();
+        var response = await _fixture.Client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
@@ -60,29 +62,21 @@ public class StorageObjectHateoasTests
     }
 
     [Test]
-    public async Task GetAll_WithoutAuth_ShouldNotIncludeCreateLink()
+    public async Task GetAll_WithoutAuth_ReturnsUnauthorized()
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, BaseUrl);
+        using var request = new HttpRequestMessage(HttpMethod.Get, BaseUrl);
 
         var response = await _fixture.Client.SendAsync(request);
 
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
-
-        await Assert.That(json.RootElement.TryGetProperty("_links", out var links)).IsTrue();
-        await Assert.That(links.TryGetProperty("create", out _)).IsFalse();
-        await Assert.That(links.TryGetProperty("create-upload-session", out _)).IsFalse();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task GetAll_ItemLinks_ShouldIncludeSelfLink()
     {
-        // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        using var request = CreateAuthenticatedRequest();
+        var response = await _fixture.Client.SendAsync(request);
 
-        // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var content = await response.Content.ReadAsStringAsync();
@@ -107,7 +101,8 @@ public class StorageObjectHateoasTests
     public async Task GetById_Links_ShouldIncludeCollectionLink()
     {
         // Arrange - First get list to find a storage object
-        var listResponse = await _fixture.Client.GetAsync(BaseUrl);
+        using var listRequest = CreateAuthenticatedRequest();
+        var listResponse = await _fixture.Client.SendAsync(listRequest);
         var listContent = await listResponse.Content.ReadAsStringAsync();
         var listJson = JsonDocument.Parse(listContent);
 
@@ -125,7 +120,8 @@ public class StorageObjectHateoasTests
         }
 
         // Act - Get storage object by ID
-        var response = await _fixture.Client.GetAsync($"{BaseUrl}/{objectId}");
+        using var detailRequest = CreateAuthenticatedRequest($"{BaseUrl}/{objectId}");
+        var response = await _fixture.Client.SendAsync(detailRequest);
 
         // Assert
         if (response.StatusCode == HttpStatusCode.OK)
@@ -148,10 +144,9 @@ public class StorageObjectHateoasTests
     [Test]
     public async Task GetAll_SelfLink_ShouldHaveGetMethod()
     {
-        // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        using var request = CreateAuthenticatedRequest();
+        var response = await _fixture.Client.SendAsync(request);
 
-        // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var content = await response.Content.ReadAsStringAsync();
@@ -179,5 +174,10 @@ public class StorageObjectHateoasTests
             return true;
         }
         return false;
+    }
+
+    private HttpRequestMessage CreateAuthenticatedRequest(string url = BaseUrl)
+    {
+        return _fixture.CreateAuthenticatedRequest(HttpMethod.Get, url);
     }
 }

@@ -14,7 +14,5 @@ public class CreateStorageObjectCommand : IRequest<BaseCommandResponse<Guid>>, I
 
     string? ISecureRequest.ResourceId => null;
     IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        StorageObjectDto.TenantId != Guid.Empty
-            ? new Dictionary<string, object> { ["tenantId"] = StorageObjectDto.TenantId.ToString() }
-            : null;
+        new Dictionary<string, object> { ["authorizationScope"] = "collection" };
 }

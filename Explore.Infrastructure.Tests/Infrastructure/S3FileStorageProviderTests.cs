@@ -9,6 +9,7 @@ using Explore.Application.Models;
 using Explore.Application.Models.Storage;
 using Explore.Domain;
 using Explore.Infrastructure.Storage;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -150,7 +151,36 @@ public sealed class S3FileStorageProviderTests
         await Assert.That(status.SupportsBrowserDirectUpload).IsTrue();
     }
 
-    private static S3FileStorageProvider CreateProvider(S3Configuration config, IAmazonS3 s3Client)
+    [Test]
+    public async Task TestAsync_WhenBucketProbeFails_LogsFailureTypeWithoutRawProviderPayload()
+    {
+        var config = CreateConfig();
+        var s3Client = Substitute.For<IAmazonS3>();
+        var logger = new TestListLogger<S3FileStorageProvider>();
+        var provider = CreateProvider(config, s3Client, logger);
+        s3Client
+            .HeadBucketAsync(Arg.Any<HeadBucketRequest>(), Arg.Any<CancellationToken>())
+            .Returns<Task<HeadBucketResponse>>(_ => throw new InvalidOperationException(
+                $"provider leaked endpoint {config.Endpoint} bucket {config.BucketName} secret {config.SecretAccessKey}"));
+
+        var status = await provider.TestAsync(CancellationToken.None);
+
+        await Assert.That(status.IsAvailable).IsFalse();
+        await Assert.That(status.FailureCode).IsEqualTo("s3_unavailable");
+
+        var log = logger.Entries.Single(entry => entry.Level == LogLevel.Warning);
+        await Assert.That(log.Exception).IsNull();
+        await Assert.That(log.Message).Contains("FailureType=provider_unavailable");
+        await Assert.That(log.Message).DoesNotContain("provider leaked endpoint");
+        await Assert.That(log.Message).DoesNotContain(config.Endpoint);
+        await Assert.That(log.Message).DoesNotContain(config.BucketName);
+        await Assert.That(log.Message).DoesNotContain(config.SecretAccessKey);
+    }
+
+    private static S3FileStorageProvider CreateProvider(
+        S3Configuration config,
+        IAmazonS3 s3Client,
+        ILogger<S3FileStorageProvider>? logger = null)
     {
         var configResolver = Substitute.For<IS3ConfigResolver>();
         var clientFactory = Substitute.For<IS3ClientFactory>();
@@ -160,7 +190,7 @@ public sealed class S3FileStorageProviderTests
         return new S3FileStorageProvider(
             configResolver,
             clientFactory,
-            NullLogger<S3FileStorageProvider>.Instance);
+            logger ?? NullLogger<S3FileStorageProvider>.Instance);
     }
 
     private static S3Configuration CreateConfig()

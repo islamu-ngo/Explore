@@ -1,5 +1,5 @@
 // ABOUTME: Storage BFF endpoints issue upload sessions and proxy files to server-approved destinations.
-// ABOUTME: Documented antiforgery exception: InteractiveServer circuit self-calls cannot forward the browser cookie pair.
+// ABOUTME: Requires antiforgery or a protected same-process self-call token before accepting upload mutations.
 
 using System.Net;
 using System.Net.Http;
@@ -46,37 +46,16 @@ public static class BffStorageEndpoints
     /// <summary>
     /// Maps the storage BFF endpoints: POST /bff/storage/upload-session and POST /bff/storage/upload-proxy.
     /// </summary>
-    /// <remarks>
-    /// <para><b>Documented antiforgery exception (per docs/SECURITY-MODEL.md §"Internal exception register"):</b></para>
-    /// <para>These endpoints do NOT call <c>ValidateAntiforgery()</c>. The Blazor image-upload flow runs under
-    /// <c>@rendermode InteractiveServer</c>, so the BFF request is a server-to-self HttpClient call inside the
-    /// same host process. The browser antiforgery cookie pair (<c>XSRF-TOKEN</c> cookie + <c>X-CSRF-TOKEN</c>
-    /// header) cannot be forwarded reliably from a live SignalR circuit because the original GET that distributed
-    /// the token is no longer in scope. This matches the documented constraint in
-    /// <c>BffAuthEndpoints.cs</c> ("InteractiveServer self-calls cannot reliably satisfy browser antiforgery
-    /// semantics") and the existing pattern in <c>BffSetupSecretEndpoints.cs</c>.</para>
-    /// <para><b>Equivalent compensating controls:</b></para>
-    /// <list type="number">
-    /// <item><c>RequireAuthorization()</c> — only authenticated users may request sessions or proxy uploads.</item>
-    /// <item><c>IStorageUploadSessionStore</c> binds every session to the caller's <c>sub</c> claim at issue time
-    /// and verifies ownership again at resolve time (<c>session_owner_mismatch</c> failure on mismatch).</item>
-    /// <item>Session IDs are 32-char cryptographically random hex (<c>RandomNumberGenerator</c>) — unguessable.</item>
-    /// <item>Sessions are short-lived (clamped 15–60 minutes) and stored in <c>IDistributedCache</c>.</item>
-    /// <item>Each session accepts a single upload (<c>ConsumeAsync</c> after success) with a fixed
-    /// <c>ContentType</c> and <c>ExpectedSizeBytes</c> verified at resolve time.</item>
-    /// <item>The proxy rejects caller-supplied <c>uploadUrl</c> and streams the file server-side to the
-    /// API session-finalize endpoint — the browser never reaches the storage provider directly.</item>
-    /// <item>Per-user rate limiting per <c>RateLimitingExtensions.cs</c> bounds brute-force attempts.</item>
-    /// </list>
-    /// </remarks>
     public static WebApplication MapStorageEndpoints(this WebApplication app)
     {
         app.MapPost("/bff/storage/upload-session", HandleStorageUploadSessionAsync)
             .RequireAuthorization()
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapPost("/bff/storage/upload-proxy", HandleStorageUploadProxyAsync)
             .RequireAuthorization()
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         return app;

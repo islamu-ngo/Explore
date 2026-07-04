@@ -34,6 +34,11 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class StorageObjectController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "storageObject",
+        "Storage object validation failed",
+        "Storage object creation failed.");
+
     private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
         "storageObject",
         "Storage object validation failed",
@@ -319,6 +324,12 @@ public class StorageObjectController : ControllerBase
     {
         var command = new CreateStorageObjectCommand { StorageObjectDto = dto };
         var response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
+        }
+
         return Ok(response);
     }
 

@@ -13,8 +13,4 @@ public class UpdateStorageObjectCommand : IRequest<BaseCommandResponse<Guid>>, I
     public required UpdateStorageObjectDto StorageObjectDto { get; set; }
 
     string? ISecureRequest.ResourceId => StorageObjectDto.Id.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        StorageObjectDto.TenantId != Guid.Empty
-            ? new Dictionary<string, object> { ["tenantId"] = StorageObjectDto.TenantId.ToString() }
-            : null;
 }

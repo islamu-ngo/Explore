@@ -240,6 +240,92 @@ public sealed class StorageUploadSessionControllerTests
     }
 
     [Test]
+    public async Task UploadSessionContent_WhenProviderFailureContainsInternalData_ReturnsCanonicalProblemDetails()
+    {
+        const string unsafeMessage = "S3 SignatureDoesNotMatch at https://storage.internal.example/bucket/tenants/tenant-1/raw-key?X-Amz-Signature=secret";
+        _mediator.Send(Arg.Any<FinalizeStorageUploadSessionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Failure(unsafeMessage, FailureCodes.StorageUploadWriteFailed));
+        var controller = CreateController(new MemoryStream([1]), "text/plain", 1);
+
+        var actionResult = await controller.UploadSessionContent(Guid.CreateVersion7(), CancellationToken.None);
+
+        var objectResult = actionResult.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(503);
+
+        var problemDetails = objectResult.Value as ProblemDetails;
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Title).IsEqualTo("Storage provider unavailable");
+        await Assert.That(problemDetails.Detail).IsEqualTo("Storage provider returned invalid upload metadata.");
+        await Assert.That(problemDetails.Extensions["code"]).IsEqualTo(FailureCodes.StorageUploadWriteFailed);
+
+        var serializedProblem = JsonSerializer.Serialize(problemDetails);
+        await Assert.That(serializedProblem).DoesNotContain("SignatureDoesNotMatch");
+        await Assert.That(serializedProblem).DoesNotContain("storage.internal.example");
+        await Assert.That(serializedProblem).DoesNotContain("raw-key");
+        await Assert.That(serializedProblem).DoesNotContain("secret");
+    }
+
+    [Test]
+    public async Task UploadSessionContent_WhenValidationFailureContainsInternalData_ReturnsCanonicalValidationProblem()
+    {
+        const string unsafeMessage = "ContentType must equal application/private-tenant-secret; objectKey=tenants/tenant-1/raw-key";
+        _mediator.Send(Arg.Any<FinalizeStorageUploadSessionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Failure(unsafeMessage, FailureCodes.StorageUploadContentTypeMismatch));
+        var controller = CreateController(new MemoryStream([1]), "text/plain", 1);
+
+        var actionResult = await controller.UploadSessionContent(Guid.CreateVersion7(), CancellationToken.None);
+
+        var objectResult = actionResult.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(400);
+
+        var problemDetails = objectResult.Value as ValidationProblemDetails;
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Title).IsEqualTo("Storage upload validation failed");
+        await Assert.That(problemDetails.Detail).IsEqualTo("Upload content type does not match the reserved content type.");
+        await Assert.That(problemDetails.Extensions["code"]).IsEqualTo(FailureCodes.StorageUploadContentTypeMismatch);
+        await Assert.That(problemDetails.Errors.TryGetValue("storageUpload", out var errors)).IsTrue();
+        await Assert.That(errors).IsNotNull();
+        await Assert.That(errors!.Length).IsEqualTo(1);
+        await Assert.That(errors[0]).IsEqualTo("Upload content type does not match the reserved content type.");
+
+        var serializedProblem = JsonSerializer.Serialize(problemDetails);
+        await Assert.That(serializedProblem).DoesNotContain("application/private-tenant-secret");
+        await Assert.That(serializedProblem).DoesNotContain("objectKey");
+        await Assert.That(serializedProblem).DoesNotContain("raw-key");
+    }
+
+    [Test]
+    public async Task Create_WhenHandlerValidationFails_ReturnsValidationProblemDetails()
+    {
+        _mediator.Send(Arg.Any<CreateStorageObjectCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Storage object creation failed.",
+                Errors = ["ObjectKey must be a relative provider object key without traversal segments"]
+            });
+        var controller = CreateController();
+
+        var actionResult = await controller.Create(CreateStorageObjectDto(), CancellationToken.None);
+
+        var objectResult = actionResult.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(400);
+
+        var problemDetails = objectResult.Value as ValidationProblemDetails;
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Title).IsEqualTo("Storage object validation failed");
+        await Assert.That(problemDetails.Detail).IsEqualTo("Storage object creation failed.");
+        await Assert.That(problemDetails.Extensions["code"]).IsEqualTo("validation_failed");
+        await Assert.That(problemDetails.Errors.TryGetValue("storageObject", out var errors)).IsTrue();
+        await Assert.That(errors).IsNotNull();
+        await Assert.That(errors!.Length).IsEqualTo(1);
+        await Assert.That(errors[0]).IsEqualTo("ObjectKey must be a relative provider object key without traversal segments");
+    }
+
+    [Test]
     public async Task UploadSessionRoutes_UseStableRouteNamesAndWritePolicy()
     {
         var create = typeof(StorageObjectController).GetMethod(nameof(StorageObjectController.CreateUploadSession))!;
@@ -338,6 +424,19 @@ public sealed class StorageUploadSessionControllerTests
             Purpose = StorageObjectPurposes.Attachment,
             Visibility = StorageObjectVisibilities.PrivateOwner,
             IdempotencyKey = "upload-test"
+        };
+
+    private static CreateStorageObjectDto CreateStorageObjectDto()
+        => new()
+        {
+            FileTypeId = 1,
+            Uri = "/api/storageobject/test/content",
+            ObjectKey = "tenants/test/object.png",
+            Provider = StorageProviders.Local,
+            FullName = "object.png",
+            Extension = ".png",
+            ContentType = "image/png",
+            Size = 1
         };
 
     private static BaseCommandResponse<StorageUploadSessionDto> Success(Guid sessionId)

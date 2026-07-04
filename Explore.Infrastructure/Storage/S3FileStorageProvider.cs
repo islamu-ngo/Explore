@@ -215,7 +215,9 @@ public sealed class S3FileStorageProvider : IFileStorageProvider
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "S3-compatible storage health check failed.");
+            _logger.LogWarning(
+                "S3-compatible storage health check failed. FailureType={FailureType}",
+                CategorizeHealthFailure(ex));
             return new FileStorageProviderStatus(
                 Provider,
                 IsAvailable: false,
@@ -231,6 +233,17 @@ public sealed class S3FileStorageProvider : IFileStorageProvider
         var config = await _configResolver.ResolveAsync(cancellationToken);
         return config ?? throw new InvalidOperationException("S3-compatible storage is not configured.");
     }
+
+    private static string CategorizeHealthFailure(Exception exception) =>
+        exception switch
+        {
+            AmazonServiceException => "provider_service_error",
+            TimeoutException => "timeout",
+            OperationCanceledException => "operation_canceled",
+            IOException => "provider_io",
+            InvalidOperationException => "provider_unavailable",
+            _ => "unknown"
+        };
 
     private static string BuildObjectKey(Guid tenantId, string? extension)
     {

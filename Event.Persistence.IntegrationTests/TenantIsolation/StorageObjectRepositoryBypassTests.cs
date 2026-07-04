@@ -69,6 +69,49 @@ public class StorageObjectRepositoryBypassTests(PostgreSqlContainerFixture fixtu
             .IsEquivalentTo([tenantA.Id, tenantA.Id]);
     }
 
+    [Test]
+    public async Task ReconciliationBypassQueries_WithInvalidBounds_ReturnEmptyResults()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+
+        var tenant = CreateTenant("storage-guards");
+        seedContext.Tenants.Add(tenant);
+        await seedContext.SaveChangesAsync();
+
+        var resourceId = Guid.CreateVersion7();
+        var active = CreateStorageObject(tenant.Id, resourceId, StorageObjectLifecycleStates.Active);
+        var deleteEligible = CreateStorageObject(tenant.Id, resourceId, StorageObjectLifecycleStates.DeleteRequested);
+        deleteEligible.UpdatedAt = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc);
+        seedContext.StorageObjects.AddRange(active, deleteEligible);
+        await seedContext.SaveChangesAsync();
+
+        await using var tenantContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenant.Id));
+        var repository = new StorageObjectRepository(tenantContext);
+
+        var activeWithZeroLimit = await repository.ListActiveForReconciliationAsync(
+            new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc),
+            limit: 0,
+            CancellationToken.None);
+        var deleteEligibleWithNegativeLimit = await repository.ListDeleteEligibleForReconciliationAsync(
+            new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc),
+            limit: -1,
+            CancellationToken.None);
+        var knownKeysWithBlankProvider = await repository.ListKnownObjectKeysAsync(
+            " ",
+            [active.ObjectKey!],
+            CancellationToken.None);
+        var knownKeysWithEmptyKeySet = await repository.ListKnownObjectKeysAsync(
+            StorageProviders.Local,
+            [],
+            CancellationToken.None);
+
+        await Assert.That(activeWithZeroLimit).IsEmpty();
+        await Assert.That(deleteEligibleWithNegativeLimit).IsEmpty();
+        await Assert.That(knownKeysWithBlankProvider).IsEmpty();
+        await Assert.That(knownKeysWithEmptyKeySet).IsEmpty();
+    }
+
     private static Tenant CreateTenant(string slugPrefix)
     {
         return new Tenant

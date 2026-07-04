@@ -5,6 +5,7 @@ using System.Text;
 using Explore.Application.Models.Storage;
 using Explore.Domain;
 using Explore.Infrastructure.Storage;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -245,7 +246,44 @@ public sealed class LocalFileStorageProviderTests
         }
     }
 
-    private static LocalFileStorageProvider CreateProvider(out string root)
+    [Test]
+    public async Task TestAsync_WithUnwritableRoot_LogsFailureTypeWithoutRawFilesystemPath()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"islamu-local-storage-tests-blocked-{Guid.NewGuid():N}");
+        await File.WriteAllTextAsync(root, "not a directory");
+        var logger = new TestListLogger<LocalFileStorageProvider>();
+        var provider = new LocalFileStorageProvider(
+            Options.Create(new LocalFileStorageOptions
+            {
+                RootPath = root
+            }),
+            logger);
+
+        try
+        {
+            var status = await provider.TestAsync(CancellationToken.None);
+
+            await Assert.That(status.IsAvailable).IsFalse();
+            await Assert.That(status.FailureCode).IsEqualTo("local_storage_unavailable");
+
+            var log = logger.Entries.Single(entry => entry.Level == LogLevel.Warning);
+            await Assert.That(log.Exception).IsNull();
+            await Assert.That(log.Message).Contains("FailureType=storage_io");
+            await Assert.That(log.Message).DoesNotContain(root);
+            await Assert.That(log.Message).DoesNotContain("not a directory");
+        }
+        finally
+        {
+            if (File.Exists(root))
+            {
+                File.Delete(root);
+            }
+        }
+    }
+
+    private static LocalFileStorageProvider CreateProvider(
+        out string root,
+        ILogger<LocalFileStorageProvider>? logger = null)
     {
         root = Path.Combine(Path.GetTempPath(), $"islamu-local-storage-tests-{Guid.NewGuid():N}");
         return new LocalFileStorageProvider(
@@ -253,7 +291,7 @@ public sealed class LocalFileStorageProviderTests
             {
                 RootPath = root
             }),
-            NullLogger<LocalFileStorageProvider>.Instance);
+            logger ?? NullLogger<LocalFileStorageProvider>.Instance);
     }
 
     private static void DeleteRootIfExists(string root)

@@ -207,7 +207,9 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SystemException)
         {
-            _logger.LogWarning(ex, "Local storage health check failed.");
+            _logger.LogWarning(
+                "Local storage health check failed. FailureType={FailureType}",
+                CategorizeHealthFailure(ex));
             return new FileStorageProviderStatus(
                 Provider,
                 IsAvailable: false,
@@ -406,6 +408,16 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
         var hash = SHA256.HashData(bytes);
         return Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant();
     }
+
+    private static string CategorizeHealthFailure(Exception exception) =>
+        exception switch
+        {
+            UnauthorizedAccessException => "access_denied",
+            IOException => "storage_io",
+            TimeoutException => "timeout",
+            OperationCanceledException => "operation_canceled",
+            _ => "unavailable"
+        };
 
     private static void TryDeleteTempFile(string tempPath)
     {

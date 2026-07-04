@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Explore.Application.Contracts.Infrastructure;
@@ -172,8 +173,22 @@ public class ObjectStorageService : IObjectStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "S3 connection test failed for endpoint {Endpoint}", config.Endpoint);
+            _logger.LogWarning(
+                "S3 connection test failed. FailureType={FailureType}",
+                CategorizeConnectionFailure(ex));
             return false;
         }
     }
+
+    private static string CategorizeConnectionFailure(Exception exception) =>
+        exception switch
+        {
+            AmazonS3Exception => "s3_service_error",
+            AmazonServiceException => "provider_service_error",
+            TimeoutException => "timeout",
+            OperationCanceledException => "operation_canceled",
+            IOException => "provider_io",
+            InvalidOperationException => "provider_unavailable",
+            _ => "unknown"
+        };
 }
