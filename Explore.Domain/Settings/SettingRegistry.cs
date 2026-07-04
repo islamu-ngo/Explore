@@ -33,6 +33,7 @@ public static class SettingRegistry
         all.AddRange(EmailSettingDefinitions.All);
         all.AddRange(StorageSettingDefinitions.All);
         all.AddRange(SecuritySettingDefinitions.All);
+        all.AddRange(SupportAccessSettingDefinitions.All);
         all.AddRange(CerbosSettingDefinitions.All);
         all.AddRange(AnalyticsSettingDefinitions.All);
         all.AddRange(McpSettingDefinitions.All);
@@ -44,7 +45,6 @@ public static class SettingRegistry
         all.AddRange(NotificationSettingDefinitions.All);
         all.AddRange(CustomPropertyQuotaSettingDefinitions.All);
         all.AddRange(LocalizationSettingDefinitions.All);
-        all.AddRange(MessagingSettingDefinitions.All);
         all.AddRange(PublicExperienceSettingDefinitions.All);
 
         DefinitionsByKey = all.ToFrozenDictionary(d => d.Key);

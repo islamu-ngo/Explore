@@ -2570,6 +2570,23 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("publish_event_id");
 
+                    b.Property<DateTime?>("RabbitMqLastPublishAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rabbit_mq_last_publish_attempt_at");
+
+                    b.Property<string>("RabbitMqLastPublishFailureCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("rabbit_mq_last_publish_failure_category");
+
+                    b.Property<DateTime?>("RabbitMqLastPublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rabbit_mq_last_published_at");
+
+                    b.Property<int>("RabbitMqPublishAttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("rabbit_mq_publish_attempt_count");
+
                     b.Property<string>("RecipientEmail")
                         .IsRequired()
                         .HasMaxLength(320)
@@ -2650,6 +2667,9 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("TenantId", "Status", "LastFailureAt")
                         .HasDatabaseName("ix_email_dispatch_outbox_tenant_status");
+
+                    b.HasIndex("Status", "NextAttemptAt", "RabbitMqLastPublishAttemptAt", "CreatedAt")
+                        .HasDatabaseName("ix_email_dispatch_outbox_rabbitmq_publish");
 
                     b.HasIndex("TenantId", "SourceType", "SourceId", "Kind")
                         .IsUnique()
@@ -4544,7 +4564,16 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "SelectedEventDayId")
                         .HasDatabaseName("ix_event_registration_intents_tenant_event_day");
 
-                    b.HasIndex("TenantId", "EventId", "UserId")
+                    b.HasIndex(
+                            new[] { "TenantId", "EventId", "UserId" },
+                            "ix_event_registration_intents_unique_event_scope")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_registration_intents_unique_event_scope")
+                        .HasFilter("registration_scope_id = 1 AND is_deleted = false");
+
+                    b.HasIndex(
+                            new[] { "TenantId", "EventId", "UserId" },
+                            "ix_event_registration_intents_unique_session_selection_scope")
                         .IsUnique()
                         .HasDatabaseName("ix_event_registration_intents_unique_session_selection_scope")
                         .HasFilter("registration_scope_id = 3 AND is_deleted = false");
@@ -11555,6 +11584,389 @@ namespace Explore.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_storage_usage_counters_used_bytes_nonnegative", "used_bytes >= 0");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.SupportAccessAuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<int>("EventTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<int?>("HttpStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("http_status_code");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at_utc");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("RequestName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("request_name");
+
+                    b.Property<string>("ResourceId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("resource_id");
+
+                    b.Property<string>("ResourceKind")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("resource_kind");
+
+                    b.Property<string>("RouteName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("route_name");
+
+                    b.Property<string>("SanitizedMetadataJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sanitized_metadata_json");
+
+                    b.Property<Guid>("SupportAccessSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("support_access_session_id");
+
+                    b.Property<Guid>("TargetTenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_tenant_id");
+
+                    b.Property<Guid?>("TargetTenantUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_tenant_user_id");
+
+                    b.Property<string>("TraceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("trace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_support_access_audit_events");
+
+                    b.HasIndex("EventTypeId")
+                        .HasDatabaseName("ix_support_access_audit_events_event_type_id");
+
+                    b.HasIndex("TargetTenantUserId")
+                        .HasDatabaseName("ix_support_access_audit_events_target_tenant_user_id");
+
+                    b.HasIndex("ActorUserId", "OccurredAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_support_access_audit_events_actor_occurred");
+
+                    b.HasIndex("SupportAccessSessionId", "OccurredAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_support_access_audit_events_session_occurred");
+
+                    b.HasIndex("TargetTenantId", "OccurredAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_support_access_audit_events_tenant_occurred");
+
+                    b.ToTable("support_access_audit_events", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.SupportAccessAuditEventType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsLifecycleEvent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_lifecycle_event");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_support_access_audit_event_types");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_support_access_audit_event_types_master_code");
+
+                    b.ToTable("support_access_audit_event_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.SupportAccessEndReason", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_support_access_end_reasons");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_support_access_end_reasons_master_code");
+
+                    b.ToTable("support_access_end_reasons", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.SupportAccessMode", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AllowsWrites")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allows_writes");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_support_access_modes");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_support_access_modes_master_code");
+
+                    b.ToTable("support_access_modes", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.SupportAccessSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by_user_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int?>("EndReasonId")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_reason_id");
+
+                    b.Property<string>("EndReasonText")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("end_reason_text");
+
+                    b.Property<DateTimeOffset?>("EndedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at_utc");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<int>("ModeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("mode_id");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<string>("ReasonText")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason_text");
+
+                    b.Property<DateTimeOffset>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at_utc");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TargetTenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_tenant_id");
+
+                    b.Property<Guid?>("TargetTenantUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_tenant_user_id");
+
+                    b.Property<string>("TicketReference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("ticket_reference");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_support_access_sessions");
+
+                    b.HasIndex("ActorUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_support_access_sessions_active_actor")
+                        .HasFilter("status_id = 2 AND ended_at_utc IS NULL");
+
+                    b.HasIndex("ApprovedByUserId")
+                        .HasDatabaseName("ix_support_access_sessions_approved_by_user_id");
+
+                    b.HasIndex("EndReasonId")
+                        .HasDatabaseName("ix_support_access_sessions_end_reason_id");
+
+                    b.HasIndex("ModeId")
+                        .HasDatabaseName("ix_support_access_sessions_mode_id");
+
+                    b.HasIndex("StatusId")
+                        .HasDatabaseName("ix_support_access_sessions_status_id");
+
+                    b.HasIndex("TargetTenantUserId")
+                        .HasDatabaseName("ix_support_access_sessions_target_tenant_user_id");
+
+                    b.HasIndex("TargetTenantId", "StartedAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_support_access_sessions_target_tenant_started");
+
+                    b.HasIndex("ActorUserId", "StatusId", "ExpiresAtUtc")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("ix_support_access_sessions_actor_status_expires");
+
+                    b.HasIndex("Id", "ActorUserId", "StatusId")
+                        .HasDatabaseName("ix_support_access_sessions_id_actor_status");
+
+                    b.ToTable("support_access_sessions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_support_access_sessions_end_after_start", "ended_at_utc IS NULL OR ended_at_utc >= started_at_utc");
+
+                            t.HasCheckConstraint("ck_support_access_sessions_terminal_reason", "(end_reason_id IS NULL) = (ended_at_utc IS NULL)");
+
+                            t.HasCheckConstraint("ck_support_access_sessions_timebox", "expires_at_utc > started_at_utc");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.SupportAccessSessionStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsTerminal")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_terminal");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_support_access_session_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_support_access_session_statuses_master_code");
+
+                    b.ToTable("support_access_session_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SyncState", b =>
@@ -19414,6 +19826,116 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_storage_usage_counters_tenants_tenant_id");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.SupportAccessAuditEvent", b =>
+                {
+                    b.HasOne("Explore.Domain.User", "ActorUser")
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_support_access_audit_events_users_actor_user_id");
+
+                    b.HasOne("Explore.Domain.SupportAccessAuditEventType", "EventType")
+                        .WithMany()
+                        .HasForeignKey("EventTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_support_access_audit_events_support_access_audit_event_type");
+
+                    b.HasOne("Explore.Domain.SupportAccessSession", "SupportAccessSession")
+                        .WithMany()
+                        .HasForeignKey("SupportAccessSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_support_access_audit_events_support_access_sessions_support");
+
+                    b.HasOne("Explore.Domain.Tenant", "TargetTenant")
+                        .WithMany()
+                        .HasForeignKey("TargetTenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_support_access_audit_events_tenants_target_tenant_id");
+
+                    b.HasOne("Explore.Domain.TenantUser", "TargetTenantUser")
+                        .WithMany()
+                        .HasForeignKey("TargetTenantUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_support_access_audit_events_tenant_users_target_tenant_user");
+
+                    b.Navigation("ActorUser");
+
+                    b.Navigation("EventType");
+
+                    b.Navigation("SupportAccessSession");
+
+                    b.Navigation("TargetTenant");
+
+                    b.Navigation("TargetTenantUser");
+                });
+
+            modelBuilder.Entity("Explore.Domain.SupportAccessSession", b =>
+                {
+                    b.HasOne("Explore.Domain.User", "ActorUser")
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_support_access_sessions_users_actor_user_id");
+
+                    b.HasOne("Explore.Domain.User", "ApprovedByUser")
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_support_access_sessions_users_approved_by_user_id");
+
+                    b.HasOne("Explore.Domain.SupportAccessEndReason", "EndReason")
+                        .WithMany()
+                        .HasForeignKey("EndReasonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_support_access_sessions_support_access_end_reasons_end_reas");
+
+                    b.HasOne("Explore.Domain.SupportAccessMode", "Mode")
+                        .WithMany()
+                        .HasForeignKey("ModeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_support_access_sessions_support_access_modes_mode_id");
+
+                    b.HasOne("Explore.Domain.SupportAccessSessionStatus", "Status")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_support_access_sessions_support_access_session_statuses_sta");
+
+                    b.HasOne("Explore.Domain.Tenant", "TargetTenant")
+                        .WithMany()
+                        .HasForeignKey("TargetTenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_support_access_sessions_tenants_target_tenant_id");
+
+                    b.HasOne("Explore.Domain.TenantUser", "TargetTenantUser")
+                        .WithMany()
+                        .HasForeignKey("TargetTenantUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_support_access_sessions_tenant_users_target_tenant_user_id");
+
+                    b.Navigation("ActorUser");
+
+                    b.Navigation("ApprovedByUser");
+
+                    b.Navigation("EndReason");
+
+                    b.Navigation("Mode");
+
+                    b.Navigation("Status");
+
+                    b.Navigation("TargetTenant");
+
+                    b.Navigation("TargetTenantUser");
                 });
 
             modelBuilder.Entity("Explore.Domain.SystemSetting", b =>

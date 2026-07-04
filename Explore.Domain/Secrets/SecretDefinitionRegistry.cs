@@ -23,7 +23,7 @@ namespace Explore.Domain.Secrets;
 ///   <item><c>/keycloak</c> — KEYCLOAK_*</item>
 ///   <item><c>/cerbos</c> — CERBOS_GRPC_ENDPOINT</item>
 ///   <item><c>/postgresql</c> — POSTGRESQL_*</item>
-///   <item><c>/smtp</c> — SMTP_*</item>
+///   <item><c>/smtp</c> — MAIL_SMTP_*</item>
 ///   <item><c>/analytics</c> — ANALYTICS_POSTHOG_*</item>
 ///   <item><c>/ai</c> — AI_*</item>
 /// </list>
@@ -428,15 +428,15 @@ public static class SecretDefinitionRegistry
                 Description = "PostgreSQL password (NEVER InlineEncrypted - DB unlocks itself).",
             },
 
-            // --- smtp/SMTP_* ---
+            // --- smtp/MAIL_SMTP_* ---
             new()
             {
                 Key = Keys.Smtp.Host,
                 AllowedScopes = instanceOrTenant,
                 AllowedSources = nonBootstrapSources,
                 DefaultInfisicalPath = "/smtp",
-                DefaultInfisicalKey = "SMTP_HOST",
-                DefaultEnvironmentVariableName = "SMTP_HOST",
+                DefaultInfisicalKey = "MAIL_SMTP_HOST",
+                DefaultEnvironmentVariableName = "MAIL_SMTP_HOST",
                 IsBootstrapSecret = false,
                 Description = "SMTP server hostname.",
             },
@@ -446,8 +446,8 @@ public static class SecretDefinitionRegistry
                 AllowedScopes = instanceOrTenant,
                 AllowedSources = nonBootstrapSources,
                 DefaultInfisicalPath = "/smtp",
-                DefaultInfisicalKey = "SMTP_PORT",
-                DefaultEnvironmentVariableName = "SMTP_PORT",
+                DefaultInfisicalKey = "MAIL_SMTP_PORT",
+                DefaultEnvironmentVariableName = "MAIL_SMTP_PORT",
                 IsBootstrapSecret = false,
                 Description = "SMTP server port.",
             },
@@ -457,8 +457,8 @@ public static class SecretDefinitionRegistry
                 AllowedScopes = instanceOrTenant,
                 AllowedSources = nonBootstrapSources,
                 DefaultInfisicalPath = "/smtp",
-                DefaultInfisicalKey = "SMTP_USERNAME",
-                DefaultEnvironmentVariableName = "SMTP_USERNAME",
+                DefaultInfisicalKey = "MAIL_SMTP_USERNAME",
+                DefaultEnvironmentVariableName = "MAIL_SMTP_USERNAME",
                 IsBootstrapSecret = false,
                 Description = "SMTP authentication username.",
             },
@@ -468,8 +468,8 @@ public static class SecretDefinitionRegistry
                 AllowedScopes = instanceOrTenant,
                 AllowedSources = nonBootstrapSources,
                 DefaultInfisicalPath = "/smtp",
-                DefaultInfisicalKey = "SMTP_PASSWORD",
-                DefaultEnvironmentVariableName = "SMTP_PASSWORD",
+                DefaultInfisicalKey = "MAIL_SMTP_PASSWORD",
+                DefaultEnvironmentVariableName = "MAIL_SMTP_PASSWORD",
                 IsBootstrapSecret = false,
                 Description = "SMTP authentication password.",
             },
@@ -479,8 +479,8 @@ public static class SecretDefinitionRegistry
                 AllowedScopes = instanceOrTenant,
                 AllowedSources = nonBootstrapSources,
                 DefaultInfisicalPath = "/smtp",
-                DefaultInfisicalKey = "SMTP_FROM_ADDRESS",
-                DefaultEnvironmentVariableName = "SMTP_FROM_ADDRESS",
+                DefaultInfisicalKey = "MAIL_SMTP_FROM_ADDRESS",
+                DefaultEnvironmentVariableName = "MAIL_SMTP_FROM_ADDRESS",
                 IsBootstrapSecret = false,
                 Description = "Default From: email address.",
             },
@@ -490,8 +490,8 @@ public static class SecretDefinitionRegistry
                 AllowedScopes = instanceOrTenant,
                 AllowedSources = nonBootstrapSources,
                 DefaultInfisicalPath = "/smtp",
-                DefaultInfisicalKey = "SMTP_FROM_NAME",
-                DefaultEnvironmentVariableName = "SMTP_FROM_NAME",
+                DefaultInfisicalKey = "MAIL_SMTP_FROM_NAME",
+                DefaultEnvironmentVariableName = "MAIL_SMTP_FROM_NAME",
                 IsBootstrapSecret = false,
                 Description = "Default From: display name.",
             },

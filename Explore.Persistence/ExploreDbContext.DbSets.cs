@@ -28,6 +28,12 @@ public partial class ExploreDbContext
     public DbSet<TenantFooterLinkGroup> TenantFooterLinkGroups { get; set; }
     public DbSet<TenantFooterLink> TenantFooterLinks { get; set; }
     public DbSet<InstanceBootstrapState> InstanceBootstrapStates { get; set; }
+    public DbSet<SupportAccessSession> SupportAccessSessions { get; set; }
+    public DbSet<SupportAccessAuditEvent> SupportAccessAuditEvents { get; set; }
+    public DbSet<SupportAccessSessionStatus> SupportAccessSessionStatuses { get; set; }
+    public DbSet<SupportAccessMode> SupportAccessModes { get; set; }
+    public DbSet<SupportAccessEndReason> SupportAccessEndReasons { get; set; }
+    public DbSet<SupportAccessAuditEventType> SupportAccessAuditEventTypes { get; set; }
 
     // ===== Governance Policy Aggregates =====
     public DbSet<Explore.Domain.Policies.InstancePolicySet> InstancePolicySets { get; set; }

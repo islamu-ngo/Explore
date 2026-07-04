@@ -3,10 +3,13 @@
 
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Domain.Modules;
+using Explore.Domain.Secrets;
 using Explore.Domain.Settings.Documents;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 namespace Explore.Persistence.Seed;
@@ -23,6 +26,8 @@ public static class DatabaseSeeder
     public static async Task SeedAsync(
         ExploreDbContext context,
         IHostEnvironment environment,
+        bool seedDevelopmentData = true,
+        IConfiguration? configuration = null,
         CancellationToken cancellationToken = default)
     {
         var shouldClearBypass = !context.IsTenantFilterBypassed;
@@ -34,10 +39,11 @@ public static class DatabaseSeeder
             await LookupTableSeeder.SeedAsync(context, cancellationToken);
 
             // Business entities are seeded only in Development for testing
-            if (environment.IsDevelopment())
+            if (environment.IsDevelopment() && seedDevelopmentData)
             {
                 await SeedDevelopmentDataAsync(context, cancellationToken);
-                await SeedDevelopmentSmtpAsync(context, cancellationToken);
+                await SeedDevelopmentSmtpAsync(context, configuration, cancellationToken);
+                await SeedDevelopmentWebhookSecretsAsync(context, configuration, cancellationToken);
             }
 
             await EnsureTenantBrandingDocumentsAsync(context, cancellationToken);
@@ -362,13 +368,14 @@ public static class DatabaseSeeder
     }
 
     /// <summary>
-    /// Pre-configures Mailpit SMTP in Development for email testing.
+    /// Pre-configures local Mailpit SMTP in Development for email testing.
     /// Mailpit captures all outbound emails for inspection without delivery.
     /// Same SmtpEmailService code path is used in production with real SMTP credentials.
     /// Idempotent: only applies when SMTP host is empty (not yet manually configured).
     /// </summary>
     private static async Task SeedDevelopmentSmtpAsync(
         ExploreDbContext context,
+        IConfiguration? configuration,
         CancellationToken ct)
     {
         var hostSetting = await context.Set<SystemSetting>()
@@ -378,18 +385,135 @@ public static class DatabaseSeeder
             return;
 
         var currentHost = hostSetting.Value?.Trim('"');
-        if (!string.IsNullOrWhiteSpace(currentHost))
+        if (!string.IsNullOrWhiteSpace(currentHost)
+            && !currentHost.Equals("mailpit.openislamu.org", StringComparison.OrdinalIgnoreCase))
             return;
 
         var now = DateTime.UtcNow;
+        var host = ReadEnvironmentValue(configuration, "localhost", "MAIL_SMTP_HOST", "SMTP_HOST", "Smtp:Host");
+        var port = ReadEnvironmentValue(configuration, "1025", "MAIL_SMTP_PORT", "SMTP_PORT", "Smtp:Port");
+        var security = NormalizeSmtpSecurity(ReadEnvironmentValue(configuration, "None", "MAIL_SMTP_ENCRYPTION", "SMTP_SECURITY", "Smtp:Encryption"));
+        var fromAddress = ReadEnvironmentValue(configuration, "noreply@localhost", "MAIL_SMTP_FROM_ADDRESS", "SMTP_FROM_ADDRESS", "Smtp:FromAddress");
+        var fromName = ReadEnvironmentValue(configuration, "ISLAMU Event Dev", "MAIL_SMTP_FROM_NAME", "SMTP_FROM_NAME", "Smtp:FromName");
 
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpHost, "\"mailpit.openislamu.org\"", now, ct);
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpPort, "8025", now, ct);
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpSecurity, "\"None\"", now, ct);
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.FromAddress, "\"noreply@explore.dev\"", now, ct);
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.FromName, "\"Explore Dev\"", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpHost, SerializeString(host), now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpPort, port, now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpSecurity, SerializeString(security), now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.FromAddress, SerializeString(fromAddress), now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.FromName, SerializeString(fromName), now, ct);
 
         await context.SaveChangesAsync(ct);
+    }
+
+    private static string ReadEnvironmentValue(IConfiguration? configuration, string defaultValue, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = Environment.GetEnvironmentVariable(key);
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        foreach (var key in keys)
+        {
+            var value = configuration?[key];
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return defaultValue;
+    }
+
+    private static async Task SeedDevelopmentWebhookSecretsAsync(
+        ExploreDbContext context,
+        IConfiguration? configuration,
+        CancellationToken ct)
+    {
+        await EnsureDevelopmentEnvironmentSecretBindingAsync(
+            context,
+            ResolveKnownSecretRef(
+                configuration,
+                SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken,
+                "WEBHOOKS_SVIX_AUTH_TOKEN_SECRET_REF",
+                "Webhooks:Svix:AuthTokenSecretRef"),
+            "WEBHOOKS_SVIX_AUTH_TOKEN",
+            configuration,
+            ct);
+
+        await EnsureDevelopmentEnvironmentSecretBindingAsync(
+            context,
+            ResolveKnownSecretRef(
+                configuration,
+                SecretDefinitionRegistry.Keys.Webhooks.SvixOperationalWebhookSecret,
+                "WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET_REF",
+                "Webhooks:Svix:OperationalWebhookSecretRef"),
+            "WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET",
+            configuration,
+            ct);
+    }
+
+    private static string ResolveKnownSecretRef(
+        IConfiguration? configuration,
+        string defaultValue,
+        params string[] keys)
+    {
+        var configured = ReadEnvironmentValue(configuration, defaultValue, keys).Trim();
+        return SecretDefinitionRegistry.IsKnown(configured) ? configured : defaultValue;
+    }
+
+    private static async Task EnsureDevelopmentEnvironmentSecretBindingAsync(
+        ExploreDbContext context,
+        string settingKey,
+        string environmentVariableName,
+        IConfiguration? configuration,
+        CancellationToken ct)
+    {
+        if (!HasConfiguredSecretValue(configuration, environmentVariableName))
+        {
+            return;
+        }
+
+        var existing = await context.Set<SecretBinding>()
+            .FirstOrDefaultAsync(binding =>
+                binding.SettingKey == settingKey
+                && binding.SettingScopeId == (int)ConfigurationScopeEnum.Instance
+                && binding.ScopeId == null,
+                ct);
+
+        if (existing is not null)
+        {
+            return;
+        }
+
+        context.Set<SecretBinding>().Add(SecretBinding.CreateEnvironmentVariable(
+            settingKey,
+            SecretScope.Instance,
+            scopeId: null,
+            environmentVariableName,
+            isLocked: false));
+
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static bool HasConfiguredSecretValue(IConfiguration? configuration, string key) =>
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(key))
+        || !string.IsNullOrWhiteSpace(configuration?[key]);
+
+    private static string NormalizeSmtpSecurity(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "none" or "false" or "off" => "None",
+            "starttls" or "start-tls" => "StartTls",
+            "ssl" or "tls" or "ssl-on-connect" or "sslonconnect" => "SslOnConnect",
+            "auto" => "Auto",
+            _ => value
+        };
+    }
+
+    private static string SerializeString(string value)
+    {
+        return $"\"{value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
     }
 
     private static async Task UpdateSettingValueAsync(

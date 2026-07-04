@@ -1,5 +1,9 @@
+// ABOUTME: Repository implementation for linked external identity-provider login records.
+// ABOUTME: Resolves provider subjects to global users before tenant authorization is evaluated.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -16,6 +20,7 @@ public class UserExternalLoginRepository : GenericRepository<UserExternalLogin, 
     public async Task<UserExternalLogin?> GetByProviderAndKey(string provider, string providerKey)
     {
         return await _dbContext.UserExternalLogins
+            .IgnoreTenantFilter(TenantFilterBypassReasons.UserExternalLoginAuthentication)
             .AsNoTracking()
             .FirstOrDefaultAsync(l => l.Provider == provider && l.ProviderKey == providerKey);
     }

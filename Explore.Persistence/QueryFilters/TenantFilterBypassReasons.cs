@@ -11,6 +11,9 @@ public static class TenantFilterBypassReasons
     public const string UserTenantMembershipEnumeration =
         "Repository enumerates all tenant memberships for one global user using an explicit user predicate.";
 
+    public const string UserExternalLoginAuthentication =
+        "External-login authentication must locate a provider subject before tenant binding.";
+
     public const string ExternalApiKeyAuthentication =
         "API-key authentication must locate a key by globally unique key id before tenant binding.";
 

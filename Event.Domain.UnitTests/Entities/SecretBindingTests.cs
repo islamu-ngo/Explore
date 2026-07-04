@@ -86,7 +86,7 @@ public class SecretBindingTests
             scopeId: Guid.NewGuid(),
             environment: "prod",
             path: "/smtp",
-            key: "SMTP_HOST")).Throws<ArgumentException>();
+            key: "MAIL_SMTP_HOST")).Throws<ArgumentException>();
     }
 
     [Test]
@@ -98,7 +98,7 @@ public class SecretBindingTests
             scopeId: null,
             environment: "prod",
             path: "/smtp",
-            key: "SMTP_HOST")).Throws<ArgumentException>();
+            key: "MAIL_SMTP_HOST")).Throws<ArgumentException>();
     }
 
     [Test]
@@ -167,15 +167,15 @@ public class SecretBindingTests
             scopeId: null,
             environment: "prod",
             path: "/smtp",
-            key: "SMTP_PASSWORD");
+            key: "MAIL_SMTP_PASSWORD");
 
         binding.RecordValidation(SecretValidationResult.Success, Guid.NewGuid());
         await Assert.That(binding.LastValidationResult).IsEqualTo(SecretValidationResult.Success);
 
-        binding.SwitchToEnvironmentVariable("SMTP_PASSWORD");
+        binding.SwitchToEnvironmentVariable("MAIL_SMTP_PASSWORD");
 
         await Assert.That(binding.SourceType).IsEqualTo(SecretSourceType.EnvironmentVariable);
-        await Assert.That(binding.EnvironmentVariableName).IsEqualTo("SMTP_PASSWORD");
+        await Assert.That(binding.EnvironmentVariableName).IsEqualTo("MAIL_SMTP_PASSWORD");
         await Assert.That(binding.InfisicalEnvironment).IsNull();
         await Assert.That(binding.InfisicalPath).IsNull();
         await Assert.That(binding.InfisicalKey).IsNull();
@@ -195,7 +195,7 @@ public class SecretBindingTests
             settingKey: SecretDefinitionRegistry.Keys.Smtp.Host,
             scope: SecretScope.Instance,
             scopeId: null,
-            variableName: "SMTP_HOST");
+            variableName: "MAIL_SMTP_HOST");
 
         await Assert.That(() => binding.RecordValidation(SecretValidationResult.Failure, Guid.NewGuid(), sanitisedError: null))
             .Throws<ArgumentException>();
@@ -208,7 +208,7 @@ public class SecretBindingTests
             settingKey: SecretDefinitionRegistry.Keys.Smtp.Host,
             scope: SecretScope.Instance,
             scopeId: null,
-            variableName: "SMTP_HOST");
+            variableName: "MAIL_SMTP_HOST");
 
         var userId = Guid.NewGuid();
         binding.RecordValidation(SecretValidationResult.Success, userId);

@@ -185,6 +185,13 @@ public static class SeedIds
     public static readonly Guid SystemSettingLocalizationClientPickerEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000567");
     public static readonly Guid SystemSettingLocalizationForceOfflineModeId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000568");
 
+    public static readonly Guid SystemSettingSupportAccessEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000570");
+    public static readonly Guid SystemSettingSupportAccessMaxReadOnlyMinutesId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000571");
+    public static readonly Guid SystemSettingSupportAccessMaxWriteMinutesId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000572");
+    public static readonly Guid SystemSettingSupportAccessAllowWriteModeId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000573");
+    public static readonly Guid SystemSettingSupportAccessRequireTicketReferenceId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000574");
+    public static readonly Guid SystemSettingSupportAccessOneActiveSessionPerActorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000575");
+
     // ===== Module Definitions =====
     public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");
     public static readonly Guid ModuleIslamicId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000601");

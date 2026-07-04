@@ -40,6 +40,10 @@ public static class LookupTableSeeder
         await SeedSecretValidationStatusesAsync(context, cancellationToken);
         await SeedExternalApiKeyOwnerTypesAsync(context, cancellationToken);
         await SeedNotificationScopeTypesAsync(context, cancellationToken);
+        await SeedSupportAccessSessionStatusesAsync(context, cancellationToken);
+        await SeedSupportAccessModesAsync(context, cancellationToken);
+        await SeedSupportAccessEndReasonsAsync(context, cancellationToken);
+        await SeedSupportAccessAuditEventTypesAsync(context, cancellationToken);
         await SeedApprovalStatusesAsync(context, cancellationToken);
         await SeedAnalyticsProvidersAsync(context, cancellationToken);
         await SeedTenantStatusesAsync(context, cancellationToken);
@@ -92,6 +96,57 @@ public static class LookupTableSeeder
             new AiConversationStatusLookup { Id = (int)AiConversationStatus.Running, MasterCode = "RUNNING", FullName = "Running", Description = "Conversation has an in-flight AI provider run" },
             new AiConversationStatusLookup { Id = (int)AiConversationStatus.Blocked, MasterCode = "BLOCKED", FullName = "Blocked", Description = "Conversation cannot accept more messages" },
             new AiConversationStatusLookup { Id = (int)AiConversationStatus.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Conversation is retained but no longer active" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedSupportAccessSessionStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<SupportAccessSessionStatus>().AnyAsync(ct)) return;
+
+        context.Set<SupportAccessSessionStatus>().AddRange(
+            new SupportAccessSessionStatus { Id = (int)SupportAccessSessionStatusEnum.PendingApproval, MasterCode = "PENDING_APPROVAL", FullName = "Pending approval", Description = "Session is awaiting approval before activation", IsTerminal = false },
+            new SupportAccessSessionStatus { Id = (int)SupportAccessSessionStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Session is active and may be validated for support context", IsTerminal = false },
+            new SupportAccessSessionStatus { Id = (int)SupportAccessSessionStatusEnum.Stopped, MasterCode = "STOPPED", FullName = "Stopped", Description = "Session was stopped by the actor", IsTerminal = true },
+            new SupportAccessSessionStatus { Id = (int)SupportAccessSessionStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired", Description = "Session reached its configured expiry", IsTerminal = true },
+            new SupportAccessSessionStatus { Id = (int)SupportAccessSessionStatusEnum.Revoked, MasterCode = "REVOKED", FullName = "Revoked", Description = "Session was force-stopped or revoked by policy", IsTerminal = true });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedSupportAccessModesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<SupportAccessMode>().AnyAsync(ct)) return;
+
+        context.Set<SupportAccessMode>().AddRange(
+            new SupportAccessMode { Id = (int)SupportAccessModeEnum.ReadOnly, MasterCode = "READ_ONLY", FullName = "Read only", Description = "Support session may satisfy read-only tenant actions", AllowsWrites = false },
+            new SupportAccessMode { Id = (int)SupportAccessModeEnum.Write, MasterCode = "WRITE", FullName = "Write", Description = "Support session may satisfy explicitly allowed mutating tenant actions", AllowsWrites = true });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedSupportAccessEndReasonsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<SupportAccessEndReason>().AnyAsync(ct)) return;
+
+        context.Set<SupportAccessEndReason>().AddRange(
+            new SupportAccessEndReason { Id = (int)SupportAccessEndReasonEnum.UserStopped, MasterCode = "USER_STOPPED", FullName = "User stopped", Description = "Actor stopped the session" },
+            new SupportAccessEndReason { Id = (int)SupportAccessEndReasonEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired", Description = "Session expired" },
+            new SupportAccessEndReason { Id = (int)SupportAccessEndReasonEnum.ForceStopped, MasterCode = "FORCE_STOPPED", FullName = "Force stopped", Description = "Session was force-stopped by an authorized administrator" },
+            new SupportAccessEndReason { Id = (int)SupportAccessEndReasonEnum.RevokedByPolicy, MasterCode = "REVOKED_BY_POLICY", FullName = "Revoked by policy", Description = "Session was revoked by policy or kill switch" },
+            new SupportAccessEndReason { Id = (int)SupportAccessEndReasonEnum.Replaced, MasterCode = "REPLACED", FullName = "Replaced", Description = "Session was replaced by another support-access session" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedSupportAccessAuditEventTypesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<SupportAccessAuditEventType>().AnyAsync(ct)) return;
+
+        context.Set<SupportAccessAuditEventType>().AddRange(
+            new SupportAccessAuditEventType { Id = (int)SupportAccessAuditEventTypeEnum.Started, MasterCode = "STARTED", FullName = "Started", Description = "Support session was started", IsLifecycleEvent = true },
+            new SupportAccessAuditEventType { Id = (int)SupportAccessAuditEventTypeEnum.Stopped, MasterCode = "STOPPED", FullName = "Stopped", Description = "Support session was stopped", IsLifecycleEvent = true },
+            new SupportAccessAuditEventType { Id = (int)SupportAccessAuditEventTypeEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired", Description = "Support session expired", IsLifecycleEvent = true },
+            new SupportAccessAuditEventType { Id = (int)SupportAccessAuditEventTypeEnum.Revoked, MasterCode = "REVOKED", FullName = "Revoked", Description = "Support session was revoked", IsLifecycleEvent = true },
+            new SupportAccessAuditEventType { Id = (int)SupportAccessAuditEventTypeEnum.Denied, MasterCode = "DENIED", FullName = "Denied", Description = "Support access was denied", IsLifecycleEvent = false },
+            new SupportAccessAuditEventType { Id = (int)SupportAccessAuditEventTypeEnum.RequestObserved, MasterCode = "REQUEST_OBSERVED", FullName = "Request observed", Description = "Support session observed a request", IsLifecycleEvent = false },
+            new SupportAccessAuditEventType { Id = (int)SupportAccessAuditEventTypeEnum.CommandCommitted, MasterCode = "COMMAND_COMMITTED", FullName = "Command committed", Description = "Support session committed a mutating command", IsLifecycleEvent = false });
         await context.SaveChangesAsync(ct);
     }
 
@@ -784,7 +839,14 @@ public static class LookupTableSeeder
             new SystemSetting { Id = SeedIds.SystemSettingLocalizationEnabledLanguagesId, SettingKey = GovernanceSettingKeys.Localization.EnabledLanguages, Value = "\"en,fr,ar\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Comma-separated culture codes the instance has enabled (must be a subset of the compile-time CultureRegistry).", Category = "Localization", DisplayOrder = 6, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingLocalizationFallbackLanguageId, SettingKey = GovernanceSettingKeys.Localization.FallbackLanguage, Value = "\"en\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Fallback language used when a requested translation key is missing; must be in EnabledLanguages.", Category = "Localization", DisplayOrder = 7, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingLocalizationClientPickerEnabledId, SettingKey = GovernanceSettingKeys.Localization.ClientPickerEnabled, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Kill-switch: hides the in-app language picker when false, without a redeploy.", Category = "Localization", DisplayOrder = 8, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingLocalizationForceOfflineModeId, SettingKey = GovernanceSettingKeys.Localization.ForceOfflineMode, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Emergency toggle: routes RuntimeTranslationProvider through OfflineTranslationProvider regardless of tms_provider.", Category = "Localization", DisplayOrder = 9, CreatedAt = seedTimestamp }
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationForceOfflineModeId, SettingKey = GovernanceSettingKeys.Localization.ForceOfflineMode, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Emergency toggle: routes RuntimeTranslationProvider through OfflineTranslationProvider regardless of tms_provider.", Category = "Localization", DisplayOrder = 9, CreatedAt = seedTimestamp },
+
+            new SystemSetting { Id = SeedIds.SystemSettingSupportAccessEnabledId, SettingKey = GovernanceSettingKeys.SupportAccess.Enabled, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = true, Description = "Global kill switch for admin support-access sessions", Category = "SupportAccess", DisplayOrder = 1, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingSupportAccessMaxReadOnlyMinutesId, SettingKey = GovernanceSettingKeys.SupportAccess.MaxReadOnlyMinutes, Value = "30", ValueType = SettingValueType.Integer, IsLocked = true, Description = "Maximum duration in minutes for read-only support-access sessions", Category = "SupportAccess", DisplayOrder = 2, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingSupportAccessMaxWriteMinutesId, SettingKey = GovernanceSettingKeys.SupportAccess.MaxWriteMinutes, Value = "10", ValueType = SettingValueType.Integer, IsLocked = true, Description = "Maximum duration in minutes for write-capable support-access sessions", Category = "SupportAccess", DisplayOrder = 3, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingSupportAccessAllowWriteModeId, SettingKey = GovernanceSettingKeys.SupportAccess.AllowWriteMode, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = true, Description = "Allow operators to start write-capable support-access sessions", Category = "SupportAccess", DisplayOrder = 4, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingSupportAccessRequireTicketReferenceId, SettingKey = GovernanceSettingKeys.SupportAccess.RequireTicketReference, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = true, Description = "Require a ticket or external reference before starting support access", Category = "SupportAccess", DisplayOrder = 5, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingSupportAccessOneActiveSessionPerActorId, SettingKey = GovernanceSettingKeys.SupportAccess.OneActiveSessionPerActor, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = true, Description = "Restrict each actor to one active support-access session", Category = "SupportAccess", DisplayOrder = 6, CreatedAt = seedTimestamp }
         };
 
         var existingIds = await context.Set<SystemSetting>()

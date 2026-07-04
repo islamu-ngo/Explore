@@ -85,7 +85,7 @@ public partial class SecretBinding : IAuditableEntity
     /// <summary>Infisical folder path (e.g. <c>/smtp</c>, <c>/postgresql</c>). Populated only when <see cref="SourceType"/> = <see cref="SecretSourceType.Infisical"/>.</summary>
     public string? InfisicalPath { get; set; }
 
-    /// <summary>Infisical secret key within the folder (e.g. <c>SMTP_PASSWORD</c>). Populated only when <see cref="SourceType"/> = <see cref="SecretSourceType.Infisical"/>.</summary>
+    /// <summary>Infisical secret key within the folder (e.g. <c>MAIL_SMTP_PASSWORD</c>). Populated only when <see cref="SourceType"/> = <see cref="SecretSourceType.Infisical"/>.</summary>
     public string? InfisicalKey { get; set; }
 
     /// <summary>Name of the environment variable to read. Populated only when <see cref="SourceType"/> = <see cref="SecretSourceType.EnvironmentVariable"/>.</summary>

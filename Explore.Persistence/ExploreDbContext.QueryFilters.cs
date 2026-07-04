@@ -329,6 +329,12 @@ public partial class ExploreDbContext
         // ===== User-Related Tenant Entities =====
         modelBuilder.Entity<ExternalApiKey>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || (e.TenantId != null && e.TenantId == TenantFilterTenantId));
+        modelBuilder.Entity<ExternalApiKeyQuota>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => IsTenantFilterBypassed
+                    || (e.ExternalApiKey != null
+                        && e.ExternalApiKey.TenantId != null
+                        && e.ExternalApiKey.TenantId == TenantFilterTenantId));
         modelBuilder.Entity<UserAuthenticationToken>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
         modelBuilder.Entity<UserExternalLogin>()
