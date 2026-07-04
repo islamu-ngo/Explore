@@ -19,6 +19,7 @@ public class CancelStorageUploadSessionCommandHandler
     private readonly IStorageUploadSessionRepository _uploadSessionRepository;
     private readonly IStorageUsageCounterRepository _usageCounterRepository;
     private readonly ITenantContext _tenantContext;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly BusinessMetrics _metrics;
 
@@ -27,6 +28,7 @@ public class CancelStorageUploadSessionCommandHandler
         IStorageUploadSessionRepository uploadSessionRepository,
         IStorageUsageCounterRepository usageCounterRepository,
         ITenantContext tenantContext,
+        ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         BusinessMetrics metrics)
     {
@@ -34,6 +36,7 @@ public class CancelStorageUploadSessionCommandHandler
         _uploadSessionRepository = uploadSessionRepository;
         _usageCounterRepository = usageCounterRepository;
         _tenantContext = tenantContext;
+        _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _metrics = metrics;
     }
@@ -84,7 +87,7 @@ public class CancelStorageUploadSessionCommandHandler
         CancellationToken cancellationToken)
     {
         var session = await _uploadSessionRepository.GetByIdForUpdateAsync(uploadSessionId, cancellationToken);
-        if (session is null || session.TenantId != tenantId)
+        if (!IsAccessibleSession(session, tenantId))
         {
             return Failure(
                 "Upload session was not found.",
@@ -159,4 +162,10 @@ public class CancelStorageUploadSessionCommandHandler
 
     private static bool IsAlreadyClosed(BaseCommandResponse<StorageUploadSessionDto> response)
         => response.Message?.Contains("already closed", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool IsAccessibleSession(StorageUploadSession? session, Guid tenantId)
+        => session is not null &&
+           session.TenantId == tenantId &&
+           _currentUserService.UserId is { } userId &&
+           session.UserId == userId;
 }

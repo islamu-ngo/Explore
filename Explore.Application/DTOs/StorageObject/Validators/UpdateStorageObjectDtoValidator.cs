@@ -29,10 +29,14 @@ public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageOb
 
         RuleFor(x => x.Uri)
             .NotEmpty().WithMessage("{PropertyName} is required")
-            .MaximumLength(1000).WithMessage("{PropertyName} must not exceed 1000 characters");
+            .MaximumLength(1000).WithMessage("{PropertyName} must not exceed 1000 characters")
+            .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
+            .WithMessage("{PropertyName} must not contain control characters");
 
         RuleFor(x => x.ObjectKey)
-            .MaximumLength(1024).WithMessage("{PropertyName} must not exceed 1024 characters");
+            .MaximumLength(1024).WithMessage("{PropertyName} must not exceed 1024 characters")
+            .Must(StorageObjectMetadataValidation.BeValidObjectKey)
+            .WithMessage("{PropertyName} must be a relative provider object key without traversal segments");
 
         RuleFor(x => x.Provider)
             .NotEmpty().WithMessage("{PropertyName} is required")
@@ -41,20 +45,49 @@ public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageOb
 
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("{PropertyName} is required")
-            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters");
+            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters")
+            .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
+            .WithMessage("{PropertyName} must not contain control characters")
+            .Must(StorageObjectMetadataValidation.NotContainPathSeparators)
+            .WithMessage("{PropertyName} must not contain path separators")
+            .Must(StorageObjectMetadataValidation.NotBeDotSegment)
+            .WithMessage("{PropertyName} must be a simple file name")
+            .Must(StorageObjectMetadataValidation.NotBeReservedFileName)
+            .WithMessage("{PropertyName} must not be a reserved file name");
 
         RuleFor(x => x.SafeDisplayName)
-            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters");
+            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters")
+            .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
+            .WithMessage("{PropertyName} must not contain control characters")
+            .Must(StorageObjectMetadataValidation.NotContainPathSeparators)
+            .WithMessage("{PropertyName} must not contain path separators")
+            .Must(StorageObjectMetadataValidation.NotBeDotSegment)
+            .WithMessage("{PropertyName} must be a simple file name")
+            .Must(StorageObjectMetadataValidation.NotBeReservedFileName)
+            .WithMessage("{PropertyName} must not be a reserved file name");
 
         RuleFor(x => x.Extension)
             .NotEmpty().WithMessage("{PropertyName} is required")
-            .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters");
+            .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters")
+            .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
+            .WithMessage("{PropertyName} must not contain control characters")
+            .Must(StorageObjectMetadataValidation.NotContainPathSeparators)
+            .WithMessage("{PropertyName} must not contain path separators")
+            .Must(StorageObjectMetadataValidation.NotBeDotSegment)
+            .WithMessage("{PropertyName} must be a simple extension")
+            .Must(StorageObjectMetadataValidation.BeValidExtension)
+            .WithMessage("{PropertyName} contains unsupported characters");
 
         RuleFor(x => x.ContentType)
-            .MaximumLength(255).WithMessage("{PropertyName} must not exceed 255 characters");
+            .MaximumLength(255).WithMessage("{PropertyName} must not exceed 255 characters")
+            .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
+            .WithMessage("{PropertyName} must not contain control characters")
+            .Must(StorageObjectMetadataValidation.BeValidOptionalContentType)
+            .WithMessage("{PropertyName} must be a valid MIME type");
 
         RuleFor(x => x.Sha256Checksum)
-            .Length(64).When(x => !string.IsNullOrWhiteSpace(x.Sha256Checksum))
+            .Must(StorageObjectMetadataValidation.BeValidSha256HexDigest)
+            .When(x => !string.IsNullOrWhiteSpace(x.Sha256Checksum))
             .WithMessage("{PropertyName} must be a SHA-256 hex digest");
 
         RuleFor(x => x.Size)
@@ -76,10 +109,21 @@ public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageOb
             .WithMessage("{PropertyName} must be a supported lifecycle state");
 
         RuleFor(x => x.OwningResourceKind)
-            .MaximumLength(100).WithMessage("{PropertyName} must not exceed 100 characters");
+            .MaximumLength(100).WithMessage("{PropertyName} must not exceed 100 characters")
+            .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
+            .WithMessage("{PropertyName} must not contain control characters")
+            .Matches("^[A-Za-z0-9._:-]+$")
+            .When(x => !string.IsNullOrWhiteSpace(x.OwningResourceKind))
+            .WithMessage("{PropertyName} contains unsupported characters")
+            .NotEmpty().When(x => x.OwningResourceId.HasValue)
+            .WithMessage("{PropertyName} is required when OwningResourceId is provided");
 
         // TenantId is set by the handler from context, not by the client
         // No validation needed here
+
+        RuleFor(x => x.OwningResourceId)
+            .NotEmpty().When(x => !string.IsNullOrWhiteSpace(x.OwningResourceKind))
+            .WithMessage("{PropertyName} is required when OwningResourceKind is provided");
 
         RuleFor(x => x.ActorId)
             .MustAsync(ActorExists)

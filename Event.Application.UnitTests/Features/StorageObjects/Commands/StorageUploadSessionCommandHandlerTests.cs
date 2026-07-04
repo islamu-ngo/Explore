@@ -17,6 +17,7 @@ namespace Event.Application.UnitTests.Features.StorageObjects.Commands;
 
 public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
 {
+    private const string ValidSha256Checksum = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     private readonly Guid _tenantId = Guid.CreateVersion7();
     private readonly Guid _userId = Guid.CreateVersion7();
     private readonly IStoragePolicyResolver _storagePolicyResolver = Substitute.For<IStoragePolicyResolver>();
@@ -210,7 +211,8 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     {
         var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
         var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.Local, ReservedBytes = 11 };
-        var writeResult = new FileStorageWriteResult(StorageProviders.Local, "tenant/object.txt", 11, "text/plain", "hash");
+        var objectKey = ValidObjectKey();
+        var writeResult = CreateWriteResult(objectKey: objectKey);
         _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
         _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
         _usageCounterRepository.GetOrCreateAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
@@ -230,7 +232,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id!.Status).IsEqualTo(StorageUploadSessionStates.Finalized);
         await Assert.That(result.Id.StorageObjectId).IsNotNull();
-        await Assert.That(result.Id.Sha256Checksum).IsEqualTo("hash");
+        await Assert.That(result.Id.Sha256Checksum).IsEqualTo(ValidSha256Checksum);
         await Assert.That(counter.ReservedBytes).IsEqualTo(0);
         await Assert.That(counter.UsedBytes).IsEqualTo(11);
         await Assert.That(counter.ObjectCount).IsEqualTo(1);
@@ -243,7 +245,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             Arg.Any<CancellationToken>());
         await _storageObjectRepository.Received(1).Create(Arg.Is<StorageObject>(storageObject =>
             storageObject.Provider == StorageProviders.Local &&
-            storageObject.ObjectKey == "tenant/object.txt" &&
+            storageObject.ObjectKey == objectKey &&
             storageObject.Size == 11 &&
             storageObject.ContentType == "text/plain"));
     }
@@ -257,7 +259,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
         session.PolicyMaxUploadBytes = 80;
         session.PolicyVersion = "7";
         var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.S3Compatible, ReservedBytes = 11 };
-        var writeResult = new FileStorageWriteResult(StorageProviders.S3Compatible, "tenant/document.txt", 11, "text/plain", "hash");
+        var writeResult = CreateWriteResult(StorageProviders.S3Compatible, ValidObjectKey("document.txt"));
         _providerResolver.GetRequired(StorageProviders.S3Compatible).Returns(_provider);
         _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
         _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
@@ -286,6 +288,40 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     }
 
     [Test]
+    public async Task FinalizeHandle_WhenSessionIsAlreadyFinalized_ReturnsIdempotentSuccessWithoutProviderReplay()
+    {
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
+        var storageObjectId = Guid.CreateVersion7();
+        session.Finalize(storageObjectId, ValidObjectKey("existing.txt"), ValidSha256Checksum, DateTime.UtcNow.AddMinutes(-1));
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+        _usageCounterRepository
+            .GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>())
+            .Returns(new StorageUsageCounter { TenantId = _tenantId, Provider = session.Provider, UsedBytes = 11, ObjectCount = 1 });
+
+        var result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new MemoryStream(new byte[11]),
+                ContentType = "text/plain",
+                ContentLength = 11
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).Contains("already finalized");
+        await Assert.That(result.Id!.Status).IsEqualTo(StorageUploadSessionStates.Finalized);
+        await Assert.That(result.Id.StorageObjectId).IsEqualTo(storageObjectId);
+        await _provider.DidNotReceive().WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
+        await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
+        await _usageCounterRepository.DidNotReceive().GetOrCreateAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await _uploadSessionRepository.DidNotReceive().Update(Arg.Any<StorageUploadSession>());
+    }
+
+    [Test]
     public async Task FinalizeHandle_WhenContentLengthMismatchesReservation_ReturnsFailureWithoutProviderWrite()
     {
         var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
@@ -308,6 +344,213 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSizeMismatch);
         await _provider.DidNotReceive().WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
         await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
+    }
+
+    [Test]
+    public async Task FinalizeHandle_WhenContentSignatureMismatchesReservation_FailsClosedAndReleasesReservation()
+    {
+        var bytes = "%PDF-1.7"u8.ToArray();
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: bytes.Length);
+        session.ContentType = "image/png";
+        session.OriginalFileName = "image.png";
+        session.SafeDisplayName = "image.png";
+        session.Extension = "png";
+        var counter = new StorageUsageCounter
+        {
+            TenantId = _tenantId,
+            Provider = StorageProviders.Local,
+            ReservedBytes = bytes.Length
+        };
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+        _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
+
+        var result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new MemoryStream(bytes),
+                ContentType = "image/png",
+                ContentLength = bytes.Length
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadContentSignatureMismatch);
+        await Assert.That(result.Errors).Contains("Upload bytes did not match the reserved content type signature.");
+        await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
+        await Assert.That(counter.ReservedBytes).IsEqualTo(0);
+        await _provider.DidNotReceive().WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
+        await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
+    }
+
+    [Test]
+    public async Task FinalizeHandle_WhenKnownContentExtensionMismatchesReservation_FailsClosedWithoutProviderWrite()
+    {
+        var bytes = ValidPngBytes();
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: bytes.Length);
+        session.ContentType = "image/png";
+        session.OriginalFileName = "image.jpg";
+        session.SafeDisplayName = "image.jpg";
+        session.Extension = "jpg";
+        var counter = new StorageUsageCounter
+        {
+            TenantId = _tenantId,
+            Provider = StorageProviders.Local,
+            ReservedBytes = bytes.Length
+        };
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+        _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
+
+        var result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new MemoryStream(bytes),
+                ContentType = "image/png",
+                ContentLength = bytes.Length
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadContentSignatureMismatch);
+        await Assert.That(result.Errors).Contains("File extension did not match the reserved content type.");
+        await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
+        await Assert.That(counter.ReservedBytes).IsEqualTo(0);
+        await _provider.DidNotReceive().WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
+        await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
+    }
+
+    [Test]
+    public async Task FinalizeHandle_WithNonSeekableKnownContent_ReplaysInspectedPrefixToProvider()
+    {
+        var bytes = ValidPngBytes();
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: bytes.Length);
+        session.ContentType = "image/png";
+        session.OriginalFileName = "image.png";
+        session.SafeDisplayName = "image.png";
+        session.Extension = "png";
+        var counter = new StorageUsageCounter
+        {
+            TenantId = _tenantId,
+            Provider = StorageProviders.Local,
+            ReservedBytes = bytes.Length
+        };
+        var objectKey = ValidObjectKey("image.png");
+        var writeResult = CreateWriteResult(objectKey: objectKey, sizeBytes: bytes.Length, contentType: "image/png");
+        byte[]? capturedBytes = null;
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+        _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
+        _usageCounterRepository.GetOrCreateAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
+        _provider.WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var input = call.Arg<FileStorageWriteInput>();
+            using var captured = new MemoryStream();
+            input.Content.CopyTo(captured);
+            capturedBytes = captured.ToArray();
+            return writeResult;
+        });
+        _storageObjectRepository.Create(Arg.Any<StorageObject>()).Returns(call => call.Arg<StorageObject>());
+
+        var result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new NonSeekableReadStream(bytes),
+                ContentType = "image/png",
+                ContentLength = bytes.Length
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(capturedBytes).IsEquivalentTo(bytes);
+        await _storageObjectRepository.Received(1).Create(Arg.Is<StorageObject>(storageObject =>
+            storageObject.ObjectKey == objectKey &&
+            storageObject.ContentType == "image/png" &&
+            storageObject.Size == bytes.Length));
+    }
+
+    [Test]
+    public async Task FinalizeHandle_WhenSessionBelongsToDifferentTenant_ReturnsNotFoundWithoutProviderWrite()
+    {
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
+        session.TenantId = Guid.CreateVersion7();
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new MemoryStream(new byte[11]),
+                ContentType = "text/plain",
+                ContentLength = 11
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionNotFound);
+        await _usageCounterRepository.DidNotReceive().GetByTenantAndProviderAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await _provider.DidNotReceive().WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
+        await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
+        await _uploadSessionRepository.DidNotReceive().Update(Arg.Any<StorageUploadSession>());
+    }
+
+    [Test]
+    public async Task FinalizeHandle_WhenSessionBelongsToDifferentUser_ReturnsNotFoundWithoutProviderWrite()
+    {
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
+        session.UserId = Guid.CreateVersion7();
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new MemoryStream(new byte[11]),
+                ContentType = "text/plain",
+                ContentLength = 11
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionNotFound);
+        await _usageCounterRepository.DidNotReceive().GetByTenantAndProviderAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await _provider.DidNotReceive().WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
+        await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
+        await _uploadSessionRepository.DidNotReceive().Update(Arg.Any<StorageUploadSession>());
+    }
+
+    [Test]
+    public async Task FinalizeHandle_WhenSessionIsCanceled_ReturnsInvalidStateWithoutProviderWrite()
+    {
+        var session = CreateSession(status: StorageUploadSessionStates.Canceled, reservedBytes: 11);
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+        _usageCounterRepository
+            .GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>())
+            .Returns(new StorageUsageCounter { TenantId = _tenantId, Provider = session.Provider, ReservedBytes = 11 });
+
+        var result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new MemoryStream(new byte[11]),
+                ContentType = "text/plain",
+                ContentLength = 11
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionInvalidState);
+        await Assert.That(result.Errors).Contains($"Upload session status is {StorageUploadSessionStates.Canceled}.");
+        await _provider.DidNotReceive().WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
+        await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
+        await _usageCounterRepository.DidNotReceive().Update(Arg.Any<StorageUsageCounter>());
+        await _uploadSessionRepository.DidNotReceive().Update(Arg.Any<StorageUploadSession>());
     }
 
     [Test]
@@ -334,6 +577,50 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadWriteFailed);
         await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
         await Assert.That(counter.ReservedBytes).IsEqualTo(0);
+        await _uploadSessionRepository.Received().Update(Arg.Is<StorageUploadSession>(value =>
+            value.Id == session.Id &&
+            value.Status == StorageUploadSessionStates.Failed));
+    }
+
+    [Test]
+    public async Task FinalizeHandle_WhenProviderReturnsInvalidMetadata_FailsClosedAndReleasesReservation()
+    {
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
+        var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.Local, ReservedBytes = 11 };
+        var wrongTenantObjectKey = $"tenants/{Guid.CreateVersion7():N}/object.txt";
+        var writeResult = CreateWriteResult(
+            provider: StorageProviders.S3Compatible,
+            objectKey: wrongTenantObjectKey,
+            sizeBytes: 10,
+            contentType: "application/json",
+            checksum: "not-a-sha256");
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+        _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
+        _provider.WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>()).Returns(writeResult);
+
+        var result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new MemoryStream(new byte[11]),
+                ContentType = "text/plain",
+                ContentLength = 11
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadWriteFailed);
+        await Assert.That(result.Message).IsEqualTo("Storage provider returned invalid upload metadata.");
+        await Assert.That(result.Errors).Contains("Storage provider result did not match the reserved provider.");
+        await Assert.That(result.Errors).Contains("Storage provider returned an invalid object key.");
+        await Assert.That(result.Errors).Contains("Storage provider byte count did not match the reserved byte count.");
+        await Assert.That(result.Errors).Contains("Storage provider content type did not match the reserved content type.");
+        await Assert.That(result.Errors).Contains("Storage provider checksum was missing or invalid.");
+        await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
+        await Assert.That(counter.ReservedBytes).IsEqualTo(0);
+        await Assert.That(counter.UsedBytes).IsEqualTo(0);
+        await Assert.That(counter.ObjectCount).IsEqualTo(0);
+        await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
         await _uploadSessionRepository.Received().Update(Arg.Is<StorageUploadSession>(value =>
             value.Id == session.Id &&
             value.Status == StorageUploadSessionStates.Failed));
@@ -509,6 +796,48 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     }
 
     [Test]
+    public async Task CancelHandle_WhenSessionBelongsToDifferentUser_ReturnsNotFoundWithoutRelease()
+    {
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 40);
+        session.UserId = Guid.CreateVersion7();
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var result = await CreateCancelHandler().Handle(
+            new CancelStorageUploadSessionCommand { UploadSessionId = session.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionNotFound);
+        await _usageCounterRepository.DidNotReceive().GetByTenantAndProviderAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await _usageCounterRepository.DidNotReceive().Update(Arg.Any<StorageUsageCounter>());
+        await _uploadSessionRepository.DidNotReceive().Update(Arg.Any<StorageUploadSession>());
+    }
+
+    [Test]
+    public async Task CancelHandle_WhenSessionBelongsToDifferentTenant_ReturnsNotFoundWithoutRelease()
+    {
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 40);
+        session.TenantId = Guid.CreateVersion7();
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var result = await CreateCancelHandler().Handle(
+            new CancelStorageUploadSessionCommand { UploadSessionId = session.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionNotFound);
+        await _usageCounterRepository.DidNotReceive().GetByTenantAndProviderAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await _usageCounterRepository.DidNotReceive().Update(Arg.Any<StorageUsageCounter>());
+        await _uploadSessionRepository.DidNotReceive().Update(Arg.Any<StorageUploadSession>());
+    }
+
+    [Test]
     public async Task CancelHandle_WhenSessionIdMissing_ReturnsValidationFailure()
     {
         var result = await CreateCancelHandler().Handle(
@@ -538,6 +867,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             _uploadSessionRepository,
             _usageCounterRepository,
             _tenantContext,
+            _currentUserService,
             _unitOfWork,
             _metrics);
 
@@ -549,6 +879,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             _usageCounterRepository,
             _storageObjectRepository,
             _tenantContext,
+            _currentUserService,
             _unitOfWork,
             _metrics);
 
@@ -595,6 +926,76 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             IdempotencyKey = "upload-1",
             ExpiresAt = expiresAt ?? DateTime.UtcNow.AddMinutes(10)
         };
+
+    private FileStorageWriteResult CreateWriteResult(
+        string provider = StorageProviders.Local,
+        string? objectKey = null,
+        long sizeBytes = 11,
+        string contentType = "text/plain",
+        string? checksum = ValidSha256Checksum)
+        => new(provider, objectKey ?? ValidObjectKey(), sizeBytes, contentType, checksum);
+
+    private string ValidObjectKey(string fileName = "object.txt")
+        => $"tenants/{_tenantId:N}/2026/07/04/{fileName}";
+
+    private static byte[] ValidPngBytes()
+        => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4];
+
+    private sealed class NonSeekableReadStream : Stream
+    {
+        private readonly MemoryStream _inner;
+
+        public NonSeekableReadStream(byte[] bytes)
+        {
+            _inner = new MemoryStream(bytes);
+        }
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+            => _inner.Read(buffer, offset, count);
+
+        public override int Read(Span<byte> buffer)
+            => _inner.Read(buffer);
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            => _inner.ReadAsync(buffer, cancellationToken);
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => _inner.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _inner.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+    }
 
     private ResolvedStoragePolicy CreatePolicy(
         long maxUploadBytes,

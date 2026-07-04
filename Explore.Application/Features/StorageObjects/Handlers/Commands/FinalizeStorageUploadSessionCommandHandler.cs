@@ -4,9 +4,11 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.StorageObject;
+using Explore.Application.DTOs.StorageObject.Validators;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -23,6 +25,7 @@ public class FinalizeStorageUploadSessionCommandHandler
     private readonly IStorageUsageCounterRepository _usageCounterRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly ITenantContext _tenantContext;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly BusinessMetrics _metrics;
 
@@ -33,6 +36,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         IStorageUsageCounterRepository usageCounterRepository,
         IStorageObjectRepository storageObjectRepository,
         ITenantContext tenantContext,
+        ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         BusinessMetrics metrics)
     {
@@ -42,6 +46,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         _usageCounterRepository = usageCounterRepository;
         _storageObjectRepository = storageObjectRepository;
         _tenantContext = tenantContext;
+        _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _metrics = metrics;
     }
@@ -83,7 +88,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         }
 
         var session = await _uploadSessionRepository.GetByIdForUpdateAsync(request.UploadSessionId, cancellationToken);
-        if (session is null || session.TenantId != tenantId)
+        if (!IsAccessibleSession(session, tenantId))
         {
             var failure = Failure(
                 "Upload session was not found.",
@@ -93,19 +98,69 @@ public class FinalizeStorageUploadSessionCommandHandler
             return failure;
         }
 
+        Stream? contentForProvider = null;
         try
         {
+            var contentInspection = await StorageContentSignaturePolicy.InspectAsync(
+                request.Content,
+                session.ContentType,
+                session.Extension,
+                session.ExpectedSizeBytes,
+                cancellationToken);
+
+            contentForProvider = contentInspection.Content;
+            if (!contentInspection.Success)
+            {
+                var failure = await _unitOfWork.ExecuteInTransactionAsync(
+                    async ct => await FailSessionAsync(
+                        session.Id,
+                        tenantId,
+                        FailureCodes.StorageUploadContentSignatureMismatch,
+                        "Upload content did not match the reserved content policy.",
+                        contentInspection.Errors,
+                        ct),
+                    cancellationToken);
+
+                _metrics.RecordStorageUploadSession(session.Provider, "finalize", "failed", failure.FailureCode);
+                _metrics.RecordStorageUploadBytes(session.ExpectedSizeBytes, session.Provider, "failed", failure.FailureCode);
+                _metrics.RecordStorageQuotaReservation(session.Provider, "release", "succeeded");
+                _metrics.RecordStorageQuotaBytes(session.ReservedBytes, session.Provider, "release", "succeeded");
+
+                return failure;
+            }
+
             var provider = _providerResolver.GetRequired(session.Provider);
             var writeResult = await provider.WriteAsync(
                 new FileStorageWriteInput(
                     tenantId,
-                    request.Content,
+                    contentForProvider,
                     session.ContentType,
                     session.SafeDisplayName,
                     session.Extension,
                     session.ExpectedSizeBytes,
                     session.ExpectedSizeBytes),
                 cancellationToken);
+
+            var writeResultErrors = ValidateWriteResult(session, tenantId, writeResult);
+            if (writeResultErrors.Count > 0)
+            {
+                var failure = await _unitOfWork.ExecuteInTransactionAsync(
+                    async ct => await FailSessionAsync(
+                        session.Id,
+                        tenantId,
+                        FailureCodes.StorageUploadWriteFailed,
+                        "Storage provider returned invalid upload metadata.",
+                        writeResultErrors,
+                        ct),
+                    cancellationToken);
+
+                _metrics.RecordStorageUploadSession(session.Provider, "finalize", "failed", failure.FailureCode);
+                _metrics.RecordStorageUploadBytes(session.ExpectedSizeBytes, session.Provider, "failed", failure.FailureCode);
+                _metrics.RecordStorageQuotaReservation(session.Provider, "release", "succeeded");
+                _metrics.RecordStorageQuotaBytes(session.ReservedBytes, session.Provider, "release", "succeeded");
+
+                return failure;
+            }
 
             var response = await _unitOfWork.ExecuteInTransactionAsync(
                 async ct => await FinalizeAsync(session.Id, tenantId, writeResult, ct),
@@ -133,6 +188,7 @@ public class FinalizeStorageUploadSessionCommandHandler
                     tenantId,
                     FailureCodes.StorageUploadWriteFailed,
                     "Storage provider could not accept the upload.",
+                    null,
                     ct),
                 cancellationToken);
 
@@ -142,6 +198,13 @@ public class FinalizeStorageUploadSessionCommandHandler
             _metrics.RecordStorageQuotaBytes(session.ReservedBytes, session.Provider, "release", "succeeded");
 
             return response;
+        }
+        finally
+        {
+            if (contentForProvider is not null && !ReferenceEquals(contentForProvider, request.Content))
+            {
+                await contentForProvider.DisposeAsync();
+            }
         }
     }
 
@@ -165,7 +228,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         CancellationToken cancellationToken)
     {
         var session = await _uploadSessionRepository.GetByIdForUpdateAsync(request.UploadSessionId, cancellationToken);
-        if (session is null || session.TenantId != tenantId)
+        if (!IsAccessibleSession(session, tenantId))
         {
             return Failure(
                 "Upload session was not found.",
@@ -239,7 +302,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         CancellationToken cancellationToken)
     {
         var session = await _uploadSessionRepository.GetByIdForUpdateAsync(uploadSessionId, cancellationToken);
-        if (session is null || session.TenantId != tenantId)
+        if (!IsAccessibleSession(session, tenantId))
         {
             return Failure(
                 "Upload session was not found.",
@@ -247,7 +310,7 @@ public class FinalizeStorageUploadSessionCommandHandler
                 FailureCodes.StorageUploadSessionNotFound);
         }
 
-        var counter = await _usageCounterRepository.GetOrCreateAsync(tenantId, writeResult.Provider, cancellationToken);
+        var counter = await _usageCounterRepository.GetOrCreateAsync(tenantId, session.Provider, cancellationToken);
         if (session.Status == StorageUploadSessionStates.Finalized)
         {
             return Success(session, counter, "Upload session is already finalized.");
@@ -268,12 +331,12 @@ public class FinalizeStorageUploadSessionCommandHandler
             FileType = null!,
             Uri = $"/api/storageobject/{session.Id}/content",
             ObjectKey = writeResult.ObjectKey,
-            Provider = writeResult.Provider,
+            Provider = session.Provider,
             FullName = session.SafeDisplayName,
             SafeDisplayName = session.SafeDisplayName,
             Extension = ResolveRequiredExtension(session.Extension, session.SafeDisplayName),
-            ContentType = writeResult.ContentType,
-            Sha256Checksum = writeResult.Sha256Checksum,
+            ContentType = session.ContentType,
+            Sha256Checksum = writeResult.Sha256Checksum!,
             Size = writeResult.SizeBytes,
             Visibility = session.Visibility,
             Purpose = session.Purpose,
@@ -288,7 +351,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         counter.FinalizeReservation(writeResult.SizeBytes);
         await _usageCounterRepository.Update(counter);
 
-        session.Finalize(storageObject.Id, writeResult.ObjectKey, writeResult.Sha256Checksum, DateTime.UtcNow);
+        session.Finalize(storageObject.Id, writeResult.ObjectKey, writeResult.Sha256Checksum!, DateTime.UtcNow);
         session.StorageObject = storageObject;
         await _uploadSessionRepository.Update(session);
 
@@ -300,10 +363,11 @@ public class FinalizeStorageUploadSessionCommandHandler
         Guid tenantId,
         string failureCode,
         string failureMessage,
+        IReadOnlyList<string>? errors,
         CancellationToken cancellationToken)
     {
         var session = await _uploadSessionRepository.GetByIdForUpdateAsync(uploadSessionId, cancellationToken);
-        if (session is null || session.TenantId != tenantId)
+        if (!IsAccessibleSession(session, tenantId))
         {
             return Failure("Upload session was not found.", ["Upload session was not found."], FailureCodes.StorageUploadSessionNotFound);
         }
@@ -330,9 +394,48 @@ public class FinalizeStorageUploadSessionCommandHandler
             Success = false,
             Id = CreateStorageUploadSessionCommandHandler.Map(session, CreatePolicyFromSession(session), counter),
             Message = failureMessage,
-            Errors = [failureMessage],
+            Errors = errors is { Count: > 0 } ? errors.ToList() : [failureMessage],
             FailureCode = failureCode
         };
+    }
+
+    private static IReadOnlyList<string> ValidateWriteResult(
+        StorageUploadSession session,
+        Guid tenantId,
+        FileStorageWriteResult writeResult)
+    {
+        var errors = new List<string>();
+
+        if (!string.Equals(writeResult.Provider, session.Provider, StringComparison.Ordinal))
+        {
+            errors.Add("Storage provider result did not match the reserved provider.");
+        }
+
+        var expectedObjectKeyPrefix = $"tenants/{tenantId:N}/";
+        if (string.IsNullOrWhiteSpace(writeResult.ObjectKey) ||
+            !StorageObjectMetadataValidation.BeValidObjectKey(writeResult.ObjectKey) ||
+            !writeResult.ObjectKey.StartsWith(expectedObjectKeyPrefix, StringComparison.Ordinal))
+        {
+            errors.Add("Storage provider returned an invalid object key.");
+        }
+
+        if (writeResult.SizeBytes != session.ExpectedSizeBytes)
+        {
+            errors.Add("Storage provider byte count did not match the reserved byte count.");
+        }
+
+        if (!string.Equals(writeResult.ContentType?.Trim(), session.ContentType, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add("Storage provider content type did not match the reserved content type.");
+        }
+
+        if (string.IsNullOrWhiteSpace(writeResult.Sha256Checksum) ||
+            !StorageObjectMetadataValidation.BeValidSha256HexDigest(writeResult.Sha256Checksum))
+        {
+            errors.Add("Storage provider checksum was missing or invalid.");
+        }
+
+        return errors;
     }
 
     private static BaseCommandResponse<StorageUploadSessionDto> Success(
@@ -428,4 +531,10 @@ public class FinalizeStorageUploadSessionCommandHandler
             ? safeDisplayName[(dotIndex + 1)..].ToLowerInvariant()
             : "bin";
     }
+
+    private bool IsAccessibleSession(StorageUploadSession? session, Guid tenantId)
+        => session is not null &&
+           session.TenantId == tenantId &&
+           _currentUserService.UserId is { } userId &&
+           session.UserId == userId;
 }

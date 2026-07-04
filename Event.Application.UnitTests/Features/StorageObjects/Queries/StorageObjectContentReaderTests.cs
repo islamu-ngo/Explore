@@ -59,6 +59,26 @@ public sealed class StorageObjectContentReaderTests : IDisposable
     }
 
     [Test]
+    public async Task OpenAsync_WhenProviderReturnsDifferentContentType_UsesPersistedMetadataContentType()
+    {
+        var storageObject = CreateStorageObject(StorageObjectVisibilities.PublicImage, createdBy: null);
+        _storageObjectRepository.GetById(_storageObjectId).Returns(storageObject);
+        _provider.OpenReadAsync(Arg.Any<FileStorageReadInput>(), Arg.Any<CancellationToken>())
+            .Returns(new FileStorageReadResult(
+                new MemoryStream([1, 2, 3]),
+                "image/svg+xml",
+                3,
+                DateTimeOffset.UtcNow));
+        var reader = CreateReader();
+
+        var result = await reader.OpenAsync(_storageObjectId, publicImagesOnly: false, CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.ContentType).IsEqualTo(storageObject.ContentType);
+        await Assert.That(result.ContentType).IsNotEqualTo("image/svg+xml");
+    }
+
+    [Test]
     public async Task OpenAsync_WithPrivateOwnerObjectAndDifferentUser_ReturnsNullWithoutProviderRead()
     {
         _currentUserService.IsAuthenticated.Returns(true);

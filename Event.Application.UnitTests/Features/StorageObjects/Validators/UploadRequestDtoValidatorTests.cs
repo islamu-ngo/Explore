@@ -29,6 +29,7 @@ public sealed class UploadRequestDtoValidatorTests
     [Arguments(".")]
     [Arguments("..")]
     [Arguments("report\u0000.pdf")]
+    [Arguments("CON")]
     public async Task Validate_WithUnsafeFileName_IsInvalid(string fileName)
     {
         var result = await _validator.ValidateAsync(new UploadRequestDto
@@ -45,6 +46,7 @@ public sealed class UploadRequestDtoValidatorTests
     [Arguments("not-a-media-type")]
     [Arguments("image/*")]
     [Arguments("*/png")]
+    [Arguments("application/pdf/extra")]
     [Arguments("text/plain\u0000")]
     public async Task Validate_WithMalformedOrWildcardContentType_IsInvalid(string contentType)
     {

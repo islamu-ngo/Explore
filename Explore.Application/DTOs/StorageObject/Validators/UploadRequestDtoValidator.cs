@@ -16,15 +16,16 @@ public class UploadRequestDtoValidator : AbstractValidator<UploadRequestDto>
         RuleFor(x => x.FileName)
             .NotEmpty().WithMessage("{PropertyName} is required")
             .MaximumLength(MaxFileNameLength).WithMessage("{PropertyName} must not exceed 500 characters")
-            .Must(NotContainControlCharacters).WithMessage("{PropertyName} must not contain control characters")
-            .Must(NotContainPathSeparators).WithMessage("{PropertyName} must be a simple file name without path segments")
-            .Must(NotBeDotSegment).WithMessage("{PropertyName} must be a simple file name");
+            .Must(StorageObjectMetadataValidation.NotContainControlCharacters).WithMessage("{PropertyName} must not contain control characters")
+            .Must(StorageObjectMetadataValidation.NotContainPathSeparators).WithMessage("{PropertyName} must be a simple file name without path segments")
+            .Must(StorageObjectMetadataValidation.NotBeDotSegment).WithMessage("{PropertyName} must be a simple file name")
+            .Must(StorageObjectMetadataValidation.NotBeReservedFileName).WithMessage("{PropertyName} must not be a reserved file name");
 
         RuleFor(x => x.ContentType)
             .NotEmpty().WithMessage("{PropertyName} is required")
             .MaximumLength(MaxContentTypeLength).WithMessage("{PropertyName} must not exceed 100 characters")
-            .Must(NotContainControlCharacters).WithMessage("{PropertyName} must not contain control characters")
-            .Must(BeValidContentType).WithMessage("{PropertyName} must be a valid MIME type");
+            .Must(StorageObjectMetadataValidation.NotContainControlCharacters).WithMessage("{PropertyName} must not contain control characters")
+            .Must(StorageObjectMetadataValidation.BeValidRequiredContentType).WithMessage("{PropertyName} must be a valid MIME type");
     }
 
     public static string NormalizeFileName(string? fileName)
@@ -38,27 +39,4 @@ public class UploadRequestDtoValidator : AbstractValidator<UploadRequestDto>
             : candidate;
     }
 
-    private static bool BeValidContentType(string? contentType)
-    {
-        var candidate = contentType?.Trim() ?? string.Empty;
-        return !string.IsNullOrWhiteSpace(candidate) &&
-            MediaTypeHeaderValue.TryParse(candidate, out var mediaTypeHeader) &&
-            !string.IsNullOrWhiteSpace(mediaTypeHeader.MediaType) &&
-            mediaTypeHeader.MediaType.Contains('/', StringComparison.Ordinal) &&
-            !mediaTypeHeader.MediaType.Contains('*', StringComparison.Ordinal);
-    }
-
-    private static bool NotContainControlCharacters(string? value)
-        => value is null || !value.Any(char.IsControl);
-
-    private static bool NotContainPathSeparators(string? value)
-        => value is null ||
-            (!value.Contains('/', StringComparison.Ordinal) &&
-             !value.Contains('\\', StringComparison.Ordinal));
-
-    private static bool NotBeDotSegment(string? value)
-    {
-        var candidate = value?.Trim();
-        return candidate is not "." and not "..";
-    }
 }

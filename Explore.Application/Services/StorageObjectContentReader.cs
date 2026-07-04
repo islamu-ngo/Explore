@@ -94,14 +94,17 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
 
             return new StorageObjectContentResult(
                 readResult.Content,
-                readResult.ContentType,
+                storageObject.ContentType,
                 readResult.Length,
                 readResult.LastModified,
                 storageObject.Sha256Checksum);
         }
-        catch (FileNotFoundException ex)
+        catch (FileNotFoundException)
         {
-            _logger.LogWarning(ex, "Storage provider object was not found for storage object {StorageObjectId}.", storageObjectId);
+            _logger.LogWarning(
+                "Storage provider object was not found for storage object {StorageObjectId}. FailureType={FailureType}",
+                storageObjectId,
+                "object_not_found");
             _metrics.RecordStorageRead(
                 storageObject.Provider,
                 "failed",
@@ -110,9 +113,13 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
 
             return null;
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Storage provider {Provider} is unavailable for storage object {StorageObjectId}.", storageObject.Provider, storageObjectId);
+            _logger.LogWarning(
+                "Storage provider {Provider} is unavailable for storage object {StorageObjectId}. FailureType={FailureType}",
+                storageObject.Provider,
+                storageObjectId,
+                "provider_unavailable");
             _metrics.RecordStorageRead(
                 storageObject.Provider,
                 "failed",
