@@ -1,12 +1,12 @@
 @* ABOUTME: Instance admin settings section for authentication and authorization provider management. *@
 @* ABOUTME: Uses explicit enable/disable actions while preserving onboarding provider configuration state. *@
 
+@using Explore.Blazor.Client.Contracts.Interop
 @using Explore.Blazor.Client.Services
-@using Microsoft.JSInterop
 @using MudBlazor
 
 @inject IDialogService DialogService
-@inject IJSRuntime JSRuntime
+@inject IBrowserActionInterop BrowserActionInterop
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -730,11 +730,21 @@
                 return;
             }
 
-            await JSRuntime.InvokeVoidAsync(
-                "downloadFileFromBase64",
+            var downloaded = await BrowserActionInterop.DownloadBase64FileAsync(
                 Convert.ToBase64String(package.FileBytes),
                 package.FileName,
                 package.ContentType);
+
+            if (!downloaded)
+            {
+                _downloadResult = new InstanceCommandResponseModel
+                {
+                    Success = false,
+                    Message = "Authorization policy package download failed. Try again or check server logs."
+                };
+                return;
+            }
+
             _downloadResult = new InstanceCommandResponseModel
             {
                 Success = true,

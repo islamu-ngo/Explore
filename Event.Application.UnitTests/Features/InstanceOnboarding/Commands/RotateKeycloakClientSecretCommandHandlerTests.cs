@@ -115,6 +115,49 @@ public class RotateKeycloakClientSecretCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenApplicationManagedProviderBlocksRotation_DoesNotPersistNewSecretOrRefreshAuthSchemes()
+    {
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
+        var request = CreateApplicationManagedRequest();
+        var configuration = CreateConfiguration();
+
+        _configurationService.ReadConfigurationAsync().Returns(configuration);
+        _keycloakBootstrapService.RotateClientSecretAsync(configuration, request, Arg.Any<CancellationToken>())
+            .Returns(new KeycloakClientSecretRotationResultDto
+            {
+                Status = "blocked",
+                Message = "Keycloak rejected the client-secret rotation request.",
+                ClientId = configuration.KeycloakClientId,
+                SecretOwnershipMode = "application-managed",
+                Operations =
+                [
+                    new KeycloakRealmSyncOperationDto
+                    {
+                        OperationId = "keycloak-client-secret-update-failed",
+                        Category = "client-secret",
+                        TargetType = "client",
+                        Target = configuration.KeycloakClientId,
+                        Action = "update",
+                        Status = "blocked",
+                        Summary = "Keycloak client secret could not be updated.",
+                        Reason = "Verify temporary admin permissions and retry."
+                    }
+                ]
+            });
+
+        var result = await _handler.Handle(CreateCommand(request), CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo("blocked");
+        await Assert.That(configuration.KeycloakClientSecret).IsEqualTo("old-client-secret");
+        await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
+        await _jwtAuthorityRefreshNotifier.DidNotReceive().ReloadAsync(Arg.Any<CancellationToken>());
+
+        var serializedResult = JsonSerializer.Serialize(result);
+        await Assert.That(serializedResult).DoesNotContain(request.NewClientSecret!);
+        await Assert.That(serializedResult).DoesNotContain(request.BootstrapAdminPassword!);
+    }
+
+    [Test]
     public async Task Validator_WhenApplicationManagedInputsAreMissing_ReturnsFailures()
     {
         var validator = new KeycloakClientSecretRotationRequestDtoValidator();

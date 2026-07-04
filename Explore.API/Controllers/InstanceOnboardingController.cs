@@ -13,6 +13,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
+using Explore.Application.Onboarding;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -56,15 +57,18 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     private readonly IMediator _mediator;
     private readonly ISetupSecretProvider _setupSecretProvider;
+    private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger;
     private readonly ILogger<InstanceOnboardingController> _logger;
 
     public InstanceOnboardingController(
         IMediator mediator,
         ISetupSecretProvider setupSecretProvider,
+        IInstanceBootstrapAuditLogger bootstrapAuditLogger,
         ILogger<InstanceOnboardingController> logger)
     {
         _mediator = mediator;
         _setupSecretProvider = setupSecretProvider;
+        _bootstrapAuditLogger = bootstrapAuditLogger;
         _logger = logger;
     }
 
@@ -82,12 +86,17 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [Authorize]
     [SetupSecretRequired]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpPost("complete", Name = RouteNames.CompleteInstanceOnboarding)]
     [EndpointSummary("Complete Instance Onboarding")]
     [EndpointDescription("Completes first-run onboarding, assigns the current user as instance admin, and persists deployment mode.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] CompleteInstanceOnboardingRequest settings, CancellationToken cancellationToken = default)
     {
         var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
@@ -149,17 +158,30 @@ public class InstanceOnboardingController : ExploreControllerBase
     [EndpointSummary("Validate Setup Secret")]
     [EndpointDescription("Validates the provided setup secret. Returns whether the secret is correct. Rate limited to 5 attempts per minute.")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status410Gone)]
-    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public ActionResult ValidateSecret([FromBody] ValidateSetupSecretRequest request)
     {
         if (!_setupSecretProvider.IsSetupModeActive)
+        {
+            LogSetupSecretValidationAudit(
+                InstanceBootstrapAuditEventType.SetupModeInactive,
+                "inactive",
+                ApiProblemCodes.SetupAlreadyCompleted);
             return this.ToGoneProblem(
                 "Setup already completed",
                 "Setup mode is no longer active for this instance.",
                 ApiProblemCodes.SetupAlreadyCompleted);
+        }
 
         var isValid = _setupSecretProvider.ValidateSecret(request.Secret);
+        LogSetupSecretValidationAudit(
+            isValid
+                ? InstanceBootstrapAuditEventType.SetupSecretAccepted
+                : InstanceBootstrapAuditEventType.SetupSecretRejected,
+            isValid ? "accepted" : "rejected",
+            isValid ? null : "invalid_setup_secret");
+
         return Ok(new { valid = isValid });
     }
 
@@ -178,11 +200,15 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpGet("auth-provider-configuration/internal", Name = RouteNames.GetInstanceOnboardingAuthProviderConfigurationInternal)]
     [EndpointSummary("Get Auth Provider Configuration (Internal)")]
-    [EndpointDescription("Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.")]
+    [EndpointDescription("Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup secret.")]
     [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<AuthProviderConfigurationDto>> GetAuthProviderConfigurationInternal(CancellationToken cancellationToken = default)
     {
         var service = HttpContext.RequestServices.GetRequiredService<IAuthProviderConfigurationService>();
@@ -192,13 +218,17 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpPut("auth-provider-configuration", Name = RouteNames.SaveInstanceOnboardingAuthProviderConfiguration)]
     [EndpointSummary("Save Auth Provider Configuration (Setup)")]
-    [EndpointDescription("Saves auth provider configuration during instance setup. Protected by setup token. At least one provider must be enabled.")]
+    [EndpointDescription("Saves auth provider configuration during instance setup. Protected by setup secret. At least one provider must be enabled.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveAuthProviderConfiguration([FromBody] AuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
         var command = new SaveAuthProviderConfigurationCommand
@@ -220,6 +250,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     /// </summary>
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpPost("auth-provider-configuration/keycloak-bootstrap", Name = RouteNames.BootstrapInstanceOnboardingKeycloakRealm)]
     [EndpointSummary("Bootstrap Keycloak Realm (Setup)")]
@@ -228,8 +259,11 @@ public class InstanceOnboardingController : ExploreControllerBase
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> BootstrapKeycloakRealm([FromBody] KeycloakBootstrapRequestDto request, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(
@@ -238,7 +272,7 @@ public class InstanceOnboardingController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return this.ToCommandValidationProblem(response, AuthProviderValidationProblem);
+            return this.ToAuthProviderProblem(response);
         }
 
         return Ok(response);
@@ -246,11 +280,15 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpGet("authz-provider-configuration/internal", Name = RouteNames.GetInstanceOnboardingAuthorizationProviderConfigurationInternal)]
     [EndpointSummary("Get Authorization Provider Configuration (Internal)")]
-    [EndpointDescription("Returns authorization provider configuration for setup flow. Protected by setup token.")]
+    [EndpointDescription("Returns authorization provider configuration for setup flow. Protected by setup secret.")]
     [ProducesResponseType(typeof(AuthorizationProviderConfigurationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<AuthorizationProviderConfigurationDto>> GetAuthorizationProviderConfigurationInternal(CancellationToken cancellationToken = default)
     {
         var configuration = await _mediator.Send(new GetAuthorizationProviderConfigurationQuery(), cancellationToken);
@@ -259,13 +297,17 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpPut("authz-provider-configuration", Name = RouteNames.SaveInstanceOnboardingAuthorizationProviderConfiguration)]
     [EndpointSummary("Save Authorization Provider Configuration (Setup)")]
-    [EndpointDescription("Saves authorization provider configuration during instance setup. Protected by setup token.")]
+    [EndpointDescription("Saves authorization provider configuration during instance setup. Protected by setup secret.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveAuthorizationProviderConfiguration([FromBody] AuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(
@@ -282,12 +324,16 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpPost("authz-provider-configuration/sync", Name = RouteNames.SyncInstanceOnboardingAuthorizationPolicyPackage)]
     [EndpointSummary("Sync Authorization Policy Package (Setup)")]
-    [EndpointDescription("Publishes the authorization policy package during instance setup. Protected by setup token.")]
+    [EndpointDescription("Publishes the authorization policy package during instance setup. Protected by setup secret.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new SyncAuthorizationPolicyPackageCommand(), cancellationToken);
@@ -301,12 +347,17 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpGet("authz-provider-configuration/package", Name = RouteNames.DownloadInstanceOnboardingAuthorizationPolicyPackage)]
     [EndpointSummary("Download Authorization Policy Package (Setup)")]
-    [EndpointDescription("Downloads a ZIP archive containing the authorization policy package and manual cerbosctl instructions. Protected by setup token.")]
+    [EndpointDescription("Downloads a ZIP archive containing the authorization policy package and manual cerbosctl instructions. Protected by setup secret.")]
     [Produces("application/zip")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> DownloadAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
     {
         try
@@ -323,13 +374,17 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpPost("authz-provider-configuration/verify", Name = RouteNames.VerifyInstanceOnboardingAuthorizationProviderEndpoint)]
     [EndpointSummary("Verify Cerbos Authorization Endpoint")]
-    [EndpointDescription("Verifies a Cerbos gRPC endpoint by calling its gRPC health service. Protected by setup token.")]
+    [EndpointDescription("Verifies a Cerbos gRPC endpoint by calling its gRPC health service. Protected by setup secret.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> VerifyAuthorizationProviderEndpoint(
         [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] VerifyCerbosEndpointRequest? request,
         CancellationToken cancellationToken = default)
@@ -354,6 +409,20 @@ public class InstanceOnboardingController : ExploreControllerBase
             "Authorization policy package unavailable",
             "The bundled Cerbos policy package is not available to this API deployment. Mount or bundle the package directory and retry the download.",
             ApiProblemCodes.AuthorizationPolicyPackageUnavailable);
+
+    private void LogSetupSecretValidationAudit(
+        InstanceBootstrapAuditEventType eventType,
+        string outcome,
+        string? failureCode = null)
+    {
+        _bootstrapAuditLogger.Log(new InstanceBootstrapAuditEvent(
+            eventType,
+            Operation: "setup_secret_validate",
+            Outcome: outcome,
+            RouteName: RouteNames.ValidateInstanceSetupSecret,
+            TraceId: HttpContext.TraceIdentifier,
+            FailureCode: failureCode));
+    }
 }
 
 public class ValidateSetupSecretRequest

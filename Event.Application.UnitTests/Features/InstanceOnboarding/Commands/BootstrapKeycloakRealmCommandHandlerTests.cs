@@ -17,6 +17,7 @@ public class BootstrapKeycloakRealmCommandHandlerTests
     private readonly IKeycloakBootstrapService _keycloakBootstrapService;
     private readonly IAuthProviderConfigurationService _configurationService;
     private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
+    private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger;
     private readonly BootstrapKeycloakRealmCommandHandler _handler;
 
     public BootstrapKeycloakRealmCommandHandlerTests()
@@ -24,12 +25,14 @@ public class BootstrapKeycloakRealmCommandHandlerTests
         _keycloakBootstrapService = Substitute.For<IKeycloakBootstrapService>();
         _configurationService = Substitute.For<IAuthProviderConfigurationService>();
         _jwtAuthorityRefreshNotifier = Substitute.For<IJwtAuthorityRefreshNotifier>();
+        _bootstrapAuditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
         var logger = Substitute.For<ILogger<BootstrapKeycloakRealmCommandHandler>>();
 
         _handler = new BootstrapKeycloakRealmCommandHandler(
             _keycloakBootstrapService,
             _configurationService,
             _jwtAuthorityRefreshNotifier,
+            _bootstrapAuditLogger,
             logger);
     }
 
@@ -51,6 +54,12 @@ public class BootstrapKeycloakRealmCommandHandlerTests
             .BootstrapAsync(Arg.Any<KeycloakBootstrapRequestDto>(), Arg.Any<CancellationToken>());
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
         await _jwtAuthorityRefreshNotifier.DidNotReceive().ReloadAsync(Arg.Any<CancellationToken>());
+        _bootstrapAuditLogger.Received(1).Log(Arg.Is<InstanceBootstrapAuditEvent>(auditEvent =>
+            auditEvent.EventType == InstanceBootstrapAuditEventType.KeycloakBootstrapFailed
+            && auditEvent.Operation == "keycloak_bootstrap"
+            && auditEvent.Outcome == "validation_failed"
+            && auditEvent.FailureCode == "keycloak_bootstrap_validation_failed"
+            && !AuditEventContains(auditEvent, command.BootstrapRequest.BootstrapAdminPassword)));
     }
 
     [Test]
@@ -75,6 +84,16 @@ public class BootstrapKeycloakRealmCommandHandlerTests
         await Assert.That(result.Message).DoesNotContain(request.BootstrapAdminPassword);
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
         await _jwtAuthorityRefreshNotifier.DidNotReceive().ReloadAsync(Arg.Any<CancellationToken>());
+        _bootstrapAuditLogger.Received(1).Log(Arg.Is<InstanceBootstrapAuditEvent>(auditEvent =>
+            auditEvent.EventType == InstanceBootstrapAuditEventType.KeycloakBootstrapStarted
+            && auditEvent.Operation == "keycloak_bootstrap"
+            && auditEvent.Outcome == "started"));
+        _bootstrapAuditLogger.Received(1).Log(Arg.Is<InstanceBootstrapAuditEvent>(auditEvent =>
+            auditEvent.EventType == InstanceBootstrapAuditEventType.KeycloakBootstrapFailed
+            && auditEvent.Operation == "keycloak_bootstrap"
+            && auditEvent.Outcome == "failed"
+            && auditEvent.FailureCode == "keycloak_admin_rejected"
+            && !AuditEventContains(auditEvent, request.BootstrapAdminPassword)));
     }
 
     [Test]
@@ -114,6 +133,17 @@ public class BootstrapKeycloakRealmCommandHandlerTests
         await Assert.That(persistedConfiguration.KeycloakClientSecret).IsNotEqualTo(request.BootstrapAdminPassword);
         await Assert.That(persistedConfiguration.GoogleClientSecret).IsNotEqualTo(request.BootstrapAdminPassword);
         await _jwtAuthorityRefreshNotifier.Received(1).ReloadAsync(Arg.Any<CancellationToken>());
+        _bootstrapAuditLogger.Received(1).Log(Arg.Is<InstanceBootstrapAuditEvent>(auditEvent =>
+            auditEvent.EventType == InstanceBootstrapAuditEventType.KeycloakBootstrapStarted
+            && auditEvent.Operation == "keycloak_bootstrap"
+            && auditEvent.Outcome == "started"));
+        _bootstrapAuditLogger.Received(1).Log(Arg.Is<InstanceBootstrapAuditEvent>(auditEvent =>
+            auditEvent.EventType == InstanceBootstrapAuditEventType.KeycloakBootstrapSucceeded
+            && auditEvent.Operation == "keycloak_bootstrap"
+            && auditEvent.Outcome == "succeeded"
+            && auditEvent.Provider == "keycloak"
+            && auditEvent.ClientId == request.BlazorClientId
+            && !AuditEventContains(auditEvent, request.BootstrapAdminPassword)));
     }
 
     [Test]
@@ -149,5 +179,11 @@ public class BootstrapKeycloakRealmCommandHandlerTests
             BootstrapAdminUsername = "bootstrap-admin",
             BootstrapAdminPassword = bootstrapAdminPassword
         };
+    }
+
+    private static bool AuditEventContains(InstanceBootstrapAuditEvent auditEvent, string? value)
+    {
+        return !string.IsNullOrEmpty(value)
+            && auditEvent.ToString().Contains(value, StringComparison.Ordinal);
     }
 }

@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Controllers;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
@@ -18,6 +19,7 @@ using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -513,6 +515,102 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
+    public async Task BootstrapKeycloakRealm_WhenKeycloakProviderUnavailable_ShouldReturnServiceUnavailableProblemDetails()
+    {
+        var bootstrapService = new FakeKeycloakBootstrapService
+        {
+            Result = new KeycloakBootstrapResultDto
+            {
+                Success = false,
+                Message = "Keycloak Admin API was unreachable during bootstrap.",
+                FailureCode = "keycloak_unreachable"
+            }
+        };
+        using var factory = CreateFactoryWithKeycloakBootstrapService(bootstrapService);
+        using var client = factory.CreateClient();
+
+        var payload = CreateKeycloakBootstrapRequest();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"{BaseUrl}/auth-provider-configuration/keycloak-bootstrap")
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Add("X-Setup-Secret", SetupSecret);
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.ServiceUnavailable);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
+        await Assert.That(body).DoesNotContain("one-time-admin-password");
+        await Assert.That(body).DoesNotContain("runtime-blazor-secret");
+        await Assert.That(body).DoesNotContain("runtime-api-secret");
+
+        using var document = JsonDocument.Parse(body);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("status").GetInt32()).IsEqualTo((int)HttpStatusCode.ServiceUnavailable);
+        await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("Keycloak provider unavailable");
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("keycloak_unreachable");
+        await Assert.That(root.TryGetProperty("traceId", out _)).IsTrue();
+        await Assert.That(root.TryGetProperty("timestamp", out _)).IsTrue();
+        await Assert.That(bootstrapService.Calls).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task BootstrapKeycloakRealm_WhenKeycloakProviderReturnsInvalidResponse_ShouldReturnBadGatewayProblemDetails()
+    {
+        var bootstrapService = new FakeKeycloakBootstrapService
+        {
+            Result = new KeycloakBootstrapResultDto
+            {
+                Success = false,
+                Message = "Keycloak Admin API returned an invalid response.",
+                FailureCode = "keycloak_invalid_response"
+            }
+        };
+        using var factory = CreateFactoryWithKeycloakBootstrapService(bootstrapService);
+        using var client = factory.CreateClient();
+
+        var payload = CreateKeycloakBootstrapRequest();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"{BaseUrl}/auth-provider-configuration/keycloak-bootstrap")
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Add("X-Setup-Secret", SetupSecret);
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadGateway);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
+        await Assert.That(body).DoesNotContain("one-time-admin-password");
+        await Assert.That(body).DoesNotContain("runtime-blazor-secret");
+        await Assert.That(body).DoesNotContain("runtime-api-secret");
+
+        using var document = JsonDocument.Parse(body);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("status").GetInt32()).IsEqualTo((int)HttpStatusCode.BadGateway);
+        await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("Keycloak provider returned an invalid bootstrap response");
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("keycloak_invalid_response");
+        await Assert.That(root.TryGetProperty("traceId", out _)).IsTrue();
+        await Assert.That(root.TryGetProperty("timestamp", out _)).IsTrue();
+        await Assert.That(bootstrapService.Calls).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task BootstrapKeycloakRealm_ShouldAdvertiseProviderProblemDetailsMetadata()
+    {
+        var action = typeof(InstanceOnboardingController)
+            .GetMethod(nameof(InstanceOnboardingController.BootstrapKeycloakRealm))!;
+
+        await Assert.That(HasProblemDetailsResponse(action, StatusCodes.Status502BadGateway)).IsTrue();
+        await Assert.That(HasProblemDetailsResponse(action, StatusCodes.Status503ServiceUnavailable)).IsTrue();
+    }
+
+    [Test]
     public async Task UpdateAuthorizationProviderConfiguration_AdminEndpoint_WithoutAuthentication_ShouldReturnUnauthorized()
     {
         using var factory = CreateFactoryWithSetupSecret();
@@ -904,6 +1002,13 @@ public class InstanceOnboardingControllerTests
         public bool Configured { get; set; }
     }
 
+    private static bool HasProblemDetailsResponse(System.Reflection.MethodInfo action, int statusCode)
+    {
+        return action.GetCustomAttributes(typeof(ProducesResponseTypeAttribute), inherit: false)
+            .Cast<ProducesResponseTypeAttribute>()
+            .Any(attribute => attribute.StatusCode == statusCode && attribute.Type == typeof(ProblemDetails));
+    }
+
     private static AuthenticatedWebApplicationFactory CreateFactoryWithKeycloakBootstrapService(FakeKeycloakBootstrapService bootstrapService)
     {
         Environment.SetEnvironmentVariable("SETUP_SECRET", SetupSecret);
@@ -934,13 +1039,14 @@ public class InstanceOnboardingControllerTests
     {
         public int Calls { get; private set; }
         public KeycloakBootstrapRequestDto? LastRequest { get; private set; }
+        public KeycloakBootstrapResultDto? Result { get; init; }
 
         public Task<KeycloakBootstrapResultDto> BootstrapAsync(KeycloakBootstrapRequestDto request, CancellationToken cancellationToken)
         {
             Calls++;
             LastRequest = request;
 
-            return Task.FromResult(new KeycloakBootstrapResultDto
+            return Task.FromResult(Result ?? new KeycloakBootstrapResultDto
             {
                 Success = true,
                 Message = "Keycloak bootstrap completed successfully.",

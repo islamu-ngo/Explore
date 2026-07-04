@@ -9,6 +9,7 @@ using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Models.PublicExperience;
+using Explore.Application.Onboarding;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -32,6 +33,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
     private readonly ITenantRepository _tenantRepository = Substitute.For<ITenantRepository>();
     private readonly ISystemSettingRepository _systemSettingRepository = Substitute.For<ISystemSettingRepository>();
     private readonly ISetupSecretProvider _setupSecretProvider = Substitute.For<ISetupSecretProvider>();
+    private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
     private readonly IAdminCacheInvalidator _adminCacheInvalidator = Substitute.For<IAdminCacheInvalidator>();
     private readonly IDeploymentModeProvider _deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
     private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier = Substitute.For<IJwtAuthorityRefreshNotifier>();
@@ -111,6 +113,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             _tenantRepository,
             _systemSettingRepository,
             _setupSecretProvider,
+            _bootstrapAuditLogger,
             _adminCacheInvalidator,
             _deploymentModeProvider,
             _jwtAuthorityRefreshNotifier,
@@ -192,6 +195,12 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             "Community Events",
             Arg.Any<CancellationToken>());
         _setupSecretProvider.Received(1).Lock();
+        _bootstrapAuditLogger.Received(1).Log(Arg.Is<InstanceBootstrapAuditEvent>(auditEvent =>
+            auditEvent.EventType == InstanceBootstrapAuditEventType.SetupModeDisabled
+            && auditEvent.Operation == "instance_onboarding_complete"
+            && auditEvent.Outcome == "disabled"
+            && auditEvent.ActorUserId == TestUserId
+            && auditEvent.DeploymentMode == DeploymentMode.SingleTenant.ToString()));
     }
 
     [Test]
@@ -238,6 +247,12 @@ public class CompleteInstanceOnboardingCommandHandlerTests
         _ = _systemSettingRepository.DidNotReceive().Create(Arg.Is<SystemSetting>(setting =>
             setting.SettingKey == GovernanceSettingKeys.PublicExperience.Mode));
         _setupSecretProvider.Received(1).Lock();
+        _bootstrapAuditLogger.Received(1).Log(Arg.Is<InstanceBootstrapAuditEvent>(auditEvent =>
+            auditEvent.EventType == InstanceBootstrapAuditEventType.SetupModeDisabled
+            && auditEvent.Operation == "instance_onboarding_complete"
+            && auditEvent.Outcome == "disabled"
+            && auditEvent.ActorUserId == TestUserId
+            && auditEvent.DeploymentMode == DeploymentMode.MultiTenant.ToString()));
     }
 
     private static bool ContainsDefaultHomeBlock(string value, string expectedTitle)

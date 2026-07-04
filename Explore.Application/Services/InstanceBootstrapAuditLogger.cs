@@ -1,0 +1,74 @@
+// ABOUTME: Structured logger implementation for setup-secret and bootstrap audit events.
+// ABOUTME: Emits bounded fields only, avoiding secrets, raw provider payloads, and endpoint values.
+
+using Explore.Application.Contracts.Services;
+using Explore.Application.Onboarding;
+using Microsoft.Extensions.Logging;
+
+namespace Explore.Application.Services;
+
+public sealed class InstanceBootstrapAuditLogger : IInstanceBootstrapAuditLogger
+{
+    private const int MaxLoggedFieldLength = 200;
+    private readonly ILogger<InstanceBootstrapAuditLogger> _logger;
+
+    public InstanceBootstrapAuditLogger(ILogger<InstanceBootstrapAuditLogger> logger)
+    {
+        _logger = logger;
+    }
+
+    public void Log(InstanceBootstrapAuditEvent auditEvent)
+    {
+        ArgumentNullException.ThrowIfNull(auditEvent);
+
+        var eventName = auditEvent.EventType.ToString();
+        _logger.Log(
+            GetLogLevel(auditEvent.EventType),
+            new EventId((int)auditEvent.EventType, eventName),
+            "Instance bootstrap audit event. Event={BootstrapAuditEvent} Operation={Operation} Outcome={Outcome} ActorUserId={ActorUserId} RouteName={RouteName} TraceId={TraceId} FailureCode={FailureCode} Provider={Provider} Mode={Mode} Realm={Realm} ClientId={ClientId} DeploymentMode={DeploymentMode}",
+            eventName,
+            Normalize(auditEvent.Operation),
+            Normalize(auditEvent.Outcome),
+            auditEvent.ActorUserId,
+            Normalize(auditEvent.RouteName),
+            Normalize(auditEvent.TraceId),
+            Normalize(auditEvent.FailureCode),
+            Normalize(auditEvent.Provider),
+            Normalize(auditEvent.Mode),
+            Normalize(auditEvent.Realm),
+            Normalize(auditEvent.ClientId),
+            Normalize(auditEvent.DeploymentMode));
+    }
+
+    private static LogLevel GetLogLevel(InstanceBootstrapAuditEventType eventType)
+        => eventType switch
+        {
+            InstanceBootstrapAuditEventType.SetupSecretRejected => LogLevel.Warning,
+            InstanceBootstrapAuditEventType.SetupModeInactive => LogLevel.Warning,
+            InstanceBootstrapAuditEventType.KeycloakBootstrapFailed => LogLevel.Warning,
+            InstanceBootstrapAuditEventType.SetupModeDisabled => LogLevel.Warning,
+            _ => LogLevel.Information
+        };
+
+    private static string? Normalize(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = new string(value
+            .Trim()
+            .Where(character => !char.IsControl(character))
+            .ToArray());
+
+        if (normalized.Length == 0)
+        {
+            return null;
+        }
+
+        return normalized.Length <= MaxLoggedFieldLength
+            ? normalized
+            : normalized[..MaxLoggedFieldLength];
+    }
+}

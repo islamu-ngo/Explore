@@ -10,6 +10,7 @@ using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Models;
 using Explore.Application.Models.PublicExperience;
+using Explore.Application.Onboarding;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -32,6 +33,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly ITenantRepository _tenantRepository;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ISetupSecretProvider _setupSecretProvider;
+    private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
@@ -51,6 +53,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         ITenantRepository tenantRepository,
         ISystemSettingRepository systemSettingRepository,
         ISetupSecretProvider setupSecretProvider,
+        IInstanceBootstrapAuditLogger bootstrapAuditLogger,
         IAdminCacheInvalidator adminCacheInvalidator,
         IDeploymentModeProvider deploymentModeProvider,
         IJwtAuthorityRefreshNotifier jwtAuthorityRefreshNotifier,
@@ -69,6 +72,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         _tenantRepository = tenantRepository;
         _systemSettingRepository = systemSettingRepository;
         _setupSecretProvider = setupSecretProvider;
+        _bootstrapAuditLogger = bootstrapAuditLogger;
         _adminCacheInvalidator = adminCacheInvalidator;
         _deploymentModeProvider = deploymentModeProvider;
         _jwtAuthorityRefreshNotifier = jwtAuthorityRefreshNotifier;
@@ -175,6 +179,12 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         await _deploymentModeProvider.InvalidateCacheAsync();
         await _jwtAuthorityRefreshNotifier.ReloadAsync(cancellationToken);
         _setupSecretProvider.Lock();
+        _bootstrapAuditLogger.Log(new InstanceBootstrapAuditEvent(
+            InstanceBootstrapAuditEventType.SetupModeDisabled,
+            Operation: "instance_onboarding_complete",
+            Outcome: "disabled",
+            ActorUserId: request.UserId,
+            DeploymentMode: deploymentMode.ToString()));
 
         response.Success = true;
         response.Message = "Instance onboarding completed successfully.";
