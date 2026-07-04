@@ -28,6 +28,10 @@ public class BffProxyHeaderSanitizerTests
         request.Headers.Add("X-Auth-Token", "x-auth");
         request.Headers.Add(TenantHeaderNames.TenantId, Guid.NewGuid().ToString());
         request.Headers.Add(TenantHeaderNames.TenantSlug, "attacker-tenant");
+        request.Headers.Add(SupportAccessHeaderNames.SessionId, Guid.NewGuid().ToString());
+        request.Headers.Add(SupportAccessHeaderNames.TargetTenantId, Guid.NewGuid().ToString());
+        request.Headers.Add(SupportAccessHeaderNames.Mode, "Write");
+        request.Headers.Add("X-Support-Access-Future-Scope", "tenant-admin");
 
         BffProxyHeaderSanitizer.RemoveBrowserControlledHeaders(request);
 
@@ -47,6 +51,10 @@ public class BffProxyHeaderSanitizerTests
         await Assert.That(request.Headers.Contains("X-Auth-Token")).IsFalse();
         await Assert.That(request.Headers.Contains(TenantHeaderNames.TenantId)).IsFalse();
         await Assert.That(request.Headers.Contains(TenantHeaderNames.TenantSlug)).IsFalse();
+        await Assert.That(request.Headers.Contains(SupportAccessHeaderNames.SessionId)).IsFalse();
+        await Assert.That(request.Headers.Contains(SupportAccessHeaderNames.TargetTenantId)).IsFalse();
+        await Assert.That(request.Headers.Contains(SupportAccessHeaderNames.Mode)).IsFalse();
+        await Assert.That(request.Headers.Contains("X-Support-Access-Future-Scope")).IsFalse();
     }
 
     [Test]

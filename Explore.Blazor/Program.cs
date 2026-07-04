@@ -1,5 +1,7 @@
 using Blazouter.Extensions;
 using Blazouter.Server.Extensions;
+using Event.Web.BffHosting.Authentication;
+using Event.Web.BffHosting.Extensions;
 using Explore.Blazor;
 using Explore.Blazor.Components;
 using Explore.Blazor.Extensions;
@@ -78,6 +80,10 @@ builder.Services.AddBlazouter();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddOptions();
 
+builder.Services.AddEventBffHosting(
+    builder.Configuration,
+    builder.Environment,
+    EventBffHostProfile.PublicWeb);
 builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
 builder.Services.AddBffRateLimiting(builder.Configuration, builder.Environment);

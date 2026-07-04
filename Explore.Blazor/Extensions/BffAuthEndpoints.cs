@@ -2,6 +2,7 @@
 // ABOUTME: Includes multi-provider resolution, provider readiness checks, and OIDC metadata validation.
 
 using System.Security.Claims;
+using Event.Web.BffHosting.Authentication;
 using Explore.Blazor.Constants;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;

@@ -35,6 +35,7 @@ public static class HttpClientExtensions
         services.AddTransient<AccessTokenForwardingHandler>();
         services.AddTransient<TenantHeaderForwardingHandler>();
         services.AddTransient<SetupSecretForwardingHandler>();
+        services.AddTransient<SupportAccessForwardingHandler>();
         services.AddTransient<BffCookieForwardingHandler>();
 
         // Named "BffClient" — used by raw HTTP services (InstanceOnboarding, TenantOnboarding, etc.)
@@ -64,6 +65,7 @@ public static class HttpClientExtensions
             .AddHttpMessageHandler<AccessTokenForwardingHandler>()
             .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
             .AddHttpMessageHandler<SetupSecretForwardingHandler>()
+            .AddHttpMessageHandler<SupportAccessForwardingHandler>()
             .ConfigureDevCertBypass(environment)
             .AddInteractiveResilience();
         services.AddScoped<ILocalizationAdminService, LocalizationAdminService>();
@@ -99,6 +101,7 @@ public static class HttpClientExtensions
         .AddHttpMessageHandler<AccessTokenForwardingHandler>()
         .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
         .AddHttpMessageHandler<SetupSecretForwardingHandler>()
+        .AddHttpMessageHandler<SupportAccessForwardingHandler>()
         .ConfigureDevCertBypass(environment);
     }
 
@@ -116,6 +119,7 @@ public static class HttpClientExtensions
         .AddHttpMessageHandler<AccessTokenForwardingHandler>()
         .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
         .AddHttpMessageHandler<SetupSecretForwardingHandler>()
+        .AddHttpMessageHandler<SupportAccessForwardingHandler>()
         .ConfigureDevCertBypass(environment);
     }
 

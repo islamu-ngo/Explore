@@ -9,6 +9,8 @@ public static class BffCookieAuthHelper
 {
     public const string TestUserName = "test-user";
     public const string TestUserPassword = "test-user-password";
+    public const string TestAdminName = "test-admin";
+    public const string TestAdminPassword = "test-admin-password";
     private static readonly TimeSpan LoginNavigationTimeout = TimeSpan.FromSeconds(60);
 
     private static readonly string[] BrowserTokenTerms =
@@ -23,7 +25,21 @@ public static class BffCookieAuthHelper
     public static async Task LoginAsTestUserAsync(
         IPage page,
         AppHostFixture appHost,
-        string returnUrl = "/events")
+        string returnUrl = "/events") =>
+        await LoginAsync(page, appHost, TestUserName, TestUserPassword, returnUrl);
+
+    public static async Task LoginAsTestAdminAsync(
+        IPage page,
+        AppHostFixture appHost,
+        string returnUrl = "/events") =>
+        await LoginAsync(page, appHost, TestAdminName, TestAdminPassword, returnUrl);
+
+    private static async Task LoginAsync(
+        IPage page,
+        AppHostFixture appHost,
+        string username,
+        string passwordValue,
+        string returnUrl)
     {
         await AddSetupSecretBypassCookieAsync(page.Context, appHost.BlazorBaseUrl);
 
@@ -35,9 +51,9 @@ public static class BffCookieAuthHelper
             Timeout = (float)LoginNavigationTimeout.TotalMilliseconds,
             WaitUntil = WaitUntilState.DOMContentLoaded
         });
-        await page.Locator("#username").FillAsync(TestUserName);
+        await page.Locator("#username").FillAsync(username);
         var password = page.Locator("#password");
-        await password.FillAsync(TestUserPassword);
+        await password.FillAsync(passwordValue);
         await password.PressAsync("Enter", new LocatorPressOptions
         {
             Timeout = (float)LoginNavigationTimeout.TotalMilliseconds

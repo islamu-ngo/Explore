@@ -82,4 +82,8 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
 public static class BffTestCategories
 {
     public const string Security = "Security";
+    public const string Email = "Email";
+    public const string Runtime = "Runtime";
+    public const string Slow = "Slow";
+    public const string Manual = "Manual";
 }

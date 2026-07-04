@@ -24,6 +24,9 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
     public string Authority { get; private set; } = string.Empty;
     public string MetadataAddress { get; private set; } = string.Empty;
 
+    public Task<TokenSet> GetTestAdminTokensAsync(CancellationToken cancellationToken = default)
+        => GetTokenSetAsync("test-admin", "test-admin-password", cancellationToken);
+
     public Task<string> GetTestUserAccessTokenAsync(CancellationToken cancellationToken = default)
         => GetAccessTokenAsync("test-user", "test-user-password", cancellationToken);
 
@@ -85,6 +88,35 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
         string password,
         CancellationToken cancellationToken)
     {
+        var tokenResponse = await GetTokenResponseAsync(username, password, cancellationToken);
+        if (string.IsNullOrWhiteSpace(tokenResponse.AccessToken))
+        {
+            throw new InvalidOperationException("Keycloak test user token response did not include access_token.");
+        }
+
+        return tokenResponse.AccessToken;
+    }
+
+    private async Task<TokenSet> GetTokenSetAsync(
+        string username,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        var tokenResponse = await GetTokenResponseAsync(username, password, cancellationToken);
+        if (string.IsNullOrWhiteSpace(tokenResponse.AccessToken) ||
+            string.IsNullOrWhiteSpace(tokenResponse.IdToken))
+        {
+            throw new InvalidOperationException("Keycloak test user token response did not include access_token and id_token.");
+        }
+
+        return new TokenSet(tokenResponse.AccessToken, tokenResponse.IdToken);
+    }
+
+    private async Task<TokenResponse> GetTokenResponseAsync(
+        string username,
+        string password,
+        CancellationToken cancellationToken)
+    {
         using var httpClient = new HttpClient();
         var requestBody = new Dictionary<string, string>
         {
@@ -115,12 +147,17 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
             throw new InvalidOperationException("Keycloak test user token response did not include access_token.");
         }
 
-        return tokenResponse.AccessToken;
+        return tokenResponse;
     }
 
     private sealed class TokenResponse
     {
         [JsonPropertyName("access_token")]
         public string? AccessToken { get; set; }
+
+        [JsonPropertyName("id_token")]
+        public string? IdToken { get; set; }
     }
+
+    public sealed record TokenSet(string AccessToken, string IdToken);
 }

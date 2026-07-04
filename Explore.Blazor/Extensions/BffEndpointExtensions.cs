@@ -15,6 +15,7 @@ public static class BffEndpointExtensions
         app.MapPreferenceEndpoints();
         app.MapStorageEndpoints();
         app.MapSetupSecretEndpoints();
+        app.MapSupportAccessEndpoints();
 
         return app;
     }

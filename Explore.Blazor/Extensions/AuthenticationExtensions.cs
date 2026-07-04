@@ -1,6 +1,7 @@
 // ABOUTME: Configures Cookie authentication and registers the DynamicAuthSchemeManager for the BFF.
 // ABOUTME: No longer hardcodes Keycloak — OIDC schemes are registered dynamically from DB/env at startup.
 
+using Event.Web.BffHosting.Authentication;
 using Explore.Blazor.Authentication;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -47,12 +48,11 @@ public static class AuthenticationExtensions
                     : CookieSecurePolicy.Always;
                 options.Cookie.SameSite = SameSiteMode.Lax;
 
-                // Refresh expired access tokens automatically on each cookie validation
-                options.EventsType = typeof(Services.TokenRefreshCookieEvents);
+                options.EventsType = typeof(EventBffTokenRefreshCookieEvents);
             });
 
-        // Token refresh cookie events — resolves OIDC options to call the IdP token endpoint
-        services.AddScoped<Services.TokenRefreshCookieEvents>();
+        services.AddScoped<IEventBffCookieSessionHandler, ExploreBffCookieSessionHandler>();
+        services.TryAddScoped<EventBffTokenRefreshCookieEvents>();
 
         // Register the ATProto auth handler options so the scheme can be added dynamically.
         // The handler itself is registered by DynamicAuthSchemeManager when ATProto is enabled.
@@ -77,7 +77,7 @@ public static class AuthenticationExtensions
             .Bind(configuration.GetSection("Keycloak"));
         services.AddScoped<Services.Auth.IBffSessionRefreshService, Services.Auth.BffSessionRefreshService>();
         services.AddScoped<Services.Auth.IBffAuthDiagnosticsService, Services.Auth.BffAuthDiagnosticsService>();
-        services.AddSingleton<ISafeAuthDiagnosticsPolicy, SafeAuthDiagnosticsPolicy>();
+        services.TryAddSingleton<ISafeAuthDiagnosticsPolicy, SafeAuthDiagnosticsPolicy>();
         services.AddSingleton<IDynamicAuthSchemeManager, DynamicAuthSchemeManager>();
 
         return services;

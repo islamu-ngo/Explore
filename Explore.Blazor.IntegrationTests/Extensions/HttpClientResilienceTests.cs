@@ -54,8 +54,17 @@ public sealed class HttpClientResilienceTests
         services.AddSingleton(Substitute.For<ICircuitTokenStore>());
         services.AddSingleton(Substitute.For<ITenantRouteContextAccessor>());
         services.AddSingleton(Substitute.For<ISetupSecretResolver>());
+        services.AddSingleton(CreateSupportAccessSessionStore());
         services.AddApiHttpClients(configuration, environment);
         return services;
+    }
+
+    private static IBffSupportAccessSessionStore CreateSupportAccessSessionStore()
+    {
+        var store = Substitute.For<IBffSupportAccessSessionStore>();
+        store.ResolveCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(BffSupportAccessStoreResult.Failed("session_not_found")));
+        return store;
     }
 
     private sealed class DelayedApiApp(WebApplication app) : IAsyncDisposable

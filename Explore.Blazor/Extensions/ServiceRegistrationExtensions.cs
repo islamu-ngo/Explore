@@ -1,6 +1,7 @@
 // ABOUTME: Registers server-specific services on top of the shared application services.
 // ABOUTME: Shared services live in Explore.Blazor.Client.Extensions.ServiceCollectionExtensions.
 
+using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -21,6 +22,7 @@ using Explore.Persistence.Repositories;
 using Explore.Secrets.Bootstrap;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Server.Circuits;
+using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -103,6 +105,11 @@ public static class ServiceRegistrationExtensions
         services.AddSingleton<ISetupSecretCookieProtector, SetupSecretCookieProtector>();
         services.AddScoped<ISetupSecretResolver, SetupSecretResolver>();
         services.AddScoped<IStorageUploadSessionStore, StorageUploadSessionStore>();
+        services.AddScoped<IBffSupportAccessSessionStore, BffSupportAccessSessionStore>();
+        services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<Explore.Domain.Enums.SupportAccessModeEnum>());
+        });
         services.AddSingleton<IBffPreferenceCookieService, BffPreferenceCookieService>();
         services.AddSingleton<IBffPreferenceValidationService, BffPreferenceValidationService>();
         services.AddSingleton<IBffPreferenceForwardingService, BffPreferenceForwardingService>();

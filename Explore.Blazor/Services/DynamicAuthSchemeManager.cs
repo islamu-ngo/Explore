@@ -1,17 +1,13 @@
 // ABOUTME: Runtime authentication scheme manager that dynamically registers OIDC/OAuth schemes.
 // ABOUTME: Reads auth config from API + env vars, registers Keycloak/Google/ATProto schemes without restart.
 
-using System.Net;
-using System.Net.Sockets;
+using Event.Web.BffHosting.Authentication;
 using Explore.Blazor.Constants;
 using Explore.Blazor.Models;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
-using Microsoft.IdentityModel.Tokens;
 
 namespace Explore.Blazor.Services;
 
@@ -21,9 +17,8 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     private readonly IOptionsMonitorCache<OpenIdConnectOptions> _oidcOptionsCache;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
-    private readonly IWebHostEnvironment _environment;
     private readonly IDataProtectionProvider _dataProtection;
-    private readonly ISafeAuthDiagnosticsPolicy _safeDiagnosticsPolicy;
+    private readonly IEventBffOidcOptionsFactory _oidcOptionsFactory;
     private readonly ILogger<DynamicAuthSchemeManager> _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly object _registeredSchemesSync = new();
@@ -42,18 +37,16 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         IOptionsMonitorCache<OpenIdConnectOptions> oidcOptionsCache,
         IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
-        IWebHostEnvironment environment,
         IDataProtectionProvider dataProtection,
-        ISafeAuthDiagnosticsPolicy safeDiagnosticsPolicy,
+        IEventBffOidcOptionsFactory oidcOptionsFactory,
         ILogger<DynamicAuthSchemeManager> logger)
     {
         _schemeProvider = schemeProvider;
         _oidcOptionsCache = oidcOptionsCache;
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
-        _environment = environment;
         _dataProtection = dataProtection;
-        _safeDiagnosticsPolicy = safeDiagnosticsPolicy;
+        _oidcOptionsFactory = oidcOptionsFactory;
         _logger = logger;
     }
 
@@ -339,64 +332,11 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         string? clientSecret,
         string? metadataAddress)
     {
-        var trimmedSecret = clientSecret?.Trim();
-
-        var cookieSecure = _environment.IsDevelopment()
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
-
-        var options = new OpenIdConnectOptions
-        {
-            Authority = authority,
-            ClientId = clientId,
-            ClientSecret = trimmedSecret ?? string.Empty,
-            UsePkce = true,
-            SaveTokens = true,
-            GetClaimsFromUserInfoEndpoint = true,
-            RequireHttpsMetadata = !_environment.IsDevelopment(),
-            CallbackPath = "/signin-oidc",
-            SignedOutCallbackPath = "/signout-callback-oidc",
-            SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme,
-            ResponseType = OpenIdConnectResponseType.Code,
-            // Use query response mode so the callback is a GET redirect instead of a
-            // cross-site POST (form_post). Lax cookies are sent on top-level GET navigations
-            // but NOT on cross-site POSTs, which causes correlation failures with form_post.
-            // PKCE protects the authorization code in the query string.
-            ResponseMode = OpenIdConnectResponseMode.Query,
-            PushedAuthorizationBehavior = PushedAuthorizationBehavior.Disable,
-            // Force IPv4 for backchannel calls (token exchange, discovery, userinfo).
-            // Self-hosted Keycloak domains may have unreachable AAAA records that cause
-            // .NET's Happy Eyeballs to hang before falling back to IPv4.
-            BackchannelHttpHandler = CreateIpv4Handler(),
-            CorrelationCookie =
-            {
-                SameSite = SameSiteMode.Lax,
-                SecurePolicy = cookieSecure
-            },
-            NonceCookie =
-            {
-                SameSite = SameSiteMode.Lax,
-                SecurePolicy = cookieSecure
-            },
-            TokenValidationParameters = new TokenValidationParameters
-            {
-                NameClaimType = "preferred_username"
-            },
-            Events = CreateRemoteFailureEvents()
-        };
-
-        if (!string.IsNullOrEmpty(metadataAddress))
-        {
-            options.MetadataAddress = metadataAddress;
-        }
-
-        options.Scope.Clear();
-        options.Scope.Add("openid");
-        options.Scope.Add("profile");
-        options.Scope.Add("email");
-        options.Scope.Add("offline_access");
-
-        return options;
+        return _oidcOptionsFactory.CreateKeycloakOptions(new EventBffOidcProviderOptions(
+            authority,
+            clientId,
+            clientSecret,
+            metadataAddress));
     }
 
     private void RegisterGoogleScheme(string clientId, string? clientSecret)
@@ -433,42 +373,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
 
     private OpenIdConnectOptions CreateGoogleOptions(string clientId, string? clientSecret)
     {
-        var trimmedSecret = clientSecret?.Trim();
-        var cookieSecure = _environment.IsDevelopment()
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
-
-        return new OpenIdConnectOptions
-        {
-            Authority = "https://accounts.google.com",
-            ClientId = clientId,
-            ClientSecret = trimmedSecret ?? string.Empty,
-            UsePkce = true,
-            SaveTokens = true,
-            GetClaimsFromUserInfoEndpoint = true,
-            RequireHttpsMetadata = true,
-            CallbackPath = "/signin-google",
-            SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme,
-            ResponseType = OpenIdConnectResponseType.Code,
-            ResponseMode = OpenIdConnectResponseMode.Query,
-            PushedAuthorizationBehavior = PushedAuthorizationBehavior.Disable,
-            CorrelationCookie =
-            {
-                SameSite = SameSiteMode.Lax,
-                SecurePolicy = cookieSecure
-            },
-            NonceCookie =
-            {
-                SameSite = SameSiteMode.Lax,
-                SecurePolicy = cookieSecure
-            },
-            TokenValidationParameters = new TokenValidationParameters
-            {
-                NameClaimType = "name"
-            },
-            Scope = { "openid", "profile", "email" },
-            Events = CreateRemoteFailureEvents()
-        };
+        return _oidcOptionsFactory.CreateGoogleOptions(new EventBffOidcProviderOptions(
+            "https://accounts.google.com",
+            clientId,
+            clientSecret));
     }
 
     private void RegisterAtprotoScheme(string publicUrl)
@@ -507,127 +415,6 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             _registeredSchemes.Remove(schemeName);
         }
         _logger.LogInformation("Removed auth scheme: {SchemeName}", schemeName);
-    }
-
-    /// <summary>
-    /// Creates OIDC events that handle remote authentication failures gracefully
-    /// by redirecting to the login page instead of showing a raw exception.
-    /// </summary>
-    private OpenIdConnectEvents CreateRemoteFailureEvents()
-    {
-        return new OpenIdConnectEvents
-        {
-            OnRedirectToIdentityProvider = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
-                    .CreateLogger("AuthEndpoints");
-                logger.LogInformation(
-                    "[OIDC-DIAG] Redirecting to IDP: {AuthorizationEndpoint}, clientId={ClientId}, " +
-                    "redirectUri={RedirectUri}, responseType={ResponseType}, scope={Scope}",
-                    context.ProtocolMessage.AuthorizationEndpoint,
-                    context.ProtocolMessage.ClientId,
-                    context.ProtocolMessage.RedirectUri,
-                    context.ProtocolMessage.ResponseType,
-                    context.ProtocolMessage.Scope);
-                return Task.CompletedTask;
-            },
-            OnAuthorizationCodeReceived = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
-                    .CreateLogger("AuthEndpoints");
-                var secret = context.TokenEndpointRequest?.ClientSecret;
-                logger.LogInformation(
-                    "[OIDC-DIAG] Authorization code received. " +
-                    "tokenEndpoint={TokenEndpoint}, hasClientId={HasClientId}, hasClientSecret={HasClientSecret}",
-                    context.TokenEndpointRequest?.TokenEndpoint,
-                    !string.IsNullOrWhiteSpace(context.TokenEndpointRequest?.ClientId),
-                    !string.IsNullOrWhiteSpace(secret));
-                return Task.CompletedTask;
-            },
-            OnTokenResponseReceived = context =>
-            {
-                // Store the OIDC scheme name so TokenRefreshCookieEvents knows which IdP to call
-                context.Properties?.Items[TokenRefreshCookieEvents.OidcSchemePropertyKey] = context.Scheme.Name;
-
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
-                    .CreateLogger("AuthEndpoints");
-                logger.LogInformation(
-                    "[OIDC-DIAG] Token response received (idToken={HasIdToken}, accessToken={HasAccessToken}, " +
-                    "refreshToken={HasRefreshToken}, hasError={HasError})",
-                    !string.IsNullOrEmpty(context.TokenEndpointResponse?.IdToken),
-                    !string.IsNullOrEmpty(context.TokenEndpointResponse?.AccessToken),
-                    !string.IsNullOrEmpty(context.TokenEndpointResponse?.RefreshToken),
-                    !string.IsNullOrWhiteSpace(context.TokenEndpointResponse?.Error));
-                return Task.CompletedTask;
-            },
-            OnRemoteFailure = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
-                    .CreateLogger("AuthEndpoints");
-
-                var provider = context.Scheme.Name.ToLowerInvariant();
-                var returnUrl = context.Properties?.RedirectUri ?? "/";
-
-                var diagnostic = _safeDiagnosticsPolicy.CreateDiagnostic(
-                    "oidc_remote_failure",
-                    context.Failure);
-
-                logger.LogError(
-                    "[OIDC-DIAG] Remote authentication failure for {Provider} " +
-                    "(errorCode={ErrorCode}, correlationId={CorrelationId}, failureCategory={FailureCategory})",
-                    provider,
-                    diagnostic.ErrorCode,
-                    diagnostic.CorrelationId,
-                    diagnostic.FailureCategory);
-
-                var redirectUrl = _safeDiagnosticsPolicy.BuildLoginRedirectUrl(
-                    returnUrl,
-                    provider,
-                    diagnostic);
-                context.Response.Redirect(redirectUrl);
-                context.HandleResponse();
-                return Task.CompletedTask;
-            }
-        };
-    }
-
-    /// <summary>
-    /// Creates an HTTP handler for the OIDC backchannel (Keycloak, Infisical, etc.).
-    /// <para>
-    /// Forces IPv4: self-hosted providers often have unreachable AAAA records; .NET's
-    /// Happy Eyeballs tries IPv6 first and hangs before falling back to IPv4.
-    /// </para>
-    /// <para>
-    /// Uses bounded connection pooling (same policy as
-    /// <see cref="Explore.Blazor.Extensions.HttpClientExtensions"/>) to prevent the
-    /// HTTP/1.1 stale-socket race between our pool and the remote server's idle-timeout.
-    /// </para>
-    /// </summary>
-    private static SocketsHttpHandler CreateIpv4Handler()
-    {
-        return new SocketsHttpHandler
-        {
-            ConnectTimeout = TimeSpan.FromSeconds(10),
-            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
-            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
-            KeepAlivePingDelay = TimeSpan.FromSeconds(30),
-            KeepAlivePingTimeout = TimeSpan.FromSeconds(5),
-            KeepAlivePingPolicy = HttpKeepAlivePingPolicy.WithActiveRequests,
-            ConnectCallback = async (context, cancellationToken) =>
-            {
-                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                try
-                {
-                    await socket.ConnectAsync(context.DnsEndPoint, cancellationToken);
-                    return new NetworkStream(socket, ownsSocket: true);
-                }
-                catch
-                {
-                    socket.Dispose();
-                    throw;
-                }
-            }
-        };
     }
 
     public void Dispose()

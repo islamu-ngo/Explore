@@ -30,6 +30,7 @@ public sealed class ApiServiceDiscoveryTests
         services.AddSingleton(Substitute.For<ICircuitTokenStore>());
         services.AddSingleton(Substitute.For<ITenantRouteContextAccessor>());
         services.AddSingleton(Substitute.For<ISetupSecretResolver>());
+        services.AddSingleton(CreateSupportAccessSessionStore());
 
         var environment = Substitute.For<IWebHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Development);
@@ -40,5 +41,13 @@ public sealed class ApiServiceDiscoveryTests
         var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("BffClient");
 
         client.BaseAddress.Should().Be(new Uri("https://localhost:7211/"));
+    }
+
+    private static IBffSupportAccessSessionStore CreateSupportAccessSessionStore()
+    {
+        var store = Substitute.For<IBffSupportAccessSessionStore>();
+        store.ResolveCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(BffSupportAccessStoreResult.Failed("session_not_found")));
+        return store;
     }
 }

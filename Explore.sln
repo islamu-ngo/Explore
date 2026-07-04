@@ -61,6 +61,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Infrastructure.Test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Diagnostic.UnitTests", "Explore.Diagnostic.UnitTests\Explore.Diagnostic.UnitTests.csproj", "{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Event.Web.BffHosting", "Event.Web.BffHosting\Event.Web.BffHosting.csproj", "{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -359,6 +361,18 @@ Global
 		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Release|x64.Build.0 = Release|Any CPU
 		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Release|x86.ActiveCfg = Release|Any CPU
 		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Release|x86.Build.0 = Release|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Debug|x64.Build.0 = Debug|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Debug|x86.Build.0 = Debug|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Release|x64.ActiveCfg = Release|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Release|x64.Build.0 = Release|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Release|x86.ActiveCfg = Release|Any CPU
+		{30D5BC64-5257-45C2-913B-FE3D4CA0FC42}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,19 +1,14 @@
 // ABOUTME: Regression tests for safe auth/OIDC diagnostics emitted by the Blazor BFF.
 // ABOUTME: Ensures browser redirects and auth failure handling never expose secret-derived details.
 
-using System.Reflection;
-using Explore.Blazor.Services;
+using Event.Web.BffHosting.Authentication;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using TUnit.Core;
 
@@ -43,25 +38,22 @@ public sealed class SafeAuthDiagnosticsPolicyTests
     [Test]
     public async Task RemoteFailure_RedirectsWithSafeCodeAndNoSecretDerivedQueryValues()
     {
-        using var manager = CreateManager();
-        var events = GetRemoteFailureEvents(manager);
+        var options = CreateKeycloakOptions();
+        var events = options.Events;
         var services = new ServiceCollection()
             .AddLogging()
             .AddSingleton<ISafeAuthDiagnosticsPolicy, SafeAuthDiagnosticsPolicy>()
             .BuildServiceProvider();
 
         var httpContext = new DefaultHttpContext { RequestServices = services };
-        var scheme = new AuthenticationScheme("keycloak", "Keycloak", typeof(OpenIdConnectHandler));
-        var options = new OpenIdConnectOptions
-        {
-            ClientId = "islamu-event-blazor",
-            ClientSecret = "super-secret-value",
-            Authority = "https://idp.example.test/realms/ISLAMU"
-        };
         var failure = new InvalidOperationException(
             "token exchange failed for clientId=islamu-event-blazor secretLen=18",
             new InvalidOperationException("inner secretPrefix=supe"));
-        var failureContext = new RemoteFailureContext(httpContext, scheme, options, failure);
+        var failureContext = new RemoteFailureContext(
+            httpContext,
+            new("keycloak", "Keycloak", typeof(OpenIdConnectHandler)),
+            options,
+            failure);
 
         await events.RemoteFailure(failureContext);
 
@@ -78,32 +70,15 @@ public sealed class SafeAuthDiagnosticsPolicyTests
         redirectUrl.Should().NotContain("token exchange failed");
     }
 
-    private static DynamicAuthSchemeManager CreateManager()
+    private static OpenIdConnectOptions CreateKeycloakOptions()
     {
-        var tempPath = Path.Combine(Path.GetTempPath(), "explore-auth-diagnostics", Guid.NewGuid().ToString("N"));
-        var dataProtection = DataProtectionProvider.Create(new DirectoryInfo(tempPath));
         var environment = Substitute.For<IWebHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);
+        var factory = new EventBffOidcOptionsFactory(environment, new SafeAuthDiagnosticsPolicy());
 
-        return new DynamicAuthSchemeManager(
-            Substitute.For<IAuthenticationSchemeProvider>(),
-            Substitute.For<IOptionsMonitorCache<OpenIdConnectOptions>>(),
-            Substitute.For<IHttpClientFactory>(),
-            new ConfigurationBuilder().Build(),
-            environment,
-            dataProtection,
-            new SafeAuthDiagnosticsPolicy(),
-            Substitute.For<ILogger<DynamicAuthSchemeManager>>());
-    }
-
-    private static OpenIdConnectEvents GetRemoteFailureEvents(DynamicAuthSchemeManager manager)
-    {
-        var method = typeof(DynamicAuthSchemeManager).GetMethod(
-            "CreateRemoteFailureEvents",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-
-        method.Should().NotBeNull();
-        return method!.Invoke(manager, []) as OpenIdConnectEvents
-            ?? throw new InvalidOperationException("Could not create OIDC events for diagnostics test.");
+        return factory.CreateKeycloakOptions(new EventBffOidcProviderOptions(
+            "https://idp.example.test/realms/ISLAMU",
+            "islamu-event-blazor",
+            "super-secret-value"));
     }
 }
