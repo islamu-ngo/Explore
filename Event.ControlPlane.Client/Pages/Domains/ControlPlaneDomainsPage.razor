@@ -1,0 +1,109 @@
+@* ABOUTME: Shared host-neutral domain overview page for the embedded Event control plane. *@
+@* ABOUTME: Displays domain verification/test affordances only from HAL links. *@
+
+@page "/admin/instance/domains"
+@inject IControlPlaneDomainService DomainService
+
+<PageTitle>Control Plane Domains</PageTitle>
+
+<div class="control-plane-domains">
+    <ControlPlanePageHeader Title="Domains"
+                            Eyebrow="Instance console"
+                            Description="Review public/admin host routing and domain verification affordances.">
+    </ControlPlanePageHeader>
+
+    @if (_result is null)
+    {
+        <ControlPlanePanel Title="Loading domains">
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        </ControlPlanePanel>
+    }
+    else if (!_result.IsSuccess)
+    {
+        <ControlPlanePanel Title="Control-plane API unavailable" Description="Domain data is hidden until the host registers a control-plane API adapter.">
+            <p class="control-plane-domains__message" role="alert">@ProblemMessage</p>
+        </ControlPlanePanel>
+    }
+    else if (Domains.Items.Count == 0)
+    {
+        <ControlPlanePanel Title="No domains reported" Description="The control-plane API did not return public or admin domain records.">
+            <p class="control-plane-domains__message">Verification controls will appear only when advertised by HAL.</p>
+        </ControlPlanePanel>
+    }
+    else
+    {
+        <ControlPlanePanel Title="Domain inventory" Description="@DomainCountLabel">
+            <div class="control-plane-domains__list" role="list">
+                @foreach (var domain in Domains.Items)
+                {
+                    <article class="control-plane-domains__item" role="listitem" @key="domain.Host">
+                        <div class="control-plane-domains__item-main">
+                            <h2 class="control-plane-domains__host">@domain.Host</h2>
+                            <dl class="control-plane-domains__facts">
+                                <div>
+                                    <dt>Purpose</dt>
+                                    <dd>@domain.Purpose</dd>
+                                </div>
+                                <div>
+                                    <dt>Status</dt>
+                                    <dd>@domain.Status</dd>
+                                </div>
+                                <div>
+                                    <dt>Target</dt>
+                                    <dd>@DisplayValue(domain.Target)</dd>
+                                </div>
+                            </dl>
+                            @if (!string.IsNullOrWhiteSpace(domain.VerificationMessage))
+                            {
+                                <p class="control-plane-domains__verification">@domain.VerificationMessage</p>
+                            }
+                        </div>
+
+                        @if (HasDomainAction(domain))
+                        {
+                            <div class="control-plane-domains__actions" aria-label="@($"Domain actions for {domain.Host}")">
+                                @if (ControlPlaneHal.HasLink(domain, ControlPlaneLinkRelations.Verify))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Verify {domain.Host}")">Verify</ControlPlaneActionButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(domain, ControlPlaneLinkRelations.Test))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Test {domain.Host}")">Test</ControlPlaneActionButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(domain, ControlPlaneLinkRelations.Retry))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Retry {domain.Host}")">Retry</ControlPlaneActionButton>
+                                }
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        </ControlPlanePanel>
+    }
+</div>
+
+@code {
+    private ControlPlaneResult<ControlPlaneDomainList>? _result;
+
+    private ControlPlaneDomainList Domains => _result?.Value ?? ControlPlaneDomainList.Empty();
+
+    private string ProblemMessage => _result?.Problem.Message ?? "The control-plane API adapter is not configured for this host.";
+
+    private string DomainCountLabel => Domains.Items.Count == 1
+        ? "1 domain returned by the control-plane API."
+        : $"{Domains.Items.Count} domains returned by the control-plane API.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _result = await DomainService.GetDomainsAsync();
+    }
+
+    private static bool HasDomainAction(ControlPlaneDomainSummary domain) =>
+        ControlPlaneHal.HasLink(domain, ControlPlaneLinkRelations.Verify)
+        || ControlPlaneHal.HasLink(domain, ControlPlaneLinkRelations.Test)
+        || ControlPlaneHal.HasLink(domain, ControlPlaneLinkRelations.Retry);
+
+    private static string DisplayValue(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Not configured" : value;
+}

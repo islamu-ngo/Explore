@@ -1,0 +1,131 @@
+@* ABOUTME: Shared host-neutral tenant list page for the embedded Event control plane. *@
+@* ABOUTME: Renders tenant actions only when the API supplies matching HAL links. *@
+
+@page "/admin/instance/tenants"
+@inject IControlPlaneTenantService TenantService
+
+<PageTitle>Control Plane Tenants</PageTitle>
+
+<div class="control-plane-tenants">
+    <ControlPlanePageHeader Title="Tenants"
+                            Eyebrow="Instance console"
+                            Description="Review tenant state and lifecycle affordances exposed by the control-plane API.">
+        <ActionsContent>
+            @if (CanCreateTenant)
+            {
+                <ControlPlaneActionButton Color="Color.Primary"
+                                          Variant="Variant.Filled"
+                                          Disabled="true"
+                                          StartIcon="@Icons.Material.Filled.Add"
+                                          AriaLabel="Create tenant">
+                    Create tenant
+                </ControlPlaneActionButton>
+            }
+        </ActionsContent>
+    </ControlPlanePageHeader>
+
+    @if (_result is null)
+    {
+        <ControlPlanePanel Title="Loading tenants">
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        </ControlPlanePanel>
+    }
+    else if (!_result.IsSuccess)
+    {
+        <ControlPlanePanel Title="Control-plane API unavailable" Description="Tenant data is hidden until the host registers a control-plane API adapter.">
+            <p class="control-plane-tenants__message" role="alert">@ProblemMessage</p>
+        </ControlPlanePanel>
+    }
+    else if (Tenants.Items.Count == 0)
+    {
+        <ControlPlanePanel Title="No tenants yet" Description="The control-plane API did not return any tenants for this instance.">
+            <p class="control-plane-tenants__message">Create affordances will appear here only when the API advertises them.</p>
+        </ControlPlanePanel>
+    }
+    else
+    {
+        <ControlPlanePanel Title="Tenant inventory" Description="@TenantCountLabel">
+            <div class="control-plane-tenants__list" role="list">
+                @foreach (var tenant in Tenants.Items)
+                {
+                    <article class="control-plane-tenants__item" role="listitem" @key="tenant.Id">
+                        <div class="control-plane-tenants__item-main">
+                            <h2 class="control-plane-tenants__name">@tenant.Name</h2>
+                            <dl class="control-plane-tenants__facts">
+                                <div>
+                                    <dt>Slug</dt>
+                                    <dd>@tenant.Slug</dd>
+                                </div>
+                                <div>
+                                    <dt>Status</dt>
+                                    <dd>@tenant.Status</dd>
+                                </div>
+                                <div>
+                                    <dt>Primary host</dt>
+                                    <dd>@DisplayValue(tenant.PrimaryHost)</dd>
+                                </div>
+                                <div>
+                                    <dt>Storage</dt>
+                                    <dd>@FormatStorage(tenant.StorageBytes)</dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        @if (HasTenantAction(tenant))
+                        {
+                            <div class="control-plane-tenants__actions" aria-label="@($"Tenant actions for {tenant.Name}")">
+                                @if (ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Provision))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Provision {tenant.Name}")">Provision</ControlPlaneActionButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Suspend))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Suspend {tenant.Name}")">Suspend</ControlPlaneActionButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Archive))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Archive {tenant.Name}")">Archive</ControlPlaneActionButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Purge))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Color="Color.Error" Disabled="true" AriaLabel="@($"Schedule purge for {tenant.Name}")">Schedule purge</ControlPlaneActionButton>
+                                }
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        </ControlPlanePanel>
+    }
+</div>
+
+@code {
+    private ControlPlaneResult<ControlPlaneTenantList>? _result;
+
+    private bool CanCreateTenant => ControlPlaneHal.HasLink(_result?.Value, ControlPlaneLinkRelations.Create);
+
+    private ControlPlaneTenantList Tenants => _result?.Value ?? ControlPlaneTenantList.Empty();
+
+    private string ProblemMessage => _result?.Problem.Message ?? "The control-plane API adapter is not configured for this host.";
+
+    private string TenantCountLabel => Tenants.TotalCount == 1
+        ? "1 tenant returned by the control-plane API."
+        : $"{Tenants.TotalCount} tenants returned by the control-plane API.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _result = await TenantService.GetTenantsAsync();
+    }
+
+    private static bool HasTenantAction(ControlPlaneTenantSummary tenant) =>
+        ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Provision)
+        || ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Suspend)
+        || ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Archive)
+        || ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Purge);
+
+    private static string DisplayValue(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Not configured" : value;
+
+    private static string FormatStorage(long? bytes) =>
+        bytes is null ? "Not reported" : $"{bytes.Value:N0} bytes";
+}

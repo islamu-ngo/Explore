@@ -1,0 +1,84 @@
+@* ABOUTME: Accessible section panel primitive for shared Event control-plane pages. *@
+@* ABOUTME: Uses plain semantic markup and design tokens instead of public web wrapper dependencies. *@
+
+<section class="@PanelClass"
+         aria-labelledby="@TitleElementId"
+         @attributes="AdditionalAttributes">
+    @if (HasHeader)
+    {
+        <div class="control-plane-panel__header">
+            <div class="control-plane-panel__heading">
+                @if (!string.IsNullOrWhiteSpace(Title))
+                {
+                    <h2 id="@TitleElementId" class="control-plane-panel__title">@Title</h2>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Description))
+                {
+                    <p class="control-plane-panel__description">@Description</p>
+                }
+
+                @if (HeaderContent is not null)
+                {
+                    <div class="control-plane-panel__meta">
+                        @HeaderContent
+                    </div>
+                }
+            </div>
+
+            @if (ActionsContent is not null)
+            {
+                <div class="control-plane-panel__actions">
+                    @ActionsContent
+                </div>
+            }
+        </div>
+    }
+
+    <div class="control-plane-panel__body">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    private readonly string _titleElementId = $"control-plane-panel-{Guid.NewGuid():N}";
+
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? ActionsContent { get; set; }
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool HasHeader =>
+        !string.IsNullOrWhiteSpace(Title)
+        || !string.IsNullOrWhiteSpace(Description)
+        || HeaderContent is not null
+        || ActionsContent is not null;
+
+    private string? TitleElementId =>
+        string.IsNullOrWhiteSpace(Title) ? null : _titleElementId;
+
+    private string PanelClass
+    {
+        get
+        {
+            var classes = new List<string> { "control-plane-panel" };
+            if (Compact)
+            {
+                classes.Add("control-plane-panel--compact");
+            }
+
+            if (!string.IsNullOrWhiteSpace(Class))
+            {
+                classes.Add(Class);
+            }
+
+            return string.Join(' ', classes);
+        }
+    }
+}

@@ -1,0 +1,96 @@
+@* ABOUTME: Shared control-plane overview page for embedded and separate Blazor hosts. *@
+@* ABOUTME: Reads through host-provided services and fails closed when no API adapter is registered. *@
+@page "/admin/instance"
+@inject IControlPlaneOverviewService OverviewService
+
+<PageTitle>Event Control Plane</PageTitle>
+
+<main class="control-plane-overview">
+    <ControlPlanePageHeader Title="Event Control Plane"
+                            Eyebrow="Instance console"
+                            Description="Instance operations for multi-tenant deployments." />
+
+    @if (_loading)
+    {
+        <ControlPlanePanel Title="Loading"
+                           Description="Checking control-plane readiness."
+                           aria-live="polite">
+            <p class="control-plane-overview__muted">The control-plane adapter is being queried.</p>
+        </ControlPlanePanel>
+    }
+    else if (_overview?.IsSuccess == true && _overview.Value is { } overview)
+    {
+        <section class="control-plane-overview__summary" aria-label="Instance summary">
+            <div class="control-plane-overview__summary-item">
+                <span class="control-plane-overview__label">Deployment mode</span>
+                <strong class="control-plane-overview__value">@overview.DeploymentMode</strong>
+            </div>
+            <div class="control-plane-overview__summary-item">
+                <span class="control-plane-overview__label">Public host</span>
+                <strong class="control-plane-overview__value">@DisplayValue(overview.PublicHost)</strong>
+            </div>
+            <div class="control-plane-overview__summary-item">
+                <span class="control-plane-overview__label">Admin host</span>
+                <strong class="control-plane-overview__value">@DisplayValue(overview.AdminHost)</strong>
+            </div>
+            <div class="control-plane-overview__summary-item">
+                <span class="control-plane-overview__label">Version</span>
+                <strong class="control-plane-overview__value">@DisplayValue(overview.Version)</strong>
+            </div>
+        </section>
+
+        @if (overview.Warnings.Count > 0)
+        {
+            <ControlPlanePanel Title="Warnings"
+                               Description="Items that need instance-operator attention.">
+                <ul class="control-plane-overview__warning-list">
+                    @foreach (var warning in overview.Warnings)
+                    {
+                        <li class="control-plane-overview__warning control-plane-overview__warning--@warning.Severity">
+                            <strong>@warning.Code</strong>
+                            <span>@warning.Message</span>
+                        </li>
+                    }
+                </ul>
+            </ControlPlanePanel>
+        }
+
+        <section class="control-plane-overview__grid" aria-label="Operational status">
+            @foreach (var card in overview.StatusCards)
+            {
+                <article class="control-plane-overview__card control-plane-overview__card--@card.Severity">
+                    <span class="control-plane-overview__kicker">@card.Key</span>
+                    <h2 class="control-plane-overview__card-title">@card.Label</h2>
+                    <p class="control-plane-overview__card-value">@card.Value</p>
+                    @if (!string.IsNullOrWhiteSpace(card.Detail))
+                    {
+                        <p class="control-plane-overview__muted">@card.Detail</p>
+                    }
+                </article>
+            }
+        </section>
+    }
+    else
+    {
+        <ControlPlanePanel Title="Control-plane API unavailable"
+                           Description="@(_overview?.Problem?.Message ?? "The host is ready, but the control-plane API adapter is not configured yet.")">
+            <p class="control-plane-overview__muted">
+                This page intentionally fails closed until the embedding host registers a server-authoritative adapter.
+            </p>
+        </ControlPlanePanel>
+    }
+</main>
+
+@code {
+    private ControlPlaneResult<ControlPlaneOverview>? _overview;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _overview = await OverviewService.GetOverviewAsync();
+        _loading = false;
+    }
+
+    private static string DisplayValue(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Not configured" : value;
+}
