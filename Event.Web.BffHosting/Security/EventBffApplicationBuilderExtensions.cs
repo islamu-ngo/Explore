@@ -1,0 +1,95 @@
+// ABOUTME: Provides shared forwarded-header, browser security header, and antiforgery token middleware.
+// ABOUTME: Lets BFF hosts keep the same browser boundary without depending on a specific UI app.
+
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Net.Http.Headers;
+
+namespace Event.Web.BffHosting.Security;
+
+public static class EventBffApplicationBuilderExtensions
+{
+    private const string ContentSecurityPolicy =
+        "default-src 'self'; " +
+        "img-src 'self' data: https: blob:; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self' 'wasm-unsafe-eval'; " +
+        "connect-src 'self' https: http: ws: wss:; " +
+        "frame-ancestors 'none'; " +
+        "base-uri 'self'; " +
+        "object-src 'none'";
+
+    public static WebApplication UseEventBffForwardedHeaders(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        var options = new ForwardedHeadersOptions
+        {
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                | ForwardedHeaders.XForwardedProto
+                | ForwardedHeaders.XForwardedHost
+        };
+
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+
+        app.UseForwardedHeaders(options);
+        return app;
+    }
+
+    public static WebApplication UseEventBffSecurityHeaders(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        app.Use(async (context, next) =>
+        {
+            context.Response.OnStarting(() =>
+            {
+                var headers = context.Response.Headers;
+                headers[HeaderNames.ContentSecurityPolicy] = ContentSecurityPolicy;
+                headers[HeaderNames.XFrameOptions] = "DENY";
+                headers[HeaderNames.XContentTypeOptions] = "nosniff";
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+                return Task.CompletedTask;
+            });
+
+            await next();
+        });
+
+        return app;
+    }
+
+    public static WebApplication UseEventBffAntiforgeryToken(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        var antiforgery = app.Services.GetRequiredService<IAntiforgery>();
+        var secureCookie = !app.Environment.IsDevelopment();
+
+        app.Use(async (context, next) =>
+        {
+            if (HttpMethods.IsGet(context.Request.Method))
+            {
+                var tokens = antiforgery.GetAndStoreTokens(context);
+                if (!string.IsNullOrEmpty(tokens.RequestToken))
+                {
+                    context.Response.Cookies.Append("XSRF-TOKEN", tokens.RequestToken, new CookieOptions
+                    {
+                        HttpOnly = false,
+                        Secure = secureCookie,
+                        SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
+                        Path = "/"
+                    });
+                }
+            }
+
+            await next();
+        });
+
+        return app;
+    }
+}
