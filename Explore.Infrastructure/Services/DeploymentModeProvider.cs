@@ -51,7 +51,7 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
         using var scope = _scopeFactory.CreateScope();
         var repo = scope.ServiceProvider
             .GetRequiredService<IInstanceBootstrapStateRepository>();
-        var bootstrap = await repo.GetCurrent();
+        var bootstrap = await repo.GetCurrent(ct);
 
         // Pre-onboarding (fresh install): InstanceBootstrapState is null or incomplete.
         // Return SingleTenant so ApiTenantResolutionMiddleware falls back to the default tenant

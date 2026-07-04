@@ -113,7 +113,7 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
             {
                 using var scope = _scopeFactory.CreateScope();
                 var repository = scope.ServiceProvider.GetRequiredService<IInstanceBootstrapStateRepository>();
-                var bootstrapState = await repository.GetCurrent();
+                var bootstrapState = await repository.GetCurrent(cancellationToken);
                 _isBootstrapComplete = bootstrapState?.IsCompleted == true;
             }
             catch
