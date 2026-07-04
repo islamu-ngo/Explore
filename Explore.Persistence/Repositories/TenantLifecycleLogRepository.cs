@@ -16,7 +16,10 @@ public class TenantLifecycleLogRepository : GenericRepository<TenantLifecycleLog
         _dbContext = dbContext;
     }
 
-    public async Task<List<TenantLifecycleLog>> GetByTenantIdAsync(Guid tenantId, int limit = 50)
+    public async Task<List<TenantLifecycleLog>> GetByTenantIdAsync(
+        Guid tenantId,
+        int limit = 50,
+        CancellationToken cancellationToken = default)
     {
         return await _dbContext.TenantLifecycleLogs
             .AsNoTracking()
@@ -25,6 +28,6 @@ public class TenantLifecycleLogRepository : GenericRepository<TenantLifecycleLog
             .Where(l => l.TenantId == tenantId)
             .OrderByDescending(l => l.TransitionedAt)
             .Take(limit)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 }

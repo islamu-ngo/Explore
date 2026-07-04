@@ -15,5 +15,8 @@ public interface ITenantLifecycleLogRepository : IGenericRepository<TenantLifecy
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="limit">Maximum number of entries to return (default 50).</param>
-    Task<List<TenantLifecycleLog>> GetByTenantIdAsync(Guid tenantId, int limit = 50);
+    Task<List<TenantLifecycleLog>> GetByTenantIdAsync(
+        Guid tenantId,
+        int limit = 50,
+        CancellationToken cancellationToken = default);
 }

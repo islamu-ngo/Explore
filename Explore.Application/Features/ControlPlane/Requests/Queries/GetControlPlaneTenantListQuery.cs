@@ -1,0 +1,21 @@
+// ABOUTME: Secured query for the multi-tenant control-plane tenant list.
+// ABOUTME: Uses instance-setting authorization so only instance operators can inspect tenant fleet state.
+
+using Explore.Application.Authorization;
+using Explore.Application.DTOs.ControlPlane;
+using MediatR;
+
+namespace Explore.Application.Features.ControlPlane.Requests.Queries;
+
+[AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.View)]
+public sealed class GetControlPlaneTenantListQuery : IRequest<IReadOnlyList<ControlPlaneTenantListItemDto>>, ISecureRequest
+{
+    public const string SettingKey = "control-plane.tenants";
+
+    string? ISecureRequest.ResourceId => SettingKey;
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["settingKey"] = SettingKey
+    };
+}
