@@ -21,6 +21,7 @@ using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
 
+[NotInParallel]
 public sealed class CustomPropertyProjectionAdminControllerTests
 {
     [Test]
@@ -120,7 +121,10 @@ public sealed class CustomPropertyProjectionAdminControllerTests
 
     private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
     {
-        var factory = new AuthenticatedWebApplicationFactory();
+        var factory = new AuthenticatedWebApplicationFactory
+        {
+            AuthorizationProviderOverride = new StubAuthorizationProvider()
+        };
 
         return factory.WithWebHostBuilder(builder =>
         {
