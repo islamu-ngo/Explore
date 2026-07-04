@@ -211,6 +211,8 @@ public static class DatabaseSeeder
         await AddMissingSeedRowsAsync(context, SeedData.IslamicEventDays, day => day.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionGroups, group => group.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicEventSessions, session => session.Id, ct);
+        await EnsureIslamicEventSessionStatusesAsync(context, ct);
+        await EnsureIslamicEventScheduleSummariesAsync(context, ct);
         await AddMissingSessionAspectsAsync(context, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionGroupSessions, session => session.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicEventAgendaItems, item => item.Id, ct);
@@ -221,6 +223,64 @@ public static class DatabaseSeeder
         await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionTags, tag => tag.Id, ct);
         await AddMissingSessionLanguagesAsync(context, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionSpeakers, speaker => speaker.Id, ct);
+    }
+
+    private static async Task EnsureIslamicEventSessionStatusesAsync(
+        ExploreDbContext context,
+        CancellationToken ct)
+    {
+        var seedSessionIds = SeedData.IslamicEventSessions.Select(session => session.Id).ToArray();
+
+        if (seedSessionIds.Length == 0)
+        {
+            return;
+        }
+
+        var sessions = await context.EventSessions
+            .IgnoreQueryFilters()
+            .Where(session => seedSessionIds.Contains(session.Id))
+            .Where(session => session.EventSessionStatusId != (int)EventSessionStatusEnum.Published)
+            .ToListAsync(ct);
+
+        foreach (var session in sessions)
+        {
+            session.EventSessionStatusId = (int)EventSessionStatusEnum.Published;
+        }
+
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+    }
+
+    private static async Task EnsureIslamicEventScheduleSummariesAsync(
+        ExploreDbContext context,
+        CancellationToken ct)
+    {
+        var seedEvents = SeedData.IslamicEvents.ToDictionary(@event => @event.Id);
+        var seedEventIds = seedEvents.Keys.ToArray();
+
+        if (seedEventIds.Length == 0)
+        {
+            return;
+        }
+
+        var existingEvents = await context.Events
+            .IgnoreQueryFilters()
+            .Where(@event => seedEventIds.Contains(@event.Id))
+            .ToListAsync(ct);
+
+        foreach (var existingEvent in existingEvents)
+        {
+            var seedEvent = seedEvents[existingEvent.Id];
+            existingEvent.SessionCount = seedEvent.SessionCount;
+            existingEvent.FirstSessionDate = seedEvent.FirstSessionDate;
+            existingEvent.LastSessionDate = seedEvent.LastSessionDate;
+            existingEvent.FirstSessionStartUtc = seedEvent.FirstSessionStartUtc;
+            existingEvent.LastSessionStartUtc = seedEvent.LastSessionStartUtc;
+            existingEvent.LastSessionEndUtc = seedEvent.LastSessionEndUtc;
+        }
+
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
     }
 
     private static async Task AddMissingSeedRowsAsync<T>(
@@ -384,10 +444,14 @@ public static class DatabaseSeeder
         if (hostSetting is null)
             return;
 
+        var forceLocalAspireRefresh = IsFullLocalAspireMode(configuration);
         var currentHost = hostSetting.Value?.Trim('"');
-        if (!string.IsNullOrWhiteSpace(currentHost)
+        if (!forceLocalAspireRefresh
+            && !string.IsNullOrWhiteSpace(currentHost)
             && !currentHost.Equals("mailpit.openislamu.org", StringComparison.OrdinalIgnoreCase))
+        {
             return;
+        }
 
         var now = DateTime.UtcNow;
         var host = ReadEnvironmentValue(configuration, "localhost", "MAIL_SMTP_HOST", "SMTP_HOST", "Smtp:Host");
@@ -403,6 +467,25 @@ public static class DatabaseSeeder
         await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.FromName, SerializeString(fromName), now, ct);
 
         await context.SaveChangesAsync(ct);
+    }
+
+    private static bool IsFullLocalAspireMode(IConfiguration? configuration)
+    {
+        var value = Environment.GetEnvironmentVariable("ISLAMU_ASPIRE_MODE")
+            ?? configuration?["ISLAMU_ASPIRE_MODE"];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Trim()
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        return normalized.Equals("full", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("localfull", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("fulllocal", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ReadEnvironmentValue(IConfiguration? configuration, string defaultValue, params string[] keys)

@@ -77,11 +77,17 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
         {
             return await ExecuteInSerializableTransactionAsync(async () =>
             {
+                await ValidateChildrenBelongToIntentAsync(intent, children, cancellationToken);
+
                 var waitlistedSessionIds = new List<Guid>();
 
                 foreach (var child in children)
                 {
-                    var reserved = await TryReserveSessionCapacityAsync(child.EventSessionId, cancellationToken);
+                    var reserved = await TryReserveSessionCapacityAsync(
+                        intent.TenantId,
+                        intent.EventId,
+                        child.EventSessionId,
+                        cancellationToken);
                     child.ApprovalStatusId = reserved ? approvedStatusId : waitlistedStatusId;
 
                     if (!reserved)
@@ -191,6 +197,50 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
         });
     }
 
+    private async Task ValidateChildrenBelongToIntentAsync(
+        EventRegistrationIntent intent,
+        IReadOnlyList<EventRegistration> children,
+        CancellationToken cancellationToken)
+    {
+        var mismatchedChild = children.FirstOrDefault(child =>
+            child.TenantId != intent.TenantId || child.EventId != intent.EventId);
+
+        if (mismatchedChild is not null)
+        {
+            throw new InvalidOperationException(
+                "Event registration child does not belong to the registration intent tenant and event.");
+        }
+
+        var requestedSessionIds = children
+            .Select(child => child.EventSessionId)
+            .Distinct()
+            .ToArray();
+
+        if (requestedSessionIds.Length == 0)
+        {
+            return;
+        }
+
+        var validSessionIds = await _dbContext.EventSessions
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(session => session.TenantId == intent.TenantId
+                && session.EventId == intent.EventId
+                && requestedSessionIds.Contains(session.Id))
+            .Select(session => session.Id)
+            .ToListAsync(cancellationToken);
+
+        var validSessionIdSet = validSessionIds.ToHashSet();
+        if (validSessionIdSet.Count == requestedSessionIds.Length)
+        {
+            return;
+        }
+
+        var invalidSessionId = requestedSessionIds.First(sessionId => !validSessionIdSet.Contains(sessionId));
+        throw new InvalidOperationException(
+            $"Event session {invalidSessionId} does not belong to the registration intent tenant and event.");
+    }
+
     private static async Task RollbackIfPendingAsync(
         IDbContextTransaction transaction,
         CancellationToken cancellationToken)
@@ -211,12 +261,18 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             && ex.Message.Contains("no longer usable", StringComparison.Ordinal);
     }
 
-    private async Task<bool> TryReserveSessionCapacityAsync(Guid sessionId, CancellationToken cancellationToken)
+    private async Task<bool> TryReserveSessionCapacityAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid sessionId,
+        CancellationToken cancellationToken)
     {
         var affectedRows = await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
             UPDATE event_sessions
             SET current_audience_attendees = COALESCE(current_audience_attendees, 0) + 1
             WHERE id = {sessionId}
+              AND tenant_id = {tenantId}
+              AND event_id = {eventId}
               AND is_deleted = false
               AND (
                   max_audience_attendees IS NULL

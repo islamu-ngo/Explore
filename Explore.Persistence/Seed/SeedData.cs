@@ -1106,6 +1106,7 @@ public static class SeedData
     {
         var firstSession = spec.Sessions.Min(session => session.StartUtc);
         var lastSession = spec.Sessions.Max(session => session.StartUtc);
+        var lastSessionEnd = spec.Sessions.Max(session => session.EndUtc);
 
         return new Event
         {
@@ -1138,6 +1139,7 @@ public static class SeedData
             LastSessionDate = spec.Days.Max(day => day.LocalDate),
             FirstSessionStartUtc = firstSession,
             LastSessionStartUtc = lastSession,
+            LastSessionEndUtc = lastSessionEnd,
             Timezone = BrusselsTimezone,
             EventTimeZoneId = BrusselsTimezone,
             RegistrationPolicyId = spec.IsRegistrationRequired ? 1 : null,
@@ -1178,6 +1180,7 @@ public static class SeedData
             Title = session.Title,
             Slug = session.Slug,
             Description = session.Description,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             EventSessionKindId = (int)session.Kind,
             TenantId = SeedIds.DefaultTenantId,
             Tenant = null!,

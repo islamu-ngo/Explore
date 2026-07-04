@@ -56,6 +56,66 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
     }
 
     [Test]
+    public async Task SeedAsync_InDevelopment_RepairsLaunchCatalogDiscoveryFieldsAcrossStartups()
+    {
+        await fixture.ResetAsync();
+
+        await using (var context = fixture.CreateDbContext())
+        {
+            await DatabaseSeeder.SeedAsync(context, DevelopmentEnvironment);
+        }
+
+        await using (var staleContext = fixture.CreateDbContext())
+        {
+            var catalogEvents = await staleContext.Events
+                .IgnoreQueryFilters()
+                .Where(e => SeedIds.IslamicEventCatalogIds.Contains(e.Id))
+                .ToListAsync();
+            foreach (var catalogEvent in catalogEvents)
+            {
+                catalogEvent.LastSessionEndUtc = null;
+            }
+
+            var catalogSessions = await staleContext.EventSessions
+                .IgnoreQueryFilters()
+                .Where(session => SeedIds.IslamicEventCatalogIds.Contains(session.EventId))
+                .ToListAsync();
+            foreach (var catalogSession in catalogSessions)
+            {
+                catalogSession.EventSessionStatusId = (int)EventSessionStatusEnum.Draft;
+            }
+
+            await staleContext.SaveChangesAsync();
+        }
+
+        await using (var context = fixture.CreateDbContext())
+        {
+            await DatabaseSeeder.SeedAsync(context, DevelopmentEnvironment);
+        }
+
+        await using var verifyContext = fixture.CreateDbContext();
+        var repairedEvents = await verifyContext.Events
+            .IgnoreQueryFilters()
+            .Where(e => SeedIds.IslamicEventCatalogIds.Contains(e.Id))
+            .Select(e => new { e.Id, e.FirstSessionStartUtc, e.LastSessionEndUtc })
+            .ToListAsync();
+        var repairedSessions = await verifyContext.EventSessions
+            .IgnoreQueryFilters()
+            .Where(session => SeedIds.IslamicEventCatalogIds.Contains(session.EventId))
+            .Select(session => new { session.Id, session.EventSessionStatusId })
+            .ToListAsync();
+
+        await Assert.That(repairedEvents.Count).IsEqualTo(SeedIds.IslamicEventCatalogIds.Length);
+        await Assert.That(repairedSessions.Count).IsEqualTo(SeedData.IslamicEventSessions.Count);
+        await Assert.That(repairedEvents.All(e =>
+            e.FirstSessionStartUtc.HasValue
+            && e.LastSessionEndUtc.HasValue
+            && e.LastSessionEndUtc.Value > e.FirstSessionStartUtc.Value)).IsTrue();
+        await Assert.That(repairedSessions.All(session =>
+            session.EventSessionStatusId == (int)EventSessionStatusEnum.Published)).IsTrue();
+    }
+
+    [Test]
     public async Task SeedAsync_InDevelopment_PreservesRegistrationAndConsentAcrossStartups()
     {
         await fixture.ResetAsync();

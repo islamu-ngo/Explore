@@ -34,6 +34,10 @@ public partial class ExploreDbContext
                         if (auditable.UpdatedAt == null || auditable.UpdatedAt == default(DateTime))
                         {
                             auditable.UpdatedAt = now;
+                        }
+
+                        if (userId.HasValue)
+                        {
                             auditable.UpdatedBy = userId;
                         }
                         break;

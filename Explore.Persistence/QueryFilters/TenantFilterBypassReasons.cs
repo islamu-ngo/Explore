@@ -52,4 +52,7 @@ public static class TenantFilterBypassReasons
 
     public const string WebhookTenantOperation =
         "Webhook tenant operation bypasses ambient context only after applying an explicit tenant predicate.";
+
+    public const string NotificationFanoutWorkerCrossTenantQueue =
+        "Notification fanout worker polls durable fanout runs across tenants using explicit status and batch-size predicates.";
 }

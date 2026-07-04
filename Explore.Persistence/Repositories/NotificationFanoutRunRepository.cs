@@ -49,7 +49,13 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
         int pageSize,
         CancellationToken cancellationToken = default)
     {
+        if (pageSize <= 0)
+        {
+            return [];
+        }
+
         return await _dbContext.NotificationFanoutRuns
+            .IgnoreTenantFilter(TenantFilterBypassReasons.NotificationFanoutWorkerCrossTenantQueue)
             .AsNoTracking()
             .Where(run => run.Status == "pending")
             .OrderBy(run => run.CreatedAt)

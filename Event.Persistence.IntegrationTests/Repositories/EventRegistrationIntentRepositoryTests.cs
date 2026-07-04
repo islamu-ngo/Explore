@@ -264,6 +264,53 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         await Assert.That(intentCount).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task CreateWithChildrenAndCapacityAsync_WhenChildSessionBelongsToDifferentEvent_RejectsBeforeCapacityCounter()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
+        var otherScenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
+        await using var registrationContext = CreateRetryingDbContext();
+        var repository = new EventRegistrationIntentRepository(registrationContext);
+        var userId = scenario.UserIds.Single();
+        var intent = NewIntent(scenario, userId, RegistrationScopeEnum.SessionSelection);
+        var crossEventChild = NewRegistrationChild(scenario, userId, otherScenario.SessionId);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await repository.CreateWithChildrenAndCapacityAsync(
+                intent,
+                [crossEventChild],
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                CancellationToken.None);
+        });
+
+        await using var verifyContext = fixture.CreateDbContext();
+        var currentAttendees = await verifyContext.EventSessions
+            .Where(session => session.Id == scenario.SessionId)
+            .Select(session => session.CurrentAudienceAttendees)
+            .SingleAsync();
+        var otherCurrentAttendees = await verifyContext.EventSessions
+            .Where(session => session.Id == otherScenario.SessionId)
+            .Select(session => session.CurrentAudienceAttendees)
+            .SingleAsync();
+        var registrationCount = await verifyContext.EventRegistrations
+            .IgnoreQueryFilters()
+            .CountAsync(registration => registration.EventId == scenario.EventId
+                || registration.EventSessionId == otherScenario.SessionId);
+        var intentCount = await verifyContext.EventRegistrationIntents
+            .IgnoreQueryFilters()
+            .CountAsync(registrationIntent => registrationIntent.EventId == scenario.EventId);
+
+        await Assert.That(exception.Message).Contains("does not belong to the registration intent tenant and event");
+        await Assert.That(currentAttendees).IsEqualTo(0);
+        await Assert.That(otherCurrentAttendees).IsEqualTo(0);
+        await Assert.That(registrationCount).IsEqualTo(0);
+        await Assert.That(intentCount).IsEqualTo(0);
+    }
+
     private async Task<EventRegistrationIntentCreationResult> CreateRegistrationAsync(
         RegistrationScenario scenario,
         Guid userId,
