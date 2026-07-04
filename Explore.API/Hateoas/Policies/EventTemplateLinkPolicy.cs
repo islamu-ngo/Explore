@@ -53,6 +53,16 @@ public sealed class EventTemplateCollectionLinkPolicy : ICollectionLinkPolicy<Ev
         yield return LinkDefinition.Self(
             RouteNames.GetEventTemplateById,
             new { id = dto.Id });
+
+        yield return LinkDefinition.Edit(
+            RouteNames.UpdateEventTemplate,
+            new { id = dto.Id })
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventTemplateList, dto);
+
+        yield return LinkDefinition.Delete(
+            RouteNames.DeleteEventTemplate,
+            new { id = dto.Id })
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.EventTemplateList, dto);
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)

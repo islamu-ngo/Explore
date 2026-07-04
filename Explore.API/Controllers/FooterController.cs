@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Footer;
 using Explore.Application.Features.Footer.Requests.Commands;
 using Explore.Application.Features.Footer.Requests.Queries;
@@ -42,10 +43,12 @@ public class FooterController : ExploreControllerBase
         "Tenant footer settings update failed.");
 
     private readonly IMediator _mediator;
+    private readonly ITenantContext _tenantContext;
 
-    public FooterController(IMediator mediator)
+    public FooterController(IMediator mediator, ITenantContext tenantContext)
     {
         _mediator = mediator;
+        _tenantContext = tenantContext;
     }
 
     // ── Public / tenant-read endpoints ──────────────────────────────────────
@@ -98,6 +101,7 @@ public class FooterController : ExploreControllerBase
         var result = await _mediator.Send(new CreateFooterLinkGroupCommand
         {
             UserId = userId,
+            TenantId = _tenantContext.TenantId,
             Title = request.Title,
         }, cancellationToken);
 
@@ -123,6 +127,7 @@ public class FooterController : ExploreControllerBase
         var result = await _mediator.Send(new UpdateFooterLinkGroupCommand
         {
             UserId = userId,
+            TenantId = _tenantContext.TenantId,
             GroupId = id,
             Title = request.Title,
             IsActive = request.IsActive,
@@ -145,7 +150,12 @@ public class FooterController : ExploreControllerBase
         {
             return unauthorized;
         }
-        var result = await _mediator.Send(new DeleteFooterLinkGroupCommand { UserId = userId, GroupId = id }, cancellationToken);
+        var result = await _mediator.Send(new DeleteFooterLinkGroupCommand
+        {
+            UserId = userId,
+            TenantId = _tenantContext.TenantId,
+            GroupId = id
+        }, cancellationToken);
         return Ok(result);
     }
 
@@ -164,6 +174,7 @@ public class FooterController : ExploreControllerBase
         var result = await _mediator.Send(new ReorderFooterLinkGroupsCommand
         {
             UserId = userId,
+            TenantId = _tenantContext.TenantId,
             OrderedGroupIds = orderedGroupIds,
         }, cancellationToken);
 
@@ -190,6 +201,7 @@ public class FooterController : ExploreControllerBase
         var result = await _mediator.Send(new CreateFooterLinkCommand
         {
             UserId = userId,
+            TenantId = _tenantContext.TenantId,
             GroupId = groupId,
             Label = request.Label,
             Url = request.Url,
@@ -218,6 +230,7 @@ public class FooterController : ExploreControllerBase
         var result = await _mediator.Send(new UpdateFooterLinkCommand
         {
             UserId = userId,
+            TenantId = _tenantContext.TenantId,
             LinkId = id,
             Label = request.Label,
             Url = request.Url,
@@ -242,7 +255,12 @@ public class FooterController : ExploreControllerBase
         {
             return unauthorized;
         }
-        var result = await _mediator.Send(new DeleteFooterLinkCommand { UserId = userId, LinkId = id }, cancellationToken);
+        var result = await _mediator.Send(new DeleteFooterLinkCommand
+        {
+            UserId = userId,
+            TenantId = _tenantContext.TenantId,
+            LinkId = id
+        }, cancellationToken);
         return Ok(result);
     }
 
@@ -263,6 +281,7 @@ public class FooterController : ExploreControllerBase
         var result = await _mediator.Send(new UpdateTenantFooterSettingsCommand
         {
             UserId = userId,
+            TenantId = _tenantContext.TenantId,
             Enabled = request.Enabled,
             Template = request.Template,
             ShowDescription = request.ShowDescription,

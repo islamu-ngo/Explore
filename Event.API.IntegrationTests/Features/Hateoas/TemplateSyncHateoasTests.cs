@@ -8,6 +8,7 @@ using Explore.API.Hateoas.Policies;
 using Explore.API.Hateoas.Resources;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
+using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.Features.EventSessionTemplateSync.Queries.GetEventSessionTemplateDiff;
 using Explore.Application.Features.EventTemplateSync.Queries.GetEventTemplateDiff;
 using Explore.Application.Hateoas;
@@ -25,6 +26,52 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 
 public sealed class TemplateSyncHateoasTests
 {
+    [Test]
+    public async Task EventTemplateCollectionLinks_ExposePermissionMetadataForCreateEditAndDelete()
+    {
+        var tenantId = Guid.NewGuid();
+        var templateId = Guid.NewGuid();
+        var policy = new EventTemplateCollectionLinkPolicy();
+        var dto = new EventTemplateListDto
+        {
+            Id = templateId,
+            TenantId = tenantId,
+            TemplateKey = "conference",
+            DisplayName = "Conference",
+            Version = 1,
+            IsPublished = true,
+            IsActive = true
+        };
+
+        var collectionLinks = policy.GetCollectionLinks(user: null).ToList();
+        var create = collectionLinks.Single(link => link.Rel == LinkRelations.Create);
+
+        await Assert.That(create.RouteName).IsEqualTo(RouteNames.CreateEventTemplate);
+        await Assert.That(create.Method).IsEqualTo(HttpMethods.Post);
+        await Assert.That(create.PermissionResourceKind).IsEqualTo(ResourceKinds.Tenant);
+        await Assert.That(create.PermissionAction).IsEqualTo(AuthorizationActions.Create);
+
+        var itemLinks = policy.GetItemLinks(dto, user: null).ToList();
+        var edit = itemLinks.Single(link => link.Rel == LinkRelations.Edit);
+        var delete = itemLinks.Single(link => link.Rel == LinkRelations.Delete);
+
+        await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateEventTemplate);
+        await Assert.That(edit.Method).IsEqualTo(HttpMethods.Put);
+        await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.Tenant);
+        await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.Update);
+        await Assert.That(edit.PermissionResourceId).IsEqualTo(tenantId.ToString());
+        await Assert.That(GetAttribute<string>(edit, "tenantId")).IsEqualTo(tenantId.ToString());
+        await Assert.That(GetRouteValue<Guid>(edit.RouteValues, "id")).IsEqualTo(templateId);
+
+        await Assert.That(delete.RouteName).IsEqualTo(RouteNames.DeleteEventTemplate);
+        await Assert.That(delete.Method).IsEqualTo(HttpMethods.Delete);
+        await Assert.That(delete.PermissionResourceKind).IsEqualTo(ResourceKinds.Tenant);
+        await Assert.That(delete.PermissionAction).IsEqualTo(AuthorizationActions.Delete);
+        await Assert.That(delete.PermissionResourceId).IsEqualTo(tenantId.ToString());
+        await Assert.That(GetAttribute<string>(delete, "tenantId")).IsEqualTo(tenantId.ToString());
+        await Assert.That(GetRouteValue<Guid>(delete.RouteValues, "id")).IsEqualTo(templateId);
+    }
+
     [Test]
     public async Task EventTemplateSyncLinks_ExposePermissionMetadataForDiffAndApply()
     {

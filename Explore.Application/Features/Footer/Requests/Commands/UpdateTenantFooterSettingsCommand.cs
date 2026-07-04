@@ -11,6 +11,7 @@ namespace Explore.Application.Features.Footer.Requests.Commands;
 public class UpdateTenantFooterSettingsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid UserId { get; set; }
+    public Guid TenantId { get; set; }
     public bool? Enabled { get; set; }
     public string? Template { get; set; }
     public bool? ShowDescription { get; set; }
@@ -19,7 +20,13 @@ public class UpdateTenantFooterSettingsCommand : IRequest<BaseCommandResponse<Gu
     public string? SocialLinksJson { get; set; }
     public string? CopyrightText { get; set; }
     public bool? ShowCookieSettingsLink { get; set; }
-    string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
+    string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+        ? null
+        : new Dictionary<string, object>
+        {
+            ["tenantId"] = TenantId.ToString("D"),
+            ["settingGroup"] = "footer"
+        };
 
 }

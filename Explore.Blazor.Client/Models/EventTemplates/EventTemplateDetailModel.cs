@@ -1,7 +1,8 @@
 // ABOUTME: Full model for event templates including nested definitions.
 // ABOUTME: Used for the details view and editing forms.
 
-using Explore.Blazor.Client.Models.Responses;
+using System.Text.Json.Serialization;
+using Explore.Blazor.Client.Models;
 
 namespace Explore.Blazor.Client.Models.EventTemplates;
 
@@ -22,5 +23,6 @@ public class EventTemplateDetailModel
 
     public IReadOnlyList<EventTemplateDefinitionModel> Definitions { get; set; } = new List<EventTemplateDefinitionModel>();
 
+    [JsonPropertyName("_links")]
     public IReadOnlyDictionary<string, HalLinkDto>? Links { get; set; }
 }

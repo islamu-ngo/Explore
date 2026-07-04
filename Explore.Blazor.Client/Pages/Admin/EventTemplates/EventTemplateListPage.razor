@@ -57,18 +57,18 @@
                 <CellTemplate>
                     <MudStack Row="true" Spacing="0">
                         <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Default" 
-                                       OnClick="@(() => NavigateToDetails(context.Item.Id))" Title="View" />
+                                       OnClick="@(() => NavigateToDetails(context.Item.Id))" Title="View" AriaLabel="View template" />
                         
-                        @if (context.Item.Links?.ContainsKey("edit") == true)
+                        @if (context.Item.HasHalLink("edit"))
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" 
-                                           OnClick="@(() => OpenEditDialogAsync(context.Item.Id))" Title="Edit" />
+                                           OnClick="@(() => OpenEditDialogAsync(context.Item.Id))" Title="Edit" AriaLabel="Edit template" />
                         }
                         
-                        @if (context.Item.Links?.ContainsKey("delete") == true)
+                        @if (context.Item.HasHalLink("delete"))
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" 
-                                           OnClick="@(() => DeleteTemplateAsync(context.Item))" Title="Delete" />
+                                           OnClick="@(() => DeleteTemplateAsync(context.Item))" Title="Delete" AriaLabel="Delete template" />
                         }
                     </MudStack>
                 </CellTemplate>
@@ -82,15 +82,14 @@
 
 @code {
     private MudDataGrid<EventTemplateListModel>? _grid;
-    private bool _canCreate = false; // Set after first load checks collection links
+    private bool _canCreate;
 
     private async Task<GridData<EventTemplateListModel>> ServerReloadAsync(GridState<EventTemplateListModel> state, System.Threading.CancellationToken cancellationToken)
     {
         var pageNumber = state.Page + 1;
-        var result = await TemplateService.GetTemplatesAsync(null, pageNumber, state.PageSize);
+        var result = await TemplateService.GetTemplatesAsync(null, pageNumber, state.PageSize, cancellationToken);
         
-        // Gate global create button based on HAL link
-        _canCreate = result.Items.Any() && result.Items.First().Links?.ContainsKey("create") == true;
+        _canCreate = result.HasHalLink("create");
 
         return new GridData<EventTemplateListModel>
         {

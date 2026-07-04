@@ -1,5 +1,5 @@
-// ABOUTME: Handles CreateFooterLinkGroupCommand — creates a new footer link group.
-// ABOUTME: Auto-assigns Order as max+1; sets TenantId from command (null = instance default).
+// ABOUTME: Handles CreateFooterLinkGroupCommand for tenant-scoped footer link groups.
+// ABOUTME: Auto-assigns Order as max+1 and persists the authorized tenant context.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Footer.Requests.Commands;
