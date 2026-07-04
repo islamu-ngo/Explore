@@ -46,6 +46,21 @@ public sealed class EmailDispatchProcessorSettingsValidator : IValidateOptions<E
             failures.Add("EmailDispatchProcessor:ProcessingLeaseTimeoutSeconds must be greater than zero.");
         }
 
+        if (options.HealthDueDispatchWarningThreshold is < 1 or > 100000)
+        {
+            failures.Add("EmailDispatchProcessor:HealthDueDispatchWarningThreshold must be between 1 and 100000.");
+        }
+
+        if (options.HealthStaleProcessingWarningThreshold is < 1 or > 10000)
+        {
+            failures.Add("EmailDispatchProcessor:HealthStaleProcessingWarningThreshold must be between 1 and 10000.");
+        }
+
+        if (options.HealthDeadLetterWarningThreshold is < 1 or > 10000)
+        {
+            failures.Add("EmailDispatchProcessor:HealthDeadLetterWarningThreshold must be between 1 and 10000.");
+        }
+
         if (string.IsNullOrWhiteSpace(options.ConsumerId))
         {
             failures.Add("EmailDispatchProcessor:ConsumerId is required when Basic Dispatch Mode is configured.");

@@ -1,6 +1,7 @@
 // ABOUTME: API contract tests for authenticated EmailDispatch operator replay and park actions.
 // ABOUTME: Verifies route metadata, MediatR command dispatch, and RFC7807 transition failure mapping.
 
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Reflection;
 using System.Text.Json;
@@ -9,6 +10,7 @@ using Event.Api.IntegrationTests.Helpers;
 using Explore.API.Controllers;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.Features.EmailDispatch;
 using Explore.Application.Features.EmailDispatch.Requests.Commands;
@@ -28,6 +30,7 @@ using TUnit.Core;
 namespace Event.Api.IntegrationTests.Features;
 
 [Category(TestCategories.Email)]
+[NotInParallel]
 public sealed class EmailDispatchAdminControllerTests
 {
     [Test]
@@ -72,6 +75,104 @@ public sealed class EmailDispatchAdminControllerTests
                 await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
             }
         }
+    }
+
+    [Test]
+    public async Task EmailDispatchStatusQueryRequest_WhenLimitIsOutOfRange_IsInvalid()
+    {
+        var request = new EmailDispatchStatusQueryRequest
+        {
+            TenantId = Guid.NewGuid(),
+            Limit = EmailDispatchStatusQueryRequest.MaxLimit + 1
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EmailDispatchStatusQueryRequest.Limit)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EmailDispatchParkQueryRequest_WhenReasonIsMissing_IsInvalid()
+    {
+        var request = new EmailDispatchParkQueryRequest
+        {
+            Reason = "   "
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EmailDispatchParkQueryRequest.Reason)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EmailDispatchPauseTenantQueryRequest_WhenReasonHasControlCharacter_IsInvalid()
+    {
+        var request = new EmailDispatchPauseTenantQueryRequest
+        {
+            Reason = "maintenance\u0001window"
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EmailDispatchPauseTenantQueryRequest.Reason)))).IsTrue();
+    }
+
+    [Test]
+    public async Task GetStatus_WhenLimitIsOutOfRange_ReturnsValidationProblemBeforeDispatch()
+    {
+        using var mediator = new EmailDispatchMediatorStub(_ => throw new InvalidOperationException("Mediator should not be called."));
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/admin/email-dispatch/status?tenantId={Guid.NewGuid():D}&limit={EmailDispatchStatusQueryRequest.MaxLimit + 1}");
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation failed");
+        await Assert.That(mediator.LastRequest).IsNull();
+    }
+
+    [Test]
+    public async Task ParkDispatch_WhenReasonIsMissing_ReturnsValidationProblemBeforeDispatch()
+    {
+        using var mediator = new EmailDispatchMediatorStub(_ => throw new InvalidOperationException("Mediator should not be called."));
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Put,
+            $"/api/admin/email-dispatch/tenants/{Guid.NewGuid():D}/outbox/{Guid.NewGuid():D}/park");
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation failed");
+        await Assert.That(mediator.LastRequest).IsNull();
+    }
+
+    [Test]
+    public async Task PauseTenant_WhenReasonIsTooLong_ReturnsValidationProblemBeforeDispatch()
+    {
+        var reason = new string('x', EmailDispatchPauseTenantQueryRequest.MaxReasonLength + 1);
+        using var mediator = new EmailDispatchMediatorStub(_ => throw new InvalidOperationException("Mediator should not be called."));
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Put,
+            $"/api/admin/email-dispatch/tenants/{Guid.NewGuid():D}/pause?reason={reason}");
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation failed");
+        await Assert.That(mediator.LastRequest).IsNull();
     }
 
     [Test]
@@ -275,6 +376,12 @@ public sealed class EmailDispatchAdminControllerTests
             attribute.Type == typeof(ProblemDetails))).IsTrue();
     }
 
+    private static List<ValidationResult> Validate(IValidatableObject request)
+        => request.Validate(new ValidationContext(request)).ToList();
+
+    private static bool HasMember(ValidationResult result, string memberName)
+        => result.MemberNames.Contains(memberName, StringComparer.Ordinal);
+
     private static async Task<JsonDocument> AssertEmailDispatchValidationProblemAsync(HttpResponseMessage response)
     {
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(
@@ -300,7 +407,7 @@ public sealed class EmailDispatchAdminControllerTests
         Errors = [message]
     };
 
-    private sealed class EmailDispatchMediatorStub(Func<object, BaseCommandResponse<Guid>> responseFactory) : IMediator, IDisposable
+    private sealed class EmailDispatchMediatorStub(Func<object, object> responseFactory) : IMediator, IDisposable
     {
         public object? LastRequest { get; private set; }
 

@@ -65,6 +65,45 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<int> CountDueDispatchAsync(
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        return _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .CountAsync(e => (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
+                && (e.NextAttemptAt == null || e.NextAttemptAt <= now), cancellationToken);
+    }
+
+    public Task<int> CountRetryScheduledAsync(CancellationToken cancellationToken)
+    {
+        return _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .CountAsync(e => e.Status == EmailDispatchStatus.RetryScheduled, cancellationToken);
+    }
+
+    public Task<int> CountStaleProcessingAsync(
+        DateTime processingStartedBefore,
+        CancellationToken cancellationToken)
+    {
+        return _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .CountAsync(e => e.Status == EmailDispatchStatus.Processing
+                && e.ProcessingStartedAt != null
+                && e.ProcessingStartedAt <= processingStartedBefore, cancellationToken);
+    }
+
+    public Task<int> CountDeadLetteredAsync(CancellationToken cancellationToken)
+    {
+        return _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .CountAsync(e => e.Status == EmailDispatchStatus.DeadLettered, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<EmailDispatchOutbox>> GetStatusRows(
         Guid tenantId,
         int limit,

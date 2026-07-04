@@ -411,6 +411,39 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
     }
 
     [Test]
+    public async Task HealthCountMethodsCountDueRetryStaleProcessingAndDeadLetterRowsAcrossTenants()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "health");
+        var otherTenant = await SeedTenantAsync(context, "health-other");
+        var now = DateTime.UtcNow;
+        await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.Pending);
+        var dueRetry = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.RetryScheduled);
+        var futureRetry = await SeedDispatchAsync(context, otherTenant.Id, EmailDispatchStatus.RetryScheduled);
+        await SeedProcessingDispatchWithReceiptAsync(context, tenant.Id, now.AddMinutes(-30));
+        await SeedProcessingDispatchWithReceiptAsync(context, otherTenant.Id, now.AddMinutes(-2));
+        await SeedDispatchAsync(context, otherTenant.Id, EmailDispatchStatus.DeadLettered);
+        await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.Sent);
+        dueRetry.NextAttemptAt = now.AddMinutes(-5);
+        futureRetry.NextAttemptAt = now.AddMinutes(30);
+        await context.SaveChangesAsync();
+        var repository = new EmailDispatchOutboxRepository(context);
+
+        var dueDispatchCount = await repository.CountDueDispatchAsync(now, CancellationToken.None);
+        var retryScheduledCount = await repository.CountRetryScheduledAsync(CancellationToken.None);
+        var staleProcessingCount = await repository.CountStaleProcessingAsync(
+            now.AddMinutes(-10),
+            CancellationToken.None);
+        var deadLetteredCount = await repository.CountDeadLetteredAsync(CancellationToken.None);
+
+        await Assert.That(dueDispatchCount).IsEqualTo(2);
+        await Assert.That(retryScheduledCount).IsEqualTo(2);
+        await Assert.That(staleProcessingCount).IsEqualTo(1);
+        await Assert.That(deadLetteredCount).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task MarkStaleProcessingAsUnknownRecoversOnlyExpiredLeases()
     {
         await fixture.ResetAsync();

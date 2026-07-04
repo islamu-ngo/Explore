@@ -15,6 +15,9 @@ public class EmailDispatchProcessorSettings
     public int InitialRetryDelaySeconds { get; set; } = 5;
     public int MaxRetryDelaySeconds { get; set; } = 3600;
     public int ProcessingLeaseTimeoutSeconds { get; set; } = 900;
+    public int HealthDueDispatchWarningThreshold { get; set; } = 1000;
+    public int HealthStaleProcessingWarningThreshold { get; set; } = 1;
+    public int HealthDeadLetterWarningThreshold { get; set; } = 1;
     public string ConsumerId { get; set; } = Environment.MachineName;
     public bool VerboseLogging { get; set; }
 

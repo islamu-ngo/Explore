@@ -76,6 +76,49 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         }
     }
 
+    public Task<int> CountDueDispatchAsync(
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            var isDue = dispatch.Status is EmailDispatchStatus.Pending or EmailDispatchStatus.RetryScheduled
+                && (dispatch.NextAttemptAt is null || dispatch.NextAttemptAt <= now);
+
+            return Task.FromResult(isDue ? 1 : 0);
+        }
+    }
+
+    public Task<int> CountRetryScheduledAsync(CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            return Task.FromResult(dispatch.Status == EmailDispatchStatus.RetryScheduled ? 1 : 0);
+        }
+    }
+
+    public Task<int> CountStaleProcessingAsync(
+        DateTime processingStartedBefore,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            var isStaleProcessing = dispatch.Status == EmailDispatchStatus.Processing
+                && dispatch.ProcessingStartedAt is not null
+                && dispatch.ProcessingStartedAt <= processingStartedBefore;
+
+            return Task.FromResult(isStaleProcessing ? 1 : 0);
+        }
+    }
+
+    public Task<int> CountDeadLetteredAsync(CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            return Task.FromResult(dispatch.Status == EmailDispatchStatus.DeadLettered ? 1 : 0);
+        }
+    }
+
     public Task<bool> IsTenantPaused(Guid tenantId, CancellationToken cancellationToken)
     {
         return Task.FromResult(false);

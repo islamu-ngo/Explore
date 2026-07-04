@@ -79,6 +79,42 @@ public sealed class EmailDispatchProcessorSettingsValidatorTests
     }
 
     [Test]
+    public async Task ValidateInvalidDueDispatchHealthThresholdReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchProcessorSettings
+        {
+            HealthDueDispatchWarningThreshold = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("HealthDueDispatchWarningThreshold");
+    }
+
+    [Test]
+    public async Task ValidateInvalidStaleProcessingHealthThresholdReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchProcessorSettings
+        {
+            HealthStaleProcessingWarningThreshold = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("HealthStaleProcessingWarningThreshold");
+    }
+
+    [Test]
+    public async Task ValidateInvalidDeadLetterHealthThresholdReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchProcessorSettings
+        {
+            HealthDeadLetterWarningThreshold = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("HealthDeadLetterWarningThreshold");
+    }
+
+    [Test]
     public async Task ValidateMissingConsumerIdReturnsFailure()
     {
         var result = _validator.Validate(null, new EmailDispatchProcessorSettings

@@ -6,6 +6,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.Features.EmailDispatch;
 using Explore.Application.Features.EmailDispatch.Requests.Commands;
@@ -51,12 +52,11 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<HalCollectionResource<EmailDispatchStatusDto>>> GetStatus(
-        [FromQuery] Guid tenantId,
-        [FromQuery] int limit = 50,
+        [FromQuery] EmailDispatchStatusQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetEmailDispatchStatusQuery { TenantId = tenantId, Limit = limit },
+            new GetEmailDispatchStatusQuery { TenantId = query.TenantId, Limit = query.Limit },
             cancellationToken);
 
         if (!result.Success)
@@ -69,7 +69,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
         var resource = _statusAssembler.ToCollectionResource(
             result.Id ?? [],
             RouteNames.GetEmailDispatchStatus,
-            new { tenantId, limit },
+            new { tenantId = query.TenantId, limit = query.Limit },
             HttpContext);
 
         return Ok(resource);
@@ -87,7 +87,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> PauseTenant(
         Guid tenantId,
-        [FromQuery] string? reason = null,
+        [FromQuery] EmailDispatchPauseTenantQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
@@ -95,7 +95,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             {
                 TenantId = tenantId,
                 IsPaused = true,
-                PauseReason = reason,
+                PauseReason = query.GetNormalizedReason(),
                 ChangedBy = CurrentUserId
             },
             cancellationToken);
@@ -144,7 +144,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> ParkDispatch(
         Guid tenantId,
         Guid outboxId,
-        [FromQuery] string reason,
+        [FromQuery] EmailDispatchParkQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
@@ -152,7 +152,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             {
                 TenantId = tenantId,
                 OutboxId = outboxId,
-                Reason = reason,
+                Reason = query.GetNormalizedReason(),
                 ChangedBy = CurrentUserId
             },
             cancellationToken);

@@ -20,6 +20,18 @@ public interface IEmailDispatchOutboxRepository
         DateTime retryAttemptsBefore,
         CancellationToken cancellationToken);
 
+    Task<int> CountDueDispatchAsync(
+        DateTime now,
+        CancellationToken cancellationToken);
+
+    Task<int> CountRetryScheduledAsync(CancellationToken cancellationToken);
+
+    Task<int> CountStaleProcessingAsync(
+        DateTime processingStartedBefore,
+        CancellationToken cancellationToken);
+
+    Task<int> CountDeadLetteredAsync(CancellationToken cancellationToken);
+
     Task<IReadOnlyList<EmailDispatchOutbox>> GetStatusRows(
         Guid tenantId,
         int limit,
