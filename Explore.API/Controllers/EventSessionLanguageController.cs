@@ -41,6 +41,11 @@ public class EventSessionLanguageController : ControllerBase
         "Program validation failed",
         "Event session language update failed.");
 
+    private static readonly ApiValidationProblemDescriptor IfMatchValidationProblem = new(
+        "If-Match",
+        "Program validation failed",
+        "If-Match header is required and must contain the current event session language concurrency stamp.");
+
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
 
@@ -125,10 +130,9 @@ public class EventSessionLanguageController : ControllerBase
     {
         if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            ModelState.AddModelError(
-                "If-Match",
-                "If-Match header is required and must contain the current event session language concurrency stamp.");
-            return ValidationProblem(ModelState);
+            return this.ToValidationProblem(
+                IfMatchValidationProblem,
+                IfMatchValidationProblem.FallbackDetail);
         }
 
         var existing = await _mediator.Send(new GetEventSessionLanguageDetailsRequest { Id = id }, cancellationToken);

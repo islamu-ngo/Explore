@@ -37,7 +37,12 @@ public sealed class EventSessionLanguageControllerTests
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(
             response,
             HttpStatusCode.BadRequest,
-            "One or more validation errors occurred.");
+            "Program validation failed");
+        using var problem = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = problem.RootElement;
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("validation_failed");
+        await Assert.That(root.GetProperty("errors").TryGetProperty("If-Match", out var ifMatchErrors)).IsTrue();
+        await Assert.That(ifMatchErrors.GetArrayLength()).IsEqualTo(1);
         await Assert.That(mediator.LastRequest).IsNull();
     }
 
