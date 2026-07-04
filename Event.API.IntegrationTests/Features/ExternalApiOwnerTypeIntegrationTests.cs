@@ -173,11 +173,55 @@ public sealed class ExternalApiOwnerTypeIntegrationTests
     }
 
     [Test]
-    public async Task InstanceAdminOwnerKey_InMultiTenantMode_AuthenticatesWithoutTenantHint()
+    public async Task InstanceAdminOwnerKey_InMultiTenantMode_BindsExplicitTenantHint()
     {
+        var tenantId = Guid.NewGuid();
         var ownerId = Guid.NewGuid();
         const string keyId = "instance-admin-mt";
         const string secret = "instance-admin-mt-secret";
+        var rawKey = ApiKeyHashing.FormatPersistedApiKey(keyId, secret);
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DeploymentMode = DeploymentMode.MultiTenant,
+            TenantSlugMappings = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["alpha"] = tenantId
+            },
+            PersistedApiKeys =
+            [
+                new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
+                {
+                    KeyId = keyId,
+                    Secret = secret,
+                    TenantId = null,
+                    OwnerId = ownerId,
+                    OwnerType = ExternalApiKeyOwnerType.InstanceAdmin,
+                    Scopes = ["admin:instance"]
+                }
+            ]
+        };
+
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, ProbeUrl);
+        request.Headers.Add("X-API-Key", rawKey);
+        request.Headers.Add("X-Tenant-Slug", "alpha");
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadFromJsonAsync<AuthProbeResult>();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(body!.AuthMethod).IsEqualTo("api_key");
+        await Assert.That(body.ApiKeyId).IsEqualTo(keyId);
+        await Assert.That(body.TenantId).IsEqualTo(tenantId);
+    }
+
+    [Test]
+    public async Task InstanceAdminOwnerKey_InMultiTenantMode_WithoutTenantHint_FailsClosed()
+    {
+        var ownerId = Guid.NewGuid();
+        const string keyId = "instance-admin-mt-no-hint";
+        const string secret = "instance-admin-mt-no-hint-secret";
         var rawKey = ApiKeyHashing.FormatPersistedApiKey(keyId, secret);
 
         await using var factory = new ExternalApiPhase0WebApplicationFactory
@@ -202,17 +246,17 @@ public sealed class ExternalApiOwnerTypeIntegrationTests
         request.Headers.Add("X-API-Key", rawKey);
 
         var response = await client.SendAsync(request);
-        var body = await response.Content.ReadFromJsonAsync<AuthProbeResult>();
+        var body = await response.Content.ReadAsStringAsync();
 
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(body!.AuthMethod).IsEqualTo("api_key");
-        await Assert.That(body.ApiKeyId).IsEqualTo(keyId);
-        await Assert.That(body.TenantId).IsNull();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(body).Contains("tenant_required");
+        await Assert.That(body).DoesNotContain(rawKey);
     }
 
     [Test]
-    public async Task InstanceAdminOwnerKey_DoesNotReceiveTenantClaimInPrincipal()
+    public async Task InstanceAdminOwnerKey_DoesNotPersistTenantBindingInCredential()
     {
+        var tenantId = Guid.NewGuid();
         var ownerId = Guid.NewGuid();
         const string keyId = "instance-admin-no-tenant";
         const string secret = "instance-admin-no-tenant-secret";
@@ -221,6 +265,10 @@ public sealed class ExternalApiOwnerTypeIntegrationTests
         await using var factory = new ExternalApiPhase0WebApplicationFactory
         {
             DeploymentMode = DeploymentMode.MultiTenant,
+            TenantSlugMappings = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["alpha"] = tenantId
+            },
             PersistedApiKeys =
             [
                 new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
@@ -238,6 +286,7 @@ public sealed class ExternalApiOwnerTypeIntegrationTests
         using var client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, ProbeUrl);
         request.Headers.Add("X-API-Key", rawKey);
+        request.Headers.Add("X-Tenant-Slug", "alpha");
 
         var response = await client.SendAsync(request);
 
@@ -287,7 +336,7 @@ public sealed class ExternalApiOwnerTypeIntegrationTests
     }
 
     [Test]
-    public async Task InstanceAdminOwnerKey_InSingleTenantMode_AuthenticatesWithoutTenantBinding()
+    public async Task InstanceAdminOwnerKey_InSingleTenantMode_ResolvesDefaultTenant()
     {
         var ownerId = Guid.NewGuid();
         const string keyId = "instance-admin-st";
@@ -321,6 +370,7 @@ public sealed class ExternalApiOwnerTypeIntegrationTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(body!.ApiKeyId).IsEqualTo(keyId);
+        await Assert.That(body.TenantId).IsEqualTo(PlatformDefaults.DefaultTenantId);
     }
 
     [Test]
@@ -474,6 +524,10 @@ public sealed class ExternalApiOwnerTypeIntegrationTests
         await using var factory = new ExternalApiPhase0WebApplicationFactory
         {
             DeploymentMode = DeploymentMode.MultiTenant,
+            TenantSlugMappings = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["alpha"] = tenantId
+            },
             DisableRateLimitingInTesting = false,
             GlobalRateLimitTokenLimit = 1,
             GlobalRateLimitTokensPerPeriod = 1,
@@ -497,11 +551,21 @@ public sealed class ExternalApiOwnerTypeIntegrationTests
 
             using var firstRequest = new HttpRequestMessage(HttpMethod.Get, ProbeUrl);
             firstRequest.Headers.Add("X-API-Key", rawKey);
+            if (key.type == ExternalApiKeyOwnerType.InstanceAdmin)
+            {
+                firstRequest.Headers.Add("X-Tenant-Slug", "alpha");
+            }
+
             var firstResponse = await client.SendAsync(firstRequest);
             await Assert.That(firstResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
             using var throttledRequest = new HttpRequestMessage(HttpMethod.Get, ProbeUrl);
             throttledRequest.Headers.Add("X-API-Key", rawKey);
+            if (key.type == ExternalApiKeyOwnerType.InstanceAdmin)
+            {
+                throttledRequest.Headers.Add("X-Tenant-Slug", "alpha");
+            }
+
             var throttledResponse = await client.SendAsync(throttledRequest);
             await Assert.That(throttledResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
         }

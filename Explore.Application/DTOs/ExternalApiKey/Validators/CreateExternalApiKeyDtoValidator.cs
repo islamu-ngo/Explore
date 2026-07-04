@@ -33,10 +33,21 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
             .WithMessage("Invalid external API key owner type.");
 
         RuleFor(x => x.Name)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("API key name is required.")
-            .MaximumLength(200).WithMessage("API key name cannot exceed 200 characters.")
-            .MustAsync((dto, name, cancellationToken) => NameIsUniqueAsync(dto, currentUserId, tenantId, name, cancellationToken))
+            .MaximumLength(ExternalApiKeyInputValidation.NameMaxLength).WithMessage("API key name cannot exceed 200 characters.")
+            .Must(ExternalApiKeyInputValidation.DoesNotContainControlCharacters).WithMessage("API key name must not contain control characters.")
+            .MustAsync((dto, name, cancellationToken) => NameIsUniqueAsync(
+                dto,
+                currentUserId,
+                tenantId,
+                ExternalApiKeyInputValidation.NormalizeRequiredText(name),
+                cancellationToken))
             .WithMessage("An API key with the same name already exists for this owner.");
+
+        RuleFor(x => x.Description)
+            .MaximumLength(ExternalApiKeyInputValidation.DescriptionMaxLength).WithMessage("API key description cannot exceed 1000 characters.")
+            .Must(ExternalApiKeyInputValidation.DoesNotContainControlCharacters).WithMessage("API key description must not contain control characters.");
 
         RuleFor(x => x.Scopes)
             .NotEmpty().WithMessage("At least one scope is required.")

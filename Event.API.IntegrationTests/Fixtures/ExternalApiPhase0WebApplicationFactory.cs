@@ -209,6 +209,8 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
 
         builder.ConfigureTestServices(services =>
         {
+            TestHostServicePruner.RemoveNoisyHostedServices(services);
+
             if (!DisableRateLimitingInTesting)
             {
                 var tokenLimit = GlobalRateLimitTokenLimit ?? 200;

@@ -9,6 +9,7 @@ using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.ExternalApiKeys.Handlers.Commands;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
+using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -81,6 +82,80 @@ public class ExternalApiKeyObservabilityTests
         var measurement = await metricsCapture.SingleAsync("explore.external_api_keys.created");
         await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId.ToString());
         await Assert.That(measurement.Tags["owner_type"]?.ToString()).IsEqualTo(ExternalApiKeyOwnerType.User.ToString());
+    }
+
+    [Test]
+    public async Task CreateExternalApiKeyCommandHandler_WithSuccessfulRequest_DoesNotLogOrPersistRawApiKey()
+    {
+        var metrics = CreateMetrics();
+
+        var externalApiKeyRepository = Substitute.For<IExternalApiKeyRepository>();
+        var organizationRepository = Substitute.For<IOrganizationRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var groupRepository = Substitute.For<IGroupRepository>();
+        var adminContext = Substitute.For<IAdminContext>();
+        var userContext = Substitute.For<IUserContext>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var logger = new CapturingLogger<CreateExternalApiKeyCommandHandler>();
+
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        ExternalApiKey? persisted = null;
+
+        userContext.GetRequiredUserId().Returns(userId);
+        tenantContext.TenantId.Returns(tenantId);
+        externalApiKeyRepository.ExistsByOwnerAndName(
+                ExternalApiKeyOwnerType.User,
+                userId,
+                "Deploy Bot",
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        externalApiKeyRepository.Create(Arg.Any<ExternalApiKey>())
+            .Returns(call =>
+            {
+                persisted = call.Arg<ExternalApiKey>();
+                persisted.Id = Guid.NewGuid();
+                return persisted;
+            });
+
+        var handler = new CreateExternalApiKeyCommandHandler(
+            externalApiKeyRepository,
+            organizationRepository,
+            organizationMemberRepository,
+            groupMemberRepository,
+            groupRepository,
+            adminContext,
+            userContext,
+            tenantContext,
+            metrics,
+            logger);
+
+        var response = await handler.Handle(
+            new CreateExternalApiKeyCommand
+            {
+                ExternalApiKeyDto = new CreateExternalApiKeyDto
+                {
+                    Name = "Deploy Bot",
+                    ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User,
+                    Scopes = ["events:read", "events:write"]
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.ApiKey).IsNotNull();
+        await Assert.That(persisted).IsNotNull();
+        await Assert.That(ApiKeyHashing.TryParsePersistedApiKey(response.ApiKey!, out var keyId, out var secret)).IsTrue();
+        await Assert.That(persisted!.KeyId).IsEqualTo(keyId);
+        await Assert.That(persisted.SecretHash).IsEqualTo(ApiKeyHashing.ComputeHash(secret));
+        await Assert.That(persisted.SecretHash).IsNotEqualTo(response.ApiKey);
+
+        var renderedLogs = string.Join('\n', logger.Messages);
+
+        await Assert.That(logger.Messages.Count).IsGreaterThan(0);
+        await Assert.That(renderedLogs).DoesNotContain(response.ApiKey!);
+        await Assert.That(renderedLogs).DoesNotContain(secret);
     }
 
     [Test]
@@ -330,6 +405,126 @@ public class ExternalApiKeyObservabilityTests
     }
 
     [Test]
+    public async Task CreateExternalApiKeyCommandHandler_WithNameControlCharacter_ReturnsValidationError()
+    {
+        var userId = Guid.NewGuid();
+        var fixture = CreateCreateHandlerFixture(userId, Guid.NewGuid());
+
+        var response = await fixture.Handler.Handle(
+            new CreateExternalApiKeyCommand
+            {
+                ExternalApiKeyDto = new CreateExternalApiKeyDto
+                {
+                    Name = "Ops\nBot",
+                    ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User,
+                    Scopes = [ExternalApiKeyScopes.EventsRead]
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.Errors).Contains(error => error == "API key name must not contain control characters.");
+        await fixture.ExternalApiKeyRepository.DidNotReceive().Create(Arg.Any<ExternalApiKey>());
+    }
+
+    [Test]
+    public async Task CreateExternalApiKeyCommandHandler_WithDescriptionTooLong_ReturnsValidationError()
+    {
+        var userId = Guid.NewGuid();
+        var fixture = CreateCreateHandlerFixture(userId, Guid.NewGuid());
+
+        var response = await fixture.Handler.Handle(
+            new CreateExternalApiKeyCommand
+            {
+                ExternalApiKeyDto = new CreateExternalApiKeyDto
+                {
+                    Name = "Ops Bot",
+                    Description = new string('a', 1001),
+                    ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User,
+                    Scopes = [ExternalApiKeyScopes.EventsRead]
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.Errors).Contains(error => error == "API key description cannot exceed 1000 characters.");
+        await fixture.ExternalApiKeyRepository.DidNotReceive().Create(Arg.Any<ExternalApiKey>());
+    }
+
+    [Test]
+    public async Task CreateExternalApiKeyCommandHandler_WithPaddedDuplicateName_ChecksNormalizedName()
+    {
+        var userId = Guid.NewGuid();
+        var fixture = CreateCreateHandlerFixture(userId, Guid.NewGuid());
+        fixture.ExternalApiKeyRepository.ExistsByOwnerAndName(
+                ExternalApiKeyOwnerType.User,
+                userId,
+                "Ops Bot",
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var response = await fixture.Handler.Handle(
+            new CreateExternalApiKeyCommand
+            {
+                ExternalApiKeyDto = new CreateExternalApiKeyDto
+                {
+                    Name = " Ops Bot ",
+                    ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User,
+                    Scopes = [ExternalApiKeyScopes.EventsRead]
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.Errors).Contains(error => error == "An API key with the same name already exists for this owner.");
+        await fixture.ExternalApiKeyRepository.Received(1).ExistsByOwnerAndName(
+            ExternalApiKeyOwnerType.User,
+            userId,
+            "Ops Bot",
+            Arg.Any<CancellationToken>());
+        await fixture.ExternalApiKeyRepository.DidNotReceive().Create(Arg.Any<ExternalApiKey>());
+    }
+
+    [Test]
+    public async Task UpdateExternalApiKeyPolicyCommandHandler_WithNameControlCharacter_ReturnsValidationError()
+    {
+        var userId = Guid.NewGuid();
+        var externalApiKey = new ExternalApiKey
+        {
+            Id = Guid.NewGuid(),
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            Name = "Ops Bot",
+            KeyId = "key-policy-validation",
+            SecretHash = "hash",
+            Scopes = ExternalApiKeyScopes.EventsRead,
+            OwnerType = ExternalApiKeyOwnerType.User,
+            OwnerId = userId,
+            ExternalApiKeyStatusId = (int)ExternalApiKeyStatusEnum.Active,
+            ExternalApiKeyStatus = null!,
+            ExternalApiKeyCreditPeriodId = (int)ExternalApiKeyCreditPeriodEnum.None,
+            ExternalApiKeyCreditPeriod = null!
+        };
+        var fixture = CreateUpdateHandlerFixture(userId, externalApiKey);
+
+        var response = await fixture.Handler.Handle(
+            new UpdateExternalApiKeyPolicyCommand
+            {
+                ExternalApiKeyPolicyDto = new UpdateExternalApiKeyPolicyDto
+                {
+                    Id = externalApiKey.Id,
+                    Name = "Ops\nBot",
+                    Scopes = [ExternalApiKeyScopes.EventsWrite]
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.Errors).Contains(error => error == "API key name must not contain control characters.");
+        await fixture.ExternalApiKeyRepository.DidNotReceive().Update(Arg.Any<ExternalApiKey>());
+    }
+
+    [Test]
     public async Task BusinessMetrics_RecordExternalApiKeyAuthentication_UsesBoundedNonSecretTags()
     {
         using var metricsCapture = new MetricsCapture();
@@ -404,6 +599,103 @@ public class ExternalApiKeyObservabilityTests
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
         return new BusinessMetrics(meterFactory);
+    }
+
+    private static CreateHandlerFixture CreateCreateHandlerFixture(Guid userId, Guid tenantId)
+    {
+        var externalApiKeyRepository = Substitute.For<IExternalApiKeyRepository>();
+        var organizationRepository = Substitute.For<IOrganizationRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var groupRepository = Substitute.For<IGroupRepository>();
+        var adminContext = Substitute.For<IAdminContext>();
+        var userContext = Substitute.For<IUserContext>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var logger = Substitute.For<ILogger<CreateExternalApiKeyCommandHandler>>();
+
+        userContext.GetRequiredUserId().Returns(userId);
+        tenantContext.TenantId.Returns(tenantId);
+
+        return new CreateHandlerFixture(
+            externalApiKeyRepository,
+            new CreateExternalApiKeyCommandHandler(
+                externalApiKeyRepository,
+                organizationRepository,
+                organizationMemberRepository,
+                groupMemberRepository,
+                groupRepository,
+                adminContext,
+                userContext,
+                tenantContext,
+                CreateMetrics(),
+                logger));
+    }
+
+    private static UpdateHandlerFixture CreateUpdateHandlerFixture(Guid userId, ExternalApiKey externalApiKey)
+    {
+        var externalApiKeyRepository = Substitute.For<IExternalApiKeyRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var adminContext = Substitute.For<IAdminContext>();
+        var userContext = Substitute.For<IUserContext>();
+        var logger = Substitute.For<ILogger<UpdateExternalApiKeyPolicyCommandHandler>>();
+
+        userContext.GetRequiredUserId().Returns(userId);
+        externalApiKeyRepository.GetByIdIgnoringTenantFilter(externalApiKey.Id, Arg.Any<CancellationToken>())
+            .Returns(externalApiKey);
+
+        return new UpdateHandlerFixture(
+            externalApiKeyRepository,
+            new UpdateExternalApiKeyPolicyCommandHandler(
+                externalApiKeyRepository,
+                organizationMemberRepository,
+                groupMemberRepository,
+                adminContext,
+                userContext,
+                CreateMetrics(),
+                logger));
+    }
+
+    private sealed record CreateHandlerFixture(
+        IExternalApiKeyRepository ExternalApiKeyRepository,
+        CreateExternalApiKeyCommandHandler Handler);
+
+    private sealed record UpdateHandlerFixture(
+        IExternalApiKeyRepository ExternalApiKeyRepository,
+        UpdateExternalApiKeyPolicyCommandHandler Handler);
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return NullScope.Instance;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+        }
+    }
+
+    private sealed class NullScope : IDisposable
+    {
+        public static readonly NullScope Instance = new();
+
+        public void Dispose()
+        {
+        }
     }
 
     private sealed class MetricsCapture : IDisposable

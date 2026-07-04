@@ -110,7 +110,7 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
             ExternalApiKeyCreditPeriod = null!,
             CreditLimit = dto.CreditLimit,
             MaxRolloverCredits = dto.MaxRolloverCredits,
-            Description = dto.Description,
+            Description = ExternalApiKeyInputValidation.NormalizeOptionalText(dto.Description),
             ExpiresAt = dto.ExpiresAt,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = currentUserId

@@ -3,10 +3,12 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
@@ -69,14 +71,16 @@ public class ExternalApiKeyIntegrationTests
     public async Task GetExternalApiKeyDetails_WithOwnerRequest_ShouldReturnVisibleMetadata()
     {
         var userId = Guid.NewGuid();
-        var apiKeyId = await CreateExternalApiKeyAsync(userId, "Reader Bot", ["events:read", "events:write"]);
+        var issued = await CreateIssuedExternalApiKeyAsync(userId, "Reader Bot", ["events:read", "events:write"]);
+        var apiKeyId = issued.Id;
 
         using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Get, $"/api/externalapikey/{apiKeyId}", userId);
         var response = await _fixture.Client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var body = await response.Content.ReadFromJsonAsync<ExternalApiKeyListDto>(TestJsonOptions.Default);
+        var raw = await response.Content.ReadAsStringAsync();
+        var body = JsonSerializer.Deserialize<ExternalApiKeyListDto>(raw, TestJsonOptions.Default);
         await Assert.That(body).IsNotNull();
         await Assert.That(body!.Id).IsEqualTo(apiKeyId);
         await Assert.That(body.Name).IsEqualTo("Reader Bot");
@@ -85,6 +89,10 @@ public class ExternalApiKeyIntegrationTests
         await Assert.That(body.OwnerId).IsEqualTo(userId);
         await Assert.That(body.Scopes).IsEquivalentTo(["events:read", "events:write"]);
         await Assert.That(body.KeyId.Length).IsEqualTo(16);
+        await Assert.That(raw).DoesNotContain("\"apiKey\"");
+        await Assert.That(raw).DoesNotContain("\"secretHash\"");
+        await Assert.That(raw).DoesNotContain(issued.ApiKey!);
+        await Assert.That(raw).DoesNotContain(issued.ApiKey!.Split('.', 2)[1]);
     }
 
     [Test]
@@ -120,6 +128,74 @@ public class ExternalApiKeyIntegrationTests
             response,
             "External API key creation failed.",
             "At least one scope is required.");
+    }
+
+    [Test]
+    public async Task CreateExternalApiKey_WithNameControlCharacter_ShouldReturnValidationProblemDetails()
+    {
+        var userId = Guid.NewGuid();
+        var payload = new CreateExternalApiKeyDto
+        {
+            Name = "Invalid\nKey",
+            Scopes = [ExternalApiKeyScopes.EventsRead],
+            ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User
+        };
+
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/externalapikey", userId);
+        request.Content = JsonContent.Create(payload);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await AssertExternalApiKeyValidationProblemAsync(
+            response,
+            "External API key creation failed.",
+            "API key name must not contain control characters.");
+    }
+
+    [Test]
+    public async Task CreateExternalApiKey_WithDescriptionTooLong_ShouldReturnValidationProblemDetails()
+    {
+        var userId = Guid.NewGuid();
+        var payload = new CreateExternalApiKeyDto
+        {
+            Name = "Description Validation",
+            Description = new string('a', 1001),
+            Scopes = [ExternalApiKeyScopes.EventsRead],
+            ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User
+        };
+
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/externalapikey", userId);
+        request.Content = JsonContent.Create(payload);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await AssertExternalApiKeyValidationProblemAsync(
+            response,
+            "External API key creation failed.",
+            "API key description cannot exceed 1000 characters.");
+    }
+
+    [Test]
+    public async Task CreateExternalApiKey_WithPaddedDuplicateName_ShouldReturnValidationProblemDetails()
+    {
+        var userId = Guid.NewGuid();
+        await CreateExternalApiKeyAsync(userId, "Normalized Bot", [ExternalApiKeyScopes.EventsRead]);
+        var payload = new CreateExternalApiKeyDto
+        {
+            Name = " Normalized Bot ",
+            Scopes = [ExternalApiKeyScopes.EventsRead],
+            ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User
+        };
+
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/externalapikey", userId);
+        request.Content = JsonContent.Create(payload);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await AssertExternalApiKeyValidationProblemAsync(
+            response,
+            "External API key creation failed.",
+            "An API key with the same name already exists for this owner.");
     }
 
     [Test]
@@ -197,6 +273,38 @@ public class ExternalApiKeyIntegrationTests
     }
 
     [Test]
+    public async Task UpdateExternalApiKeyPolicy_WithNameControlCharacter_ShouldReturnValidationProblemDetailsAndLeaveKeyUnchanged()
+    {
+        var userId = Guid.NewGuid();
+        var apiKeyId = await CreateExternalApiKeyAsync(userId, "Control Source", [ExternalApiKeyScopes.EventsRead]);
+        var payload = new UpdateExternalApiKeyPolicyDto
+        {
+            Id = apiKeyId,
+            Name = "Control\nTarget",
+            Scopes = [ExternalApiKeyScopes.EventsWrite],
+            ExpiresAt = DateTime.UtcNow.AddDays(14)
+        };
+
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/externalapikey/{apiKeyId}", userId);
+        request.Content = JsonContent.Create(payload);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await AssertExternalApiKeyValidationProblemAsync(
+            response,
+            "External API key update failed.",
+            "API key name must not contain control characters.");
+
+        using var scope = _fixture.Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var stored = await dbContext.ExternalApiKeys.SingleAsync(x => x.Id == apiKeyId);
+
+        await Assert.That(stored.Name).IsEqualTo("Control Source");
+        await Assert.That(stored.Scopes).IsEqualTo(ExternalApiKeyScopes.EventsRead);
+        await Assert.That(stored.ExpiresAt).IsNull();
+    }
+
+    [Test]
     public async Task UpdateExternalApiKeyPolicy_WithDifferentUser_ShouldReturnNotFoundAndLeaveKeyUnchanged()
     {
         var ownerUserId = Guid.NewGuid();
@@ -241,6 +349,27 @@ public class ExternalApiKeyIntegrationTests
         var response = await _fixture.Client.SendAsync(request);
 
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Forbidden");
+    }
+
+    [Test]
+    public async Task GetUsageReport_WithInvalidDateRange_ShouldReturnValidationProblemBeforeAdminAuthorization()
+    {
+        var userId = Guid.NewGuid();
+
+        using var request = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            "/api/externalapikey/usage-report?from=2026-02-01&to=2026-01-31",
+            userId);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.BadRequest, "Validation failed");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("validation_failed");
+        await Assert.That(root.GetProperty("errors").TryGetProperty("from", out _)).IsTrue();
+        await Assert.That(root.GetProperty("errors").TryGetProperty("to", out _)).IsTrue();
     }
 
     private static async Task AssertExternalApiKeyValidationProblemAsync(
@@ -320,6 +449,12 @@ public class ExternalApiKeyIntegrationTests
 
     private async Task<Guid> CreateExternalApiKeyAsync(Guid userId, string name, List<string> scopes)
     {
+        var body = await CreateIssuedExternalApiKeyAsync(userId, name, scopes);
+        return body.Id;
+    }
+
+    private async Task<CreateExternalApiKeyCommandResponse> CreateIssuedExternalApiKeyAsync(Guid userId, string name, List<string> scopes)
+    {
         var payload = new CreateExternalApiKeyDto
         {
             Name = name,
@@ -341,7 +476,10 @@ public class ExternalApiKeyIntegrationTests
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var stored = await dbContext.ExternalApiKeys.SingleAsync(x => x.Id == body.Id);
         await Assert.That(stored.CreatedAt).IsNotEqualTo(default(DateTime));
+        await Assert.That(stored.SecretHash).IsNotEqualTo(body.ApiKey);
+        await Assert.That(ApiKeyHashing.TryParsePersistedApiKey(body.ApiKey!, out _, out var secret)).IsTrue();
+        await Assert.That(stored.SecretHash).IsEqualTo(ApiKeyHashing.ComputeHash(secret));
 
-        return body.Id;
+        return body;
     }
 }

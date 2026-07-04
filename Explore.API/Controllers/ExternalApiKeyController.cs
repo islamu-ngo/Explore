@@ -6,6 +6,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 using Explore.Application.Features.ExternalApiKeys.Requests.Queries;
@@ -157,16 +158,14 @@ public class ExternalApiKeyController : ControllerBase
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<List<ExternalApiKeyUsageReportDto>>> GetUsageReport(
-        [FromQuery] DateOnly from,
-        [FromQuery] DateOnly to,
-        [FromQuery] Guid? tenantId = null,
+        [FromQuery] ExternalApiKeyUsageReportQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var report = await _mediator.Send(new GetExternalApiKeyUsageReportRequest
         {
-            From = from,
-            To = to,
-            TenantId = tenantId
+            From = query.From,
+            To = query.To,
+            TenantId = query.TenantId
         }, cancellationToken);
 
         return Ok(report);

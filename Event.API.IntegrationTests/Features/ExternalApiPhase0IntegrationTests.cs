@@ -307,6 +307,48 @@ public sealed class ExternalApiPhase0IntegrationTests
     }
 
     [Test]
+    public async Task ExternalApiKeyManagement_WithPersistedApiKeyAndConflictingTenantSlug_ReturnsNotFoundWithoutCredentialEcho()
+    {
+        var apiKeyTenantId = Guid.NewGuid();
+        var hintedTenantId = Guid.NewGuid();
+        var keyId = ApiKeyHashing.CreateKeyId();
+        var secret = ApiKeyHashing.CreateSecret();
+        var rawApiKey = ApiKeyHashing.FormatPersistedApiKey(keyId, secret);
+
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            DeploymentMode = DeploymentMode.MultiTenant,
+            TenantSlugMappings = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["beta"] = hintedTenantId
+            },
+            PersistedApiKeys =
+            [
+                new ExternalApiPhase0WebApplicationFactory.PersistedApiKeySeed
+                {
+                    KeyId = keyId,
+                    Secret = secret,
+                    TenantId = apiKeyTenantId,
+                    OwnerId = Guid.NewGuid(),
+                    Scopes = ["events:read"]
+                }
+            ]
+        };
+
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/externalapikey");
+        request.Headers.Add("X-API-Key", rawApiKey);
+        request.Headers.Add("X-Tenant-Slug", "beta");
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(body).DoesNotContain(rawApiKey);
+        await Assert.That(body).DoesNotContain(secret);
+    }
+
+    [Test]
     public async Task SecureProbe_InSingleTenantMode_DoesNotRequireTenantMaterial()
     {
         var userId = Guid.NewGuid();

@@ -22,9 +22,14 @@ internal class UpdateExternalApiKeyPolicyDtoValidator : AbstractValidator<Update
             .NotEmpty().WithMessage("API key ID is required.");
 
         RuleFor(x => x.Name)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("API key name is required.")
-            .MaximumLength(200).WithMessage("API key name cannot exceed 200 characters.")
-            .MustAsync((dto, name, cancellationToken) => NameIsUniqueAsync(existingApiKey, name, cancellationToken))
+            .MaximumLength(ExternalApiKeyInputValidation.NameMaxLength).WithMessage("API key name cannot exceed 200 characters.")
+            .Must(ExternalApiKeyInputValidation.DoesNotContainControlCharacters).WithMessage("API key name must not contain control characters.")
+            .MustAsync((dto, name, cancellationToken) => NameIsUniqueAsync(
+                existingApiKey,
+                ExternalApiKeyInputValidation.NormalizeRequiredText(name),
+                cancellationToken))
             .WithMessage("An API key with the same name already exists for this owner.");
 
         RuleFor(x => x.Scopes)
