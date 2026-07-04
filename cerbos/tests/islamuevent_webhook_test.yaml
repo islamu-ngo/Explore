@@ -1,0 +1,154 @@
+# ABOUTME: Cerbos policy test suite for outgoing webhook management resources.
+# ABOUTME: Covers tenant-admin authority and delegated organization-admin webhook authority.
+
+name: WebhookPolicyTests
+description: "Validates outgoing webhook management policy boundaries"
+
+principals:
+  islamuevent_instance_admin:
+    id: "user-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  islamuevent_tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  islamuevent_org_admin:
+    id: "user-org-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships:
+        "org-1": "admin"
+
+  unrelated_org_admin:
+    id: "user-other-org-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships:
+        "org-other": "admin"
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  tenant_webhook:
+    kind: "islamuevent_webhook"
+    id: "tenant-1"
+    attr:
+      tenantId: "tenant-1"
+
+  org_webhook_allowed:
+    kind: "islamuevent_webhook"
+    id: "consumer-org-1"
+    attr:
+      tenantId: "tenant-1"
+      organizationId: "org-1"
+      allowOrganizationWebhooks: true
+      consumerId: "consumer-org-1"
+
+  org_webhook_disabled:
+    kind: "islamuevent_webhook"
+    id: "consumer-org-1-disabled"
+    attr:
+      tenantId: "tenant-1"
+      organizationId: "org-1"
+      allowOrganizationWebhooks: false
+      consumerId: "consumer-org-1"
+
+tests:
+  - name: "Instance admin can manage webhook provider state"
+    input:
+      principals: ["islamuevent_instance_admin"]
+      resources: ["tenant_webhook"]
+      actions: ["webhook:view", "webhook:manage-provider", "webhook:open-provider-portal"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "tenant_webhook"
+        actions:
+          webhook:view: EFFECT_ALLOW
+          webhook:manage-provider: EFFECT_ALLOW
+          webhook:open-provider-portal: EFFECT_ALLOW
+
+  - name: "Tenant admin can manage tenant webhooks"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["tenant_webhook"]
+      actions: ["webhook:view", "webhook:create", "webhook:manage-provider", "webhook:open-provider-portal"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "tenant_webhook"
+        actions:
+          webhook:view: EFFECT_ALLOW
+          webhook:create: EFFECT_ALLOW
+          webhook:manage-provider: EFFECT_ALLOW
+          webhook:open-provider-portal: EFFECT_ALLOW
+
+  - name: "Organization admin can manage org-owned webhooks only when delegated"
+    input:
+      principals: ["islamuevent_org_admin"]
+      resources: ["org_webhook_allowed", "org_webhook_disabled"]
+      actions: ["webhook:view", "webhook:create", "webhook:update", "webhook:delete", "webhook:rotate-secret", "webhook:test", "webhook:retry", "webhook:view-delivery", "webhook:manage-provider", "webhook:open-provider-portal"]
+    expected:
+      - principal: "islamuevent_org_admin"
+        resource: "org_webhook_allowed"
+        actions:
+          webhook:view: EFFECT_ALLOW
+          webhook:create: EFFECT_ALLOW
+          webhook:update: EFFECT_ALLOW
+          webhook:delete: EFFECT_ALLOW
+          webhook:rotate-secret: EFFECT_ALLOW
+          webhook:test: EFFECT_ALLOW
+          webhook:retry: EFFECT_ALLOW
+          webhook:view-delivery: EFFECT_ALLOW
+          webhook:manage-provider: EFFECT_DENY
+          webhook:open-provider-portal: EFFECT_ALLOW
+      - principal: "islamuevent_org_admin"
+        resource: "org_webhook_disabled"
+        actions:
+          webhook:view: EFFECT_DENY
+          webhook:create: EFFECT_DENY
+          webhook:update: EFFECT_DENY
+          webhook:delete: EFFECT_DENY
+          webhook:rotate-secret: EFFECT_DENY
+          webhook:test: EFFECT_DENY
+          webhook:retry: EFFECT_DENY
+          webhook:view-delivery: EFFECT_DENY
+          webhook:manage-provider: EFFECT_DENY
+          webhook:open-provider-portal: EFFECT_DENY
+
+  - name: "Unrelated organization admin and regular user cannot manage org webhook"
+    input:
+      principals: ["unrelated_org_admin", "regular_user"]
+      resources: ["org_webhook_allowed"]
+      actions: ["webhook:view", "webhook:update", "webhook:open-provider-portal"]
+    expected:
+      - principal: "unrelated_org_admin"
+        resource: "org_webhook_allowed"
+        actions:
+          webhook:view: EFFECT_DENY
+          webhook:update: EFFECT_DENY
+          webhook:open-provider-portal: EFFECT_DENY
+      - principal: "regular_user"
+        resource: "org_webhook_allowed"
+        actions:
+          webhook:view: EFFECT_DENY
+          webhook:update: EFFECT_DENY
+          webhook:open-provider-portal: EFFECT_DENY
