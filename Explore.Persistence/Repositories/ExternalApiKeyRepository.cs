@@ -19,12 +19,12 @@ public class ExternalApiKeyRepository : GenericRepository<ExternalApiKey, Guid>,
         _dbContext = dbContext;
     }
 
-    public async Task<ExternalApiKey?> GetByKeyIdForAuthentication(string keyId)
+    public async Task<ExternalApiKey?> GetByKeyIdForAuthentication(string keyId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.ExternalApiKeys
             .IgnoreTenantFilter(TenantFilterBypassReasons.ExternalApiKeyAuthentication)
             .AsNoTracking()
-            .FirstOrDefaultAsync(apiKey => apiKey.KeyId == keyId);
+            .FirstOrDefaultAsync(apiKey => apiKey.KeyId == keyId, cancellationToken);
     }
 
     public async Task<bool> TouchUsageMetadata(Guid id, DateTime usedAtUtc, string? lastUsedIp, TimeSpan minUpdateInterval, CancellationToken cancellationToken = default)
@@ -59,15 +59,15 @@ public class ExternalApiKeyRepository : GenericRepository<ExternalApiKey, Guid>,
         return rowsAffected > 0;
     }
 
-    public async Task<List<ExternalApiKey>> GetByOwner(ExternalApiKeyOwnerType ownerType, Guid ownerId)
+    public async Task<List<ExternalApiKey>> GetByOwner(ExternalApiKeyOwnerType ownerType, Guid ownerId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.ExternalApiKeys
             .AsNoTracking()
             .Where(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<ExternalApiKey>> GetByOwners(ExternalApiKeyOwnerType ownerType, IReadOnlyCollection<Guid> ownerIds)
+    public async Task<List<ExternalApiKey>> GetByOwners(ExternalApiKeyOwnerType ownerType, IReadOnlyCollection<Guid> ownerIds, CancellationToken cancellationToken = default)
     {
         if (ownerIds.Count == 0)
         {
@@ -77,43 +77,45 @@ public class ExternalApiKeyRepository : GenericRepository<ExternalApiKey, Guid>,
         var results = new List<ExternalApiKey>(ownerIds.Count);
         foreach (var chunk in ownerIds.Chunk(100))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var chunkResults = await _dbContext.ExternalApiKeys
                 .AsNoTracking()
                 .Where(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && chunk.Contains(apiKey.OwnerId))
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
             results.AddRange(chunkResults);
         }
         return results;
     }
 
-    public async Task<bool> ExistsByOwnerAndName(ExternalApiKeyOwnerType ownerType, Guid ownerId, string name)
+    public async Task<bool> ExistsByOwnerAndName(ExternalApiKeyOwnerType ownerType, Guid ownerId, string name, CancellationToken cancellationToken = default)
     {
         return await _dbContext.ExternalApiKeys
             .AsNoTracking()
-            .AnyAsync(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name);
+            .AnyAsync(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name, cancellationToken);
     }
 
-    public async Task<ExternalApiKey?> GetByIdIgnoringTenantFilter(Guid id)
+    public async Task<ExternalApiKey?> GetByIdIgnoringTenantFilter(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbContext.ExternalApiKeys
             .IgnoreTenantFilter(TenantFilterBypassReasons.ExternalApiKeyPlatformManagement)
-            .FirstOrDefaultAsync(apiKey => apiKey.Id == id);
+            .FirstOrDefaultAsync(apiKey => apiKey.Id == id, cancellationToken);
     }
 
-    public async Task<List<ExternalApiKey>> GetByOwnerIgnoringTenantFilter(ExternalApiKeyOwnerType ownerType, Guid ownerId)
+    public async Task<List<ExternalApiKey>> GetByOwnerIgnoringTenantFilter(ExternalApiKeyOwnerType ownerType, Guid ownerId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.ExternalApiKeys
             .IgnoreTenantFilter(TenantFilterBypassReasons.ExternalApiKeyPlatformManagement)
             .AsNoTracking()
             .Where(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<bool> ExistsByOwnerAndNameIgnoringTenantFilter(ExternalApiKeyOwnerType ownerType, Guid ownerId, string name)
+    public async Task<bool> ExistsByOwnerAndNameIgnoringTenantFilter(ExternalApiKeyOwnerType ownerType, Guid ownerId, string name, CancellationToken cancellationToken = default)
     {
         return await _dbContext.ExternalApiKeys
             .IgnoreTenantFilter(TenantFilterBypassReasons.ExternalApiKeyPlatformManagement)
             .AsNoTracking()
-            .AnyAsync(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name);
+            .AnyAsync(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name, cancellationToken);
     }
 }

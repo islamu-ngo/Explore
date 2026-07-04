@@ -80,10 +80,10 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
 
         if (ownerType == ExternalApiKeyOwnerType.InstanceAdmin)
         {
-            return !await _externalApiKeyRepository.ExistsByOwnerAndNameIgnoringTenantFilter(ownerType, ownerId.Value, name);
+            return !await _externalApiKeyRepository.ExistsByOwnerAndNameIgnoringTenantFilter(ownerType, ownerId.Value, name, cancellationToken);
         }
 
-        return !await _externalApiKeyRepository.ExistsByOwnerAndName(ownerType, ownerId.Value, name);
+        return !await _externalApiKeyRepository.ExistsByOwnerAndName(ownerType, ownerId.Value, name, cancellationToken);
     }
 
     private static Guid? ResolveOwnerId(CreateExternalApiKeyDto dto, Guid currentUserId, Guid? tenantId)

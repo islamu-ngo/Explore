@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.ExternalApiKeys.Handlers.Commands;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 using Explore.Application.Telemetry;
@@ -136,6 +137,62 @@ public class ExternalApiKeyObservabilityTests
     }
 
     [Test]
+    public async Task CreateExternalApiKeyCommandHandler_WithTenantOwnerAndNoAdminAuthority_ThrowsAuthorizationException()
+    {
+        var metrics = CreateMetrics();
+
+        var externalApiKeyRepository = Substitute.For<IExternalApiKeyRepository>();
+        var organizationRepository = Substitute.For<IOrganizationRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var groupRepository = Substitute.For<IGroupRepository>();
+        var adminContext = Substitute.For<IAdminContext>();
+        var userContext = Substitute.For<IUserContext>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var logger = Substitute.For<ILogger<CreateExternalApiKeyCommandHandler>>();
+
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+
+        userContext.GetRequiredUserId().Returns(userId);
+        tenantContext.TenantId.Returns(tenantId);
+        externalApiKeyRepository.ExistsByOwnerAndName(
+                ExternalApiKeyOwnerType.Tenant,
+                tenantId,
+                "Tenant Bot",
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        adminContext.IsTenantAdminAsync(tenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var handler = new CreateExternalApiKeyCommandHandler(
+            externalApiKeyRepository,
+            organizationRepository,
+            organizationMemberRepository,
+            groupMemberRepository,
+            groupRepository,
+            adminContext,
+            userContext,
+            tenantContext,
+            metrics,
+            logger);
+
+        await Assert.ThrowsAsync<AuthorizationException>(() =>
+            handler.Handle(
+                new CreateExternalApiKeyCommand
+                {
+                    ExternalApiKeyDto = new CreateExternalApiKeyDto
+                    {
+                        Name = "Tenant Bot",
+                        ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.Tenant,
+                        Scopes = [ExternalApiKeyScopes.AdminTenant]
+                    }
+                },
+                CancellationToken.None));
+
+        await externalApiKeyRepository.DidNotReceive().Create(Arg.Any<ExternalApiKey>());
+    }
+
+    [Test]
     public async Task UpdateExternalApiKeyPolicyCommandHandler_WithUnknownMcpScope_ReturnsValidationError()
     {
         var metrics = CreateMetrics();
@@ -192,6 +249,83 @@ public class ExternalApiKeyObservabilityTests
         await Assert.That(response.Success).IsFalse();
         await Assert.That(response.Errors).Contains(error => error.Contains("Invalid scopes", StringComparison.OrdinalIgnoreCase));
         await Assert.That(response.Errors).Contains(error => error.Contains("mcp:teleport", StringComparison.OrdinalIgnoreCase));
+        await externalApiKeyRepository.DidNotReceive().Update(Arg.Any<ExternalApiKey>());
+    }
+
+    [Test]
+    public async Task UpdateExternalApiKeyPolicyCommandHandler_WithInstanceAdminKeyNameConflict_UsesTenantFilterBypass()
+    {
+        var metrics = CreateMetrics();
+
+        var externalApiKeyRepository = Substitute.For<IExternalApiKeyRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var adminContext = Substitute.For<IAdminContext>();
+        var userContext = Substitute.For<IUserContext>();
+        var logger = Substitute.For<ILogger<UpdateExternalApiKeyPolicyCommandHandler>>();
+
+        var userId = Guid.NewGuid();
+        var externalApiKey = new ExternalApiKey
+        {
+            Id = Guid.NewGuid(),
+            TenantId = null,
+            Tenant = null!,
+            Name = "Original Platform Bot",
+            KeyId = "key-platform-validation",
+            SecretHash = "hash",
+            Scopes = ExternalApiKeyScopes.AdminInstance,
+            OwnerType = ExternalApiKeyOwnerType.InstanceAdmin,
+            OwnerId = userId,
+            ExternalApiKeyStatusId = (int)ExternalApiKeyStatusEnum.Active,
+            ExternalApiKeyStatus = null!,
+            ExternalApiKeyCreditPeriodId = (int)ExternalApiKeyCreditPeriodEnum.None,
+            ExternalApiKeyCreditPeriod = null!
+        };
+
+        userContext.GetRequiredUserId().Returns(userId);
+        adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        externalApiKeyRepository.GetByIdIgnoringTenantFilter(externalApiKey.Id, Arg.Any<CancellationToken>())
+            .Returns(externalApiKey);
+        externalApiKeyRepository.ExistsByOwnerAndNameIgnoringTenantFilter(
+                ExternalApiKeyOwnerType.InstanceAdmin,
+                userId,
+                "Platform Ops",
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var handler = new UpdateExternalApiKeyPolicyCommandHandler(
+            externalApiKeyRepository,
+            organizationMemberRepository,
+            groupMemberRepository,
+            adminContext,
+            userContext,
+            metrics,
+            logger);
+
+        var response = await handler.Handle(
+            new UpdateExternalApiKeyPolicyCommand
+            {
+                ExternalApiKeyPolicyDto = new UpdateExternalApiKeyPolicyDto
+                {
+                    Id = externalApiKey.Id,
+                    Name = "Platform Ops",
+                    Scopes = [ExternalApiKeyScopes.AdminInstance]
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.Errors).Contains(error => error.Contains("same name", StringComparison.OrdinalIgnoreCase));
+        await externalApiKeyRepository.Received(1).ExistsByOwnerAndNameIgnoringTenantFilter(
+            ExternalApiKeyOwnerType.InstanceAdmin,
+            userId,
+            "Platform Ops",
+            Arg.Any<CancellationToken>());
+        await externalApiKeyRepository.DidNotReceive().ExistsByOwnerAndName(
+            Arg.Any<ExternalApiKeyOwnerType>(),
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
         await externalApiKeyRepository.DidNotReceive().Update(Arg.Any<ExternalApiKey>());
     }
 

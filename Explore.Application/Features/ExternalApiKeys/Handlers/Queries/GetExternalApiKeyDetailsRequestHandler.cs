@@ -37,7 +37,7 @@ public class GetExternalApiKeyDetailsRequestHandler : IRequestHandler<GetExterna
     public async Task<ExternalApiKeyListDto?> Handle(GetExternalApiKeyDetailsRequest request, CancellationToken cancellationToken)
     {
         var currentUserId = _userContext.GetRequiredUserId();
-        var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.Id);
+        var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.Id, cancellationToken);
 
         if (externalApiKey is null || !await CanManageAsync(externalApiKey, currentUserId, cancellationToken))
         {

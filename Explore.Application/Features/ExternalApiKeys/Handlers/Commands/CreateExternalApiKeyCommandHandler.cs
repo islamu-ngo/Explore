@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 using Explore.Application.Lookups;
 using Explore.Application.Responses;
@@ -86,10 +87,7 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
         var authorityResult = await CheckOwnerAuthorityAsync(dto, currentUserId, cancellationToken);
         if (!authorityResult.IsAuthorized)
         {
-            response.Success = false;
-            response.Message = authorityResult.DenialMessage;
-            response.Errors = [authorityResult.DenialDetail];
-            return response;
+            throw new AuthorizationException(authorityResult.DenialMessage);
         }
 
         var keyId = ApiKeyHashing.CreateKeyId();

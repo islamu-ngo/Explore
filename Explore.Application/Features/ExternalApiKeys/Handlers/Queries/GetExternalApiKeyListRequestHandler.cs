@@ -39,7 +39,7 @@ public class GetExternalApiKeyListRequestHandler : IRequestHandler<GetExternalAp
         var currentUserId = _userContext.GetRequiredUserId();
         var visibleKeys = new List<Explore.Domain.ExternalApiKey>();
 
-        visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwner(ExternalApiKeyOwnerType.User, currentUserId));
+        visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwner(ExternalApiKeyOwnerType.User, currentUserId, cancellationToken));
 
         var organizationIds = await _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
             currentUserId,
@@ -47,7 +47,7 @@ public class GetExternalApiKeyListRequestHandler : IRequestHandler<GetExternalAp
 
         if (organizationIds.Count > 0)
         {
-            visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Organization, organizationIds));
+            visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Organization, organizationIds, cancellationToken));
         }
 
         var groupIds = await _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
@@ -56,20 +56,20 @@ public class GetExternalApiKeyListRequestHandler : IRequestHandler<GetExternalAp
 
         if (groupIds.Count > 0)
         {
-            visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Group, groupIds));
+            visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Group, groupIds, cancellationToken));
         }
 
         var tenantIds = await _adminContext.GetAdminTenantIdsAsync(cancellationToken);
 
         if (tenantIds.Count > 0)
         {
-            visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Tenant, tenantIds));
+            visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Tenant, tenantIds, cancellationToken));
         }
 
         if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
         {
             visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwnerIgnoringTenantFilter(
-                ExternalApiKeyOwnerType.InstanceAdmin, currentUserId));
+                ExternalApiKeyOwnerType.InstanceAdmin, currentUserId, cancellationToken));
         }
 
         return visibleKeys

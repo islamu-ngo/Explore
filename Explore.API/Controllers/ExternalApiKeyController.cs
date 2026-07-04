@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
@@ -12,7 +13,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
@@ -48,7 +49,10 @@ public class ExternalApiKeyController : ControllerBase
     [EndpointSummary("Get visible external API keys")]
     [EndpointDescription("Retrieve API keys owned by the current user or organizations they can manage.")]
     [ProducesResponseType(typeof(List<ExternalApiKeyListDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<List<ExternalApiKeyListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
         var keys = await _mediator.Send(new GetExternalApiKeyListRequest(), cancellationToken);
@@ -59,8 +63,11 @@ public class ExternalApiKeyController : ControllerBase
     [EndpointSummary("Get external API key details")]
     [EndpointDescription("Retrieve metadata for a specific external API key visible to the current caller.")]
     [ProducesResponseType(typeof(ExternalApiKeyListDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<ExternalApiKeyListDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var key = await _mediator.Send(new GetExternalApiKeyDetailsRequest { Id = id }, cancellationToken);
@@ -75,6 +82,10 @@ public class ExternalApiKeyController : ControllerBase
     [EndpointDescription("Issue a tenant-bound external API key and reveal the raw secret once.")]
     [ProducesResponseType(typeof(CreateExternalApiKeyCommandResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     public async Task<ActionResult<CreateExternalApiKeyCommandResponse>> Create([FromBody] CreateExternalApiKeyDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateExternalApiKeyCommand { ExternalApiKeyDto = dto };
@@ -93,7 +104,11 @@ public class ExternalApiKeyController : ControllerBase
     [EndpointDescription("Update editable policy fields for a visible external API key.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateExternalApiKeyPolicyDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
@@ -121,19 +136,26 @@ public class ExternalApiKeyController : ControllerBase
     [EndpointSummary("Revoke an external API key")]
     [EndpointDescription("Revoke an external API key visible to the current caller.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        await _mediator.Send(new RevokeExternalApiKeyCommand { Id = id }, cancellationToken);
+        var revoked = await _mediator.Send(new RevokeExternalApiKeyCommand { Id = id }, cancellationToken);
 
-        return NoContent();
+        return revoked ? NoContent() : this.ToNotFoundProblem(ExternalApiKeyNotFoundProblem);
     }
 
     [HttpGet("usage-report", Name = RouteNames.GetExternalApiKeyUsageReport)]
     [EndpointSummary("Get API key usage report")]
     [EndpointDescription("Aggregated request counts and credit usage per API key. Instance admins see platform-wide data; tenant admins see their tenant only. Does not expose secret material.")]
     [ProducesResponseType(typeof(List<ExternalApiKeyUsageReportDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<List<ExternalApiKeyUsageReportDto>>> GetUsageReport(
         [FromQuery] DateOnly from,
         [FromQuery] DateOnly to,

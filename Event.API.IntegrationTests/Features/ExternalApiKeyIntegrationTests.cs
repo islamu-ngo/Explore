@@ -7,6 +7,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Responses;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -122,6 +123,31 @@ public class ExternalApiKeyIntegrationTests
     }
 
     [Test]
+    public async Task CreateExternalApiKey_WithTenantOwnerAndNoTenantAdminAuthority_ShouldReturnForbiddenWithoutCreatingKey()
+    {
+        var userId = Guid.NewGuid();
+        var keyName = $"Tenant Key {Guid.NewGuid():N}";
+        var payload = new CreateExternalApiKeyDto
+        {
+            Name = keyName,
+            Scopes = [ExternalApiKeyScopes.AdminTenant],
+            ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.Tenant
+        };
+
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/externalapikey", userId);
+        request.Content = JsonContent.Create(payload);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Forbidden");
+
+        using var scope = _fixture.Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var exists = await dbContext.ExternalApiKeys.AnyAsync(x => x.Name == keyName);
+        await Assert.That(exists).IsFalse();
+    }
+
+    [Test]
     public async Task UpdateExternalApiKeyPolicy_WithMismatchedRouteId_ShouldReturnValidationProblemDetails()
     {
         var userId = Guid.NewGuid();
@@ -202,6 +228,21 @@ public class ExternalApiKeyIntegrationTests
         await Assert.That(stored.OwnerId).IsEqualTo(ownerUserId);
     }
 
+    [Test]
+    public async Task GetUsageReport_WithAuthenticatedNonAdmin_ShouldReturnForbidden()
+    {
+        var userId = Guid.NewGuid();
+
+        using var request = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            "/api/externalapikey/usage-report?from=2026-01-01&to=2026-01-31",
+            userId);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Forbidden");
+    }
+
     private static async Task AssertExternalApiKeyValidationProblemAsync(
         HttpResponseMessage response,
         string expectedDetail,
@@ -254,6 +295,27 @@ public class ExternalApiKeyIntegrationTests
 
         await Assert.That(stored.ExternalApiKeyStatusId).IsEqualTo((int)ExternalApiKeyStatusEnum.Revoked);
         await Assert.That(stored.UpdatedAt).IsNotNull();
+    }
+
+    [Test]
+    public async Task DeleteExternalApiKey_WithDifferentUser_ShouldReturnNotFoundAndLeaveKeyActive()
+    {
+        var ownerUserId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var apiKeyId = await CreateExternalApiKeyAsync(ownerUserId, "Private Ops Bot", ["events:read"]);
+
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Delete, $"/api/externalapikey/{apiKeyId}", otherUserId);
+        var response = await _fixture.Client.SendAsync(request);
+
+        await AssertExternalApiKeyNotFoundProblemAsync(response);
+
+        using var scope = _fixture.Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var stored = await dbContext.ExternalApiKeys.SingleAsync(x => x.Id == apiKeyId);
+
+        await Assert.That(stored.ExternalApiKeyStatusId).IsEqualTo((int)ExternalApiKeyStatusEnum.Active);
+        await Assert.That(stored.UpdatedAt).IsNull();
+        await Assert.That(stored.OwnerId).IsEqualTo(ownerUserId);
     }
 
     private async Task<Guid> CreateExternalApiKeyAsync(Guid userId, string name, List<string> scopes)

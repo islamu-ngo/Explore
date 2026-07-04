@@ -46,7 +46,7 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
     {
         var response = new BaseCommandResponse<Guid>();
         var currentUserId = _userContext.GetRequiredUserId();
-        var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.ExternalApiKeyPolicyDto.Id);
+        var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.ExternalApiKeyPolicyDto.Id, cancellationToken);
 
         if (externalApiKey is null || !await CanManageAsync(externalApiKey, currentUserId, cancellationToken))
         {

@@ -43,7 +43,7 @@ public class RevokeExternalApiKeyCommandHandler : IRequestHandler<RevokeExternal
     public async Task<bool> Handle(RevokeExternalApiKeyCommand request, CancellationToken cancellationToken)
     {
         var currentUserId = _userContext.GetRequiredUserId();
-        var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.Id);
+        var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.Id, cancellationToken);
 
         if (externalApiKey is null || !await CanManageAsync(externalApiKey, currentUserId, cancellationToken))
         {

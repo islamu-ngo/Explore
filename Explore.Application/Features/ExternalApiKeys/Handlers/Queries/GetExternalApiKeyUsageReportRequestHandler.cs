@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.ExternalApiKeys.Requests.Queries;
 using Explore.Application.Lookups;
 using MediatR;
@@ -34,7 +35,7 @@ public class GetExternalApiKeyUsageReportRequestHandler : IRequestHandler<GetExt
 
             if (!isTenantAdmin && !isInstanceAdmin)
             {
-                return [];
+                throw new AuthorizationException("Only tenant administrators or instance administrators can read tenant API key usage.");
             }
 
             summaries = await _quotaRepository.GetUsageByTenant(request.TenantId.Value, request.From, request.To, cancellationToken);
@@ -43,7 +44,7 @@ public class GetExternalApiKeyUsageReportRequestHandler : IRequestHandler<GetExt
         {
             if (!await _adminContext.IsInstanceAdminAsync(cancellationToken))
             {
-                return [];
+                throw new AuthorizationException("Only instance administrators can read platform-wide API key usage.");
             }
 
             summaries = await _quotaRepository.GetUsagePlatformWide(request.From, request.To, cancellationToken);

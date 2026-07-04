@@ -44,6 +44,19 @@ internal class UpdateExternalApiKeyPolicyDtoValidator : AbstractValidator<Update
             return true;
         }
 
-        return !await _externalApiKeyRepository.ExistsByOwnerAndName(existingApiKey.OwnerType, existingApiKey.OwnerId, name);
+        if (existingApiKey.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin)
+        {
+            return !await _externalApiKeyRepository.ExistsByOwnerAndNameIgnoringTenantFilter(
+                existingApiKey.OwnerType,
+                existingApiKey.OwnerId,
+                name,
+                cancellationToken);
+        }
+
+        return !await _externalApiKeyRepository.ExistsByOwnerAndName(
+            existingApiKey.OwnerType,
+            existingApiKey.OwnerId,
+            name,
+            cancellationToken);
     }
 }
