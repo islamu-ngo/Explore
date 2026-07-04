@@ -161,10 +161,8 @@ public sealed class IncomingWebhookIntakeService(
             normalizedProviderMessageId,
             cancellationToken);
         logger.LogInformation(
-            "Incoming webhook duplicate captured for provider {Provider} tenant {TenantId} provider message {ProviderMessageId}",
-            normalizedProvider,
-            tenantId,
-            normalizedProviderMessageId);
+            "Incoming webhook duplicate captured for provider {Provider}",
+            normalizedProvider);
 
         return IncomingWebhookCaptureResult.Duplicate(
             existing?.Id ?? Guid.Empty,
@@ -211,9 +209,32 @@ public sealed class IncomingWebhookIntakeService(
         long maxBodyBytes,
         CancellationToken cancellationToken)
     {
+        if (request.ContentLength > maxBodyBytes)
+        {
+            throw new IOException("Incoming webhook request body exceeded the configured size limit.");
+        }
+
         request.EnableBuffering(BufferThresholdBytes, maxBodyBytes);
         await using var memory = new MemoryStream();
-        await request.Body.CopyToAsync(memory, cancellationToken);
+        var buffer = new byte[81920];
+        long totalBytes = 0;
+        while (true)
+        {
+            var bytesRead = await request.Body.ReadAsync(buffer, cancellationToken);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            totalBytes += bytesRead;
+            if (totalBytes > maxBodyBytes)
+            {
+                throw new IOException("Incoming webhook request body exceeded the configured size limit.");
+            }
+
+            await memory.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+        }
+
         request.Body.Position = 0;
         return memory.ToArray();
     }

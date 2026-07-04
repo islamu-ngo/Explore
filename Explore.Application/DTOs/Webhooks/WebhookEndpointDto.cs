@@ -13,6 +13,10 @@ public sealed class WebhookEndpointDto
 
     public string? ConsumerName { get; init; }
 
+    public int ProviderModeId { get; init; }
+
+    public required string ProviderModeName { get; init; }
+
     public required string Url { get; init; }
 
     public string? Description { get; init; }

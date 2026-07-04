@@ -39,7 +39,8 @@ public sealed class WebhookEndpointDetailLinkPolicy : ILinkPolicy<WebhookEndpoin
                 "Rotate webhook endpoint secret")
                 .RequirePermission(AuthorizationActions.Webhooks.RotateSecret, ResourceDescriptors.WebhookEndpoint, dto);
 
-            if (string.Equals(dto.StatusName, "Active", StringComparison.Ordinal))
+            if (string.Equals(dto.StatusName, "Active", StringComparison.Ordinal) &&
+                CanScheduleLocalTest(dto.ProviderModeName))
             {
                 yield return new LinkDefinition(
                     LinkRelations.Test,
@@ -59,6 +60,10 @@ public sealed class WebhookEndpointDetailLinkPolicy : ILinkPolicy<WebhookEndpoin
                 .RequirePermission(AuthorizationActions.Webhooks.Delete, ResourceDescriptors.WebhookEndpoint, dto);
         }
     }
+
+    private static bool CanScheduleLocalTest(string providerModeName) =>
+        string.Equals(providerModeName, "Local", StringComparison.Ordinal) ||
+        string.Equals(providerModeName, "Composite", StringComparison.Ordinal);
 }
 
 public sealed class WebhookEndpointCollectionLinkPolicy : ICollectionLinkPolicy<WebhookEndpointDto>

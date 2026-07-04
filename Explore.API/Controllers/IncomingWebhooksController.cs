@@ -38,7 +38,7 @@ public sealed class IncomingWebhooksController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicIngestionPolicy)]
     public async Task<IActionResult> RecordSvixOperationalCallback(
         CancellationToken cancellationToken = default)
     {
@@ -76,7 +76,7 @@ public sealed class IncomingWebhooksController(
                 cancellationToken);
             if (!capture.Succeeded)
             {
-                metrics.RecordEventReportProviderCallback(tenantId.Value.ToString(), "svix", "failed", capture.Code);
+                metrics.RecordEventReportProviderCallback(null, "svix", "failed", capture.Code);
                 return ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateProblem(
                     HttpContext,
                     capture.StatusCode,
@@ -93,7 +93,7 @@ public sealed class IncomingWebhooksController(
         }
 
         metrics.RecordEventReportProviderCallback(
-            tenantId?.ToString(),
+            null,
             "svix",
             "succeeded",
             "none");

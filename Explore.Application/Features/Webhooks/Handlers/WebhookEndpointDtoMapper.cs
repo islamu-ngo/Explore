@@ -15,6 +15,8 @@ internal static class WebhookEndpointDtoMapper
             TenantId = endpoint.TenantId,
             ConsumerId = endpoint.ConsumerId,
             ConsumerName = endpoint.Consumer?.Name,
+            ProviderModeId = (int)(endpoint.Consumer?.ProviderMode ?? WebhookProviderMode.Local),
+            ProviderModeName = (endpoint.Consumer?.ProviderMode ?? WebhookProviderMode.Local).ToString(),
             Url = endpoint.Url,
             Description = endpoint.Description,
             StatusId = (int)endpoint.Status,

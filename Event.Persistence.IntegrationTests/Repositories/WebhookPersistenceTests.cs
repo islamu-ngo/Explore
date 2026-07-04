@@ -175,6 +175,61 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
         await Assert.That(messages[retained.Id].PayloadClearedAt).IsNull();
     }
 
+    [Test]
+    public async Task MessageAndDeliveryRepositories_ApplyExplicitTenantPredicates()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenantA = CreateTenant("webhook-audit-a");
+        var tenantB = CreateTenant("webhook-audit-b");
+        var consumerA = CreateConsumer(tenantA.Id, "Tenant A Consumer", WebhookProviderMode.Local);
+        var consumerB = CreateConsumer(tenantB.Id, "Tenant B Consumer", WebhookProviderMode.Local);
+        var endpointA = CreateEndpoint(tenantA.Id, consumerA.Id, "tenant-a", WebhookEndpointStatus.Active);
+        var endpointB = CreateEndpoint(tenantB.Id, consumerB.Id, "tenant-b", WebhookEndpointStatus.Active);
+        var messageA = CreateMessage(tenantA.Id, "event.published", "evt-a", DateTime.UtcNow.AddDays(14));
+        var messageB = CreateMessage(tenantB.Id, "event.published", "evt-b", DateTime.UtcNow.AddDays(14));
+        messageA.ConsumerId = consumerA.Id;
+        messageB.ConsumerId = consumerB.Id;
+        var attemptA = CreateDeliveryAttempt(tenantA.Id, messageA.Id, endpointA.Id);
+        var attemptB = CreateDeliveryAttempt(tenantB.Id, messageB.Id, endpointB.Id);
+        context.Tenants.AddRange(tenantA, tenantB);
+        context.WebhookConsumers.AddRange(consumerA, consumerB);
+        context.WebhookEndpoints.AddRange(endpointA, endpointB);
+        context.WebhookMessages.AddRange(messageA, messageB);
+        context.WebhookDeliveryAttempts.AddRange(attemptA, attemptB);
+        await context.SaveChangesAsync();
+        var messageRepository = new WebhookMessageRepository(context);
+        var attemptRepository = new WebhookDeliveryAttemptRepository(context);
+
+        var tenantAMessages = await messageRepository.ListByTenantAsync(tenantA.Id, 10, CancellationToken.None);
+        var crossTenantMessage = await messageRepository.GetByTenantAndIdAsync(
+            tenantA.Id,
+            messageB.Id,
+            CancellationToken.None);
+        var tenantAAttempts = await attemptRepository.ListByTenantAsync(
+            tenantA.Id,
+            messageId: null,
+            endpointId: null,
+            limit: 10,
+            CancellationToken.None);
+        var tenantAAttemptsForForeignEndpoint = await attemptRepository.ListByTenantAsync(
+            tenantA.Id,
+            messageId: null,
+            endpointB.Id,
+            limit: 10,
+            CancellationToken.None);
+        var crossTenantAttempt = await attemptRepository.GetByTenantAndIdAsync(
+            tenantA.Id,
+            attemptB.Id,
+            CancellationToken.None);
+
+        await Assert.That(tenantAMessages.Select(e => e.Id)).IsEquivalentTo([messageA.Id]);
+        await Assert.That(crossTenantMessage).IsNull();
+        await Assert.That(tenantAAttempts.Select(e => e.Id)).IsEquivalentTo([attemptA.Id]);
+        await Assert.That(tenantAAttemptsForForeignEndpoint).IsEmpty();
+        await Assert.That(crossTenantAttempt).IsNull();
+    }
+
     private static Tenant CreateTenant(string slugPrefix)
     {
         return new Tenant
@@ -293,6 +348,30 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
             PayloadRetentionUntil = retentionUntil,
             ProviderMode = WebhookProviderMode.Local,
             Status = WebhookMessageStatus.Pending
+        };
+    }
+
+    private static WebhookDeliveryAttempt CreateDeliveryAttempt(
+        Guid tenantId,
+        Guid messageId,
+        Guid endpointId)
+    {
+        return new WebhookDeliveryAttempt
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            MessageId = messageId,
+            EndpointId = endpointId,
+            AttemptNumber = 1,
+            Status = WebhookDeliveryAttemptStatus.Failed,
+            ScheduledAt = DateTime.UtcNow.AddMinutes(-5),
+            SentAt = DateTime.UtcNow.AddMinutes(-4),
+            CompletedAt = DateTime.UtcNow.AddMinutes(-4),
+            HttpStatusCode = 500,
+            FailureCategory = "server_error",
+            ResponseBodyPreview = "upstream returned 500",
+            DurationMs = 123,
+            NextRetryAt = DateTime.UtcNow.AddMinutes(10)
         };
     }
 

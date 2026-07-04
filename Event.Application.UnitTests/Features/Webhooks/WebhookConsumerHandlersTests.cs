@@ -3,6 +3,7 @@
 
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Handlers.Commands;
 using Explore.Application.Features.Webhooks.Handlers.Queries;
@@ -21,6 +22,7 @@ public sealed class WebhookConsumerHandlersTests
     private readonly IWebhookEventTypeRepository _eventTypeRepository = Substitute.For<IWebhookEventTypeRepository>();
     private readonly IWebhookMessageRepository _messageRepository = Substitute.For<IWebhookMessageRepository>();
     private readonly IWebhookDeliveryAttemptRepository _attemptRepository = Substitute.For<IWebhookDeliveryAttemptRepository>();
+    private readonly IWebhookDeliveryDrainService _deliveryDrainService = Substitute.For<IWebhookDeliveryDrainService>();
     private readonly IWebhookPayloadBuilder _payloadBuilder = new DefaultWebhookPayloadBuilder(new WebhookEventTypeRegistry());
 
     [Test]
@@ -109,6 +111,49 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(archiveAttribute).IsNotNull();
         await Assert.That(archiveAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
         await Assert.That(archiveAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Delete);
+    }
+
+    [Test]
+    public async Task DeliveryAuditRequests_RequireWebhookDeliveryAuthorization()
+    {
+        var listMessagesAttribute = typeof(GetWebhookMessagesQuery)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+        var detailMessageAttribute = typeof(GetWebhookMessageByIdQuery)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+        var listAttemptsAttribute = typeof(GetWebhookDeliveryAttemptsQuery)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+        var detailAttemptAttribute = typeof(GetWebhookDeliveryAttemptByIdQuery)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+        var retryAttribute = typeof(RetryWebhookDeliveryAttemptCommand)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+
+        await Assert.That(listMessagesAttribute).IsNotNull();
+        await Assert.That(listMessagesAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
+        await Assert.That(listMessagesAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
+        await Assert.That(detailMessageAttribute).IsNotNull();
+        await Assert.That(detailMessageAttribute!.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
+        await Assert.That(listAttemptsAttribute).IsNotNull();
+        await Assert.That(listAttemptsAttribute!.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
+        await Assert.That(detailAttemptAttribute).IsNotNull();
+        await Assert.That(detailAttemptAttribute!.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
+        await Assert.That(retryAttribute).IsNotNull();
+        await Assert.That(retryAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
+        await Assert.That(retryAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Retry);
+        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetWebhookMessagesQuery))).IsTrue();
+        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetWebhookMessageByIdQuery))).IsTrue();
+        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetWebhookDeliveryAttemptsQuery))).IsTrue();
+        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetWebhookDeliveryAttemptByIdQuery))).IsTrue();
+        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(RetryWebhookDeliveryAttemptCommand))).IsTrue();
     }
 
     [Test]
@@ -411,6 +456,8 @@ public sealed class WebhookConsumerHandlersTests
 
         await Assert.That(result.Count).IsEqualTo(1);
         await Assert.That(result[0].Id).IsEqualTo(endpoint.Id);
+        await Assert.That(result[0].ProviderModeId).IsEqualTo((int)WebhookProviderMode.Local);
+        await Assert.That(result[0].ProviderModeName).IsEqualTo(nameof(WebhookProviderMode.Local));
         await Assert.That(result[0].SecretVersion).IsEqualTo(1);
         await Assert.That(result[0].Subscriptions.Count).IsEqualTo(1);
         await _endpointRepository.Received(1).ListByTenantAsync(
@@ -440,6 +487,7 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Url).IsEqualTo(endpoint.Url);
         await Assert.That(result.StatusName).IsEqualTo(nameof(WebhookEndpointStatus.Active));
+        await Assert.That(result.ProviderModeName).IsEqualTo(nameof(WebhookProviderMode.Local));
         await Assert.That(result.Subscriptions.Single().EventTypeName).IsEqualTo("event.published");
     }
 
@@ -788,6 +836,246 @@ public sealed class WebhookConsumerHandlersTests
     }
 
     [Test]
+    public async Task MessageListHandler_MapsSafeMetadataAndCapsLimit()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local);
+        var message = CreateMessage(tenantId, consumer);
+        _messageRepository.ListByTenantAsync(tenantId, 500, Arg.Any<CancellationToken>())
+            .Returns([message]);
+        var handler = new GetWebhookMessagesQueryHandler(_messageRepository);
+
+        var result = await handler.Handle(
+            new GetWebhookMessagesQuery
+            {
+                TenantId = tenantId,
+                Limit = 10_000
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result[0].Id).IsEqualTo(message.Id);
+        await Assert.That(result[0].TenantId).IsEqualTo(tenantId);
+        await Assert.That(result[0].ConsumerName).IsEqualTo("Tenant automation");
+        await Assert.That(result[0].PayloadHash).IsEqualTo(message.PayloadHash);
+        await Assert.That(result[0].ProviderModeName).IsEqualTo(nameof(WebhookProviderMode.Local));
+        await Assert.That(result[0].StatusName).IsEqualTo(nameof(WebhookMessageStatus.Queued));
+        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookMessageDto).GetProperty("PayloadJson")).IsNull();
+        await _messageRepository.Received(1).ListByTenantAsync(
+            tenantId,
+            500,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task MessageDetailHandler_UsesTenantScopedRepositoryLookup()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var message = CreateMessage(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
+        _messageRepository.GetByTenantAndIdAsync(tenantId, message.Id, Arg.Any<CancellationToken>())
+            .Returns(message);
+        var handler = new GetWebhookMessageByIdQueryHandler(_messageRepository);
+
+        var result = await handler.Handle(
+            new GetWebhookMessageByIdQuery
+            {
+                TenantId = tenantId,
+                MessageId = message.Id
+            },
+            CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Id).IsEqualTo(message.Id);
+        await Assert.That(result.PayloadHash).IsEqualTo(message.PayloadHash);
+        await Assert.That(result.ProviderMessageId).IsEqualTo(message.ProviderMessageId);
+        await _messageRepository.Received(1).GetByTenantAndIdAsync(
+            tenantId,
+            message.Id,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task MessageDetailHandler_WhenIdentifiersAreEmpty_DoesNotQueryRepository()
+    {
+        var handler = new GetWebhookMessageByIdQueryHandler(_messageRepository);
+
+        var result = await handler.Handle(
+            new GetWebhookMessageByIdQuery
+            {
+                TenantId = Guid.Empty,
+                MessageId = Guid.Empty
+            },
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _messageRepository.DidNotReceive().GetByTenantAndIdAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DeliveryAttemptListHandler_NormalizesFiltersMapsSafeMetadataAndCapsLimit()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
+        var message = CreateMessage(tenantId, endpoint.Consumer!);
+        var attempt = CreateDeliveryAttempt(tenantId, message, endpoint, WebhookDeliveryAttemptStatus.Failed);
+        _attemptRepository.ListByTenantAsync(
+                tenantId,
+                null,
+                endpoint.Id,
+                500,
+                Arg.Any<CancellationToken>())
+            .Returns([attempt]);
+        var handler = new GetWebhookDeliveryAttemptsQueryHandler(_attemptRepository);
+
+        var result = await handler.Handle(
+            new GetWebhookDeliveryAttemptsQuery
+            {
+                TenantId = tenantId,
+                MessageId = Guid.Empty,
+                EndpointId = endpoint.Id,
+                Limit = 10_000
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result[0].Id).IsEqualTo(attempt.Id);
+        await Assert.That(result[0].TenantId).IsEqualTo(tenantId);
+        await Assert.That(result[0].MessageEventType).IsEqualTo(WebhookEventNames.EventPublished);
+        await Assert.That(result[0].EndpointUrl).IsEqualTo(endpoint.Url);
+        await Assert.That(result[0].ResponseBodyPreview).IsEqualTo("upstream returned 500");
+        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("ResponseBody")).IsNull();
+        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("SecretRef")).IsNull();
+        await _attemptRepository.Received(1).ListByTenantAsync(
+            tenantId,
+            null,
+            endpoint.Id,
+            500,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DeliveryAttemptDetailHandler_UsesTenantScopedRepositoryLookup()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
+        var message = CreateMessage(tenantId, endpoint.Consumer!);
+        var attempt = CreateDeliveryAttempt(tenantId, message, endpoint, WebhookDeliveryAttemptStatus.Abandoned);
+        _attemptRepository.GetByTenantAndIdAsync(tenantId, attempt.Id, Arg.Any<CancellationToken>())
+            .Returns(attempt);
+        var handler = new GetWebhookDeliveryAttemptByIdQueryHandler(_attemptRepository);
+
+        var result = await handler.Handle(
+            new GetWebhookDeliveryAttemptByIdQuery
+            {
+                TenantId = tenantId,
+                AttemptId = attempt.Id
+            },
+            CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Id).IsEqualTo(attempt.Id);
+        await Assert.That(result.StatusName).IsEqualTo(nameof(WebhookDeliveryAttemptStatus.Abandoned));
+        await Assert.That(result.ResponseBodyPreview).IsEqualTo("upstream returned 500");
+        await _attemptRepository.Received(1).GetByTenantAndIdAsync(
+            tenantId,
+            attempt.Id,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DeliveryAttemptDetailHandler_WhenIdentifiersAreEmpty_DoesNotQueryRepository()
+    {
+        var handler = new GetWebhookDeliveryAttemptByIdQueryHandler(_attemptRepository);
+
+        var result = await handler.Handle(
+            new GetWebhookDeliveryAttemptByIdQuery
+            {
+                TenantId = Guid.Empty,
+                AttemptId = Guid.Empty
+            },
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _attemptRepository.DidNotReceive().GetByTenantAndIdAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RetryDeliveryAttemptHandler_SchedulesManualRetryWithTenantAndAttempt()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var attemptId = Guid.CreateVersion7();
+        var retryAttemptId = Guid.CreateVersion7();
+        _deliveryDrainService.ScheduleManualRetryAsync(tenantId, attemptId, Arg.Any<CancellationToken>())
+            .Returns(new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.RetryScheduled, retryAttemptId));
+        var handler = new RetryWebhookDeliveryAttemptCommandHandler(_deliveryDrainService);
+
+        var result = await handler.Handle(
+            new RetryWebhookDeliveryAttemptCommand
+            {
+                TenantId = tenantId,
+                AttemptId = attemptId
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(retryAttemptId);
+        await _deliveryDrainService.Received(1).ScheduleManualRetryAsync(
+            tenantId,
+            attemptId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RetryDeliveryAttemptHandler_WhenRetryAlreadyDeferred_ReturnsConflictCode()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var attemptId = Guid.CreateVersion7();
+        _deliveryDrainService.ScheduleManualRetryAsync(tenantId, attemptId, Arg.Any<CancellationToken>())
+            .Returns(new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Deferred, attemptId));
+        var handler = new RetryWebhookDeliveryAttemptCommandHandler(_deliveryDrainService);
+
+        var result = await handler.Handle(
+            new RetryWebhookDeliveryAttemptCommand
+            {
+                TenantId = tenantId,
+                AttemptId = attemptId
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Id).IsEqualTo(attemptId);
+        await Assert.That(result.FailureCode).IsEqualTo("webhook_delivery_retry_deferred");
+        await Assert.That(result.Errors).Contains("A scheduled or active delivery attempt already exists for this message and endpoint.");
+    }
+
+    [Test]
+    public async Task RetryDeliveryAttemptHandler_WhenRequestInvalid_DoesNotCallDrainService()
+    {
+        var handler = new RetryWebhookDeliveryAttemptCommandHandler(_deliveryDrainService);
+
+        var result = await handler.Handle(
+            new RetryWebhookDeliveryAttemptCommand
+            {
+                TenantId = Guid.Empty,
+                AttemptId = Guid.Empty
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("webhook_delivery_retry_validation_failed");
+        await _deliveryDrainService.DidNotReceive().ScheduleManualRetryAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ArchiveEndpointHandler_WhenEndpointExists_ArchivesEndpoint()
     {
         var tenantId = Guid.CreateVersion7();
@@ -925,6 +1213,52 @@ public sealed class WebhookConsumerHandlersTests
             IsPublic = true,
             IsEnabled = true,
             PayloadRetentionDays = 14,
+            CreatedAt = DateTime.UtcNow
+        };
+
+    private static WebhookMessage CreateMessage(Guid tenantId, WebhookConsumer consumer) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            EventType = WebhookEventNames.EventPublished,
+            EventId = Guid.CreateVersion7().ToString("D"),
+            AggregateKind = "Event",
+            AggregateId = Guid.CreateVersion7(),
+            ConsumerId = consumer.Id,
+            Consumer = consumer,
+            PayloadJson = """{"secret":"must-not-leak"}""",
+            PayloadHash = "sha256:8f4a3db2",
+            PayloadRetentionUntil = DateTime.UtcNow.AddDays(14),
+            ProviderMode = WebhookProviderMode.Local,
+            ProviderMessageId = "local-message-1",
+            Status = WebhookMessageStatus.Queued,
+            CreatedAt = DateTime.UtcNow
+        };
+
+    private static WebhookDeliveryAttempt CreateDeliveryAttempt(
+        Guid tenantId,
+        WebhookMessage message,
+        WebhookEndpoint endpoint,
+        WebhookDeliveryAttemptStatus status) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            MessageId = message.Id,
+            Message = message,
+            EndpointId = endpoint.Id,
+            Endpoint = endpoint,
+            AttemptNumber = 2,
+            Status = status,
+            ScheduledAt = DateTime.UtcNow.AddMinutes(-5),
+            SentAt = DateTime.UtcNow.AddMinutes(-4),
+            CompletedAt = DateTime.UtcNow.AddMinutes(-4),
+            HttpStatusCode = 500,
+            FailureCategory = "server_error",
+            ResponseBodyPreview = "upstream returned 500",
+            DurationMs = 150,
+            NextRetryAt = DateTime.UtcNow.AddMinutes(10),
             CreatedAt = DateTime.UtcNow
         };
 }

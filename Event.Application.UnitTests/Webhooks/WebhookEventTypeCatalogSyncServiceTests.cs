@@ -113,5 +113,8 @@ public sealed class WebhookEventTypeCatalogSyncServiceTests
             string.Equals(name, descriptor.Name, StringComparison.Ordinal)
                 ? descriptor
                 : null;
+
+        public bool IsKnownEventType(string name) =>
+            string.Equals(name, descriptor.Name, StringComparison.Ordinal);
     }
 }
