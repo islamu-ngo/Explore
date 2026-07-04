@@ -1,5 +1,6 @@
-using System;
-using Explore.Application.Contracts.Persistence;
+// ABOUTME: Validator for user authentication-token create requests.
+// ABOUTME: Validates token metadata while ownership is derived by the handler.
+
 using Explore.Application.DTOs.UserAuthenticationToken;
 using FluentValidation;
 
@@ -7,29 +8,29 @@ namespace Explore.Application.DTOs.UserAuthenticationToken.Validators;
 
 public class CreateUserAuthenticationTokenDtoValidator : AbstractValidator<CreateUserAuthenticationTokenDto>
 {
-    private readonly IUserRepository _userRepository;
-    private readonly ITenantRepository _tenantRepository;
-
-    public CreateUserAuthenticationTokenDtoValidator(IUserRepository userRepository, ITenantRepository tenantRepository)
+    public CreateUserAuthenticationTokenDtoValidator()
     {
-        _userRepository = userRepository;
-        _tenantRepository = tenantRepository;
-
-        RuleFor(x => x.UserId)
-            .NotEmpty().WithMessage("User ID is required")
-            .MustAsync(UserExists)
-            .WithMessage("User does not exist");
-
-        // TenantId is set by the handler from context, not by the client
-        // No validation needed here
-
         RuleFor(x => x.Provider)
             .NotEmpty().WithMessage("Provider is required")
             .MaximumLength(500).WithMessage("Provider cannot exceed 500 characters");
-    }
 
-    private async Task<bool> UserExists(Guid userId, CancellationToken cancellationToken)
-    {
-        return await _userRepository.Exists(userId);
+        RuleFor(x => x.AccessToken)
+            .NotEmpty().WithMessage("Access token is required")
+            .MaximumLength(500).WithMessage("Access token cannot exceed 500 characters");
+
+        RuleFor(x => x.RefreshToken)
+            .NotEmpty().WithMessage("Refresh token is required")
+            .MaximumLength(500).WithMessage("Refresh token cannot exceed 500 characters");
+
+        RuleFor(x => x.PdsHost)
+            .MaximumLength(500).WithMessage("PDS host cannot exceed 500 characters");
+
+        RuleFor(x => x.DpopKey)
+            .NotEmpty().WithMessage("DPoP key is required")
+            .MaximumLength(500).WithMessage("DPoP key cannot exceed 500 characters");
+
+        RuleFor(x => x.IdToken)
+            .NotEmpty().WithMessage("ID token is required")
+            .MaximumLength(500).WithMessage("ID token cannot exceed 500 characters");
     }
 }

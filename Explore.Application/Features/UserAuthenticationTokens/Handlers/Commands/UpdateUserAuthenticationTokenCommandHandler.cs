@@ -1,12 +1,14 @@
 // ABOUTME: Handler for updating a user authentication token with validation.
 // ABOUTME: Validates input, fetches entity, applies updates.
 using AutoMapper;
+using Explore.Application.Authorization;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.DTOs.UserAuthenticationToken.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.UserAuthenticationTokens.Requests.Commands;
 using Explore.Application.Responses;
-using Explore.Domain;
 using FluentValidation;
 using MediatR;
 
@@ -15,19 +17,16 @@ namespace Explore.Application.Features.UserAuthenticationTokens.Handlers.Command
 public class UpdateUserAuthenticationTokenCommandHandler : IRequestHandler<UpdateUserAuthenticationTokenCommand, BaseCommandResponse<Guid>>
 {
     private readonly IUserAuthenticationTokenRepository _userAuthenticationTokenRepository;
-    private readonly IUserRepository _userRepository;
-    private readonly ITenantRepository _tenantRepository;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
 
     public UpdateUserAuthenticationTokenCommandHandler(
         IUserAuthenticationTokenRepository userAuthenticationTokenRepository,
-        IUserRepository userRepository,
-        ITenantRepository tenantRepository,
+        ICurrentUserService currentUserService,
         IMapper mapper)
     {
         _userAuthenticationTokenRepository = userAuthenticationTokenRepository;
-        _userRepository = userRepository;
-        _tenantRepository = tenantRepository;
+        _currentUserService = currentUserService;
         _mapper = mapper;
     }
 
@@ -35,7 +34,10 @@ public class UpdateUserAuthenticationTokenCommandHandler : IRequestHandler<Updat
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new UpdateUserAuthenticationTokenDtoValidator(_userRepository, _tenantRepository);
+        var currentUserId = _currentUserService.UserId
+            ?? throw new AuthorizationException(ResourceKinds.User, AuthorizationActions.Users.Update);
+
+        var validator = new UpdateUserAuthenticationTokenDtoValidator();
         var validationResult = await validator.ValidateAsync(request.UserAuthenticationTokenDto, cancellationToken);
 
         if (!validationResult.IsValid)
@@ -46,7 +48,10 @@ public class UpdateUserAuthenticationTokenCommandHandler : IRequestHandler<Updat
             return response;
         }
 
-        var existingToken = await _userAuthenticationTokenRepository.GetById(request.UserAuthenticationTokenDto.Id);
+        var existingToken = await _userAuthenticationTokenRepository.GetByIdForUser(
+            request.UserAuthenticationTokenDto.Id,
+            currentUserId,
+            cancellationToken);
         if (existingToken == null)
         {
             response.Success = false;

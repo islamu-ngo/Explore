@@ -15,7 +15,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -35,6 +34,10 @@ public class UserAuthenticationTokenController : ControllerBase
         "User authentication token validation failed",
         "User authentication token update failed.");
 
+    private static readonly ApiNotFoundProblemDescriptor UserAuthenticationTokenNotFoundProblem = new(
+        "User authentication token not found",
+        "User authentication token not found.");
+
     private readonly IMediator _mediator;
 
     public UserAuthenticationTokenController(IMediator mediator)
@@ -45,10 +48,12 @@ public class UserAuthenticationTokenController : ControllerBase
     // GET: api/userauthenticationtoken
     [HttpGet(Name = RouteNames.GetUserAuthenticationTokens)]
     [EndpointSummary("Get all User Authentication Tokens")]
-    [EndpointDescription("Retrieve a list of all user authentication tokens")]
+    [EndpointDescription("Retrieve the current user's authentication token sessions")]
     [Authorize]
     [ProducesResponseType(typeof(List<UserAuthenticationTokenListDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<ActionResult<List<UserAuthenticationTokenListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
         var tokens = await _mediator.Send(new GetUserAuthenticationTokenListRequest(), cancellationToken);
@@ -58,16 +63,18 @@ public class UserAuthenticationTokenController : ControllerBase
     // GET: api/userauthenticationtoken/{id}
     [HttpGet("{id}", Name = RouteNames.GetUserAuthenticationTokenById)]
     [EndpointSummary("Get User Authentication Token by ID")]
-    [EndpointDescription("Retrieve details of a specific user authentication token")]
+    [EndpointDescription("Retrieve details for one of the current user's authentication token sessions")]
     [Authorize]
     [ProducesResponseType(typeof(UserAuthenticationTokenDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<ActionResult<UserAuthenticationTokenDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var token = await _mediator.Send(new GetUserAuthenticationTokenDetailsRequest { Id = id }, cancellationToken);
 
-        return Ok(token);
+        return token is null ? this.ToNotFoundProblem(UserAuthenticationTokenNotFoundProblem) : Ok(token);
     }
 
     // POST: api/userauthenticationtoken
@@ -77,6 +84,8 @@ public class UserAuthenticationTokenController : ControllerBase
     [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateUserAuthenticationTokenDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateUserAuthenticationTokenCommand { UserAuthenticationTokenDto = dto };
@@ -97,6 +106,8 @@ public class UserAuthenticationTokenController : ControllerBase
     [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateUserAuthenticationTokenDto dto, CancellationToken cancellationToken = default)
     {
@@ -110,7 +121,9 @@ public class UserAuthenticationTokenController : ControllerBase
 
         if (!response.Success)
         {
-            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
+            return string.Equals(response.Message, "User Authentication Token not found.", StringComparison.Ordinal)
+                ? this.ToNotFoundProblem(UserAuthenticationTokenNotFoundProblem)
+                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -122,12 +135,14 @@ public class UserAuthenticationTokenController : ControllerBase
     [EndpointDescription("Delete a user authentication token")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteUserAuthenticationTokenCommand { Id = id };
-        await _mediator.Send(command, cancellationToken);
+        var deleted = await _mediator.Send(command, cancellationToken);
 
-        return NoContent();
+        return deleted ? NoContent() : this.ToNotFoundProblem(UserAuthenticationTokenNotFoundProblem);
     }
 }
