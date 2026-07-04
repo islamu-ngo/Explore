@@ -404,6 +404,14 @@ public sealed class EventManagementMcpPublicReadTests
             };
             session.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
 
+            var eventEntity = _context.Events.Local.FirstOrDefault(e => e.Id == eventId);
+            if (eventEntity is not null)
+            {
+                session.Event = eventEntity;
+                eventEntity.Sessions.Add(session);
+                eventEntity.RecalculateScheduleSummaryFromSessions();
+            }
+
             _context.EventSessions.Add(session);
             return session.Id;
         }

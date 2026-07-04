@@ -273,7 +273,6 @@ public sealed record EventMcpRegistrationDescriptor(
     Guid EventSessionId,
     string? EventSessionTitle,
     Guid? EventRegistrationIntentId,
-    string? UserFullName,
     int? ApprovalStatusId,
     string? ApprovalStatusName,
     string? ApprovalStatusCode);

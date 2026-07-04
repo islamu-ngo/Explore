@@ -1602,7 +1602,6 @@ public sealed class EventManagementMcpTools(
             dto.EventSessionId,
             TrimToNull(dto.EventSessionTitle, MaxShortTextLength, truncatedFields, nameof(dto.EventSessionTitle)),
             dto.EventRegistrationIntentId,
-            TrimToNull(dto.UserFullName, MaxShortTextLength, truncatedFields, nameof(dto.UserFullName)),
             dto.ApprovalStatusId,
             TrimToNull(dto.ApprovalStatusFullName, MaxShortTextLength, truncatedFields, nameof(dto.ApprovalStatusFullName)),
             TrimToNull(dto.ApprovalStatusMasterCode, MaxShortTextLength, truncatedFields, nameof(dto.ApprovalStatusMasterCode)));

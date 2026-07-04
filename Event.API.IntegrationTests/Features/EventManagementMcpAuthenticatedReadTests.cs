@@ -337,10 +337,13 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         registrationsContext.GetProperty("PageSize").GetInt32().Should().Be(100);
         registrationsContext.GetProperty("PageSizeWasClamped").GetBoolean().Should().BeTrue();
         registrationsContext.GetProperty("TotalRegistrationCount").GetInt32().Should().Be(1);
-        registrationsText.Should().Contain("MCP Management Attendee");
+        registrationsText.Should().Contain("MCP Management Session");
         registrationsText.Should().Contain("Approved");
+        registrationsText.Should().NotContain("MCP Management Attendee");
         registrationsText.Should().NotContain("TenantId");
         registrationsText.Should().NotContain("UserId");
+        registrationsText.Should().NotContain("UserFullName");
+        registrationsText.Should().NotContain("UserEmail");
 
         using var teamResponse = await mcp.CallToolAsync("get_event_team_context", new JsonObject
         {
