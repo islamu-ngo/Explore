@@ -23,6 +23,7 @@ public sealed record EmailDispatchDrainResult(
     int RetryScheduledCount,
     int DeadLetteredCount,
     int UnknownCount,
+    int SkippedCount,
     int TenantPausedCount,
     int AlreadyClaimedCount);
 
@@ -38,6 +39,7 @@ public sealed record EmailDispatchSingleDrainResult(
         or EmailDispatchDrainOutcome.RetryScheduled
         or EmailDispatchDrainOutcome.DeadLettered
         or EmailDispatchDrainOutcome.Unknown
+        or EmailDispatchDrainOutcome.Skipped
         or EmailDispatchDrainOutcome.TenantPaused
         or EmailDispatchDrainOutcome.AlreadyClaimed
         or EmailDispatchDrainOutcome.AlreadySettled
@@ -50,6 +52,7 @@ public enum EmailDispatchDrainOutcome
     RetryScheduled,
     DeadLettered,
     Unknown,
+    Skipped,
     TenantPaused,
     AlreadyClaimed,
     Missing,

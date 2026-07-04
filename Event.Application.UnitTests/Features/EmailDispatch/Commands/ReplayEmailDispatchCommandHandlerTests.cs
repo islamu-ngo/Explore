@@ -62,6 +62,24 @@ public sealed class ReplayEmailDispatchCommandHandlerTests
     }
 
     [Test]
+    public async Task HandleWhenRowSkippedReturnsInvalidTransition()
+    {
+        var tenantId = Guid.NewGuid();
+        var outboxId = Guid.NewGuid();
+        _repository.GetByTenantAndId(tenantId, outboxId, Arg.Any<CancellationToken>())
+            .Returns(CreateOutbox(tenantId, outboxId, EmailDispatchStatus.Skipped));
+
+        var result = await CreateHandler().Handle(
+            new ReplayEmailDispatchCommand { TenantId = tenantId, OutboxId = outboxId },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(EmailDispatchFailureCodes.InvalidTransition);
+        await Assert.That(result.Message).IsEqualTo("Skipped email dispatch rows cannot be replayed.");
+        await _repository.DidNotReceiveWithAnyArgs().TryReplayForOperator(default, default, default, default, default);
+    }
+
+    [Test]
     public async Task HandleWhenDeadLetteredRowReplaysThroughRepository()
     {
         var tenantId = Guid.NewGuid();

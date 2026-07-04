@@ -50,6 +50,14 @@ public sealed class ParkEmailDispatchCommandHandler : IRequestHandler<ParkEmailD
                 ["Sent email dispatch rows cannot be parked."]);
         }
 
+        if (dispatch.Status == EmailDispatchStatus.Skipped)
+        {
+            return Failure(
+                "Skipped email dispatch rows cannot be parked.",
+                EmailDispatchFailureCodes.InvalidTransition,
+                ["Skipped email dispatch rows cannot be parked."]);
+        }
+
         if (dispatch.Status == EmailDispatchStatus.Parked)
         {
             return Success(dispatch.Id, "Email dispatch is already parked.");

@@ -168,7 +168,7 @@ public sealed class EventLifecycleEmailOutboxFactory : IEventLifecycleEmailOutbo
             RecipientEmail = NormalizeEmail(recipientEmail),
             Subject = subject,
             PlainTextBody = ComposePlainText(body),
-            HtmlBody = ComposeHtml(body),
+            HtmlBody = ComposeHtmlFromText(body),
             CorrelationId = $"{eventId}:organizer:{organizerUserId}"
         };
     }
@@ -196,7 +196,7 @@ public sealed class EventLifecycleEmailOutboxFactory : IEventLifecycleEmailOutbo
             RecipientEmail = NormalizeEmail(recipientEmail),
             Subject = subject,
             PlainTextBody = ComposePlainText(plainTextBody),
-            HtmlBody = ComposeHtml(htmlBody),
+            HtmlBody = ComposeTrustedHtml(htmlBody),
             CorrelationId = registrationIntentId.ToString()
         };
     }
@@ -221,8 +221,18 @@ public sealed class EventLifecycleEmailOutboxFactory : IEventLifecycleEmailOutbo
         return $"Assalamu alaykum,\n\n{body}\n\nISLAMU Event";
     }
 
-    private static string ComposeHtml(string body)
+    private static string ComposeTrustedHtml(string body)
     {
         return $"<p>Assalamu alaykum,</p><p>{body}</p><p>ISLAMU Event</p>";
+    }
+
+    private static string ComposeHtmlFromText(string body)
+    {
+        var encodedBody = Html(body)
+            .Replace("\r\n", "<br />", StringComparison.Ordinal)
+            .Replace("\n", "<br />", StringComparison.Ordinal)
+            .Replace("\r", "<br />", StringComparison.Ordinal);
+
+        return ComposeTrustedHtml(encodedBody);
     }
 }

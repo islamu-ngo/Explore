@@ -58,6 +58,14 @@ public sealed class ReplayEmailDispatchCommandHandler : IRequestHandler<ReplayEm
                 ["Sent email dispatch rows cannot be replayed."]);
         }
 
+        if (dispatch.Status == EmailDispatchStatus.Skipped)
+        {
+            return Failure(
+                "Skipped email dispatch rows cannot be replayed.",
+                EmailDispatchFailureCodes.InvalidTransition,
+                ["Skipped email dispatch rows cannot be replayed."]);
+        }
+
         if (dispatch.Status == EmailDispatchStatus.Processing)
         {
             return Failure(

@@ -67,6 +67,24 @@ public sealed class ParkEmailDispatchCommandHandlerTests
     }
 
     [Test]
+    public async Task HandleWhenRowSkippedReturnsInvalidTransition()
+    {
+        var tenantId = Guid.NewGuid();
+        var outboxId = Guid.NewGuid();
+        _repository.GetByTenantAndId(tenantId, outboxId, Arg.Any<CancellationToken>())
+            .Returns(CreateOutbox(tenantId, outboxId, EmailDispatchStatus.Skipped));
+
+        var result = await CreateHandler().Handle(
+            new ParkEmailDispatchCommand { TenantId = tenantId, OutboxId = outboxId, Reason = "manual review" },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(EmailDispatchFailureCodes.InvalidTransition);
+        await Assert.That(result.Message).IsEqualTo("Skipped email dispatch rows cannot be parked.");
+        await _repository.DidNotReceiveWithAnyArgs().TryParkForOperator(default, default, default!, default, default, default);
+    }
+
+    [Test]
     public async Task HandleWhenRowEligibleParksThroughRepository()
     {
         var tenantId = Guid.NewGuid();

@@ -14,6 +14,12 @@ public interface IEmailDispatchOutboxRepository
         DateTime now,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<EmailDispatchOutbox>> GetRabbitMqPublishBatch(
+        int batchSize,
+        DateTime now,
+        DateTime retryAttemptsBefore,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<EmailDispatchOutbox>> GetStatusRows(
         Guid tenantId,
         int limit,
@@ -91,6 +97,24 @@ public interface IEmailDispatchOutboxRepository
         DateTime unknownAt,
         CancellationToken cancellationToken);
 
+    Task MarkAsSkipped(
+        Guid id,
+        string reasonCategory,
+        string reasonMessage,
+        DateTime skippedAt,
+        CancellationToken cancellationToken);
+
+    Task MarkRabbitMqPublishSucceeded(
+        Guid id,
+        DateTime publishedAt,
+        CancellationToken cancellationToken);
+
+    Task MarkRabbitMqPublishFailed(
+        Guid id,
+        string failureCategory,
+        DateTime attemptedAt,
+        CancellationToken cancellationToken);
+
     Task RecordAttempt(EmailDispatchAttempt attempt, CancellationToken cancellationToken);
 
     Task<bool> TryClaimReceipt(EmailDispatchReceipt receipt, CancellationToken cancellationToken);
@@ -106,5 +130,12 @@ public interface IEmailDispatchOutboxRepository
         string failureCode,
         string failureMessage,
         DateTime failedAt,
+        CancellationToken cancellationToken);
+
+    Task MarkReceiptSkipped(
+        Guid receiptId,
+        string reasonCode,
+        string reasonMessage,
+        DateTime skippedAt,
         CancellationToken cancellationToken);
 }

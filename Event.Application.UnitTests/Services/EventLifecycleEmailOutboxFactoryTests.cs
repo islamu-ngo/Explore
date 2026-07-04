@@ -126,4 +126,39 @@ public sealed class EventLifecycleEmailOutboxFactoryTests
         await Assert.That(outbox.RegistrationIntentId).IsNull();
         await Assert.That(outbox.CorrelationId).IsEqualTo($"{eventId}:organizer:{organizerUserId}");
     }
+
+    [Test]
+    public async Task CreateRegistrationConfirmation_HtmlBodyEncodesEventTitle()
+    {
+        var outbox = _factory.CreateRegistrationConfirmation(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "attendee@example.test",
+            "<img src=x onerror=alert(1)> <script>alert(1)</script>");
+
+        await Assert.That(outbox.HtmlBody).Contains("<strong>&lt;img src=x onerror=alert(1)&gt; &lt;script&gt;alert(1)&lt;/script&gt;</strong>");
+        await Assert.That(outbox.HtmlBody).DoesNotContain("<img");
+        await Assert.That(outbox.HtmlBody).DoesNotContain("<script");
+    }
+
+    [Test]
+    public async Task CreateOrganizerNotification_HtmlBodyEncodesOrganizerBodyText()
+    {
+        var outbox = _factory.CreateOrganizerNotification(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "organizer@example.test",
+            "Fundraiser",
+            "Capacity warning",
+            "First line\r\n<script>alert(1)</script><img src=x onerror=alert(1)>");
+
+        await Assert.That(outbox.PlainTextBody).Contains("<script>alert(1)</script>");
+        await Assert.That(outbox.HtmlBody).Contains("First line<br />&lt;script&gt;alert(1)&lt;/script&gt;&lt;img src=x onerror=alert(1)&gt;");
+        await Assert.That(outbox.HtmlBody).DoesNotContain("<script");
+        await Assert.That(outbox.HtmlBody).DoesNotContain("<img");
+        await Assert.That(outbox.HtmlBody).DoesNotContain("<img src=x onerror=");
+    }
 }
