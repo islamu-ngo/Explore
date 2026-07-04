@@ -392,7 +392,7 @@ public class GetPublicExperienceShellQueryHandler(
             };
         }
 
-        Organization? organization = await organizationRepository.GetOrganizationWithDetails(organizationId);
+        Organization? organization = await organizationRepository.GetOrganizationWithDetails(organizationId, cancellationToken);
         if (organization is null)
         {
             return new PublicExperiencePrimaryOrganizationDto
