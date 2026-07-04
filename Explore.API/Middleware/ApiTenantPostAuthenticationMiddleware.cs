@@ -3,6 +3,7 @@
 
 using Explore.API.Authentication;
 using Explore.API.Configuration;
+using Explore.API.ExceptionHandling;
 using Explore.Application.Authentication;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Telemetry;
@@ -86,10 +87,93 @@ public sealed class ApiTenantPostAuthenticationMiddleware
 
             if (hasApiKeyHeader && !isMcpPath)
             {
-                // InstanceAdmin keys operate cross-tenant without a bound tenant context.
                 if (apiKeyPrincipal?.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin)
                 {
-                    await _next(context);
+                    if (requestedTenantId is Guid requestedInstanceAdminTenantId && requestedInstanceAdminTenantId != Guid.Empty)
+                    {
+                        tenantContextAccessor.SetTenant(requestedInstanceAdminTenantId);
+                        if (_logger.IsEnabled(LogLevel.Information))
+                        {
+                            _logger.LogInformation(
+                                "InstanceAdmin external API key {KeyId} bound to requested tenant context for {Path}.",
+                                apiKeyPrincipal.KeyId,
+                                context.Request.Path);
+                        }
+
+                        await _next(context);
+                        return;
+                    }
+
+                    if (IsHostAdministrationPath(context.Request.Path))
+                    {
+                        if (_logger.IsEnabled(LogLevel.Information))
+                        {
+                            _logger.LogInformation(
+                                "InstanceAdmin external API key {KeyId} continued without tenant context for host-administration path {Path}.",
+                                apiKeyPrincipal.KeyId,
+                                context.Request.Path);
+                        }
+
+                        await _next(context);
+                        return;
+                    }
+
+                    metrics.RecordExternalApiKeyAuthentication(
+                        "tenant_required",
+                        "platform",
+                        apiKeyPrincipal.OwnerType.ToString());
+                    _logger.LogWarning(
+                        "InstanceAdmin external API key {KeyId} attempted tenant-scoped API path {Path} without an explicit tenant context.",
+                        apiKeyPrincipal.KeyId,
+                        context.Request.Path);
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+
+                    await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = context,
+                        ProblemDetails = new ProblemDetails
+                        {
+                            Status = StatusCodes.Status404NotFound,
+                            Title = "Tenant not resolved",
+                            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+                            Detail = "The tenant could not be resolved for this request.",
+                            Instance = context.Request.Path,
+                            Extensions =
+                            {
+                                ["code"] = ApiProblemCodes.TenantRequired
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                if (apiKeyPrincipal is not null &&
+                    requestedTenantId is Guid requestedTenantIdForAuthenticatedKey &&
+                    requestedTenantIdForAuthenticatedKey != Guid.Empty)
+                {
+                    metrics.RecordExternalApiKeyAuthentication(
+                        "tenant_mismatch",
+                        requestedTenantIdForAuthenticatedKey.ToString(),
+                        apiKeyPrincipal?.OwnerType.ToString());
+                    _logger.LogWarning(
+                        "External API key {KeyId} without a tenant claim attempted requested tenant {RequestedTenantId} on {Path}.",
+                        apiKeyPrincipal?.KeyId,
+                        requestedTenantIdForAuthenticatedKey,
+                        context.Request.Path);
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+
+                    await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = context,
+                        ProblemDetails = new ProblemDetails
+                        {
+                            Status = StatusCodes.Status404NotFound,
+                            Title = "Tenant mismatch",
+                            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+                            Detail = "The authenticated tenant does not match the requested tenant context.",
+                            Instance = context.Request.Path
+                        }
+                    });
                     return;
                 }
 
@@ -114,8 +198,14 @@ public sealed class ApiTenantPostAuthenticationMiddleware
             {
                 if (apiKeyPrincipal?.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin)
                 {
-                    await _next(context);
-                    return;
+                    metrics.RecordExternalApiKeyAuthentication(
+                        "tenant_required",
+                        "platform",
+                        apiKeyPrincipal.OwnerType.ToString());
+                    _logger.LogWarning(
+                        "InstanceAdmin external API key {KeyId} attempted MCP path {Path} without an explicit tenant context.",
+                        apiKeyPrincipal.KeyId,
+                        context.Request.Path);
                 }
 
                 context.Response.StatusCode = StatusCodes.Status404NotFound;
@@ -129,7 +219,11 @@ public sealed class ApiTenantPostAuthenticationMiddleware
                         Title = "Tenant not resolved",
                         Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
                         Detail = "The tenant could not be resolved for this request.",
-                        Instance = context.Request.Path
+                        Instance = context.Request.Path,
+                        Extensions =
+                        {
+                            ["code"] = ApiProblemCodes.TenantRequired
+                        }
                     }
                 });
                 return;
@@ -174,6 +268,7 @@ public sealed class ApiTenantPostAuthenticationMiddleware
 
         await _next(context);
     }
+
     private static Guid? ResolveRequestedTenantId(HttpContext context)
     {
         return context.Items.TryGetValue(ApiTenantResolutionMiddleware.RequestedTenantIdItemKey, out var value) &&
@@ -190,5 +285,13 @@ public sealed class ApiTenantPostAuthenticationMiddleware
                context.Request.Path.StartsWithSegments(
                    settings.EndpointPath,
                    StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsHostAdministrationPath(PathString path)
+    {
+        return path.StartsWithSegments("/api/InstanceOnboarding", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/System", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/instance/settings", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/managed-provider-provisioning", StringComparison.OrdinalIgnoreCase);
     }
 }

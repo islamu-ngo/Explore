@@ -262,7 +262,7 @@ public class TenantContext : ITenantContext
 
         var slugTenant = dbContext.Tenants
             .AsNoTracking()
-            .FirstOrDefault(t => t.TenantStatusId == (int)TenantStatusEnum.Active && t.Slug.ToLower() == candidateSubdomain);
+            .FirstOrDefault(t => t.TenantStatusId == (int)TenantStatusEnum.Active && t.Slug == candidateSubdomain);
 
         return slugTenant?.Id;
     }

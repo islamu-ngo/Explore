@@ -164,6 +164,63 @@ public partial class FallbackAuthorizationService
         return isTenantAdmin;
     }
 
+    private async Task<bool> EvaluateWebhookAccessAsync(
+        string resourceKind,
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken))
+            return true;
+
+        if (!AllowsOrganizationWebhooks(resourceAttributes))
+        {
+            LogDecision("deny", "organization_webhooks_disabled", resourceKind, resourceId, action);
+            return false;
+        }
+
+        if (!IsOrganizationWebhookAction(action))
+        {
+            LogDecision("deny", "organization_webhook_action_not_allowed", resourceKind, resourceId, action);
+            return false;
+        }
+
+        var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
+        if (orgId.HasValue && await _adminContext.IsOrganizationAdminAsync(orgId.Value, cancellationToken))
+        {
+            LogDecision("allow", "organization_admin=true", resourceKind, resourceId, action);
+            return true;
+        }
+
+        LogDecision("deny", "no_webhook_admin_authority", resourceKind, resourceId, action);
+        return false;
+    }
+
+    private static bool AllowsOrganizationWebhooks(IDictionary<string, object>? resourceAttributes)
+    {
+        if (resourceAttributes?.TryGetValue("allowOrganizationWebhooks", out var value) != true)
+            return false;
+
+        return value switch
+        {
+            bool enabled => enabled,
+            string text => bool.TryParse(text, out var enabled) && enabled,
+            _ => false
+        };
+    }
+
+    private static bool IsOrganizationWebhookAction(string action)
+        => action is AuthorizationActions.Webhooks.View
+            or AuthorizationActions.Webhooks.Create
+            or AuthorizationActions.Webhooks.Update
+            or AuthorizationActions.Webhooks.Delete
+            or AuthorizationActions.Webhooks.RotateSecret
+            or AuthorizationActions.Webhooks.Test
+            or AuthorizationActions.Webhooks.Retry
+            or AuthorizationActions.Webhooks.ViewDelivery
+            or AuthorizationActions.Webhooks.OpenProviderPortal;
+
     private async Task<bool> EvaluateCustomPropertyProjectionAccessAsync(
         string resourceId,
         string action,

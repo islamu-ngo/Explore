@@ -120,7 +120,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             "islamuevent_custom_property_projection" => await EvaluateCustomPropertyProjectionAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_custom_property_governance" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_email_dispatch" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "islamuevent_webhook" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_webhook" => await EvaluateWebhookAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_support_access_session" => await EvaluateSupportAccessSessionResourceAsync(action, resourceAttributes, cancellationToken),
             "islamuevent_platform_namespace" => action is "view",
 

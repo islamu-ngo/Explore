@@ -1,5 +1,5 @@
-// ABOUTME: Infrastructure user context for explicit internal user id claims.
-// ABOUTME: Leaves external provider subject mapping to async database-backed resolvers.
+// ABOUTME: Infrastructure user context for standard authenticated user id claim extraction.
+// ABOUTME: Applies the documented OIDC fallback chain while preserving local BFF identity claims.
 
 using System.Security.Claims;
 using Explore.Application.Contracts.Identity;
@@ -29,12 +29,28 @@ public class UserContext : IUserContext
     {
         get
         {
-            var userIdClaim = User?.FindFirst(InternalUserIdClaimType)?.Value;
-
-            if (string.IsNullOrEmpty(userIdClaim))
+            if (User is not { Identity.IsAuthenticated: true } user)
+            {
                 return null;
+            }
 
-            return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+            string?[] candidateClaims =
+            [
+                user.FindFirst("sub")?.Value,
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                user.FindFirst("sid")?.Value,
+                user.FindFirst(InternalUserIdClaimType)?.Value
+            ];
+
+            foreach (var candidateClaim in candidateClaims)
+            {
+                if (Guid.TryParse(candidateClaim, out var userId))
+                {
+                    return userId;
+                }
+            }
+
+            return null;
         }
     }
 

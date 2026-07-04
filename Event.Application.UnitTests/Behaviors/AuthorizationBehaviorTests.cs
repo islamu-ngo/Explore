@@ -9,12 +9,14 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.OrganizationMember;
+using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
 using Explore.Application.Features.Organizations.Requests.Commands;
+using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using MediatR;
@@ -404,6 +406,46 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
+    public async Task Handle_WithEventSessionResource_EnrichesMissingEventAuthorizationContext()
+    {
+        var eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        var secureBehavior = new AuthorizationBehavior<TestEventSessionSecureCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<TestEventSessionSecureCommand, BaseCommandResponse<Guid>>>>(),
+            eventSessionRepository: eventSessionRepository);
+        var eventSessionId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new TestEventSessionSecureCommand(eventSessionId);
+        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+
+        eventSessionRepository.GetSessionWithDetails(eventSessionId).Returns(new EventSession
+        {
+            Id = eventSessionId,
+            EventId = eventId,
+            TenantId = tenantId,
+            Event = null!,
+            Tenant = null!
+        });
+        _authService.IsAllowedAsync(
+                ResourceKinds.EventSession,
+                eventSessionId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["eventSessionId"].Equals(eventSessionId.ToString())
+                    && attributes["eventId"].Equals(eventId.ToString())
+                    && attributes["tenantId"].Equals(tenantId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventSessionRepository.Received(1).GetSessionWithDetails(eventSessionId);
+    }
+
+    [Test]
     public async Task Handle_WithOrganizationMemberResource_EnrichesMissingMemberAuthorizationContext()
     {
         var memberRepository = Substitute.For<IOrganizationMemberRepository>();
@@ -450,6 +492,76 @@ public class AuthorizationBehaviorTests
 
         await Assert.That(result).IsNotNull();
         await memberRepository.Received(1).GetOrganizationMemberWithDetails(memberId);
+    }
+
+    [Test]
+    public async Task Handle_WithStorageObjectResource_EnrichesPersistedStorageAuthorizationContext()
+    {
+        var storageObjectRepository = Substitute.For<IStorageObjectRepository>();
+        var secureBehavior = new AuthorizationBehavior<UpdateStorageObjectCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateStorageObjectCommand, BaseCommandResponse<Guid>>>>(),
+            storageObjectRepository: storageObjectRepository);
+        var storageObjectId = Guid.NewGuid();
+        var persistedTenantId = Guid.NewGuid();
+        var clientTenantId = Guid.NewGuid();
+        var command = new UpdateStorageObjectCommand
+        {
+            StorageObjectDto = new UpdateStorageObjectDto
+            {
+                Id = storageObjectId,
+                TenantId = clientTenantId,
+                FileTypeId = 1,
+                Uri = "/api/storageobject/018f0000-0000-7000-8000-000000000001/content",
+                ObjectKey = "tenants/current/file.png",
+                Provider = StorageProviders.Local,
+                FullName = "file.png",
+                SafeDisplayName = "file.png",
+                Extension = "png",
+                ContentType = "image/png",
+                Size = 1024,
+                Visibility = StorageObjectVisibilities.PublicImage,
+                Purpose = StorageObjectPurposes.LegacyImage,
+                LifecycleState = StorageObjectLifecycleStates.Active
+            }
+        };
+        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+
+        storageObjectRepository.GetById(storageObjectId).Returns(new StorageObject
+        {
+            Id = storageObjectId,
+            TenantId = persistedTenantId,
+            FileTypeId = 1,
+            FileType = null!,
+            Tenant = null!,
+            Uri = "/api/storageobject/018f0000-0000-7000-8000-000000000001/content",
+            ObjectKey = "tenants/current/file.png",
+            Provider = StorageProviders.Local,
+            FullName = "file.png",
+            SafeDisplayName = "file.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Size = 1024,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            Purpose = StorageObjectPurposes.LegacyImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+        _authService.IsAllowedAsync(
+                ResourceKinds.StorageObject,
+                storageObjectId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["storageObjectId"].Equals(storageObjectId.ToString("D"))
+                    && attributes["tenantId"].Equals(persistedTenantId.ToString("D"))
+                    && !attributes["tenantId"].Equals(clientTenantId.ToString("D"))),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await storageObjectRepository.Received(1).GetById(storageObjectId);
     }
 
     [Test]
@@ -629,4 +741,10 @@ public class TestSecureCommandWithAttributes : IRequest<BaseCommandResponse<Guid
 public class TestSecureCommandWithNullId : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     // Uses default null ResourceId — should fall back to type name
+}
+
+[AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Update)]
+public sealed class TestEventSessionSecureCommand(Guid eventSessionId) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => eventSessionId.ToString();
 }

@@ -115,6 +115,7 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         return resourceKind switch
         {
             ResourceKinds.Event => await EnrichEventResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
+            ResourceKinds.EventSession => await EnrichEventSessionResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.OrganizationMember => await EnrichOrganizationMemberResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.StorageObject => await EnrichStorageObjectResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.CustomPropertyProjection => await EnrichCustomPropertyProjectionResourceAttributesAsync(resourceAttributes, cancellationToken),
@@ -191,6 +192,35 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         AddIfMissing(enriched, "userId", eventEntity.Actor?.UserId);
         AddIfMissing(enriched, "organizationId", eventEntity.Actor?.OrganizationId);
         AddIfMissing(enriched, "groupId", eventEntity.Actor?.GroupId);
+
+        return enriched;
+    }
+
+    private async Task<IDictionary<string, object>?> EnrichEventSessionResourceAttributesAsync(
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (_eventSessionRepository is null ||
+            !Guid.TryParse(resourceId, out var eventSessionId))
+        {
+            return resourceAttributes;
+        }
+
+        if (HasEventAuthorizationContext(resourceAttributes))
+            return resourceAttributes;
+
+        var session = await _eventSessionRepository.GetSessionWithDetails(eventSessionId);
+        if (session is null)
+            return resourceAttributes;
+
+        var enriched = resourceAttributes is null
+            ? new Dictionary<string, object>()
+            : new Dictionary<string, object>(resourceAttributes);
+
+        AddIfMissing(enriched, "eventSessionId", session.Id.ToString());
+        AddIfMissing(enriched, "eventId", session.EventId.ToString());
+        AddIfMissing(enriched, "tenantId", session.TenantId.ToString());
 
         return enriched;
     }

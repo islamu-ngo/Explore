@@ -7,7 +7,7 @@ namespace Explore.Application.Contracts.Identity;
 public interface IUserContext
 {
     /// <summary>
-    /// Gets the current user's ID (from 'sub' claim in Keycloak token).
+    /// Gets the current user's ID from the standard claim fallback chain.
     /// Returns null if user is not authenticated.
     /// </summary>
     Guid? UserId { get; }

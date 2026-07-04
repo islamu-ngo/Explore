@@ -16,6 +16,7 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.DTOs.EventSessionGroup;
+using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.Group;
@@ -324,6 +325,28 @@ public static class ResourceDescriptors
     public static readonly ResourceDescriptor<EventSessionAgendaItemDto> EventSessionAgendaItem = new(
         ResourceKinds.EventSessionAgendaItem,
         dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["eventId"] = dto.EventId.ToString(),
+            ["eventSessionId"] = dto.EventSessionId.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventSessionSpeakerDto> EventSessionSpeaker = new(
+        ResourceKinds.EventSession,
+        dto => dto.EventSessionId.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["eventId"] = dto.EventId.ToString(),
+            ["eventSessionId"] = dto.EventSessionId.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventSessionSpeakerListDto> EventSessionSpeakerList = new(
+        ResourceKinds.EventSession,
+        dto => dto.EventSessionId.ToString(),
         dto => new Dictionary<string, object>
         {
             ["eventId"] = dto.EventId.ToString(),

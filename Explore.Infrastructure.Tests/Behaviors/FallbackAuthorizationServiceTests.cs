@@ -249,6 +249,155 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_WebhookTenantAdmin_AllowsWebhookManagementActions()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        var attrs = new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") };
+        string[] actions =
+        [
+            AuthorizationActions.Webhooks.View,
+            AuthorizationActions.Webhooks.Create,
+            AuthorizationActions.Webhooks.Update,
+            AuthorizationActions.Webhooks.Delete,
+            AuthorizationActions.Webhooks.RotateSecret,
+            AuthorizationActions.Webhooks.Test,
+            AuthorizationActions.Webhooks.Retry,
+            AuthorizationActions.Webhooks.ViewDelivery,
+            AuthorizationActions.Webhooks.ManageProvider,
+            AuthorizationActions.Webhooks.OpenProviderPortal
+        ];
+
+        foreach (var action in actions)
+        {
+            var result = await _service.IsAllowedAsync(
+                ResourceKinds.Webhook,
+                Guid.NewGuid().ToString("D"),
+                action,
+                attrs);
+
+            await Assert.That(result).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task IsAllowed_WebhookOrganizationAdmin_AllowsOrganizationWebhookManagementWhenTenantSettingAllows()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId.ToString("D"),
+            ["organizationId"] = TestOrgId.ToString("D"),
+            ["allowOrganizationWebhooks"] = true
+        };
+        string[] actions =
+        [
+            AuthorizationActions.Webhooks.View,
+            AuthorizationActions.Webhooks.Create,
+            AuthorizationActions.Webhooks.Update,
+            AuthorizationActions.Webhooks.Delete,
+            AuthorizationActions.Webhooks.RotateSecret,
+            AuthorizationActions.Webhooks.Test,
+            AuthorizationActions.Webhooks.Retry,
+            AuthorizationActions.Webhooks.ViewDelivery,
+            AuthorizationActions.Webhooks.OpenProviderPortal
+        ];
+
+        foreach (var action in actions)
+        {
+            var result = await _service.IsAllowedAsync(
+                ResourceKinds.Webhook,
+                Guid.NewGuid().ToString("D"),
+                action,
+                attrs);
+
+            await Assert.That(result).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task IsAllowed_WebhookOrganizationAdmin_DeniesOrganizationWebhookManagementWhenTenantSettingDisallows()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId.ToString("D"),
+            ["organizationId"] = TestOrgId.ToString("D"),
+            ["allowOrganizationWebhooks"] = false
+        };
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.Update,
+            attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_WebhookOrganizationAdmin_DeniesTenantScopedWebhookManagement()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId.ToString("D"),
+            ["allowOrganizationWebhooks"] = true
+        };
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.Update,
+            attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_WebhookOrganizationAdmin_DeniesProviderManagement()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId.ToString("D"),
+            ["organizationId"] = TestOrgId.ToString("D"),
+            ["allowOrganizationWebhooks"] = true
+        };
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.ManageProvider,
+            attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_WebhookRegularUser_DeniesWebhookManagement()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.Create,
+            new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") });
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
     public async Task IsAllowed_TenantScopedResource_DeniesExplicitDifferentTenant()
     {
         var otherTenantId = Guid.NewGuid();
