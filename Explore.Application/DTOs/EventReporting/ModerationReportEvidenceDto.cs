@@ -19,6 +19,5 @@ public sealed class ModerationReportEvidenceDto
     public required string ClassificationCode { get; init; }
     public required string ClassificationName { get; init; }
     public DateTime? RetentionUntilUtc { get; init; }
-    public Guid? CreatedByUserId { get; init; }
     public DateTime CreatedAtUtc { get; init; }
 }

@@ -60,9 +60,24 @@ public sealed class GetModerationReportDetailRequestHandlerTests
         await Assert.That(result.ExternalLinks[0].SyncStateCode).IsEqualTo("synced");
 
         var serialized = JsonSerializer.Serialize(result);
+        await Assert.That(serialized).DoesNotContain(report.ReporterUserId.ToString());
+        await Assert.That(serialized).DoesNotContain(report.ReporterActorId.ToString());
+        await Assert.That(serialized).DoesNotContain(moderatorUserId.ToString());
         await Assert.That(serialized).DoesNotContain("protected-text");
         await Assert.That(serialized).DoesNotContain("ip-hash");
         await Assert.That(serialized).DoesNotContain("ua-hash");
+        await Assert.That(serialized).DoesNotContain("coop-case-1");
+        await Assert.That(serialized).DoesNotContain("coop-signal-1");
+        await Assert.That(serialized).DoesNotContain("https://coop.example/cases/1");
+        await Assert.That(serialized).DoesNotContain("signal-corr");
+        await Assert.That(serialized).DoesNotContain("ReporterUserId");
+        await Assert.That(serialized).DoesNotContain("ReporterActorId");
+        await Assert.That(serialized).DoesNotContain("CreatedByUserId");
+        await Assert.That(serialized).DoesNotContain("ModeratorUserId");
+        await Assert.That(serialized).DoesNotContain("ProviderCaseId");
+        await Assert.That(serialized).DoesNotContain("ProviderSignalId");
+        await Assert.That(serialized).DoesNotContain("ProviderUrl");
+        await Assert.That(serialized).DoesNotContain("CorrelationId");
     }
 
     [Test]

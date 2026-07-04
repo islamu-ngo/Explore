@@ -149,7 +149,6 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
                     VerdictCode = "flagged",
                     VerdictName = "Flagged",
                     RecommendedActionName = "Review",
-                    CorrelationId = "correlation-1",
                     CreatedAtUtc = DateTimeOffset.UtcNow
                 }
             ],

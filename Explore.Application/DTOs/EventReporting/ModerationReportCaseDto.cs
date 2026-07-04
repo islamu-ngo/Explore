@@ -1,6 +1,8 @@
 // ABOUTME: Management projection for an event-report review case.
 // ABOUTME: Carries assignment, queue, SLA, and concurrency data used by moderator commands.
 
+using System.Text.Json.Serialization;
+
 namespace Explore.Application.DTOs.EventReporting;
 
 public sealed class ModerationReportCaseDto
@@ -14,6 +16,7 @@ public sealed class ModerationReportCaseDto
     public int PriorityId { get; init; }
     public required string PriorityCode { get; init; }
     public required string PriorityName { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Guid? AssignedModeratorUserId { get; init; }
     public DateTime? SlaDueAtUtc { get; init; }
     public DateTime CreatedAtUtc { get; init; }

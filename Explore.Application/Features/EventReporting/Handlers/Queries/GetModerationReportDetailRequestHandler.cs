@@ -51,8 +51,6 @@ public sealed class GetModerationReportDetailRequestHandler(
         {
             Id = report.Id,
             EventId = report.EventId,
-            ReporterUserId = report.ReporterUserId,
-            ReporterActorId = report.ReporterActorId,
             ReporterKindId = (int)report.ReporterKind,
             ReporterKindCode = ToCode(report.ReporterKind),
             ReporterKindName = report.ReporterKind.ToString(),
@@ -127,7 +125,6 @@ public sealed class GetModerationReportDetailRequestHandler(
             ClassificationCode = ToCode(evidence.Classification),
             ClassificationName = evidence.Classification.ToString(),
             RetentionUntilUtc = evidence.RetentionUntil,
-            CreatedByUserId = evidence.CreatedByUserId,
             CreatedAtUtc = evidence.CreatedAt
         };
     }
@@ -145,7 +142,6 @@ public sealed class GetModerationReportDetailRequestHandler(
             PriorityId = (int)reportCase.Priority,
             PriorityCode = ToCode(reportCase.Priority),
             PriorityName = reportCase.Priority.ToString(),
-            AssignedModeratorUserId = reportCase.AssignedModeratorUserId,
             SlaDueAtUtc = reportCase.SlaDueAt,
             CreatedAtUtc = reportCase.CreatedAt,
             LastUpdatedAtUtc = reportCase.UpdatedAt,
@@ -168,7 +164,6 @@ public sealed class GetModerationReportDetailRequestHandler(
             DecisionKindName = decision.DecisionKind.ToString(),
             ReasonCode = decision.ReasonCode,
             SafeNote = decision.SafeNote,
-            ModeratorUserId = decision.ModeratorUserId,
             ExternalDecisionId = decision.ExternalDecisionId,
             CreatedAtUtc = decision.CreatedAt
         };
@@ -194,8 +189,6 @@ public sealed class GetModerationReportDetailRequestHandler(
             RecommendedActionCode = signal.RecommendedAction.HasValue ? ToCode(signal.RecommendedAction.Value) : null,
             RecommendedActionName = signal.RecommendedAction?.ToString(),
             SafeSummary = signal.SafeSummary,
-            ExternalSignalId = signal.ExternalSignalId,
-            CorrelationId = signal.CorrelationId,
             CreatedAtUtc = signal.CreatedAt
         };
     }
@@ -210,16 +203,12 @@ public sealed class GetModerationReportDetailRequestHandler(
             ProviderId = (int)link.Provider,
             ProviderCode = ToCode(link.Provider),
             ProviderName = link.Provider.ToString(),
-            ProviderCaseId = link.ProviderCaseId,
-            ProviderSignalId = link.ProviderSignalId,
-            ProviderUrl = link.ProviderUrl,
             SyncStateId = (int)link.SyncState,
             SyncStateCode = ToCode(link.SyncState),
             SyncStateName = link.SyncState.ToString(),
             LastSyncedAtUtc = link.LastSyncedAt,
             LastErrorCategory = link.LastErrorCategory,
             RetryCount = link.RetryCount,
-            CorrelationId = link.CorrelationId,
             CreatedAtUtc = link.CreatedAt
         };
     }

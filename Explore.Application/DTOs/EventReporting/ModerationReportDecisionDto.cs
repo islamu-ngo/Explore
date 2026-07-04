@@ -16,7 +16,6 @@ public sealed class ModerationReportDecisionDto
     public required string DecisionKindName { get; init; }
     public required string ReasonCode { get; init; }
     public string? SafeNote { get; init; }
-    public Guid? ModeratorUserId { get; init; }
     public string? ExternalDecisionId { get; init; }
     public DateTime CreatedAtUtc { get; init; }
 }

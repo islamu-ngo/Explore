@@ -149,8 +149,6 @@ public sealed class GetModerationReportQueueRequestHandler(
         {
             Id = report.Id,
             EventId = report.EventId,
-            ReporterUserId = report.ReporterUserId,
-            ReporterActorId = report.ReporterActorId,
             ReporterKindId = (int)report.ReporterKind,
             ReporterKindCode = ToCode(report.ReporterKind),
             ReporterKindName = report.ReporterKind.ToString(),

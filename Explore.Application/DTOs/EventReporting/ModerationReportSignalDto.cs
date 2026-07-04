@@ -21,7 +21,5 @@ public sealed class ModerationReportSignalDto
     public string? RecommendedActionCode { get; init; }
     public string? RecommendedActionName { get; init; }
     public string? SafeSummary { get; init; }
-    public string? ExternalSignalId { get; init; }
-    public required string CorrelationId { get; init; }
     public DateTime CreatedAtUtc { get; init; }
 }

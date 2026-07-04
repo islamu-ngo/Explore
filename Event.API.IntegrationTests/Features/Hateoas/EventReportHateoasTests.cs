@@ -149,7 +149,6 @@ public sealed class EventReportHateoasTests
             DecisionKindCode = "light_moderate",
             DecisionKindName = "LightModerate",
             ReasonCode = "spam",
-            ModeratorUserId = Guid.CreateVersion7(),
             CreatedAtUtc = DateTime.UtcNow
         };
         var dto = CreateDetail(

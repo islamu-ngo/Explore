@@ -7,8 +7,6 @@ public sealed class ModerationReportQueueItemDto
 {
     public Guid Id { get; init; }
     public Guid EventId { get; init; }
-    public Guid? ReporterUserId { get; init; }
-    public Guid? ReporterActorId { get; init; }
     public int ReporterKindId { get; init; }
     public required string ReporterKindCode { get; init; }
     public required string ReporterKindName { get; init; }
