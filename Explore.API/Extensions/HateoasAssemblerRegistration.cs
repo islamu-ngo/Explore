@@ -13,6 +13,7 @@ using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
+using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.CustomPropertyGovernance;
 using Explore.Application.DTOs.CustomPropertyProjection;
@@ -27,6 +28,7 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.DTOs.EventSessionGroup;
+using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.Group;
@@ -88,6 +90,10 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EventSessionGroupDto>, EventSessionGroupDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventSessionGroupListDto>, EventSessionGroupCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EventSessionGroupDto, EventSessionGroupListDto>, EventSessionGroupResourceAssembler>();
+
+        services.AddScoped<ILinkPolicy<EventSessionSpeakerDto>, EventSessionSpeakerDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventSessionSpeakerListDto>, EventSessionSpeakerCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventSessionSpeakerDto, EventSessionSpeakerListDto>, EventSessionSpeakerResourceAssembler>();
 
         // Template Sync helper resources
         services.AddScoped<ILinkPolicy<EventTemplateSyncResource>, EventTemplateSyncLinkPolicy>();
@@ -204,6 +210,19 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<StorageObjectDto>, StorageObjectDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<StorageObjectListDto>, StorageObjectCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<StorageObjectDto, StorageObjectListDto>, StorageObjectResourceAssembler>();
+
+        services.AddScoped<ILinkPolicy<ControlPlaneOverviewDto>, ControlPlaneOverviewLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ControlPlaneOverviewDto>, ControlPlaneOverviewCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ControlPlaneOverviewDto, ControlPlaneOverviewDto>, ControlPlaneOverviewResourceAssembler>();
+        services.AddScoped<ILinkPolicy<ControlPlaneDomainOverviewDto>, ControlPlaneDomainLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ControlPlaneDomainOverviewDto>, ControlPlaneDomainCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ControlPlaneDomainOverviewDto, ControlPlaneDomainOverviewDto>, ControlPlaneDomainResourceAssembler>();
+        services.AddScoped<ILinkPolicy<ControlPlaneOperationsDto>, ControlPlaneOperationsLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ControlPlaneOperationsDto>, ControlPlaneOperationsCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ControlPlaneOperationsDto, ControlPlaneOperationsDto>, ControlPlaneOperationsResourceAssembler>();
+        services.AddScoped<ILinkPolicy<ControlPlaneTenantDetailDto>, ControlPlaneTenantDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ControlPlaneTenantListItemDto>, ControlPlaneTenantCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ControlPlaneTenantDetailDto, ControlPlaneTenantListItemDto>, ControlPlaneTenantResourceAssembler>();
 
         // Storage administration
         services.AddScoped<ILinkPolicy<InstanceStorageSettingsDto>, InstanceStorageSettingsLinkPolicy>();

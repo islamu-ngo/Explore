@@ -54,6 +54,15 @@ public sealed class EventSessionDetailLinkPolicy : ILinkPolicy<EventSessionDto>
             "GET",
             "Session agenda");
 
+        yield return new LinkDefinition(
+            "speakers",
+            RouteNames.GetEventSessionSpeakersBySession,
+            new { eventSessionId = dto.Id },
+            "GET",
+            "Session speakers",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSession, dto);
+
         foreach (var assignment in dto.SessionGroups)
         {
             yield return new LinkDefinition(
@@ -169,6 +178,15 @@ public sealed class EventSessionCollectionLinkPolicy : ICollectionLinkPolicy<Eve
                 "GET",
                 assignment.Name);
         }
+
+        yield return new LinkDefinition(
+            "speakers",
+            RouteNames.GetEventSessionSpeakersBySession,
+            new { eventSessionId = dto.Id },
+            "GET",
+            "Session speakers",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionList, dto);
 
         if (EventSessionLifecycleAffordancePolicy.CanSchedule(dto.EventSessionStatusId))
         {
