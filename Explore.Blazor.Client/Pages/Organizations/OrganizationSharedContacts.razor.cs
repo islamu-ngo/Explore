@@ -4,7 +4,6 @@
 using Blazouter.Services;
 using Explore.Blazor.Client.Contracts.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Organizations;
@@ -14,7 +13,7 @@ public partial class OrganizationSharedContacts
     [Inject] protected IContactShareConsentService ConsentService { get; set; } = null!;
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
     [Inject] protected ISnackbar Snackbar { get; set; } = null!;
-    [Inject] protected IJSRuntime JS { get; set; } = null!;
+    [Inject] protected IBrowserActionInterop BrowserActionInterop { get; set; } = null!;
 
     private Guid _organizationActorId;
     private List<SharedContactViewModel> _contacts = [];
@@ -72,8 +71,14 @@ public partial class OrganizationSharedContacts
             if (result.HasValue)
             {
                 var (fileBytes, fileName) = result.Value;
-                await DownloadFileAsync(fileBytes, fileName, format == "csv" ? "text/csv" : "text/tab-separated-values");
-                Snackbar.Add($"Export downloaded: {fileName}", Severity.Success);
+                var downloaded = await DownloadFileAsync(
+                    fileBytes,
+                    fileName,
+                    format == "csv" ? "text/csv" : "text/tab-separated-values");
+
+                Snackbar.Add(
+                    downloaded ? "Export downloaded." : "Export failed. Please try again.",
+                    downloaded ? Severity.Success : Severity.Error);
             }
             else
             {
@@ -90,11 +95,10 @@ public partial class OrganizationSharedContacts
         }
     }
 
-    private async Task DownloadFileAsync(byte[] fileBytes, string fileName, string contentType)
+    private async Task<bool> DownloadFileAsync(byte[] fileBytes, string fileName, string contentType)
     {
-        // Use JS interop to trigger browser file download
         var base64 = Convert.ToBase64String(fileBytes);
-        await JS.InvokeVoidAsync("downloadFileFromBase64", base64, fileName, contentType);
+        return await BrowserActionInterop.DownloadBase64FileAsync(base64, fileName, contentType);
     }
 
     private static string FormatPurpose(string purposeCode) => purposeCode switch

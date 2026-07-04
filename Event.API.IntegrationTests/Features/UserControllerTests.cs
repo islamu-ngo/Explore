@@ -4,6 +4,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Event.Api.IntegrationTests.Helpers;
 using Explore.Application.DTOs.User;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -45,6 +46,21 @@ public class UserControllerTests
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task GetUserOrganizations_WhenRequestedUserDiffersFromCurrentUser_ShouldReturnForbiddenProblemDetails()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var currentUserId = Guid.NewGuid();
+        var requestedUserId = Guid.NewGuid();
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/{requestedUserId}/organizations");
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(currentUserId));
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Forbidden");
     }
 
     #endregion

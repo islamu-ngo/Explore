@@ -55,7 +55,7 @@ public class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand, Unit>
             }
 
             // Revoke all active authentication tokens.
-            var tokens = await _userAuthenticationTokenRepository.GetByUser(request.UserId);
+            var tokens = await _userAuthenticationTokenRepository.GetByUser(request.UserId, ct);
             foreach (var token in tokens)
             {
                 await _userAuthenticationTokenRepository.HardDelete(token);

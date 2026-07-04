@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Queries;
+using Explore.Application.Services;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -79,48 +80,10 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
         return userDto;
     }
 
-    private async Task<string?> ResolveImageUrl(string? objectKeyOrUri)
-    {
-        if (string.IsNullOrEmpty(objectKeyOrUri))
-        {
-            return null;
-        }
-
-        try
-        {
-            // Check if it's a relative path (local API endpoint)
-            if (objectKeyOrUri.StartsWith("/", StringComparison.OrdinalIgnoreCase))
-            {
-                return objectKeyOrUri;
-            }
-
-            // Handle legacy full URLs (https://bucket.endpoint/key)
-            if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
-                {
-                    // If it is a local API endpoint, return it as-is
-                    if (uri.AbsolutePath.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return objectKeyOrUri;
-                    }
-
-                    // Extract the object key from the URL path
-                    var objectKey = uri.AbsolutePath.TrimStart('/');
-                    return await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
-                }
-                _logger.LogWarning("Failed to parse legacy URL: {Uri}", objectKeyOrUri);
-                return objectKeyOrUri; // Return as-is if parsing fails
-            }
-
-            // New format: just the object key
-            return await _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to generate presigned URL for: {ObjectKeyOrUri}", objectKeyOrUri);
-            return null;
-        }
-    }
+    private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
+        => StoragePresentationUrlResolver.ResolveImageUrlAsync(
+            objectKeyOrUri,
+            _objectStorageService,
+            _logger,
+            "user profile image");
 }

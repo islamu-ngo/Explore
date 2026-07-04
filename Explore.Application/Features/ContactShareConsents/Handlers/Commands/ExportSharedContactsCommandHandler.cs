@@ -41,9 +41,8 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
     {
         var response = new BaseCommandResponse<SharedContactExportResultDto>();
 
-        // Validate format
-        var format = request.Format.ToLowerInvariant();
-        if (format is not ("csv" or "tsv"))
+        var format = NormalizeFormat(request.Format);
+        if (format is null)
         {
             response.Success = false;
             response.Message = "Invalid export format. Supported formats: csv, tsv.";
@@ -78,7 +77,7 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
         var contentType = format == "tsv" ? "text/tab-separated-values" : "text/csv";
         var extension = format == "tsv" ? "tsv" : "csv";
         var orgName = org.FullName;
-        var fileName = $"shared-contacts-{orgName.Replace(" ", "-").ToLowerInvariant()}-{DateTime.UtcNow:yyyyMMdd}.{extension}";
+        var fileName = $"shared-contacts-{SanitizeFileNameSegment(orgName)}-{DateTime.UtcNow:yyyyMMdd}.{extension}";
 
         // Build file content
         var sb = new StringBuilder();
@@ -140,8 +139,21 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
         return response;
     }
 
+    private static string? NormalizeFormat(string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format) || format.Any(char.IsControl))
+        {
+            return null;
+        }
+
+        var normalizedFormat = format.Trim().ToLowerInvariant();
+        return normalizedFormat is "csv" or "tsv" ? normalizedFormat : null;
+    }
+
     private static string EscapeField(string value, char separator)
     {
+        value = SanitizeSpreadsheetCell(value);
+
         if (separator == '\t')
             return value.Replace("\t", " ").Replace("\n", " ").Replace("\r", " ");
 
@@ -149,5 +161,50 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
             return $"\"{value.Replace("\"", "\"\"")}\"";
 
         return value;
+    }
+
+    private static string SanitizeSpreadsheetCell(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        var trimmedStart = value.TrimStart();
+        return trimmedStart.Length > 0 && trimmedStart[0] is '=' or '+' or '-' or '@'
+            ? $"'{value}"
+            : value;
+    }
+
+    private static string SanitizeFileNameSegment(string value)
+    {
+        const int maxSegmentLength = 60;
+
+        var builder = new StringBuilder(value.Length);
+        var previousWasSeparator = false;
+
+        foreach (var character in value.ToLowerInvariant())
+        {
+            if (builder.Length >= maxSegmentLength)
+            {
+                break;
+            }
+
+            if (character is >= 'a' and <= 'z' or >= '0' and <= '9')
+            {
+                builder.Append(character);
+                previousWasSeparator = false;
+                continue;
+            }
+
+            if (!previousWasSeparator)
+            {
+                builder.Append('-');
+                previousWasSeparator = true;
+            }
+        }
+
+        var segment = builder.ToString().Trim('-');
+        return segment.Length == 0 ? "organization" : segment;
     }
 }

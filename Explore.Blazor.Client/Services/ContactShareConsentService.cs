@@ -9,6 +9,12 @@ namespace Explore.Blazor.Client.Services;
 
 public class ContactShareConsentService : IContactShareConsentService
 {
+    private static readonly HashSet<string> SupportedExportFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "csv",
+        "tsv"
+    };
+
     private readonly IEventApiClient _apiClient;
     private readonly ILogger<ContactShareConsentService> _logger;
 
@@ -111,10 +117,17 @@ public class ContactShareConsentService : IContactShareConsentService
     {
         try
         {
-            var result = await _apiClient.ExportOrganizationSharedContactsAsync(organizationActorId, format, eventId, cancellationToken: ct);
+            var normalizedFormat = NormalizeExportFormat(format);
+            if (normalizedFormat is null)
+            {
+                _logger.LogWarning("[CONSENT SERVICE] Unsupported shared contact export format requested");
+                return null;
+            }
+
+            var result = await _apiClient.ExportOrganizationSharedContactsAsync(organizationActorId, normalizedFormat, eventId, cancellationToken: ct);
             if (result?.FileContents == null || result.FileContents.Length == 0) return null;
 
-            var extension = format.Equals("tsv", StringComparison.OrdinalIgnoreCase) ? "tsv" : "csv";
+            var extension = normalizedFormat == "tsv" ? "tsv" : "csv";
             var fileName = result.FileDownloadName
                 ?? $"shared-contacts-{organizationActorId:N}-{DateTimeOffset.UtcNow:yyyyMMdd}.{extension}";
             return (result.FileContents, fileName);
@@ -132,4 +145,15 @@ public class ContactShareConsentService : IContactShareConsentService
         2 => "Withdrawn",
         _ => "Unknown"
     };
+
+    private static string? NormalizeExportFormat(string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format) || format.Any(char.IsControl))
+        {
+            return null;
+        }
+
+        var normalizedFormat = format.Trim().ToLowerInvariant();
+        return SupportedExportFormats.Contains(normalizedFormat) ? normalizedFormat : null;
+    }
 }

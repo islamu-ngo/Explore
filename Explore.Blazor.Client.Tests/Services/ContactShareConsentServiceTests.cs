@@ -269,6 +269,48 @@ public class ContactShareConsentServiceTests
         await Assert.That(result!.Value.FileName).IsEqualTo("export.tsv");
     }
 
+    [Test]
+    public async Task ExportSharedContactsAsync_UppercaseFormat_NormalizesBeforeApiCall()
+    {
+        var actorId = Guid.NewGuid();
+        var response = new FileContentResult
+        {
+            FileContents = System.Text.Encoding.UTF8.GetBytes("data"),
+            FileDownloadName = "export.tsv",
+            ContentType = "text/tab-separated-values"
+        };
+        _apiClient.ExportOrganizationSharedContactsAsync(actorId, "tsv", null, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        var result = await _service.ExportSharedContactsAsync(actorId, " TSV ");
+
+        await Assert.That(result).IsNotNull();
+        await _apiClient.Received(1).ExportOrganizationSharedContactsAsync(
+            actorId,
+            "tsv",
+            null,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ExportSharedContactsAsync_InvalidFormat_ReturnsNullWithoutCallingApi()
+    {
+        var actorId = Guid.NewGuid();
+
+        var result = await _service.ExportSharedContactsAsync(actorId, "json");
+
+        await Assert.That(result).IsNull();
+        await _apiClient.DidNotReceive().ExportOrganizationSharedContactsAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     #endregion
 
     #region Helpers

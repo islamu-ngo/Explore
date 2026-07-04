@@ -125,6 +125,33 @@ public class ExportSharedContactsCommandHandlerTests
         await Assert.That(content).Contains(consents[1].EmailSnapshot);
     }
 
+    [Test]
+    public async Task Handle_CsvFormat_SanitizesFormulaCellsAndFileName()
+    {
+        var command = CreateCommand(format: " CSV ");
+        SetupActor();
+        _organizationRepository.GetById(_orgId)
+            .Returns(CreateOrganizationEntity(_orgId, fullName: "=Approved/Org"));
+
+        var consents = CreateGrantedConsents(1);
+        consents[0].EmailSnapshot = "=cmd|' /C calc'!A0";
+        consents[0].SourceEvent!.Title = "+Follow up";
+        _consentRepository.GetGrantedForExport(_tenantId, _actorId, null).Returns(consents);
+        _exportRepository.Create(Arg.Any<EventContactShareExport>())
+            .Returns(ci => ci.Arg<EventContactShareExport>());
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id!.Format).IsEqualTo("csv");
+        await Assert.That(result.Id.FileName).Contains("shared-contacts-approved-org-");
+
+        var content = System.Text.Encoding.UTF8.GetString(result.Id.FileContent!);
+        await Assert.That(content).Contains("'=cmd|' /C calc'!A0");
+        await Assert.That(content).Contains("'+Follow up");
+        await Assert.That(content).Contains("'=Approved/Org");
+    }
+
     #endregion
 
     #region TSV export
@@ -231,11 +258,11 @@ public class ExportSharedContactsCommandHandlerTests
         Tenant = CreateTenant()
     };
 
-    private static Organization CreateOrganizationEntity(Guid id, bool approved = true) => new()
+    private static Organization CreateOrganizationEntity(Guid id, bool approved = true, string? fullName = null) => new()
     {
         Id = id,
         ApprovalStatusId = approved ? (int)ApprovalStatusEnum.Approved : 1,
-        Pii = new OrganizationPii { FullName = approved ? "Approved Org" : "Unapproved Org" },
+        Pii = new OrganizationPii { FullName = fullName ?? (approved ? "Approved Org" : "Unapproved Org") },
         ApprovalStatus = new ApprovalStatus
         {
             MasterCode = approved ? "APPROVED" : "PENDING",

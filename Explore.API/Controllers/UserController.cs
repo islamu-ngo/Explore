@@ -150,20 +150,15 @@ public class UserController : ExploreControllerBase
     [Authorize]
     [EndpointSummary("Get user's organizations")]
     [EndpointDescription("Gets all organizations the user is a member of, including their role in each organization.")]
+    [ProducesResponseType(typeof(List<OrganizationListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<OrganizationListDto>>> GetUserOrganizations(Guid userId, CancellationToken cancellationToken = default)
     {
-        // Verify the user is requesting their own organizations
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem();
-        }
-
-        // For now, only allow users to get their own organizations
-        // TODO: Add admin check for viewing other users' organizations
-        if (userId != currentUserId.Value)
-        {
-            return this.ToForbiddenProblem(detail: "You can only view your own organizations.");
         }
 
         var query = new GetUserOrganizationsRequest { UserId = userId };

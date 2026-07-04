@@ -150,8 +150,7 @@ public class ContactShareConsentController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> ExportSharedContacts(
         Guid recipientActorId,
-        [FromQuery] string format = "csv",
-        [FromQuery] Guid? eventId = null,
+        [FromQuery] ContactShareConsentExportQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId;
@@ -166,8 +165,8 @@ public class ContactShareConsentController : ExploreControllerBase
         {
             RecipientActorId = recipientActorId,
             OrganizationId = organizationId.Value,
-            EventId = eventId,
-            Format = format,
+            EventId = query.EventId,
+            Format = query.GetNormalizedFormat(),
             TenantId = _tenantContext.TenantId,
             ExportedByUserId = userId.Value
         }, cancellationToken);

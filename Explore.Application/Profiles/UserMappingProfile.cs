@@ -26,10 +26,7 @@ public class UserMappingProfile : Profile
         CreateMap<UpdateUserDto, User>();
         CreateMap<UpdateUserNamesDto, User>();
 
-        CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenDto>()
-            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
-            .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
-            .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
+        CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenDto>();
         CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenListDto>();
         CreateMap<CreateUserAuthenticationTokenDto, Domain.UserAuthenticationToken>();
         CreateMap<UpdateUserAuthenticationTokenDto, Domain.UserAuthenticationToken>();
