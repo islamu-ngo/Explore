@@ -56,6 +56,11 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         await using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "replay");
         var dispatch = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.DeadLettered);
+        dispatch.RabbitMqLastPublishedAt = DateTime.UtcNow.AddMinutes(-10);
+        dispatch.RabbitMqLastPublishAttemptAt = DateTime.UtcNow.AddMinutes(-10);
+        dispatch.RabbitMqPublishAttemptCount = 3;
+        dispatch.RabbitMqLastPublishFailureCategory = "publisher_nack";
+        await context.SaveChangesAsync();
         var actorId = Guid.NewGuid();
         var replayAt = DateTime.UtcNow;
         var repository = new EmailDispatchOutboxRepository(context);
@@ -80,6 +85,10 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         await Assert.That(row.UnknownAt).IsNull();
         await Assert.That(row.LastFailureCategory).IsNull();
         await Assert.That(row.LastError).IsNull();
+        await Assert.That(row.RabbitMqLastPublishedAt).IsNull();
+        await Assert.That(row.RabbitMqLastPublishAttemptAt).IsNull();
+        await Assert.That(row.RabbitMqPublishAttemptCount).IsEqualTo(0);
+        await Assert.That(row.RabbitMqLastPublishFailureCategory).IsNull();
         await Assert.That(row.UpdatedBy).IsEqualTo(actorId);
     }
 
@@ -106,6 +115,33 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             .AsNoTracking()
             .SingleAsync(outbox => outbox.Id == dispatch.Id);
         await Assert.That(row.Status).IsEqualTo(EmailDispatchStatus.Sent);
+    }
+
+    [Test]
+    public async Task TryParkForOperatorDoesNotParkSkippedRow()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "skipped-park");
+        var dispatch = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.Skipped);
+        var repository = new EmailDispatchOutboxRepository(context);
+
+        var parked = await repository.TryParkForOperator(
+            tenant.Id,
+            dispatch.Id,
+            "manual review",
+            Guid.NewGuid(),
+            DateTime.UtcNow,
+            CancellationToken.None);
+
+        await Assert.That(parked).IsFalse();
+
+        var row = await context.EmailDispatchOutbox
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleAsync(outbox => outbox.Id == dispatch.Id);
+        await Assert.That(row.Status).IsEqualTo(EmailDispatchStatus.Skipped);
+        await Assert.That(row.ParkedAt).IsNull();
     }
 
     [Test]
@@ -155,6 +191,55 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             .IgnoreQueryFilters()
             .CountAsync(receipt => receipt.TenantId == tenant.Id && receipt.PublishEventId == dispatch.PublishEventId);
         await Assert.That(receiptCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task MarkAsSkippedSettlesOutboxAndReceiptWithoutRetry()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "skip");
+        var dispatch = await SeedProcessingDispatchWithReceiptAsync(context, tenant.Id, DateTime.UtcNow.AddSeconds(-30));
+        var receipt = await context.EmailDispatchReceipts
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleAsync(row => row.EmailDispatchOutboxId == dispatch.Id);
+        var skippedAt = DateTime.UtcNow;
+        var repository = new EmailDispatchOutboxRepository(context);
+
+        await repository.MarkAsSkipped(
+            dispatch.Id,
+            "recipient_unsubscribed",
+            "Recipient opted out before SMTP send.",
+            skippedAt,
+            CancellationToken.None);
+        await repository.MarkReceiptSkipped(
+            receipt.Id,
+            "recipient_unsubscribed",
+            "Recipient opted out before SMTP send.",
+            skippedAt,
+            CancellationToken.None);
+
+        var row = await context.EmailDispatchOutbox
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleAsync(outbox => outbox.Id == dispatch.Id);
+        var receiptRow = await context.EmailDispatchReceipts
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleAsync(row => row.Id == receipt.Id);
+
+        await Assert.That(row.Status).IsEqualTo(EmailDispatchStatus.Skipped);
+        await Assert.That(row.NextAttemptAt).IsNull();
+        await Assert.That(row.ProcessingStartedAt).IsNull();
+        await Assert.That(row.ProcessingLeaseToken).IsNull();
+        await Assert.That(row.LastFailureCategory).IsEqualTo("recipient_unsubscribed");
+        await Assert.That(row.LastError).IsEqualTo("Recipient opted out before SMTP send.");
+        await Assert.That(Math.Abs((row.LastFailureAt!.Value - skippedAt).TotalMilliseconds)).IsLessThan(10);
+        await Assert.That(receiptRow.Status).IsEqualTo(EmailDispatchReceiptStatus.Skipped);
+        await Assert.That(receiptRow.FailureCode).IsEqualTo("recipient_unsubscribed");
+        await Assert.That(receiptRow.FailureMessage).IsEqualTo("Recipient opted out before SMTP send.");
+        await Assert.That(Math.Abs((receiptRow.FailedAt!.Value - skippedAt).TotalMilliseconds)).IsLessThan(10);
     }
 
     [Test]
@@ -253,6 +338,76 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             .ToListAsync();
         await Assert.That(receipts).Count().IsEqualTo(1);
         await Assert.That(new[] { "scheduler-node-a", "scheduler-node-b" }.Contains(receipts[0].ConsumerId)).IsTrue();
+    }
+
+    [Test]
+    public async Task GetRabbitMqPublishBatchReturnsDueUnpausedRowsOnly()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var activeTenant = await SeedTenantAsync(context, "rabbitmq-active");
+        var pausedTenant = await SeedTenantAsync(context, "rabbitmq-paused");
+        var now = DateTime.UtcNow;
+        var eligible = await SeedDispatchAsync(context, activeTenant.Id, EmailDispatchStatus.Pending);
+        var throttled = await SeedDispatchAsync(context, activeTenant.Id, EmailDispatchStatus.Pending);
+        var deferred = await SeedDispatchAsync(context, activeTenant.Id, EmailDispatchStatus.RetryScheduled);
+        var sent = await SeedDispatchAsync(context, activeTenant.Id, EmailDispatchStatus.Sent);
+        var paused = await SeedDispatchAsync(context, pausedTenant.Id, EmailDispatchStatus.Pending);
+        throttled.RabbitMqLastPublishAttemptAt = now.AddSeconds(-5);
+        deferred.NextAttemptAt = now.AddMinutes(10);
+        context.EmailDispatchTenantControls.Add(new EmailDispatchTenantControl
+        {
+            Id = Guid.NewGuid(),
+            TenantId = pausedTenant.Id,
+            IsPaused = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        await context.SaveChangesAsync();
+        var repository = new EmailDispatchOutboxRepository(context);
+
+        IReadOnlyList<EmailDispatchOutbox> rows = await repository.GetRabbitMqPublishBatch(
+            10,
+            now,
+            now.AddSeconds(-30),
+            CancellationToken.None);
+
+        await Assert.That(rows.Select(row => row.Id)).IsEquivalentTo([eligible.Id]);
+        await Assert.That(rows.Select(row => row.Id)).DoesNotContain(throttled.Id);
+        await Assert.That(rows.Select(row => row.Id)).DoesNotContain(deferred.Id);
+        await Assert.That(rows.Select(row => row.Id)).DoesNotContain(sent.Id);
+        await Assert.That(rows.Select(row => row.Id)).DoesNotContain(paused.Id);
+    }
+
+    [Test]
+    public async Task RabbitMqPublishMarkersUpdateProducerMetadata()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "rabbitmq-markers");
+        var success = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.Pending);
+        var failure = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.Pending);
+        var repository = new EmailDispatchOutboxRepository(context);
+        var publishedAt = DateTime.UtcNow.AddMinutes(-2);
+        var failedAt = DateTime.UtcNow;
+
+        await repository.MarkRabbitMqPublishSucceeded(success.Id, publishedAt, CancellationToken.None);
+        await repository.MarkRabbitMqPublishFailed(failure.Id, "mandatory_return", failedAt, CancellationToken.None);
+
+        var rows = await context.EmailDispatchOutbox
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(outbox => outbox.Id == success.Id || outbox.Id == failure.Id)
+            .ToDictionaryAsync(outbox => outbox.Id);
+        await Assert.That(rows[success.Id].RabbitMqLastPublishedAt).IsNotNull();
+        await Assert.That(Math.Abs((rows[success.Id].RabbitMqLastPublishedAt!.Value - publishedAt).TotalMilliseconds)).IsLessThan(10);
+        await Assert.That(rows[success.Id].RabbitMqLastPublishAttemptAt).IsNotNull();
+        await Assert.That(rows[success.Id].RabbitMqPublishAttemptCount).IsEqualTo(1);
+        await Assert.That(rows[success.Id].RabbitMqLastPublishFailureCategory).IsNull();
+        await Assert.That(rows[failure.Id].RabbitMqLastPublishedAt).IsNull();
+        await Assert.That(rows[failure.Id].RabbitMqLastPublishAttemptAt).IsNotNull();
+        await Assert.That(rows[failure.Id].RabbitMqPublishAttemptCount).IsEqualTo(1);
+        await Assert.That(rows[failure.Id].RabbitMqLastPublishFailureCategory).IsEqualTo("mandatory_return");
     }
 
     [Test]

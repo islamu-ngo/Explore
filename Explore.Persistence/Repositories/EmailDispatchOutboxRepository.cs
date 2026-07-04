@@ -42,6 +42,29 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<EmailDispatchOutbox>> GetRabbitMqPublishBatch(
+        int batchSize,
+        DateTime now,
+        DateTime retryAttemptsBefore,
+        CancellationToken cancellationToken)
+    {
+        var pausedTenantIds = _dbContext.EmailDispatchTenantControls
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(control => control.IsPaused)
+            .Select(control => control.TenantId);
+
+        return await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(e => (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
+                && (e.NextAttemptAt == null || e.NextAttemptAt <= now)
+                && (e.RabbitMqLastPublishAttemptAt == null || e.RabbitMqLastPublishAttemptAt <= retryAttemptsBefore)
+                && !pausedTenantIds.Contains(e.TenantId))
+            .OrderBy(e => e.CreatedAt)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<EmailDispatchOutbox>> GetStatusRows(
         Guid tenantId,
         int limit,
@@ -135,6 +158,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             .Where(e => e.TenantId == tenantId
                 && e.Id == outboxId
                 && e.Status != EmailDispatchStatus.Sent
+                && e.Status != EmailDispatchStatus.Skipped
                 && e.Status != EmailDispatchStatus.Parked)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.Status, EmailDispatchStatus.Parked)
@@ -177,6 +201,10 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                 .SetProperty(e => e.LastFailureCategory, (string?)null)
                 .SetProperty(e => e.LastError, (string?)null)
                 .SetProperty(e => e.LastFailureAt, (DateTime?)null)
+                .SetProperty(e => e.RabbitMqLastPublishedAt, (DateTime?)null)
+                .SetProperty(e => e.RabbitMqLastPublishAttemptAt, (DateTime?)null)
+                .SetProperty(e => e.RabbitMqPublishAttemptCount, 0)
+                .SetProperty(e => e.RabbitMqLastPublishFailureCategory, (string?)null)
                 .SetProperty(e => e.UpdatedAt, replayAt)
                 .SetProperty(e => e.UpdatedBy, changedBy), cancellationToken);
 
@@ -282,6 +310,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                 .SetProperty(e => e.NextAttemptAt, (DateTime?)null)
                 .SetProperty(e => e.LastFailureCategory, (string?)null)
                 .SetProperty(e => e.LastError, (string?)null)
+                .SetProperty(e => e.RabbitMqLastPublishFailureCategory, (string?)null)
                 .SetProperty(e => e.UpdatedAt, sentAt), cancellationToken);
     }
 
@@ -333,6 +362,61 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                 .SetProperty(e => e.LastError, Truncate(errorMessage, MaxErrorLength))
                 .SetProperty(e => e.LastFailureAt, unknownAt)
                 .SetProperty(e => e.UpdatedAt, unknownAt), cancellationToken);
+    }
+
+    public async Task MarkAsSkipped(
+        Guid id,
+        string reasonCategory,
+        string reasonMessage,
+        DateTime skippedAt,
+        CancellationToken cancellationToken)
+    {
+        await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(e => e.Id == id)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(e => e.Status, EmailDispatchStatus.Skipped)
+                .SetProperty(e => e.ProcessingStartedAt, (DateTime?)null)
+                .SetProperty(e => e.ProcessingLeaseToken, (Guid?)null)
+                .SetProperty(e => e.NextAttemptAt, (DateTime?)null)
+                .SetProperty(e => e.LastFailureCategory, Truncate(reasonCategory, 100))
+                .SetProperty(e => e.LastError, Truncate(reasonMessage, MaxErrorLength))
+                .SetProperty(e => e.LastFailureAt, skippedAt)
+                .SetProperty(e => e.UpdatedAt, skippedAt), cancellationToken);
+    }
+
+    public async Task MarkRabbitMqPublishSucceeded(
+        Guid id,
+        DateTime publishedAt,
+        CancellationToken cancellationToken)
+    {
+        await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(e => e.Id == id
+                && (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(e => e.RabbitMqLastPublishedAt, publishedAt)
+                .SetProperty(e => e.RabbitMqLastPublishAttemptAt, publishedAt)
+                .SetProperty(e => e.RabbitMqPublishAttemptCount, e => e.RabbitMqPublishAttemptCount + 1)
+                .SetProperty(e => e.RabbitMqLastPublishFailureCategory, (string?)null)
+                .SetProperty(e => e.UpdatedAt, publishedAt), cancellationToken);
+    }
+
+    public async Task MarkRabbitMqPublishFailed(
+        Guid id,
+        string failureCategory,
+        DateTime attemptedAt,
+        CancellationToken cancellationToken)
+    {
+        await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(e => e.Id == id
+                && (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(e => e.RabbitMqLastPublishAttemptAt, attemptedAt)
+                .SetProperty(e => e.RabbitMqPublishAttemptCount, e => e.RabbitMqPublishAttemptCount + 1)
+                .SetProperty(e => e.RabbitMqLastPublishFailureCategory, Truncate(failureCategory, 100))
+                .SetProperty(e => e.UpdatedAt, attemptedAt), cancellationToken);
     }
 
     public async Task RecordAttempt(EmailDispatchAttempt attempt, CancellationToken cancellationToken)
@@ -398,6 +482,24 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                 .SetProperty(e => e.FailureCode, Truncate(failureCode, 100))
                 .SetProperty(e => e.FailureMessage, Truncate(failureMessage, MaxReceiptFailureLength))
                 .SetProperty(e => e.UpdatedAt, failedAt), cancellationToken);
+    }
+
+    public async Task MarkReceiptSkipped(
+        Guid receiptId,
+        string reasonCode,
+        string reasonMessage,
+        DateTime skippedAt,
+        CancellationToken cancellationToken)
+    {
+        await _dbContext.EmailDispatchReceipts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(e => e.Id == receiptId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(e => e.Status, EmailDispatchReceiptStatus.Skipped)
+                .SetProperty(e => e.FailedAt, skippedAt)
+                .SetProperty(e => e.FailureCode, Truncate(reasonCode, 100))
+                .SetProperty(e => e.FailureMessage, Truncate(reasonMessage, MaxReceiptFailureLength))
+                .SetProperty(e => e.UpdatedAt, skippedAt), cancellationToken);
     }
 
     private static string? Truncate(string? value, int maxLength)

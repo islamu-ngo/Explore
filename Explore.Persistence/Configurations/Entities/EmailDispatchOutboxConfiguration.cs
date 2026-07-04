@@ -26,6 +26,7 @@ public class EmailDispatchOutboxConfiguration : IEntityTypeConfiguration<EmailDi
         builder.Property(e => e.LastError).HasMaxLength(2000);
         builder.Property(e => e.ProviderMessageId).HasMaxLength(500);
         builder.Property(e => e.CorrelationId).HasMaxLength(200);
+        builder.Property(e => e.RabbitMqLastPublishFailureCategory).HasMaxLength(100);
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -49,6 +50,15 @@ public class EmailDispatchOutboxConfiguration : IEntityTypeConfiguration<EmailDi
 
         builder.HasIndex(e => new { e.Status, e.NextAttemptAt, e.CreatedAt })
             .HasDatabaseName("ix_email_dispatch_outbox_worker_poll");
+
+        builder.HasIndex(e => new
+        {
+            e.Status,
+            e.NextAttemptAt,
+            e.RabbitMqLastPublishAttemptAt,
+            e.CreatedAt
+        })
+            .HasDatabaseName("ix_email_dispatch_outbox_rabbitmq_publish");
 
         builder.HasIndex(e => new { e.TenantId, e.PublishEventId })
             .HasDatabaseName("ux_email_dispatch_outbox_tenant_publish_event")
