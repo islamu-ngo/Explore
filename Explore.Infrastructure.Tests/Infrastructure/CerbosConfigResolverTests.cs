@@ -190,7 +190,44 @@ public sealed class CerbosConfigResolverTests : IDisposable
         await Assert.That(result?.IsInstanceDefault).IsFalse();
     }
 
-    private CerbosConfigResolver CreateResolver(Guid? tenantId = null)
+    [Test]
+    public async Task ResolveAsync_WithBareCustomEndpoint_NormalizesGrpcAndAdminEndpoints()
+    {
+        _settingsResolver.ResolveAsync<string>(
+                GovernanceSettingKeys.Cerbos.CustomEndpoint,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns("tenant-cerbos.example.com:443");
+        _settingsResolver.ResolveAsync<string>(
+                GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns("tenant-cerbos-admin.example.com:3592");
+        var resolver = CreateResolver();
+
+        var result = await resolver.ResolveAsync();
+
+        await Assert.That(result?.Endpoint).IsEqualTo("https://tenant-cerbos.example.com:443");
+        await Assert.That(result?.AdminEndpoint).IsEqualTo("https://tenant-cerbos-admin.example.com:3592");
+    }
+
+    [Test]
+    public async Task ResolveAsync_WhenUsingInstancePdp_NormalizesBareConfiguredEndpoint()
+    {
+        _settingsResolver.ResolveAsync<bool>(
+                GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        var resolver = CreateResolver(instanceGrpcEndpoint: "cerbosgrpc.openislamu.org:443");
+
+        var result = await resolver.ResolveAsync();
+
+        await Assert.That(result?.Endpoint).IsEqualTo("https://cerbosgrpc.openislamu.org:443");
+        await Assert.That(result?.IsInstanceDefault).IsTrue();
+    }
+
+    private CerbosConfigResolver CreateResolver(Guid? tenantId = null, string? instanceGrpcEndpoint = null)
     {
         var tenantContext = tenantId.HasValue
             ? Substitute.For<ITenantContext>()
@@ -205,7 +242,7 @@ public sealed class CerbosConfigResolverTests : IDisposable
             _cache,
             _cacheRegistry,
             _clientFactory,
-            Options.Create(new CerbosSettings { GrpcEndpoint = "http://localhost:3593" }),
+            Options.Create(new CerbosSettings { GrpcEndpoint = instanceGrpcEndpoint ?? "http://localhost:3593" }),
             _logger);
     }
 }

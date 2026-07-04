@@ -601,6 +601,7 @@ public class AdminContextTests
     {
         var identity = new ClaimsIdentity(
         [
+            new Claim("internal_user_id", userId.ToString()),
             new Claim("sub", userId.ToString()),
             new Claim(ClaimTypes.NameIdentifier, userId.ToString())
         ], "TestAuth");

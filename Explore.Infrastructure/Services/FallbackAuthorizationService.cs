@@ -108,8 +108,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             // Tenant-scoped: tenant admin with lock semantics
             "islamuevent_tenant_setting" => await EvaluateTenantSettingAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
-            // Tenant-scoped: tenant admin only
-            "islamuevent_tenant" => false, // Only instance admins can create/update/delete tenants
+            "islamuevent_tenant" => await EvaluateTenantResourceAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_tenant_user_role_grant" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_category" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_tag" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
@@ -118,10 +117,11 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             "islamuevent_custom_property_definition" => await EvaluateViewableTenantResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_custom_property_template" => await EvaluateViewableTenantResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_custom_property_value" => await EvaluateViewableOrgResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "islamuevent_custom_property_projection" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_custom_property_projection" => await EvaluateCustomPropertyProjectionAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_custom_property_governance" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_email_dispatch" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_webhook" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_support_access_session" => await EvaluateSupportAccessSessionResourceAsync(action, resourceAttributes, cancellationToken),
             "islamuevent_platform_namespace" => action is "view",
 
             // Org-scoped: tenant admin or org admin
@@ -226,6 +226,22 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         // For unknown resource kinds, deny by default (secure by default)
         LogDecision("deny", "unknown_resource_kind", resourceKind, resourceKind, action);
         return Task.FromResult(false);
+    }
+
+    private async Task<bool> EvaluateSupportAccessSessionResourceAsync(
+        string action,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        var tenantId = ResolveTenantId(resourceAttributes);
+        if (tenantId == Guid.Empty)
+            return false;
+
+        return action is
+                AuthorizationActions.SupportAccessSessions.View
+                or AuthorizationActions.SupportAccessSessions.List
+                or AuthorizationActions.SupportAccessSessions.ViewAudit
+            && await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
     }
 
     /// <summary>

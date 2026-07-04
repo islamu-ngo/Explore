@@ -1,13 +1,16 @@
 // ABOUTME: Authorization provider wrapper that delegates to Cerbos or Local provider based on SystemSetting.
 // ABOUTME: Supports BYO (Bring Your Own) Cerbos per tenant with configurable failure modes.
 
+using System.Diagnostics;
 using System.Text.Json;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Models;
+using Explore.Application.Telemetry;
 using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -45,8 +48,10 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
     private readonly FallbackAuthorizationService _localProvider;
     private readonly ICerbosConfigResolver _cerbosConfigResolver;
     private readonly ISystemSettingRepository _systemSettingRepository;
+    private readonly ISupportAccessSessionService? _supportAccessSessionService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<RuntimeAuthorizationProvider> _logger;
+    private readonly BusinessMetrics? _metrics;
 
     private const string InstanceModeCacheKey = "AuthorizationProvider_Mode";
     private static readonly TimeSpan InstanceModeCacheDuration = TimeSpan.FromMinutes(1);
@@ -57,14 +62,18 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         ICerbosConfigResolver cerbosConfigResolver,
         ISystemSettingRepository systemSettingRepository,
         IMemoryCache cache,
-        ILogger<RuntimeAuthorizationProvider> logger)
+        ILogger<RuntimeAuthorizationProvider> logger,
+        ISupportAccessSessionService? supportAccessSessionService = null,
+        BusinessMetrics? metrics = null)
     {
         _cerbosProvider = cerbosProvider;
         _localProvider = localProvider;
         _cerbosConfigResolver = cerbosConfigResolver;
         _systemSettingRepository = systemSettingRepository;
+        _supportAccessSessionService = supportAccessSessionService;
         _cache = cache;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task<bool> IsAllowedAsync(
@@ -91,8 +100,21 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         IReadOnlyList<AuthorizationCheck> checks,
         CancellationToken cancellationToken = default)
     {
-        if (UsesSettingAuthorization(checks))
-            return await ExecuteInstanceProviderAsync(checks, cancellationToken);
+        if (checks.Count == 0)
+            return [];
+
+        var supportBoundary = await ApplySupportAccessBoundaryAsync(checks, cancellationToken);
+        if (supportBoundary.EffectiveChecks.Count == 0)
+            return supportBoundary.Results;
+
+        var effectiveChecks = supportBoundary.EffectiveChecks;
+        IReadOnlyList<bool> evaluatedResults;
+
+        if (UsesSettingAuthorization(effectiveChecks))
+        {
+            evaluatedResults = await ExecuteInstanceProviderAsync(effectiveChecks, cancellationToken);
+            return supportBoundary.Complete(evaluatedResults);
+        }
 
         // Step 1: Check if the tenant has a BYO Cerbos configuration (works regardless of instance mode)
         CerbosConfiguration? byoConfig;
@@ -104,27 +126,38 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         {
             _logger.LogError(
                 "Failed to resolve tenant BYO Cerbos config for batch ({Count} checks). Activating safe mode to avoid local RBAC bypass. FailureType={FailureType}",
-                checks.Count,
+                effectiveChecks.Count,
                 ex.GetType().Name);
             _localProvider.ActivateSafeMode();
-            return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
+            evaluatedResults = await _localProvider.IsAllowedBatchAsync(effectiveChecks, cancellationToken);
+            return supportBoundary.Complete(evaluatedResults);
         }
 
         if (byoConfig is not null)
-            return await ExecuteByoAsync(byoConfig, checks, cancellationToken);
+        {
+            evaluatedResults = await ExecuteByoAsync(byoConfig, effectiveChecks, cancellationToken);
+            return supportBoundary.Complete(evaluatedResults);
+        }
 
         // These checks have canonical local parity because handlers or pre-create flows enforce
         // the resource-specific policy after the coarse authorization gate. Keep them local in
         // instance-Cerbos mode so stale PDP policy packages cannot block canonical handlers.
-        var localCheckIndexes = GetHandlerOwnedLocalCheckIndexes(checks);
-        if (localCheckIndexes.Count == checks.Count)
-            return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
+        var localCheckIndexes = GetHandlerOwnedLocalCheckIndexes(effectiveChecks);
+        if (localCheckIndexes.Count == effectiveChecks.Count)
+        {
+            evaluatedResults = await _localProvider.IsAllowedBatchAsync(effectiveChecks, cancellationToken);
+            return supportBoundary.Complete(evaluatedResults);
+        }
 
         if (localCheckIndexes.Count > 0)
-            return await ExecuteMixedLocalAndInstanceAsync(checks, localCheckIndexes, cancellationToken);
+        {
+            evaluatedResults = await ExecuteMixedLocalAndInstanceAsync(effectiveChecks, localCheckIndexes, cancellationToken);
+            return supportBoundary.Complete(evaluatedResults);
+        }
 
         // Step 2: Fall back to instance-level provider resolution (Cerbos or Local)
-        return await ExecuteInstanceProviderAsync(checks, cancellationToken);
+        evaluatedResults = await ExecuteInstanceProviderAsync(effectiveChecks, cancellationToken);
+        return supportBoundary.Complete(evaluatedResults);
     }
 
     private async Task<IReadOnlyList<bool>> ExecuteMixedLocalAndInstanceAsync(
@@ -207,6 +240,12 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         Guid? organizationId = null,
         CancellationToken cancellationToken = default)
     {
+        var supportBoundary = await ApplySupportAccessBoundaryAsync(
+            [CreateSettingAuthorizationCheck(settingKey, action, tenantId, organizationId)],
+            cancellationToken);
+        if (supportBoundary.EffectiveChecks.Count == 0)
+            return supportBoundary.Results[0];
+
         // BYO Cerbos only applies to resource checks, not setting access.
         // Settings are governed by the instance-level provider.
         var provider = await ResolveInstanceProviderAsync(cancellationToken);
@@ -225,6 +264,238 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                 ex.GetType().Name);
             return false;
         }
+    }
+
+    private async Task<SupportAccessBoundaryResult> ApplySupportAccessBoundaryAsync(
+        IReadOnlyList<AuthorizationCheck> checks,
+        CancellationToken cancellationToken)
+    {
+        if (_supportAccessSessionService is null)
+            return SupportAccessBoundaryResult.PassThrough(checks);
+
+        var supportContext = await _supportAccessSessionService.GetCurrentAsync(cancellationToken);
+        if (!supportContext.WasForwarded && !supportContext.IsActive)
+            return SupportAccessBoundaryResult.PassThrough(checks);
+
+        AddSupportAccessTraceTags(supportContext);
+
+        var results = new bool[checks.Count];
+        var effectiveChecks = new List<AuthorizationCheck>(checks.Count);
+        var originalIndexes = new List<int>(checks.Count);
+
+        for (var i = 0; i < checks.Count; i++)
+        {
+            var enrichedCheck = EnrichWithSupportAccessContext(checks[i], supportContext);
+            if (!IsSupportAccessBoundedResource(enrichedCheck))
+            {
+                effectiveChecks.Add(enrichedCheck);
+                originalIndexes.Add(i);
+                continue;
+            }
+
+            var denialReason = GetSupportAccessBoundaryDenialReason(supportContext, enrichedCheck);
+            if (denialReason is null)
+            {
+                effectiveChecks.Add(enrichedCheck);
+                originalIndexes.Add(i);
+                continue;
+            }
+
+            _metrics?.RecordSupportAccessBoundaryDenial(
+                denialReason,
+                enrichedCheck.Action,
+                supportContext.Mode?.ToString());
+            AddSupportAccessBoundaryDeniedTraceEvent(enrichedCheck, denialReason);
+            _logger.LogWarning(
+                "Support-access authorization boundary denied resource={ResourceKind}/{ResourceId} action={Action} reason={Reason} sessionId={SupportAccessSessionId}",
+                enrichedCheck.ResourceKind,
+                enrichedCheck.ResourceId,
+                enrichedCheck.Action,
+                denialReason,
+                supportContext.SessionId?.ToString("D") ?? "none");
+        }
+
+        return new SupportAccessBoundaryResult(effectiveChecks, originalIndexes, results);
+    }
+
+    private static AuthorizationCheck EnrichWithSupportAccessContext(
+        AuthorizationCheck check,
+        ISupportAccessContext supportContext)
+    {
+        var attributes = check.ResourceAttributes is null
+            ? new Dictionary<string, object>()
+            : new Dictionary<string, object>(check.ResourceAttributes);
+
+        attributes["supportAccessActive"] = supportContext.IsActive;
+        attributes["supportAccessWasForwarded"] = supportContext.WasForwarded;
+        attributes["supportAccessAllowsWrites"] = supportContext.AllowsWrites;
+
+        AddIfPresent(attributes, "supportAccessSessionId", supportContext.SessionId);
+        AddIfPresent(attributes, "supportAccessActorUserId", supportContext.ActorUserId);
+        AddIfPresent(attributes, "supportAccessTargetTenantId", supportContext.TargetTenantId);
+        AddIfPresent(attributes, "supportAccessTargetTenantUserId", supportContext.TargetTenantUserId);
+
+        if (supportContext.Mode.HasValue)
+            attributes["supportAccessMode"] = supportContext.Mode.Value.ToString();
+
+        return check with { ResourceAttributes = attributes };
+    }
+
+    private static void AddSupportAccessTraceTags(ISupportAccessContext supportContext)
+    {
+        var activity = Activity.Current;
+        if (activity is null)
+        {
+            return;
+        }
+
+        activity.SetTag("support_access.active", supportContext.IsActive);
+        activity.SetTag("support_access.was_forwarded", supportContext.WasForwarded);
+        activity.SetTag("support_access.allows_writes", supportContext.AllowsWrites);
+        activity.SetTag("support_access.mode", supportContext.Mode?.ToString() ?? "unknown");
+    }
+
+    private static void AddSupportAccessBoundaryDeniedTraceEvent(AuthorizationCheck check, string reason)
+    {
+        var activity = Activity.Current;
+        if (activity is null)
+        {
+            return;
+        }
+
+        var tags = new ActivityTagsCollection
+        {
+            ["support_access.denial.reason"] = reason,
+            ["resource.kind"] = check.ResourceKind,
+            ["resource.action"] = check.Action
+        };
+        activity.AddEvent(new ActivityEvent("support_access.authorization_boundary_denied", tags: tags));
+    }
+
+    private static string? GetSupportAccessBoundaryDenialReason(
+        ISupportAccessContext supportContext,
+        AuthorizationCheck check)
+    {
+        if (supportContext.WasForwarded && !supportContext.IsActive)
+            return "support_access_inactive";
+
+        if (!supportContext.IsActive)
+            return null;
+
+        if (!supportContext.AllowsWrites && !IsReadOnlyCompatibleAction(check.Action))
+            return "support_access_read_only";
+
+        if (!supportContext.TargetTenantId.HasValue || supportContext.TargetTenantId.Value == Guid.Empty)
+            return "support_access_missing_target_tenant";
+
+        if (!TryResolveGuidAttribute(check.ResourceAttributes, "tenantId", out var resourceTenantId))
+            return "support_access_missing_tenant_context";
+
+        return resourceTenantId == supportContext.TargetTenantId.Value
+            ? null
+            : "support_access_target_tenant_mismatch";
+    }
+
+    private static bool IsSupportAccessBoundedResource(AuthorizationCheck check)
+    {
+        if (HasTenantAttribute(check.ResourceAttributes))
+            return check.ResourceKind is not ResourceKinds.SupportAccessSession;
+
+        return check.ResourceKind is
+            ResourceKinds.Tenant or
+            ResourceKinds.TenantSetting or
+            ResourceKinds.TenantUserRoleGrant or
+            ResourceKinds.Category or
+            ResourceKinds.Tag or
+            ResourceKinds.Location or
+            ResourceKinds.LocationRoom or
+            ResourceKinds.CustomPropertyDefinition or
+            ResourceKinds.CustomPropertyTemplate or
+            ResourceKinds.CustomPropertyValue or
+            ResourceKinds.CustomPropertyProjection or
+            ResourceKinds.CustomPropertyGovernance or
+            ResourceKinds.EmailDispatch or
+            ResourceKinds.Webhook or
+            ResourceKinds.Organization or
+            ResourceKinds.OrganizationMember or
+            ResourceKinds.OrganizationReview or
+            ResourceKinds.Group or
+            ResourceKinds.GroupMember or
+            ResourceKinds.Event or
+            ResourceKinds.EventSession or
+            ResourceKinds.EventSessionGroup or
+            ResourceKinds.EventSessionAgendaItem or
+            ResourceKinds.EventDay or
+            ResourceKinds.EventAgendaItem or
+            ResourceKinds.EventRegistration or
+            ResourceKinds.EventContactShareConsent or
+            ResourceKinds.StorageObject or
+            ResourceKinds.Actor;
+    }
+
+    private static bool IsReadOnlyCompatibleAction(string action)
+    {
+        return action is
+                AuthorizationActions.View or
+                AuthorizationActions.SupportAccessSessions.List or
+                AuthorizationActions.SupportAccessSessions.ViewAudit or
+                AuthorizationActions.Events.ViewManagement or
+                AuthorizationActions.StorageObjects.Download or
+                AuthorizationActions.StorageObjects.PresignedDownload or
+                AuthorizationActions.ViewSharedContacts or
+                AuthorizationActions.ExportSharedContacts
+            || action.EndsWith(":view", StringComparison.Ordinal)
+            || action.EndsWith(":view-delivery", StringComparison.Ordinal);
+    }
+
+    private static AuthorizationCheck CreateSettingAuthorizationCheck(
+        string settingKey,
+        string action,
+        Guid? tenantId,
+        Guid? organizationId)
+    {
+        var attributes = new Dictionary<string, object> { ["settingKey"] = settingKey };
+        if (organizationId.HasValue)
+        {
+            attributes["organizationId"] = organizationId.Value.ToString("D");
+            return new AuthorizationCheck(ResourceKinds.Organization, settingKey, action, attributes);
+        }
+
+        if (tenantId.HasValue)
+        {
+            attributes["tenantId"] = tenantId.Value.ToString("D");
+            return new AuthorizationCheck(ResourceKinds.TenantSetting, settingKey, action, attributes);
+        }
+
+        return new AuthorizationCheck(ResourceKinds.InstanceSetting, settingKey, action, attributes);
+    }
+
+    private static bool HasTenantAttribute(IReadOnlyDictionary<string, object>? resourceAttributes) =>
+        resourceAttributes?.ContainsKey("tenantId") == true;
+
+    private static bool TryResolveGuidAttribute(
+        IReadOnlyDictionary<string, object>? resourceAttributes,
+        string attributeName,
+        out Guid value)
+    {
+        value = Guid.Empty;
+
+        if (resourceAttributes?.TryGetValue(attributeName, out var attributeValue) != true)
+            return false;
+
+        if (attributeValue is Guid guidValue)
+        {
+            value = guidValue;
+            return true;
+        }
+
+        return attributeValue is string stringValue && Guid.TryParse(stringValue, out value);
+    }
+
+    private static void AddIfPresent(IDictionary<string, object> attributes, string key, Guid? value)
+    {
+        if (value.HasValue && value.Value != Guid.Empty)
+            attributes[key] = value.Value.ToString("D");
     }
 
     public void InvalidateInstanceMode()
@@ -386,6 +657,30 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
     {
         return checks.Count > 0
             && checks.All(check => check.ResourceKind is ResourceKinds.InstanceSetting or ResourceKinds.TenantSetting);
+    }
+
+    private sealed record SupportAccessBoundaryResult(
+        IReadOnlyList<AuthorizationCheck> EffectiveChecks,
+        IReadOnlyList<int> OriginalIndexes,
+        bool[] Results)
+    {
+        public static SupportAccessBoundaryResult PassThrough(IReadOnlyList<AuthorizationCheck> checks)
+        {
+            return new SupportAccessBoundaryResult(
+                checks,
+                Enumerable.Range(0, checks.Count).ToArray(),
+                new bool[checks.Count]);
+        }
+
+        public IReadOnlyList<bool> Complete(IReadOnlyList<bool> evaluatedResults)
+        {
+            for (var i = 0; i < OriginalIndexes.Count; i++)
+            {
+                Results[OriginalIndexes[i]] = i < evaluatedResults.Count && evaluatedResults[i];
+            }
+
+            return Results;
+        }
     }
 
     private static string NormalizeProviderMode(string? rawValue)

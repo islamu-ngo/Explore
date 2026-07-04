@@ -127,15 +127,10 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
             return null;
         }
 
-        if (Guid.TryParse(subject, out var subjectAsGuid))
-        {
-            return subjectAsGuid;
-        }
-
         var provider = ResolveAuthProvider(principal, subject);
         if (string.IsNullOrWhiteSpace(provider))
         {
-            return null;
+            return Guid.TryParse(subject, out var subjectAsGuid) ? subjectAsGuid : null;
         }
 
         var providerId = ResolveProviderId(principal, subject, provider);

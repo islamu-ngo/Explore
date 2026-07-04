@@ -73,11 +73,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             if (Guid.TryParse(user.FindFirst(InternalUserIdClaimType)?.Value, out var internalUserId))
                 return internalUserId;
 
-            var sub = user.FindFirst("sub")?.Value
-                ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? user.FindFirst("sid")?.Value;
-
-            return Guid.TryParse(sub, out var userId) ? userId : null;
+            return null;
         }
     }
 
@@ -98,18 +94,14 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             return internalUserId;
 
         var subject = user.FindFirst("sub")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user.FindFirst("sid")?.Value;
+            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrWhiteSpace(subject))
             return null;
 
-        if (Guid.TryParse(subject, out var guidUserId))
-            return guidUserId;
-
         var provider = ResolveAuthProvider(user, subject);
         if (string.IsNullOrWhiteSpace(provider))
-            return null;
+            return Guid.TryParse(subject, out var fallbackUserId) ? fallbackUserId : null;
 
         var providerId = ResolveProviderId(user, subject, provider);
         if (string.IsNullOrWhiteSpace(providerId))
@@ -221,7 +213,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
     public async Task<bool> IsOrganizationAdminAsync(Guid organizationId, CancellationToken cancellationToken = default)
     {
-        var uid = UserId;
+        var uid = await ResolveUserIdAsync(cancellationToken);
         if (uid == null)
             return false;
 

@@ -1,3 +1,6 @@
+// ABOUTME: Infrastructure user context for explicit internal user id claims.
+// ABOUTME: Leaves external provider subject mapping to async database-backed resolvers.
+
 using System.Security.Claims;
 using Explore.Application.Contracts.Identity;
 using Microsoft.AspNetCore.Http;
@@ -26,10 +29,7 @@ public class UserContext : IUserContext
     {
         get
         {
-            var userIdClaim = User?.FindFirst(InternalUserIdClaimType)?.Value
-                ?? User?.FindFirst("sub")?.Value
-                ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User?.FindFirst("sid")?.Value;
+            var userIdClaim = User?.FindFirst(InternalUserIdClaimType)?.Value;
 
             if (string.IsNullOrEmpty(userIdClaim))
                 return null;

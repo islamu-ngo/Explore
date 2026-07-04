@@ -27,6 +27,7 @@ using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
+using Explore.Application.DTOs.SupportAccess;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
@@ -118,6 +119,31 @@ public static class ResourceDescriptors
             ["userId"] = dto.UserId.ToString()
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<SupportAccessSessionDto> SupportAccessSession = new(
+        ResourceKinds.SupportAccessSession,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["sessionId"] = dto.Id.ToString(),
+            ["tenantId"] = dto.TargetTenantId.ToString(),
+            ["actorUserId"] = dto.ActorUserId.ToString(),
+            ["mode"] = dto.ModeName,
+            ["status"] = dto.StatusName
+        },
+        dto => new AuthorizationScope(TenantId: dto.TargetTenantId.ToString()));
+
+    public static readonly ResourceDescriptor<SupportAccessAuditEventDto> SupportAccessAuditEvent = new(
+        ResourceKinds.SupportAccessSession,
+        dto => dto.SupportAccessSessionId.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["sessionId"] = dto.SupportAccessSessionId.ToString(),
+            ["tenantId"] = dto.TargetTenantId.ToString(),
+            ["auditEventId"] = dto.Id.ToString(),
+            ["eventType"] = dto.EventTypeName
+        },
+        dto => new AuthorizationScope(TenantId: dto.TargetTenantId.ToString()));
 
     public static readonly ResourceDescriptor<WebhookConsumerDto> WebhookConsumer = new(
         ResourceKinds.Webhook,
@@ -338,7 +364,9 @@ public static class ResourceDescriptors
         dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {
-            ["tenantId"] = dto.TenantId.ToString()
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["visibility"] = dto.Visibility,
+            ["lifecycleState"] = dto.LifecycleState
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
@@ -347,10 +375,13 @@ public static class ResourceDescriptors
         dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {
+            ["tenantId"] = dto.TenantId.ToString(),
             ["organizationId"] = dto.OrganizationId.ToString(),
             ["userId"] = dto.UserId.ToString()
         },
-        dto => new AuthorizationScope(OrganizationId: dto.OrganizationId.ToString()));
+        dto => new AuthorizationScope(
+            TenantId: dto.TenantId.ToString(),
+            OrganizationId: dto.OrganizationId.ToString()));
 
     public static readonly ResourceDescriptor<OrganizationReviewDto> OrganizationReview = new(
         ResourceKinds.OrganizationReview,
@@ -441,6 +472,15 @@ public static class ResourceDescriptors
 
     /// <summary>Piggybacks on tenant authorization. Commands use [AuthorizeResource(ResourceKinds.Tenant, ...)].</summary>
     public static readonly ResourceDescriptor<EventTemplateDto> EventTemplate = new(
+        ResourceKinds.Tenant,
+        dto => dto.TenantId.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventTemplateListDto> EventTemplateList = new(
         ResourceKinds.Tenant,
         dto => dto.TenantId.ToString(),
         dto => new Dictionary<string, object>

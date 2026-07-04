@@ -4,6 +4,7 @@
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
+using Explore.Domain;
 
 namespace Explore.Infrastructure.Services;
 
@@ -91,15 +92,20 @@ public partial class FallbackAuthorizationService
         {
             "islamuevent_instance_setting" => false,
             "islamuevent_tenant_setting" => EvaluateTenantSettingWithProfile(profile, resourceId, action, resourceAttributes),
-            "islamuevent_tenant" => false,
+            "islamuevent_tenant" => action is AuthorizationActions.View or AuthorizationActions.Update
+                && EvaluateTenantScopedWithProfile(profile, resourceAttributes),
             "islamuevent_tenant_user_role_grant" or "islamuevent_category" or "islamuevent_tag" or "islamuevent_location" or "islamuevent_location_room"
-                => profile.IsTenantAdmin,
+                => EvaluateTenantScopedWithProfile(profile, resourceAttributes),
             "islamuevent_custom_property_definition" or "islamuevent_custom_property_template" or "islamuevent_actor"
-                => action is "view" || profile.IsTenantAdmin,
+                => action is "view" || EvaluateTenantScopedWithProfile(profile, resourceAttributes),
             "islamuevent_custom_property_value"
                 => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "islamuevent_custom_property_projection" or "islamuevent_custom_property_governance"
-                => profile.IsTenantAdmin,
+            "islamuevent_custom_property_projection"
+                => EvaluateCustomPropertyProjectionWithProfile(profile, action, resourceAttributes),
+            "islamuevent_custom_property_governance" or "islamuevent_email_dispatch" or "islamuevent_webhook"
+                => EvaluateTenantScopedWithProfile(profile, resourceAttributes),
+            "islamuevent_support_access_session"
+                => EvaluateSupportAccessSessionWithProfile(profile, action, resourceAttributes),
             "islamuevent_platform_namespace" => action is "view",
             "islamuevent_organization" when action is "create" && HasAuthorizationPhase(resourceAttributes, AuthorizationPhases.PreCreate)
                 => IsOrganizationCreateAllowedForProfile(profile, resourceAttributes),
@@ -124,7 +130,7 @@ public partial class FallbackAuthorizationService
                     || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
             "islamuevent_event_contact_share_consent" => action is "viewsharedcontacts" or "exportsharedcontacts"
                 && IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "islamuevent_storage_object" => action is "create" or "view" || profile.IsTenantAdmin,
+            "islamuevent_storage_object" => EvaluateStorageObjectWithProfile(profile, resourceId, action, resourceAttributes),
             "islamuevent_user" => EvaluateUserWithProfile(profile, resourceId, action),
             "islamuevent_notification" => true,
             "islamuevent_actor_subscription" => true,
@@ -161,6 +167,82 @@ public partial class FallbackAuthorizationService
             return true;
 
         return profile.IsTenantAdmin;
+    }
+
+    private static bool EvaluateTenantScopedWithProfile(
+        AuthorityProfile profile,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        if (resourceAttributes?.ContainsKey("tenantId") != true)
+            return profile.IsTenantAdmin;
+
+        return profile.IsTenantAdmin
+            && TryResolveGuidAttribute(resourceAttributes, "tenantId", out var tenantId)
+            && tenantId == profile.TenantId;
+    }
+
+    private static bool EvaluateCustomPropertyProjectionWithProfile(
+        AuthorityProfile profile,
+        string action,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        return action is AuthorizationActions.CustomPropertyProjections.View
+                or AuthorizationActions.CustomPropertyProjections.Update
+            && profile.IsTenantAdmin
+            && TryResolveGuidAttribute(resourceAttributes, "tenantId", out var tenantId)
+            && tenantId == profile.TenantId;
+    }
+
+    private static bool EvaluateSupportAccessSessionWithProfile(
+        AuthorityProfile profile,
+        string action,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        return action is AuthorizationActions.SupportAccessSessions.View
+                or AuthorizationActions.SupportAccessSessions.List
+                or AuthorizationActions.SupportAccessSessions.ViewAudit
+            && profile.IsTenantAdmin
+            && TryResolveGuidAttribute(resourceAttributes, "tenantId", out var tenantId)
+            && tenantId == profile.TenantId;
+    }
+
+    private static bool EvaluateStorageObjectWithProfile(
+        AuthorityProfile profile,
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        if (action == AuthorizationActions.StorageObjects.Create)
+            return true;
+
+        if (action is AuthorizationActions.StorageObjects.Download
+            or AuthorizationActions.StorageObjects.PresignedDownload)
+        {
+            return EvaluateTenantScopedWithProfile(profile, resourceAttributes)
+                || CanReadStorageObjectContentWithProfile(profile, resourceId, resourceAttributes);
+        }
+
+        return EvaluateTenantScopedWithProfile(profile, resourceAttributes);
+    }
+
+    private static bool CanReadStorageObjectContentWithProfile(
+        AuthorityProfile profile,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        var visibility = GetAttribute(resourceAttributes, "visibility");
+        var lifecycleState = GetAttribute(resourceAttributes, "lifecycleState");
+        if (!string.Equals(lifecycleState, StorageObjectLifecycleStates.Active, StringComparison.Ordinal))
+            return false;
+
+        if (visibility is StorageObjectVisibilities.PublicImage or StorageObjectVisibilities.AuthenticatedTenant)
+            return true;
+
+        var createdBy = GetAttribute(resourceAttributes, "createdBy");
+        var currentUserId = profile.UserId?.ToString("D");
+        return !string.IsNullOrWhiteSpace(createdBy)
+            && !string.IsNullOrWhiteSpace(currentUserId)
+            && string.Equals(createdBy, currentUserId, StringComparison.OrdinalIgnoreCase);
     }
 
     private bool IsEventCreateAllowedForProfile(

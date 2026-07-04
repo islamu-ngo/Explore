@@ -17,6 +17,7 @@ using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Models;
 using Explore.Application.Settings;
+using Explore.Application.SupportAccess;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -524,6 +525,139 @@ public class RuntimeAuthorizationProviderTests
         await fixture.ByoCerbosClient.Received(1).CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
     }
 
+    [Test]
+    public async Task IsAllowedBatchAsync_WithReadOnlySupportAccess_DeniesWriteEvenWhenInstanceAdmin()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SupportAccessSessionService.GetCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateSupportContext(SupportAccessModeEnum.ReadOnly, TestTenantId));
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            ResourceKinds.Category,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Create,
+            new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") });
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithWriteSupportAccess_DeniesCrossTenantResource()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        var otherTenantId = Guid.NewGuid();
+
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SupportAccessSessionService.GetCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateSupportContext(SupportAccessModeEnum.Write, TestTenantId));
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            ResourceKinds.Category,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Update,
+            new Dictionary<string, object> { ["tenantId"] = otherTenantId.ToString("D") });
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithInactiveForwardedSupportAccess_DeniesTenantResource()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SupportAccessSessionService.GetCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(SupportAccessContext.InactiveForwarded);
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            ResourceKinds.Category,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.View,
+            new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") });
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithReadOnlySupportAccess_FiltersHalStyleBatchAndForwardsMetadata()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        var actorUserId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid().ToString("D");
+
+        fixture.AdminContext.UserId.Returns(actorUserId);
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.AdminContext.IsInstanceAdminAsync(actorUserId, Arg.Any<CancellationToken>()).Returns(true);
+        fixture.AdminContext.GetAdminTenantIdsAsync(actorUserId, Arg.Any<CancellationToken>()).Returns([]);
+        fixture.AdminContext.GetAdminOrganizationIdsAsync(actorUserId, Arg.Any<CancellationToken>()).Returns([]);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+        fixture.SupportAccessSessionService.GetCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateSupportContext(SupportAccessModeEnum.ReadOnly, TestTenantId, actorUserId));
+
+        Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
+        var cerbosResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        cerbosResponse.Results.Add(CreateResultEntry(
+            categoryId,
+            ResourceKinds.Category,
+            AuthorizationActions.View,
+            Effect.Allow));
+        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(call =>
+            {
+                capturedRequest = call.ArgAt<CheckResourcesRequest>(0).ToCheckResourcesRequest();
+                return new CheckResourcesResponse(cerbosResponse);
+            });
+
+        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        [
+            new AuthorizationCheck(
+                ResourceKinds.Category,
+                categoryId,
+                AuthorizationActions.View,
+                new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") }),
+            new AuthorizationCheck(
+                ResourceKinds.Category,
+                categoryId,
+                AuthorizationActions.Create,
+                new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") })
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true, false]);
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.Resources).Count().IsEqualTo(1);
+
+        var resourceAttributes = capturedRequest.Resources[0].Resource.Attr;
+        await Assert.That(resourceAttributes["supportAccessActive"].BoolValue).IsTrue();
+        await Assert.That(resourceAttributes["supportAccessAllowsWrites"].BoolValue).IsFalse();
+        await Assert.That(resourceAttributes["supportAccessTargetTenantId"].StringValue).IsEqualTo(TestTenantId.ToString("D"));
+        await fixture.CerbosClient.Received(1).CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
+    private static SupportAccessContext CreateSupportContext(
+        SupportAccessModeEnum mode,
+        Guid targetTenantId,
+        Guid? actorUserId = null)
+    {
+        return new SupportAccessContext(
+            true,
+            Guid.NewGuid(),
+            actorUserId ?? Guid.NewGuid(),
+            targetTenantId,
+            null,
+            mode,
+            DateTimeOffset.UtcNow.AddMinutes(-1),
+            DateTimeOffset.UtcNow.AddMinutes(10),
+            "support",
+            "TICKET-1",
+            WasForwarded: true);
+    }
+
     private static Cerbos.Api.V1.Response.CheckResourcesResponse.Types.ResultEntry CreateResultEntry(
         string resourceId,
         string resourceKind,
@@ -564,6 +698,10 @@ public class RuntimeAuthorizationProviderTests
         var cerbosConfigResolver = Substitute.For<ICerbosConfigResolver>();
         cerbosConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns((CerbosConfiguration?)null);
 
+        var supportAccessSessionService = Substitute.For<ISupportAccessSessionService>();
+        supportAccessSessionService.GetCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(SupportAccessContext.Inactive);
+
         var systemSettingRepository = Substitute.For<ISystemSettingRepository>();
         systemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
             .Returns(CreateAuthorizationProviderSetting("local"));
@@ -595,7 +733,8 @@ public class RuntimeAuthorizationProviderTests
             cerbosConfigResolver,
             systemSettingRepository,
             new MemoryCache(new MemoryCacheOptions()),
-            runtimeLogger);
+            runtimeLogger,
+            supportAccessSessionService);
 
         return new RuntimeProviderFixture(
             runtimeProvider,
@@ -606,6 +745,7 @@ public class RuntimeAuthorizationProviderTests
             cerbosClient,
             byoCerbosClient,
             machinePrincipalAccessor,
+            supportAccessSessionService,
             runtimeLogger);
     }
 
@@ -656,5 +796,6 @@ public class RuntimeAuthorizationProviderTests
         ICerbosClient CerbosClient,
         ICerbosClient ByoCerbosClient,
         IMachinePrincipalAccessor MachinePrincipalAccessor,
+        ISupportAccessSessionService SupportAccessSessionService,
         ILogger<RuntimeAuthorizationProvider> RuntimeLogger);
 }

@@ -202,6 +202,28 @@ public class AuthorizationProviderConfigurationServiceTests
     }
 
     [Test]
+    public async Task ApplyConfigurationAsync_WithBareEndpoints_NormalizesBeforeStorage()
+    {
+        var repository = Substitute.For<ISystemSettingRepository>();
+        repository.Create(Arg.Any<SystemSetting>()).Returns(call => call.Arg<SystemSetting>());
+        var service = CreateService(repository);
+
+        await service.ApplyConfigurationAsync(new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "cerbosgrpc.openislamu.org:443",
+            CerbosAdminEndpoint = "cerbosapi.openislamu.org:3592"
+        });
+
+        await repository.Received(1).Create(Arg.Is<SystemSetting>(x =>
+            x.SettingKey == GovernanceSettingKeys.Cerbos.GrpcEndpoint
+            && JsonSerializer.Deserialize<string>(x.Value) == "https://cerbosgrpc.openislamu.org:443"));
+        await repository.Received(1).Create(Arg.Is<SystemSetting>(x =>
+            x.SettingKey == GovernanceSettingKeys.Cerbos.CustomAdminEndpoint
+            && JsonSerializer.Deserialize<string>(x.Value) == "https://cerbosapi.openislamu.org:3592"));
+    }
+
+    [Test]
     public async Task ApplyConfigurationAsync_WithLocalProvider_InvalidatesRuntimeProviderModeCache()
     {
         var repository = Substitute.For<ISystemSettingRepository>();
@@ -281,6 +303,17 @@ public class AuthorizationProviderConfigurationServiceTests
         await Assert.That(result).IsFalse();
         await repository.DidNotReceive().Create(Arg.Any<SystemSetting>());
         await repository.DidNotReceive().Update(Arg.Any<SystemSetting>());
+    }
+
+    [Test]
+    public async Task VerifyCerbosAdminEndpointAsync_WithBareRemoteHost_NormalizesAndAccepts()
+    {
+        var repository = Substitute.For<ISystemSettingRepository>();
+        var service = CreateService(repository);
+
+        var result = await service.VerifyCerbosAdminEndpointAsync("cerbosapi.openislamu.org:3592");
+
+        await Assert.That(result).IsTrue();
     }
 
     private static AuthorizationProviderConfigurationService CreateService(

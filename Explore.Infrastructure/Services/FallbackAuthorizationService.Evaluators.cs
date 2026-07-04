@@ -2,6 +2,7 @@
 // ABOUTME: Tenant-scoped, org-scoped, and resource-specific access evaluation methods.
 
 using Explore.Application.Authorization;
+using Explore.Domain;
 
 namespace Explore.Infrastructure.Services;
 
@@ -138,9 +139,81 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        var tenantId = ResolveTenantId(resourceAttributes);
+        Guid tenantId;
+        if (resourceAttributes?.ContainsKey("tenantId") == true)
+        {
+            if (!TryResolveGuidAttribute(resourceAttributes, "tenantId", out tenantId))
+            {
+                LogDecision("deny", "invalid_tenant_context", resourceKind, resourceId, action);
+                return false;
+            }
+
+            if (tenantId != _tenantContext.TenantId)
+            {
+                LogDecision("deny", "tenant_mismatch", resourceKind, resourceId, action);
+                return false;
+            }
+        }
+        else
+        {
+            tenantId = _tenantContext.TenantId;
+        }
+
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
         LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", resourceKind, resourceId, action);
+        return isTenantAdmin;
+    }
+
+    private async Task<bool> EvaluateCustomPropertyProjectionAccessAsync(
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (action is not (AuthorizationActions.CustomPropertyProjections.View or AuthorizationActions.CustomPropertyProjections.Update))
+        {
+            LogDecision("deny", "invalid_projection_action", ResourceKinds.CustomPropertyProjection, resourceId, action);
+            return false;
+        }
+
+        if (!TryResolveGuidAttribute(resourceAttributes, "tenantId", out var tenantId))
+        {
+            LogDecision("deny", "missing_tenant_context", ResourceKinds.CustomPropertyProjection, resourceId, action);
+            return false;
+        }
+
+        if (tenantId != _tenantContext.TenantId)
+        {
+            LogDecision("deny", "tenant_mismatch", ResourceKinds.CustomPropertyProjection, resourceId, action);
+            return false;
+        }
+
+        var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
+        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", ResourceKinds.CustomPropertyProjection, resourceId, action);
+        return isTenantAdmin;
+    }
+
+    private async Task<bool> EvaluateTenantResourceAccessAsync(
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (action is not (AuthorizationActions.View or AuthorizationActions.Update))
+        {
+            LogDecision("deny", "tenant_action_requires_instance_admin", ResourceKinds.Tenant, resourceId, action);
+            return false;
+        }
+
+        var tenantId = ResolveTenantId(resourceAttributes);
+        if (tenantId != _tenantContext.TenantId)
+        {
+            LogDecision("deny", "tenant_mismatch", ResourceKinds.Tenant, resourceId, action);
+            return false;
+        }
+
+        var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
+        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", ResourceKinds.Tenant, resourceId, action);
         return isTenantAdmin;
     }
 
@@ -153,7 +226,7 @@ public partial class FallbackAuthorizationService
     {
         var tenantId = ResolveTenantId(resourceAttributes);
         if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken)
-            && IsTenantAdminEventAction(action))
+            && IsTenantAdminOrgScopedAction(action))
         {
             LogDecision("allow", "is_tenant_admin=true", resourceKind, resourceId, action);
             return true;
@@ -181,6 +254,13 @@ public partial class FallbackAuthorizationService
 
         return await EvaluateOrgScopedAccessAsync("islamuevent_organization_review", resourceId, action, resourceAttributes, cancellationToken);
     }
+
+    private static bool IsTenantAdminOrgScopedAction(string action)
+        => action is AuthorizationActions.View
+            or AuthorizationActions.Create
+            or AuthorizationActions.Update
+            or AuthorizationActions.Delete
+            or AuthorizationActions.ManageMembers;
 
     private async Task<bool> EvaluateEventRegistrationAccessAsync(
         string resourceId,
@@ -347,11 +427,59 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (action is "create" or "view")
+        if (action == AuthorizationActions.StorageObjects.Create)
             return true;
+
+        if (action is AuthorizationActions.StorageObjects.Download
+            or AuthorizationActions.StorageObjects.PresignedDownload)
+        {
+            if (await EvaluateTenantScopedAccessAsync("islamuevent_storage_object", resourceId, action, resourceAttributes, cancellationToken))
+                return true;
+
+            return CanReadStorageObjectContent(resourceId, action, resourceAttributes);
+        }
 
         return await EvaluateTenantScopedAccessAsync("islamuevent_storage_object", resourceId, action, resourceAttributes, cancellationToken);
     }
+
+    private bool CanReadStorageObjectContent(
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        var visibility = GetAttribute(resourceAttributes, "visibility");
+        var lifecycleState = GetAttribute(resourceAttributes, "lifecycleState");
+        if (!string.Equals(lifecycleState, StorageObjectLifecycleStates.Active, StringComparison.Ordinal))
+        {
+            LogDecision("deny", "storage_object_not_active", "islamuevent_storage_object", resourceId, action);
+            return false;
+        }
+
+        if (visibility is StorageObjectVisibilities.PublicImage or StorageObjectVisibilities.AuthenticatedTenant)
+        {
+            LogDecision("allow", $"storage_visibility={visibility}", "islamuevent_storage_object", resourceId, action);
+            return true;
+        }
+
+        var createdBy = GetAttribute(resourceAttributes, "createdBy");
+        var currentUserId = _adminContext.UserId?.ToString("D");
+        var isOwner = !string.IsNullOrWhiteSpace(createdBy)
+            && !string.IsNullOrWhiteSpace(currentUserId)
+            && string.Equals(createdBy, currentUserId, StringComparison.OrdinalIgnoreCase);
+
+        LogDecision(
+            isOwner ? "allow" : "deny",
+            isOwner ? "storage_private_owner" : "storage_private_owner_mismatch",
+            "islamuevent_storage_object",
+            resourceId,
+            action);
+        return isOwner;
+    }
+
+    private static string? GetAttribute(IDictionary<string, object>? resourceAttributes, string name) =>
+        resourceAttributes is not null && resourceAttributes.TryGetValue(name, out var value)
+            ? value?.ToString()
+            : null;
 
     private async Task<bool> EvaluateUserAccessAsync(
         string resourceId,

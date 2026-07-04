@@ -43,8 +43,7 @@ public static class ApiAuthenticationPrincipalExtensions
     public static Guid? GetAuthenticatedUserId(this ClaimsPrincipal principal)
     {
         var candidate = principal.FindFirst("sub")?.Value
-                        ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                        ?? principal.FindFirst("sid")?.Value;
+                        ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         return Guid.TryParse(candidate, out var parsed) ? parsed : null;
     }

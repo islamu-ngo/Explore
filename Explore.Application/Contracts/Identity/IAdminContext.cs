@@ -18,7 +18,7 @@ public interface IAdminContext
 
     /// <summary>
     /// Resolves the current user's internal ID.
-    /// If the token has a GUID sub/internal_user_id, it returns that.
+    /// If the token has an internal_user_id claim, it returns that.
     /// Otherwise, it performs a database lookup via external login or email.
     /// Result is cached for the duration of the request.
     /// </summary>

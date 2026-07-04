@@ -27,6 +27,7 @@ public static class ResourceKinds
     public const string Tenant = "islamuevent_tenant";
     public const string TenantSetting = "islamuevent_tenant_setting";
     public const string TenantUserRoleGrant = "islamuevent_tenant_user_role_grant";
+    public const string SupportAccessSession = "islamuevent_support_access_session";
     public const string Category = "islamuevent_category";
     public const string Tag = "islamuevent_tag";
     public const string Location = "islamuevent_location";

@@ -19,7 +19,9 @@ public sealed class CerbosAdminEndpointValidator(IOptions<CerbosPolicyPackageOpt
         normalizedEndpoint = null!;
         warning = string.Empty;
 
-        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
+        var normalizedInput = NormalizeInput(endpoint);
+
+        if (!Uri.TryCreate(normalizedInput, UriKind.Absolute, out var uri)
             || string.IsNullOrWhiteSpace(uri.Host)
             || !uri.IsAbsoluteUri)
         {
@@ -54,6 +56,17 @@ public sealed class CerbosAdminEndpointValidator(IOptions<CerbosPolicyPackageOpt
 
         normalizedEndpoint = uri;
         return true;
+    }
+
+    private static string NormalizeInput(string? endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+            return string.Empty;
+
+        var trimmed = endpoint.Trim().TrimEnd('/');
+        return trimmed.Contains("://", StringComparison.Ordinal)
+            ? trimmed
+            : $"{Uri.UriSchemeHttps}://{trimmed}";
     }
 
     public static string ToSafeEndpoint(Uri endpoint)

@@ -17,6 +17,7 @@ using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionGroup;
+using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
@@ -114,6 +115,9 @@ public static class ResourceDescriptorRegistry
         // Event Session Group
         [typeof(EventSessionGroupDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSessionGroup,
         [typeof(EventSessionGroupListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSessionGroup,
+
+        [typeof(EventTemplateDto)] = global::Explore.Application.Authorization.ResourceKinds.Tenant,
+        [typeof(EventTemplateListDto)] = global::Explore.Application.Authorization.ResourceKinds.Tenant,
 
         // Event Session Agenda Item
         [typeof(EventSessionAgendaItemDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSessionAgendaItem,

@@ -184,7 +184,10 @@ public class MachineScopeMappingTests
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.TenantUserRoleGrant, AuthorizationActions.Create)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.Category, AuthorizationActions.Create)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.Actor, AuthorizationActions.View)).IsTrue();
-        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Update)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.View)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.ManageTenant)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Park)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Replay)).IsTrue();
     }
 
     [Test]
@@ -193,7 +196,9 @@ public class MachineScopeMappingTests
         var scopes = new[] { ExternalApiKeyScopes.EventsWrite };
 
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.View)).IsFalse();
-        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Update)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.ManageTenant)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Park)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Replay)).IsFalse();
     }
 
     [Test]

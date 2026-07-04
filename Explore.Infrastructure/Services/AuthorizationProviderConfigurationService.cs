@@ -122,8 +122,10 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 
     public async Task ApplyConfigurationAsync(AuthorizationProviderConfigurationDto configuration)
     {
-        var rawEndpoint = configuration.CerbosGrpcEndpoint?.Trim() ?? string.Empty;
         var isCerbosProvider = configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase);
+        var normalizedGrpcEndpoint = isCerbosProvider
+            ? GrpcEndpointNormalizer.Normalize(configuration.CerbosGrpcEndpoint)
+            : string.Empty;
         var rawAdminEndpoint = configuration.CerbosAdminEndpoint?.Trim() ?? string.Empty;
         var endpointDeploymentManaged = IsDeploymentManaged(GovernanceSettingKeys.Cerbos.GrpcEndpoint)
                                         || IsDeploymentManaged(Explore.Domain.Secrets.SecretDefinitionRegistry.Keys.Cerbos.GrpcEndpoint);
@@ -152,7 +154,7 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         {
             await UpsertSettingAsync(
                 GovernanceSettingKeys.Cerbos.GrpcEndpoint,
-                JsonSerializer.Serialize(isCerbosProvider ? rawEndpoint : string.Empty),
+                JsonSerializer.Serialize(normalizedGrpcEndpoint),
                 SettingValueType.String,
                 true,
                 "Security",

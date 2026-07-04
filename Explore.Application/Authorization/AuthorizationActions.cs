@@ -132,6 +132,16 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
+    public static class SupportAccessSessions
+    {
+        public const string View = AuthorizationActions.View;
+        public const string List = "list";
+        public const string Start = "start";
+        public const string Stop = "stop";
+        public const string ViewAudit = "view_audit";
+        public const string ForceStop = "force_stop";
+    }
+
     /// <summary>
     /// Valid actions for the <c>islamuevent_event_contact_share_consent</c> resource kind.
     /// Uses domain-specific actions instead of standard CRUD.
@@ -270,6 +280,8 @@ public static class AuthorizationActions
         public const string Create = AuthorizationActions.Create;
         public const string Update = AuthorizationActions.Update;
         public const string Delete = AuthorizationActions.Delete;
+        public const string Download = "download";
+        public const string PresignedDownload = "presigned_download";
     }
 
     /// <summary>
@@ -371,12 +383,14 @@ public static class AuthorizationActions
 
     /// <summary>
     /// Valid actions for the <c>email_dispatch</c> resource kind.
-    /// Covers operator status inspection plus replay and park actions.
+    /// Covers operator status inspection and high-risk delivery control actions.
     /// </summary>
     public static class EmailDispatches
     {
         public const string View = AuthorizationActions.View;
-        public const string Update = AuthorizationActions.Update;
+        public const string ManageTenant = "manage_tenant";
+        public const string Park = "park";
+        public const string Replay = "replay";
     }
 
     public static class Webhooks

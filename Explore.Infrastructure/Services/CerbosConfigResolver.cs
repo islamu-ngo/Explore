@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
 using Explore.Application.Settings;
+using Explore.Application.Utilities;
 using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -148,7 +149,9 @@ public class CerbosConfigResolver : ICerbosConfigResolver
                 Endpoint = string.Empty,
                 Mode = CerbosMode.CustomEndpoint,
                 FailureMode = failureMode,
-                AdminEndpoint = string.IsNullOrWhiteSpace(adminEndpoint) ? null : adminEndpoint,
+                AdminEndpoint = string.IsNullOrWhiteSpace(adminEndpoint)
+                    ? null
+                    : GrpcEndpointNormalizer.Normalize(adminEndpoint),
                 AdminUsername = string.IsNullOrWhiteSpace(adminUsername) ? null : adminUsername,
                 AdminPassword = string.IsNullOrWhiteSpace(adminPassword) ? null : adminPassword,
                 IsInstanceDefault = false
@@ -161,10 +164,12 @@ public class CerbosConfigResolver : ICerbosConfigResolver
 
         return new CerbosConfiguration
         {
-            Endpoint = customEndpoint,
+            Endpoint = GrpcEndpointNormalizer.Normalize(customEndpoint),
             Mode = CerbosMode.CustomEndpoint,
             FailureMode = failureMode,
-            AdminEndpoint = string.IsNullOrWhiteSpace(adminEndpoint) ? null : adminEndpoint,
+            AdminEndpoint = string.IsNullOrWhiteSpace(adminEndpoint)
+                ? null
+                : GrpcEndpointNormalizer.Normalize(adminEndpoint),
             AdminUsername = string.IsNullOrWhiteSpace(adminUsername) ? null : adminUsername,
             AdminPassword = string.IsNullOrWhiteSpace(adminPassword) ? null : adminPassword,
             IsInstanceDefault = false
@@ -175,7 +180,7 @@ public class CerbosConfigResolver : ICerbosConfigResolver
     {
         return new CerbosConfiguration
         {
-            Endpoint = _instanceSettings.GrpcEndpoint,
+            Endpoint = GrpcEndpointNormalizer.Normalize(_instanceSettings.GrpcEndpoint),
             Mode = CerbosMode.Instance,
             FailureMode = CerbosFailureMode.Open,
             IsInstanceDefault = true

@@ -8,8 +8,12 @@ using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Exceptions;
+using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
+using Explore.Application.Features.OrganizationMembers.Requests.Queries;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -397,6 +401,145 @@ public class AuthorizationBehaviorTests
 
         await Assert.That(result.Success).IsTrue();
         await eventRepository.Received(1).GetEventWithDetails(eventId);
+    }
+
+    [Test]
+    public async Task Handle_WithOrganizationMemberResource_EnrichesMissingMemberAuthorizationContext()
+    {
+        var memberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var secureBehavior = new AuthorizationBehavior<GetOrganizationMemberDetailsRequest, OrganizationMemberDto?>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<GetOrganizationMemberDetailsRequest, OrganizationMemberDto?>>>(),
+            organizationMemberRepository: memberRepository);
+        var memberId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var request = new GetOrganizationMemberDetailsRequest
+        {
+            Id = memberId,
+            TenantId = tenantId
+        };
+        var expectedResponse = new OrganizationMemberDto { Id = memberId };
+
+        memberRepository.GetOrganizationMemberWithDetails(memberId).Returns(new OrganizationMember
+        {
+            Id = memberId,
+            TenantId = tenantId,
+            Tenant = null!,
+            OrganizationId = organizationId,
+            Organization = null!,
+            UserId = userId,
+            User = null!,
+            RoleId = 2,
+            Role = null!
+        });
+        _authService.IsAllowedAsync(
+                ResourceKinds.OrganizationMember,
+                memberId.ToString(),
+                AuthorizationActions.OrganizationMembers.View,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["tenantId"].Equals(tenantId.ToString())
+                    && attributes["organizationId"].Equals(organizationId.ToString())
+                    && attributes["userId"].Equals(userId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await secureBehavior.Handle(request, _ => Task.FromResult<OrganizationMemberDto?>(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await memberRepository.Received(1).GetOrganizationMemberWithDetails(memberId);
+    }
+
+    [Test]
+    public async Task Handle_WithCustomPropertyProjectionEventResource_EnrichesTenantAuthorizationContext()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var secureBehavior = new AuthorizationBehavior<GetEventCustomPropertyProjectionsForEventQuery, BaseCommandResponse<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventCustomPropertyProjectionDto>>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<GetEventCustomPropertyProjectionsForEventQuery, BaseCommandResponse<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventCustomPropertyProjectionDto>>>>>(),
+            eventRepository);
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var request = new GetEventCustomPropertyProjectionsForEventQuery { EventId = eventId };
+        var expectedResponse = new BaseCommandResponse<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventCustomPropertyProjectionDto>>
+        {
+            Success = true,
+            Id = []
+        };
+
+        eventRepository.GetEventWithDetails(eventId).Returns(new Explore.Domain.Event
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            Title = "Community Program",
+            ActorId = Guid.NewGuid(),
+            Actor = null!,
+            Tenant = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            VisibilityType = null!
+        });
+        _authService.IsAllowedAsync(
+                ResourceKinds.CustomPropertyProjection,
+                eventId.ToString("D"),
+                AuthorizationActions.CustomPropertyProjections.View,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["eventId"].Equals(eventId.ToString("D"))
+                    && attributes["tenantId"].Equals(tenantId.ToString("D"))),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await secureBehavior.Handle(request, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventRepository.Received(1).GetEventWithDetails(eventId);
+    }
+
+    [Test]
+    public async Task Handle_WithCustomPropertyProjectionSessionResource_EnrichesTenantAuthorizationContext()
+    {
+        var sessionRepository = Substitute.For<IEventSessionRepository>();
+        var secureBehavior = new AuthorizationBehavior<GetEventSessionCustomPropertyProjectionsForSessionQuery, BaseCommandResponse<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventSessionCustomPropertyProjectionDto>>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<GetEventSessionCustomPropertyProjectionsForSessionQuery, BaseCommandResponse<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventSessionCustomPropertyProjectionDto>>>>>(),
+            eventSessionRepository: sessionRepository);
+        var eventId = Guid.NewGuid();
+        var eventSessionId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var request = new GetEventSessionCustomPropertyProjectionsForSessionQuery { EventSessionId = eventSessionId };
+        var expectedResponse = new BaseCommandResponse<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventSessionCustomPropertyProjectionDto>>
+        {
+            Success = true,
+            Id = []
+        };
+
+        sessionRepository.GetSessionWithDetails(eventSessionId).Returns(new EventSession
+        {
+            Id = eventSessionId,
+            EventId = eventId,
+            TenantId = tenantId,
+            Event = null!,
+            Tenant = null!
+        });
+        _authService.IsAllowedAsync(
+                ResourceKinds.CustomPropertyProjection,
+                eventSessionId.ToString("D"),
+                AuthorizationActions.CustomPropertyProjections.View,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["eventSessionId"].Equals(eventSessionId.ToString("D"))
+                    && attributes["eventId"].Equals(eventId.ToString("D"))
+                    && attributes["tenantId"].Equals(tenantId.ToString("D"))),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await secureBehavior.Handle(request, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await sessionRepository.Received(1).GetSessionWithDetails(eventSessionId);
     }
 
     [Test]

@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for FallbackAuthorizationService verifying DB-driven authorization logic.
-// Tests the Instance > Tenant > Organization hierarchy and lock semantics.
+// ABOUTME: Tests the Instance > Tenant > Organization hierarchy and lock semantics.
 
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Settings;
+using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,15 @@ public class FallbackAuthorizationServiceTests
 
     private static readonly Guid TestTenantId = Guid.NewGuid();
     private static readonly Guid TestOrgId = Guid.NewGuid();
+    private static readonly string[] SupportAccessLifecycleActions =
+    [
+        AuthorizationActions.SupportAccessSessions.View,
+        AuthorizationActions.SupportAccessSessions.List,
+        AuthorizationActions.SupportAccessSessions.Start,
+        AuthorizationActions.SupportAccessSessions.Stop,
+        AuthorizationActions.SupportAccessSessions.ViewAudit,
+        AuthorizationActions.SupportAccessSessions.ForceStop
+    ];
 
     public FallbackAuthorizationServiceTests()
     {
@@ -48,6 +58,30 @@ public class FallbackAuthorizationServiceTests
             _tenantContext,
             _logger);
     }
+
+    private static Dictionary<string, object> OrganizationMemberAttributes() => new()
+    {
+        ["tenantId"] = TestTenantId.ToString(),
+        ["organizationId"] = TestOrgId.ToString(),
+        ["userId"] = Guid.NewGuid().ToString()
+    };
+
+    private static Dictionary<string, object> StorageObjectAttributes(string visibility, Guid? createdBy = null) => new()
+    {
+        ["tenantId"] = TestTenantId.ToString(),
+        ["visibility"] = visibility,
+        ["lifecycleState"] = StorageObjectLifecycleStates.Active,
+        ["createdBy"] = (createdBy ?? Guid.NewGuid()).ToString("D")
+    };
+
+    private static Dictionary<string, object> SupportAccessAttributes(Guid? targetTenantId = null) => new()
+    {
+        ["tenantId"] = (targetTenantId ?? TestTenantId).ToString("D"),
+        ["sessionId"] = Guid.NewGuid().ToString("D"),
+        ["actorUserId"] = Guid.NewGuid().ToString("D"),
+        ["mode"] = "ReadOnly",
+        ["status"] = "Active"
+    };
 
     // === Instance Admin Tests ===
 
@@ -156,6 +190,392 @@ public class FallbackAuthorizationServiceTests
         await Assert.That(result).IsFalse();
     }
 
+    [Test]
+    public async Task IsAllowed_TenantAdmin_AllowsTenantViewAndUpdateForResolvedTenant()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object> { ["tenantId"] = TestTenantId };
+
+        var viewResult = await _service.IsAllowedAsync(ResourceKinds.Tenant, TestTenantId.ToString(), AuthorizationActions.View, attrs);
+        var updateResult = await _service.IsAllowedAsync(ResourceKinds.Tenant, TestTenantId.ToString(), AuthorizationActions.Update, attrs);
+
+        await Assert.That(viewResult).IsTrue();
+        await Assert.That(updateResult).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_TenantAdmin_DeniesTenantUpdateForDifferentTenant()
+    {
+        var otherTenantId = Guid.NewGuid();
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(otherTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object> { ["tenantId"] = otherTenantId };
+
+        var result = await _service.IsAllowedAsync(ResourceKinds.Tenant, otherTenantId.ToString(), AuthorizationActions.Update, attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_TenantAdmin_DeniesTenantCreateAndDelete()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object> { ["tenantId"] = TestTenantId };
+
+        var createResult = await _service.IsAllowedAsync(ResourceKinds.Tenant, TestTenantId.ToString(), AuthorizationActions.Create, attrs);
+        var deleteResult = await _service.IsAllowedAsync(ResourceKinds.Tenant, TestTenantId.ToString(), AuthorizationActions.Delete, attrs);
+
+        await Assert.That(createResult).IsFalse();
+        await Assert.That(deleteResult).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_TenantScopedResource_UsesAmbientTenantWhenTenantAttributeIsMissing()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.EmailDispatch,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.EmailDispatches.View);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_TenantScopedResource_DeniesExplicitDifferentTenant()
+    {
+        var otherTenantId = Guid.NewGuid();
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(otherTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.EmailDispatch,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.EmailDispatches.View,
+            new Dictionary<string, object> { ["tenantId"] = otherTenantId.ToString("D") });
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_TenantScopedResource_RejectsCrossTenantAttributes()
+    {
+        var otherTenantId = Guid.NewGuid();
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var checks = new[]
+        {
+            new AuthorizationCheck(
+                ResourceKinds.EmailDispatch,
+                Guid.NewGuid().ToString("D"),
+                AuthorizationActions.EmailDispatches.View,
+                new Dictionary<string, object> { ["tenantId"] = otherTenantId.ToString("D") }),
+            new AuthorizationCheck(
+                ResourceKinds.Webhook,
+                Guid.NewGuid().ToString("D"),
+                AuthorizationActions.Update,
+                new Dictionary<string, object> { ["tenantId"] = otherTenantId }),
+            new AuthorizationCheck(
+                ResourceKinds.Category,
+                Guid.NewGuid().ToString("D"),
+                AuthorizationActions.Update,
+                new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") })
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results[0]).IsFalse();
+        await Assert.That(results[1]).IsFalse();
+        await Assert.That(results[2]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_CustomPropertyProjection_RequiresExplicitMatchingTenant()
+    {
+        var otherTenantId = Guid.NewGuid();
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var checks = new[]
+        {
+            new AuthorizationCheck(
+                ResourceKinds.CustomPropertyProjection,
+                "projection-status",
+                AuthorizationActions.CustomPropertyProjections.View),
+            new AuthorizationCheck(
+                ResourceKinds.CustomPropertyProjection,
+                "projection-status",
+                AuthorizationActions.CustomPropertyProjections.Update,
+                new Dictionary<string, object> { ["tenantId"] = otherTenantId.ToString("D") }),
+            new AuthorizationCheck(
+                ResourceKinds.CustomPropertyProjection,
+                "projection-status",
+                AuthorizationActions.CustomPropertyProjections.View,
+                new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") })
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results[0]).IsFalse();
+        await Assert.That(results[1]).IsFalse();
+        await Assert.That(results[2]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_CustomPropertyProjection_ForTenantAdmin_RequiresExplicitTenantContext()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var missingTenant = await _service.IsAllowedAsync(
+            ResourceKinds.CustomPropertyProjection,
+            "projection-status",
+            AuthorizationActions.CustomPropertyProjections.View);
+        var withTenant = await _service.IsAllowedAsync(
+            ResourceKinds.CustomPropertyProjection,
+            "projection-status",
+            AuthorizationActions.CustomPropertyProjections.View,
+            new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") });
+
+        await Assert.That(missingTenant).IsFalse();
+        await Assert.That(withTenant).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_CustomPropertyProjection_ForTenantAdmin_DeniesDifferentTenant()
+    {
+        var otherTenantId = Guid.NewGuid();
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(otherTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.CustomPropertyProjection,
+            "projection-status",
+            AuthorizationActions.CustomPropertyProjections.Update,
+            new Dictionary<string, object> { ["tenantId"] = otherTenantId.ToString("D") });
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_StorageObjectView_ForRegularUser_DeniesMetadata()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.StorageObject,
+            Guid.NewGuid().ToString(),
+            AuthorizationActions.StorageObjects.View,
+            StorageObjectAttributes(StorageObjectVisibilities.PublicImage));
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_StorageObject_MatchesSingleReadBoundary()
+    {
+        var ownerId = Guid.NewGuid();
+        _adminContext.UserId.Returns(ownerId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var checks = new[]
+        {
+            new AuthorizationCheck(
+                ResourceKinds.StorageObject,
+                Guid.NewGuid().ToString("D"),
+                AuthorizationActions.StorageObjects.View,
+                StorageObjectAttributes(StorageObjectVisibilities.PublicImage)),
+            new AuthorizationCheck(
+                ResourceKinds.StorageObject,
+                Guid.NewGuid().ToString("D"),
+                AuthorizationActions.StorageObjects.Download,
+                StorageObjectAttributes(StorageObjectVisibilities.PublicImage)),
+            new AuthorizationCheck(
+                ResourceKinds.StorageObject,
+                Guid.NewGuid().ToString("D"),
+                AuthorizationActions.StorageObjects.PresignedDownload,
+                StorageObjectAttributes(StorageObjectVisibilities.PrivateOwner, ownerId))
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results[0]).IsFalse();
+        await Assert.That(results[1]).IsTrue();
+        await Assert.That(results[2]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_StorageObjectDownload_ForActiveAuthenticatedTenantObject_AllowsReadActions()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var attrs = StorageObjectAttributes(StorageObjectVisibilities.AuthenticatedTenant);
+        var download = await _service.IsAllowedAsync(
+            ResourceKinds.StorageObject,
+            Guid.NewGuid().ToString(),
+            AuthorizationActions.StorageObjects.Download,
+            attrs);
+        var presigned = await _service.IsAllowedAsync(
+            ResourceKinds.StorageObject,
+            Guid.NewGuid().ToString(),
+            AuthorizationActions.StorageObjects.PresignedDownload,
+            attrs);
+
+        await Assert.That(download).IsTrue();
+        await Assert.That(presigned).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_StorageObjectPresignedDownload_ForPrivateOwnerObject_RequiresCreator()
+    {
+        var ownerId = Guid.NewGuid();
+        _adminContext.UserId.Returns(ownerId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var ownerResult = await _service.IsAllowedAsync(
+            ResourceKinds.StorageObject,
+            Guid.NewGuid().ToString(),
+            AuthorizationActions.StorageObjects.PresignedDownload,
+            StorageObjectAttributes(StorageObjectVisibilities.PrivateOwner, createdBy: ownerId));
+        var otherUserResult = await _service.IsAllowedAsync(
+            ResourceKinds.StorageObject,
+            Guid.NewGuid().ToString(),
+            AuthorizationActions.StorageObjects.PresignedDownload,
+            StorageObjectAttributes(StorageObjectVisibilities.PrivateOwner, createdBy: Guid.NewGuid()));
+
+        await Assert.That(ownerResult).IsTrue();
+        await Assert.That(otherUserResult).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_SupportAccessSession_InstanceAdmin_AllowsLifecycleActions()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+
+        foreach (var action in SupportAccessLifecycleActions)
+        {
+            var result = await _service.IsAllowedAsync(
+                ResourceKinds.SupportAccessSession,
+                Guid.NewGuid().ToString("D"),
+                action,
+                SupportAccessAttributes());
+
+            await Assert.That(result)
+                .IsTrue()
+                .Because($"instance admins must be able to perform support-access action '{action}'.");
+        }
+    }
+
+    [Test]
+    public async Task IsAllowed_SupportAccessSession_TenantAdmin_AllowsEvidenceReadsOnly()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = SupportAccessAttributes();
+
+        var view = await _service.IsAllowedAsync(ResourceKinds.SupportAccessSession, "session-1", AuthorizationActions.SupportAccessSessions.View, attrs);
+        var list = await _service.IsAllowedAsync(ResourceKinds.SupportAccessSession, "session-1", AuthorizationActions.SupportAccessSessions.List, attrs);
+        var viewAudit = await _service.IsAllowedAsync(ResourceKinds.SupportAccessSession, "session-1", AuthorizationActions.SupportAccessSessions.ViewAudit, attrs);
+        var start = await _service.IsAllowedAsync(ResourceKinds.SupportAccessSession, "session-1", AuthorizationActions.SupportAccessSessions.Start, attrs);
+        var stop = await _service.IsAllowedAsync(ResourceKinds.SupportAccessSession, "session-1", AuthorizationActions.SupportAccessSessions.Stop, attrs);
+        var forceStop = await _service.IsAllowedAsync(ResourceKinds.SupportAccessSession, "session-1", AuthorizationActions.SupportAccessSessions.ForceStop, attrs);
+
+        await Assert.That(view).IsTrue();
+        await Assert.That(list).IsTrue();
+        await Assert.That(viewAudit).IsTrue();
+        await Assert.That(start).IsFalse();
+        await Assert.That(stop).IsFalse();
+        await Assert.That(forceStop).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_SupportAccessSession_OtherTenantAdmin_DeniesTargetTenantEvidence()
+    {
+        var otherTenantId = Guid.NewGuid();
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(otherTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = SupportAccessAttributes(TestTenantId);
+
+        foreach (var action in new[]
+                 {
+                     AuthorizationActions.SupportAccessSessions.View,
+                     AuthorizationActions.SupportAccessSessions.List,
+                     AuthorizationActions.SupportAccessSessions.ViewAudit
+                 })
+        {
+            var result = await _service.IsAllowedAsync(
+                ResourceKinds.SupportAccessSession,
+                Guid.NewGuid().ToString("D"),
+                action,
+                attrs);
+
+            await Assert.That(result)
+                .IsFalse()
+                .Because($"tenant admins must not see support-access evidence for another tenant via '{action}'.");
+        }
+    }
+
+    [Test]
+    public async Task IsAllowed_SupportAccessSession_RegularUser_DeniesAllActions()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        foreach (var action in SupportAccessLifecycleActions)
+        {
+            var result = await _service.IsAllowedAsync(
+                ResourceKinds.SupportAccessSession,
+                Guid.NewGuid().ToString("D"),
+                action,
+                SupportAccessAttributes());
+
+            await Assert.That(result)
+                .IsFalse()
+                .Because($"regular users must not perform support-access action '{action}'.");
+        }
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_SupportAccessSession_TenantAdmin_MatchesCerbosEvidenceReadMatrix()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = SupportAccessAttributes();
+        var checks = SupportAccessLifecycleActions
+            .Select(action => new AuthorizationCheck(
+                ResourceKinds.SupportAccessSession,
+                Guid.NewGuid().ToString("D"),
+                action,
+                attrs))
+            .ToArray();
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results).Count().IsEqualTo(SupportAccessLifecycleActions.Length);
+        await Assert.That(results[0]).IsTrue();
+        await Assert.That(results[1]).IsTrue();
+        await Assert.That(results[2]).IsFalse();
+        await Assert.That(results[3]).IsFalse();
+        await Assert.That(results[4]).IsTrue();
+        await Assert.That(results[5]).IsFalse();
+    }
+
     // === Organization Access ===
 
     [Test]
@@ -211,12 +631,83 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_TenantAdmin_AllowsTenantUserRoleGrantView()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString() };
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_user_role_grant", Guid.NewGuid().ToString(), "view", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
     public async Task IsAllowed_NonAdmin_DeniesTenantUserRoleGrantCreate()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _service.IsAllowedAsync("islamuevent_tenant_user_role_grant", Guid.NewGuid().ToString(), "create");
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_NonAdmin_DeniesTenantUserRoleGrantView()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var attrs = new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString() };
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_user_role_grant", Guid.NewGuid().ToString(), "view", attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    // === Organization Member Access ===
+
+    [Test]
+    public async Task IsAllowed_TenantAdmin_AllowsOrganizationMemberViewAndManageActions()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = OrganizationMemberAttributes();
+
+        await Assert.That(await _service.IsAllowedAsync("islamuevent_organization_member", Guid.NewGuid().ToString(), "view", attrs)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync("islamuevent_organization_member", Guid.NewGuid().ToString(), "create", attrs)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync("islamuevent_organization_member", Guid.NewGuid().ToString(), "update", attrs)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync("islamuevent_organization_member", Guid.NewGuid().ToString(), "delete", attrs)).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_OrganizationAdmin_AllowsOrganizationMemberViewAndManageActions()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = OrganizationMemberAttributes();
+
+        await Assert.That(await _service.IsAllowedAsync("islamuevent_organization_member", Guid.NewGuid().ToString(), "view", attrs)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync("islamuevent_organization_member", Guid.NewGuid().ToString(), "create", attrs)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync("islamuevent_organization_member", Guid.NewGuid().ToString(), "update", attrs)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync("islamuevent_organization_member", Guid.NewGuid().ToString(), "delete", attrs)).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_NonAdmin_DeniesOrganizationMemberView()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _service.IsAllowedAsync(
+            "islamuevent_organization_member",
+            Guid.NewGuid().ToString(),
+            "view",
+            OrganizationMemberAttributes());
 
         await Assert.That(result).IsFalse();
     }

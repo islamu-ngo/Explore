@@ -154,6 +154,9 @@ public static class MachineScopeMapping
         AuthorizationActions.Webhooks.Retry => true,
         AuthorizationActions.Webhooks.ManageProvider => true,
         AuthorizationActions.Webhooks.OpenProviderPortal => true,
+        AuthorizationActions.EmailDispatches.ManageTenant => true,
+        AuthorizationActions.EmailDispatches.Park => true,
+        AuthorizationActions.EmailDispatches.Replay => true,
         _ => false
     };
 
