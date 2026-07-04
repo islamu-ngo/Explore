@@ -1,5 +1,5 @@
 // ABOUTME: API host composition root for services, middleware, OpenAPI, and development utilities.
-// ABOUTME: Wires Clean Architecture layers, tenant-aware HTTP pipeline, and migration/admin endpoints.
+// ABOUTME: Wires Clean Architecture layers, tenant-aware HTTP pipeline, startup migrations, and runtime endpoints.
 
 using System.IO.Compression;
 using System.Net;
@@ -155,6 +155,7 @@ var emailDispatchRabbitMqSettings = builder.Configuration
     .Get<EmailDispatchRabbitMqSettings>() ?? new EmailDispatchRabbitMqSettings();
 var useTickerQEmailDispatch = emailDispatchProcessorSettings.Enabled
     && emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.TickerQ;
+builder.Services.AddSingleton<EmailDispatchHostedDrainRunner>();
 builder.Services.AddApiTickerQScheduler(
     builder.Configuration,
     builder.Environment,
@@ -292,6 +293,7 @@ if (!isOpenApiGeneration)
 
     if (emailDispatchRabbitMqSettings.Enabled)
     {
+        builder.Services.AddHostedService<EmailDispatchRabbitMqPointerPublisherService>();
         builder.Services.AddHostedService<EmailDispatchRabbitMqConsumerService>();
         if (emailDispatchRabbitMqSettings.DeadLetterReplayEnabled)
         {
@@ -392,6 +394,10 @@ builder.Services.AddHealthChecks()
         "webhook-local-delivery",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "webhooks", "local", "infrastructure"])
+    .AddCheck<SvixWebhookProviderHealthCheck>(
+        "webhook-svix-provider",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "webhooks", "svix", "infrastructure"])
     .AddCheck<CerbosReadinessHealthCheck>(
         "cerbos",
         failureStatus: HealthStatus.Unhealthy,
@@ -500,8 +506,8 @@ if (!builder.Environment.IsEnvironment("Testing") && !isOpenApiGeneration)
                 db.Database.ProviderName ?? "(unknown)");
         }
 
-        // Run seeding (lookup tables in all environments, dev data in Development)
-        await DatabaseSeeder.SeedAsync(db, app.Environment);
+        var seedDevelopmentData = !app.Configuration.GetValue<bool>("Testing:DisableDevelopmentDataSeed");
+        await DatabaseSeeder.SeedAsync(db, app.Environment, seedDevelopmentData, app.Configuration);
         logger.LogInformation("Database seeding completed.");
 
         if (useTickerQEmailDispatch)
@@ -580,25 +586,6 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 
     //Microsoft.IdentityModel.Tokens.JsonWebTokenHandler.DefaultMapInboundClaims = false;
     app.UseCors("DevPolicy"); // for development purposes only
-
-    app.MapPost("/admin/migrate", async (ExploreDbContext context, ILogger<Program> logger) =>
-        {
-            try
-            {
-                logger.LogInformation(" Applying database migrations...");
-                await context.Database.MigrateAsync();
-                await PostgresModelConstraintApplier.ApplyAsync(context);
-                logger.LogInformation(" Database migrations applied successfully!");
-                return Results.Ok(new { message = "Migrations applied successfully" });
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, " An error occurred while migrating the database.");
-                return Results.Problem("Migration failed: " + ex.Message);
-            }
-        })
-        .WithName(Explore.API.Hateoas.RouteNames.ApplyDatabaseMigrations)
-        .RequireAuthorization();
 }
 else
 {
@@ -638,6 +625,7 @@ app.UseRequestLocalization();
 app.UseMiddleware<IdempotencyMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();
+app.UseMiddleware<SupportAccessAuditMiddleware>();
 if (!isOpenApiGeneration &&
     useTickerQEmailDispatch &&
     TickerQSchedulerExtensions.IsTickerQSchedulerEnabled(app.Configuration, app.Environment))

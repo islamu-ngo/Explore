@@ -12,6 +12,8 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
     <PackageReference Include="TUnit" />
   </ItemGroup>
 

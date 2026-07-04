@@ -1042,7 +1042,6 @@
           "EntityFramework": "[6.5.1, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.0.0, )",
-          "MQContract.Abstractions": "[3.9.2, )",
           "MediatR": "[12.5.0, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "OpenFeature": "[2.11.1, )"
@@ -1062,9 +1061,6 @@
           "Azure.Identity": "[1.21.0, )",
           "Cerbos.Sdk": "[1.9.1, )",
           "Explore.Application": "[1.0.0, )",
-          "MQContract": "[3.9.2, )",
-          "MQContract.InMemory": "[3.9.2, )",
-          "MQContract.RabbitMQ": "[3.9.2, )",
           "MailKit": "[4.16.0, )",
           "Microsoft.Extensions.AI.Abstractions": "[10.4.0, )",
           "Microsoft.Extensions.AI.OpenAI": "[10.4.0, )",
@@ -1304,42 +1300,6 @@
         "requested": "[2.1.0, )",
         "resolved": "2.4.1",
         "contentHash": "u7QhXCISMQuab3flasb1hoaiERmUqyWsW7tmQODyILoQ7mJV5IRGM+2KKZYo0QUfC13evEOcHAb6TPWgqEQtrw=="
-      },
-      "MQContract": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "iOcKPXITSfv84MViWsAMES8PMDiz5OQbhza4zXuNEuqq/h+un0AmAM802zO91DclfKYRWKYLLWc0O7rOeW/9Eg==",
-        "dependencies": {
-          "MQContract.Abstractions": "3.9.2",
-          "Microsoft.CodeAnalysis.CSharp": "5.3.0",
-          "Polly": "[8.6.6, 9.0.0)"
-        }
-      },
-      "MQContract.Abstractions": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "nU4b9OE/SijFg+t66Xtz1yMAHqHqEOE3JVx1CF6DS1758JMUQYRVmXxsn+w9Ltd6vK3DDoUDMzhl45MZVp2gwA=="
-      },
-      "MQContract.InMemory": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "xnbXZccZkFQm4i2w6b5hq42hRyMForeicw2VRsHmLYCsLJfSDEaITlZisPxS71odvUwNiASKRbB4KtGSFBhUtw==",
-        "dependencies": {
-          "MQContract.Abstractions": "3.9.2"
-        }
-      },
-      "MQContract.RabbitMQ": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "fmH/zLrpca9a6cVS1KAgHhoHQQQubntv+Z2W26Hr3n4IK9PrzlbVqu5gvrxKGFMxgtHaLLSvdpwP8LiNt1svSQ==",
-        "dependencies": {
-          "MQContract.Abstractions": "3.9.2",
-          "RabbitMQ.Client": "7.2.1"
-        }
       },
       "Newtonsoft.Json": {
         "type": "CentralTransitive",

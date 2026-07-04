@@ -31,6 +31,11 @@ internal static class CommandResponseResultMapper
         "Event report validation failed",
         "Event report submission failed.");
 
+    private static readonly ApiValidationProblemDescriptor AuthProviderValidationProblem = new(
+        "instanceAuthProviderConfiguration",
+        "Instance auth-provider configuration validation failed",
+        "Instance auth-provider configuration update failed.");
+
     public static ActionResult ToCommandValidationProblem<TKey>(
         this ControllerBase controller,
         BaseCommandResponse<TKey> response,
@@ -238,6 +243,62 @@ internal static class CommandResponseResultMapper
         return ApiProblemFactory.ToProblemResult(problemDetails);
     }
 
+    public static ActionResult ToAuthProviderProblem(
+        this ControllerBase controller,
+        BaseCommandResponse<Guid> response)
+    {
+        var statusCode = ResolveAuthProviderStatusCode(response.FailureCode);
+
+        if (statusCode == StatusCodes.Status400BadRequest)
+        {
+            return controller.ToCommandValidationProblem(response, AuthProviderValidationProblem);
+        }
+
+        var problemDetails = ApiProblemFactory.CreateProblem(
+            controller.HttpContext,
+            statusCode,
+            ResolveAuthProviderTitle(statusCode, response.FailureCode),
+            ResolveAuthProviderType(statusCode),
+            response.Message ?? AuthProviderValidationProblem.FallbackDetail,
+            response.FailureCode ?? ApiProblemCodes.UnexpectedError);
+
+        return ApiProblemFactory.ToProblemResult(problemDetails);
+    }
+
+    private static int ResolveAuthProviderStatusCode(string? failureCode)
+        => failureCode switch
+        {
+            "keycloak_timeout" => StatusCodes.Status503ServiceUnavailable,
+            "keycloak_unreachable" => StatusCodes.Status503ServiceUnavailable,
+            "keycloak_invalid_response" => StatusCodes.Status502BadGateway,
+            "keycloak_realm_check_failed" => StatusCodes.Status502BadGateway,
+            "keycloak_realm_create_failed" => StatusCodes.Status502BadGateway,
+            "keycloak_client_lookup_failed" => StatusCodes.Status502BadGateway,
+            "keycloak_client_create_failed" => StatusCodes.Status502BadGateway,
+            "keycloak_client_secret_update_failed" => StatusCodes.Status502BadGateway,
+            "keycloak_offline_access_role_update_failed" => StatusCodes.Status502BadGateway,
+            "keycloak_client_scope_update_failed" => StatusCodes.Status502BadGateway,
+            "keycloak_offline_access_scope_mapping_failed" => StatusCodes.Status502BadGateway,
+            _ => StatusCodes.Status400BadRequest
+        };
+
+    private static string ResolveAuthProviderTitle(int statusCode, string? failureCode)
+        => statusCode switch
+        {
+            StatusCodes.Status502BadGateway => "Keycloak provider returned an invalid bootstrap response",
+            StatusCodes.Status503ServiceUnavailable => "Keycloak provider unavailable",
+            _ when failureCode == "keycloak_bootstrap_validation_failed" => AuthProviderValidationProblem.Title,
+            _ => AuthProviderValidationProblem.Title
+        };
+
+    private static string ResolveAuthProviderType(int statusCode)
+        => statusCode switch
+        {
+            StatusCodes.Status502BadGateway => ApiProblemTypes.BadGateway,
+            StatusCodes.Status503ServiceUnavailable => ApiProblemTypes.ServiceUnavailable,
+            _ => ApiProblemTypes.BadRequest
+        };
+
     private static int ResolveStorageUploadStatusCode(string? failureCode)
         => failureCode switch
         {
@@ -249,6 +310,7 @@ internal static class CommandResponseResultMapper
             FailureCodes.StorageUploadSessionInvalidState => StatusCodes.Status409Conflict,
             FailureCodes.StorageUploadSizeMismatch => StatusCodes.Status400BadRequest,
             FailureCodes.StorageUploadContentTypeMismatch => StatusCodes.Status400BadRequest,
+            FailureCodes.StorageUploadContentSignatureMismatch => StatusCodes.Status400BadRequest,
             FailureCodes.StorageUploadWriteFailed => StatusCodes.Status503ServiceUnavailable,
             _ => StatusCodes.Status400BadRequest
         };

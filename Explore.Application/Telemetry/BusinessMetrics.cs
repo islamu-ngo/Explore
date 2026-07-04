@@ -2,6 +2,7 @@
 // ABOUTME: Tracks domain activity plus moderation, external API-key, email-dispatch, storage, notification fanout, and governance signals.
 
 using System.Diagnostics.Metrics;
+using Explore.Application.Features.SupportAccess;
 using Explore.Application.Responses;
 using Explore.Domain;
 
@@ -27,6 +28,10 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _registrationsCreated;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
+    private readonly Counter<long> _supportAccessLifecycleEvents;
+    private readonly Counter<long> _supportAccessRequestAudits;
+    private readonly Counter<long> _supportAccessSessionValidationDenials;
+    private readonly Counter<long> _supportAccessBoundaryDenials;
     private readonly Counter<long> _eventRoleAssignmentChanged;
     private readonly Counter<long> _externalApiKeysCreated;
     private readonly Counter<long> _externalApiKeysRevoked;
@@ -120,6 +125,26 @@ public sealed class BusinessMetrics : IDisposable
             "explore.authorization.decisions",
             unit: "{decision}",
             description: "Total authorization decisions (allowed/denied)");
+
+        _supportAccessLifecycleEvents = meter.CreateCounter<long>(
+            "explore.support_access.lifecycle_events",
+            unit: "{event}",
+            description: "Total support-access lifecycle decisions by bounded event type, mode, outcome, and failure category");
+
+        _supportAccessRequestAudits = meter.CreateCounter<long>(
+            "explore.support_access.request_audits",
+            unit: "{audit}",
+            description: "Total support-access request audit persistence decisions by bounded event type and outcome");
+
+        _supportAccessSessionValidationDenials = meter.CreateCounter<long>(
+            "explore.support_access.session_validation_denials",
+            unit: "{denial}",
+            description: "Total forwarded support-access session validation denials by bounded reason and mode");
+
+        _supportAccessBoundaryDenials = meter.CreateCounter<long>(
+            "explore.support_access.authorization_boundary_denials",
+            unit: "{denial}",
+            description: "Total support-access authorization boundary denials by bounded reason, mode, and action class");
 
         _eventRoleAssignmentChanged = meter.CreateCounter<long>(
             "event_role_assignment.changed",
@@ -413,6 +438,47 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("resource", resource),
             new KeyValuePair<string, object?>("action", action),
             new KeyValuePair<string, object?>("result", allowed ? "allowed" : "denied"));
+    }
+
+    public void RecordSupportAccessLifecycleEvent(
+        string? eventType,
+        string? mode,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        _supportAccessLifecycleEvents.Add(1,
+            new KeyValuePair<string, object?>("event_type", NormalizeSupportAccessLifecycleEvent(eventType)),
+            new KeyValuePair<string, object?>("mode", NormalizeSupportAccessMode(mode)),
+            new KeyValuePair<string, object?>("outcome", NormalizeSupportAccessOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeSupportAccessFailureCategory(failureCategory)));
+    }
+
+    public void RecordSupportAccessRequestAudit(
+        string? eventType,
+        string? outcome,
+        string? persistenceOutcome,
+        string? failureCategory = null)
+    {
+        _supportAccessRequestAudits.Add(1,
+            new KeyValuePair<string, object?>("event_type", NormalizeSupportAccessAuditEvent(eventType)),
+            new KeyValuePair<string, object?>("outcome", NormalizeSupportAccessOutcome(outcome)),
+            new KeyValuePair<string, object?>("persistence_outcome", NormalizeSupportAccessPersistenceOutcome(persistenceOutcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeSupportAccessFailureCategory(failureCategory)));
+    }
+
+    public void RecordSupportAccessBoundaryDenial(string? reason, string? action, string? mode)
+    {
+        _supportAccessBoundaryDenials.Add(1,
+            new KeyValuePair<string, object?>("reason", NormalizeSupportAccessFailureCategory(reason)),
+            new KeyValuePair<string, object?>("mode", NormalizeSupportAccessMode(mode)),
+            new KeyValuePair<string, object?>("action_class", NormalizeSupportAccessActionClass(action)));
+    }
+
+    public void RecordSupportAccessSessionValidationDenial(string? reason, string? mode)
+    {
+        _supportAccessSessionValidationDenials.Add(1,
+            new KeyValuePair<string, object?>("reason", NormalizeSupportAccessFailureCategory(reason)),
+            new KeyValuePair<string, object?>("mode", NormalizeSupportAccessMode(mode)));
     }
 
     public void RecordEventRoleAssignmentChanged(string operation, string outcome, string? roleCode = null)
@@ -835,6 +901,105 @@ public sealed class BusinessMetrics : IDisposable
         }
 
         return normalized;
+    }
+
+    private static string NormalizeSupportAccessLifecycleEvent(string? eventType)
+    {
+        return NormalizeTag(eventType) switch
+        {
+            "start" or "started" => "started",
+            "stop" or "stopped" => "stopped",
+            "expire" or "expired" => "expired",
+            "revoke" or "revoked" => "revoked",
+            "force_stop" or "force_stopped" or "force-stopped" => "force_stopped",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeSupportAccessAuditEvent(string? eventType)
+    {
+        return NormalizeTag(eventType) switch
+        {
+            "requestobserved" or "request_observed" => "request_observed",
+            "commandcommitted" or "command_committed" => "command_committed",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeSupportAccessMode(string? mode)
+    {
+        return NormalizeTag(mode) switch
+        {
+            "readonly" or "read_only" or "read-only" => "read_only",
+            "write" => "write",
+            "inactive" => "inactive",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeSupportAccessOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "success" or "succeeded" => "succeeded",
+            "failure" or "failed" => "failed",
+            "denied" => "denied",
+            "client_error" => "client_error",
+            "server_error" => "server_error",
+            "observed" => "observed",
+            "skipped" => "skipped",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeSupportAccessPersistenceOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "persisted" => "persisted",
+            "failed" or "failure" => "failed",
+            "skipped" => "skipped",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeSupportAccessActionClass(string? action)
+    {
+        return NormalizeTag(action) switch
+        {
+            "view" or "list" or "view_audit" or "viewaudit" or "download" or "presigned_download" or "presigneddownload" => "read",
+            "create" or "update" or "delete" or "stop" or "force_stop" or "forcestop" or "force-stop" => "write",
+            var value when value.EndsWith(":view", StringComparison.Ordinal) => "read",
+            var value when value.EndsWith(":view-delivery", StringComparison.Ordinal) => "read",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeSupportAccessFailureCategory(string? failureCategory)
+    {
+        return NormalizeTag(failureCategory ?? "none") switch
+        {
+            "none" => "none",
+            SupportAccessFailureCodes.ValidationFailed => SupportAccessFailureCodes.ValidationFailed,
+            SupportAccessFailureCodes.Disabled => SupportAccessFailureCodes.Disabled,
+            SupportAccessFailureCodes.WriteModeDisabled => SupportAccessFailureCodes.WriteModeDisabled,
+            SupportAccessFailureCodes.DurationExceedsPolicy => SupportAccessFailureCodes.DurationExceedsPolicy,
+            SupportAccessFailureCodes.TicketReferenceRequired => SupportAccessFailureCodes.TicketReferenceRequired,
+            SupportAccessFailureCodes.ActorNotResolved => SupportAccessFailureCodes.ActorNotResolved,
+            SupportAccessFailureCodes.TargetTenantNotFound => SupportAccessFailureCodes.TargetTenantNotFound,
+            SupportAccessFailureCodes.TargetTenantUserMismatch => SupportAccessFailureCodes.TargetTenantUserMismatch,
+            SupportAccessFailureCodes.ActiveSessionExists => SupportAccessFailureCodes.ActiveSessionExists,
+            SupportAccessFailureCodes.SessionNotFound => SupportAccessFailureCodes.SessionNotFound,
+            SupportAccessFailureCodes.SessionNotActive => SupportAccessFailureCodes.SessionNotActive,
+            SupportAccessFailureCodes.ConcurrencyConflict => SupportAccessFailureCodes.ConcurrencyConflict,
+            "support_access_inactive" => "support_access_inactive",
+            "support_access_read_only" => "support_access_read_only",
+            "support_access_missing_target_tenant" => "support_access_missing_target_tenant",
+            "support_access_missing_tenant_context" => "support_access_missing_tenant_context",
+            "support_access_target_tenant_mismatch" => "support_access_target_tenant_mismatch",
+            "support_access_audit_persistence_failed" => "support_access_audit_persistence_failed",
+            _ => "unknown"
+        };
     }
 
     private static string NormalizeWebhookProvider(string? provider)

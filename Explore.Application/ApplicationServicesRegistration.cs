@@ -77,6 +77,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IInstanceGovernanceSettingService, InstanceGovernanceSettingService>();
         services.AddScoped<IInstanceStorageSettingService, InstanceStorageSettingService>();
         services.AddScoped<IInstanceSmtpSettingService, InstanceSmtpSettingService>();
+        services.AddScoped<IInstanceBootstrapAuditLogger, InstanceBootstrapAuditLogger>();
         services.AddScoped<IAuthProviderConfigurationService, AuthProviderConfigurationService>();
         services.AddScoped<IKeycloakIdentityContractContributor, EventKeycloakIdentityContractContributor>();
         services.AddScoped<IKeycloakRealmDesiredStateBuilder, KeycloakRealmDesiredStateBuilder>();

@@ -35,6 +35,12 @@ internal static class QueryValidationRules
         "or"
     };
 
+    private static readonly HashSet<string> AllowedContactShareExportFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "csv",
+        "tsv"
+    };
+
     public static IEnumerable<ValidationResult> ValidatePagination(int pageNumber, int pageSize)
     {
         if (pageNumber < 1)
@@ -103,6 +109,32 @@ internal static class QueryValidationRules
         {
             yield return new ValidationResult(
                 $"{memberName} must be either 'and' or 'or'.",
+                [memberName]);
+        }
+    }
+
+    public static IEnumerable<ValidationResult> ValidateContactShareExportFormat(string? value, string memberName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            yield return new ValidationResult(
+                $"{memberName} must be one of: csv, tsv.",
+                [memberName]);
+            yield break;
+        }
+
+        if (ContainsControlCharacter(value))
+        {
+            yield return new ValidationResult(
+                $"{memberName} contains unsupported control characters.",
+                [memberName]);
+            yield break;
+        }
+
+        if (!AllowedContactShareExportFormats.Contains(value.Trim()))
+        {
+            yield return new ValidationResult(
+                $"{memberName} must be one of: csv, tsv.",
                 [memberName]);
         }
     }

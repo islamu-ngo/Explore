@@ -103,6 +103,9 @@ internal static class HalOpenApiSchemaCatalog
         // Email dispatch admin DTOs
         typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto),
 
+        typeof(Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto),
+        typeof(Explore.Application.DTOs.SupportAccess.SupportAccessAuditEventDto),
+
         // Projection admin DTOs
         typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),
         typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionDirtyScopeDto),
@@ -178,6 +181,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfWebhookDeliveryAttemptDto"] = typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto),
         ["HalResourceOfTemplateDiffDto"] = typeof(Explore.Application.DTOs.EventTemplateSync.TemplateDiffDto),
         ["HalResourceOfEmailDispatchStatusDto"] = typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto),
+        ["HalResourceOfSupportAccessSessionDto"] = typeof(Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto),
+        ["HalResourceOfSupportAccessAuditEventDto"] = typeof(Explore.Application.DTOs.SupportAccess.SupportAccessAuditEventDto),
         ["HalResourceOfProjectionStatusDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),
         ["HalResourceOfProjectionDirtyScopeDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionDirtyScopeDto),
         ["HalResourceOfTenantBrandingSettingsDocumentDto"] = typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
@@ -219,6 +224,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfOrganizationListDto"] = "HalResourceOfOrganizationListDto",
         ["HalCollectionEmbeddedOfOrganizationReviewDto"] = "HalResourceOfOrganizationReviewDto",
         ["HalCollectionEmbeddedOfEmailDispatchStatusDto"] = "HalResourceOfEmailDispatchStatusDto",
+        ["HalCollectionEmbeddedOfSupportAccessSessionDto"] = "HalResourceOfSupportAccessSessionDto",
+        ["HalCollectionEmbeddedOfSupportAccessAuditEventDto"] = "HalResourceOfSupportAccessAuditEventDto",
         ["HalCollectionEmbeddedOfProjectionStatusDto"] = "HalResourceOfProjectionStatusDto",
         ["HalCollectionEmbeddedOfProjectionDirtyScopeDto"] = "HalResourceOfProjectionDirtyScopeDto",
         ["HalCollectionEmbeddedOfTagListDto"] = "HalResourceOfTagListDto",

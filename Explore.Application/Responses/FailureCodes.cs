@@ -17,6 +17,7 @@ public static class FailureCodes
     public const string StorageUploadSessionInvalidState = "storage_upload_session_invalid_state";
     public const string StorageUploadSizeMismatch = "storage_upload_size_mismatch";
     public const string StorageUploadContentTypeMismatch = "storage_upload_content_type_mismatch";
+    public const string StorageUploadContentSignatureMismatch = "storage_upload_content_signature_mismatch";
     public const string StorageUploadWriteFailed = "storage_upload_write_failed";
 
     /// <summary>

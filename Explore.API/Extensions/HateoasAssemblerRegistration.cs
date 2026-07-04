@@ -40,6 +40,7 @@ using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
+using Explore.Application.DTOs.SupportAccess;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
@@ -171,6 +172,13 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<TenantUserRoleGrantDto>, TenantUserRoleGrantDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<TenantUserRoleGrantListDto>, TenantUserRoleGrantCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<TenantUserRoleGrantDto, TenantUserRoleGrantListDto>, TenantUserRoleGrantResourceAssembler>();
+
+        services.AddScoped<ILinkPolicy<SupportAccessSessionDto>, SupportAccessSessionDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<SupportAccessSessionDto>, SupportAccessSessionCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<SupportAccessSessionDto, SupportAccessSessionDto>, SupportAccessSessionResourceAssembler>();
+        services.AddScoped<ILinkPolicy<SupportAccessAuditEventDto>, SupportAccessAuditEventDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<SupportAccessAuditEventDto>, SupportAccessAuditEventCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<SupportAccessAuditEventDto, SupportAccessAuditEventDto>, SupportAccessAuditEventResourceAssembler>();
 
         // Tenant typed settings documents
         services.AddScoped<ILinkPolicy<TenantBrandingSettingsDocumentDto>, TenantBrandingSettingsDocumentLinkPolicy>();

@@ -16,7 +16,6 @@ public abstract class ExploreControllerBase : ControllerBase
 
     protected IUserContext UserContext => _userContext ??= HttpContext.RequestServices.GetRequiredService<IUserContext>();
 
-    // Claim fallback: internal_user_id → sub → nameidentifier → sid
     protected Guid? CurrentUserId => UserContext.UserId;
 
     /// <exception cref="UnauthorizedAccessException">User is not authenticated.</exception>
@@ -106,11 +105,6 @@ public abstract class ExploreControllerBase : ControllerBase
         if (string.IsNullOrWhiteSpace(providerSubject))
         {
             return null;
-        }
-
-        if (Guid.TryParse(providerSubject, out var guidUserId))
-        {
-            return guidUserId;
         }
 
         var provider = ResolveAuthProvider();

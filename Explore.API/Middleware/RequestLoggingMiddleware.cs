@@ -37,8 +37,7 @@ public sealed class RequestLoggingMiddleware
             var elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
             var userId = context.User?.FindFirst("sub")?.Value
-                ?? context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? context.User?.FindFirst("sid")?.Value;
+                ?? context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var tenantId = tenantContextAccessor.TenantId?.ToString();
             var tenantSlug = context.Request.Headers[TenantHeaderNames.TenantSlug].FirstOrDefault();

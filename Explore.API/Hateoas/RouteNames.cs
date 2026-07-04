@@ -251,6 +251,17 @@ public static class RouteNames
 
     #endregion
 
+    #region Support Access Routes
+
+    public const string GetCurrentSupportAccessSession = "GetCurrentSupportAccessSession";
+    public const string ListSupportAccessSessions = "ListSupportAccessSessions";
+    public const string StartSupportAccessSession = "StartSupportAccessSession";
+    public const string StopSupportAccessSession = "StopSupportAccessSession";
+    public const string ForceStopSupportAccessSession = "ForceStopSupportAccessSession";
+    public const string GetSupportAccessAuditEvents = "GetSupportAccessAuditEvents";
+
+    #endregion
+
     #region Email Unsubscribe Routes
 
     public const string GetEmailUnsubscribe = "GetEmailUnsubscribe";
@@ -777,11 +788,4 @@ public static class RouteNames
     public const string SaveTenantOnboardingStepProgress = "SaveTenantOnboardingStepProgress";
 
     #endregion
-
-    #region Admin Utility Routes
-
-    public const string ApplyDatabaseMigrations = "ApplyDatabaseMigrations";
-
-    #endregion
-
 }

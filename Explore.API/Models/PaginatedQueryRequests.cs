@@ -129,6 +129,19 @@ public sealed class ContactShareConsentListQueryRequest : PaginationQueryRequest
                 QueryValidationRules.MaxSearchTermLength));
 }
 
+public sealed class ContactShareConsentExportQueryRequest : IValidatableObject
+{
+    public string? Format { get; set; } = "csv";
+
+    public Guid? EventId { get; set; }
+
+    public string GetNormalizedFormat() => Format?.Trim().ToLowerInvariant() ?? "csv";
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        => QueryValidationRules.ValidateContactShareExportFormat(Format, nameof(Format))
+            .Concat(QueryValidationRules.ValidateOptionalGuid(EventId, nameof(EventId)));
+}
+
 public sealed class CustomPropertyGovernanceReportQueryRequest : PaginationQueryRequest
 {
     public Guid TenantId { get; set; }

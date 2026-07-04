@@ -22,9 +22,6 @@
     <PackageReference Include="Azure.Identity" />
     <PackageReference Include="Cerbos.Sdk" />
     <PackageReference Include="MailKit" />
-    <PackageReference Include="MQContract" />
-    <PackageReference Include="MQContract.InMemory" />
-    <PackageReference Include="MQContract.RabbitMQ" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />

@@ -34,6 +34,7 @@ using Explore.Infrastructure.Services.Moderation;
 using Explore.Infrastructure.Services.Moderation.Coop;
 using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
+using Explore.Infrastructure.SupportAccess;
 using Explore.Infrastructure.Webhooks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.AI;
@@ -73,6 +74,7 @@ public static class InfrastructureServicesRegistration
         // Identity services
         services.AddScoped<IUserContext, UserContext>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<ISupportAccessSessionService, SupportAccessSessionService>();
         services.AddScoped<IPublicUrlBuilder, PublicUrlBuilder>();
         services.AddScoped<IEventReportEvidenceProtector, EventReportEvidenceProtector>();
         services.AddOptions<ModerationProviderOptions>()
@@ -370,19 +372,11 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<ITranslationResolver>(sp => sp.GetRequiredService<TranslationResolver>());
         services.AddScoped<IBundleFileWriter, BundleFileWriter>();
 
-        // Messaging providers (runtime-switchable via GovernanceSettings "messaging.provider")
-        // All concrete providers are always registered; RuntimeMessagingProvider delegates at runtime.
-        // Config resolved per-tenant from cascading settings engine (Instance admin → Tenant admin)
-        services.AddSingleton<RabbitMqMessagingProvider>();
-        services.AddScoped<NullMessagingProvider>();
-        services.AddScoped<IMessagingConfigResolver, MessagingConfigResolver>();
-        services.AddScoped<RuntimeMessagingProvider>();
-        services.AddScoped<IMessagingProvider>(sp => sp.GetRequiredService<RuntimeMessagingProvider>());
         services.AddSingleton<IEmailDispatchTransport, RabbitMqEmailDispatchTransport>();
+        services.AddScoped<EmailDispatchRabbitMqPointerPublisher>();
 
         // Generic Outbox Processor settings and dispatcher
         services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));
-        services.AddScoped<MqContractOutboxMessageDispatcher>();
         services.AddScoped<IOutboxMessageDispatcher, CompositeOutboxMessageDispatcher>();
         services.AddOptions<EmailDispatchProcessorSettings>()
             .Bind(configuration.GetSection(EmailDispatchProcessorSettings.SectionName))
