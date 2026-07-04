@@ -106,6 +106,7 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<ISetupSecretResolver, SetupSecretResolver>();
         services.AddScoped<IStorageUploadSessionStore, StorageUploadSessionStore>();
         services.AddScoped<IBffSupportAccessSessionStore, BffSupportAccessSessionStore>();
+        services.AddSingleton<IBffSelfCallTokenService, BffSelfCallTokenService>();
         services.ConfigureHttpJsonOptions(options =>
         {
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<Explore.Domain.Enums.SupportAccessModeEnum>());

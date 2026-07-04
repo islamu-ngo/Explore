@@ -63,12 +63,27 @@ public class BffProxyHeaderSanitizerTests
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/api/events");
         request.Headers.Accept.ParseAdd("application/hal+json");
         request.Headers.Add("X-Correlation-ID", "correlation-123");
+        request.Headers.Add("X-Request-ID", "request-123");
         request.Headers.Add("Accept-Language", "en-US");
 
         BffProxyHeaderSanitizer.RemoveBrowserControlledHeaders(request);
 
         await Assert.That(request.Headers.Accept.Single().MediaType).IsEqualTo("application/hal+json");
         await Assert.That(request.Headers.GetValues("X-Correlation-ID").Single()).IsEqualTo("correlation-123");
+        await Assert.That(request.Headers.GetValues("X-Request-ID").Single()).IsEqualTo("request-123");
         await Assert.That(request.Headers.GetValues("Accept-Language").Single()).IsEqualTo("en-US");
+    }
+
+    [Test]
+    public async Task RemoveBrowserControlledHeaders_StripsUnsafeCorrelationMetadata()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/api/events");
+        _ = request.Headers.TryAddWithoutValidation("X-Correlation-ID", new string('a', 129));
+        _ = request.Headers.TryAddWithoutValidation("X-Request-ID", "request\ninjection");
+
+        BffProxyHeaderSanitizer.RemoveBrowserControlledHeaders(request);
+
+        await Assert.That(request.Headers.Contains("X-Correlation-ID")).IsFalse();
+        await Assert.That(request.Headers.Contains("X-Request-ID")).IsFalse();
     }
 }

@@ -134,7 +134,8 @@ public static class BffCookieAuthHelper
 
     public static async Task AssertBrowserStorageDoesNotContainTokensAsync(IPage page, string? stableOrigin = null)
     {
-        if (!string.IsNullOrWhiteSpace(stableOrigin))
+        if (!string.IsNullOrWhiteSpace(stableOrigin)
+            && !IsSameOrigin(page.Url, stableOrigin))
         {
             await page.GotoAsync($"{stableOrigin.TrimEnd('/')}/auth/status", new PageGotoOptions
             {
@@ -146,6 +147,19 @@ public static class BffCookieAuthHelper
         var browserStorageContainsToken = await EvaluateBrowserStorageWithNavigationRetryAsync(page);
 
         await Assert.That(browserStorageContainsToken).IsFalse();
+    }
+
+    private static bool IsSameOrigin(string pageUrl, string stableOrigin)
+    {
+        if (!Uri.TryCreate(pageUrl, UriKind.Absolute, out var currentUri)
+            || !Uri.TryCreate(stableOrigin, UriKind.Absolute, out var stableUri))
+        {
+            return false;
+        }
+
+        return string.Equals(currentUri.Scheme, stableUri.Scheme, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentUri.Host, stableUri.Host, StringComparison.OrdinalIgnoreCase)
+            && currentUri.Port == stableUri.Port;
     }
 
     private static async Task<bool> EvaluateBrowserStorageWithNavigationRetryAsync(IPage page)

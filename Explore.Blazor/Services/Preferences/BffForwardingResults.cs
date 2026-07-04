@@ -15,7 +15,7 @@ public static class BffForwardingResults
             return Results.Ok(fallback);
         }
 
-        return await JsonStreamAsync(response, cancellationToken);
+        return await JsonContentAsync(response, cancellationToken);
     }
 
     public static async Task<IResult> JsonStreamOrProblemAsync(
@@ -29,7 +29,7 @@ public static class BffForwardingResults
             return Problem(response, failureDetail, failureTitle);
         }
 
-        return await JsonStreamAsync(response, cancellationToken);
+        return await JsonContentAsync(response, cancellationToken);
     }
 
     public static IResult OkOrProblem(
@@ -75,8 +75,9 @@ public static class BffForwardingResults
             title: failureTitle);
     }
 
-    private static async Task<IResult> JsonStreamAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    private static async Task<IResult> JsonContentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+        return Results.Content(payload, response.Content.Headers.ContentType?.MediaType ?? "application/json");
     }
 }

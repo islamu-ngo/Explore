@@ -1,3 +1,6 @@
+// ABOUTME: Blazor BFF host composition root for auth, proxying, health, and interactive UI.
+// ABOUTME: Keeps browser tokens server-side while wiring service defaults, Data Protection, and endpoints.
+
 using Blazouter.Extensions;
 using Blazouter.Server.Extensions;
 using Event.Web.BffHosting.Authentication;
@@ -123,6 +126,10 @@ builder.Services.AddHealthChecks()
         return HealthCheckResult.Healthy();
     }, tags: ["live", "ready"])
     .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"])
+    .AddCheck<DataProtectionKeyStoreHealthCheck>(
+        "data-protection-keys",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "data-protection", "database"])
     .AddCheck<ApiReadinessHealthCheck>(
         "explore-api",
         failureStatus: HealthStatus.Unhealthy,

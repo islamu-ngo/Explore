@@ -1,7 +1,9 @@
 // ABOUTME: Minimal API antiforgery validation helpers for state-changing BFF endpoints.
 // ABOUTME: Applies explicit request-token validation and short-circuits with ProblemDetails on failure.
 
+using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Blazor.Extensions;
 
@@ -12,6 +14,12 @@ public static class AntiforgeryEndpointExtensions
     {
         builder.AddEndpointFilter(async (context, next) =>
         {
+            var selfCallTokenService = context.HttpContext.RequestServices.GetService<IBffSelfCallTokenService>();
+            if (selfCallTokenService?.Validate(context.HttpContext) == true)
+            {
+                return await next(context);
+            }
+
             var antiforgery = context.HttpContext.RequestServices.GetRequiredService<IAntiforgery>();
 
             try

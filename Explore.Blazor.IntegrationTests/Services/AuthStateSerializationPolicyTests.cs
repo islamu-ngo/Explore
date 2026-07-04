@@ -26,7 +26,10 @@ public class AuthStateSerializationPolicyTests
             new Claim("explore:admin:instance", "true"),
             new Claim("explore:admin:tenant", Guid.NewGuid().ToString()),
             new Claim("explore:admin:organization", Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.Role, "Admin")
+            new Claim(ClaimTypes.Role, "Admin"),
+            new Claim("access_token", "server-held-access-token"),
+            new Claim("refresh_token", "server-held-refresh-token"),
+            new Claim("id_token", "server-held-id-token")
         ],
         authenticationType: "Test",
         nameType: "preferred_username",
@@ -52,6 +55,9 @@ public class AuthStateSerializationPolicyTests
         await Assert.That(claims).DoesNotContainKey("explore:admin:tenant");
         await Assert.That(claims).DoesNotContainKey("explore:admin:organization");
         await Assert.That(claims).DoesNotContainKey(ClaimTypes.Role);
+        await Assert.That(claims).DoesNotContainKey("access_token");
+        await Assert.That(claims).DoesNotContainKey("refresh_token");
+        await Assert.That(claims).DoesNotContainKey("id_token");
     }
 
     [Test]

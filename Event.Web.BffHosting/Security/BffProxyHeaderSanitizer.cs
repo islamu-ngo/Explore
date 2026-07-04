@@ -5,6 +5,10 @@ namespace Event.Web.BffHosting.Security;
 
 public static class BffProxyHeaderSanitizer
 {
+    private const int MaxCorrelationHeaderLength = 128;
+    private const string CorrelationIdHeader = "X-Correlation-ID";
+    private const string RequestIdHeader = "X-Request-ID";
+
     private static readonly string[] BrowserCredentialHeaderNames =
     [
         "Authorization",
@@ -46,5 +50,29 @@ public static class BffProxyHeaderSanitizer
         {
             _ = proxyRequest.Headers.Remove(headerName);
         }
+
+        RemoveUnsafeCorrelationMetadata(proxyRequest, CorrelationIdHeader);
+        RemoveUnsafeCorrelationMetadata(proxyRequest, RequestIdHeader);
+    }
+
+    private static void RemoveUnsafeCorrelationMetadata(HttpRequestMessage request, string headerName)
+    {
+        if (!request.Headers.TryGetValues(headerName, out var values))
+        {
+            return;
+        }
+
+        var headerValues = values.ToArray();
+        if (headerValues.Length != 1 || !IsSafeCorrelationValue(headerValues[0]))
+        {
+            _ = request.Headers.Remove(headerName);
+        }
+    }
+
+    private static bool IsSafeCorrelationValue(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+            && value.Length <= MaxCorrelationHeaderLength
+            && value.All(character => character is >= '!' and <= '~');
     }
 }

@@ -1,5 +1,5 @@
-// ABOUTME: Source-level safety tests for Blazor browser interop security invariants.
-// ABOUTME: Prevents reintroducing eval-based JavaScript execution in client UI source.
+// ABOUTME: Source-level safety tests for Blazor browser interop and rendering security invariants.
+// ABOUTME: Prevents reintroducing eval, unsafe DOM sinks, or unreviewed raw HTML rendering in client UI source.
 
 using System.Text.RegularExpressions;
 
@@ -14,6 +14,15 @@ public sealed class BrowserInteropSafetyTests
     private static readonly Regex DomHtmlInjectionPattern = new(
         @"\b(?:innerHTML|outerHTML|insertAdjacentHTML|document\.write|setHTML)\b\s*(?:\(|=)",
         RegexOptions.Compiled);
+
+    private static readonly Regex RawHtmlRenderingPattern = new(
+        @"\b(?:MarkupString|AddMarkupContent)\b",
+        RegexOptions.Compiled);
+
+    private static readonly string[] RawHtmlRenderingAllowList =
+    [
+        Path.Combine("Explore.Blazor.Client", "Pages", "Legal", "CommunityGuidelines.razor")
+    ];
 
     [Test]
     public async Task BlazorSource_DoesNotUseEvalBasedJavaScriptInterop()
@@ -60,6 +69,22 @@ public sealed class BrowserInteropSafetyTests
         await Assert.That(offenders).IsEmpty();
     }
 
+    [Test]
+    public async Task BlazorSource_UsesRawHtmlRenderingOnlyInReviewedAllowlist()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var sourceFiles = EnumerateBlazorSourceFiles(repositoryRoot);
+
+        var offenders = sourceFiles
+            .Where(path => RawHtmlRenderingPattern.IsMatch(File.ReadAllText(path)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .Where(relativePath => !IsRawHtmlRenderingAllowlisted(relativePath))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        await Assert.That(offenders).IsEmpty();
+    }
+
     private static IEnumerable<string> EnumerateBlazorSourceFiles(string repositoryRoot)
     {
         foreach (var projectName in new[] { "Explore.Blazor.Client", "Explore.Blazor" })
@@ -95,6 +120,10 @@ public sealed class BrowserInteropSafetyTests
                || segments.Contains("node_modules")
                || segments.Contains("_framework");
     }
+
+    private static bool IsRawHtmlRenderingAllowlisted(string relativePath) =>
+        RawHtmlRenderingAllowList.Any(allowlistedPath =>
+            string.Equals(relativePath, allowlistedPath, StringComparison.OrdinalIgnoreCase));
 
     private static string FindRepositoryRoot()
     {

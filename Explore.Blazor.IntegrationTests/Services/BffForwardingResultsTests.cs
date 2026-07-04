@@ -33,6 +33,32 @@ public sealed class BffForwardingResultsTests
     }
 
     [Test]
+    public async Task JsonStreamOrProblemAsync_WithDisposedResponse_StillWritesJsonPayload()
+    {
+        IResult result;
+        using (var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"ok\":true}", Encoding.UTF8, "application/json")
+        })
+        {
+            result = await BffForwardingResults.JsonStreamOrProblemAsync(
+                response,
+                "hidden detail",
+                "Hidden title",
+                CancellationToken.None);
+        }
+
+        var context = CreateContext();
+
+        await result.ExecuteAsync(context);
+
+        context.Response.Body.Position = 0;
+        using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
+        var body = await reader.ReadToEndAsync();
+        body.Should().Be("{\"ok\":true}");
+    }
+
+    [Test]
     public async Task JsonStreamOrProblemAsync_WithFailure_ReturnsSafeProblemStatus()
     {
         using var response = new HttpResponseMessage(HttpStatusCode.BadGateway);

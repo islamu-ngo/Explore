@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
 
@@ -144,7 +145,30 @@ public sealed class BffSetupSecretEndpointsTests
         normalizedSessionCookie.Should().Contain("httponly");
     }
 
-    private static async Task<TestBffApp> CreateAppAsync(ValidateSecretHandler handler)
+    [Test]
+    public async Task SetupSecret_Post_WhenRateLimitExceeded_ReturnsProblemDetails429()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
+        await using var app = await CreateAppAsync(handler, useRealSetupRateLimit: true);
+
+        using var firstRequest = CreateSetupSecretRequest("first-secret", "stable-xsrf-partition");
+        using var firstResponse = await app.Client.SendAsync(firstRequest);
+        using var secondRequest = CreateSetupSecretRequest("second-secret", "stable-xsrf-partition");
+        using var secondResponse = await app.Client.SendAsync(secondRequest);
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        secondResponse.Headers.Contains("Retry-After").Should().BeTrue();
+        var body = await secondResponse.Content.ReadAsStringAsync();
+        body.Should().Contain("Too Many Requests");
+        body.Should().Contain("Too many setup-secret attempts");
+        body.Should().NotContain("second-secret");
+        handler.CallCount.Should().Be(1);
+    }
+
+    private static async Task<TestBffApp> CreateAppAsync(
+        ValidateSecretHandler handler,
+        bool useRealSetupRateLimit = false)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -153,11 +177,26 @@ public sealed class BffSetupSecretEndpointsTests
         builder.WebHost.UseTestServer();
         builder.Services.AddRouting();
         builder.Services.AddLogging();
-        builder.Services.AddRateLimiter(options =>
+
+        if (useRealSetupRateLimit)
         {
-            options.AddPolicy(RateLimitingExtensions.SetupSecretPolicy, _ =>
-                RateLimitPartition.GetNoLimiter<string>("test"));
-        });
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["RateLimiting:DisableInTesting"] = "false",
+                ["RateLimiting:SetupSecret:PermitLimit"] = "1",
+                ["RateLimiting:SetupSecret:WindowSeconds"] = "60"
+            });
+            builder.Services.AddBffRateLimiting(builder.Configuration, builder.Environment);
+        }
+        else
+        {
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.AddPolicy(RateLimitingExtensions.SetupSecretPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+            });
+        }
+
         builder.Services.AddSingleton<SetupSecretSessionService>();
         builder.Services.AddSingleton<ISetupSecretSessionService>(sp => sp.GetRequiredService<SetupSecretSessionService>());
         builder.Services.AddSingleton<ISetupSecretCookieProtector, PassThroughSetupSecretCookieProtector>();
@@ -165,10 +204,22 @@ public sealed class BffSetupSecretEndpointsTests
         builder.Services.AddSingleton<IHttpClientFactory>(new ValidateSecretHttpClientFactory(handler));
 
         var app = builder.Build();
+        app.UseRouting();
+        app.UseRateLimiter();
         app.MapSetupSecretEndpoints();
         await app.StartAsync();
 
         return new TestBffApp(app, app.GetTestClient());
+    }
+
+    private static HttpRequestMessage CreateSetupSecretRequest(string secret, string partitionCookie)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/bff/setup-secret")
+        {
+            Content = JsonContent.Create(new { secret })
+        };
+        request.Headers.Add("Cookie", $"XSRF-TOKEN={partitionCookie}");
+        return request;
     }
 
     private sealed class TestBffApp(WebApplication app, HttpClient client) : IAsyncDisposable
