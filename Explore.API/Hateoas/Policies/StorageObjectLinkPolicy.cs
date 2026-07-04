@@ -41,7 +41,9 @@ public sealed class StorageObjectDetailLinkPolicy : ILinkPolicy<StorageObjectDto
                 RouteNames.GetStorageObjectContent,
                 new { id = dto.Id },
                 "GET",
-                "Download storage object content");
+                "Download storage object content",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.StorageObjects.Download, ResourceDescriptors.StorageObject, dto);
         }
 
         if (CanReadPublicImage(dto))
@@ -61,7 +63,9 @@ public sealed class StorageObjectDetailLinkPolicy : ILinkPolicy<StorageObjectDto
                 RouteNames.GetStorageObjectPresignedDownloadUrl,
                 new { id = dto.Id },
                 "GET",
-                "Get a temporary download URL");
+                "Get a temporary download URL",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.StorageObjects.PresignedDownload, ResourceDescriptors.StorageObject, dto);
         }
 
         if (CanMutate(dto))
@@ -115,7 +119,13 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
                 RouteNames.GetStorageObjectContent,
                 new { id = dto.Id },
                 "GET",
-                "Download storage object content");
+                "Download storage object content",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.StorageObjects.Download,
+                    ResourceKinds.StorageObject,
+                    dto.Id.ToString(),
+                    StorageObjectAttributes(dto),
+                    new AuthorizationScope(TenantId: dto.TenantId.ToString()));
         }
 
         if (CanReadPublicImage(dto))
@@ -193,6 +203,8 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
     private static IReadOnlyDictionary<string, object> StorageObjectAttributes(StorageObjectListDto dto) =>
         new Dictionary<string, object>
         {
-            ["tenantId"] = dto.TenantId.ToString()
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["visibility"] = dto.Visibility,
+            ["lifecycleState"] = dto.LifecycleState
         };
 }

@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for storage_object resources.
-# Storage objects: instance admins manage all, tenant admins manage objects in their tenant.
+# ABOUTME: Governs metadata administration, upload-session creation, and protected content download actions.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -20,13 +20,34 @@ resourcePolicy:
         - islamuevent_instance_admin
 
     # Tenant admins can manage storage objects within their tenant
-    - actions: ["view", "create", "update", "delete"]
+    - actions: ["view", "create", "update", "delete", "download", "presigned_download"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
 
-    # All authenticated users can view and upload storage objects
-    - actions: ["view", "create"]
+    - actions: ["create"]
       effect: EFFECT_ALLOW
       roles:
         - islamuevent_authenticated_user
+
+    - actions: ["download", "presigned_download"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.lifecycleState) &&
+            request.resource.attr.lifecycleState == "active" &&
+            has(request.resource.attr.visibility) &&
+            (
+              request.resource.attr.visibility in ["public_image", "authenticated_tenant"] ||
+              (
+                request.resource.attr.visibility == "private_owner" &&
+                has(request.resource.attr.createdBy) &&
+                has(request.principal.attr.userId) &&
+                request.resource.attr.createdBy == request.principal.attr.userId &&
+                (!has(request.principal.attr.is_machine) ||
+                 request.principal.attr.is_machine == false)
+              )
+            )

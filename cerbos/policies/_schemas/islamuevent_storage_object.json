@@ -22,6 +22,14 @@
     "visibility": {
       "type": "string",
       "description": "Requested storage-object visibility for the upload session."
+    },
+    "lifecycleState": {
+      "type": "string",
+      "description": "Current storage-object lifecycle state. Active objects are the only regular download candidates."
+    },
+    "createdBy": {
+      "type": "string",
+      "description": "Internal user identifier that created the object. Used for private-owner download checks."
     }
   },
   "required": ["tenantId"]

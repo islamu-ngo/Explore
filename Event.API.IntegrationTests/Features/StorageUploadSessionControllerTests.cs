@@ -18,10 +18,12 @@ using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
 using Explore.Domain;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.RateLimiting;
 using NSubstitute;
 
@@ -125,8 +127,50 @@ public sealed class StorageUploadSessionControllerTests
         await Assert.That(file.ContentType).IsEqualTo("image/png");
         await Assert.That(file.EntityTag?.Tag).IsEqualTo("\"abc123\"");
         await _mediator.Received(1).Send(
-            Arg.Is<GetStorageObjectContentRequest>(query => query.StorageObjectId == storageObjectId),
+            Arg.Is<GetStorageObjectContentRequest>(query =>
+                query.StorageObjectId == storageObjectId &&
+                query.TenantId == _tenantId),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetPresignedDownloadUrl_DispatchesQueryWithExpiration()
+    {
+        var storageObjectId = Guid.CreateVersion7();
+        var response = new PresignedDownloadUrlResponseDto
+        {
+            PresignedUrl = "https://storage.example.test/presigned",
+            ExpiresInMinutes = 15
+        };
+        _mediator.Send(Arg.Any<GetPresignedDownloadUrlRequest>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+        var controller = CreateController();
+
+        var actionResult = await controller.GetPresignedDownloadUrl(storageObjectId, 15, CancellationToken.None);
+
+        var ok = actionResult.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        await Assert.That(ok!.Value).IsEqualTo(response);
+        await _mediator.Received(1).Send(
+            Arg.Is<GetPresignedDownloadUrlRequest>(query =>
+                query.Id == storageObjectId &&
+                query.TenantId == _tenantId &&
+                query.ExpirationMinutes == 15),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetPresignedDownloadUrl_WhenHandlerReturnsNull_ReturnsNotFound()
+    {
+        _mediator.Send(Arg.Any<GetPresignedDownloadUrlRequest>(), Arg.Any<CancellationToken>())
+            .Returns((PresignedDownloadUrlResponseDto?)null);
+        var controller = CreateController();
+
+        var actionResult = await controller.GetPresignedDownloadUrl(Guid.CreateVersion7(), 15, CancellationToken.None);
+
+        var objectResult = actionResult.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(404);
     }
 
     [Test]
@@ -163,6 +207,39 @@ public sealed class StorageUploadSessionControllerTests
     }
 
     [Test]
+    public async Task UploadSessionContent_WhenStorageFailure_ReturnsMappedProblemDetails()
+    {
+        var cases = new[]
+        {
+            new StorageFailureCase(FailureCodes.StorageUploadSessionNotFound, "Upload session was not found.", 404, "Storage upload session not found"),
+            new StorageFailureCase(FailureCodes.StorageUploadSessionExpired, "Upload session has expired.", 409, "Storage upload session conflict"),
+            new StorageFailureCase(FailureCodes.StorageUploadSizeMismatch, "Upload content length does not match the reserved byte count.", 400, "Storage upload validation failed"),
+            new StorageFailureCase(FailureCodes.StorageUploadContentTypeMismatch, "Upload content type does not match the reserved content type.", 400, "Storage upload validation failed"),
+            new StorageFailureCase(FailureCodes.StorageUploadContentSignatureMismatch, "Upload content did not match the reserved content policy.", 400, "Storage upload validation failed"),
+            new StorageFailureCase(FailureCodes.StorageUploadWriteFailed, "Storage provider returned invalid upload metadata.", 503, "Storage provider unavailable")
+        };
+
+        foreach (var testCase in cases)
+        {
+            _mediator.Send(Arg.Any<FinalizeStorageUploadSessionCommand>(), Arg.Any<CancellationToken>())
+                .Returns(Failure(testCase.Message, testCase.FailureCode));
+            var controller = CreateController(new MemoryStream([1]), "text/plain", 1);
+
+            var actionResult = await controller.UploadSessionContent(Guid.CreateVersion7(), CancellationToken.None);
+
+            var objectResult = actionResult.Result as ObjectResult;
+            await Assert.That(objectResult).IsNotNull();
+            await Assert.That(objectResult!.StatusCode).IsEqualTo(testCase.StatusCode);
+
+            var problemDetails = objectResult.Value as ProblemDetails;
+            await Assert.That(problemDetails).IsNotNull();
+            await Assert.That(problemDetails!.Title).IsEqualTo(testCase.Title);
+            await Assert.That(problemDetails.Detail).IsEqualTo(testCase.Message);
+            await Assert.That(problemDetails.Extensions["code"]).IsEqualTo(testCase.FailureCode);
+        }
+    }
+
+    [Test]
     public async Task UploadSessionRoutes_UseStableRouteNamesAndWritePolicy()
     {
         var create = typeof(StorageObjectController).GetMethod(nameof(StorageObjectController.CreateUploadSession))!;
@@ -179,6 +256,22 @@ public sealed class StorageUploadSessionControllerTests
         await Assert.That(GetRateLimitPolicy(upload)).IsEqualTo(RateLimitingExtensions.WritePolicy);
         await Assert.That(GetRateLimitPolicy(cancel)).IsEqualTo(RateLimitingExtensions.WritePolicy);
         await Assert.That(GetRequestTimeoutPolicy(upload)).IsEqualTo(RequestTimeoutExtensions.ComplexPolicy);
+    }
+
+    [Test]
+    public async Task StorageDownloadRoutes_RequireAuthenticationAndDoNotCachePresignedUrls()
+    {
+        var content = typeof(StorageObjectController).GetMethod(nameof(StorageObjectController.GetContent))!;
+        var presigned = typeof(StorageObjectController).GetMethod(nameof(StorageObjectController.GetPresignedDownloadUrl))!;
+
+        await Assert.That(content.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(presigned.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(presigned.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
+
+        var responseCache = presigned.GetCustomAttribute<ResponseCacheAttribute>();
+        await Assert.That(responseCache).IsNotNull();
+        await Assert.That(responseCache!.NoStore).IsTrue();
+        await Assert.That(responseCache.Location).IsEqualTo(ResponseCacheLocation.None);
     }
 
     [Test]
@@ -273,4 +366,10 @@ public sealed class StorageUploadSessionControllerTests
             FailureCode = failureCode,
             Errors = [message]
         };
+
+    private sealed record StorageFailureCase(
+        string FailureCode,
+        string Message,
+        int StatusCode,
+        string Title);
 }

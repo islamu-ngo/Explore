@@ -58,13 +58,15 @@ public class StorageObjectController : ControllerBase
     }
 
     // GET: api/storageobject
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet(Name = RouteNames.GetStorageObjects)]
     [EndpointSummary("Get all Storage Objects")]
     [EndpointDescription("Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(HalCollectionResource<StorageObjectListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<StorageObjectListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
@@ -72,6 +74,7 @@ public class StorageObjectController : ControllerBase
     {
         var storageObjects = await _mediator.Send(new GetStorageObjectListRequest
         {
+            TenantId = _tenantContext.TenantId,
             PageNumber = query.PageNumber,
             PageSize = query.PageSize
         }, cancellationToken);
@@ -85,17 +88,25 @@ public class StorageObjectController : ControllerBase
     }
 
     // GET: api/storageobject/{id}
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id:guid}", Name = RouteNames.GetStorageObjectById)]
     [EndpointSummary("Get Storage Object by ID")]
     [EndpointDescription("Retrieve details of a specific storage object")]
     [ProducesResponseType(typeof(HalResource<StorageObjectDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<StorageObjectDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var storageObject = await _mediator.Send(new GetStorageObjectDetailsRequest { Id = id }, cancellationToken);
+        var storageObject = await _mediator.Send(
+            new GetStorageObjectDetailsRequest
+            {
+                Id = id,
+                TenantId = _tenantContext.TenantId
+            },
+            cancellationToken);
         if (storageObject is null)
         {
             return this.ToNotFoundProblem(StorageObjectNotFoundProblem);
@@ -106,17 +117,23 @@ public class StorageObjectController : ControllerBase
     }
 
     // GET: api/storageobject/{id}/content
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id:guid}/content", Name = RouteNames.GetStorageObjectContent)]
     [EndpointSummary("Get Storage Object Content")]
     [EndpointDescription("Streams stored file content by stable storage object ID. Provider keys and local paths are never accepted from the browser.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetContent(Guid id, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetStorageObjectContentRequest { StorageObjectId = id },
+            new GetStorageObjectContentRequest
+            {
+                StorageObjectId = id,
+                TenantId = _tenantContext.TenantId
+            },
             cancellationToken);
 
         return result is null ? this.ToNotFoundProblem(StorageObjectNotFoundProblem) : ToFileResult(result);
@@ -145,23 +162,26 @@ public class StorageObjectController : ControllerBase
     }
 
     // GET: api/storageobject/{id}/presigned-url
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id:guid}/presigned-url", Name = RouteNames.GetStorageObjectPresignedDownloadUrl)]
     [EndpointSummary("Get Presigned Download URL")]
     [EndpointDescription("Generate a time-limited presigned URL for viewing/downloading a file from S3-compatible storage")]
     [ProducesResponseType(typeof(PresignedDownloadUrlResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<ActionResult<PresignedDownloadUrlResponseDto>> GetPresignedDownloadUrl(Guid id, [FromQuery] int expirationMinutes = 60, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetPresignedDownloadUrlRequest
         {
             Id = id,
-            ExpirationMinutes = expirationMinutes
+            ExpirationMinutes = expirationMinutes,
+            TenantId = _tenantContext.TenantId
         }, cancellationToken);
 
-        return Ok(result);
+        return result is null ? this.ToNotFoundProblem(StorageObjectNotFoundProblem) : Ok(result);
     }
 
     // POST: api/storageobject/generate-upload-url

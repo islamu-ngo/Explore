@@ -35,10 +35,18 @@ public sealed class StorageAdminHateoasTests
 
         await Assert.That(links.Single(link => link.Rel == LinkRelations.Self).RouteName)
             .IsEqualTo(RouteNames.GetStorageObjectById);
-        await Assert.That(links.Single(link => link.Rel == "content").RouteName)
-            .IsEqualTo(RouteNames.GetStorageObjectContent);
+        var content = links.Single(link => link.Rel == "content");
+        await Assert.That(content.RouteName).IsEqualTo(RouteNames.GetStorageObjectContent);
+        await Assert.That(content.RequiresAuth).IsTrue();
+        await Assert.That(content.PermissionResourceKind).IsEqualTo(ResourceKinds.StorageObject);
+        await Assert.That(content.PermissionAction).IsEqualTo(AuthorizationActions.StorageObjects.Download);
+
         await Assert.That(links.Single(link => link.Rel == "public-image").RouteName)
             .IsEqualTo(RouteNames.GetPublicStorageObjectImage);
+
+        var presigned = links.Single(link => link.Rel == "presigned-download");
+        await Assert.That(presigned.RequiresAuth).IsTrue();
+        await Assert.That(presigned.PermissionAction).IsEqualTo(AuthorizationActions.StorageObjects.PresignedDownload);
 
         var edit = links.Single(link => link.Rel == LinkRelations.Edit);
         await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateStorageObject);
