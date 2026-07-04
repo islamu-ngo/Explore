@@ -126,11 +126,6 @@
         "resolved": "8.0.2",
         "contentHash": "mUBDZZRgZrSyFOsJ2qJJ9fXfqd/kXJwf3AiDoqLD9m6TjY5OO/vLNOb9fb4juC0487eq4hcGN/M2Rh/CKS7QYw=="
       },
-      "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": {
-        "type": "Transitive",
-        "resolved": "8.0.25",
-        "contentHash": "9A8J9Dbqu8Kv48hIGKavss3nuueTl4iDYYAGX4Vpc+0QwnHpq/4bk8F7CVViu2uKx3pmpEWKWgwa/d/z9VIQDg=="
-      },
       "Microsoft.Extensions.Logging": {
         "type": "Transitive",
         "resolved": "10.0.8",
@@ -337,7 +332,6 @@
           "EntityFramework": "[6.5.1, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.0.0, )",
-          "MQContract.Abstractions": "[3.9.2, )",
           "MediatR": "[12.5.0, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[10.0.7, )",
@@ -505,15 +499,6 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.7",
           "Microsoft.Extensions.Options": "10.0.7",
           "Microsoft.Extensions.Primitives": "10.0.7"
-        }
-      },
-      "MQContract.Abstractions": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "nU4b9OE/SijFg+t66Xtz1yMAHqHqEOE3JVx1CF6DS1758JMUQYRVmXxsn+w9Ltd6vK3DDoUDMzhl45MZVp2gwA==",
-        "dependencies": {
-          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[8.0.25, 11.0.0)"
         }
       },
       "Npgsql": {

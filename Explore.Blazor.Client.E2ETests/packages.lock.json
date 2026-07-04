@@ -1034,18 +1034,6 @@
           "System.Drawing.Common": "6.0.0"
         }
       },
-      "Testcontainers": {
-        "type": "Transitive",
-        "resolved": "4.10.0",
-        "contentHash": "a7tH+s9IRME6QEeMRgl/mTqQyudgtGNJmJRPn1+LwW8w/2L11cJzRJd7Io0QoSrP+i6lAOETX2SRY7cLbElcdQ==",
-        "dependencies": {
-          "Docker.DotNet.Enhanced": "3.131.1",
-          "Docker.DotNet.Enhanced.X509": "3.131.1",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.3",
-          "SSH.NET": "2025.1.0",
-          "SharpZipLib": "1.4.2"
-        }
-      },
       "TUnit.Assertions": {
         "type": "Transitive",
         "resolved": "1.33.0",
@@ -1089,7 +1077,6 @@
           "EntityFramework": "[6.5.1, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.0.0, )",
-          "MQContract.Abstractions": "[3.9.2, )",
           "MediatR": "[12.5.0, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[10.0.7, )",
@@ -1531,15 +1518,6 @@
           "Microsoft.Extensions.Primitives": "10.0.8"
         }
       },
-      "MQContract.Abstractions": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "nU4b9OE/SijFg+t66Xtz1yMAHqHqEOE3JVx1CF6DS1758JMUQYRVmXxsn+w9Ltd6vK3DDoUDMzhl45MZVp2gwA==",
-        "dependencies": {
-          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[8.0.25, 11.0.0)"
-        }
-      },
       "Newtonsoft.Json": {
         "type": "CentralTransitive",
         "requested": "[13.0.5-beta1, )",
@@ -1609,6 +1587,19 @@
         "contentHash": "YKXEfg9fVQiTKgZlvIhAfPSFaamEgi8DsQmisCH0IAsU4FYLrtoguDrDj6JtJVGUt40QPnBLRH6fTQcAC4qsOg==",
         "dependencies": {
           "System.Threading.RateLimiting": "8.0.0"
+        }
+      },
+      "Testcontainers": {
+        "type": "CentralTransitive",
+        "requested": "[4.10.0, )",
+        "resolved": "4.10.0",
+        "contentHash": "a7tH+s9IRME6QEeMRgl/mTqQyudgtGNJmJRPn1+LwW8w/2L11cJzRJd7Io0QoSrP+i6lAOETX2SRY7cLbElcdQ==",
+        "dependencies": {
+          "Docker.DotNet.Enhanced": "3.131.1",
+          "Docker.DotNet.Enhanced.X509": "3.131.1",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.3",
+          "SSH.NET": "2025.1.0",
+          "SharpZipLib": "1.4.2"
         }
       },
       "YamlDotNet": {

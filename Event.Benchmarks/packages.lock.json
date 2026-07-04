@@ -1110,18 +1110,6 @@
           "System.Drawing.Common": "6.0.0"
         }
       },
-      "Testcontainers": {
-        "type": "Transitive",
-        "resolved": "4.10.0",
-        "contentHash": "a7tH+s9IRME6QEeMRgl/mTqQyudgtGNJmJRPn1+LwW8w/2L11cJzRJd7Io0QoSrP+i6lAOETX2SRY7cLbElcdQ==",
-        "dependencies": {
-          "Docker.DotNet.Enhanced": "3.131.1",
-          "Docker.DotNet.Enhanced.X509": "3.131.1",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.3",
-          "SSH.NET": "2025.1.0",
-          "SharpZipLib": "1.4.2"
-        }
-      },
       "TickerQ.Utilities": {
         "type": "Transitive",
         "resolved": "10.2.0",
@@ -1190,7 +1178,6 @@
           "EntityFramework": "[6.5.1, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.0.0, )",
-          "MQContract.Abstractions": "[3.9.2, )",
           "MediatR": "[12.5.0, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[10.0.7, )",
@@ -1213,9 +1200,6 @@
           "Azure.Identity": "[1.21.0, )",
           "Cerbos.Sdk": "[1.9.1, )",
           "Explore.Application": "[1.0.0, )",
-          "MQContract": "[3.9.2, )",
-          "MQContract.InMemory": "[3.9.2, )",
-          "MQContract.RabbitMQ": "[3.9.2, )",
           "MailKit": "[4.16.0, )",
           "Microsoft.Extensions.AI.Abstractions": "[10.4.0, )",
           "Microsoft.Extensions.AI.OpenAI": "[10.4.0, )",
@@ -1765,48 +1749,6 @@
           "ModelContextProtocol": "1.2.0"
         }
       },
-      "MQContract": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "iOcKPXITSfv84MViWsAMES8PMDiz5OQbhza4zXuNEuqq/h+un0AmAM802zO91DclfKYRWKYLLWc0O7rOeW/9Eg==",
-        "dependencies": {
-          "MQContract.Abstractions": "3.9.2",
-          "Microsoft.CodeAnalysis.CSharp": "5.3.0",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, 11.0.0)",
-          "Microsoft.Extensions.Logging": "[8.0.1, 11.0.0)",
-          "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, 11.0.0)",
-          "Polly": "[8.6.6, 9.0.0)"
-        }
-      },
-      "MQContract.Abstractions": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "nU4b9OE/SijFg+t66Xtz1yMAHqHqEOE3JVx1CF6DS1758JMUQYRVmXxsn+w9Ltd6vK3DDoUDMzhl45MZVp2gwA==",
-        "dependencies": {
-          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[8.0.25, 11.0.0)"
-        }
-      },
-      "MQContract.InMemory": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "xnbXZccZkFQm4i2w6b5hq42hRyMForeicw2VRsHmLYCsLJfSDEaITlZisPxS71odvUwNiASKRbB4KtGSFBhUtw==",
-        "dependencies": {
-          "MQContract.Abstractions": "3.9.2"
-        }
-      },
-      "MQContract.RabbitMQ": {
-        "type": "CentralTransitive",
-        "requested": "[3.9.2, )",
-        "resolved": "3.9.2",
-        "contentHash": "fmH/zLrpca9a6cVS1KAgHhoHQQQubntv+Z2W26Hr3n4IK9PrzlbVqu5gvrxKGFMxgtHaLLSvdpwP8LiNt1svSQ==",
-        "dependencies": {
-          "MQContract.Abstractions": "3.9.2",
-          "RabbitMQ.Client": "7.2.1"
-        }
-      },
       "Newtonsoft.Json": {
         "type": "CentralTransitive",
         "requested": "[13.0.5-beta1, )",
@@ -2056,6 +1998,19 @@
         "dependencies": {
           "Microsoft.IdentityModel.JsonWebTokens": "8.14.0",
           "Microsoft.IdentityModel.Tokens": "8.14.0"
+        }
+      },
+      "Testcontainers": {
+        "type": "CentralTransitive",
+        "requested": "[4.10.0, )",
+        "resolved": "4.10.0",
+        "contentHash": "a7tH+s9IRME6QEeMRgl/mTqQyudgtGNJmJRPn1+LwW8w/2L11cJzRJd7Io0QoSrP+i6lAOETX2SRY7cLbElcdQ==",
+        "dependencies": {
+          "Docker.DotNet.Enhanced": "3.131.1",
+          "Docker.DotNet.Enhanced.X509": "3.131.1",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.3",
+          "SSH.NET": "2025.1.0",
+          "SharpZipLib": "1.4.2"
         }
       },
       "TickerQ": {
