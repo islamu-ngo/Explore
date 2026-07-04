@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using Blazouter.Extensions;
+using Event.ControlPlane.Client.Extensions;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Client.Contracts.Interop;
@@ -33,6 +34,7 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.ShowTransitionDuration = 200;
 });
 builder.Services.AddBlazouter();
+builder.Services.AddEventControlPlaneClient();
 builder.Services.AddScoped<AuthenticatedRouteGuard>();
 builder.Services.AddScoped<MultiTenantOnboardingRouteGuard>();
 builder.Services.AddScoped<AdminRouteGuard>();

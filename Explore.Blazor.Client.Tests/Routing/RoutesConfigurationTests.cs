@@ -126,6 +126,20 @@ public class RoutesConfigurationTests
         await Assert.That(source).Contains("Archive");
     }
 
+    [Test]
+    public async Task EmbeddedControlPlaneOverviewRoute_ShouldUseSharedPageAndAdminGuard()
+    {
+        var routesFilePath = FindRoutesFilePath();
+        var routesContent = await File.ReadAllTextAsync(routesFilePath);
+
+        const string routeRegistration =
+            "Path = ControlPlaneRoutes.Overview, Component = typeof(ControlPlaneOverviewPage), Transition = RouteTransition.Fade, Guards = RequireAdmin()";
+
+        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Pages.Overview");
+        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Routing");
+        await Assert.That(routesContent).Contains(routeRegistration);
+    }
+
     private static string FindRoutesFilePath()
         => FindClientFilePath("Routes.razor");
 

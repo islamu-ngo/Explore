@@ -482,7 +482,7 @@ public class CreateEventTests : IDisposable
         PrepareValidSubmitState(cut.Instance);
 
         // Act
-        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "HandleSubmit"));
 
         // Assert
         await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
@@ -511,7 +511,7 @@ public class CreateEventTests : IDisposable
         PrepareValidSubmitState(cut.Instance);
 
         // Act
-        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "HandleSubmit"));
 
         // Assert
         await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventDraftRequestDto>(dto => dto != null && dto.TemplateId == templateId));
@@ -530,7 +530,7 @@ public class CreateEventTests : IDisposable
         PrepareValidSubmitState(cut.Instance);
 
         // Act
-        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "HandleSubmit"));
 
         // Assert
         await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventDraftRequestDto>(dto => dto != null && dto.TemplateId == null));
@@ -569,7 +569,7 @@ public class CreateEventTests : IDisposable
 
         // Act
         await InvokePrivateAsync(cut.Instance, "OnEventTemplateChanged", newParentTemplateId);
-        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "HandleSubmit"));
 
         // Assert
         await Assert.That(sessions.All(session => session.SessionTemplateId is null)).IsTrue();
@@ -767,6 +767,65 @@ public class CreateEventTests : IDisposable
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
         await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
+    }
+
+    [Test]
+    public async Task HandleSubmit_WithValidationProblemDetails_MapsServerErrorsIntoEditContext()
+    {
+        _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>())
+            .ThrowsAsync(new ApiException<ValidationProblemDetails>(
+                "Bad Request",
+                400,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                new ValidationProblemDetails
+                {
+                    Errors = new Dictionary<string, ICollection<string>>
+                    {
+                        ["Title.Value"] = new[] { "Use a clearer event title." }
+                    }
+                },
+                null));
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+        PrepareValidSubmitState(cut.Instance);
+        SetPrivateField<DateTime?>(cut.Instance, "_inlineSessionDate", new DateTime(2026, 7, 10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionStartTime", TimeSpan.FromHours(10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionEndTime", TimeSpan.FromHours(12));
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "HandleSubmit"));
+
+        await Assert.That(GetSubmitError(cut.Instance)).IsEqualTo("Please fix the validation errors below.");
+        await Assert.That(GetValidationMessages(cut.Instance)).Contains("Use a clearer event title.");
+    }
+
+    [Test]
+    public async Task HandleSubmit_WithUnexpectedException_DoesNotEchoRawExceptionMessage()
+    {
+        const string rawProviderMessage = "provider rejected <script>alert(1)</script> secret";
+        _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>())
+            .ThrowsAsync(new InvalidOperationException(rawProviderMessage));
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+        PrepareValidSubmitState(cut.Instance);
+        SetPrivateField<DateTime?>(cut.Instance, "_inlineSessionDate", new DateTime(2026, 7, 10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionStartTime", TimeSpan.FromHours(10));
+        SetPrivateField<TimeSpan?>(cut.Instance, "_inlineSessionEndTime", TimeSpan.FromHours(12));
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "HandleSubmit"));
+
+        var submitError = GetSubmitError(cut.Instance);
+        await Assert.That(submitError).IsEqualTo("Event could not be submitted. Please try again.");
+        await Assert.That(submitError).DoesNotContain(rawProviderMessage);
+        await Assert.That(submitError).DoesNotContain("<script>");
     }
 
     [Test]
@@ -1192,6 +1251,12 @@ public class CreateEventTests : IDisposable
     {
         var submitState = GetPrivateField<Explore.Blazor.Client.Components.Forms.FormSubmitState>(component, "_submitState");
         return submitState.ErrorMessage ?? throw new InvalidOperationException("Submit state error message was not set.");
+    }
+
+    private static IReadOnlyList<string> GetValidationMessages(CreateEvent component)
+    {
+        var editContext = GetPrivateField<EditContext>(component, "_editContext");
+        return editContext.GetValidationMessages().ToList();
     }
 
     private static void SetPrivateField<T>(CreateEvent component, string fieldName, T value)

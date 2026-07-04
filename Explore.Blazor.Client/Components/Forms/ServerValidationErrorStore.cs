@@ -1,3 +1,6 @@
+// ABOUTME: Bridges API validation failures into Blazor EditContext validation messages.
+// ABOUTME: Keeps server-side ProblemDetails authoritative while clearing stale field errors on edit.
+
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components.Forms;
@@ -43,7 +46,7 @@ public class ServerValidationErrorStore
         _messageStore.Clear();
         foreach (var error in errors)
         {
-            var fieldIdentifier = new FieldIdentifier(_editContext.Model, error.Key);
+            var fieldIdentifier = new FieldIdentifier(_editContext.Model, ResolveFieldName(error.Key));
             foreach (var message in error.Value)
             {
                 _messageStore.Add(fieldIdentifier, message);
@@ -70,6 +73,14 @@ public class ServerValidationErrorStore
                 }
             }
         }
+        else if (ex is ApiException<ValidationProblemDetails> validationEx)
+        {
+            if (validationEx.Result?.Errors is { Count: > 0 } errors)
+            {
+                DisplayErrors(errors);
+                return true;
+            }
+        }
         else if (ex is ApiException<BaseCommandResponseOfGuid> commandEx)
         {
             if (commandEx.Result?.Errors != null && commandEx.Result.Errors.Count > 0)
@@ -84,5 +95,21 @@ public class ServerValidationErrorStore
         }
 
         return false;
+    }
+
+    private string ResolveFieldName(string fieldName)
+    {
+        if (_editContext == null || string.IsNullOrWhiteSpace(fieldName))
+        {
+            return string.Empty;
+        }
+
+        var normalizedFieldName = fieldName.Split('.', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? fieldName;
+        var property = _editContext.Model
+            .GetType()
+            .GetProperties()
+            .FirstOrDefault(candidate => string.Equals(candidate.Name, normalizedFieldName, StringComparison.OrdinalIgnoreCase));
+
+        return property?.Name ?? normalizedFieldName;
     }
 }

@@ -449,7 +449,7 @@ public partial class EventEdit : IDisposable
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading event data for editing");
-            _submitState.Fail($"Error loading event: {ex.Message}");
+            _submitState.Fail("Event details could not be loaded. Please refresh and try again.");
             PublishMainContentAppearance();
         }
         finally
@@ -779,7 +779,8 @@ public partial class EventEdit : IDisposable
                     }
                     catch (Exception ex)
                     {
-                        _submitState.Fail($"Failed to delete session: {ex.Message}");
+                        Logger.LogError(ex, "Failed to delete session {EventSessionId} while editing event {EventId}", session.Id.Value, EventId);
+                        _submitState.Fail("Session could not be deleted. Please try again.");
                     }
                 }
             }
@@ -936,7 +937,7 @@ public partial class EventEdit : IDisposable
             if (!_errorStore.HandleApiError(ex))
             {
                 Logger.LogError(ex, "Exception during event update");
-                _submitState.Fail($"Error updating event: {ex.Message}");
+                _submitState.Fail("Event could not be updated. Please try again.");
             }
             else
             {
@@ -947,7 +948,7 @@ public partial class EventEdit : IDisposable
         catch (Exception ex)
         {
             Logger.LogError(ex, "Exception during event update");
-            _submitState.Fail($"Error updating event: {ex.Message}");
+            _submitState.Fail("Event could not be updated. Please try again.");
             return false;
         }
     }

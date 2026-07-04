@@ -9,6 +9,7 @@ using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using UpdateEventDraftRequestDto = Explore.Blazor.Client.Models.Events.UpdateEventDraftRequestDto;
 
@@ -341,6 +342,53 @@ public sealed class EventEditTests : IDisposable
             .Contains("The event draft changed since it was loaded");
     }
 
+    [Test]
+    public async Task HandleSubmit_WithValidationProblemDetails_MapsServerErrorsIntoEditContext()
+    {
+        var eventId = Guid.NewGuid();
+        var eventService = Substitute.For<IEventService>();
+        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>())
+            .ThrowsAsync(new ApiException<ValidationProblemDetails>(
+                "Bad Request",
+                400,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                new ValidationProblemDetails
+                {
+                    Errors = new Dictionary<string, ICollection<string>>
+                    {
+                        ["Title.Value"] = new[] { "Use a clearer event title." }
+                    }
+                },
+                null));
+        var component = CreateComponent(eventId, canAddSession: true, eventService);
+        InvokePrivate(component, "PopulateFormFromEvent");
+
+        await InvokePrivateAsync(component, "HandleSubmit");
+
+        await Assert.That(GetSubmitError(component)).IsEqualTo("Please fix the validation errors below.");
+        await Assert.That(GetValidationMessages(component)).Contains("Use a clearer event title.");
+    }
+
+    [Test]
+    public async Task HandleSubmit_WithUnexpectedException_DoesNotEchoRawExceptionMessage()
+    {
+        const string rawProviderMessage = "provider rejected <script>alert(1)</script> secret";
+        var eventId = Guid.NewGuid();
+        var eventService = Substitute.For<IEventService>();
+        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>())
+            .ThrowsAsync(new InvalidOperationException(rawProviderMessage));
+        var component = CreateComponent(eventId, canAddSession: true, eventService);
+        InvokePrivate(component, "PopulateFormFromEvent");
+
+        await InvokePrivateAsync(component, "HandleSubmit");
+
+        var submitError = GetSubmitError(component);
+        await Assert.That(submitError).IsEqualTo("Event could not be updated. Please try again.");
+        await Assert.That(submitError).DoesNotContain(rawProviderMessage);
+        await Assert.That(submitError).DoesNotContain("<script>");
+    }
+
     public void Dispose() => _ctx.Dispose();
 
     private EventEdit CreateComponent(
@@ -430,6 +478,12 @@ public sealed class EventEditTests : IDisposable
     {
         var submitState = GetPrivateField<Explore.Blazor.Client.Components.Forms.FormSubmitState>(instance, "_submitState");
         return submitState.ErrorMessage ?? throw new InvalidOperationException("Submit state error message was not set.");
+    }
+
+    private static IReadOnlyList<string> GetValidationMessages(object instance)
+    {
+        var editContext = GetPrivateField<EditContext>(instance, "_editContext");
+        return editContext.GetValidationMessages().ToList();
     }
 
     private static T GetPrivateProperty<T>(object instance, string propertyName)

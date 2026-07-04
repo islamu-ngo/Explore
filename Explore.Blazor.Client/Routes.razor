@@ -3,6 +3,10 @@
 @using Blazouter.Models
 @using Blazouter.Enums
 @using Blazouter.Interfaces
+@using Event.ControlPlane.Client.Pages.Domains
+@using Event.ControlPlane.Client.Pages.Overview
+@using Event.ControlPlane.Client.Pages.Tenants
+@using Event.ControlPlane.Client.Routing
 @using Explore.Blazor.Client.Layout
 @using Explore.Blazor.Client.Pages
 @using Explore.Blazor.Client.Pages.Auth
@@ -126,6 +130,9 @@
             new RouteConfig { Path = "/admin/organization/:organizationId", Component = typeof(AdminListDetails), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
 
             // Admin settings routes
+            new RouteConfig { Path = ControlPlaneRoutes.Overview, Component = typeof(ControlPlaneOverviewPage), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = ControlPlaneRoutes.Tenants, Component = typeof(ControlPlaneTenantsPage), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = ControlPlaneRoutes.Domains, Component = typeof(ControlPlaneDomainsPage), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
             new RouteConfig { Path = "/admin/instance/settings", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
             new RouteConfig { Path = "/admin/tenant/settings", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireTenantAdmin() },
             new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin() },

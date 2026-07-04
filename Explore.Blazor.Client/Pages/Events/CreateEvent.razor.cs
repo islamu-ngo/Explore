@@ -788,7 +788,8 @@ public partial class CreateEvent : IDisposable
                     }
                     catch (Exception ex)
                     {
-                        _submitState.Fail($"Failed to delete session: {ex.Message}");
+                        Logger.LogError(ex, "Failed to delete session {EventSessionId} while editing draft event", session.Id.Value);
+                        _submitState.Fail("Session could not be deleted. Please try again.");
                     }
                 }
             }
@@ -1217,7 +1218,7 @@ public partial class CreateEvent : IDisposable
             if (!_errorStore.HandleApiError(ex))
             {
                 Logger.LogError(ex, "Exception during event creation");
-                _submitState.Fail($"Error creating event: {ex.Message}");
+                _submitState.Fail("Event could not be submitted. Please try again.");
             }
             else
             {
@@ -1227,7 +1228,7 @@ public partial class CreateEvent : IDisposable
         catch (Exception ex)
         {
             Logger.LogError(ex, "Exception during event creation");
-            _submitState.Fail($"Error creating event: {ex.Message}");
+            _submitState.Fail("Event could not be submitted. Please try again.");
         }
     }
 

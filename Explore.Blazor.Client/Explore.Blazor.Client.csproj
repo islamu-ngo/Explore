@@ -13,6 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Event.ControlPlane.Client\Event.ControlPlane.Client.csproj" />
     <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
   </ItemGroup>
 

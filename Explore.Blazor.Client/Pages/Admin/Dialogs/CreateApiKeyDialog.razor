@@ -5,6 +5,7 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Constants
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Validators
 @using Microsoft.AspNetCore.Components.Forms
 @using Explore.Blazor.Client.Components.Forms
 @inject IExternalApiKeyService ApiKeyService
@@ -16,6 +17,7 @@
         @if (!_created)
         {
             <EditForm EditContext="_editContext">
+                <FluentValidationValidator />
                 <FormSubmissionGuard State="@_submitState">
                 <AppValidationSummary />
                 <MudStack Spacing="4">
@@ -24,12 +26,16 @@
                                   Label="Name"
                                   Required="true"
                                   RequiredError="Name is required"
+                                  MaxLength="200"
+                                  Counter="200"
                                   HelperText="A descriptive name for this API key" />
 
                     <MudTextField Variant="Variant.Outlined" T="string"
                                   @bind-Value="_dto.Description"
                                   Label="Description"
                                   Lines="2"
+                                  MaxLength="1000"
+                                  Counter="1000"
                                   HelperText="Optional description of what this key is used for" />
 
                     <MudText Typo="Typo.subtitle2" Class="mt-2">Scopes</MudText>
@@ -151,6 +157,8 @@
             _dto.OrganizationId = OrganizationId;
             _dto.GroupId = GroupId;
             _dto.Scopes = _selectedScopes.OrderBy(s => s).ToList();
+            _dto.Name = _dto.Name.Trim();
+            _dto.Description = string.IsNullOrWhiteSpace(_dto.Description) ? null : _dto.Description.Trim();
             _dto.ExpiresAt = _expiresAt.HasValue ? new DateTimeOffset(_expiresAt.Value, TimeSpan.Zero) : null;
 
             var response = await ApiKeyService.CreateApiKeyAsync(_dto);
