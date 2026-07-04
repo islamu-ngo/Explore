@@ -87,6 +87,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     [Inject] private IEventAgendaItemService EventAgendaItemService { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+    [Inject] private IBrowserActionInterop BrowserActionInterop { get; set; } = default!;
 
     [PersistentState]
     public EventDetailState? PersistedState { get; set; }
@@ -953,36 +954,20 @@ public partial class EventDetail : ComponentBase, IDisposable
     {
         var url = GetCanonicalUrl();
 
-        try
+        if (await BrowserActionInterop.ShareAsync(_eventDetails?.Title ?? "Event", url))
         {
-            // Try Web Share API first (mobile browsers)
-            var canShare = await JsRuntime.InvokeAsync<bool>("eval", "!!navigator.share");
-            if (canShare)
-            {
-                await JsRuntime.InvokeVoidAsync("navigator.share", new
-                {
-                    title = _eventDetails?.Title ?? "Event",
-                    url
-                });
-                return;
-            }
-        }
-        catch
-        {
-            // Web Share API not available or user cancelled — fall through to clipboard
+            return;
         }
 
-        try
+        if (await BrowserActionInterop.CopyTextAsync(url))
         {
-            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
             Snackbar.Add("Link copied to clipboard!", Severity.Success,
                 options => options.VisibleStateDuration = 2000);
+            return;
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to copy event link to clipboard");
-            Snackbar.Add("Could not copy link", Severity.Error);
-        }
+
+        Logger.LogWarning("Failed to copy event link to clipboard");
+        Snackbar.Add("Could not copy link", Severity.Error);
     }
 
     #endregion
@@ -1023,11 +1008,11 @@ public partial class EventDetail : ComponentBase, IDisposable
         var base64 = Convert.ToBase64String(bytes);
         var fileName = SanitizeFileName(_eventDetails.Title) + ".ics";
 
-        await JsRuntime.InvokeVoidAsync("eval",
-            $"(() => {{ const a = document.createElement('a'); " +
-            $"a.href = 'data:text/calendar;base64,{base64}'; " +
-            $"a.download = '{fileName}'; " +
-            $"document.body.appendChild(a); a.click(); document.body.removeChild(a); }})()");
+        var downloaded = await BrowserActionInterop.DownloadBase64FileAsync(base64, fileName, "text/calendar");
+        if (!downloaded)
+        {
+            Snackbar.Add("Could not download calendar file", Severity.Error);
+        }
     }
 
     private string GenerateIcsContent()

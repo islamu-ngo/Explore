@@ -13,7 +13,6 @@ using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Components.Events;
@@ -26,7 +25,7 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
     [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IPublicExperienceService PublicExperienceService { get; set; } = default!;
     [Inject] private DockLayoutState DockLayoutState { get; set; } = default!;
-    [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+    [Inject] private IBrowserActionInterop BrowserActionInterop { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
@@ -257,22 +256,9 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
 
         var url = CanonicalUrlHelper.Build(Navigation, $"/events/{eventId}");
 
-        try
+        if (await BrowserActionInterop.ShareAsync(eventToShare.Title ?? "Event", url))
         {
-            var canShare = await JsRuntime.InvokeAsync<bool>("eval", "!!navigator.share");
-            if (canShare)
-            {
-                await JsRuntime.InvokeVoidAsync("navigator.share", new
-                {
-                    title = eventToShare.Title ?? "Event",
-                    url
-                });
-                return;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Native event sharing was unavailable; falling back to clipboard.");
+            return;
         }
 
         await CopyEventLinkToClipboardAsync(url);
@@ -448,16 +434,14 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
 
     private async Task CopyEventLinkToClipboardAsync(string url)
     {
-        try
+        if (await BrowserActionInterop.CopyTextAsync(url))
         {
-            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
             Snackbar.Add("Link copied to clipboard", Severity.Success, options => options.VisibleStateDuration = 2000);
+            return;
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to copy event link to clipboard");
-            Snackbar.Add("Could not copy link", Severity.Error);
-        }
+
+        Logger.LogWarning("Failed to copy event link to clipboard");
+        Snackbar.Add("Could not copy link", Severity.Error);
     }
 
     private async Task HandleDetailImageLoadedAsync()
@@ -600,28 +584,28 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
 
         try
         {
-            var dto = EventListRegistrationWorkflow.BuildSessionRegistrationRequest(
+            var dto = EventListRegistrationWorkflow.BuildRegistrationRequest(
                 eventId,
                 _regCurrentUser.Id,
+                _regAvailableSessions,
                 _regSelectedSessionIds,
+                _selectedEventDetail?.RegistrationPolicyId,
                 _regShareEmail,
                 _regOrganizerName);
 
             var response = await RegistrationService.RegisterForSessionAsync(dto);
-            if (response?.Success == true)
+            var outcome = EventListRegistrationWorkflow.ResolveOutcome(response);
+            if (outcome.IsSuccessful)
             {
-                _regIsWaitlisted = EventListRegistrationWorkflow.IsWaitlistResponse(response.Message);
-                _regIsComplete = true;
+                _regIsWaitlisted = outcome.IsWaitlisted;
+                _regIsAlreadyRegistered = outcome.IsAlreadyRegistered;
+                _regIsComplete = !outcome.IsAlreadyRegistered;
                 _registeredEventIds.Add(eventId);
-                Snackbar.Add(
-                    _regIsWaitlisted
-                        ? "You have been added to the waitlist."
-                        : "Successfully registered!",
-                    _regIsWaitlisted ? Severity.Info : Severity.Success);
+                Snackbar.Add(outcome.SnackbarMessage, outcome.SnackbarSeverity);
                 return;
             }
 
-            Snackbar.Add(GetRegistrationFailureMessage(response), Severity.Warning);
+            Snackbar.Add(outcome.SnackbarMessage, outcome.SnackbarSeverity);
         }
         catch (Exception ex)
         {
@@ -633,13 +617,6 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
             _regIsSubmitting = false;
             await RefreshDetailPreviewAsync();
         }
-    }
-
-    private static string GetRegistrationFailureMessage(BaseCommandResponseOfGuid? response)
-    {
-        return response?.Errors?.FirstOrDefault(error => !string.IsNullOrWhiteSpace(error))
-            ?? response?.Message
-            ?? "Registration failed.";
     }
 
     private async Task SetTagCategoryPopupVisibleAsync(bool value)

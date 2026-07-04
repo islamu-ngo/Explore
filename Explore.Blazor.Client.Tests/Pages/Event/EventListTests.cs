@@ -1031,6 +1031,43 @@ public class EventListTests : IDisposable
     }
 
     [Test]
+    public async Task InlineRegistrationSubmit_WhenApiReturnsAlreadyExists_ShowsAlreadyRegisteredState()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var snackbar = _ctx.Services.GetRequiredService<ISnackbar>();
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        _registrationService.RegisterForSessionAsync(Arg.Any<CreateEventRegistrationDto>())
+            .Returns(Task.FromResult<BaseCommandResponseOfGuid?>(new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Message = "Event Registration already exists."
+            }));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Repeat Registration Event"
+        });
+        SetPrivateField(cut.Instance, "_regCurrentUser", new UserDto
+        {
+            Id = userId,
+            Email = "registrant@example.com",
+            FirstName = "Test",
+            LastName = "Registrant"
+        });
+        SetPrivateField(cut.Instance, "_regSelectedSessionIds", new HashSet<Guid> { sessionId });
+
+        await InvokePrivateTaskAsync(cut, "HandleInlineRegistrationSubmit");
+
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_regIsAlreadyRegistered")).IsTrue();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_regIsComplete")).IsFalse();
+        snackbar.Received().Add("You are already registered for this event.", Severity.Info);
+    }
+
+    [Test]
     public async Task InlineRegistrationSubmit_WhenRegistrationThrows_ShowsGenericErrorOnly()
     {
         var eventId = Guid.NewGuid();

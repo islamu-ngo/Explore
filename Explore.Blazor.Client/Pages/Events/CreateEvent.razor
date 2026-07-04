@@ -65,7 +65,7 @@
 
                         <MudFileUpload T="IBrowserFile"
                                        FilesChanged="OnImageFileSelected"
-                                       Accept=".jpg,.jpeg,.png,.gif,.webp"
+                                       Accept="@ImageUploadClientPolicy.DefaultAcceptedImageFormats"
                                        MaximumFileCount="1"
                                        Class="create-event__upload-trigger">
                             <CustomContent Context="fileUpload">

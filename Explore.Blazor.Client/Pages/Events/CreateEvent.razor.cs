@@ -640,17 +640,16 @@ public partial class CreateEvent : IDisposable
 
         if (file == null) return;
 
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
-        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+        if (!ImageUploadClientPolicy.IsAllowedImageContentType(file.ContentType))
         {
-            _uploadError = "Please select a valid image file (JPG, PNG, GIF, or WebP).";
+            _uploadError = ImageUploadClientPolicy.UnsupportedImageTypeMessage;
             return;
         }
 
-        const long maxSize = 5 * 1024 * 1024;
+        const long maxSize = ImageUploadClientPolicy.DefaultMaxImageFileSizeBytes;
         if (file.Size > maxSize)
         {
-            _uploadError = "File size must be less than 5MB.";
+            _uploadError = ImageUploadClientPolicy.FormatMaxFileSizeMessage(maxSize);
             return;
         }
 
@@ -659,11 +658,14 @@ public partial class CreateEvent : IDisposable
 
         try
         {
-            Logger.LogInformation("[CreateEvent] Reading file {FileName} ({Size} bytes)", file.Name, file.Size);
+            Logger.LogInformation(
+                "[CreateEvent] Reading selected image. SizeBucket={SizeBucket}, ContentTypeBucket={ContentTypeBucket}",
+                ImageUploadClientPolicy.GetSizeBucket(file.Size),
+                ImageUploadClientPolicy.GetContentTypeBucket(file.ContentType));
             var fileData = await ImageStorageService.ReadFileAsync(file, maxSize);
             if (fileData == null)
             {
-                _uploadError = "Failed to read the selected file. Please try again.";
+                _uploadError = ImageUploadClientPolicy.ReadFailureMessage;
                 return;
             }
 
@@ -683,15 +685,18 @@ public partial class CreateEvent : IDisposable
             }
             else
             {
-                _uploadError = uploadResult?.ErrorMessage ?? "Failed to upload image.";
+                _uploadError = ImageUploadClientPolicy.ToUserSafeUploadError(uploadResult?.ErrorMessage);
                 imagePreviewUrl = null;
                 _uploadedImageStorageObjectId = null;
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Image upload error for {FileName}", file.Name);
-            _uploadError = $"Upload error: {ex.Message}";
+            Logger.LogWarning(
+                "[CreateEvent] Image upload failed. FailureType={FailureType}, SizeBucket={SizeBucket}",
+                ImageUploadClientPolicy.GetFailureType(ex),
+                ImageUploadClientPolicy.GetSizeBucket(file.Size));
+            _uploadError = ImageUploadClientPolicy.GenericUploadFailureMessage;
             imagePreviewUrl = null;
             _uploadedImageStorageObjectId = null;
         }

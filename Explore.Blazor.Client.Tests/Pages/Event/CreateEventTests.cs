@@ -7,6 +7,7 @@ using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Services;
+using Microsoft.AspNetCore.Components.Forms;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
@@ -440,6 +441,26 @@ public class CreateEventTests : IDisposable
         await Assert.That(dto.EventTypeId).IsEqualTo(2);
         await Assert.That(templates.Count).IsEqualTo(1);
         await Assert.That(templates[0].Id).IsEqualTo(fastTemplate.Id);
+    }
+
+    [Test]
+    public async Task CreateEvent_WhenImageReadThrows_ShowsGenericUploadError()
+    {
+        var rawError = "provider secret body https://upload.example.com/object?signature=abc";
+        var file = Substitute.For<IBrowserFile>();
+        file.Name.Returns(@"..\..\secret<script>.png");
+        file.Size.Returns(1024L);
+        file.ContentType.Returns("image/png");
+        _imageStorageService.ReadFileAsync(file, Arg.Any<long>())
+            .ThrowsAsync(new InvalidOperationException(rawError));
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+
+        await InvokePrivateAsync(cut.Instance, "OnImageFileSelected", file);
+
+        var uploadError = GetPrivateField<string?>(cut.Instance, "_uploadError");
+        await Assert.That(uploadError).IsEqualTo(ImageUploadClientPolicy.GenericUploadFailureMessage);
+        await Assert.That(uploadError).DoesNotContain(rawError);
     }
 
     [Test]

@@ -6,13 +6,12 @@ using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
-using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Pages.Landing;
 
 public partial class LandingPageForNonUsers
 {
-    [Inject] protected IJSRuntime JS { get; set; } = null!;
+    [Inject] protected IBrowserActionInterop BrowserActionInterop { get; set; } = null!;
     [Inject] protected ILandingPageService LandingPageService { get; set; } = null!;
     [Inject] protected ILogger<LandingPageForNonUsers> Logger { get; set; } = null!;
 
@@ -91,7 +90,7 @@ public partial class LandingPageForNonUsers
     }
 
     private async Task ScrollToRegister()
-        => await JS.InvokeVoidAsync("eval", "document.getElementById('register').scrollIntoView({behavior:'smooth',block:'start'});");
+        => await BrowserActionInterop.ScrollToElementByIdAsync("register");
 
     private bool TryRestoreState()
     {

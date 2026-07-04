@@ -427,8 +427,7 @@ public sealed class EventDetailTests : IDisposable
             new EventRegistrationListDto
             {
                 Id = registrationId,
-                EventId = eventId,
-                UserId = userId
+                EventId = eventId
             }
         ]);
 
