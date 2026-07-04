@@ -25,7 +25,7 @@ Security-sensitive production errors must avoid leaking implementation detail.
 | Code | HTTP Status | Meaning | Typical Sources | Required Tests |
 |---|---:|---|---|---|
 | `validation_failed` | 400 | Request failed validation. | FluentValidation/manual validators, model binding, command validation. | Invalid request returns code and validation details when safe. |
-| `tenant_required` | 400/401/403 | Tenant context required but absent or invalid. | Tenant middleware, query-filter guard, tenant-scoped handlers. | Missing tenant produces expected status/code and no data leak. |
+| `tenant_required` | 400/401/403/404 | Tenant context required but absent or invalid. | Tenant middleware, query-filter guard, tenant-scoped handlers. | Missing tenant produces expected status/code and no data leak. |
 | `authentication_required` | 401 | User identity/token/API key is missing or invalid. | Auth middleware, required user extraction, API key auth. | Missing identity returns 401/code. |
 | `forbidden` | 403 | Authenticated principal lacks permission. | Policy auth, resource auth, Cerbos/local provider deny. | Authenticated unauthorized user returns 403/code. |
 | `resource_not_found` | 404 | Resource does not exist or is intentionally hidden. | Query handlers, command preconditions. | Missing resource returns 404/code. |
@@ -86,10 +86,10 @@ Security-sensitive production errors must avoid leaking implementation detail.
 
 ```json
 {
-  "type": "https://httpstatuses.com/400",
-  "title": "Tenant context required",
-  "status": 400,
-  "detail": "This endpoint requires a resolved tenant context.",
+  "type": "https://httpstatuses.com/404",
+  "title": "Tenant not resolved",
+  "status": 404,
+  "detail": "The tenant could not be resolved for this request.",
   "instance": "/api/event/my",
   "code": "tenant_required",
   "traceId": "0HN...",

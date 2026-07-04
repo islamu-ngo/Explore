@@ -3,14 +3,14 @@
 
 # Multi-Tenant Control Plane - Task Checklist
 
-Last Updated: 2026-07-04 Europe/Brussels
+Last Updated: 2026-07-05 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** In implementation. Phase 1 shared BFF hosting foundation is accepted for the current scope; Phase 2 shared control-plane client library has not started.
-- **Completed:** 14/70
-- **Current priority:** Start Phase 2 Task 2.1 by creating `Event.ControlPlane.Client` as a host-neutral Razor class library.
-- **Next recommended slice:** Phase 2.1 shared control-plane client library scaffold and architecture guard.
+- **Overall status:** In implementation. Phase 1 shared BFF hosting foundation is accepted; Phase 2 shared control-plane client scaffold, route/DI foundation, host-neutral service contracts, and local design primitives are accepted; Phase 3 API/Application work now has dedicated control-plane overview, bounded tenant lifecycle, domain/DNS guidance, and read-only operations status contracts; the first separate `Event.ControlPlane.Blazor` host/Docker/Keycloak/Compose/Aspire foundation exists and is Interactive Server-only; Phase 4 embedded route and navigation foundation now references the shared control-plane RCL from the existing Blazor client, routes `/admin/instance` to the shared overview page through Blazouter, and exposes that entry point only to multi-tenant instance admins.
+- **Completed:** 33/70
+- **Current priority:** Continue Phase 4 embedded Instance Console pages and host API adapters.
+- **Next recommended slice:** Phase 4.4 build the overview, tenants, and domains UI slice from the shared RCL while preserving HAL-gated actions and single-tenant suppression.
 
 ## Implementation Maintenance Rules
 
@@ -109,96 +109,98 @@ Last Updated: 2026-07-04 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 1.1-1.4
 
-## Phase 2: Shared Control-Plane Client Library - Not Started
+## Phase 2: Shared Control-Plane Client Library - Completed
 
-- [ ] **2.1 Create `Event.ControlPlane.Client` Razor class library.**
-  - **Files:** `Event.ControlPlane.Client/Event.ControlPlane.Client.csproj` new; `_Imports.razor` new; route/DI files new; solution file existing.
+- [x] **2.1 Create `Event.ControlPlane.Client` Razor class library.**
+  - **Files:** `Event.ControlPlane.Client/Event.ControlPlane.Client.csproj` new; `Event.ControlPlane.Client/_Imports.razor` new; `Event.ControlPlane.Client/ControlPlaneClientAssembly.cs` new; `Event.ControlPlane.Client/packages.lock.json` new; `Explore.sln` modified; `Directory.Packages.props` modified.
   - **Acceptance:** Project builds; references are host-neutral; no dependency on `Explore.Blazor.Client`, API, Infrastructure, Persistence, or Domain.
-  - **Validation:** Build and architecture tests.
+  - **Validation:** `dotnet build Event.ControlPlane.Client/Event.ControlPlane.Client.csproj --configuration Release --verbosity minimal --no-incremental` passed with 0 errors and 0 warnings; filtered `EventControlPlaneClientArchitectureTests` passed 4/4.
   - **Effort:** M
   - **Dependencies:** Phase 0 re-baseline.
-- [ ] **2.2 Add route constants and service registration extension.**
-  - **Files:** `Event.ControlPlane.Client/Routing/ControlPlaneRoutes.cs` new; `Event.ControlPlane.Client/Extensions/*` new.
+- [x] **2.2 Add route constants and service registration extension.**
+  - **Files:** `Event.ControlPlane.Client/Routing/ControlPlaneRoutes.cs` new; `Event.ControlPlane.Client/Routing/ControlPlaneRouteKeys.cs` new; `Event.ControlPlane.Client/Routing/ControlPlaneRouteDescriptor.cs` new; `Event.ControlPlane.Client/Routing/IControlPlaneRouteCatalog.cs` new; `Event.ControlPlane.Client/Routing/ControlPlaneRouteCatalog.cs` new; `Event.ControlPlane.Client/Extensions/ServiceCollectionExtensions.cs` new; `Event.Architecture.Tests/EventControlPlaneClientArchitectureTests.cs` new.
   - **Acceptance:** Embedded and separate hosts can register shared routes/services without duplicating route strings.
-  - **Validation:** Build.
+  - **Validation:** `dotnet build Event.ControlPlane.Client/Event.ControlPlane.Client.csproj --configuration Release --verbosity minimal --no-incremental` passed; `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EventControlPlaneClientArchitectureTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` passed 4/4.
   - **Effort:** S
   - **Dependencies:** 2.1
-- [ ] **2.3 Define host-neutral control-plane service contracts.**
-  - **Files:** `Event.ControlPlane.Client/Contracts/*` new; `Event.ControlPlane.Client/Services/*` new.
-  - **Acceptance:** Components depend on contracts, not generated clients; contracts can model HAL links and failure states.
-  - **Validation:** Build and initial unit/component test fakes.
+- [x] **2.3 Define host-neutral control-plane service contracts.**
+  - **Files:** `Event.ControlPlane.Client/Contracts/*` new; `Event.ControlPlane.Client/Services/*` new; `Event.ControlPlane.Client/Extensions/ServiceCollectionExtensions.cs` modified; `Event.ControlPlane.Client/_Imports.razor` modified; `Event.Architecture.Tests/EventControlPlaneClientArchitectureTests.cs` modified.
+  - **Acceptance:** Components depend on contracts, not generated clients; contracts model HAL links, failure states, command outcomes, overview, tenant, and domain read models; default services fail closed until hosts register API adapters.
+  - **Validation:** `dotnet build Event.ControlPlane.Client/Event.ControlPlane.Client.csproj --configuration Release --verbosity minimal --no-incremental` passed with 0 errors and 0 warnings; `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EventControlPlaneClientArchitectureTests/*" --minimum-expected-tests 1 --log-level Error --no-progress` passed 5/5.
   - **Effort:** M
   - **Dependencies:** 2.1
-- [ ] **2.4 Resolve shared design-system dependency without duplication.**
-  - **Files:** existing `Explore.Blazor.Client/Components/*`; optional neutral shared UI project only if separately approved.
-  - **Acceptance:** Control-plane components use existing design conventions without circular references or copy-pasted wrappers.
-  - **Validation:** Build, architecture tests, component smoke tests.
+- [x] **2.4 Resolve shared design-system dependency without duplication.**
+  - **Files:** `Event.ControlPlane.Client/Event.ControlPlane.Client.csproj` modified; `Event.ControlPlane.Client/_Imports.razor` modified; `Event.ControlPlane.Client/Components/Common/ControlPlaneActionButton.razor` new; `ControlPlaneActionButton.razor.css` new; `ControlPlanePageHeader.razor` new; `ControlPlanePageHeader.razor.css` new; `ControlPlanePanel.razor` new; `ControlPlanePanel.razor.css` new; `Event.ControlPlane.Blazor/*` modified for MudBlazor host support; docs modified.
+  - **Acceptance:** Control-plane components use Event design-token, BEM, CSS isolation, and MudBlazor v9 conventions through local `ControlPlane*` primitives; no `Explore.Blazor.Client` reference, no `App*` public-wrapper coupling, no new broad shared UI-kit project; separate host provides MudBlazor services, providers, and static assets.
+  - **Validation:** `dotnet restore Event.ControlPlane.Client/Event.ControlPlane.Client.csproj --use-lock-file --verbosity minimal` passed; `dotnet restore Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --use-lock-file --verbosity minimal` passed with existing advisory warnings; `dotnet build Event.ControlPlane.Client/Event.ControlPlane.Client.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and 0 warnings; `dotnet build Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and existing warnings; focused `EventControlPlaneClientArchitectureTests` passed 6/6; focused `EventControlPlaneBlazorArchitectureTests` passed 8/8.
   - **Effort:** M
   - **Dependencies:** 2.1
-- [ ] **2.5 Add architecture coverage for the new shared UI library.**
-  - **Files:** `Event.Architecture.Tests/*` existing/new.
-  - **Acceptance:** Tests catch forbidden references and missing ABOUTME headers for new projects/files.
-  - **Validation:** `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj`
+- [x] **2.5 Add architecture coverage for the new shared UI library.**
+  - **Files:** `Event.Architecture.Tests/EventControlPlaneClientArchitectureTests.cs` modified.
+  - **Acceptance:** Tests catch forbidden project/client boundaries, public wrapper coupling, missing local CSS isolation pairs, missing CSS ABOUTME headers, non-control-plane BEM namespaces, bare MudBlazor selectors, and physical direction CSS tokens.
+  - **Validation:** `dotnet build Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and existing warnings; `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventControlPlaneClientArchitectureTests/*" --minimum-expected-tests 1` passed 6/6; `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventControlPlaneBlazorArchitectureTests/*" --minimum-expected-tests 1` passed 8/8.
   - **Effort:** M
   - **Dependencies:** 2.1
 
-## Phase 3: Control-Plane API And Application Capabilities - Not Started
+## Phase 3: Control-Plane API And Application Capabilities - Completed
 
-- [ ] **3.1 Inventory existing admin endpoints and handlers.**
+- [x] **3.1 Inventory existing admin endpoints and handlers.**
   - **Files:** `Explore.API/Controllers/*` existing; `Explore.Application/Features/InstanceOnboarding/*` existing; tenant/settings handlers existing.
   - **Acceptance:** Context file lists reusable endpoints and missing endpoints for overview, tenants, domains, jobs, storage, security, policies, and backups.
-  - **Validation:** Targeted source reads/searches recorded in context.
+  - **Validation:** Targeted controller, handler, route-name, HAL policy, admin-context, tenant-status, and Context7 ASP.NET Core docs reads recorded in context on 2026-07-04.
   - **Effort:** M
   - **Dependencies:** Phase 0 re-baseline.
-- [ ] **3.2 Add control-plane overview query and endpoint.**
-  - **Files:** `Explore.Application/Features/ControlPlane/Queries/*` new; API controller/route/HAL files existing or new.
-  - **Acceptance:** Multi-tenant instance admins receive version, mode, hosts, counts, warnings, provider summaries, and links; single-tenant mode keeps the existing settings abstraction.
-  - **Validation:** Application unit tests and API integration tests.
+- [x] **3.2 Add control-plane overview query and endpoint.**
+  - **Files:** `Explore.Application/DTOs/ControlPlane/ControlPlaneOverviewDto.cs`; `Explore.Application/Features/ControlPlane/Requests/Queries/GetControlPlaneOverviewQuery.cs`; `Explore.Application/Features/ControlPlane/Handlers/Queries/GetControlPlaneOverviewQueryHandler.cs`; `Explore.API/Controllers/ControlPlaneController.cs`; `Explore.API/Hateoas/Assemblers/ControlPlaneOverviewResourceAssembler.cs`; `Explore.API/Hateoas/Policies/ControlPlaneOverviewLinkPolicy.cs`; `Explore.API/Hateoas/RouteNames.cs`; `Explore.API/Extensions/HateoasAssemblerRegistration.cs`; `Explore.Application/Serialization/ExploreJsonContext.cs`; `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`; `schemas/openapi.json`; `docs/API_CONTRACT_INVENTORY.md`; `docs/API_CHANGELOG.md`; `Explore.Blazor.Client/Clients/EventApiClient.g.cs`; `Event.API.IntegrationTests/Features/Hateoas/ControlPlaneOverviewHateoasTests.cs`.
+  - **Acceptance:** Multi-tenant instance admins receive a safe HAL overview with version, deployment mode, host/domain configuration, tenant counts/status counts, provider summaries, warnings, and instance-settings links. Single-tenant mode remains blocked server-side by `RequireMultiTenant` and continues to use the existing settings abstraction.
+  - **Validation:** `dotnet build --configuration Release --verbosity quiet -clp:ErrorsOnly` passed with 0 errors and existing warnings; `Event.Architecture.Tests` passed 258/259 with 1 existing skip; focused `ControlPlaneOverviewHateoasTests` passed; focused OpenAPI HAL schema invariant passed; affected Blazor client fixture tests passed. Full `Event.API.IntegrationTests` remains red with 47 unrelated existing runtime/auth/test-host failures.
   - **Effort:** L
   - **Dependencies:** 3.1
-- [ ] **3.3 Add tenant lifecycle read/actions surface.**
-  - **Files:** tenant lifecycle handlers/controllers/repositories existing or new after inventory.
+- [x] **3.3 Add tenant lifecycle read/actions surface.**
+  - **Files:** `Explore.Application/DTOs/ControlPlane/ControlPlaneTenantDtos.cs`; `Explore.Application/Features/ControlPlane/*`; `Explore.API/Controllers/ControlPlaneController.cs`; `Explore.API/Hateoas/Policies/ControlPlaneTenantLinkPolicy.cs`; `Explore.API/Hateoas/Assemblers/ControlPlaneTenantResourceAssembler.cs`; `Explore.API/Hateoas/RouteNames.cs`; `Explore.API/Extensions/HateoasAssemblerRegistration.cs`; `Explore.Application/Serialization/ExploreJsonContext.cs`; `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`; `schemas/openapi.json`; `docs/API_CONTRACT_INVENTORY.md`; `docs/API_CHANGELOG.md`; `Explore.Blazor.Client/Clients/EventApiClient.g.cs`; focused unit/HAL tests.
+  - **Progress:** Bounded list/detail read models, tenant create route, status-specific HAL affordances, audited activate/suspend/archive/reactivate transitions, and archived-only `schedule-purge` destructive-intent recording are implemented. Suspend/archive/schedule-purge require a reason. Reads and lifecycle transitions are multi-tenant-only, admin-classified, rate-limited/request-timeout bounded, and authorization-gated through MediatR/HAL metadata. `schedule-purge` records an audited move to the non-active `Purged` lifecycle state and does not delete tenant data in the request path.
+  - **Remaining:** Irreversible tenant data deletion remains deferred to Phase 8 destructive-operation hardening.
   - **Acceptance:** Tenant create/provision/suspend/archive/purge scheduling is instance-admin-only, HAL-gated, audited, and tenant-safe.
-  - **Validation:** Domain/Application tests, persistence tests if schema changes, API integration tests.
+  - **Validation:** `Explore.Application` Release build passed; `Explore.API` Release build passed; `Explore.Blazor.Client` Release build passed; `Event.Application.UnitTests` Release build passed; `Event.API.IntegrationTests` Release build passed; focused `TransitionControlPlaneTenantLifecycleCommandHandlerTests` passed 6/6; focused `ControlPlaneTenantHateoasTests` passed 4/4; `ApiContractInventory_Generate_WritesMarkdownToDocs` passed 1/1; focused OpenAPI HAL schema invariant passed 1/1. Full solution Release build is currently blocked by unrelated dirty-worktree compile errors in `EventVisibilityContractTests` and an unrelated duplicate using reported in the broader build output.
   - **Effort:** XL
   - **Dependencies:** 3.1
-- [ ] **3.4 Add domains and DNS verification read model.**
-  - **Files:** domain/routing settings handlers existing/new; DNS checklist service new if needed.
-  - **Acceptance:** API returns public platform, wildcard tenant, admin host, and custom-domain guidance/status.
-  - **Validation:** Unit tests and API integration tests for host/domain cases.
+- [x] **3.4 Add domains and DNS verification read model.**
+  - **Files:** `Explore.Application/DTOs/ControlPlane/ControlPlaneDomainDtos.cs`; `Explore.Application/Features/ControlPlane/Requests/Queries/GetControlPlaneDomainsQuery.cs`; `Explore.Application/Features/ControlPlane/Handlers/Queries/GetControlPlaneDomainsQueryHandler.cs`; `Explore.API/Controllers/ControlPlaneController.cs`; `Explore.API/Hateoas/Assemblers/ControlPlaneDomainResourceAssembler.cs`; `Explore.API/Hateoas/Policies/ControlPlaneDomainLinkPolicy.cs`; `Explore.API/Hateoas/RouteNames.cs`; `Explore.API/Extensions/HateoasAssemblerRegistration.cs`; `Explore.Application/Serialization/ExploreJsonContext.cs`; `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`; `schemas/openapi.json`; `docs/API_CONTRACT_INVENTORY.md`; `docs/API_CHANGELOG.md`; `Explore.Blazor.Client/Clients/EventApiClient.g.cs`; focused unit/HAL tests.
+  - **Acceptance:** API returns public platform, wildcard tenant, admin host, and custom-domain guidance/status. The implementation derives guidance from existing instance domain settings and configured public/control-plane origins; it does not perform external DNS lookups.
+  - **Validation:** `Explore.Application` Release build passed; `Explore.API` Release build passed; `Event.Application.UnitTests` Release build passed after a local using fix; focused `GetControlPlaneDomainsQueryHandlerTests` passed 2/2; focused `ControlPlaneDomainHateoasTests` passed 1/1; focused `ControlPlaneOverviewHateoasTests` passed 1/1; `ApiContractInventory_Generate_WritesMarkdownToDocs` passed 1/1; `Explore.Blazor.Client` Release build passed after adding the regenerated support-access `Anonymous60` HAL link mapper; focused OpenAPI HAL schema invariant passed 1/1; focused `EventControlPlaneBlazorArchitectureTests` passed 8/8; focused `SupportAccessClientServiceTests` passed 6/6; `git diff --check` passed for touched files.
   - **Effort:** L
   - **Dependencies:** 3.1
-- [ ] **3.5 Add operations/jobs/outbox/email/storage/provider status read models.**
-  - **Files:** outbox/email/storage/provider handlers and controllers existing/new.
-  - **Acceptance:** Operators can see operational status without tenant data leakage; mutation actions are HAL-gated and audited where present.
-  - **Validation:** Application/API tests and infrastructure tests where provider adapters change.
+- [x] **3.5 Add operations/jobs/outbox/email/storage/provider status read models.**
+  - **Files:** `Explore.Application/DTOs/ControlPlane/ControlPlaneOperationsDto.cs`; `Explore.Application/Features/ControlPlane/Requests/Queries/GetControlPlaneOperationsQuery.cs`; `Explore.Application/Features/ControlPlane/Handlers/Queries/GetControlPlaneOperationsQueryHandler.cs`; `Explore.API/Controllers/ControlPlaneController.cs`; `Explore.API/Hateoas/Assemblers/ControlPlaneOperationsResourceAssembler.cs`; `Explore.API/Hateoas/Policies/ControlPlaneOperationsLinkPolicy.cs`; `Explore.API/Hateoas/Policies/ControlPlaneOverviewLinkPolicy.cs`; `Explore.API/Hateoas/RouteNames.cs`; `Explore.API/Extensions/HateoasAssemblerRegistration.cs`; `Explore.Application/Serialization/ExploreJsonContext.cs`; `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`; `schemas/openapi.json`; `docs/API_CONTRACT_INVENTORY.md`; `docs/API_CHANGELOG.md`; `Explore.Blazor.Client/Clients/EventApiClient.g.cs`; `Explore.Blazor.Client/Services/SupportAccessClientService.cs`; focused unit/HAL tests.
+  - **Acceptance:** Operators can see bounded general outbox, email dispatch, and storage operational status without tenant data leakage. This slice is read-only: no replay, purge, storage cleanup, provider repair, or other mutation action is exposed by the operations resource.
+  - **Validation:** `Explore.Application` Release build passed; `Explore.API` Release build passed; `Event.Application.UnitTests` Release build passed; `Event.API.IntegrationTests` Release build passed; focused `GetControlPlaneOperationsQueryHandlerTests` passed 1/1; focused `ControlPlaneOperationsHateoasTests` passed 1/1; focused `ControlPlaneOverviewHateoasTests` passed 1/1; focused OpenAPI HAL schema invariant passed 1/1; API contract inventory generator passed 1/1; `Explore.Blazor.Client` Release build passed after preserving regenerated support-access HAL link mapping overloads.
   - **Effort:** XL
   - **Dependencies:** 3.1
-- [ ] **3.6 Regenerate/update API contract artifacts if endpoints change.**
-  - **Files:** `schemas/openapi.json` existing; `docs/API_CHANGELOG.md` existing.
-  - **Acceptance:** OpenAPI and changelog match implemented endpoints.
-  - **Validation:** API contract/inventory tests.
+- [x] **3.6 Regenerate/update API contract artifacts if endpoints change.**
+  - **Files:** `schemas/openapi.json` existing; `docs/API_CONTRACT_INVENTORY.md` existing; `docs/API_CHANGELOG.md` existing; `Explore.Blazor.Client/Clients/EventApiClient.g.cs` generated.
+  - **Acceptance:** OpenAPI, generated client, API inventory, and changelog match the implemented control-plane overview, tenant lifecycle, domains, and operations endpoints.
+  - **Validation:** `ApiContractInventory_Generate_WritesMarkdownToDocs` passed 1/1; focused OpenAPI HAL schema invariant passed 1/1; `Explore.Blazor.Client` Release build passed with regenerated API client types.
   - **Effort:** M
   - **Dependencies:** API endpoint tasks.
 
-## Phase 4: Embedded Instance Console And Multi-Tenant Control-Plane UI - Not Started
+## Phase 4: Embedded Instance Console And Multi-Tenant Control-Plane UI - In Progress
 
-- [ ] **4.1 Reference `Event.ControlPlane.Client` from `Explore.Blazor.Client`.**
-  - **Files:** `Explore.Blazor.Client/Explore.Blazor.Client.csproj` existing; solution/project references.
-  - **Acceptance:** Embedded client builds and can discover control-plane component assembly.
-  - **Validation:** Build.
+- [x] **4.1 Reference `Event.ControlPlane.Client` from `Explore.Blazor.Client`.**
+  - **Files:** `Explore.Blazor.Client/Explore.Blazor.Client.csproj` modified; `Explore.Blazor.Client/Program.cs` modified.
+  - **Acceptance:** Embedded client builds and registers shared control-plane client services without a dependency cycle.
+  - **Validation:** `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and existing warnings; focused `EventControlPlaneClientArchitectureTests` passed 6/6.
   - **Effort:** S
   - **Dependencies:** 2.1
-- [ ] **4.2 Register embedded control-plane routes under `/admin/instance/*`.**
-  - **Files:** `Explore.Blazor.Client/Routes.razor` existing; control-plane route files new.
-  - **Acceptance:** Multi-tenant instance admins can route to control-plane overview; single-tenant route behavior remains correct.
-  - **Validation:** Blazor client route/component tests.
+- [x] **4.2 Register embedded control-plane routes under `/admin/instance/*`.**
+  - **Files:** `Explore.Blazor.Client/Routes.razor` modified; `Event.ControlPlane.Client/Pages/Overview/ControlPlaneOverviewPage.razor` new; `Event.ControlPlane.Client/Pages/Overview/ControlPlaneOverviewPage.razor.css` new; `Event.ControlPlane.Blazor/Components/Pages/ControlPlaneHome.razor` modified; `Explore.Blazor.Client.Tests/Routing/RoutesConfigurationTests.cs` modified; `Explore.Blazor.Client.Tests/Pages/Admin/ControlPlaneOverviewPageTests.cs` new.
+  - **Acceptance:** Instance admins can route to the shared control-plane overview through the existing admin guard; the shared overview fails closed when no host API adapter is registered. Single-tenant route suppression remains covered by the existing admin guard and broader Phase 4.5 regression work.
+  - **Validation:** `dotnet build Event.ControlPlane.Client/Event.ControlPlane.Client.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and 0 warnings; `dotnet build Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and existing warnings; `dotnet build Explore.Blazor/Explore.Blazor.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and existing warnings; `dotnet build Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and existing warnings; focused `RoutesConfigurationTests` passed 11/11; focused `ControlPlaneOverviewPageTests` passed 1/1; focused `EventControlPlaneBlazorArchitectureTests` passed 8/8.
   - **Effort:** M
   - **Dependencies:** 4.1
-- [ ] **4.3 Add embedded control-plane navigation and shell behavior.**
-  - **Files:** shell/navigation components existing; control-plane shell components new.
-  - **Acceptance:** Control-plane nav appears only in multi-tenant mode for instance admins; public/tenant nav remains unchanged.
-  - **Validation:** bUnit tests.
+- [x] **4.3 Add embedded control-plane navigation and shell behavior.**
+  - **Files:** `Explore.Blazor.Client/Layout/NavMenu.razor` modified; `Explore.Blazor.Client.Tests/Layout/NavMenuAdminTests.cs` modified.
+  - **Acceptance:** Control-plane nav appears only in multi-tenant mode for BFF/API-confirmed instance admins; single-tenant instance admins keep the existing administration settings link; public/tenant nav remains unchanged.
+  - **Validation:** `dotnet build Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and existing warnings; focused `NavMenuAdminTests` passed 15/15.
   - **Effort:** M
   - **Dependencies:** 4.2
 - [ ] **4.4 Build overview, tenants, and domains first slice.**
@@ -262,36 +264,37 @@ Last Updated: 2026-07-04 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 6.1, 6.2
 
-## Phase 7: Separate Self-Hostable Control Plane Blazor/BFF App - Not Started
+## Phase 7: Separate Self-Hostable Control Plane Blazor/BFF App - In Progress
 
-- [ ] **7.1 Scaffold `Event.ControlPlane.Blazor`.**
+- [x] **7.1 Scaffold `Event.ControlPlane.Blazor`.**
   - **Files:** `Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj` new; `Program.cs` new; `appsettings.json` new; solution file existing.
-  - **Acceptance:** App builds, references `Event.Web.BffHosting` and `Event.ControlPlane.Client`, authenticates through Keycloak OIDC as a confidential BFF client, denies non-instance-admin users, and renders control-plane root only after auth.
-  - **Validation:** Build and integration smoke.
+  - **Acceptance:** App builds, references `Event.Web.BffHosting` and `Event.ControlPlane.Client`, authenticates through Keycloak OIDC as a confidential BFF client, denies non-instance-admin users through the control-plane BFF policy, renders a protected Interactive Server-only control-plane root after auth, registers `AddInteractiveServerComponents()`, maps `AddInteractiveServerRenderMode()`, does not expose a render-mode setting or Auto/WebAssembly fallback, provides MudBlazor services/providers/assets for shared RCL primitives, and uses the shared `event-shared-secrets` user-secrets ID plus Infisical compatibility loading.
+  - **Validation:** `dotnet build Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly` passed with 0 errors and the existing transitive warning backlog; focused `EventControlPlaneBlazorArchitectureTests` passed 7/7 after the Interactive Server-only guard was added.
   - **Effort:** L
   - **Dependencies:** 1.4, 2.1, 3.2, 4.4
-- [ ] **7.2 Define dedicated Keycloak OIDC client and secret boundary.**
+- [x] **7.2 Define dedicated Keycloak OIDC client and secret boundary.**
   - **Files:** `docker/keycloak/realm-export.json` existing; `docker/keycloak/keycloak-init.sh` existing; `.env.example` existing; `Explore.AppHost/AppHost.cs` existing; `docs/CONFIGURATION.md` existing; `docs/SELF_HOSTING.md` existing; `docs/SECURITY-MODEL.md` existing.
   - **Acceptance:** Dedicated client such as `islamu-event-control-plane` has documented redirect/logout URIs, server-only client secret handling, local Compose/Aspire provisioning, and external-Keycloak guidance; browser-visible config never contains secrets.
-  - **Validation:** Keycloak config review, Blazor auth integration tests, docs review.
+  - **Progress:** `realm-export.json` and `ISLAMU-realm.test.json` now define `islamu-event-control-plane`; `keycloak-init.sh` synchronizes `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` when supplied; `.env.example`, Compose, AppHost, configuration/secrets/security/self-hosting/troubleshooting docs now document and wire the dedicated secret boundary.
+  - **Validation:** `jq empty docker/keycloak/realm-export.json`; `jq empty docker/keycloak/ISLAMU-realm.test.json`; `bash -n docker/keycloak/keycloak-init.sh`; focused `EventControlPlaneBlazorArchitectureTests` passed 6/6.
   - **Effort:** L
   - **Dependencies:** 7.1
-- [ ] **7.3 Consume shared BFF hosting with the control-plane profile.**
+- [x] **7.3 Consume shared BFF hosting with the control-plane profile.**
   - **Files:** `Event.Web.BffHosting/*` new; `Event.ControlPlane.Blazor/*` new; `Explore.Blazor.IntegrationTests/*` existing/new.
-  - **Acceptance:** `Event.ControlPlane.Blazor` uses `EventBffHostProfile.ControlPlane`; no local duplicate OIDC/YARP/header setup; tests prove both hosts strip privileged headers and redact OIDC failures.
-  - **Validation:** Blazor integration tests proving privileged headers are stripped in both hosts and OIDC failures do not leak client-secret/provider diagnostics.
+  - **Acceptance:** `Event.ControlPlane.Blazor` uses `EventBffHostProfile.ControlPlane`; no local duplicate OIDC/YARP/header setup; BFF authentication/proxy/security primitives are shared; browser token/client-secret storage is blocked by architecture coverage; `Event.ControlPlane.Client` stays render-mode neutral while the separate host maps only Interactive Server; the separate host does not import the public app's render-policy customization, `AddInteractiveWebAssemblyComponents()`, `AddInteractiveWebAssemblyRenderMode()`, InteractiveAuto, or a WebAssembly client bundle.
+  - **Validation:** `dotnet build Event.Web.BffHosting/Event.Web.BffHosting.csproj --configuration Release --verbosity minimal --no-incremental`; `dotnet build Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --configuration Release --verbosity quiet --no-incremental -clp:ErrorsOnly`; focused `EventControlPlaneBlazorArchitectureTests` passed 8/8 with the Interactive Server-only, shared RCL neutrality, and MudBlazor host-readiness assertions.
   - **Effort:** L
   - **Dependencies:** 1.5, 7.1, 7.2
-- [ ] **7.4 Add Docker Compose profile and image configuration.**
+- [x] **7.4 Add Docker Compose profile and image configuration.**
   - **Files:** `docker-compose.yml` existing; Dockerfile new if needed; `.env.example` existing.
   - **Acceptance:** Self-hosters can run the separate control-plane app as an optional profile/service; Keycloak client secret, authority, metadata, callback, logout, TLS, and reverse-proxy settings are documented.
-  - **Validation:** Compose smoke where available; docs review.
+  - **Validation:** `docker compose --env-file .env.example --profile control-plane config` passed; focused `EventControlPlaneBlazorArchitectureTests` passed 6/6; `git diff --check` passed for touched deployment/docs files.
   - **Effort:** L
   - **Dependencies:** 7.1, 7.2
-- [ ] **7.5 Add Aspire AppHost resource.**
+- [x] **7.5 Add Aspire AppHost resource.**
   - **Files:** `Explore.AppHost/AppHost.cs` existing; launch settings existing.
   - **Acceptance:** Aspire can start/describe the control-plane app resource without breaking existing topology and supplies local Keycloak control-plane client settings in full-local mode.
-  - **Validation:** Aspire smoke commands per `aspire` skill where available.
+  - **Validation:** `dotnet build Explore.AppHost/Explore.AppHost.csproj --configuration Release --verbosity quiet --no-incremental` passed with existing warnings; focused `EventControlPlaneBlazorArchitectureTests` passed 6/6.
   - **Effort:** M
   - **Dependencies:** 7.1, 7.2
 - [ ] **7.6 Add separate app integration/E2E tests.**

@@ -7,7 +7,7 @@ Last Updated: 2026-07-04 Europe/Brussels
 
 ## Current Status
 
-The MVP launch docs have been rebaselined from an old May 2026 work-package backlog into a launch-closure program. Implementation has started with the Phase 2 email-dispatch compliance slice, and Phase 3 registration-integrity source/test/docs work is now complete. Phase 1 runtime proof is currently blocked by real full-local Aspire lifecycle failures observed on 2026-07-04.
+The MVP launch docs have been rebaselined from an old May 2026 work-package backlog into a launch-closure program. Phase 2 email-dispatch compliance and reliability controls have source/test/docs/runtime closure for the registration-confirmation path, Phase 3 registration-integrity source/test/docs work is complete, and the Phase 1 core FullLocal runtime proof is now green for startup, health, SMTP outage readiness, public endpoint smoke, focused BFF Data Protection cookie restart continuity, Data Protection key-store failure visibility, and email-dispatch backlog/dead-letter degraded-health behavior.
 
 This is the important shift:
 
@@ -15,9 +15,9 @@ This is the important shift:
 - The old docs understated completed work and over-prescribed obsolete implementations.
 - The next implementation should verify, harden, and polish existing flows before adding new surface area.
 - Registration email must use the existing `EmailDispatchOutbox` pipeline, not a new generic outbox handler path.
-- Dispatch-time preference enforcement and unsubscribe affordances now live in the existing `EmailDispatchDrainService`; runtime proof through the real Mailpit path still remains.
+- Dispatch-time preference enforcement and unsubscribe affordances now live in the existing `EmailDispatchDrainService`; runtime Mailpit proof is green for registration-confirmation delivery, headers, text/HTML body, and unsubscribe side effects.
 - Registration client/UI handling now keeps the generated `BaseCommandResponseOfGuid` contract stable, maps generated-client failures safely, shares one outcome classifier across modal/list/preview registration flows, and gates event-detail registration affordances from HAL.
-- The next runtime action is not generic smoke testing. First eliminate the Aspire CLI/AppHost lifecycle variable: the installed CLI is `13.3.0-preview.1.26221.24`, while the repository pins Aspire `13.4.6`, and a controlled run timed out waiting for the AppHost backchannel even after API/Blazor reached listening ports.
+- The next runtime action is no longer API/AppHost internals diagnosis. Aspire CLI is aligned to `13.4.6`, foreground `aspire run --isolated` is the trusted smoke path, API and Blazor health are green, SMTP/Mailpit outage readiness is proven and bounded to five seconds, registration-driven Mailpit delivery is proven, public event/list/calendar/sitemap/robots/static/error smoke is green, a focused BFF integration test proves a cookie protected by one host can be read by a fresh host when both use the persisted `DataProtectionKeyContext` key store, Blazor `data-protection-keys` readiness now reports key-store reachability/failure safely, and focused API/PostgreSQL tests prove `email-dispatch` readiness degrades on due retry backlog, stale `Processing`, and `DeadLettered` rows. Detached `aspire start --format Json --isolated` and `aspire run --detach --format Json --isolated` are documented as local Aspire CLI lifecycle limitations in this workspace: official Aspire docs say detached AppHosts should remain inspectable through `aspire ps`, but repeated runs returned startup JSON after readiness and then left `aspire ps --format Json` empty. Detached mode is no longer a Phase 1 application-readiness gate. Remaining runtime work is full browser/OIDC restart proof.
 
 ## Session Progress - 2026-07-04
 
@@ -42,6 +42,7 @@ Completed during Phase 2 implementation slice:
 - Updated RabbitMQ DLQ replay decision to park already-skipped pointers.
 - Updated API/HAL operator behavior so skipped rows do not receive replay or park affordances.
 - Added focused Application, Infrastructure, API integration, and Persistence integration tests for skipped transitions and unsubscribe affordances.
+- Re-verified the existing Phase 2.4 reliability controls: PostgreSQL transition tests cover stale-processing recovery to `Unknown` plus receipt updates and receipt/processing duplicate-claim idempotency; Infrastructure drain tests cover failing-provider retry scheduling and dead-lettering after retry budget exhaustion.
 - Updated `docs/API.md`, `docs/CONFIGURATION.md`, `docs/OPERATIONS.md`, and `docs/SECURITY-MODEL.md` with current behavior.
 
 Completed during Phase 3 implementation slice:
@@ -67,12 +68,90 @@ Completed during Phase 3 implementation slice:
 - Updated `EventPreviewWorkspace` to use the same policy-aware registration request builder as `EventList`, preserving whole-event registration when policy requires it.
 - Proved `EventDetailsSidebar` renders the registration action only when the event detail HAL resource includes the `register` link.
 - Added/updated Blazor client tests for safe registration-service error mapping, already-registered state, shared outcome classification, full EventList behavior, and HAL-gated sidebar registration affordances.
+
+Completed during Phase 1.3 email-dispatch health slice:
+
+- Used Context7 official ASP.NET Core health-check docs and the existing `LocalWebhookDeliveryHealthCheck` pattern to keep the readiness check DI-safe and scoped-service aware.
+- Added primitive count methods to `IEmailDispatchOutboxRepository` and `EmailDispatchOutboxRepository` for due dispatch backlog, retry-scheduled rows, stale `Processing` leases, and `DeadLettered` rows, using the existing named cross-tenant worker bypass.
+- Updated `EmailDispatchHealthCheck` so enabled Basic Dispatch Mode queries those counts and returns `Degraded` when due backlog, stale processing, or dead-letter thresholds are reached.
+- Added `EmailDispatchProcessor` health thresholds (`HealthDueDispatchWarningThreshold`, `HealthStaleProcessingWarningThreshold`, `HealthDeadLetterWarningThreshold`) with startup validation.
+- Updated `docs/CONFIGURATION.md` and `docs/OPERATIONS.md` so self-hosters see the threshold defaults, safe health payload fields, and distinction between future retry backoff rows and due backlog.
+- Added focused API health-check tests, infrastructure settings-validator tests, and a PostgreSQL-backed repository count test.
 - Updated `docs/BLAZOR.md` with the registration service/outcome/HAL guidance.
+
+Completed during Phase 1 FullLocal runtime proof slice:
+
+- Backed up the old Aspire CLI at `/tmp/aspire-13.3.0-preview.1.26221.24` and installed the official `13.4.6+87fe259e4fc244c599019a7b1304c85a1488f248` CLI, matching the repository AppHost SDK.
+- Updated `Explore.AppHost/AppHost.cs` so FullLocal Keycloak, Cerbos, MinIO, Mailpit, Svix, and Coop settings come from Aspire endpoint expressions instead of fixed localhost ports.
+- Added a `minio-bootstrap` `minio/mc:latest` container so the `explore` bucket is created before the API starts.
+- Updated `Explore.Persistence/Seed/DatabaseSeeder.cs` so Development SMTP settings are refreshed when `ISLAMU_ASPIRE_MODE=FullLocal`, preventing persistent local database volumes from keeping stale isolated Mailpit ports.
+- Verified targeted Debug AppHost build passed after the runtime wiring changes.
+- Verified foreground `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj --isolated` kept the distributed app alive, with `aspire wait` reporting `explore-api` and `explore-blazor` Healthy.
+- Verified foreground API `/alive` and `/health` returned HTTP 200 Healthy, including Healthy checks for OIDC discovery, SMTP, RabbitMQ email dispatch topology, storage, webhook local delivery, Svix provider configuration, Cerbos, and database.
+- Verified foreground Blazor `/alive` and `/health` returned HTTP 200 Healthy, including Healthy checks for cache, OIDC discovery, database, and API readiness.
+- Verified Keycloak OIDC metadata issuer used the dynamic isolated localhost endpoint.
+- Verified Mailpit SMTP dynamic port reached both API environment and persisted `system_settings` rows (`email.smtp_host`, `email.smtp_port`, `email.smtp_security`).
+- Verified `minio-bootstrap` exited with code 0, logged bucket creation, and `mc stat local/explore` confirmed the bucket exists in `us-east-1`.
+- Re-tested one earlier detached `aspire start --apphost Explore.AppHost/Explore.AppHost.csproj --format Json --isolated`; it returned JSON, stayed registered in `aspire ps`, and produced healthy API/Blazor resources.
+- Verified detached API `/health` returned HTTP 200 Healthy with 18 checks, detached Blazor `/health` returned HTTP 200 Healthy with 7 checks, and persisted SMTP settings refreshed to the detached run's Mailpit port.
+- Recorded the later detached lifecycle caveat: after additional code/test changes, another `aspire start --format Json --isolated` returned JSON but lost AppHost registration (`aspire ps --format Json` returned `[]`), with logs showing `Client disconnected from auxiliary backchannel`. Foreground `aspire run --isolated` remained healthy and was used for public smoke.
+- Stopped the foreground/detached AppHosts after proof and cleaned orphaned DCP/API/Blazor child processes left after Aspire stop.
+- Fixed a separate launch-seed discovery defect found during public smoke: deterministic Islamic event sessions were persisted as `Draft`, and existing persisted events could keep `LastSessionEndUtc = null`, so the public list and calendar filters treated source-visible seed events as non-current/non-exportable.
+- Updated `SeedData.CreateSession` so deterministic launch sessions are `Published`, updated `SeedData.CreateEvent` so `LastSessionEndUtc` is populated, and updated `DatabaseSeeder.EnsureIslamicEventCatalogAsync` to repair those status/schedule-summary fields on existing Development seed rows across persistent FullLocal volumes.
+- Added `DatabaseSeederTests.SeedAsync_InDevelopment_RepairsLaunchCatalogDiscoveryFieldsAcrossStartups` to recreate stale persisted seed rows and prove a later Development seed repairs all catalog sessions/events.
+- Verified public runtime smoke through FullLocal isolated Aspire after the seed repair: public event list returned six events, event detail rendered with canonical/Open Graph/Twitter metadata and security headers, event calendar returned `text/calendar` with `BEGIN:VCALENDAR`, sitemap returned XML with deterministic event URLs, robots returned development `Disallow: /`, branded error/static assets rendered, and `aspire ps --format Json` returned `[]` after shutdown cleanup.
+- Fixed the new control-plane Blazor host compile blocker found when AppHost started building `Event.ControlPlane.Blazor`: `Components/App.razor` used `InteractiveServer` in root `HeadOutlet`/`Routes` render-mode attributes, but generated Razor did not resolve the symbol from `_Imports.razor`. Adding a direct `@using static Microsoft.AspNetCore.Components.Web.RenderMode` to `App.razor` made `dotnet build Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --configuration Release --verbosity quiet` pass with 0 errors.
+- Re-ran detached Aspire after the control-plane fix. `aspire run --detach --apphost Explore.AppHost/Explore.AppHost.csproj --isolated --format Json` returned `appHostPid=3623272`, `cliPid=3618280`, and log `/home/amir/.aspire/logs/cli_20260704T164306504_detach-child_351672a4ed3846a3931c7d5f915ad84a.log`; logs reached resource readiness and `Notifying AppHost startup readiness`, but immediate `aspire ps --format Json` returned `[]`, `aspire describe` reported no AppHost, and both PIDs were gone.
+- Hardened SMTP readiness by registering `SmtpHealthCheck` with `timeout: TimeSpan.FromSeconds(5)` in `Explore.API/Program.cs`.
+- Added `SmtpHealthCheckRegistrationTests` to assert the real API host registration uses the five-second timeout, `Unhealthy` failure status, and readiness/SMTP/infrastructure tags.
+- Proved bounded configured-SMTP outage readiness through foreground FullLocal isolated Aspire. Baseline API `http://localhost:33675/health` returned HTTP 200 Healthy with `smtp` Healthy and `Connection successful`; stopping Mailpit on SMTP port `45967` with `aspire resource mailpit stop` made `aspire wait mailpit --status down` succeed and changed API `/health` to HTTP 503 with `X-Health-Status: Unhealthy`, `smtp` Unhealthy, `time_total=5.014349`, and `durationMs=5000.9584`; restarting Mailpit restored API `/health` to HTTP 200 Healthy with `time_total=0.104138`.
+
+Completed during Phase 2.5 registration email runtime proof slice:
+
+- Confirmed the current Mailpit API shape against official Mailpit API/OpenAPI docs before extending the E2E fixture: `/api/v1/message/{ID}/headers` returns header arrays, and message details expose HTML/text content.
+- Extended `MailpitContainerFixture` and `AppHostFixture` so E2E tests can fetch Mailpit HTML bodies and raw headers, not only summary metadata and plain text.
+- Updated `RegistrationFlowTests` to prove the runtime registration-confirmation path through AppHost, the real API, `TickerQScheduledEmailDispatchTrigger`, `EmailDispatchDrainService`, SMTP, and Mailpit.
+- The E2E now verifies exactly one sent `EmailDispatchOutbox` row, succeeded attempt count, completed receipt count, Mailpit subject/recipient, expected text body, HTML body, `X-Email-Dispatch-ID`, `X-Correlation-ID`, `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, visible unsubscribe URL in text and HTML, and a tenant-aware unsubscribe POST that disables `NotificationPreferenceCategories.RegistrationConfirmations` for the dispatch user.
+- AppHost E2E wiring now supplies `PublicBaseUrl` for the API resource so generated unsubscribe links are present during runtime proof. The test posts the generated token back through the reachable AppHost API endpoint while preserving the delivered link shape.
+
+Completed during Phase 1.2 Data Protection restart proof slice:
+
+- Used Context7 official ASP.NET Core Data Protection docs to confirm `PersistKeysToDbContext<TContext>()` is the framework-supported path for sharing the key ring across app instances/restarts and that cookie authentication depends on Data Protection.
+- Added `Explore.Blazor.IntegrationTests/Endpoints/BffDataProtectionCookieRestartTests.cs`.
+- The test starts one fresh TestServer BFF host, signs in through real ASP.NET Core cookie middleware, captures the auth cookie, disposes that host, starts a second fresh host with the same in-memory EF `DataProtectionKeyContext` root, and proves the second host authenticates the original protected ticket as `restart-user`.
+- Verified `Event.MigrationService/Worker.cs` resolves `DataProtectionKeyContext` and runs `Database.MigrateAsync`, so the migration service covers the dedicated Data Protection key schema.
+- Added an Operations note that preserving Data Protection key rows preserves BFF auth/setup/antiforgery cookie readability across restarts, while deleting or losing those rows intentionally invalidates existing protected cookies and requires re-authentication or setup retry.
+
+Completed during Phase 1.2 Data Protection health visibility slice:
+
+- Added `Explore.Blazor/HealthChecks/DataProtectionKeyStoreHealthCheck.cs` and registered it as Blazor readiness check `data-protection-keys`.
+- The check opens the same scoped `DataProtectionKeyContext` used by ASP.NET Core `PersistKeysToDbContext<TContext>()`, counts key rows to prove the table is reachable, returns healthy with only safe `keyCount`/store metadata, and returns unhealthy with a bounded `failureType` plus a safe warning log when the key store cannot be reached.
+- Added `Explore.Blazor.IntegrationTests/Endpoints/DataProtectionKeyStoreHealthCheckTests.cs` to prove reachable and missing key-store behavior without exposing key XML or connection-string data.
+- Updated `docs/OPERATIONS.md` so operators treat `data-protection-keys` unhealthy as a BFF session-continuity/key-ring persistence incident before debugging Keycloak, browser storage, or cookie middleware.
+
+Completed during Phase 4.1 BFF storage antiforgery slice:
+
+- Used Context7 official ASP.NET Core antiforgery docs to confirm Minimal API endpoints need explicit `IAntiforgery.ValidateRequestAsync`-style validation for browser-accessible cookie-authenticated unsafe requests, and that disabling antiforgery is only appropriate for routes not vulnerable to browser cookie CSRF.
+- Updated `Explore.Blazor/Extensions/BffStorageEndpoints.cs` so both `/bff/storage/upload-session` and `/bff/storage/upload-proxy` call the existing BFF `ValidateAntiforgery()` endpoint filter.
+- Preserved the InteractiveServer self-call path by using `BffCookieForwardingHandler` and `BffSelfCallTokenService`: server-originated storage calls receive a short-lived Data Protection protected `X-ISLAMU-BFF-SELF-CALL` header bound to method, path, host, and authenticated user, while browser requests without CSRF or that protected token fail before upload-session logic runs.
+- Added focused storage boundary tests proving authenticated storage POSTs without CSRF/self-call proof return `400 Antiforgery validation failed`, and that a valid same-process self-call token lets an upload-session request proceed without exposing browser tokens.
+- Updated `docs/SECURITY-MODEL.md` and `docs/BLAZOR.md` so storage upload session/proxy are no longer documented as antiforgery exceptions.
+- Used Context7 official ASP.NET Core rate-limiting docs to confirm endpoint-specific `RequireRateLimiting` policies need `UseRateLimiter` after routing.
+- Added setup-secret BFF rate-limit coverage that runs the real `AddBffRateLimiting` policy with testing disablement turned off, proves a second setup-secret POST in the same partition returns `429 Too Many Requests` ProblemDetails with `Retry-After`, and proves the upstream setup validation API is not called for the rejected request.
+- Reconfirmed existing setup-secret boundary coverage: browser-controlled `X-Setup-Secret` is ignored by the BFF setup endpoint, stripped by forwarding handlers/sanitizers, and replaced only from BFF-owned resolver output.
+
+Completed during Phase 4.1 BFF token-boundary slice:
+
+- Used Context7 official ASP.NET Core auth guidance to confirm the important split: `SaveTokens` stores OIDC tokens in the server-side authentication ticket, while `AddAuthenticationStateSerialization` controls the separate browser-visible Blazor auth-state projection.
+- Confirmed the shared BFF proxy resolves `access_token` only from server-side authentication properties through `HttpContext.GetTokenAsync("access_token")`, validates it with `EventBffTokenSafety`, strips browser-controlled credential/token headers before proxying, and writes the bearer token only to outbound API requests.
+- Confirmed `/auth/status` returns only `isAuthenticated` plus display name and does not echo browser `Authorization` headers.
+- Added explicit token-shaped claim regressions to `AuthStateSerializationPolicyTests` so `access_token`, `refresh_token`, and `id_token` stay out of Blazor's browser-readable auth-state payload.
+- Added `BffCurrentUserEndpointTokenBoundaryTests` to prove `/bff/me` filters token-shaped claims and values even when the authenticated principal contains them.
+- Phase 4.1 BFF boundary checks are now closed for setup-secret stripping/rate limiting, storage upload antiforgery/self-call handling, browser credential-header stripping, and browser-visible access/refresh token leakage.
 
 In progress:
 
-- Runtime proof and remaining MVP launch phases. The first Phase 2 code slice is implemented and tested, but Phase 1 runtime proof and Phase 2 Mailpit proof are still open.
-- 2026-07-04 full-local Aspire proof attempts: `aspire start --apphost Explore.AppHost/Explore.AppHost.csproj --format Json --non-interactive --isolated` proved that full-local infrastructure can start, but did not prove launch runtime readiness. One attempt showed `explore-api` changing `Running -> Finished`; a later controlled attempt showed API/Blazor listening temporarily before the `13.3.0-preview` Aspire CLI timed out waiting for the AppHost backchannel and `aspire ps --format Json` still returned `[]`.
+- Remaining MVP launch phases. Phase 1 core startup/health/public-smoke proof, bounded SMTP outage readiness, registration-driven Mailpit proof, focused BFF Data Protection cookie restart proof, Data Protection key-store failure visibility, and email-dispatch backlog/dead-letter degraded-health proof are green, but full browser/OIDC restart proof, security/audit/HAL cleanup, public polish, and release evidence remain open.
 - Phase 3 source/test/docs work is complete; remaining launch risk is runtime/visual release evidence, not more registration service design.
 
 Known context note:
@@ -120,7 +199,7 @@ Launch implication:
 | `Explore.Domain/EmailDispatchOutbox.cs` | Durable dispatch intent with pending/processing/sent/retry/dead-letter/parked/unknown/skipped states. |
 | `Explore.Domain/EmailDispatchAttempt.cs` | Attempt ledger for each send try, including skipped-by-preference attempts. |
 | `Explore.Domain/EmailDispatchReceipt.cs` | Idempotent receipt tracking keyed to provider/publish events, including skipped receipts. |
-| `Explore.Application/Services/EventLifecycleEmailOutboxFactory.cs` | Builds lifecycle email outbox rows, including registration confirmation. Current body is basic and does not appear to include visible unsubscribe links. |
+| `Explore.Application/Services/EventLifecycleEmailOutboxFactory.cs` | Builds lifecycle email outbox rows, including registration confirmation. Dispatch appends unsubscribe affordances when the row maps to a preference-controlled category and public base URL is configured. |
 | `Explore.Infrastructure/EmailDispatchDrainService.cs` | Drains pending rows, recovers stale processing rows, respects tenant pause, claims receipts, enforces mapped `UserNotificationPreference`, adds unsubscribe headers/body links when public base URL is configured, sends through `IEmailService`, records attempts, and updates statuses/metrics. |
 | `Explore.Persistence/Repositories/EmailDispatchOutboxRepository.cs` | Implements worker polling, operator status, tenant pause, park, replay, stale processing recovery, receipt claim/update, skipped settlement, and status transitions. |
 | `Explore.API/Scheduling/TickerQScheduledEmailDispatchTrigger.cs` | Schedules email dispatch drain through TickerQ. |
@@ -144,15 +223,15 @@ Launch implication:
 
 Launch implication:
 
-- Foundation is now integrated into dispatch for mapped lifecycle categories. Remaining evidence: Mailpit/runtime proof and owner confirmation that registration confirmations should remain category-preference controlled rather than transactional-exempt.
+- Foundation is now integrated into dispatch for mapped lifecycle categories and proven through Mailpit for registration confirmation. Remaining evidence: owner confirmation that registration confirmations should remain category-preference controlled rather than transactional-exempt.
 
 ### Public Surface
 
 | File | Evidence |
 |---|---|
-| `Explore.API/Controllers/EventController.cs` | Calendar endpoint exists on event controller. |
+| `Explore.API/Controllers/EventController.cs` | Calendar endpoint exists on event controller; runtime smoke returned HTTP 200 `text/calendar` for the seeded Sisters Quran & Tafsir event after launch seed repair. |
 | `Explore.API/Services/Calendar/IcalNetEventCalendarFileBuilder.cs` | iCal builder exists. |
-| `Event.API.IntegrationTests/Features/Calendar/IcalNetEventCalendarFileBuilderTests.cs` | Calendar builder coverage exists. |
+| `Event.API.IntegrationTests/Features/Calendar/IcalNetEventCalendarFileBuilderTests.cs` | Calendar builder coverage exists and passed in the focused Phase 1 public-smoke verification. |
 | `Explore.API/Controllers/SitemapController.cs` | `sitemap.xml` controller exists. |
 | `Explore.Blazor/Controllers/RobotsController.cs` | `robots.txt` controller exists. |
 | `Explore.Blazor.Client/Helpers/CanonicalUrlHelper.cs` | Canonical URL helper exists. |
@@ -162,7 +241,7 @@ Launch implication:
 
 Launch implication:
 
-- Treat calendar/sitemap/robots/canonical/social metadata as source-complete but requiring runtime smoke and endpoint coverage checks. JSON-LD automation was not found by source search, and no web manifest was found beyond existing favicon/landing icon assets.
+- Calendar/sitemap/robots/canonical/social metadata are now source-complete with one successful FullLocal public smoke pass for the seeded event and public crawl endpoints. JSON-LD automation was not found by source search, no web manifest was found beyond existing favicon/landing icon assets, and broader SEO/status-edge visual proof remains open.
 
 ### HAL and UI Authorization
 
@@ -186,32 +265,124 @@ Launch implication:
 | `Explore.Persistence/Extensions/DataProtectionServiceCollectionExtensions.cs` | Service registration exists. |
 | `Event.MigrationService/Worker.cs` | Migration service migrates Data Protection key context. |
 | `Event.Persistence.IntegrationTests/DataProtection/DataProtectionKeyPersistenceTests.cs` | Persistence tests exist. |
+| `Explore.Blazor.IntegrationTests/Endpoints/BffDataProtectionCookieRestartTests.cs` | BFF-level cookie middleware restart proof exists: one host issues a protected cookie, a second fresh host using the same persisted key context authenticates it. |
 | `docs/OPERATIONS.md` | Current health table covers API, Blazor, email dispatch, queue, idempotency cleanup, storage, TickerQ, and related checks. |
 
 Launch implication:
 
-- Runtime restart proof and health degradation behavior are still required.
+- Middleware-level cookie restart continuity and Data Protection key-store health/log visibility are covered. Full AppHost/browser/OIDC restart proof is still required.
 
-### Runtime Proof Attempt - 2026-07-04
+### Runtime Proof - 2026-07-04
 
 | Evidence | Result |
 |---|---|
-| Aspire CLI | `aspire --version` returned `13.3.0-preview.1.26221.24+c8e41e142776da4d569f8b30c4c62aa026061715`; the startup log reported stable `13.4.6` available. |
-| Context7 docs | Official .NET Aspire docs were checked for AppHost/resource-service concepts; use `aspire start`, `aspire ps`, and resource endpoint discovery rather than guessing ports. |
-| Baseline build | `dotnet build --configuration Release --verbosity quiet` passed before startup with 26 projects and 0 errors; warning count remains existing backlog noise. |
-| Startup command | `ISLAMU_ASPIRE_MODE=FullLocal SecretProvider__Provider=None Infisical__ProjectId= Infisical__ClientId= Infisical__ClientSecret= aspire start --apphost Explore.AppHost/Explore.AppHost.csproj --format Json --non-interactive --isolated`. |
-| First parent CLI result | Timed out waiting for AppHost startup and exited 2. Parent log: `/home/amir/.aspire/logs/cli_20260704T125100_027f1b5c.log`. |
-| First child AppHost log | `/home/amir/.aspire/logs/cli_20260704T125101270_detach-child_27520be465824a7f87469b8f21e77ab3.log` showed local infrastructure ready, migration service finishing, API/Blazor running, and `Distributed application started`. |
-| First failure symptom | `explore-api` changed `Running -> Finished` at `2026-07-04 12:51:38`, shortly after AppHost startup. No API application exception was visible in the CLI log slice. |
-| Controlled rerun parent CLI result | Timed out waiting for AppHost startup and exited 2. Parent log: `/home/amir/.aspire/logs/cli_20260704T131748_89e333c2.log`; child log: `/home/amir/.aspire/logs/cli_20260704T131749234_detach-child_0b5673acbdd54c9dbd0a2dabfec41aa1.log`. The parent waited for `/home/amir/.aspire/cli/backchannels/auxi.sock.975b8e77015db52e` and timed out even though the child reported `Distributed application started`. |
-| Controlled rerun resource state | The child log showed `event-migrationservice` finished, `explore-api` reached `Running`, and `explore-blazor` reached `Running`. While the parent was still waiting, process environment showed API at `http://localhost:38665` and Blazor at `http://localhost:32773`, and `ss` confirmed both ports were listening. The controlled child log did not show the earlier `explore-api Running -> Finished` transition before the parent timeout. |
-| Smoke after timeout | API curls failed after the port disappeared. Blazor `/alive` and `/health` returned 500 after dependencies disappeared, with an EF/Npgsql connection-refused path to `127.0.0.1:35051` during tenant resolution. Treat this only as evidence that smoke was run too late and Blazor health paths can touch tenant/database resolution when dependencies are gone, not as a successful health proof. |
-| AppHost discovery | `aspire ps --format Json` returned `[]` during/after the controlled run despite AppHost/API/Blazor processes existing briefly, so no stable AppHost remained discoverable for `aspire describe` or reliable runtime smoke. |
-| Docker resource state | Local full infrastructure containers remained running; `mailpit-4ccf7fcf` was healthy, and isolated mode mapped Mailpit to random host ports. Use resource endpoints or Docker mappings for isolated Mailpit proof. |
+| Aspire CLI alignment | Old CLI `13.3.0-preview.1.26221.24+c8e41e142776da4d569f8b30c4c62aa026061715` was backed up to `/tmp/aspire-13.3.0-preview.1.26221.24`; current `aspire --version` is `13.4.6+87fe259e4fc244c599019a7b1304c85a1488f248`. |
+| Aspire doctor | `aspire doctor --format Json` passed CLI version, .NET `10.0.300`, and Docker `29.6.1`; only dev-certificate trust remains a warning. |
+| Targeted build | `dotnet build Explore.AppHost/Explore.AppHost.csproj --configuration Debug --verbosity quiet` passed with 0 errors after AppHost/seed changes. |
+| Foreground startup | `ISLAMU_ASPIRE_MODE=FullLocal SecretProvider__Provider=None Infisical__ProjectId= Infisical__ClientId= Infisical__ClientSecret= aspire run --apphost Explore.AppHost/Explore.AppHost.csproj --isolated` stayed alive and registered through the CLI. |
+| Foreground health | `aspire wait explore-api --status healthy` and `aspire wait explore-blazor --status healthy` both succeeded. API `/alive` and `/health` returned HTTP 200 Healthy; Blazor `/alive` and `/health` returned HTTP 200 Healthy. |
+| Foreground dynamic dependencies | API environment used `KEYCLOAK_ENDPOINT=http://localhost:33477/auth`, `MAIL_SMTP_PORT=42037`, `S3Settings__Endpoint=http://localhost:36501`, `Reporting__Coop__EndpointUrl=http://localhost:39647`, and `Webhooks__Svix__BaseUrl=http://localhost:35383`. |
+| Foreground DB seed proof | PostgreSQL `system_settings` contained `email.smtp_host="localhost"`, `email.smtp_port=42037`, and `email.smtp_security="None"`, matching the foreground Mailpit endpoint. |
+| SMTP outage proof | A later foreground isolated run exposed API `http://localhost:33675` and Mailpit SMTP port `45967`. Baseline API `/health` returned HTTP 200 Healthy with `smtp` Healthy in `time_total=0.233597`. After `aspire resource mailpit stop`, API `/health` returned HTTP 503 with `X-Health-Status: Unhealthy`; the `smtp` check was Unhealthy with `durationMs=5000.9584` and the response returned in `time_total=5.014349`. `aspire resource mailpit start` restored Mailpit and API `/health` returned HTTP 200 Healthy in `time_total=0.104138`. |
+| OIDC proof | Keycloak metadata returned issuer `http://localhost:33477/auth/realms/ISLAMU`, matching the isolated endpoint supplied to API and Blazor. |
+| MinIO proof | `minio-bootstrap` exited with code 0 and logged `Bucket created successfully local/explore`; `mc stat local/explore` confirmed the `explore` bucket exists in `us-east-1`; API `storage` health was Healthy. |
+| Detached startup | Official Aspire docs describe `aspire start` as a detached AppHost that remains inspectable through `aspire ps`, `describe`, `logs`, and `stop`. Local evidence on CLI `13.4.6` contradicts that in this workspace: `aspire start --format Json --isolated` and `aspire run --detach --format Json --isolated` returned startup JSON, AppHost logs reached readiness, then `aspire ps --format Json` returned `[]` and the AppHost PID was gone. |
+| Detached health | Earlier detached `aspire wait` reported API and Blazor Healthy; API `/health` returned HTTP 200 Healthy with 18 checks; Blazor `/health` returned HTTP 200 Healthy with 7 checks. Later detached runs no longer stayed registered long enough for reliable health or endpoint smoke, so foreground `aspire run --isolated` is now the only trusted launch-proof path. |
+| Detached dynamic dependencies | API environment used dynamic endpoints: `KEYCLOAK_ENDPOINT=http://localhost:37701/auth`, `MAIL_SMTP_PORT=45665`, `S3Settings__Endpoint=http://localhost:42201`, `Reporting__Coop__EndpointUrl=http://localhost:41191`, and `Webhooks__Svix__BaseUrl=http://localhost:43243`. |
+| Detached DB seed proof | PostgreSQL `system_settings` contained `email.smtp_host="localhost"`, `email.smtp_port=45665`, and `email.smtp_security="None"`, matching the detached Mailpit endpoint. |
+| Cleanup | `aspire stop --apphost Explore.AppHost/Explore.AppHost.csproj` removed the AppHost from `aspire ps`; DCP left child processes after stop, and those run-owned PIDs were killed manually. |
+| Public seed repair | Seeded event `018e4e5c-7f00-7000-8000-000000000061` initially had published event metadata but draft child sessions and null `last_session_end_utc`, causing public list and calendar filters to exclude it. `SeedData` now emits published sessions and `LastSessionEndUtc`; `DatabaseSeeder` repairs existing Development catalog rows across persistent volumes. |
+| Public event list | `GET http://localhost:34857/api/event?pageSize=6` returned `totalCount=6` with `Youth Aqeedah Circle`, `Family Seerah Story Night`, `Arabic for Quran Beginners`, `Brothers Fiqh of Purification Intensive`, `Online Hadith Methodology Webinar`, and `Sisters Quran & Tafsir Morning`. |
+| Calendar smoke | `GET http://localhost:34857/api/event/018e4e5c-7f00-7000-8000-000000000061/calendar` returned HTTP 200, `Content-Type: text/calendar; charset=utf-8; v=0.1`, filename `sisters-quran-tafsir-morning.ics`, and VCALENDAR content including `DTSTART:20260706T083000Z` and `DTEND:20260706T103000Z`. |
+| Public Blazor event detail | `GET http://localhost:41777/events/018e4e5c-7f00-7000-8000-000000000061` returned HTTP 200 with `Sisters Quran & Tafsir Morning`, canonical URL, Open Graph/Twitter title metadata, and security headers. |
+| Sitemap/robots/static/error smoke | API `GET /sitemap.xml` returned HTTP 200 XML with deterministic event URLs; Blazor `GET /robots.txt` returned HTTP 200 `text/plain` with development `Disallow: /`; `favicon.ico`, `/image/Icon_landingpage.png`, and `/Error` rendered with expected content types/security headers. |
+| Final runtime cleanup | The foreground AppHost was stopped with Ctrl-C, and `aspire ps --format Json` returned `[]`. |
 
 Launch implication:
 
-- Do not proceed to browser/API smoke, Mailpit proof, or Data Protection restart proof until the Aspire CLI/AppHost lifecycle is controlled. Align the Aspire CLI to the repo's `13.4.6` AppHost SDK or run a foreground AppHost control first. If `explore-api` still exits after that, capture API resource logs directly and fix or document that application failure.
+- FullLocal foreground startup, health, bounded SMTP outage readiness, dynamic dependency wiring, seed discovery, public endpoint smoke, registration-to-Mailpit email delivery, focused BFF Data Protection cookie continuity, Data Protection key-store failure visibility, and email-dispatch backlog/dead-letter health behavior are now proven. Continue with the remaining runtime proof: full browser/OIDC restart continuity. Detached Aspire lifecycle should be re-tested only after a CLI/runtime tooling update or when specifically investigating the Aspire CLI.
+
+## Validation Results for Phase 1 Detached CLI Follow-up and Control-Plane Build
+
+Checks run after the later detached lifecycle flake and control-plane host compile failure:
+
+```bash
+dotnet build Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --configuration Release --verbosity quiet
+aspire run --detach --apphost Explore.AppHost/Explore.AppHost.csproj --isolated --format Json
+aspire ps --format Json
+aspire describe --apphost Explore.AppHost/Explore.AppHost.csproj --format Json
+ps -fp 3623272 3618280
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress
+git diff --check -- Event.ControlPlane.Blazor/Components/App.razor dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-context.md dev/active/mvp-launch/mvp-launch-tasks.md docs/OPERATIONS.md docs/TROUBLESHOOTING.md dev/_journal/journal.md
+rg -n "[[:blank:]]+$" Event.ControlPlane.Blazor/Components/App.razor dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-context.md dev/active/mvp-launch/mvp-launch-tasks.md docs/OPERATIONS.md docs/TROUBLESHOOTING.md dev/_journal/journal.md
+```
+
+Results:
+
+- Control-plane host build: passed, 7 projects, 0 errors, 294 existing warnings after adding the direct `RenderMode` static import in `Event.ControlPlane.Blazor/Components/App.razor`.
+- Detached Aspire after the control-plane fix returned JSON with `appHostPid=3623272`, `cliPid=3618280`, dashboard URL, and log file.
+- AppHost log reached resource readiness and `Notifying AppHost startup readiness`.
+- Immediate lifecycle checks failed the official detached contract: `aspire ps --format Json` returned `[]`, `aspire describe` said no AppHost was currently running, and `ps -fp 3623272 3618280` returned no process rows.
+- Context7 and official Aspire CLI docs confirm `aspire start`/detached mode is intended to leave an AppHost inspectable by `aspire ps`, so this is documented as a local CLI/tooling limitation rather than an application startup blocker.
+- Full Release build after the control-plane/docs update: passed, 28 projects, 0 errors, 8,816 existing warning backlog entries.
+- Architecture tests: passed, 255 total, 254 succeeded, 1 known skip.
+- `git diff --check`, direct trailing-whitespace scan, and final `aspire ps --format Json` cleanup check passed; no AppHost remained registered.
+
+## Validation Results for SMTP Outage Health Proof and Bounded Timeout
+
+Checks run after the SMTP readiness timeout hardening, foreground FullLocal Mailpit outage proof, and docs/runbook updates:
+
+```bash
+env ISLAMU_ASPIRE_MODE=FullLocal SecretProvider__Provider=None Infisical__ProjectId= Infisical__ClientId= Infisical__ClientSecret= aspire run --non-interactive --apphost Explore.AppHost/Explore.AppHost.csproj --isolated
+aspire wait explore-api --status healthy --apphost Explore.AppHost/Explore.AppHost.csproj
+aspire describe explore-api --apphost Explore.AppHost/Explore.AppHost.csproj --format Json
+aspire describe mailpit --apphost Explore.AppHost/Explore.AppHost.csproj --format Json
+curl -sS -i -w '\ntime_total=%{time_total}\n' http://localhost:33675/health
+aspire resource mailpit stop --apphost Explore.AppHost/Explore.AppHost.csproj
+aspire wait mailpit --status down --timeout 60 --apphost Explore.AppHost/Explore.AppHost.csproj
+curl -sS -i -w '\ntime_total=%{time_total}\n' http://localhost:33675/health
+aspire resource mailpit start --apphost Explore.AppHost/Explore.AppHost.csproj
+aspire wait mailpit --status healthy --timeout 90 --apphost Explore.AppHost/Explore.AppHost.csproj
+curl -sS -i -w '\ntime_total=%{time_total}\n' http://localhost:33675/health
+aspire ps --format Json
+pgrep -af "aspire run|Explore.AppHost|Event.MigrationService|Explore.API"
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/SmtpHealthCheckRegistrationTests/*" --minimum-expected-tests 1
+git diff --check -- Explore.API/Program.cs Event.API.IntegrationTests/Features/SmtpHealthCheckRegistrationTests.cs dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-context.md dev/active/mvp-launch/mvp-launch-tasks.md docs/OPERATIONS.md docs/TROUBLESHOOTING.md dev/_journal/journal.md
+rg -n "[[:blank:]]+$" Explore.API/Program.cs Event.API.IntegrationTests/Features/SmtpHealthCheckRegistrationTests.cs dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-context.md dev/active/mvp-launch/mvp-launch-tasks.md docs/OPERATIONS.md docs/TROUBLESHOOTING.md dev/_journal/journal.md
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress
+```
+
+Results:
+
+- Focused API integration test proved `smtp` readiness is registered with a five-second ASP.NET Core health-check timeout, `Unhealthy` failure status, and readiness/SMTP/infrastructure tags.
+- Baseline API `/health` returned HTTP 200 with `X-Health-Status: Healthy`; `smtp` was Healthy with `Connection successful` and `time_total=0.233597`.
+- `aspire resource mailpit stop` made `aspire wait mailpit --status down` pass, then API `/health` returned HTTP 503 with `X-Health-Status: Unhealthy`; `smtp` was Unhealthy with `Connection test failed: A task was canceled.`, `durationMs=5000.9584`, and `time_total=5.014349`.
+- `aspire resource mailpit start` restored Mailpit on the same isolated SMTP port, then API `/health` returned HTTP 200 Healthy, `smtp` Healthy, and `time_total=0.104138`.
+- Foreground AppHost was stopped with Ctrl-C. Final `aspire ps --format Json` returned `[]`, and no matching AppHost/API/MigrationService process remained.
+- Release build passed, 28 projects, 0 errors, 2,102 existing warning backlog entries.
+- Focused SMTP health-check registration test passed, 1 total, 1 succeeded.
+- Architecture tests passed, 257 total, 256 succeeded, 1 known API response-metadata skip.
+
+## Validation Results for Phase 2.5 Registration Mailpit Runtime Proof
+
+Checks run after extending the AppHost/Mailpit E2E fixture and registration-flow assertions:
+
+```bash
+dotnet build Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/RegistrationFlowTests/*" --minimum-expected-tests 1 --no-progress
+```
+
+Results:
+
+- Focused E2E build passed: 15 projects, 0 errors; warnings remain the existing package/analyzer backlog.
+- Focused registration critical-flow E2E passed: 1 total, 1 succeeded, 0 failed in 1m 31s.
+- The runtime proof exercised real Testcontainers/PostgreSQL, Keycloak auth, AppHost API/Blazor wiring, Mailpit SMTP capture, the TickerQ email-dispatch trigger, and the `EmailDispatchDrainService`.
+- The test report was written to `Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/Explore.Blazor.Client.E2ETests-linux-net10.0-report.html`.
+- Diff whitespace check passed for the touched E2E fixture/test files and MVP launch docs, and direct trailing-whitespace scan returned no matches.
+- Architecture tests passed after the docs update: 258 total, 257 succeeded, 1 known response-metadata skip.
+- Full solution Release build was attempted after the focused E2E proof and did not pass because of unrelated dirty-worktree issues outside this slice: `Explore.Blazor.Client.Tests` has generated-client anonymous HAL type mismatches such as `Anonymous56` versus `Anonymous57`, and `Explore.API` hit a transient static-web-assets cache file lock on `obj/Release/net10.0/rjsmcshtml.dswa.cache.json`.
 
 ## Key Decisions
 
@@ -260,13 +431,36 @@ Do not update broad docs speculatively. Update operations/security/API/Blazor do
 | Risk or unknown | Current read |
 |---|---|
 | Registration confirmation opt-out semantics | Current implementation treats `RegistrationConfirmation` as preference-controlled because `NotificationPreferenceCategories.RegistrationConfirmations` exists. Owner should confirm this is intended, or adjust category mapping before launch. |
-| Email runtime proof | Unit/integration tests pass, but Mailpit proof through the real registration/drain path remains open. |
+| Email runtime proof | Unit/integration tests pass for preference/unsubscribe, skipped settlement, stale recovery, retry/dead-letter behavior, and idempotent processing/receipt claims. The registration-confirmation path now has Mailpit proof through the real AppHost/API/drain path, including headers, body, recipient, and unsubscribe side-effect verification. |
+| Email dispatch health proof | Focused API tests prove `email-dispatch` readiness reports safe counts and degrades on due retry backlog, stale `Processing`, and `DeadLettered` thresholds. A PostgreSQL-backed repository test proves the count predicates across tenants with the named worker bypass. |
 | Registration duplicate API behavior | Repository, handler, persistence tests, API boundary tests, and real PostgreSQL API tests now cover event/day/session parent-intent duplicate races idempotently, including proof that duplicate retries do not persist a second registration-confirmation dispatch row. Real PostgreSQL API coverage now includes success, repeat-submit, waitlist, and unauthenticated rejection. Blazor client coverage now proves generated-client service agreement, safe error mapping, idempotent already-registered state, waitlist copy, and HAL-gated event-detail registration affordances. Remaining risk is runtime/visual release evidence. |
 | JSON-LD | Re-checked on 2026-07-04: source search and `docs/SEO.md` did not find JSON-LD automation. Treat as a launch gap only if structured data is in scope. |
 | Web app manifest/icons | Re-checked on 2026-07-04: no web manifest was found; existing assets are `Explore.Blazor/wwwroot/favicon.ico` and `Explore.Blazor.Client/wwwroot/image/Icon_landingpage.png`. Decide if installability is launch scope. |
-| Runtime proof | Existing tests and docs are strong, but full-local runtime proof is now actively blocked by Aspire lifecycle evidence. The repo pins Aspire `13.4.6`, the installed CLI is `13.3.0-preview`, the parent CLI timed out waiting for the AppHost backchannel, and `aspire ps` remained empty even while API/Blazor listened briefly. Align CLI or run foreground AppHost before diagnosing API internals; then capture resource logs if an API exit still reproduces. |
+| Runtime proof | Core FullLocal foreground startup, health, bounded SMTP outage readiness, registration-driven Mailpit delivery, public endpoint smoke, focused BFF Data Protection cookie continuity, Data Protection key-store failure visibility, and email-dispatch backlog/dead-letter health behavior are green on Aspire CLI/AppHost `13.4.6` plus focused API/PostgreSQL/Blazor tests, with dynamic endpoints, MinIO bucket bootstrap, SMTP seed refresh, deterministic public seed repair, and event list/detail/calendar/sitemap/robots/static/error smoke verified. Detached Aspire CLI lifecycle is explicitly not stable in this local workspace and is no longer treated as an application-readiness gate. Remaining risks are full browser/OIDC restart proof and visual/browser release evidence. |
 | Dirty worktree | Many unrelated files were modified before this rebaseline. Implementation agents must isolate their own changes. |
 | Missing `RTK.md` import | `AGENTS.md` references it, but the file was not found during this session. |
+
+## Validation Results for Phase 1 Public Smoke and Seed Repair
+
+Checks run after repairing deterministic launch seed status/schedule summaries and validating the public list/detail/calendar path:
+
+```bash
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/DatabaseSeederTests/SeedAsync_InDevelopment_RepairsLaunchCatalogDiscoveryFieldsAcrossStartups" --minimum-expected-tests 1 --no-progress
+dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/GetEventCalendarExportRequestHandlerTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/EventControllerCalendarTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/IcalNetEventCalendarFileBuilderTests/*" --minimum-expected-tests 1 --no-progress
+```
+
+Results:
+
+- Release build: passed, 28 projects, 0 errors, 8,898 existing warning backlog entries.
+- Focused PostgreSQL seed repair regression: passed, 1/1.
+- Focused calendar application handler tests: passed, 4/4.
+- Focused API calendar controller tests: passed, 2/2.
+- Focused iCalendar builder tests: passed, 1/1.
+- An initial broad API TUnit filter for `*Calendar*` matched zero tests and exited 8; rerunning with concrete test class filters passed.
+- Runtime smoke after the fix passed for public event list, event detail metadata/security headers, event `.ics`, sitemap, robots, branded error page, favicon, and landing icon. The AppHost was stopped after proof and `aspire ps --format Json` returned `[]`.
 
 ## Validation Results for Runtime-Plan Refresh
 
@@ -285,7 +479,7 @@ Results:
 - Architecture tests: passed, 243 total, 242 succeeded, 1 existing documented API response-metadata skip.
 - Latest rerun after adding the controlled Aspire backchannel-timeout evidence also passed: diff whitespace check clean, trailing-whitespace scan no matches, and architecture tests passed 243 total, 242 succeeded, 1 existing documented API response-metadata skip.
 - CTO skill's sample `--filter` commands were attempted first, but this repository's TUnit/Microsoft Testing Platform runner rejects `--filter`; use `--treenode-filter` or the project-level architecture command above.
-- Runtime startup proof is still not green. The docs now record both observed full-local Aspire failure modes: an earlier API early-exit symptom and a later CLI/AppHost backchannel timeout with API/Blazor temporarily listening.
+- Runtime startup, health, bounded SMTP outage readiness, registration-to-Mailpit delivery, public endpoint proof, focused BFF Data Protection cookie continuity, Data Protection key-store failure visibility, and email-dispatch backlog/dead-letter health behavior are now green for foreground FullLocal isolated Aspire plus focused API/PostgreSQL/Blazor tests. Remaining runtime proof is narrower: full browser/OIDC restart continuity and browser/visual evidence.
 
 ## Validation Results for This Rebaseline
 
@@ -329,6 +523,20 @@ Results:
 - Focused API TickerQ drain tests: passed, 5/5.
 - Focused PostgreSQL email dispatch transition tests: passed, 12/12.
 - Full `Explore.Infrastructure.Tests` was also attempted and failed only on unrelated pre-existing `AdminContextTests` role-check expectations: `IsTenantAdminAsync_UsesTenantAdminRoleCheck` and `IsGroupAdminAsync_WhenMembershipHasGroupAdminRole_ReturnsTrue`. The focused dispatch lane passed.
+
+Follow-up Phase 2.4 reliability revalidation on 2026-07-04:
+
+```bash
+dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchOutboxTransitionRepositoryTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchDrainServiceTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity quiet -- --no-progress
+```
+
+Results:
+
+- Focused PostgreSQL email dispatch transition tests: passed, 12/12.
+- Focused Infrastructure email dispatch drain tests: passed, 12/12.
+- Architecture tests: passed, 257 total, 256 succeeded, 1 existing API response-metadata skip.
 
 ## Validation Results for Phase 3 Registration Integrity Slice
 
@@ -393,15 +601,136 @@ Documentation/source note:
 - Context7 official Blazor docs were used for current component-state guidance, and bUnit docs were used for current async assertion guidance.
 - `docs/BLAZOR.md` now documents registration outcome classification, safe generated-client error handling, and HAL-gated registration actions.
 
+## Validation Results for Phase 1 FullLocal Runtime Slice
+
+Checks run after aligning Aspire CLI, replacing fixed FullLocal endpoints with Aspire endpoint expressions, adding MinIO bootstrap, refreshing Development SMTP seed rows, and updating runtime docs:
+
+```bash
+dotnet build Explore.AppHost/Explore.AppHost.csproj --configuration Debug --verbosity quiet
+dotnet build Explore.AppHost/Explore.AppHost.csproj --configuration Release --verbosity quiet
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress
+git diff --check -- Explore.AppHost/AppHost.cs Explore.Persistence/Seed/DatabaseSeeder.cs dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-context.md dev/active/mvp-launch/mvp-launch-tasks.md docs/OPERATIONS.md docs/CONFIGURATION.md docs/TROUBLESHOOTING.md dev/_journal/journal.md .debug-journal.md
+rg -n "[[:blank:]]+$" Explore.AppHost/AppHost.cs Explore.Persistence/Seed/DatabaseSeeder.cs dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-context.md dev/active/mvp-launch/mvp-launch-tasks.md docs/OPERATIONS.md docs/CONFIGURATION.md docs/TROUBLESHOOTING.md dev/_journal/journal.md .debug-journal.md
+```
+
+Results:
+
+- AppHost Debug build: passed with 0 errors.
+- AppHost Release build: passed with 0 errors.
+- Full Release build: passed with 0 errors; warnings remain existing analyzer/package backlog.
+- Diff whitespace check: passed.
+- Trailing-whitespace scan: no matches.
+- Architecture tests: failed on unrelated dirty worktree state. `Rule_1_17_RawHttpJsonHelpers_MustStayIn_ApprovedBoundaries` reports `Explore.Blazor.Client/Services/SupportAccessClientService.cs`; that file was already modified outside this runtime-plan work.
+- Runtime proof: foreground FullLocal isolated Aspire reached Healthy and carried the public smoke. Detached FullLocal was exercised with mixed results: one aligned run stayed registered and reached Healthy, while a later run returned JSON and then disappeared from `aspire ps`; keep detached lifecycle re-proof open.
+
+## Validation Results for Phase 1.2 Data Protection Restart Slice
+
+Checks run after adding the focused BFF cookie restart proof:
+
+```bash
+dotnet build Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -m:1
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/BffDataProtectionCookieRestartTests/*" --minimum-expected-tests 1 --no-progress
+```
+
+Results:
+
+- Focused Blazor integration build: passed, 10 projects, 0 errors, 9 existing warnings.
+- Focused TUnit node: passed, 1 total, 1 succeeded, 0 skipped.
+- Earlier build attempt failed only on the new test's missing imports/name ambiguity (`DataProtectionServiceCollectionExtensions`, `StatusCodes`, `Results`); the import/alias fix cleared those errors.
+- The full solution hook/build remains noisy in this dirty worktree because unrelated modified projects carry existing warning/error backlog; this slice verified the modified Blazor integration project directly.
+
+## Validation Results for Phase 1.2 Data Protection Health Visibility Slice
+
+Checks run after adding Blazor `data-protection-keys` readiness and the migrated skill-schema repair needed for the architecture gate:
+
+```bash
+git diff --check -- .agents/skills/text-to-lottie/SKILL.md Explore.Blazor/HealthChecks/DataProtectionKeyStoreHealthCheck.cs Explore.Blazor/Program.cs Explore.Blazor.IntegrationTests/Endpoints/DataProtectionKeyStoreHealthCheckTests.cs docs/OPERATIONS.md dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-tasks.md dev/active/mvp-launch/mvp-launch-context.md
+dotnet build Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -m:1
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/DataProtectionKeyStoreHealthCheckTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress
+```
+
+Results:
+
+- Diff whitespace check passed for the touched source/docs/context files.
+- Focused Blazor integration build passed: 10 projects, 0 errors, 127 existing warnings.
+- Focused Data Protection key-store health tests passed: 2 total, 2 succeeded.
+- Full architecture tests passed: 259 total, 258 succeeded, 1 known response-metadata skip.
+
+## Validation Results for Phase 1.3 Email Dispatch Health Slice
+
+Checks run after adding the Basic Dispatch Mode backlog/dead-letter readiness proof:
+
+```bash
+git diff --check -- Explore.Application/Contracts/Persistence/IEmailDispatchOutboxRepository.cs Explore.Persistence/Repositories/EmailDispatchOutboxRepository.cs Explore.Infrastructure/EmailDispatchProcessorSettings.cs Explore.Infrastructure/EmailDispatchProcessorSettingsValidator.cs Explore.API/HealthChecks/EmailDispatchHealthCheck.cs Event.API.IntegrationTests/Features/EmailDispatchHealthCheckTests.cs Explore.Infrastructure.Tests/Fixtures/InMemoryEmailDispatchOutboxRepository.cs Explore.Infrastructure.Tests/Infrastructure/EmailDispatchProcessorSettingsValidatorTests.cs Event.Persistence.IntegrationTests/Repositories/EmailDispatchOutboxTransitionRepositoryTests.cs docs/CONFIGURATION.md docs/OPERATIONS.md
+dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -m:1
+dotnet build Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -m:1
+dotnet build Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -m:1
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchHealthCheckTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchProcessorSettingsValidatorTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchOutboxTransitionRepositoryTests/HealthCountMethodsCountDueRetryStaleProcessingAndDeadLetterRowsAcrossTenants" --minimum-expected-tests 1 --no-progress
+```
+
+Results:
+
+- Diff whitespace check passed for the touched source/docs files.
+- API integration build passed: 8 projects, 0 errors, 94 existing warnings.
+- Infrastructure test build passed: 4 projects, 0 errors, 3 existing warnings.
+- Persistence integration build passed: 5 projects, 0 errors, 4 existing warnings.
+- Focused API health tests passed: 8 total, 8 succeeded.
+- Focused infrastructure settings-validator tests passed: 10 total, 10 succeeded.
+- Focused PostgreSQL repository count test passed: 1 total, 1 succeeded.
+
+## Validation Results for Phase 4.1 BFF Storage Antiforgery Slice
+
+Checks run after moving storage upload session/proxy endpoints from a documented antiforgery exception to the existing BFF antiforgery/self-call-token filter:
+
+```bash
+git diff --check -- Explore.Blazor/Extensions/BffStorageEndpoints.cs Explore.Blazor.IntegrationTests/Endpoints/BffStorageUploadProxyTests.cs docs/SECURITY-MODEL.md docs/BLAZOR.md dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-context.md dev/active/mvp-launch/mvp-launch-tasks.md
+dotnet build Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -m:1
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/BffStorageUploadProxyTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/BffCookieForwardingHandlerTests/*|/*/*/BffSupportAccessEndpointsTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/BffSetupSecretEndpointsTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress
+```
+
+Results:
+
+- Context7 official ASP.NET Core antiforgery docs were checked before changing the Minimal API endpoint filter behavior.
+- Context7 official ASP.NET Core rate-limiting docs were checked before adding the setup-secret limiter regression.
+- Diff whitespace check passed for touched source/docs/context files.
+- Focused Blazor integration build passed: 10 projects, 0 errors, 74 existing warnings.
+- Focused storage endpoint tests passed: 16 total, 16 succeeded.
+- Adjacent BFF cookie-forwarding/support-access tests passed: 7 total, 7 succeeded.
+- Focused setup-secret endpoint tests passed: 8 total, 8 succeeded.
+- Architecture tests passed: 259 total, 258 succeeded, 1 known response-metadata skip.
+
+Additional token-boundary verification:
+
+```bash
+dotnet build Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -m:1
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/AuthStateSerializationPolicyTests/*" --minimum-expected-tests 1 --no-progress
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/BffCurrentUserEndpointTokenBoundaryTests/*" --minimum-expected-tests 1 --no-progress
+```
+
+Results:
+
+- Context7 official ASP.NET Core auth-state/token-storage docs were checked before closing the token-boundary gap.
+- Focused Blazor integration build passed after adding token-boundary coverage: 10 projects, 0 errors, 15 existing warnings.
+- Auth-state serialization tests passed: 2 total, 2 succeeded.
+- Current-user BFF token-boundary tests passed: 1 total, 1 succeeded.
+- Diff whitespace checks passed for tracked token-boundary test/docs edits, and direct trailing-whitespace scan passed for the new `BffCurrentUserEndpointTokenBoundaryTests.cs` file.
+- Architecture tests passed after token-boundary coverage: 259 total, 258 succeeded, 1 known response-metadata skip.
+
 ## Handoff
 
 Recommended next action:
 
-1. Align the Aspire CLI with the repo's Aspire `13.4.6` AppHost SDK, or run `dotnet run --project Explore.AppHost/Explore.AppHost.csproj` as a foreground AppHost control to remove the `aspire start` detach/backchannel variable.
-2. Repeat full-local startup with captured parent log, child log, `aspire ps --format Json`, process URLs, and resource logs. If `explore-api` again changes `Running -> Finished`, capture API resource output directly and fix that application failure.
-3. Once `aspire ps` shows a stable AppHost and API/Blazor remain alive, run health/public endpoint smoke before the parent CLI timeout window can invalidate the result.
-4. Execute Phase 2.5 Mailpit proof for registration email through the real API/BFF/drain path, using Aspire/Docker-discovered Mailpit endpoints under `--isolated`.
-5. Have the owner confirm whether registration confirmations should stay preference-controlled.
-6. Run visual/runtime proof for the registration flow when Aspire/Compose is stable.
+1. Run the full browser/OIDC Data Protection restart proof while preserving the FullLocal database volume.
+2. Hard-code no ports in future runtime checks; discover API/Mailpit endpoints through `aspire describe`.
+3. Run remaining degraded dependency checks for storage, idempotency cleanup, queue, and TickerQ states.
+4. Have the owner confirm whether registration confirmations should stay preference-controlled.
+5. Run browser/visual proof for the registration flow now that Aspire startup, public endpoint smoke, Mailpit delivery, focused Data Protection cookie continuity, Data Protection key-store failure visibility, and email-dispatch backlog/dead-letter health behavior are stable.
 
 Do not start by adding new registration/email abstractions. The current architecture already has the main pieces; launch work should make them reliable, compliant, observable, and documented.

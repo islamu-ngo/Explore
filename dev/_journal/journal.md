@@ -648,6 +648,66 @@
 
 ---
 
+[2026-07-04 Europe/Brussels] — SMTP outage health is correct but slow
+
+**Context**: While closing the MVP launch Phase 1 runtime proof under the `external-infrastructure-bootstrap` intent, the remaining degraded-health evidence needed a real configured-SMTP failure rather than another source audit.
+
+**Symptom / Observation**: In a foreground FullLocal isolated Aspire run, baseline API `/health` returned HTTP 200 with `X-Health-Status: Healthy` and `smtp` Healthy. After `aspire resource mailpit stop --apphost Explore.AppHost/Explore.AppHost.csproj`, API `/health` returned HTTP 503 with `X-Health-Status: Unhealthy` and `smtp` Unhealthy, then returned HTTP 200 Healthy after `aspire resource mailpit start`. The unhealthy response took about 30 seconds and the `smtp` description was `Connection test failed: A task was canceled.`
+
+**Root Cause**: `SmtpHealthCheck` delegates readiness to `IEmailService.TestConnectionAsync`, and the MailKit-backed SMTP test follows the configured SMTP timeout when a configured server is unreachable. The status mapping is correct because `Explore.ServiceDefaults` maps Unhealthy to HTTP 503 and `SmtpHealthCheck` returns Unhealthy for configured-but-unreachable SMTP, but the probe latency is too long for tight readiness windows.
+
+**Resolution**: The MVP launch plan, context, tasks, operations runbook, and troubleshooting guide now record SMTP outage readiness as proven and track bounded SMTP health timeout hardening as remaining launch work. No code change was made in this evidence slice.
+
+**Why This Matters for Future Work**: Do not re-run SMTP outage proof just to discover the same status behavior: it works and identifies the failing dependency. The next useful work is bounding the SMTP readiness timeout, then re-running the same Mailpit stop/start proof to make the failure fast enough for load balancers and rolling updates.
+
+**References**:
+- `Explore.API/HealthChecks/SmtpHealthCheck.cs:15`
+- `Explore.Infrastructure/Mail/SmtpEmailService.cs:50`
+- `Explore.ServiceDefaults/Extensions.cs:165`
+- `docs/OPERATIONS.md:215`
+- `docs/TROUBLESHOOTING.md:270`
+- `dev/active/mvp-launch/mvp-launch-context.md`
+- `dev/active/mvp-launch/mvp-launch-tasks.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `aspire`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-07-04 Europe/Brussels] — Detached Aspire is not the launch proof path here
+
+**Context**: While closing the MVP launch Phase 1 runtime proof under the Aspire `external-infrastructure-bootstrap` slice, detached `aspire start` needed re-proof after earlier mixed evidence.
+
+**Symptom / Observation**: `aspire start --apphost Explore.AppHost/Explore.AppHost.csproj --isolated --format Json` and `aspire run --detach --apphost Explore.AppHost/Explore.AppHost.csproj --isolated --format Json` returned AppHost/CLI PIDs, dashboard URL, and log path. The child log reached resource readiness and `Notifying AppHost startup readiness`, but immediate `aspire ps --format Json` returned `[]`, `aspire describe --apphost Explore.AppHost/Explore.AppHost.csproj --format Json` reported no running AppHost, and the returned AppHost PID no longer existed.
+
+**Root Cause**: This is a local Aspire CLI lifecycle/tooling mismatch, not an application startup failure. Official Aspire CLI documentation says detached `aspire start` should leave the AppHost running in the background and inspectable with `aspire ps`, `aspire describe`, `aspire logs`, and `aspire stop`; in this workspace on CLI `13.4.6`, the detached parent reports readiness but the AppHost process disappears before follow-up inspection. A separate control-plane host compile failure briefly blocked one variant until `Event.ControlPlane.Blazor/Components/App.razor` imported `RenderMode` directly for `InteractiveServer`.
+
+**Resolution**: The launch plan, context, tasks, operations, and troubleshooting docs now make foreground `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj --isolated` the canonical runtime proof path. Detached mode is tracked as CLI/tooling follow-up and should be re-tested only after updating Aspire CLI or when explicitly investigating CLI lifecycle behavior. Verification after the control-plane fix: `dotnet build Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --configuration Release --verbosity quiet` passed with 0 errors; detached `aspire run --detach ... --format Json` still returned `[]` from `aspire ps` after readiness.
+
+**Why This Matters for Future Work**: Do not block MVP application readiness on local detached Aspire lifecycle unless the CLI itself is the feature under test. Foreground `aspire run --isolated` gives stable AppHost lifetime for health, public smoke, Mailpit proof, degraded-health proof, and Data Protection restart checks.
+
+**References**:
+- `Event.ControlPlane.Blazor/Components/App.razor`
+- `docs/OPERATIONS.md`
+- `docs/TROUBLESHOOTING.md`
+- `dev/active/mvp-launch/mvp-launch-plan.md`
+- `dev/active/mvp-launch/mvp-launch-context.md`
+- `dev/active/mvp-launch/mvp-launch-tasks.md`
+- Aspire CLI docs: `https://aspire.dev/reference/cli/commands/aspire-start/`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `aspire`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
 [2026-07-04 Europe/Brussels] — Preserve original transaction failures on rollback cleanup
 
 **Context**: While completing Phase 3 MVP launch registration duplicate dispatch-row proof under the `update-repository-query` intent, the focused PostgreSQL registration-intent test class exposed a retry-path failure in `EventRegistrationIntentRepository`.
@@ -674,3 +734,97 @@
 - [x] Candidate for skill update: `dotnet-efcore-guidelines`
 - [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
 - [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-07-04 Europe/Brussels] — Isolated Aspire ports must flow through endpoint expressions
+
+**Context**: While executing the MVP launch runtime proof under the `external-infrastructure-bootstrap` intent, FullLocal Aspire started platform containers but API readiness initially failed or disappeared before reliable smoke checks.
+
+**Symptom / Observation**: Earlier `aspire start --isolated` attempts showed API/Blazor briefly listening, stale `email.smtp_port=1025` in the database while Mailpit had a dynamic isolated port, OIDC health pointing at fixed Keycloak ports, and S3 storage health failing until the `explore` MinIO bucket was created manually.
+
+**Root Cause**: `Explore.AppHost/AppHost.cs` mixed fixed localhost development ports with `--isolated` Aspire runs. Under isolated runs, Aspire assigns dynamic host ports, so child projects must receive endpoint expressions from their resources instead of static `localhost:<port>` values. Separately, `SeedDevelopmentSmtpAsync` preserved existing local SMTP settings in persistent dev volumes, so the database could keep a stale Mailpit port across isolated runs.
+
+**Resolution**: FullLocal AppHost now passes Mailpit, Keycloak, Cerbos, MinIO, Svix, and Coop endpoints through Aspire endpoint expressions, adds a `minio-bootstrap` container to create `local/explore`, and waits for that bootstrap before API startup. Development SMTP seeding refreshes when `ISLAMU_ASPIRE_MODE` is FullLocal/local-full/full, so persisted settings follow the current isolated Mailpit port. Verification passed with foreground `aspire run --isolated`, `aspire wait` for API/Blazor Healthy, direct API/Blazor `/health` HTTP 200 checks, dynamic SMTP DB-row checks, Keycloak metadata issuer check, and MinIO bucket stat. Detached `aspire start --format Json --isolated` has mixed evidence and still needs lifecycle re-proof after a later run returned JSON but disappeared from `aspire ps`.
+
+**Why This Matters for Future Work**: Any future AppHost resource consumed by API/Blazor/MigrationService must be wired from `resource.GetEndpoint(...).Property(...)` when it crosses the host boundary. Fixed localhost ports are acceptable only for non-isolated human access; they are not a safe contract for application configuration or persisted Development seed data.
+
+**References**:
+- `Explore.AppHost/AppHost.cs:305`
+- `Explore.AppHost/AppHost.cs:440`
+- `Explore.AppHost/AppHost.cs:471`
+- `Explore.AppHost/AppHost.cs:522`
+- `Explore.AppHost/AppHost.cs:555`
+- `Explore.Persistence/Seed/DatabaseSeeder.cs:387`
+- `Explore.Persistence/Seed/DatabaseSeeder.cs:412`
+- `docs/OPERATIONS.md:79`
+- `docs/OPERATIONS.md:113`
+- `dev/active/mvp-launch/mvp-launch-context.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `aspire`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-07-04 Europe/Brussels] — Public seed discovery depends on session status and event end summaries
+
+**Context**: During MVP launch FullLocal public smoke, seeded public event details and sitemap URLs worked, but the public event list returned zero items and the seeded event calendar export returned 404.
+
+**Symptom / Observation**: `GET /api/event?pageSize=6` returned `totalCount: 0`, while `GET /api/event/{id}` and `sitemap.xml` could still expose deterministic seed events. The calendar handler also returned no export for `018e4e5c-7f00-7000-8000-000000000061`.
+
+**Root Cause**: Public discovery and calendar export use derived schedule/status predicates, not just event publication state. Existing Development seed rows had child `EventSessionStatusId = Draft` because `SeedData.CreateSession` did not set Published, and persistent FullLocal event rows could retain `LastSessionEndUtc = null` because `SeedData.CreateEvent` did not populate that summary field and `AddMissingSeedRowsAsync` does not update existing rows.
+
+**Resolution**: `SeedData` now creates deterministic Islamic event sessions as Published and sets `LastSessionEndUtc`. `DatabaseSeeder.EnsureIslamicEventCatalogAsync` now repairs existing deterministic Development seed rows for session status and event schedule summaries, so persistent local volumes converge without manual reset. A PostgreSQL-backed `DatabaseSeederTests` regression recreates stale rows and proves a later Development seed repairs them.
+
+**Why This Matters for Future Work**: Launch/demo seed data must satisfy the same query projections used by public handlers. Detail/sitemap success is not enough; list and calendar paths require Published child sessions and non-null event end summaries. Any future deterministic catalog seed should be validated through public query filters, not only by inserted row count.
+
+**References**:
+- `Explore.Persistence/Seed/SeedData.cs`
+- `Explore.Persistence/Seed/DatabaseSeeder.cs`
+- `Event.Persistence.IntegrationTests/Seed/DatabaseSeederTests.cs`
+- `Explore.Application/Features/Events/Handlers/Queries/GetEventCalendarExportRequestHandler.cs`
+- `Explore.Persistence/Repositories/EventRepository.cs`
+- `dev/active/mvp-launch/mvp-launch-context.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `dotnet-efcore-guidelines`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-07-04 Europe/Brussels] — SMTP outage health is now bounded
+
+**Context**: While closing the MVP launch Phase 1 degraded-readiness proof under the `external-infrastructure-bootstrap` intent, the earlier Mailpit outage proof had shown correct HTTP 503 behavior but an operationally slow SMTP timeout.
+
+**Symptom / Observation**: Before hardening, a stopped configured SMTP dependency made API `/health` return HTTP 503 with `smtp` Unhealthy only after roughly 30 seconds. After registering the API SMTP health check with a five-second ASP.NET Core health-check timeout, a foreground FullLocal isolated Aspire run exposed API `http://localhost:33675` and Mailpit SMTP port `45967`; stopping Mailpit made `/health` return HTTP 503 in `time_total=5.014349` with `durationMs=5000.9584`, and restarting Mailpit restored HTTP 200 in `time_total=0.104138`.
+
+**Root Cause**: `SmtpHealthCheck` correctly delegated to `IEmailService.TestConnectionAsync`, and `SmtpEmailService` correctly honored cancellation, but the health-check registration did not set an ASP.NET Core timeout. Without a registration timeout, a configured-but-unreachable SMTP endpoint could hold readiness until the SMTP client timeout elapsed.
+
+**Resolution**: `Explore.API/Program.cs` now registers `SmtpHealthCheck` with `timeout: TimeSpan.FromSeconds(5)`. `Event.API.IntegrationTests/Features/SmtpHealthCheckRegistrationTests.cs` asserts the real API host registration timeout, failure status, and tags. Verification passed with `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/SmtpHealthCheckRegistrationTests/*" --minimum-expected-tests 1`, and the Mailpit stop/start runtime proof returned the expected bounded HTTP 503 and recovery HTTP 200.
+
+**Why This Matters for Future Work**: Launch-critical dependency readiness must fail fast at the health-check registration boundary even when the underlying client has a longer operational timeout. For SMTP specifically, keep the MailKit client timeout suitable for mail operations, and use the ASP.NET Core readiness registration timeout to keep load balancers and rolling updates responsive.
+
+**References**:
+- `Explore.API/Program.cs:361`
+- `Explore.API/HealthChecks/SmtpHealthCheck.cs:15`
+- `Explore.Infrastructure/Mail/SmtpEmailService.cs:50`
+- `Event.API.IntegrationTests/Features/SmtpHealthCheckRegistrationTests.cs:15`
+- `docs/OPERATIONS.md`
+- `docs/TROUBLESHOOTING.md`
+- `dev/active/mvp-launch/mvp-launch-context.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `aspire`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---

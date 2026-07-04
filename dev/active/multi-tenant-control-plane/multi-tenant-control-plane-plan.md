@@ -3,18 +3,18 @@
 
 # Event Instance Console And Multi-Tenant Control Plane - Implementation Plan
 
-Last Updated: 2026-07-04 Europe/Brussels
+Last Updated: 2026-07-05 Europe/Brussels
 
 ## 0. Planning Metadata
 
-- **Request:** Write and CTO-strengthen an implementation plan for the Event Instance Console and the multi-tenant control-plane capabilities that appear only when ISLAMU Event runs in multi-tenant mode. Single-tenant mode keeps the existing administration settings page as its current instance-console abstraction. The target must include a required shared BFF hosting security library, a shared control-plane Razor class library, and a self-hostable separate Blazor control-plane app, all named with the current `Event.*` namespace. The separate control-plane app must authenticate through Keycloak OIDC using the BFF pattern.
+- **Request:** Write and CTO-strengthen an implementation plan for the Event Instance Console and the multi-tenant control-plane capabilities that appear only when ISLAMU Event runs in multi-tenant mode. Single-tenant mode keeps the existing administration settings page as its current instance-console abstraction. The target must include a required shared BFF hosting security library, a shared control-plane Razor class library, and a self-hostable separate Blazor control-plane app, all named with the current `Event.*` namespace. The separate control-plane app must authenticate through Keycloak OIDC using the BFF pattern and run Interactive Server only, while the existing ISLAMU Event Blazor app may keep its current render-policy customization.
 - **Task directory:** `dev/active/multi-tenant-control-plane/`
-- **Planning status:** In implementation. Phase 1 shared BFF hosting foundation has been accepted for the current scope: proxy/header primitives, safe auth diagnostics, OIDC options, and token-refresh cookie events now live in `Event.Web.BffHosting`, and `Explore.Blazor` consumes them. Phase 2 shared control-plane client work has not started.
+- **Planning status:** In implementation. Phase 1 shared BFF hosting foundation has been accepted for the current scope: proxy/header primitives, safe auth diagnostics, OIDC options, and token-refresh cookie events now live in `Event.Web.BffHosting`, and `Explore.Blazor` consumes them. Phase 2 RCL foundation is complete: `Event.ControlPlane.Client` now exists as a host-neutral Razor class library with shared route constants, route catalog, DI entry point, HAL/result contracts, overview/tenant/domain service contracts, safe default services, local design primitives, and architecture guardrails. Phase 3 API/Application work is complete for the planned foundation: the dedicated multi-tenant-only, instance-admin-only overview, tenant lifecycle, archived-only purge scheduling, domain/DNS guidance, read-only operations status, generated contract, and API changelog/inventory updates now exist. Phase 4 embedded Instance Console route and navigation foundations are in place: the existing Blazor client maps `/admin/instance` to the shared RCL overview and exposes the `Instance Console` entry point only to multi-tenant instance admins. Phase 7 started early by user request: `Event.ControlPlane.Blazor` now has the separate-host scaffold, Dockerfile, dedicated Keycloak seed/init, Compose profile, Aspire resource, and operator docs; integration/E2E coverage remains.
 - **Matched intents:** No exact intent in `.claude/contract/intents.yaml` matched "multi-tenant control-plane implementation plan". Use the Fallback Contract from `AGENTS.md`, `docs/QUICK_REFERENCE.md`, and `docs/GOVERNANCE.md`. Related implementation intents likely to apply later: `external-infrastructure-bootstrap`, `add-get-endpoint`, `add-write-endpoint`, `add-cqrs-handler`, `add-ef-migration`, `update-repository-query`, `openapi-contract-change`, `blazor-component-affordance`, `bff-auth-bug`, `cerbos-policy-change`, and `ci-cd-change`.
 - **Relevant skills:** `senior-cto-feedback`, `clean-architecture-rules`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`, `dotnet-efcore-guidelines`, `outbox-pattern`, `error-tracking`, `aspire`.
 - **Relevant rules:** `.claude/rules/blazor-client.md`, `.claude/rules/blazor-server.md`, `.claude/rules/api-controllers.md`, `.claude/rules/api-hateoas.md`, `.claude/rules/application-layer.md`, `.claude/rules/domain.md`, `.claude/rules/efcore-persistence.md`, `.claude/rules/efcore-migrations.md`, `.claude/rules/tests.md`.
 - **Primary layers touched:** Application, Persistence, Infrastructure, API, Blazor, Docs, DevOps. Domain may be touched only if tenant lifecycle, audit, or operation status entities are missing.
-- **Estimated complexity:** XL. This crosses deployment-mode rules, BFF host routing, Keycloak OIDC confidential-client setup, shared ASP.NET Core/YARP/cookie/header security extraction, Blazor UI composition, API authorization/HAL contracts, tenant isolation, operations views, Docker/Aspire topology, and self-hosting documentation. The highest-risk foundation is extracting shared BFF hosting correctly before `Event.ControlPlane.Blazor` exists, then proving the existing `Explore.Blazor` host still behaves the same.
+- **Estimated complexity:** XL. This crosses deployment-mode rules, BFF host routing, Keycloak OIDC confidential-client setup, shared ASP.NET Core/YARP/cookie/header security extraction, Blazor UI composition, API authorization/HAL contracts, tenant isolation, operations views, Docker/Aspire topology, and self-hosting documentation. The highest-risk foundation was extracting shared BFF hosting correctly and proving the existing `Explore.Blazor` host still behaves the same before letting the separate control-plane host consume the same primitives.
 
 ## 1. Executive Summary
 
@@ -33,6 +33,8 @@ The control-plane capability still has multiple deployment shapes:
 CTO naming correction: new control-plane projects must use `Event.*` names because `Explore` is the older project prefix. Existing checked-in projects such as `Explore.Blazor`, `Explore.API`, and `Explore.AppHost` remain as current codebase reality until a broader repository rename is planned separately.
 
 The separate control-plane app must authenticate operators through Keycloak OIDC as a confidential BFF client. Browser code receives only HttpOnly cookies; bearer/refresh tokens, Keycloak client secrets, setup secrets, tenant hints, and support-access authority stay server-side. The target is a strong, explicit security boundary, not a second browser-token app.
+
+Render-mode boundary: the existing ISLAMU Event Blazor app (`Explore.Blazor` / `Explore.Blazor.Client`) may keep its current default Interactive Server posture plus render-policy customization for InteractiveAuto/WebAssembly where the product already supports it. The separate control-plane host (`Event.ControlPlane.Blazor`) is different: it is Interactive Server only, with no configuration switch, Auto fallback, or WebAssembly bundle for privileged control-plane features. `Event.ControlPlane.Client` remains render-mode neutral so the same shared pages/components can be embedded by the existing app without inheriting the separate host's composition-root choice.
 
 The first implementation should extract `Event.Web.BffHosting` from the existing `Explore.Blazor` host and make `Explore.Blazor` consume it before adding the separate app. This proves the security-sensitive BFF boundary once, then lets `Event.ControlPlane.Blazor` use the same OIDC/YARP/cookie/header machinery instead of reimplementing it.
 
@@ -60,7 +62,14 @@ Also out of scope for the first implementation: a fully independent management A
 | Existing instance settings UI already exists in the Blazor client. | Verified by file structure: `Explore.Blazor.Client/Pages/Admin/Instance/InstanceAdminSettings.razor` and `Explore.Blazor.Client/Pages/Admin/Instance/Components/*`. | High | The current page has settings sections such as tenants, SMTP, storage, auth, localization, modules, and governance. |
 | Current admin routes include `/admin/instance/settings`. | Verified: `Explore.Blazor.Client/Routes.razor`, `docs/ADMIN_GUIDE.md`. | High | This route should remain the single-tenant administration abstraction. |
 | HAL links are the source of truth for UI action affordances. | Verified: `docs/QUICK_REFERENCE.md`, `docs/BLAZOR.md`, `.claude/rules/api-hateoas.md`, `.claude/rules/blazor-client.md`. | High | Control-plane resource actions must not be enabled from local role checks alone. |
-| No control-plane-specific shared class library or separate control-plane Blazor app currently exists. | Verified by search: no `ControlPlane`, `Control.Plane`, `control-plane`, `Event.ControlPlane.Blazor`, or `Explore.Control*` project found except unrelated docs references. | High | New projects/files must be treated as new work. |
+| `Event.ControlPlane.Client` now exists as the shared control-plane Razor class library scaffold. | Verified: `Event.ControlPlane.Client/Event.ControlPlane.Client.csproj`, `_Imports.razor`, `ControlPlaneClientAssembly.cs`, `Routing/*`, `Contracts/*`, `Services/*`, `Components/Common/ControlPlane*.razor`, `Event.Architecture.Tests/EventControlPlaneClientArchitectureTests.cs`, `Explore.sln`; build and filtered architecture tests passed on 2026-07-04. | High | The separate app now consumes this RCL through a protected placeholder shell; full shared pages backed by real API adapters remain pending. |
+| `Event.ControlPlane.Blazor` now exists as the separate control-plane Blazor/BFF host scaffold and deployment foundation. | Verified: `Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj`, `Program.cs`, `Extensions/ConfigurationExtensions.cs`, `Components/*`, `appsettings*.json`, `Dockerfile`, `Explore.sln`, `docker-compose.yml`, `.env.example`, `Explore.AppHost/AppHost.cs`, and `Event.Architecture.Tests/EventControlPlaneBlazorArchitectureTests.cs`; build, Compose config, AppHost build, and focused architecture tests passed on 2026-07-04. | High | Integration/E2E tests, real API adapters, and production admin-host hardening remain pending. |
+| Existing and separate Blazor hosts intentionally have different render-mode contracts. | Verified: `Explore.Blazor/Program.cs`, `Explore.Blazor/Components/App.razor`, `Explore.Blazor.Client/Services/RuntimeRenderPolicyService.cs`, `Event.ControlPlane.Blazor/Program.cs`, `Event.ControlPlane.Blazor/Components/App.razor`, `Event.Architecture.Tests/EventControlPlaneBlazorArchitectureTests.cs`, `docs/BLAZOR.md`. | High | `Explore.Blazor` registers server and WebAssembly component modes and resolves active modes from runtime policy; `Event.ControlPlane.Blazor` registers/maps only Interactive Server and tests block Auto/WebAssembly control-plane hosting. |
+| Official Blazor guidance supports the selected composition-root split. | Verified through Context7 `/dotnet/aspnetcore.docs` on 2026-07-04: Blazor render-mode docs for `AddInteractiveServerComponents()`, `AddInteractiveServerRenderMode()`, `@rendermode="InteractiveServer"`, Interactive WebAssembly, Interactive Auto, and RCL route/static-asset sharing through additional assemblies and `_content/{packageId}`. | High | The plan uses Interactive Server-only registration/mapping for `Event.ControlPlane.Blazor`, while keeping `Event.ControlPlane.Client` as a normal RCL that hosts can discover without forcing the separate host to enable WebAssembly or Auto. |
+| Local Keycloak seed files now include the dedicated control-plane client. | Verified: `docker/keycloak/realm-export.json`, `docker/keycloak/ISLAMU-realm.test.json`, `docker/keycloak/keycloak-init.sh`, `.env.example`, `docs/CONFIGURATION.md`, `docs/SELF_HOSTING.md`, and `docs/SECRETS.md`; JSON and shell syntax checks passed on 2026-07-04. | High | `keycloak-init.sh` syncs `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` when supplied; Compose and Aspire now wire the dedicated client for local/self-hostable deployment. |
+| The first dedicated control-plane API contract now exists. | Verified: `Explore.API/Controllers/ControlPlaneController.cs`, `Explore.Application/DTOs/ControlPlane/ControlPlaneOverviewDto.cs`, `Explore.Application/Features/ControlPlane/Requests/Queries/GetControlPlaneOverviewQuery.cs`, `Explore.Application/Features/ControlPlane/Handlers/Queries/GetControlPlaneOverviewQueryHandler.cs`, `Explore.API/Hateoas/Assemblers/ControlPlaneOverviewResourceAssembler.cs`, `Explore.API/Hateoas/Policies/ControlPlaneOverviewLinkPolicy.cs`, and focused tests passed on 2026-07-04. | High | `GET /api/admin/control-plane/overview` is multi-tenant-only, instance-settings-authorized, HAL-wrapped, and intentionally bounded to safe overview data without secrets. |
+| The planned Phase 3 control-plane API/Application foundation now exists. | Verified: `ControlPlaneController`, `Explore.Application/DTOs/ControlPlane/*`, `Explore.Application/Features/ControlPlane/*`, control-plane HAL assemblers/policies, `Explore.Application/Serialization/ExploreJsonContext.cs`, `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`, `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and focused control-plane unit/HAL/OpenAPI tests passed on 2026-07-04. | High | Overview, tenant lifecycle, archived-only purge scheduling, domain/DNS guidance, and read-only operations status are implemented. Physical destructive deletion, replay/repair mutations, and broader management-plane operations remain later hardening work. |
+| Existing tenant CRUD is not sufficient as the final multi-tenant control-plane tenant lifecycle surface. | Verified: `TenantController`, `CreateTenantCommand`, `GetTenantListRequestHandler`, `GetTenantDetailsRequestHandler`, `TenantLinkPolicy`, `TenantStatusEnum`. | High | The primitives exist, including status values and HAL links, but the endpoint is generic authenticated tenant CRUD, not a multi-tenant-only, instance-admin-only lifecycle API with suspend/archive/purge/audit semantics. |
 | Related active work exists for secrets/control-plane separation. | Verified: `dev/active/secrets-refactor-control-plane/*`. | Medium | That workstream is about secret binding separation, not this UI/control-plane product surface. Coordinate but do not merge plans. |
 | Related paused work exists for tenant onboarding/lifecycle. | Verified: `dev/pause/tenant-onboarding-enterprise/*`. | Medium | Tenant lifecycle tasks may provide prerequisites or overlap. Re-baseline before implementation because the worktree has many unrelated changes. |
 | Baseline build was green before this plan was written. | Verified by command: `dotnet build --configuration Release --verbosity quiet`. | High | Build passed with 25 projects, 0 errors, and existing warnings, including package warnings. |
@@ -86,8 +95,10 @@ Also out of scope for the first implementation: a fully independent management A
 - `YarpProxyExtensions` removes browser-controlled privileged headers and forwards server-held access tokens and trusted tenant hints.
 - `TenantHeaderForwardingHandler` adds `X-Tenant-Slug` only from BFF route context.
 - `Explore.Blazor.Client` owns the current UI pages and services.
+- `Explore.Blazor` is not locked to one render mode. It registers Interactive Server and WebAssembly component support, and `RuntimeRenderPolicyService` resolves the active mode from governance/runtime settings. Its default can remain Interactive Server while still preserving existing InteractiveAuto/WebAssembly customization for the public/community app.
 - `Event.Web.BffHosting` now owns the shared `/api/*` YARP route/cluster setup, proxy request transform, privileged-header sanitizer, provider-neutral OIDC options factory, safe auth diagnostics policy, token-refresh cookie events, and named token-refresh backchannel client. `Explore.Blazor/Extensions/YarpProxyExtensions.cs` registers host-specific proxy adapters and delegates to `AddEventApiProxy(...)`.
 - `Explore.Blazor` still owns host-specific dynamic auth orchestration through `DynamicAuthSchemeManager`, but reusable OIDC option construction now comes from `IEventBffOidcOptionsFactory`. Host-specific principal enrichment, circuit token cleanup, auth cookie cleanup, and setup-aware session-expiry redirects live in `ExploreBffCookieSessionHandler`, not in the shared library.
+- `Event.ControlPlane.Blazor` must not copy the public host's render-policy configurability. Its composition root registers `AddInteractiveServerComponents()` and maps `AddInteractiveServerRenderMode()` only, and its root document applies `@rendermode="InteractiveServer"` to `HeadOutlet` and `Routes`. It must not call `AddInteractiveWebAssemblyComponents()`, `AddInteractiveWebAssemblyRenderMode()`, add InteractiveAuto render modes, or introduce a render-policy service/configuration switch.
 
 **Existing administration UI**
 
@@ -114,7 +125,7 @@ Verified test projects and likely coverage areas:
 - `Explore.Blazor.Client.E2ETests`: browser-level flows where enabled.
 - `Explore.Infrastructure.Tests`: infrastructure/provider behavior.
 
-Known planning gap: no tests can currently protect a separate control-plane Blazor/BFF app or shared control-plane class library because those projects do not yet exist.
+Architecture tests now protect the shared control-plane class library boundary, route-root composition, DI entry point, separate control-plane Blazor/BFF host boundary, Dockerfile secret posture, Keycloak seed/init coverage, and deployment alignment across Compose, `.env.example`, and Aspire. Missing coverage remains at the integration/E2E level: OIDC challenge/callback/logout, non-instance-admin denial against a real principal, proxy/header behavior in the separate host, and no browser-visible token/client-secret leakage.
 
 ### 2.4 Existing Documentation And Contracts
 
@@ -140,8 +151,9 @@ OpenAPI contract impact is likely if new endpoints are added, requiring `schemas
 ### 2.5 Current Pain Points / Improvement Areas
 
 - **The shared BFF library is accepted for the current Phase 1 scope.** `Event.Web.BffHosting` now centralizes YARP route/cluster setup, API base-address resolution, development certificate trust policy, browser-controlled privileged-header stripping, host-provided token/tenant/setup/support forwarding adapters, reusable Keycloak/Google OIDC options, safe auth diagnostics, and token-refresh cookie events. Host-specific dynamic scheme orchestration remains in `Explore.Blazor`.
-- **No shared control-plane UI library exists.** The current instance admin components live inside `Explore.Blazor.Client`, so a separate self-hostable control-plane app would either duplicate UI/client code or require extraction.
-- **No separate control-plane Blazor/BFF app exists.** The repository has only the main `Explore.Blazor` host today, so `Event.ControlPlane.Blazor` and its Keycloak OIDC client/bootstrap path are new work.
+- **The shared control-plane UI library now has its scaffold and service-contract foundation.** `Event.ControlPlane.Client` provides the RCL project, assembly marker, route constants/catalog, DI entry point, HAL-aware models, safe result/problem contracts, overview/tenant/domain service interfaces, and fail-closed default services. It does not yet contain pages, components, concrete host adapters, or design-system integration.
+- **The separate control-plane Blazor/BFF app scaffold and deployment foundation now exist.** `Event.ControlPlane.Blazor` builds, uses `Event.Web.BffHosting` with the `ControlPlane` profile, loads env/Infisical/user-secret configuration, ships a Dockerfile, has protected placeholder pages, can be rendered in Docker Compose config through the optional `control-plane` profile, and is registered as an Aspire resource. It still needs real API adapters/pages and integration/E2E coverage.
+- **The Phase 3 API inventory is complete and the overview API slice is implemented.** Existing instance settings, onboarding preflight, storage, email dispatch, provider, support access, localization, UI theme, and tenant CRUD routes provide useful source material. The new `ControlPlaneController`/Application `ControlPlane` feature starts with a bounded overview read model and HAL authority instead of a thin aggregate over weak or generic admin routes.
 - **The existing instance settings page mixes concerns that are acceptable for single-tenant administration but too flat for a multi-tenant operator console.** Multi-tenant operators need operational pages for tenants, DNS, health, jobs/outbox, storage, backups, and policy/provider status.
 - **Dedicated admin host routing is not yet modeled as a first-class UI shell.** The BFF already understands host and tenant headers, but there is no verified control-plane host shell that hides public discovery and enforces instance-admin-only navigation.
 - **Multi-tenant onboarding needs operator-facing DNS and control-plane access guidance.** Existing deployment docs describe the behavior, but onboarding should make public host, wildcard tenant subdomain, admin host, and custom-domain strategy visible.
@@ -151,8 +163,8 @@ OpenAPI contract impact is likely if new endpoints are added, requiring `schemas
 ### 2.6 Unknowns After Investigation
 
 - **Exact profile/config boundary for later `Event.Web.BffHosting` expansion.** The current BFF foundation is accepted, but the separate control-plane host still needs explicit `ControlPlane` profile defaults for cookie names/domains, stricter CSP, optional IP allowlist, Keycloak client config, and readiness behavior. The library must remain a hosting/security helper, not a UI framework, generated client package, or business service library.
-- **Exact Blazor project shape for `Event.ControlPlane.Client`.** Implementation must verify the best .NET 10 Razor class library shape for InteractiveAuto components and static assets. The library must not create a dependency cycle with `Explore.Blazor.Client`.
-- **Exact Keycloak client configuration shape for the separate app.** Existing docs map `Keycloak:*` and Compose syncs the `islamu-event-blazor` client secret. Implementation must decide whether `Event.ControlPlane.Blazor` uses the same config section with a dedicated client id/secret or a separate `ControlPlane:Keycloak:*` section, then document/env-map it.
+- **Exact Blazor project shape for `Event.ControlPlane.Client` is resolved for the scaffold.** It uses `Microsoft.NET.Sdk.Razor`, targets `net10.0`, references `Microsoft.AspNetCore.Components.Web` through central package management, and has no project references. Future component/static-asset work still needs verification in embedded and separate hosts.
+- **Exact Keycloak client configuration shape for the separate app is now selected and wired for local/self-hosting.** `Event.ControlPlane.Blazor` accepts canonical `Bff:Authentication:*` keys and maps dedicated bootstrap keys such as `KEYCLOAK_CONTROL_PLANE_CLIENT_ID`, `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET`, `KEYCLOAK_CONTROL_PLANE_AUTHORITY`, and `CONTROL_PLANE_API_ENDPOINT` through its Infisical compatibility loader. Compose and Aspire now wire those keys for local/self-hostable deployments.
 - **Whether tenant lifecycle/domain/operation endpoints already exist in the current dirty worktree.** The planning pass verified concepts and related docs, but future agents must re-read current code before implementing those endpoints.
 - **Exact instance-admin authority source.** Implementation must verify current Keycloak claim/group mapping, local/Cerbos authorization metadata, and API policy names before wiring route guards and endpoint policies.
 - **Backups and migration readiness data sources.** Docs mention operational needs, but the current verified codebase may not have backup status or migration preflight services yet.
@@ -224,6 +236,7 @@ Event.ControlPlane.Blazor                 new self-hostable BFF host
   references Event.ControlPlane.Client
   uses shared Keycloak OIDC/BFF/YARP/API proxy services
   uses a dedicated confidential OIDC client such as islamu-event-control-plane
+  runs Interactive Server only; no InteractiveAuto/WebAssembly hosting
   ships as its own Docker image/profile
 ```
 
@@ -249,6 +262,7 @@ Event.ControlPlane.Blazor                 new self-hostable BFF host
 - Use Authorization Code flow with PKCE through ASP.NET Core OpenIdConnect middleware, a confidential client secret stored only in server-side configuration/secret provider, and HttpOnly secure cookies.
 - Use a dedicated Keycloak client id such as `islamu-event-control-plane`, not the public API audience and not a browser-exposed secret.
 - Configure explicit redirect and sign-out callback URIs for the control-plane host, for example `/signin-oidc` and `/signout-callback-oidc`.
+- Register and map only Interactive Server components in the separate host: `builder.Services.AddRazorComponents().AddInteractiveServerComponents()` and `app.MapRazorComponents<App>().AddInteractiveServerRenderMode()`. Do not add InteractiveAuto, InteractiveWebAssembly, a WebAssembly client bundle, or a render-mode configuration option to `Event.ControlPlane.Blazor`.
 - Require instance-admin authority after authentication; tenant-admin authority alone must not enter the control-plane shell.
 - Reuse safe auth diagnostics, OIDC discovery readiness, token refresh, cookie, and backchannel hardening patterns from the existing BFF where possible.
 - Use `Event.Web.BffHosting` instead of reimplementing OIDC/YARP/cookie/header behavior locally in the separate app.
@@ -306,6 +320,7 @@ Operator clicks a control-plane action
 - Tenant isolation is API-authoritative. The browser and client-side components are never the tenant authority.
 - BFF tokens stay server-side. Browser code must not receive access tokens or privileged tenant/setup/support headers.
 - `Event.ControlPlane.Blazor` must authenticate with Keycloak OIDC as a confidential BFF client; it must not use API keys, setup secrets, or browser-stored bearer tokens for operator login.
+- `Event.ControlPlane.Blazor` is Interactive Server-only. The existing `Explore.Blazor` public/community host may keep its render-policy-controlled interactivity customization, but that configurability must not be introduced into the separate control-plane host.
 - Browser-supplied privileged headers must be stripped by the BFF/proxy.
 - `Event.Web.BffHosting` is required before `Event.ControlPlane.Blazor` is scaffolded. It owns security-sensitive browser-hosting primitives only and must not absorb UI, business, generated-client, domain, persistence, or provisioning-script responsibilities.
 - Control-plane routes and endpoints are multi-tenant-only unless explicitly needed for the existing single-tenant settings page.
@@ -346,16 +361,16 @@ Operator clicks a control-plane action
 
 - **Decision:** Create `Event.ControlPlane.Client` as a host-neutral Razor class library for control-plane pages/components/services/contracts.
 - **Why:** This directly satisfies the requirement that both the separate Blazor app and embedded control plane use the same implementation.
-- **Alternatives considered:** Put components in `Explore.Blazor.Client` and copy them later. Rejected because it blocks the self-hostable separate app and invites divergent behavior.
-- **Consequences:** The library must not depend on `Explore.Blazor.Client`; shared UI primitives or service adapters may need extraction.
+- **Alternatives considered:** Put components in `Explore.Blazor.Client` and copy them later; create a broad shared UI-kit project before the control-plane pages exist. Rejected because the first blocks the self-hostable separate app and invites divergent behavior, while the second is premature for the current scope.
+- **Consequences:** The library must not depend on `Explore.Blazor.Client`. Shared control-plane pages use local `ControlPlane*` UI primitives in `Event.ControlPlane.Client/Components/Common/`, built on MudBlazor v9, Event design tokens, BEM CSS isolation, and HAL-ready action slots. A broader shared UI-kit remains a future extraction only if multiple host families need the same generic primitives.
 - **Files/layers affected:** New project, solution file, build/test configuration, Blazor hosts.
 
 ### Decision 5: Separate Self-Hostable App Uses Keycloak OIDC BFF Pattern
 
-- **Decision:** Create `Event.ControlPlane.Blazor` as a BFF host authenticated through Keycloak OIDC using a dedicated confidential control-plane client and the shared `Event.Web.BffHosting` library.
-- **Why:** Existing architecture requires tokens and privileged headers to stay server-side, and Keycloak is the platform identity provider. A separate app that weakens this boundary would be worse than no separate app.
-- **Alternatives considered:** Standalone WebAssembly app calling API directly, shared setup-secret login, or API-key-backed operator login. Rejected because they bypass or weaken the established Keycloak/BFF trust boundary.
-- **Consequences:** Docker Compose, Keycloak realm export/init scripts, Aspire AppHost, `.env.example`, and self-hosting docs must include the dedicated control-plane OIDC client and secret handling. The separate app must not reimplement BFF security primitives outside `Event.Web.BffHosting`.
+- **Decision:** Create `Event.ControlPlane.Blazor` as a BFF host authenticated through Keycloak OIDC using a dedicated confidential control-plane client and the shared `Event.Web.BffHosting` library. The separate app is Interactive Server-only; it must not enable InteractiveAuto or WebAssembly render modes for privileged control-plane features.
+- **Why:** Existing architecture requires tokens and privileged headers to stay server-side, and Keycloak is the platform identity provider. A separate app that weakens this boundary would be worse than no separate app. The existing ISLAMU Event Blazor app can remain render-policy configurable because it serves public/user/organizer experiences; the separate control-plane host has a narrower operator audience and should optimize for server-side control, not mixed interactivity modes.
+- **Alternatives considered:** Standalone WebAssembly app calling API directly, InteractiveAuto hosting, shared setup-secret login, or API-key-backed operator login. Rejected because they bypass or weaken the established Keycloak/BFF trust boundary, increase browser attack surface, or make control-plane behavior depend on a WASM bundle.
+- **Consequences:** Docker Compose, Keycloak realm export/init scripts, Aspire AppHost, `.env.example`, and self-hosting docs must include the dedicated control-plane OIDC client and secret handling. The separate app must not reimplement BFF security primitives outside `Event.Web.BffHosting`. `Event.ControlPlane.Client` remains render-mode neutral so the embedded host can choose its own shell behavior while the separate host maps only `AddInteractiveServerRenderMode()`.
 - **Files/layers affected:** New BFF host, Docker Compose, Aspire AppHost, configuration docs, integration tests.
 
 ### Decision 6: Dedicated Hostname Is Host-Based Shell Separation
@@ -510,7 +525,7 @@ Operator clicks a control-plane action
 
 - **Type:** create
 - **Layer:** Blazor
-- **Files:** `Event.ControlPlane.Client/Event.ControlPlane.Client.csproj` new, `Event.ControlPlane.Client/_Imports.razor` new, `Event.ControlPlane.Client/Routing/ControlPlaneRoutes.cs` new, `Event.ControlPlane.Client/Extensions/ControlPlaneClientServiceCollectionExtensions.cs` new
+- **Files:** `Event.ControlPlane.Client/Event.ControlPlane.Client.csproj` new, `Event.ControlPlane.Client/_Imports.razor` new, `Event.ControlPlane.Client/Routing/ControlPlaneRoutes.cs` new, `Event.ControlPlane.Client/Extensions/ServiceCollectionExtensions.cs` new
 - **Description:** Add a Razor class library for control-plane pages, components, route constants, service contracts, and DI registration. The project must not reference `Explore.Blazor.Client`, `Explore.API`, `Explore.Infrastructure`, `Explore.Persistence`, or `Explore.Domain`.
 - **Acceptance Criteria:** Library compiles; all new files have two ABOUTME lines; project can be referenced by Blazor hosts; no forbidden dependencies.
 - **Dependencies:** Task 0.2
@@ -606,7 +621,7 @@ Operator clicks a control-plane action
 - **Layer:** Domain/Application/Persistence/API
 - **Files:** tenant lifecycle handlers/controllers/repositories existing or new after inventory
 - **Description:** Expose tenant list/detail/actions for create/provision, suspend, archive, purge scheduling, restore/reactivate where supported, domain status, and audit trail. Use existing lifecycle model if present.
-- **Acceptance Criteria:** Actions are instance-admin-only; HAL links reflect allowed transitions; destructive actions require confirmation and audit; purge is delayed/async unless explicitly designed otherwise.
+- **Acceptance Criteria:** Actions are instance-admin-only; HAL links reflect allowed transitions; destructive actions require confirmation and audit; `schedule-purge` is archived-only, audited, reason-required, non-active, and does not perform physical tenant-data deletion in the request path.
 - **Dependencies:** Task 3.1
 - **Effort:** XL
 - **Required Skills/Rules:** Domain, EF Core, outbox, HATEOAS.
@@ -616,25 +631,25 @@ Operator clicks a control-plane action
 
 - **Type:** create/modify
 - **Layer:** Application/API/Infrastructure
-- **Files:** domain/routing settings handlers existing or new, DNS verification service new if needed
-- **Description:** Provide root domain, wildcard domain, control-plane host, custom tenant domain, and DNS verification status to onboarding and control-plane pages.
-- **Acceptance Criteria:** UI receives structured DNS checklist rows; reverse-proxy/forwarded-host trust rules are respected; unresolved tenant hosts still fail closed.
+- **Files:** `Explore.Application/DTOs/ControlPlane/ControlPlaneDomainDtos.cs`; `Explore.Application/Features/ControlPlane/Requests/Queries/GetControlPlaneDomainsQuery.cs`; `Explore.Application/Features/ControlPlane/Handlers/Queries/GetControlPlaneDomainsQueryHandler.cs`; `Explore.API/Controllers/ControlPlaneController.cs`; `Explore.API/Hateoas/Assemblers/ControlPlaneDomainResourceAssembler.cs`; `Explore.API/Hateoas/Policies/ControlPlaneDomainLinkPolicy.cs`; route/HAL/OpenAPI/generated-client/docs files.
+- **Description:** Provide public platform host, wildcard tenant host, control-plane host, custom tenant domain, and DNS guidance/status to onboarding and control-plane pages. This slice derives status from configured settings only; external DNS probing remains out of scope until a real verifier is needed.
+- **Acceptance Criteria:** UI receives structured DNS checklist rows; reverse-proxy/forwarded-host trust rules are respected; unresolved tenant hosts still fail closed; HAL links expose overview and domain-settings affordances.
 - **Dependencies:** Task 3.1
 - **Effort:** L
 - **Required Skills/Rules:** multi-tenancy docs, BFF patterns, configuration.
-- **Validation:** API integration tests for host/domain cases; unit tests for DNS checklist generation.
+- **Validation:** `Explore.Application` Release build; `Explore.API` Release build; `Event.Application.UnitTests` Release build; `Explore.Blazor.Client` Release build; focused `GetControlPlaneDomainsQueryHandlerTests`; focused `ControlPlaneDomainHateoasTests`; focused `ControlPlaneOverviewHateoasTests`; focused OpenAPI HAL schema invariant; focused `SupportAccessClientServiceTests` after generated-client refresh; API contract inventory generator; `git diff --check` for touched files.
 
 #### Task 3.5: Operations, Jobs, Storage, Email, And Provider Status
 
 - **Type:** create/modify
 - **Layer:** Application/API/Persistence/Infrastructure
-- **Files:** outbox/email/storage/provider handlers and controllers existing or new
-- **Description:** Add read-only summaries first for outbox/dead-letter, background jobs, SMTP/email dispatch health, storage status/usage, auth provider status, and authorization provider status. Add safe mutation endpoints only where backed by audit/idempotency.
-- **Acceptance Criteria:** Operators can see operational warnings without tenant data leakage; failed/retryable actions are HAL-gated; provider health failures are observable and do not crash the UI.
+- **Files:** `Explore.Application/DTOs/ControlPlane/ControlPlaneOperationsDto.cs`; `Explore.Application/Features/ControlPlane/Requests/Queries/GetControlPlaneOperationsQuery.cs`; `Explore.Application/Features/ControlPlane/Handlers/Queries/GetControlPlaneOperationsQueryHandler.cs`; `Explore.API/Controllers/ControlPlaneController.cs`; `Explore.API/Hateoas/Assemblers/ControlPlaneOperationsResourceAssembler.cs`; `Explore.API/Hateoas/Policies/ControlPlaneOperationsLinkPolicy.cs`; route/HAL/OpenAPI/generated-client/docs files.
+- **Description:** Add read-only summaries first for general outbox/dead-letter, SMTP/email dispatch health, and storage configuration/status. Use existing repositories/services, cap sampled outbox rows, and do not add repair/replay/destructive mutations in this endpoint.
+- **Acceptance Criteria:** Operators can see operational warnings without tenant data leakage; provider health failures are observable and do not crash the UI; the operations resource emits only navigation/status HAL links and no mutation actions.
 - **Dependencies:** Task 3.1
 - **Effort:** XL
 - **Required Skills/Rules:** outbox-pattern, error-tracking, API HATEOAS.
-- **Validation:** Application/API tests plus infrastructure tests where provider adapters are touched.
+- **Validation:** `Explore.Application` Release build; `Explore.API` Release build; `Event.Application.UnitTests` Release build; `Event.API.IntegrationTests` Release build; focused `GetControlPlaneOperationsQueryHandlerTests`; focused `ControlPlaneOperationsHateoasTests`; focused `ControlPlaneOverviewHateoasTests`; focused OpenAPI HAL schema invariant; API contract inventory generator; `Explore.Blazor.Client` Release build after generated-client refresh.
 
 #### Task 3.6: Regenerate Or Update API Contract Artifacts
 
@@ -646,7 +661,7 @@ Operator clicks a control-plane action
 - **Dependencies:** Phase 3 endpoint tasks
 - **Effort:** M
 - **Required Skills/Rules:** API contract, docs contract.
-- **Validation:** API contract/inventory tests and docs review.
+- **Validation:** API contract/inventory tests, OpenAPI HAL schema invariant, generated Blazor client build, and docs review.
 
 ### Phase 4: Embedded Instance Console And Multi-Tenant Control-Plane UI
 
@@ -675,7 +690,7 @@ Operator clicks a control-plane action
 - **Type:** modify
 - **Layer:** Blazor
 - **Files:** `Explore.Blazor.Client/Routes.razor` existing, `Event.ControlPlane.Client/Routing/*` new
-- **Description:** Map shared control-plane routes under `/admin/instance/*` in the existing app.
+- **Description:** Map shared control-plane routes under `/admin/instance/*` in the existing app. The current public client uses Blazouter with explicit `RouteConfig` entries, so embedded registration must update `Routes.razor` directly; stock Blazor `Router.AdditionalAssemblies` remains relevant to the separate `Event.ControlPlane.Blazor` host but is not the embedded route-registration mechanism.
 - **Acceptance Criteria:** Multi-tenant instance admins can route to the control-plane overview; single-tenant route behavior remains correct.
 - **Dependencies:** Task 4.1
 - **Effort:** M
@@ -689,6 +704,7 @@ Operator clicks a control-plane action
 - **Files:** shell/navigation components existing, control-plane shell components new
 - **Description:** Update navigation and shell behavior so the multi-tenant control-plane surface appears only for instance administrators in multi-tenant mode.
 - **Acceptance Criteria:** Control-plane nav appears only in multi-tenant mode for instance admins; public/tenant nav remains unchanged; action buttons remain HAL-gated.
+- **Current implementation note:** The embedded entry point currently lives in `Explore.Blazor.Client/Layout/NavMenu.razor`, uses `ControlPlaneRoutes.Overview`, and is gated by BFF/API-reported deployment mode plus instance-admin authority. Single-tenant instance admins keep the existing administration settings link.
 - **Dependencies:** Task 4.2
 - **Effort:** M
 - **Required Skills/Rules:** Blazor UI, auth patterns, HAL UI.
@@ -828,7 +844,7 @@ Operator clicks a control-plane action
 - **Depends on:** Stable shared BFF hosting library, stable shared control-plane client library, and enough control-plane API coverage.
 - **Relevant files:** `Event.ControlPlane.Blazor/` new, existing Blazor integration/client test projects, Dockerfile/compose/AppHost files existing/new, `docker/keycloak/realm-export.json` existing, `docker/keycloak/keycloak-init.sh` existing, `.env.example` existing, solution file existing.
 - **Related skills/rules:** `blazor-bff-patterns`, `auth-patterns`, `aspire`, `design-system`, `tests`.
-- **Acceptance criteria:** Separate app builds, authenticates through Keycloak OIDC as a confidential BFF client, calls the same API, uses `Event.ControlPlane.Client`, and can be self-hosted through documented Docker Compose/Aspire configuration.
+- **Acceptance criteria:** Separate app builds, authenticates through Keycloak OIDC as a confidential BFF client, calls the same API, uses `Event.ControlPlane.Client`, runs Interactive Server only with no Auto/WebAssembly render-mode switch, and can be self-hosted through documented Docker Compose/Aspire configuration.
 - **Verification:** Build, Blazor integration tests, Docker Compose profile smoke, Aspire AppHost smoke where applicable.
 - **Rollback / failure handling:** If reusable BFF extraction is too risky, ship separate app behind a feature branch/profile with documented limitations, but do not duplicate security-sensitive transforms silently.
 
@@ -838,7 +854,7 @@ Operator clicks a control-plane action
 - **Layer:** Blazor/DevOps
 - **Files:** `Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj` new, `Event.ControlPlane.Blazor/Program.cs` new, `Event.ControlPlane.Blazor/appsettings.json` new, solution file existing
 - **Description:** Add a BFF host that references `Event.Web.BffHosting` and `Event.ControlPlane.Client`, configures the `ControlPlane` BFF host profile, static assets, safe auth diagnostics, and health endpoints as appropriate.
-- **Acceptance Criteria:** App builds; no browser token exposure; no control-plane shell without authenticated Keycloak session plus instance-admin authority; route root renders the control-plane overview after auth; all files have ABOUTME headers.
+- **Acceptance Criteria:** App builds; no browser token exposure; no control-plane shell without authenticated Keycloak session plus instance-admin authority; route root renders the control-plane overview after auth using Interactive Server only; no InteractiveAuto/WebAssembly hosting is configured; all files have ABOUTME headers.
 - **Dependencies:** Tasks 1.4, 2.1, 3.2, 4.2
 - **Effort:** L
 - **Required Skills/Rules:** BFF patterns, auth patterns.
@@ -862,7 +878,7 @@ Operator clicks a control-plane action
 - **Layer:** Blazor
 - **Files:** `Event.Web.BffHosting/*` new, `Event.ControlPlane.Blazor/*` new, `Explore.Blazor.IntegrationTests/*` existing/new
 - **Description:** Configure `Event.ControlPlane.Blazor` through `Event.Web.BffHosting` using the `ControlPlane` profile. Avoid local reimplementation of token forwarding, tenant header stripping, setup/support header stripping, YARP transforms, Keycloak OIDC configuration, safe auth diagnostics, token refresh, and backchannel hardening.
-- **Acceptance Criteria:** Existing and separate BFF hosts use the same shared security-sensitive library with different explicit profiles; tests prove privileged headers are stripped in both hosts; OIDC challenge/callback/remote-failure handling stays safe and does not leak client-secret or provider diagnostics to the browser.
+- **Acceptance Criteria:** Existing and separate BFF hosts use the same shared security-sensitive library with different explicit profiles; the existing public/community host may preserve render-policy customization; the separate control-plane host maps only Interactive Server; tests prove privileged headers are stripped in both hosts; OIDC challenge/callback/remote-failure handling stays safe and does not leak client-secret or provider diagnostics to the browser.
 - **Dependencies:** Tasks 1.5, 7.1, 7.2
 - **Effort:** L
 - **Required Skills/Rules:** blazor-bff-patterns, auth-patterns.

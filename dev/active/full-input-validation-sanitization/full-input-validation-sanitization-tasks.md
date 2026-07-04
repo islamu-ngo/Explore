@@ -4,8 +4,8 @@
 # Full Input Validation & Sanitization - Tasks
 
 Last Updated: 2026-07-04 Europe/Brussels
-Status: Re-baselined; implementation is partially complete and must continue by slice
-Current priority: remaining storage display/log safety, residual non-eval JS interop/DOM input review, then Blazor form/server-error convergence
+Status: Senior CTO rebaseline updated; implementation is partially complete and must continue by matrix-backed slice
+Current priority: high-risk API/Application validation gaps, then BFF trust-boundary gaps, then Blazor form/server-error/rendering convergence. Storage work is no longer the default next lane unless a new matrix row proves a concrete endpoint/display/log gap.
 
 ---
 
@@ -13,9 +13,21 @@ Current priority: remaining storage display/log safety, residual non-eval JS int
 
 - Keep this checklist aligned with the plan, context, matrix, and contract decisions.
 - Do not mark a task complete unless code or documentation evidence has been verified in the repo.
-- Prefer narrow slices with focused tests.
+- Prefer narrow vertical slices with focused tests. A slice should usually touch one matrix row or one tightly related endpoint family.
+- Do not perform audit-only work. An audit task is complete only when it produces a matrix update, accepted/deferred contract decision, code/test change, or documented deferral with owner and rationale.
 - Do not add broad cleanup tasks unrelated to input validation, sanitization, error safety, BFF boundaries, or Blazor form validation.
 - Do not reintroduce prohibited patterns: global sanitizers, validator DI auto-registration, `MudForm` standardization, Blazor-only authority, role/claim affordance gating, or asking the user to regenerate clients.
+- Do not duplicate Application command validation in BFF or Blazor. BFF validates BFF-owned seams; Blazor validates UX and maps server errors.
+- Treat sanitization as seam-specific: output encoding by default, CSV/TSV formula neutralization for export artifacts, safe filename generation for downloads/uploads, and HTML sanitizers only after an accepted rich-content decision.
+
+## Next Slice Queue
+
+Use this queue unless fresh evidence shows a higher-risk row:
+
+1. `Blazor form validation convergence`: target event/session/organization forms with API ProblemDetails mapping, accessible summaries/focus, duplicate-submit behavior, and HAL-only affordance gating.
+2. `Email dispatch admin semantics`: add tenant-B outbox masking and raw SMTP/provider/log leakage coverage where not already proven.
+3. `Idempotency and cross-cutting header residuals`: cover idempotency-key, tenant-hint, and forwarded-host validation rows.
+4. `BFF boundary residuals`: continue only when the matrix identifies an uncovered browser-controlled header, cookie, continuation path, antiforgery, or diagnostics seam.
 
 ---
 
@@ -27,8 +39,8 @@ Status: Complete for the 2026-07-04 planning update.
 - [x] Read senior CTO feedback skill and required resources.
 - [x] Read repo governance, API, Blazor, security, authorization, testing, and operation docs.
 - [x] Read relevant `.claude/rules/*.md`.
-- [x] Use Tavily MCP for current validation, sanitization, file-upload, logging, and idempotency guidance.
-- [x] Use Context7 MCP for current ASP.NET Core, FluentValidation, and MudBlazor documentation.
+- [x] Preserve earlier Tavily MCP/OWASP/IETF research evidence and record that the latest Tavily MCP refresh attempt for this continuation returned usage-limit status `432`.
+- [x] Use Context7 MCP for current ASP.NET Core validation, Blazor form/rendering, FluentValidation, and MudBlazor documentation.
 - [x] Reclassify the workstream as a cross-cutting validation/sanitization hardening program.
 - [x] Rewrite the implementation plan with source-grounded current state and corrected future phases.
 - [x] Rewrite this task checklist to remove stale and unsafe tasks.
@@ -44,23 +56,23 @@ Goal: Make server-side validation authoritative for request DTOs, queries, route
 
 ### 1.1 Matrix-First Audit
 
-- [ ] Audit API request models and Application DTOs against `full-input-validation-sanitization-input-matrix.md`.
-- [ ] Add missing rows for route IDs, headers, idempotency keys, continuation URLs, setup secrets, storage metadata, and rich content.
-- [ ] For each row, identify syntactic validation, semantic validation, canonicalization, output encoding/sanitization, and test owner.
-- [ ] Mark intentional compatibility exceptions, including any request type that allows unknown JSON members.
+- [ ] Before editing a boundary, update the matching matrix row with trust boundary, caller/auth level, tenant source, validation owner, canonicalization owner, sanitization/encoding owner, error contract, abuse cases, and tests.
+- [ ] Add missing rows only for the slice being implemented: route IDs, headers, idempotency keys, continuation URLs, setup secrets, storage metadata, rich content, or Blazor forms.
+- [ ] Mark intentional compatibility exceptions, including any request type that allows unknown JSON members, with a contract decision or explicit deferral.
+- [ ] Do not start broad DTO/UI convergence until the selected row has owner, threat model, priority, decision status, and regression test target.
 
 ### 1.2 Application Validator Coverage
 
-- [ ] Identify commands/queries without manual FluentValidation coverage where syntactic validation belongs in Application.
+- [ ] For the selected matrix row, identify only the commands/queries where syntactic validation belongs in Application.
 - [ ] Add or update validators without DI auto-registration.
 - [ ] Use `ValidateAsync` in handlers/tests.
 - [ ] Keep validators side-effect free.
 - [ ] Keep canonicalization outside validators unless the validator is only comparing normalized values.
-- [ ] Add unit tests for required fields, ranges, lengths, enum allowlists, invalid identifiers, invalid dates, and cross-field rules.
+- [ ] Add unit tests for the selected row's required fields, ranges, lengths, enum allowlists, invalid identifiers, invalid dates, and cross-field rules.
 
 ### 1.3 Handler Semantic Guards
 
-- [ ] Identify validation rules that require tenant context, repositories, authorization, state, clock, or persistence.
+- [ ] For the selected matrix row, identify validation rules that require tenant context, repositories, authorization, state, clock, or persistence.
 - [ ] Add handler/service guards before side effects.
 - [ ] Add tests for tenant mismatch, not-found masking, duplicate state, invalid state transition, idempotency conflicts, and ownership violations.
 - [ ] Ensure repositories return entities and remain tenant-aware.
@@ -73,6 +85,89 @@ Goal: Make server-side validation authoritative for request DTOs, queries, route
 - [ ] Add integration tests for representative bad JSON, unknown JSON members, invalid queries, invalid route IDs, and error field keys.
 - [x] Add storage upload finalize controller coverage for not-found, expired, size mismatch, content-type mismatch, and provider/write-result failure ProblemDetails mappings.
 - [ ] Keep controllers thin.
+
+### 2026-07-04 Implemented Contact Share Export Validation/Sanitization Slice
+
+- [x] Add `ContactShareConsentExportQueryRequest` so `ContactShareConsentController.ExportSharedContacts` binds export query inputs through the API query-validation model pattern instead of a raw `string`.
+- [x] Add `QueryValidationRules.ValidateContactShareExportFormat` with a fixed `csv`/`tsv` allowlist, blank rejection, control-character rejection, and normalized lowercase command value.
+- [x] Keep `ExportSharedContactsCommandHandler` defensive by rejecting null/blank/control-character/unsupported formats before repository reads or export side effects.
+- [x] Sanitize generated shared-contact export artifacts: neutralize spreadsheet-formula cells before CSV/TSV escaping and derive the server filename from a bounded safe organization slug.
+- [x] Harden `Explore.Blazor.Client.Services.ContactShareConsentService` so Blazor normalizes supported export formats and returns a safe `null` result without calling the generated API client for unsupported format values.
+- [x] Regenerate the Blazor API client through the documented NSwag target after the API contract change; verify no accidental `NormalizedFormat` query parameter is exposed.
+- [x] Add/extend tests in `PublicQueryValidationTests`, `ExportSharedContactsCommandHandlerTests`, and `ContactShareConsentServiceTests`.
+- [x] Record Context7 evidence: ASP.NET Core `[ApiController]` automatically returns 400 `ValidationProblemDetails` for model-validation failures from query-bound models. Record Tavily limitation: fresh Tavily search/research attempts for OWASP API input validation returned usage-limit status `432`.
+
+### 2026-07-04 Implemented Public Event Query Temporal View Validation Slice
+
+- [x] Add `QueryValidationRules.ValidateTemporalView` so public event-list `view` query input is an explicit allowlist instead of a silent best-effort enum parse.
+- [x] Validate `EventFilterRequest.View` before `EventController.GetAll` dispatches MediatR, preserving thin controller behavior and relying on `[ApiController]` automatic 400 handling.
+- [x] Reject unknown and undefined numeric temporal-view values; accept known values such as `upcomingAndOngoing`.
+- [x] Add model-level coverage for invalid, undefined numeric, and valid `view` values.
+- [x] Add runtime API coverage proving `GET /api/Event?view=sideways` returns canonical `400 application/problem+json` with the stable `view` field key and without echoing the submitted value.
+- [x] Add `EventSessionFilterRequest` pagination coverage while staying inside the existing shared query-validation rules.
+- [x] Record Context7 evidence: ASP.NET Core `[ApiController]` automatically returns HTTP 400 for model-validation failures before action execution, so query-model validation is the correct boundary and no controller `ModelState` branch is needed.
+
+### 2026-07-04 Implemented External API Key Usage Report Query Validation Slice
+
+- [x] Add `ExternalApiKeyUsageReportQueryRequest` for `from`, `to`, and optional `tenantId` instead of binding raw scalar query parameters in `ExternalApiKeyController.GetUsageReport`.
+- [x] Add shared `QueryValidationRules.ValidateRequiredDateRange` for required date pairs, inverted ranges, and bounded range length.
+- [x] Bound usage-report queries to `366` days to prevent unbounded expensive reporting windows.
+- [x] Validate optional `tenantId` shape and reject `Guid.Empty` before the Application handler performs tenant/admin authorization.
+- [x] Keep the controller thin: model validation happens through `[ApiController]`; the action only maps the validated query model into `GetExternalApiKeyUsageReportRequest`.
+- [x] Add query-model tests for missing dates, inverted date range, oversized range, and empty tenant ID.
+- [x] Add runtime API coverage proving invalid date ranges return canonical `400` validation ProblemDetails before handler admin authorization.
+- [x] Record Context7 evidence: ASP.NET Core `[ApiController]` automatically returns HTTP 400 for model-validation failures. Record Tavily limitation: fresh OWASP query-validation search returned usage-limit status `432`.
+
+### 2026-07-04 Implemented External API Key Usage Report Semantic Authorization Slice
+
+- [x] Add `ExternalApiKeyUsageReportRequestHandlerTests` for valid usage-report inputs after API query-shape validation.
+- [x] Prove a tenant-scoped usage-report request from a caller with no tenant-admin or instance-admin authority throws `AuthorizationException` before tenant or platform-wide quota repository reads.
+- [x] Prove a tenant admin request reads only the requested tenant through `GetUsageByTenant` and does not call `GetUsagePlatformWide`.
+- [x] Prove a platform-wide usage-report request from a non-instance admin throws `AuthorizationException` before quota repository reads.
+- [x] Prove an instance admin platform-wide request uses `GetUsagePlatformWide` and does not call the tenant-scoped read path.
+- [x] Record the evidence boundary: this is Application handler semantic coverage; add HTTP runtime tenant-admin coverage only if a future matrix row identifies a cheap fixture path.
+
+### 2026-07-04 Implemented External API Key Create/Update Input Hardening Slice
+
+- [x] Add shared Application input normalization helpers for external API key name/description limits aligned to EF constraints.
+- [x] Reject control characters in external API key create/update names before repository create/update side effects.
+- [x] Bound create descriptions to 1000 characters and reject description control characters before persistence.
+- [x] Compare external API key names after trimming so `"Bot"` and `" Bot "` cannot bypass owner-scoped uniqueness checks.
+- [x] Normalize create descriptions to trimmed text or `null` before storing.
+- [x] Add Blazor-side `CreateExternalApiKeyDtoValidator` so the API key dialog gives immediate UX feedback for name, description, and scope errors while keeping the API/Application authoritative.
+- [x] Wire `CreateApiKeyDialog.razor` to `FluentValidationValidator`, add name/description max counters, and trim submitted name/description before calling the service.
+- [x] Add Application unit tests for create/update control-character rejection, overlong descriptions, normalized duplicate names, and no repository side effects on invalid input.
+- [x] Add Blazor client validator tests for control-character name, overlong description, and empty scopes.
+- [x] Add API integration tests for invalid create/update inputs.
+- [x] Add Application unit coverage proving successful API key creation returns the raw key once while persisting only the hash and omitting the raw key/secret fragment from handler logs.
+- [x] Add API integration coverage for `/api/externalapikey` tenant mismatch with a persisted API key and for non-create detail responses omitting `apiKey`, `secretHash`, the raw key, and the secret fragment.
+- [x] Record Context7 evidence: ASP.NET Core `[ApiController]` automatic model-validation behavior remains the API boundary. Record Tavily limitation: fresh OWASP input-validation search returned usage-limit status `432`.
+
+### 2026-07-04 Implemented Email Dispatch Admin Query Validation Slice
+
+- [x] Add `EmailDispatchStatusQueryRequest` so `/api/admin/email-dispatch/status` validates required `tenantId` and bounds `limit` to 1 through 200 before MediatR dispatch.
+- [x] Add `EmailDispatchPauseTenantQueryRequest` so pause `reason` remains optional but rejects control characters and values over 500 characters at the API model-validation boundary.
+- [x] Add `EmailDispatchParkQueryRequest` so park `reason` is required, bounded to 500 characters, and checked for unsupported control characters before command dispatch.
+- [x] Update `EmailDispatchAdminController` to bind the query models, keep controller logic thin, and pass normalized reason text into existing Application commands.
+- [x] Keep existing Application command validators as defense-in-depth for `TenantId`, `OutboxId`, and reason constraints.
+- [x] Add `EmailDispatchAdminControllerTests` model and runtime coverage proving invalid status limit, missing park reason, and overlong pause reason return canonical `400` validation ProblemDetails before the MediatR pipeline runs.
+- [x] Record Context7 evidence: ASP.NET Core `[ApiController]` automatically returns HTTP 400 for model-validation failures. Record Tavily limitation: fresh OWASP input-validation search returned usage-limit status `432`.
+
+### 2026-07-04 Implemented Public Detail Route-ID Cross-Tenant Masking Slice
+
+- [x] Reuse existing malformed route-ID coverage for event, event-session, organization, location, actor, category, tag, and storage routes instead of duplicating `not-a-guid` tests.
+- [x] Add `EventVisibilityContractTests.GetByIdForCrossTenantEventReturnsSafeNotFound` so a published public event from another tenant returns `404` on `/api/event/{id}` and does not echo the event title or tenant ID.
+- [x] Add `EventSessionVisibilityContractTests.GetByIdReturnsSafeNotFoundForCrossTenantSession` so a published session under another tenant returns `404` on `/api/eventsession/{id}` and does not echo the session title or tenant ID.
+- [x] Keep this as a representative route-family slice; remaining event graph route families need new tests only when the matrix identifies an uncovered route or resource-oracle risk.
+
+### 2026-07-04 Implemented Correlation Header Validation Slice
+
+- [x] Bound API `X-Correlation-ID` and `X-Request-ID` values to one non-blank visible-ASCII value no longer than 128 characters before storing them in `HttpContext.Items`, Serilog context, and response headers.
+- [x] Generate the normal server correlation ID when browser-supplied correlation metadata is unsafe instead of echoing huge or control-character values.
+- [x] Preserve safe `X-Request-ID` fallback behavior when `X-Correlation-ID` is unsafe.
+- [x] Harden the shared BFF proxy header sanitizer so unsafe correlation/request metadata is stripped before YARP forwards to the API, while safe metadata such as `Accept`, `Accept-Language`, and bounded correlation IDs survive.
+- [x] Add focused API and BFF integration tests for unsafe overlong/control-character correlation metadata.
+- [x] Record Context7 evidence for ASP.NET Core BFF/minimal API antiforgery and middleware trust-boundary behavior. Tavily MCP still returns usage-limit status `432`, so this slice adds no fresh Tavily source evidence.
 
 ---
 
@@ -188,6 +283,38 @@ Goal: Complete the highest-risk remaining validation area.
 - [x] Replace those logs with bounded failure-type fields plus already-approved storage object ID/provider/context labels.
 - [x] Verify the touched storage paths no longer contain `LogError(ex, ...)` or `LogWarning(ex, ...)`.
 
+### 2026-07-04 Implemented Storage Infrastructure Health Log Redaction Slice
+
+- [x] Remove raw exception-object logging from `S3FileStorageProvider.TestAsync` health probes.
+- [x] Remove raw exception-object logging from `LocalFileStorageProvider.TestAsync` health probes.
+- [x] Remove raw endpoint logging and raw exception-object logging from legacy `ObjectStorageService.TestConnectionAsync`.
+- [x] Replace storage provider health/probe failure logs with bounded `FailureType` categories.
+- [x] Add `Explore.Infrastructure.Tests` log-capture coverage proving S3 endpoints, bucket names, local filesystem paths, provider exception text, and storage secrets are not present in formatted failure logs.
+
+### 2026-07-04 Implemented Storage Upload Failure Response Redaction Slice
+
+- [x] Canonicalize API `ProblemDetails.detail` for known storage upload failure codes in `CommandResponseResultMapper`.
+- [x] Canonicalize `ValidationProblemDetails.errors["storageUpload"]` for known storage upload validation failure codes instead of echoing lower-layer `BaseCommandResponse.Errors`.
+- [x] Preserve existing status, title, type, and `code` mappings for upload-session not-found, conflict, payload-too-large, quota, validation, and provider-unavailable responses.
+- [x] Add controller contract coverage proving provider failure details do not echo S3 status text, internal endpoints, object keys, presigned query values, or secret markers.
+- [x] Add controller contract coverage proving validation failure errors do not echo internal policy/content-type details or object-key values.
+
+### 2026-07-04 Implemented Storage Object Metadata Create Failure Mapping Slice
+
+- [x] Add an API-owned create-validation descriptor for `StorageObjectController.Create`.
+- [x] Map failed `CreateStorageObjectCommand` responses to canonical `400` validation ProblemDetails instead of returning `200 OK` with `Success=false`.
+- [x] Preserve successful create behavior as `200 OK` with the command response.
+- [x] Add controller contract coverage proving create validation failures use the stable `storageObject` error key, safe detail, and `validation_failed` code.
+
+### 2026-07-04 Implemented Storage Metadata Update Tenant-Authority Slice
+
+- [x] Remove client-supplied DTO `TenantId` from storage metadata create/update command authorization context.
+- [x] Keep storage metadata create authorization collection-scoped; persistence tenant authority remains server-owned through `ITenantContext`.
+- [x] Authorize storage metadata update against the persisted `StorageObject`, not against tenant values supplied by the update DTO.
+- [x] Update `UpdateStorageObjectCommandHandler` so it loads the existing current-tenant entity, preserves persisted `TenantId`, and patches only allowed metadata fields.
+- [x] Return a safe not-found-style command failure for missing or wrong-tenant storage metadata updates with no repository update side effect.
+- [x] Add Application unit coverage for command authorization metadata, persisted-resource authorization enrichment, DTO tenant tampering, allowed-field update patching, and wrong-tenant no-update behavior.
+
 ### 2026-07-04 Implemented Storage Cross-Tenant Runtime Masking Slice
 
 - [x] Seed a real secondary-tenant `StorageObject` through `TenantScenarioSeed.SeedSecondaryTenantWithUserAsync`.
@@ -211,24 +338,34 @@ Goal: Complete the highest-risk remaining validation area.
 - [x] Drive finalized upload-session cancellation through the real authenticated API host and verify it returns safe `409 Storage upload session conflict` ProblemDetails with the `storage_upload_session_finalized` code.
 - [x] Assert upload-session semantic failure responses do not echo tenant IDs, provider names, storage object keys, raw file names, checksums, or private visibility metadata.
 
+### 2026-07-04 Implemented Blazor Storage Display Safety Slice
+
+- [x] Re-audit current Blazor storage display paths and confirm `StorageImage.razor`, `ImageUpload.razor`, and instance/tenant storage settings render dynamic text through normal Razor/MudBlazor bindings rather than raw markup.
+- [x] Add `StorageImage` bUnit coverage proving untrusted storage-adjacent metadata in `Alt` remains an attribute value and does not create an injected `onerror` attribute.
+- [x] Add `StorageImage` bUnit coverage proving dangerous error/display text is rendered as encoded text and does not create attacker-controlled `img` or `script` DOM nodes.
+- [x] Extend `BrowserInteropSafetyTests` so any new `MarkupString` or `AddMarkupContent` use under `Explore.Blazor` or `Explore.Blazor.Client` must be deliberately reviewed and allowlisted.
+- [x] Keep `CommunityGuidelines.razor` as the only current raw-markup allowlist entry because its tenant content is already escaped before controlled structural markup is emitted.
+- [x] Record Context7 evidence: ASP.NET Core Blazor renders strings as plain text by default, `MarkupString`/`AddMarkupContent` are raw-rendering seams, and user-controlled strings should flow through normal Razor text/attribute bindings or `RenderTreeBuilder.AddContent`.
+- [x] Record Tavily limitation: this continuation's OWASP output-encoding search failed with usage-limit status `432`; no new Tavily result from this slice is treated as evidence.
+
 ### 2.1 Upload Request Semantics
 
-- [ ] Review `UploadRequestDtoValidator` against OWASP file-upload guidance and current product limits.
-- [ ] Validate filename display values for length, control characters, path separators, reserved names, and unsafe normalization cases.
+- [x] Review `UploadRequestDtoValidator` and storage metadata validators against file-upload guidance and current product limits for existing storage seams.
+- [x] Validate filename display values for control characters, path separators, reserved names, and unsafe normalization cases in the current storage validator layer.
 - [x] Validate content type as a hint only for finalized uploaded bytes; do not trust it as proof of file content.
 - [x] Validate extension allowlist for known finalized image/document upload content types.
-- [ ] Validate declared size/count before expensive operations.
+- [ ] Validate declared size/count before expensive operations only for newly discovered storage/API upload rows not already covered by upload-session reservation and finalization tests.
 - [x] Validate provider-reported byte count, content type, SHA-256 digest, and object-key namespace after provider write before metadata persistence.
 - [x] Confirm the current storage DTO/domain model has no arbitrary metadata dictionary, so metadata key/value/count validation is not a current code seam.
 - [x] Add tests for spoofed finalized bytes and invalid known-content extension.
-- [ ] Add remaining tests for invalid filename, oversized file metadata fields, invalid size, and malformed metadata at the endpoint/runtime surfaces not already covered by validator tests.
+- [ ] Add remaining endpoint/runtime tests only when a matrix row identifies a storage surface not already covered by validator, Application handler, API runtime, BFF, or Blazor display tests.
 
 ### 2.2 Storage Object And Session Ownership
 
-- [ ] Ensure object keys/storage IDs are server-generated or strictly validated.
-- [ ] Validate upload-session IDs before presign, complete, download, and proxy operations. API finalize/cancel route-shape and missing/canceled/finalized semantic runtime coverage is complete; remaining work must be tied to newly discovered endpoint or BFF seams in the matrix.
-- [ ] Verify upload sessions are bound to tenant, user, and intended operation where required beyond the completed finalize/cancel Application handler checks.
-- [ ] Add tests for tenant mismatch, replayed session, expired session, and mismatched object ID across remaining API/BFF storage endpoints not already covered by Application, API runtime, or BFF opaque-session tests.
+- [x] Ensure current object keys/storage IDs are server-generated or strictly validated before storage metadata becomes authoritative.
+- [x] Validate upload-session IDs before finalize/cancel/proxy operations currently covered by API/BFF route-shape, missing/canceled/finalized semantic runtime, and opaque-session tests.
+- [x] Verify current upload sessions are bound to tenant, user, and intended operation for finalize/cancel/proxy paths covered in this workstream.
+- [ ] Add more tenant mismatch, replay, expired session, or mismatched object ID tests only for remaining API/BFF storage endpoints that a matrix row identifies as uncovered.
 - [x] Add BFF upload-proxy tests for unknown opaque sessions, expired cached sessions, and expired API reservation responses with no downstream finalization.
 - [x] Add API runtime test for storage object route/body ID mismatch with safe validation ProblemDetails.
 - [x] Add Application unit tests for wrong-user finalize/cancel masking and no side effects.
@@ -240,20 +377,25 @@ Goal: Complete the highest-risk remaining validation area.
 - [x] Add runtime API tests for upload-session create/finalize/cancel authentication and malformed finalize/cancel route IDs.
 - [x] Add runtime API tests proving private-owner storage content and presigned read responses are safe 404s for different authenticated users without owner/object-key/provider metadata echo.
 - [x] Confirm storage detail/content/presigned failure responses do not reveal cross-tenant existence.
+- [x] Ensure storage metadata create/update authorization does not trust client-supplied `TenantId`; create is collection-scoped and update authorization is enriched from the persisted storage object.
+- [x] Ensure storage metadata update preserves the persisted tenant and fails missing or wrong-tenant updates before mutation.
 
 ### 2.3 Storage Logging And Display Safety
 
 - [ ] Audit logs for raw filenames, object keys, metadata values, and storage provider messages.
 - [ ] Redact or encode sensitive values in structured logs.
 - [x] Remove raw API upload-session IDs from BFF storage proxy failure logs.
+- [x] Remove raw endpoint/path and raw exception payload logging from storage provider health and legacy S3 connection probes.
 - [x] Remove raw URI/object-key extraction and response echo from the by-ID presigned-download handler.
 - [x] Fail provider-result mismatches without echoing provider-returned object keys, content types, or checksums in user-facing errors.
+- [x] Canonicalize known storage upload failure `detail` and validation `errors` at the API mapper boundary so lower-layer messages cannot leak into RFC 7807 responses.
+- [x] Map legacy storage object metadata create command failures to validation ProblemDetails instead of success-status command envelopes.
 - [x] Return storage content/download responses with persisted validated content types instead of provider-returned MIME hints.
 - [x] Add runtime response-redaction coverage for private-owner storage read masking.
 - [x] Centralize projection image URL signing for event detail, tag/category event projections, and group projections through `StoragePresentationUrlResolver`.
 - [x] Replace remaining actor, organization, event-list, managed-events, my-events, and user projection resolver copies with `StoragePresentationUrlResolver`.
 - [x] Bucket storage provider/proxy exception logs without raw exception objects in storage presentation URL signing, content read, and BFF upload proxy paths.
-- [ ] Ensure Blazor displays filenames/metadata through normal encoded text, not raw markup.
+- [x] Ensure current Blazor storage display paths render storage-adjacent filenames/metadata/error text through normal encoded text or encoded attributes, not raw markup.
 - [ ] Add regression tests where existing helpers can assert no sensitive response echo.
 
 ---
@@ -262,8 +404,9 @@ Goal: Complete the highest-risk remaining validation area.
 
 Goal: Prove invalid or cross-tenant data cannot bypass UI/API validation into persistence.
 
-- [ ] List write handlers that accept client-supplied aggregate IDs or tenant-bound child IDs.
-- [ ] For each high-risk handler, add tenant-mismatch tests.
+- [ ] Start with the matrix queue: event/session create-update-publish, custom-property runtime APIs, external API key create/update, email dispatch admin APIs, settings/governance writes, and public/detail route-ID families.
+- [ ] For the selected row, list write handlers that accept client-supplied aggregate IDs or tenant-bound child IDs.
+- [ ] For the selected high-risk handler, add tenant-mismatch tests.
 - [ ] Verify repository queries include tenant predicates where tenant isolation applies.
 - [ ] Add persistence/integration tests for race-sensitive uniqueness constraints.
 - [ ] Verify handlers do not map untrusted DTOs into persisted entities before validation/canonicalization.
@@ -277,9 +420,9 @@ Goal: Validate BFF-only seams without duplicating Application command validation
 
 ### 4.1 BFF Route Matrix
 
-- [ ] Inventory Blazor Server/BFF endpoints, setup routes, preference routes, auth diagnostics, YARP proxy paths, upload proxy paths, and internal endpoints.
-- [ ] Classify each unsafe route as antiforgery-protected or documented exception with compensating controls.
-- [ ] Add missing matrix rows for BFF route inputs, headers, cookies, and continuation paths.
+- [ ] For the selected BFF route family, update the matrix row for route inputs, headers, cookies, continuation paths, antiforgery posture, and safe error contract.
+- [ ] Classify each selected unsafe route as antiforgery-protected or documented exception with compensating controls.
+- [ ] Do not copy Application command validators into BFF. Only validate BFF-owned inputs such as opaque session IDs, setup-secret source, proxy path/header shape, cookies, and browser-controlled forwarding headers.
 
 ### 4.2 Token And Proxy Safety
 
@@ -304,18 +447,25 @@ Goal: Make Blazor forms consistent, accessible, and aligned with API problem-det
 
 ### 5.1 Form Pattern Convergence
 
-- [ ] Inventory forms that still do not use `EditForm` + `EditContext`.
-- [ ] Convert selected forms to existing primitives: `FormSubmissionGuard`, `FormSubmitState`, `ServerValidationErrorStore`, and `AppValidationSummary`.
-- [ ] Keep client rules limited to immediate UX checks such as required values, ranges, basic formats, and duplicate-submit protection.
-- [ ] Do not introduce `MudForm`.
-- [ ] Do not call Application validators from `Explore.Blazor.Client`.
+- [x] Pick one form family from the matrix before editing: organization create/details/settings.
+- [x] Convert the selected create form to existing primitives where needed: `EditForm`, `EditContext`, `FormSubmissionGuard`, `FormSubmitState`, `ServerValidationErrorStore`, and `AppValidationSummary`.
+- [x] Keep client rules limited to immediate UX checks such as required values, ranges, basic formats, and duplicate-submit protection.
+- [x] Do not introduce `MudForm`.
+- [x] Do not call Application validators from `Explore.Blazor.Client`.
+- [x] Continue the same convergence for organization details/settings.
+- [x] Continue the same convergence for event create/edit server-error mapping and raw unexpected-exception non-echo.
+- [ ] Continue the same convergence for session create/edit.
 
 ### 5.2 Server Error Mapping
 
-- [ ] Verify API/BFF problem-details field keys match form field names or documented mapping.
-- [ ] Map server errors through `ServerValidationErrorStore`.
-- [ ] Clear server errors on field edit according to existing component behavior.
-- [ ] Add component tests for API validation errors, non-field errors, repeated submissions, and successful clear/reset.
+- [x] Extend `ServerValidationErrorStore` to handle generated-client `ValidationProblemDetails`.
+- [x] Map case-insensitive and nested server field keys such as `Email.Value` back to the Blazor model field where possible.
+- [x] Map create-organization server errors through `ServerValidationErrorStore`.
+- [x] Clear server errors on field edit according to existing component behavior.
+- [x] Add `CreateOrganizationTests` for generated API validation errors and raw unexpected-exception non-echo.
+- [x] Add organization-details/settings coverage for client validation, generated API validation errors, and raw unexpected-exception non-echo.
+- [x] Add event create/edit coverage for generated API validation errors and raw unexpected-exception non-echo.
+- [ ] Add non-field, repeated-submission, and clear/reset coverage where the next selected Blazor form row exposes those states.
 
 ### 5.3 Accessibility And HAL Affordances
 
@@ -323,6 +473,7 @@ Goal: Make Blazor forms consistent, accessible, and aligned with API problem-det
 - [ ] Verify error focus behavior.
 - [ ] Verify actions remain gated by HAL `_links`, not local roles/claims.
 - [ ] Add component tests for link-present and link-absent action states where forms expose edit/delete/submit affordances.
+- [ ] Complete fresh browser visual/accessibility QA for the changed organization create route once an authenticated Blazor surface can be rendered.
 
 ### 5.4 Blazor Upload UX And Error Safety
 
@@ -346,6 +497,7 @@ Goal: Remove unnecessary raw rendering and define sanitizer ownership only where
 - [ ] Classify each seam as controlled markup, encoded text, sanitized rich content, or remove.
 - [x] Remove all currently discovered `AddMarkupContent` usage under `Explore.Blazor` and `Explore.Blazor.Client`.
 - [x] Re-run the Blazor raw-rendering scan and confirm the only remaining raw-markup match is the classified `CommunityGuidelines.razor` `MarkupString` seam.
+- [x] Add a source-level raw-rendering guard so future `MarkupString`/`AddMarkupContent` use outside the reviewed allowlist fails the Blazor client test suite.
 - [x] Remove all discovered Blazor `eval` JS interop calls under `Explore.Blazor` and `Explore.Blazor.Client`.
 
 ### 6.2 High-Priority Component Review
@@ -439,7 +591,7 @@ Goal: Verify each slice through the relevant project tests and final build.
 - [ ] API contract/middleware/controller changes: run relevant `Event.API.IntegrationTests`.
 - [ ] Persistence/tenant uniqueness changes: run relevant `Event.Persistence.IntegrationTests`.
 - [ ] BFF changes: run `Explore.Blazor.IntegrationTests`.
-- [ ] Blazor client form/rendering changes: run `Explore.Blazor.Client.Tests`.
+- [x] Blazor client form/rendering changes: run `Explore.Blazor.Client.Tests`.
 - [ ] Context/rule/skill/docs-structure changes: run relevant `Event.Architecture.Tests` where practical.
 - [ ] Broad completion claim: run `dotnet build --configuration Release --verbosity quiet`.
 
@@ -466,6 +618,63 @@ Do not run solution-level `dotnet test`.
 - LSP diagnostics were clean for the changed Application and test files.
 - `git diff --check` was clean for the changed Application and test files.
 - Architecture tests were rerun after unrelated `dev/active/ai-context-disclosure-policy/*` files appeared in the worktree and now pass in the current worktree.
+
+### 2026-07-04 Public Event Query Temporal View Verification Evidence
+
+- Context7 MCP `/dotnet/aspnetcore.docs` confirmed `[ApiController]` automatically returns HTTP 400 for model-validation failures, so query-model validation is the correct boundary and no controller `ModelState` branch is needed.
+- `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed: 8 projects, 0 errors, existing warning debt.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/PublicQueryValidationTests/*|/*/*/PublicQueryRuntimeValidationTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 26 tests.
+- The runtime test proves `GET /api/Event?view=sideways` returns `400 application/problem+json`, keeps the stable `view` field key, and does not echo the submitted value in the response body.
+- Focused `Event.Architecture.Tests` passed for `CleanArchitectureTests` (13), `CodeHygieneTests` (4), `NamingConventionTests` (10), and agent-context schema/intent/duplication tests (9).
+- `git diff --check` passed for the touched API model, API integration test, and workstream documentation files.
+
+### 2026-07-04 Public Detail Route-ID Cross-Tenant Verification Evidence
+
+- `dotnet format whitespace Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --include Event.API.IntegrationTests/Features/EventVisibilityContractTests.cs Event.API.IntegrationTests/Features/EventSessionVisibilityContractTests.cs --verbosity quiet` passed.
+- `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed: 8 projects, 0 errors, existing warning debt.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EventVisibilityContractTests/*|/*/*/EventSessionVisibilityContractTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 10 tests.
+- The new tests prove cross-tenant event and event-session detail IDs return safe `404` responses and do not echo hidden titles or tenant IDs.
+
+### 2026-07-04 Correlation Header Validation Verification Evidence
+
+- Context7 MCP `/dotnet/aspnetcore.docs` confirmed ASP.NET Core antiforgery and middleware placement guidance for BFF/minimal API trust-boundary handling. Tavily MCP OWASP CSRF/input-boundary search returned usage-limit status `432`.
+- `dotnet format whitespace` passed for `Event.Web.BffHosting/Security/BffProxyHeaderSanitizer.cs`, `Explore.API/Middleware/CorrelationIdMiddleware.cs`, `Explore.Blazor.IntegrationTests/Services/BffProxyHeaderSanitizerTests.cs`, and `Event.API.IntegrationTests/Features/Middleware/CorrelationIdTests.cs`.
+- `dotnet build Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed: 10 projects, 0 errors, existing warning debt.
+- `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed: 8 projects, 0 errors, existing warning debt.
+- `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/BffProxyHeaderSanitizerTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 3 tests.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/CorrelationIdTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 6 tests.
+
+### 2026-07-04 External API Key Usage Report Query Verification Evidence
+
+- Context7 MCP `/dotnet/aspnetcore.docs` confirmed `[ApiController]` automatic HTTP 400 behavior for model-validation failures. Tavily MCP OWASP input-validation search returned usage-limit status `432`.
+- `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed: 8 projects, 0 errors, existing warning debt.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/PublicQueryValidationTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 30 tests.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/ExternalApiKeyIntegrationTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 12 tests.
+- The runtime test proves an authenticated non-admin with an invalid usage-report date range receives canonical `400` validation ProblemDetails before the Application handler's admin authorization path.
+- Focused `Event.Architecture.Tests` passed for `CleanArchitectureTests` (13), `CodeHygieneTests` (4), `NamingConventionTests` (10), and agent-context schema/intent/duplication tests (9).
+- `git diff --check` passed for the touched API model, controller, API integration test, and workstream documentation files.
+
+### 2026-07-04 External API Key Usage Report Semantic Verification Evidence
+
+- `dotnet format whitespace Event.Application.UnitTests/Event.Application.UnitTests.csproj --include Event.Application.UnitTests/Features/ExternalApiKeys/Queries/ExternalApiKeyUsageReportRequestHandlerTests.cs --verbosity quiet` passed.
+- `dotnet build Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed: 3 projects, 0 errors, existing warning debt.
+- `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/ExternalApiKeyUsageReportRequestHandlerTests/*" --minimum-expected-tests 4 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 4 tests.
+- The handler tests prove unauthorized tenant-scoped and platform-wide usage-report reads fail before quota repository access, tenant admins read only the requested tenant path, and instance admins read only the platform-wide path.
+- An initial combined test command used an overly high `--minimum-expected-tests` value for the selected filter; the corrected focused command above is the accepted evidence.
+
+### 2026-07-04 External API Key Create/Update Input-Hardening Verification Evidence
+
+- Context7 MCP `/dotnet/aspnetcore.docs` confirmed `[ApiController]` automatic validation behavior and validation ProblemDetails. Tavily MCP OWASP input-validation search returned usage-limit status `432`, so this slice adds no fresh Tavily source evidence.
+- `dotnet build Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed with existing warning debt.
+- `dotnet build Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed with existing warning debt.
+- `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/ExternalApiKeyObservabilityTests/*|/*/*/ExternalApiKeyScopeCeilingTests/*" --minimum-expected-tests 12 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 12 tests.
+- `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/CreateExternalApiKeyDtoValidatorTests/*" --minimum-expected-tests 3 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 3 tests.
+- `dotnet format whitespace --include ... --verbosity quiet` passed for the touched Application, Blazor, test, and active workstream documentation files.
+- `dotnet format whitespace Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --include Event.API.IntegrationTests/Features/ExternalApiKeyIntegrationTests.cs Event.API.IntegrationTests/Features/ExternalApiPhase0IntegrationTests.cs --verbosity quiet` passed.
+- `git diff --check -- Event.API.IntegrationTests/Features/ExternalApiKeyIntegrationTests.cs Event.API.IntegrationTests/Features/ExternalApiPhase0IntegrationTests.cs` passed.
+- `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed: 8 projects, 0 errors, existing warning debt.
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/ExternalApiKeyIntegrationTests/*|/*/*/ExternalApiPhase0IntegrationTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 16 tests.
+- Focused `Event.Architecture.Tests` compiled and ran 14 tests, but failed unrelated existing `CleanArchitectureTests.Persistence_ShouldNotHaveDependencyOn_ApplicationDtos`; this slice did not touch Persistence.
 
 ### 2026-07-03 Storage Metadata Verification Evidence
 
@@ -564,6 +773,30 @@ Do not run solution-level `dotnet test`.
 - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed: 1454 total, 1453 succeeded, 1 skipped.
 - Earlier VSTest-style filtering failed because the project uses Microsoft.Testing.Platform/TUnit and does not accept `--filter` or `--logger`; the canonical unfiltered per-project command above was used instead.
 
+### 2026-07-04 Blazor Storage Display Safety Verification Evidence
+
+- Context7 MCP ASP.NET Core Blazor docs confirmed the current rendering contract: normal string output is text/encoded, while `MarkupString` and `RenderTreeBuilder.AddMarkupContent` are raw-rendering seams.
+- Tavily MCP OWASP output-encoding search failed with usage-limit status `432`; no new Tavily result from this continuation is treated as evidence.
+- Initial VSTest-style focused execution failed because the TUnit/Microsoft.Testing.Platform runner does not accept `--filter` or `--logger`; the corrected command used `-- --treenode-filter`.
+- `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/SharedComponentAccessibilityTests/*|/*/*/BrowserInteropSafetyTests/*" --minimum-expected-tests 1 --no-progress --no-ansi --output Normal` passed: 13 total, 12 succeeded, 1 existing skip.
+- `dotnet build --configuration Release --verbosity quiet` initially passed: 27 projects, 0 errors, existing warning debt only.
+- A later final solution-build rerun in the current dirty 28-project worktree failed outside this slice on existing warning/analyzer debt and missing `Explore.Application` reference output for unrelated projects; `dotnet build Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-restore -clp:ErrorsOnly` passed for the touched Blazor boundary: 5 projects, 0 errors.
+- `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-build -- --no-progress --no-ansi --output Normal` passed: 1485 total, 1484 succeeded, 1 existing skip.
+- `rg -n "MarkupString|AddMarkupContent|innerHTML|outerHTML|insertAdjacentHTML|document\\.write|setHTML\\(|eval\\(" Explore.Blazor Explore.Blazor.Client -g '*.cs' -g '*.razor' -g '*.js' -g '!bin/**' -g '!obj/**' -g '!node_modules/**'` reports only `Explore.Blazor.Client/Pages/Legal/CommunityGuidelines.razor`.
+- `git diff --check` passed after the test and workstream documentation updates.
+
+### 2026-07-04 Storage Metadata Update Tenant-Authority Verification Evidence
+
+- Context7 MCP `/dotnet/aspnetcore.docs` was refreshed for server-owned validation, ProblemDetails-style validation responses, untrusted file/upload metadata, and encoded Blazor rendering versus reviewed raw-rendering seams.
+- Tavily MCP OWASP input-validation/file-upload/logging search returned usage-limit status `432`; no new Tavily result from this continuation is treated as evidence beyond the earlier OWASP/IETF research already recorded in the workstream.
+- `dotnet build Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed: 3 projects, 0 errors, existing AutoMapper NU1903 warnings.
+- `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/StorageObjectCommandHandlerTests/*" --minimum-expected-tests 4 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 4 tests.
+- `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/AuthorizationBehaviorTests/*" --minimum-expected-tests 18 --no-progress --maximum-parallel-tests 1 --output Normal --log-level Warning` passed: 18 tests.
+- `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet -clp:ErrorsOnly` passed: 7 projects, 0 errors, existing package warnings.
+- Focused `Event.Architecture.Tests` passed separately for `CleanArchitectureTests` (13), `CodeHygieneTests` (4), `NamingConventionTests` (10), and agent-context schema/intent/duplication tests (9).
+- `git diff --check` passed for tracked touched code/docs; `git diff --check --no-index /dev/null Event.Application.UnitTests/Features/StorageObjects/Commands/StorageObjectCommandHandlerTests.cs` emitted no whitespace errors for the new untracked test file.
+- An initial VSTest-style `--filter` attempt failed because this TUnit/Microsoft.Testing.Platform project requires `-- --treenode-filter`; the corrected focused commands above are the accepted evidence.
+
 ### 2026-07-04 Storage Provider Result Verification Evidence
 
 - `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet` passed for the Application handler change, with existing dependency/analyzer warnings.
@@ -641,6 +874,16 @@ Do not run solution-level `dotnet test`.
 - `git diff --check` was clean for the migrated actor, organization, event-list, managed-events, my-events, and user projection handlers.
 - `rg` found no remaining old private async `ResolveImageUrl` copies, URI-path object-key extraction, `ObjectKeyOrUri` log templates, or raw object-key presign log templates under `Explore.Application/Features` and `Explore.Application/Services`.
 - Full `Event.Architecture.Tests` was attempted and currently fails on unrelated support-access authorization parity drift: missing Cerbos policy and fallback authorization case for `islamuevent_support_access_session`.
+
+### 2026-07-04 Blazor Organization Validation Verification Evidence
+
+- `dotnet build Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed after repairing stale generated-client `_links` anonymous-type test fixtures.
+- Focused `CreateOrganizationTests` execution passed 3 tests with `--no-build` and `--treenode-filter "/*/*/CreateOrganizationTests/*"`.
+- Focused `OrganizationDetailsHateoasTests` execution passed 6 tests with `--no-build` and `--treenode-filter "/*/*/OrganizationDetailsHateoasTests/*"`.
+- Focused `OrganizationProfileSectionTests` execution passed 3 tests with `--no-build` and `--treenode-filter "/*/*/OrganizationProfileSectionTests/*"`.
+- Full `Explore.Blazor.Client.Tests` execution passed with 1496 succeeded and 1 existing documented skip after one transient `AiAssistantRailTests.ReferenceHighlights_EncodeDangerousReferenceDisplayNames` failure passed in isolation and on full rerun.
+- `git diff --check` was clean for the touched Blazor client, test, and workstream files.
+- Full solution build remains outside this slice: the current worktree still fails `dotnet build --configuration Release --verbosity quiet` on existing warning-as-error/analyzer/package issues outside the Blazor organization validation changes.
 
 ---
 
