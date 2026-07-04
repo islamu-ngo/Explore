@@ -1,0 +1,22 @@
+// ABOUTME: Authorized command for force-stopping another active support-access session.
+// ABOUTME: Keeps operator revocation separate from the actor-owned stop workflow.
+
+using Explore.Application.Authorization;
+using Explore.Application.DTOs.SupportAccess;
+using MediatR;
+
+namespace Explore.Application.Features.SupportAccess.Requests.Commands;
+
+[AuthorizeResource(ResourceKinds.SupportAccessSession, AuthorizationActions.SupportAccessSessions.ForceStop)]
+public sealed class ForceStopSupportAccessSessionCommand : IRequest<SupportAccessSessionCommandResponseDto>, ISecureRequest
+{
+    public Guid SessionId { get; init; }
+    public string? EndReasonText { get; init; }
+
+    string? ISecureRequest.ResourceId => SessionId == Guid.Empty ? null : SessionId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["sessionId"] = SessionId.ToString("D")
+    };
+}
