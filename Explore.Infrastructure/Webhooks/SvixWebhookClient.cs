@@ -74,7 +74,7 @@ internal sealed class SvixWebhookClient(
     {
         var client = await CreateClientAsync(cancellationToken);
         var access = await client.Authentication.AppPortalAccessAsync(
-            request.AppUid,
+            request.AppId,
             new AppPortalAccessIn
             {
                 SessionId = request.SessionId,

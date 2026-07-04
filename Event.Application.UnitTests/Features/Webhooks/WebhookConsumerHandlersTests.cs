@@ -468,6 +468,27 @@ public sealed class WebhookConsumerHandlersTests
     }
 
     [Test]
+    public async Task EndpointListHandler_WhenTenantIdEmpty_DoesNotQueryRepository()
+    {
+        var handler = new GetWebhookEndpointsQueryHandler(_endpointRepository);
+
+        var result = await handler.Handle(
+            new GetWebhookEndpointsQuery
+            {
+                TenantId = Guid.Empty,
+                Limit = 100
+            },
+            CancellationToken.None);
+
+        await Assert.That(result).IsEmpty();
+        await _endpointRepository.DidNotReceive().ListByTenantAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task EndpointDetailHandler_WhenEndpointExists_ReturnsMappedDto()
     {
         var tenantId = Guid.CreateVersion7();
@@ -489,6 +510,26 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(result.StatusName).IsEqualTo(nameof(WebhookEndpointStatus.Active));
         await Assert.That(result.ProviderModeName).IsEqualTo(nameof(WebhookProviderMode.Local));
         await Assert.That(result.Subscriptions.Single().EventTypeName).IsEqualTo("event.published");
+    }
+
+    [Test]
+    public async Task EndpointDetailHandler_WhenIdsEmpty_DoesNotQueryRepository()
+    {
+        var handler = new GetWebhookEndpointByIdQueryHandler(_endpointRepository);
+
+        var result = await handler.Handle(
+            new GetWebhookEndpointByIdQuery
+            {
+                TenantId = Guid.Empty,
+                EndpointId = Guid.Empty
+            },
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _endpointRepository.DidNotReceive().GetByTenantAndIdAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]

@@ -91,6 +91,10 @@ public static class RouteNames
     public const string CreateEventSessionLanguage = "CreateEventSessionLanguage";
     public const string UpdateEventSessionLanguage = "UpdateEventSessionLanguage";
     public const string DeleteEventSessionLanguage = "DeleteEventSessionLanguage";
+    public const string GetEventSessionSpeakersBySession = "GetEventSessionSpeakersBySession";
+    public const string CreateEventSessionSpeaker = "CreateEventSessionSpeaker";
+    public const string UpdateEventSessionSpeaker = "UpdateEventSessionSpeaker";
+    public const string DeleteEventSessionSpeaker = "DeleteEventSessionSpeaker";
     public const string GetEventSessionAgendaItems = "GetEventSessionAgendaItems";
     public const string GetEventRegistrations = "GetEventRegistrations";
     public const string GetEventSessionTemplateSyncDiff = "GetEventSessionTemplateSyncDiff";
@@ -709,6 +713,17 @@ public static class RouteNames
 
     #region Instance Settings Routes
 
+    public const string GetControlPlaneOverview = "GetControlPlaneOverview";
+    public const string GetControlPlaneDomains = "GetControlPlaneDomains";
+    public const string GetControlPlaneOperations = "GetControlPlaneOperations";
+    public const string GetControlPlaneTenants = "GetControlPlaneTenants";
+    public const string GetControlPlaneTenantById = "GetControlPlaneTenantById";
+    public const string CreateControlPlaneTenant = "CreateControlPlaneTenant";
+    public const string ActivateControlPlaneTenant = "ActivateControlPlaneTenant";
+    public const string SuspendControlPlaneTenant = "SuspendControlPlaneTenant";
+    public const string ArchiveControlPlaneTenant = "ArchiveControlPlaneTenant";
+    public const string ReactivateControlPlaneTenant = "ReactivateControlPlaneTenant";
+    public const string ScheduleControlPlaneTenantPurge = "ScheduleControlPlaneTenantPurge";
     public const string GetInstanceModuleSettings = "GetInstanceModuleSettings";
     public const string UpdateInstanceModuleSettings = "UpdateInstanceModuleSettings";
     public const string GetInstanceEventPolicy = "GetInstanceEventPolicy";

@@ -19,6 +19,11 @@ public sealed class GetWebhookEndpointsQueryHandler(
         GetWebhookEndpointsQuery request,
         CancellationToken cancellationToken)
     {
+        if (request.TenantId == Guid.Empty)
+        {
+            return [];
+        }
+
         var limit = request.Limit <= 0
             ? DefaultLimit
             : Math.Min(request.Limit, MaxLimit);

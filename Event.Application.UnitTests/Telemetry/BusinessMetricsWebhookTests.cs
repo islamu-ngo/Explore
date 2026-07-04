@@ -86,6 +86,34 @@ public sealed class BusinessMetricsWebhookTests
         await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("unknown");
     }
 
+    [Test]
+    public async Task RecordWebhookProviderPublishFailureRecordsExpectedSafeTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+        var tenantId = Guid.NewGuid().ToString();
+
+        metrics.RecordWebhookProviderPublishFailure(
+            tenantId,
+            "event.published",
+            "Svix",
+            "svix_provider_unavailable");
+
+        var measurement = await metricsCapture.SingleByTenantAsync(
+            "explore.webhooks.provider_publish_failure",
+            tenantId);
+
+        await Assert.That(measurement.Value).IsEqualTo(1);
+        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId);
+        await Assert.That(measurement.Tags["event_type"]?.ToString()).IsEqualTo("event.published");
+        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("svix");
+        await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("svix_provider_unavailable");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("message_id");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("endpoint_url");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("payload");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("error");
+    }
+
     private static BusinessMetrics CreateMetrics()
     {
         var meterFactory = Substitute.For<IMeterFactory>();

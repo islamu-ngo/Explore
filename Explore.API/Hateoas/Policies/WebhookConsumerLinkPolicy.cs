@@ -6,10 +6,13 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Hateoas;
+using Explore.Infrastructure.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Explore.API.Hateoas.Policies;
 
-public sealed class WebhookConsumerDetailLinkPolicy : ILinkPolicy<WebhookConsumerDto>
+public sealed class WebhookConsumerDetailLinkPolicy(IOptionsMonitor<WebhookOptions> webhookOptions)
+    : ILinkPolicy<WebhookConsumerDto>
 {
     public IEnumerable<LinkDefinition> GetLinks(WebhookConsumerDto dto, ClaimsPrincipal? user)
     {
@@ -21,8 +24,7 @@ public sealed class WebhookConsumerDetailLinkPolicy : ILinkPolicy<WebhookConsume
             "Webhook consumer")
             .RequirePermission(AuthorizationActions.Webhooks.View, ResourceDescriptors.WebhookConsumer, dto);
 
-        if (string.Equals(dto.ProviderModeName, "Svix", StringComparison.Ordinal) ||
-            string.Equals(dto.ProviderModeName, "Composite", StringComparison.Ordinal))
+        if (CanOpenProviderPortal(dto, webhookOptions.CurrentValue))
         {
             yield return new LinkDefinition(
                 LinkRelations.OpenProviderPortal,
@@ -36,14 +38,20 @@ public sealed class WebhookConsumerDetailLinkPolicy : ILinkPolicy<WebhookConsume
                     dto);
         }
     }
+
+    private static bool CanOpenProviderPortal(WebhookConsumerDto dto, WebhookOptions options) =>
+        options is { IsDisabled: false, Svix: { AppPortalEnabled: true } } &&
+        (options.IsProvider(WebhookOptions.ProviderSvix) ||
+         options.IsProvider(WebhookOptions.ProviderComposite)) &&
+        (string.Equals(dto.ProviderModeName, WebhookOptions.ProviderSvix, StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(dto.ProviderModeName, WebhookOptions.ProviderComposite, StringComparison.OrdinalIgnoreCase));
 }
 
-public sealed class WebhookConsumerCollectionLinkPolicy : ICollectionLinkPolicy<WebhookConsumerDto>
+public sealed class WebhookConsumerCollectionLinkPolicy(ILinkPolicy<WebhookConsumerDto> detailPolicy)
+    : ICollectionLinkPolicy<WebhookConsumerDto>
 {
-    private readonly WebhookConsumerDetailLinkPolicy _detailPolicy = new();
-
     public IEnumerable<LinkDefinition> GetItemLinks(WebhookConsumerDto dto, ClaimsPrincipal? user) =>
-        _detailPolicy.GetLinks(dto, user);
+        detailPolicy.GetLinks(dto, user);
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {

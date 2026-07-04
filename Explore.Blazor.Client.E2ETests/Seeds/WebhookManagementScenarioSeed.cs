@@ -4,6 +4,7 @@
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Explore.Persistence;
 
 namespace Explore.Blazor.Client.E2ETests.Seeds;
@@ -65,6 +66,14 @@ public static class WebhookManagementScenarioSeed
         });
 
         SeedSingleTenantBootstrapState(context, adminUser.Id, now);
+        EnsureWebhookSecretBinding(
+            context,
+            SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken,
+            "WEBHOOKS_SVIX_AUTH_TOKEN");
+        EnsureWebhookSecretBinding(
+            context,
+            SecretDefinitionRegistry.Keys.Webhooks.SvixOperationalWebhookSecret,
+            "WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET");
 
         var eventPublished = CreateEventType("event.published", "event", "Event becomes publicly visible.", now);
         var webhookTest = CreateEventType("webhook.test", "webhook", "Endpoint test delivery.", now);
@@ -246,6 +255,33 @@ public static class WebhookManagementScenarioSeed
         return role;
     }
 
+    private static void EnsureWebhookSecretBinding(
+        ExploreDbContext context,
+        string settingKey,
+        string environmentVariableName)
+    {
+        var exists = context.SecretBindings.Local.Any(binding =>
+                binding.SettingKey == settingKey &&
+                binding.SettingScopeId == (int)ConfigurationScopeEnum.Instance &&
+                binding.ScopeId == null) ||
+            context.SecretBindings.Any(binding =>
+                binding.SettingKey == settingKey &&
+                binding.SettingScopeId == (int)ConfigurationScopeEnum.Instance &&
+                binding.ScopeId == null);
+
+        if (exists)
+        {
+            return;
+        }
+
+        context.SecretBindings.Add(SecretBinding.CreateEnvironmentVariable(
+            settingKey,
+            SecretScope.Instance,
+            scopeId: null,
+            environmentVariableName,
+            isLocked: false));
+    }
+
     private static Tenant EnsureDefaultTenant(ExploreDbContext context, DateTime now)
     {
         var tenant = new Tenant
@@ -391,7 +427,7 @@ public static class WebhookManagementScenarioSeed
             Name = name,
             Status = WebhookConsumerStatus.Active,
             ProviderMode = providerMode,
-            ExternalProviderAppId = providerMode == WebhookProviderMode.Svix ? $"app_{Guid.CreateVersion7():N}" : null,
+            ExternalProviderAppId = providerMode == WebhookProviderMode.Svix ? $"islamu-e2e-svix-{Guid.CreateVersion7():N}" : null,
             CreatedAt = now
         };
 

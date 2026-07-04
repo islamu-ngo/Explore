@@ -66,12 +66,12 @@ public sealed class SvixAppPortalService(
             var portal = await svixClient.CreateAppPortalAccessAsync(
                 new SvixAppPortalAccessRequest(
                     input.TenantId,
-                    app.AppUid,
+                    app.AppId,
                     input.SessionId.Trim(),
                     input.ReadOnly,
                     expiresIn,
                     NormalizeFeatureFlags(input.FeatureFlags),
-                    $"svix-portal:{app.AppUid}:{input.SessionId.Trim()}"),
+                    $"svix-portal:{app.AppId}:{input.SessionId.Trim()}"),
                 cancellationToken);
 
             return WebhookProviderPortalAccessResult.Success(

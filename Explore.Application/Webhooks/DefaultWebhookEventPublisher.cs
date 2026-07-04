@@ -72,6 +72,13 @@ public sealed class DefaultWebhookEventPublisher(
             return WebhookEventPublishResult.Success(message.Id, providerResult.ProviderMessageId);
         }
 
+        var failureCategory = providerResult.FailureCategory ?? "webhook_provider_failed";
+        metrics.RecordWebhookProviderPublishFailure(
+            message.TenantId.ToString("D"),
+            message.EventType,
+            providerName,
+            failureCategory);
+
         await messageRepository.MarkProviderFailedAsync(
             message.TenantId,
             message.Id,
@@ -80,7 +87,7 @@ public sealed class DefaultWebhookEventPublisher(
 
         return WebhookEventPublishResult.Failure(
             message.Id,
-            providerResult.FailureCategory ?? "webhook_provider_failed",
+            failureCategory,
             providerResult.IsRetryable,
             providerResult.SafeDetail);
     }

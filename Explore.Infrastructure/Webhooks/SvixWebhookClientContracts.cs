@@ -47,7 +47,7 @@ public sealed record SvixMessageCreateResult(
 
 public sealed record SvixAppPortalAccessRequest(
     Guid TenantId,
-    string AppUid,
+    string AppId,
     string SessionId,
     bool ReadOnly,
     TimeSpan ExpiresIn,

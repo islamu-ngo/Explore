@@ -10,6 +10,7 @@ using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.AudienceAge;
 using Explore.Application.DTOs.AudienceGender;
 using Explore.Application.DTOs.Category;
+using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.DidCustodyType;
 using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.DTOs.Event;
@@ -157,6 +158,34 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(MyEventReportDto))]
 [JsonSerializable(typeof(PaginatedResult<MyEventReportDto>))]
 [JsonSerializable(typeof(HalCollectionResource<MyEventReportDto>))]
+[JsonSerializable(typeof(ControlPlaneOverviewDto))]
+[JsonSerializable(typeof(ControlPlaneDomainOverviewDto))]
+[JsonSerializable(typeof(ControlPlaneDnsRecordDto))]
+[JsonSerializable(typeof(ControlPlaneOperationsDto))]
+[JsonSerializable(typeof(ControlPlaneOperationStatusDto))]
+[JsonSerializable(typeof(ControlPlaneOperationMetricDto))]
+[JsonSerializable(typeof(ControlPlaneTenantStatusCountDto))]
+[JsonSerializable(typeof(ControlPlaneProviderSummaryDto))]
+[JsonSerializable(typeof(ControlPlaneWarningDto))]
+[JsonSerializable(typeof(ControlPlaneTenantListItemDto))]
+[JsonSerializable(typeof(ControlPlaneTenantDetailDto))]
+[JsonSerializable(typeof(ControlPlaneTenantLifecycleEntryDto))]
+[JsonSerializable(typeof(ControlPlaneTenantLifecycleTransitionRequestDto))]
+[JsonSerializable(typeof(ControlPlaneTenantLifecycleTransitionDto))]
+[JsonSerializable(typeof(IReadOnlyList<ControlPlaneTenantStatusCountDto>))]
+[JsonSerializable(typeof(IReadOnlyList<ControlPlaneProviderSummaryDto>))]
+[JsonSerializable(typeof(IReadOnlyList<ControlPlaneWarningDto>))]
+[JsonSerializable(typeof(IReadOnlyList<ControlPlaneDnsRecordDto>))]
+[JsonSerializable(typeof(IReadOnlyList<ControlPlaneOperationStatusDto>))]
+[JsonSerializable(typeof(IReadOnlyList<ControlPlaneOperationMetricDto>))]
+[JsonSerializable(typeof(IReadOnlyList<ControlPlaneTenantListItemDto>))]
+[JsonSerializable(typeof(IReadOnlyList<ControlPlaneTenantLifecycleEntryDto>))]
+[JsonSerializable(typeof(HalResource<ControlPlaneOverviewDto>))]
+[JsonSerializable(typeof(HalResource<ControlPlaneDomainOverviewDto>))]
+[JsonSerializable(typeof(HalResource<ControlPlaneOperationsDto>))]
+[JsonSerializable(typeof(HalResource<ControlPlaneTenantDetailDto>))]
+[JsonSerializable(typeof(HalCollectionResource<ControlPlaneTenantListItemDto>))]
+[JsonSerializable(typeof(BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>))]
 [JsonSerializable(typeof(CoopDecisionCallbackActionDto))]
 [JsonSerializable(typeof(CoopDecisionCallbackItemDto))]
 [JsonSerializable(typeof(CoopDecisionCallbackPolicyDto))]

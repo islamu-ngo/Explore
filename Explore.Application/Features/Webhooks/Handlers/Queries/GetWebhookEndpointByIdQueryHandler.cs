@@ -16,6 +16,11 @@ public sealed class GetWebhookEndpointByIdQueryHandler(
         GetWebhookEndpointByIdQuery request,
         CancellationToken cancellationToken)
     {
+        if (request.TenantId == Guid.Empty || request.EndpointId == Guid.Empty)
+        {
+            return null;
+        }
+
         var endpoint = await endpointRepository.GetByTenantAndIdAsync(
             request.TenantId,
             request.EndpointId,

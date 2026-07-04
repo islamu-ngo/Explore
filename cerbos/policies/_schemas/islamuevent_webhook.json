@@ -1,11 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Resource attributes for tenant-scoped outgoing webhook consumers, endpoints, messages, delivery attempts, and provider portal sessions.",
+  "description": "Resource attributes for outgoing webhook consumers, endpoints, messages, delivery attempts, and provider portal sessions.",
   "type": "object",
   "properties": {
     "tenantId": {
       "type": "string",
       "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "Owning organization identifier. Used by islamuevent_org_admin derived role for organization-owned webhook resources."
+    },
+    "allowOrganizationWebhooks": {
+      "type": "boolean",
+      "description": "Whether tenant policy delegates organization-owned webhook management to organization admins."
     },
     "consumerId": {
       "type": "string",

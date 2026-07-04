@@ -65,12 +65,12 @@ public sealed class SvixAppPortalServiceTests
         await Assert.That(appRequest!.AppUid).IsEqualTo("app_custom");
         await Assert.That(appRequest.Name).IsEqualTo("Community site");
         await Assert.That(portalRequest).IsNotNull();
-        await Assert.That(portalRequest!.AppUid).IsEqualTo("app_custom");
+        await Assert.That(portalRequest!.AppId).IsEqualTo("app_123");
         await Assert.That(portalRequest.SessionId).IsEqualTo("session-1");
         await Assert.That(portalRequest.ReadOnly).IsTrue();
         await Assert.That(portalRequest.ExpiresIn).IsEqualTo(TimeSpan.FromHours(1));
         await Assert.That(portalRequest.FeatureFlags).IsEquivalentTo(["beta-feature"]);
-        await Assert.That(portalRequest.IdempotencyKey).IsEqualTo("svix-portal:app_custom:session-1");
+        await Assert.That(portalRequest.IdempotencyKey).IsEqualTo("svix-portal:app_123:session-1");
     }
 
     [Test]

@@ -50,6 +50,7 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _webhookDeliveryFailure;
     private readonly Counter<long> _webhookEndpointDisabled;
     private readonly Counter<long> _webhookManualRetries;
+    private readonly Counter<long> _webhookProviderPublishFailures;
     private readonly Counter<long> _customPropertyPurgeDecisions;
     private readonly Counter<long> _idempotencyCleanupRuns;
     private readonly Counter<long> _idempotencyCleanupRows;
@@ -235,6 +236,11 @@ public sealed class BusinessMetrics : IDisposable
             "explore.webhooks.manual_retries",
             unit: "{retry}",
             description: "Total LocalProvider manual retry scheduling decisions by bounded outcome and failure category");
+
+        _webhookProviderPublishFailures = meter.CreateCounter<long>(
+            "explore.webhooks.provider_publish_failure",
+            unit: "{failure}",
+            description: "Total outgoing webhook provider publish failures by provider and bounded failure category");
 
         _customPropertyPurgeDecisions = meter.CreateCounter<long>(
             "explore.custom_properties.purge_decisions",
@@ -641,6 +647,19 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
             new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
+    }
+
+    public void RecordWebhookProviderPublishFailure(
+        string? tenantId,
+        string? eventType,
+        string? provider,
+        string? failureCategory)
+    {
+        _webhookProviderPublishFailures.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
+            new KeyValuePair<string, object?>("provider", NormalizeWebhookProvider(provider)),
             new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
     }
 
@@ -1061,6 +1080,15 @@ public sealed class BusinessMetrics : IDisposable
             "endpoint_status_not_retryable" => "endpoint_status_not_retryable",
             "attempt_status_not_retryable" => "attempt_status_not_retryable",
             "message_payload_cleared" => "message_payload_cleared",
+            "webhook_provider_failed" => "webhook_provider_failed",
+            "unsupported_webhook_provider" => "unsupported_webhook_provider",
+            "webhooks_disabled" => "webhooks_disabled",
+            "svix_auth_failed" => "svix_auth_failed",
+            "svix_request_rejected" => "svix_request_rejected",
+            "svix_provider_unavailable" => "svix_provider_unavailable",
+            "svix_provider_failed" => "svix_provider_failed",
+            "svix_auth_token_secret_missing" => "svix_auth_token_secret_missing",
+            "svix_auth_token_unresolved" => "svix_auth_token_unresolved",
             _ => "unknown"
         };
     }

@@ -1,8 +1,11 @@
 // ABOUTME: Unit tests for runtime webhook provider routing and local fanout enqueue behavior.
 // ABOUTME: Ensures disabled, dry-run, and local modes preserve retry-safe provider results.
 
+using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
+using Explore.Application.Telemetry;
+using Explore.Application.Webhooks;
 using Explore.Domain;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
@@ -39,6 +42,53 @@ public sealed class WebhookProviderResolverTests
         var result = await provider.PublishAsync(CreateMessage(), CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsTrue();
+        await endpointRepository.DidNotReceiveWithAnyArgs()
+            .GetActiveSubscribedEndpointsAsync(default, default!, default, default);
+        await attemptRepository.DidNotReceiveWithAnyArgs()
+            .CreateManyAsync(default!, default);
+    }
+
+    [Test]
+    public async Task Publisher_WhenRuntimeProviderIsDryRun_CreatesCanonicalMessageWithoutLocalFanout()
+    {
+        var endpointRepository = Substitute.For<IWebhookEndpointRepository>();
+        var attemptRepository = Substitute.For<IWebhookDeliveryAttemptRepository>();
+        var messageRepository = Substitute.For<IWebhookMessageRepository>();
+        var deliveryProvider = CreateRuntimeProvider(
+            new WebhookOptions { Provider = WebhookOptions.ProviderDryRun },
+            endpointRepository,
+            attemptRepository);
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+        var publisher = new DefaultWebhookEventPublisher(
+            new DefaultWebhookPayloadBuilder(new WebhookEventTypeRegistry()),
+            messageRepository,
+            deliveryProvider,
+            new BusinessMetrics(meterFactory));
+        var context = CreateContext();
+        WebhookMessage? createdMessage = null;
+
+        messageRepository.GetByTenantAndIdAsync(context.TenantId, context.MessageId, Arg.Any<CancellationToken>())
+            .Returns((WebhookMessage?)null);
+        messageRepository.CreateAsync(
+                Arg.Do<WebhookMessage>(message => createdMessage = message),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<WebhookMessage>());
+
+        var result = await publisher.PublishAsync(context, CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.MessageId).IsEqualTo(context.MessageId);
+        await Assert.That(result.ProviderMessageId).IsEqualTo($"dryrun:{context.MessageId:N}");
+        await Assert.That(createdMessage).IsNotNull();
+        await Assert.That(createdMessage!.ProviderMode).IsEqualTo(WebhookProviderMode.DryRun);
+        await Assert.That(createdMessage.PayloadJson).Contains("\"event.published\"");
+        await messageRepository.Received(1).MarkProviderQueuedAsync(
+            context.TenantId,
+            context.MessageId,
+            $"dryrun:{context.MessageId:N}",
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
         await endpointRepository.DidNotReceiveWithAnyArgs()
             .GetActiveSubscribedEndpointsAsync(default, default!, default, default);
         await attemptRepository.DidNotReceiveWithAnyArgs()
@@ -103,6 +153,29 @@ public sealed class WebhookProviderResolverTests
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.ProviderMessageId).IsEqualTo("msg_svix");
+    }
+
+    private static WebhookEventBuildContext CreateContext()
+    {
+        var messageId = Guid.CreateVersion7();
+        var tenantId = Guid.CreateVersion7();
+        var aggregateId = Guid.CreateVersion7();
+
+        return new WebhookEventBuildContext(
+            messageId,
+            tenantId,
+            WebhookEventNames.EventPublished,
+            "domain-event-1",
+            "Event",
+            aggregateId,
+            DateTimeOffset.UtcNow,
+            new Dictionary<string, object?>
+            {
+                ["eventId"] = aggregateId.ToString("D"),
+                ["status"] = "Published",
+                ["publicUrl"] = "https://example.org/events/community-iftar"
+            },
+            Guid.CreateVersion7());
     }
 
     private static RuntimeWebhookDeliveryProvider CreateRuntimeProvider(

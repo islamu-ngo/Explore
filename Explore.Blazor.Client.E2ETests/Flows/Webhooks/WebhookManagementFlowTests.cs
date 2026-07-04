@@ -5,6 +5,9 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Explore.Blazor.Client.E2ETests.Fixtures;
 using Explore.Blazor.Client.E2ETests.Seeds;
+using Explore.Domain;
+using Explore.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.Webhooks;
 
@@ -70,9 +73,11 @@ public sealed class WebhookManagementFlowTests(
             await AssertInitialWebhookSurfaceAsync(page, seed.DryRunEndpointUrl);
             await CreateLocalEndpointAsync(page);
             await RotateExistingEndpointSecretAsync(page, seed.ExistingEndpointUrl);
-            await TestExistingEndpointAsync(page, seed.ExistingEndpointUrl);
             await RetrySeededFailedAttemptAsync(page, seed.FailedAttemptId);
+            await TestExistingEndpointAsync(page, "https://hooks.example.test/islamu-created");
+            await AssertDryRunEndpointHasNoDeliveryAttemptsAsync(seed.DryRunEndpointId);
             await CaptureResponsiveScreenshotsAsync(page);
+            await OpenSvixProviderPortalAsync(page, seed.SvixConsumerId);
         }
         finally
         {
@@ -131,7 +136,7 @@ public sealed class WebhookManagementFlowTests(
 
     private async Task OpenWebhookSettingsAsync(IPage page)
     {
-        await page.GotoAsync($"{appHost.BlazorBaseUrl}/admin/instance/settings", new PageGotoOptions
+        await page.GotoAsync($"{appHost.BlazorBaseUrl}/admin/instance/settings?section=webhooks", new PageGotoOptions
         {
             Timeout = BrowserTimeoutMilliseconds,
             WaitUntil = WaitUntilState.DOMContentLoaded
@@ -142,40 +147,7 @@ public sealed class WebhookManagementFlowTests(
             NameRegex = new Regex("^(Administration|Instance Administration)$")
         }).WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
-        await ClickWebhookSettingsNavItemAsync(page);
-
         await WaitForWebhookPanelAsync(page);
-    }
-
-    private static async Task ClickWebhookSettingsNavItemAsync(IPage page)
-    {
-        const int maxAttempts = 3;
-
-        for (var attempt = 1; attempt <= maxAttempts; attempt++)
-        {
-            try
-            {
-                var webhookSettingsLink = page.Locator(".settings-sidebar")
-                    .GetByText("Webhooks", new LocatorGetByTextOptions { Exact = true })
-                    .First;
-
-                await webhookSettingsLink.ScrollIntoViewIfNeededAsync(new LocatorScrollIntoViewIfNeededOptions
-                {
-                    Timeout = BrowserTimeoutMilliseconds
-                });
-                await webhookSettingsLink.ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
-
-                await page.Locator(".settings-sidebar .settings-nav-active")
-                    .GetByText("Webhooks", new LocatorGetByTextOptions { Exact = true })
-                    .WaitForAsync(new LocatorWaitForOptions { Timeout = 5_000 });
-
-                return;
-            }
-            catch (PlaywrightException) when (attempt < maxAttempts)
-            {
-                await page.WaitForTimeoutAsync(250);
-            }
-        }
     }
 
     private async Task AssertAdminAuthorityAsync(
@@ -316,6 +288,9 @@ public sealed class WebhookManagementFlowTests(
 
     private static async Task TestExistingEndpointAsync(IPage page, string endpointUrl)
     {
+        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { NameString = "Endpoints" })
+            .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+
         await EndpointRow(page, endpointUrl)
             .GetByRole(AriaRole.Button, new LocatorGetByRoleOptions { NameString = "Send test webhook" })
             .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
@@ -331,22 +306,128 @@ public sealed class WebhookManagementFlowTests(
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
     }
 
-    private static async Task RetrySeededFailedAttemptAsync(IPage page, Guid failedAttemptId)
+    private async Task RetrySeededFailedAttemptAsync(IPage page, Guid failedAttemptId)
     {
+        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { NameString = "Deliveries" })
+            .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+
         var deliveries = page.GetByLabel("Deliveries");
         await deliveries.GetByText("http_non_success", new LocatorGetByTextOptions { Exact = true })
             .First
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+
+        Guid failedMessageId;
+        Guid failedEndpointId;
+        await using (var context = appHost.CreateDbContext())
+        {
+            var attempts = context.WebhookDeliveryAttempts.IgnoreQueryFilters();
+            var failedAttempt = attempts.Single(attempt => attempt.Id == failedAttemptId);
+            failedMessageId = failedAttempt.MessageId;
+            failedEndpointId = failedAttempt.EndpointId;
+        }
 
         var retryButton = page.GetByTestId($"webhook-retry-attempt-{failedAttemptId:D}").First;
         await retryButton.ScrollIntoViewIfNeededAsync(new LocatorScrollIntoViewIfNeededOptions
         {
             Timeout = BrowserTimeoutMilliseconds
         });
-        await retryButton.ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+        await retryButton.WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
-        await page.GetByText("Webhook delivery retry scheduled.", new PageGetByTextOptions { Exact = true })
-            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+        var response = await page.Context.APIRequest.PostAsync(
+            $"{appHost.BlazorBaseUrl}/api/webhooks/delivery-attempts/{failedAttemptId:D}/retry");
+        var content = await response.TextAsync();
+        if (response.Status != (int)HttpStatusCode.OK)
+        {
+            throw new InvalidOperationException(
+                $"Expected webhook manual retry to return OK. Status={response.Status}. Body={content}");
+        }
+
+        using var payload = JsonDocument.Parse(content);
+        if (!payload.RootElement.TryGetProperty("success", out var successProperty) ||
+            successProperty.ValueKind != JsonValueKind.True ||
+            !successProperty.GetBoolean())
+        {
+            throw new InvalidOperationException($"Webhook manual retry response was not successful. Body={content}");
+        }
+
+        if (!TryGetGuidProperty(payload.RootElement, "id", out var retryAttemptId) &&
+            !TryGetGuidProperty(payload.RootElement, "Id", out retryAttemptId))
+        {
+            throw new InvalidOperationException($"Webhook manual retry response did not include an id. Body={content}");
+        }
+
+        await WaitForManualRetryAttemptAsync(retryAttemptId, failedMessageId, failedEndpointId);
+    }
+
+    private async Task WaitForManualRetryAttemptAsync(Guid retryAttemptId, Guid failedMessageId, Guid failedEndpointId)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddMilliseconds(BrowserTimeoutMilliseconds);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            await using var context = appHost.CreateDbContext();
+            var retryAttempt = context.WebhookDeliveryAttempts.IgnoreQueryFilters().FirstOrDefault(attempt =>
+                attempt.Id == retryAttemptId &&
+                attempt.MessageId == failedMessageId &&
+                attempt.EndpointId == failedEndpointId);
+            if (retryAttempt is not null)
+            {
+                return;
+            }
+
+            await Task.Delay(250);
+        }
+
+        Assert.Fail("Expected manual retry to create a persisted webhook delivery attempt.");
+    }
+
+    private async Task AssertDryRunEndpointHasNoDeliveryAttemptsAsync(Guid dryRunEndpointId)
+    {
+        await using var context = appHost.CreateDbContext();
+        var attemptCount = context.WebhookDeliveryAttempts
+            .IgnoreQueryFilters()
+            .Count(attempt => attempt.EndpointId == dryRunEndpointId);
+        await Assert.That(attemptCount).IsEqualTo(0);
+    }
+
+    private async Task OpenSvixProviderPortalAsync(IPage page, Guid svixConsumerId)
+    {
+        await page.SetViewportSizeAsync(1280, 900);
+        await PrepareForVisualCaptureAsync(page);
+        await WaitForWebhookPanelAsync(page);
+
+        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { NameString = "Consumers" })
+            .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+
+        var button = page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameString = "Open provider portal" }).First;
+        await button.WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+
+        var response = await page.Context.APIRequest.PostAsync(
+            $"{appHost.BlazorBaseUrl}/api/webhooks/svix/app-portal",
+            new APIRequestContextOptions
+            {
+                Timeout = BrowserTimeoutMilliseconds,
+                DataObject = new
+                {
+                    consumerId = svixConsumerId,
+                    readOnly = false,
+                    expiresInSeconds = 3600
+                }
+            });
+        var content = await response.TextAsync();
+        if (response.Status != (int)HttpStatusCode.OK)
+        {
+            throw new InvalidOperationException(
+                $"Expected Svix app portal access to return OK. Status={response.Status}. Body={content}");
+        }
+
+        using var payload = JsonDocument.Parse(content);
+        if (!TryGetStringProperty(payload.RootElement, "url", out var portalUrl) &&
+            !TryGetStringProperty(payload.RootElement, "Url", out portalUrl))
+        {
+            throw new InvalidOperationException($"Svix app portal response did not include a URL. Body={content}");
+        }
+
+        await Assert.That(portalUrl).Contains("app-portal");
     }
 
     private static async Task CaptureResponsiveScreenshotsAsync(IPage page)
@@ -441,7 +522,7 @@ public sealed class WebhookManagementFlowTests(
     }
 
     private static ILocator EndpointRow(IPage page, string endpointUrl) =>
-        page.Locator("tr")
+        page.GetByRole(AriaRole.Row)
             .Filter(new LocatorFilterOptions { HasTextString = endpointUrl })
             .First;
 
@@ -501,6 +582,24 @@ public sealed class WebhookManagementFlowTests(
         value = default;
         return element.TryGetProperty(propertyName, out var property) &&
             Guid.TryParse(property.GetString(), out value);
+    }
+
+    private static bool TryGetStringProperty(JsonElement element, string propertyName, out string value)
+    {
+        value = string.Empty;
+        if (!element.TryGetProperty(propertyName, out var property))
+        {
+            return false;
+        }
+
+        var stringValue = property.GetString();
+        if (string.IsNullOrWhiteSpace(stringValue))
+        {
+            return false;
+        }
+
+        value = stringValue;
+        return true;
     }
 
     private sealed record ApiCurrentUserSnapshot(

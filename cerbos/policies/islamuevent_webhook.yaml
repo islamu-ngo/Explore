@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for outgoing webhook management and provider portal actions.
-# ABOUTME: Grants webhook administration to instance admins and tenant admins for their tenant scope.
+# ABOUTME: Grants tenant admins tenant scope and org admins delegated org-owned webhook scope.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -32,3 +32,22 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
+
+    - actions:
+        - "webhook:view"
+        - "webhook:create"
+        - "webhook:update"
+        - "webhook:delete"
+        - "webhook:rotate-secret"
+        - "webhook:test"
+        - "webhook:retry"
+        - "webhook:view-delivery"
+        - "webhook:open-provider-portal"
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_org_admin
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.allowOrganizationWebhooks) &&
+            request.resource.attr.allowOrganizationWebhooks == true

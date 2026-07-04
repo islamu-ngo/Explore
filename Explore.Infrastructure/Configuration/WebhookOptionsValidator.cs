@@ -84,10 +84,17 @@ public sealed class WebhookOptionsValidator : IValidateOptions<WebhookOptions>
 
     private static void ValidateSvixOptions(WebhookSvixOptions options, List<string> failures)
     {
-        if (!string.IsNullOrWhiteSpace(options.BaseUrl)
-            && !Uri.TryCreate(options.BaseUrl.Trim(), UriKind.Absolute, out _))
+        if (!string.IsNullOrWhiteSpace(options.BaseUrl))
         {
-            failures.Add("Webhooks:Svix:BaseUrl must be an absolute URL when configured.");
+            if (!Uri.TryCreate(options.BaseUrl.Trim(), UriKind.Absolute, out var baseUrl))
+            {
+                failures.Add("Webhooks:Svix:BaseUrl must be an absolute URL when configured.");
+            }
+            else if (!string.Equals(baseUrl.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                     && !string.Equals(baseUrl.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                failures.Add("Webhooks:Svix:BaseUrl must use http or https when configured.");
+            }
         }
 
         if (string.IsNullOrWhiteSpace(options.AuthTokenSecretRef))
