@@ -1,3 +1,6 @@
+@* ABOUTME: Dialog UI for managing speaker assignments on an event session. *@
+@* ABOUTME: Uses HAL-gated generated API client services for add/remove affordances. *@
+
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using Explore.Blazor.Client.Contracts.Services.Lookup
@@ -13,11 +16,14 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="4">
-            <MudAutocomplete T="ActorListDto" Label="Add Speaker" @bind-Value="selectedActor"
-                             SearchFunc="@SearchActors" ToStringFunc="@(e => e?.DisplayName)"
-                             Variant="Variant.Outlined" Dense="true" />
+            @if (canCreateSpeaker)
+            {
+                <MudAutocomplete T="ActorListDto" Label="Add Speaker" @bind-Value="selectedActor"
+                                 SearchFunc="@SearchActors" ToStringFunc="@(e => e?.DisplayName)"
+                                 Variant="Variant.Outlined" Dense="true" />
 
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="AddSpeaker" Disabled="@(selectedActor == null)">Add Speaker</MudButton>
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="AddSpeaker" Disabled="@(selectedActor == null || isBusy)">Add Speaker</MudButton>
+            }
 
             <MudText Typo="Typo.h6">Current Speakers</MudText>
             <MudList T="EventSessionSpeakerListDto" Clickable="true">
@@ -25,7 +31,10 @@
                 {
                     <MudListItem T="EventSessionSpeakerListDto">
                         @speaker.ActorDisplayName
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveSpeaker(speaker.Id))" />
+                        @if (speaker.HasHalLink("delete"))
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Remove speaker" OnClick="@(() => RemoveSpeaker(speaker.Id))" Disabled="@isBusy" />
+                        }
                     </MudListItem>
                 }
             </MudList>
@@ -44,6 +53,8 @@
     private List<EventSessionSpeakerListDto> speakers = new();
     private ActorListDto? selectedActor;
     private List<ActorListDto> allActors = new();
+    private bool canCreateSpeaker;
+    private bool isBusy;
 
     protected override async Task OnInitializedAsync()
     {
@@ -54,27 +65,36 @@
 
     private async Task LoadSpeakers()
     {
-        // Note: Service returns ICollection<object> due to neutralized methods
-        var rawSpeakers = await EventSessionSpeakerService.GetSpeakersBySessionAsync(SessionId);
-        speakers = new List<EventSessionSpeakerListDto>(); // Will be empty until API is updated
+        var collection = await EventSessionSpeakerService.GetSpeakersBySessionAsync(SessionId);
+        speakers = collection.GetItems().ToList();
+        canCreateSpeaker = collection.HasLink("create");
     }
 
-    private async Task<IEnumerable<ActorListDto>> SearchActors(string value, CancellationToken token)
+    private Task<IEnumerable<ActorListDto>> SearchActors(string value, CancellationToken token)
     {
         if (string.IsNullOrEmpty(value))
         {
-            return allActors;
+            return Task.FromResult<IEnumerable<ActorListDto>>(allActors);
         }
-        return allActors.Where(x => x.DisplayName.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+        return Task.FromResult<IEnumerable<ActorListDto>>(allActors.Where(x =>
+            x.DisplayName?.Contains(value, StringComparison.InvariantCultureIgnoreCase) == true));
     }
 
     private async Task AddSpeaker()
     {
         if (selectedActor != null && selectedActor.Id.HasValue)
         {
-            // Note: Using anonymous object since CreateEventSessionSpeakerDto is not available
-            var newSpeaker = new { ActorId = selectedActor.Id.Value, EventSessionId = SessionId };
-            var response = await EventSessionSpeakerService.AddSpeakerToSessionAsync(newSpeaker);
+            BaseCommandResponseOfGuid? response;
+            try
+            {
+                isBusy = true;
+                response = await EventSessionSpeakerService.AddSpeakerToSessionAsync(SessionId, selectedActor.Id.Value);
+            }
+            finally
+            {
+                isBusy = false;
+            }
+
             if (response?.Success == true)
             {
                 Snackbar.Add("Speaker added.", Severity.Success);
@@ -92,10 +112,27 @@
     private async Task RemoveSpeaker(Guid? speakerId)
     {
         if (!speakerId.HasValue) return;
-        await EventSessionSpeakerService.RemoveSpeakerFromSessionAsync(speakerId.Value);
-        Snackbar.Add("Speaker removed.", Severity.Success);
-        await LoadSpeakers();
-        StateHasChanged();
+        bool removed;
+        try
+        {
+            isBusy = true;
+            removed = await EventSessionSpeakerService.RemoveSpeakerFromSessionAsync(SessionId, speakerId.Value);
+        }
+        finally
+        {
+            isBusy = false;
+        }
+
+        if (removed)
+        {
+            Snackbar.Add("Speaker removed.", Severity.Success);
+            await LoadSpeakers();
+            StateHasChanged();
+        }
+        else
+        {
+            Snackbar.Add("Failed to remove speaker", Severity.Error);
+        }
     }
 
     void Submit() => MudDialog.Close(DialogResult.Ok(true));

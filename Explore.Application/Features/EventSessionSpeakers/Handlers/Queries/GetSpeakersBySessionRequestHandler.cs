@@ -26,7 +26,7 @@ public class GetSpeakersBySessionRequestHandler : IRequestHandler<GetSpeakersByS
 
     public async Task<List<EventSessionSpeakerListDto>> Handle(GetSpeakersBySessionRequest request, CancellationToken cancellationToken)
     {
-        var speakers = await _speakerRepository.GetBySession(request.EventSessionId);
+        var speakers = await _speakerRepository.GetBySession(request.EventSessionId, cancellationToken);
         return _mapper.Map<List<EventSessionSpeakerListDto>>(speakers);
     }
 }

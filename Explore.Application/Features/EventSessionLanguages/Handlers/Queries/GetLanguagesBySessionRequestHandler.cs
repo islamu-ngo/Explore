@@ -24,7 +24,7 @@ public class GetLanguagesBySessionRequestHandler : IRequestHandler<GetLanguagesB
 
     public async Task<List<EventSessionLanguageListDto>> Handle(GetLanguagesBySessionRequest request, CancellationToken cancellationToken)
     {
-        var eventSessionLanguages = await _repository.GetBySession(request.EventSessionId);
+        var eventSessionLanguages = await _repository.GetBySession(request.EventSessionId, cancellationToken);
         return _mapper.Map<List<EventSessionLanguageListDto>>(eventSessionLanguages);
     }
 }

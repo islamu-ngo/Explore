@@ -13,4 +13,6 @@ public class EventSessionSpeakerListDto
     public string? ActorDisplayName { get; set; }
     public Guid EventSessionId { get; set; }
     public string? EventSessionTitle { get; set; }
+    public Guid EventId { get; set; }
+    public Guid TenantId { get; set; }
 }

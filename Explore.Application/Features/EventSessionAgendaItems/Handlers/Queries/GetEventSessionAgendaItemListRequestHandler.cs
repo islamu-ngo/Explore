@@ -28,7 +28,7 @@ public class GetEventSessionAgendaItemListRequestHandler : IRequestHandler<GetEv
     public async Task<PaginatedResult<EventSessionAgendaItemListDto>> Handle(GetEventSessionAgendaItemListRequest request, CancellationToken cancellationToken)
     {
         var (pageNumber, pageSize) = PaginatedResult<EventSessionAgendaItemListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
-        var (agendaItems, totalCount) = await _agendaItemRepository.GetAgendaItemsWithDetailsPaged(pageNumber, pageSize);
+        var (agendaItems, totalCount) = await _agendaItemRepository.GetAgendaItemsWithDetailsPaged(pageNumber, pageSize, cancellationToken);
         var dtos = _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems);
         return PaginatedResult<EventSessionAgendaItemListDto>.Create(dtos, totalCount, pageNumber, pageSize);
     }

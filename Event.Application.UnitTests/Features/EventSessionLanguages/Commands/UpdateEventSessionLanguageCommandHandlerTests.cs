@@ -76,20 +76,22 @@ public sealed class UpdateEventSessionLanguageCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
+        using var cancellation = new CancellationTokenSource();
         var entity = CreateLanguageAssignment(tenantId: tenantId, eventSessionId: sessionId, languageId: 1);
         var session = CreateSession(sessionId, tenantId, eventId);
         _repository.GetById(entity.Id).Returns(entity);
         _eventSessionRepository.GetById(sessionId).Returns(session);
         _languageRepository.Exists(2).Returns(true);
-        _repository.GetBySessionAndLanguage(sessionId, 2, entity.Id).Returns((EventSessionLanguage?)null);
+        _repository.GetBySessionAndLanguage(sessionId, 2, entity.Id, cancellation.Token).Returns((EventSessionLanguage?)null);
 
         var result = await _handler.Handle(CreateCommand(entity, new UpdateEventSessionLanguageDto
         {
             Language = new UpdateEventSessionLanguageLanguageDto { LanguageId = 2 }
-        }), CancellationToken.None);
+        }), cancellation.Token);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(entity.LanguageId).IsEqualTo(2);
+        await _repository.Received(1).GetBySessionAndLanguage(sessionId, 2, entity.Id, cancellation.Token);
         await _repository.Received(1).Update(entity);
         await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());

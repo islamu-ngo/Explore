@@ -34,7 +34,7 @@ public class GetEventSessionCreateContextRequestHandler : IRequestHandler<GetEve
         if (eventEntity is null)
             return null;
 
-        var locations = await _locationRepository.GetLocationsByTenant(eventEntity.TenantId);
+        var locations = await _locationRepository.GetLocationsByTenant(eventEntity.TenantId, cancellationToken);
         var orderedLocations = locations
             .OrderBy(location => location.FullName)
             .ThenBy(location => location.City)

@@ -1,6 +1,7 @@
 // ABOUTME: AutoMapper profile for EventSession, EventSessionAgendaItem, EventSessionSpeaker, and EventSessionLanguage entities.
 // ABOUTME: Split from monolithic MappingProfile.cs for domain-cohesion.
 
+using System;
 using System.Linq;
 using AutoMapper;
 using Explore.Application.DTOs.EventSession;
@@ -94,9 +95,11 @@ public class EventSessionMappingProfile : Profile
 
         // Event Session Speaker
         CreateMap<EventSessionSpeaker, EventSessionSpeakerDto>()
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.EventId : Guid.Empty))
             .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
             .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
         CreateMap<EventSessionSpeaker, EventSessionSpeakerListDto>()
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.EventId : Guid.Empty))
             .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
             .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
         CreateMap<CreateEventSessionSpeakerDto, EventSessionSpeaker>();

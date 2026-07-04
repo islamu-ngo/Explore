@@ -1,6 +1,7 @@
 // ABOUTME: MediatR command for route-ID event-session speaker link updates.
 // ABOUTME: Carries expected concurrency and grouped relationship update payload.
 using System;
+using System.Collections.Generic;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.Responses;
@@ -19,4 +20,10 @@ public class UpdateEventSessionSpeakerCommand : IRequest<BaseCommandResponse<Gui
     public Guid TenantId { get; set; }
 
     string? ISecureRequest.ResourceId => EventSessionId.ToString();
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString(),
+        ["eventId"] = EventId.ToString()
+    };
 }

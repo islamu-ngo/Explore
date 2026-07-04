@@ -81,7 +81,11 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
             return ValidationFailure("Language not found.");
         }
 
-        var duplicate = await _repository.GetBySessionAndLanguage(targetSessionId, targetLanguageId, request.EventSessionLanguageId);
+        var duplicate = await _repository.GetBySessionAndLanguage(
+            targetSessionId,
+            targetLanguageId,
+            request.EventSessionLanguageId,
+            cancellationToken);
         if (duplicate is not null)
         {
             return ValidationFailure("Language is already assigned to this event session.");

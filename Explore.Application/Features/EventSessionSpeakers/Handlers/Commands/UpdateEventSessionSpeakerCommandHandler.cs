@@ -56,6 +56,11 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
             return response;
         }
 
+        if (speaker.EventSessionId != request.EventSessionId)
+        {
+            return ValidationFailure("Speaker assignment does not belong to the requested event session.");
+        }
+
         if (speaker.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
         {
             throw new ConcurrencyConflictException(
@@ -89,7 +94,11 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
             return ValidationFailure("Actor must belong to the same tenant as the speaker assignment.");
         }
 
-        var duplicate = await _speakerRepository.GetBySessionAndActor(targetSessionId, targetActorId, request.EventSessionSpeakerId);
+        var duplicate = await _speakerRepository.GetBySessionAndActor(
+            targetSessionId,
+            targetActorId,
+            request.EventSessionSpeakerId,
+            cancellationToken);
         if (duplicate is not null)
         {
             return ValidationFailure("Actor is already assigned as a speaker for this event session.");

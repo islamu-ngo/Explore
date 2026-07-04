@@ -1,3 +1,6 @@
+// ABOUTME: EF Core repository for event-session agenda item reads.
+// ABOUTME: Provides no-tracking detail/session/list queries with caller cancellation propagation.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +16,7 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
         _dbContext = dbContext;
     }
 
-    public async Task<EventSessionAgendaItem?> GetByIdWithDetails(Guid id)
+    public async Task<EventSessionAgendaItem?> GetByIdWithDetails(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbContext.EventSessionAgendaItems
             .AsNoTracking()
@@ -21,10 +24,12 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
                 .ThenInclude(s => s.Event)
             .Include(a => a.Location)
                 .ThenInclude(l => l!.Pii)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
     }
 
-    public async Task<List<EventSessionAgendaItem>> GetBySession(Guid eventSessionId)
+    public async Task<List<EventSessionAgendaItem>> GetBySession(
+        Guid eventSessionId,
+        CancellationToken cancellationToken = default)
     {
         return await _dbContext.EventSessionAgendaItems
             .AsNoTracking()
@@ -33,10 +38,13 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
                 .ThenInclude(l => l!.Pii)
             .Where(a => a.EventSessionId == eventSessionId)
             .OrderBy(a => a.StartTime)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<(List<EventSessionAgendaItem> Items, int TotalCount)> GetAgendaItemsWithDetailsPaged(int pageNumber, int pageSize)
+    public async Task<(List<EventSessionAgendaItem> Items, int TotalCount)> GetAgendaItemsWithDetailsPaged(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
         var query = _dbContext.EventSessionAgendaItems
             .AsNoTracking()
@@ -46,11 +54,11 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
                 .ThenInclude(l => l!.Pii)
             .OrderByDescending(a => a.StartTime);
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }

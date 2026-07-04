@@ -26,7 +26,7 @@ public class GetSessionsByActorRequestHandler : IRequestHandler<GetSessionsByAct
 
     public async Task<List<EventSessionSpeakerListDto>> Handle(GetSessionsByActorRequest request, CancellationToken cancellationToken)
     {
-        var speakers = await _speakerRepository.GetByActor(request.ActorId);
+        var speakers = await _speakerRepository.GetByActor(request.ActorId, cancellationToken);
         return _mapper.Map<List<EventSessionSpeakerListDto>>(speakers);
     }
 }

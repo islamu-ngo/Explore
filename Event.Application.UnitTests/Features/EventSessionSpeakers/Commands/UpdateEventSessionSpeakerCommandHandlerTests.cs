@@ -120,6 +120,49 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WithRouteSessionMismatch_ReturnsValidationFailureWithoutSaving()
+    {
+        var entity = CreateSpeakerAssignment();
+        var command = CreateCommand(entity, new UpdateEventSessionSpeakerDto
+        {
+            Actor = new UpdateEventSessionSpeakerActorDto { ActorId = Guid.NewGuid() }
+        });
+        command.EventSessionId = Guid.NewGuid();
+        _repository.GetById(entity.Id).Returns(entity);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Speaker assignment does not belong to the requested event session.");
+        await _repository.DidNotReceive().Update(Arg.Any<EventSessionSpeaker>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WithActorChange_ForwardsCancellationTokenToDuplicateCheck()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var newActorId = Guid.NewGuid();
+        var entity = CreateSpeakerAssignment(tenantId: tenantId, eventSessionId: sessionId);
+        using var cancellation = new CancellationTokenSource();
+        _repository.GetById(entity.Id).Returns(entity);
+        _eventSessionRepository.GetById(sessionId).Returns(CreateSession(sessionId, tenantId, eventId));
+        _actorRepository.GetById(newActorId).Returns(CreateActor(newActorId, tenantId));
+        _repository.GetBySessionAndActor(sessionId, newActorId, entity.Id, cancellation.Token)
+            .Returns((EventSessionSpeaker?)null);
+
+        await _handler.Handle(CreateCommand(entity, new UpdateEventSessionSpeakerDto
+        {
+            Actor = new UpdateEventSessionSpeakerActorDto { ActorId = newActorId }
+        }), cancellation.Token);
+
+        await _repository.Received(1)
+            .GetBySessionAndActor(sessionId, newActorId, entity.Id, cancellation.Token);
+    }
+
     private static UpdateEventSessionSpeakerCommand CreateCommand(EventSessionSpeaker entity, UpdateEventSessionSpeakerDto dto) =>
         new()
         {

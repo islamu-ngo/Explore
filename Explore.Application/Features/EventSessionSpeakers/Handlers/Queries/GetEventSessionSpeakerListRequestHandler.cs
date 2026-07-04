@@ -28,7 +28,10 @@ public class GetEventSessionSpeakerListRequestHandler : IRequestHandler<GetEvent
     public async Task<PaginatedResult<EventSessionSpeakerListDto>> Handle(GetEventSessionSpeakerListRequest request, CancellationToken cancellationToken)
     {
         var (pageNumber, pageSize) = PaginatedResult<EventSessionSpeakerListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
-        var (speakers, totalCount) = await _speakerRepository.GetSpeakersWithDetailsPaged(pageNumber, pageSize);
+        var (speakers, totalCount) = await _speakerRepository.GetSpeakersWithDetailsPaged(
+            pageNumber,
+            pageSize,
+            cancellationToken);
         var dtos = _mapper.Map<List<EventSessionSpeakerListDto>>(speakers);
         return PaginatedResult<EventSessionSpeakerListDto>.Create(dtos, totalCount, pageNumber, pageSize);
     }

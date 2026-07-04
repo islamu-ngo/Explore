@@ -26,7 +26,7 @@ public class GetEventSessionLanguageListRequestHandler : IRequestHandler<GetEven
     public async Task<PaginatedResult<EventSessionLanguageListDto>> Handle(GetEventSessionLanguageListRequest request, CancellationToken cancellationToken)
     {
         var (pageNumber, pageSize) = PaginatedResult<EventSessionLanguageListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
-        var (eventSessionLanguages, totalCount) = await _repository.GetLanguagesWithDetailsPaged(pageNumber, pageSize);
+        var (eventSessionLanguages, totalCount) = await _repository.GetLanguagesWithDetailsPaged(pageNumber, pageSize, cancellationToken);
         var dtos = _mapper.Map<List<EventSessionLanguageListDto>>(eventSessionLanguages);
         return PaginatedResult<EventSessionLanguageListDto>.Create(dtos, totalCount, pageNumber, pageSize);
     }
