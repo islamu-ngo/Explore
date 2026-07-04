@@ -237,7 +237,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
                 {
                     var publishedAt = DateTimeOffset.UtcNow;
-                    await _outboxRepository.Create(EventPublishedOutboxMessageFactory.CreatePublishedOutboxMessage(eventEntity));
                     await _outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(eventEntity, publishedAt));
                 }
 

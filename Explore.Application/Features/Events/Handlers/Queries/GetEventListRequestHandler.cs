@@ -9,6 +9,7 @@ using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Application.Specifications.Events;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -358,45 +359,10 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
             _ => null
         };
 
-    /// <summary>
-    /// Resolves an image object key to a presigned URL for viewing.
-    /// If the value is already a full external URL or local API endpoint, returns it unchanged.
-    /// </summary>
-    private async Task<string?> ResolveImageUrl(string? objectKeyOrUri)
-    {
-        if (string.IsNullOrEmpty(objectKeyOrUri))
-            return null;
-
-        try
-        {
-            // Check if it's a relative path (local API endpoint)
-            if (objectKeyOrUri.StartsWith("/", StringComparison.OrdinalIgnoreCase))
-            {
-                return objectKeyOrUri;
-            }
-
-            // Check if it's already a full URL (legacy data or absolute local API path)
-            if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
-                {
-                    // If it is a local API endpoint, return it as-is
-                    if (uri.AbsolutePath.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return objectKeyOrUri;
-                    }
-                }
-                return objectKeyOrUri;
-            }
-
-            // It's an object key - generate presigned URL
-            return await _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to generate presigned URL for object key: {ObjectKey}", objectKeyOrUri);
-            return null;
-        }
-    }
+    private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
+        => StoragePresentationUrlResolver.ResolveImageUrlAsync(
+            objectKeyOrUri,
+            _objectStorageService,
+            _logger,
+            "event list image");
 }

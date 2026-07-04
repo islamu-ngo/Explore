@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -109,41 +110,10 @@ public class GetManagedEventsByActorRequestHandler : IRequestHandler<GetManagedE
         return authorized;
     }
 
-    private async Task<string?> ResolveImageUrl(string? objectKeyOrUri)
-    {
-        if (string.IsNullOrEmpty(objectKeyOrUri))
-            return null;
-
-        try
-        {
-            if (objectKeyOrUri.StartsWith("/", StringComparison.OrdinalIgnoreCase))
-            {
-                return objectKeyOrUri;
-            }
-
-            if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
-                {
-                    if (uri.AbsolutePath.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return objectKeyOrUri;
-                    }
-
-                    var objectKey = uri.AbsolutePath.TrimStart('/');
-                    return await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
-                }
-
-                return objectKeyOrUri;
-            }
-
-            return await _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to generate presigned URL for managed actor event list image.");
-            return null;
-        }
-    }
+    private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
+        => StoragePresentationUrlResolver.ResolveImageUrlAsync(
+            objectKeyOrUri,
+            _objectStorageService,
+            _logger,
+            "managed actor event list image");
 }

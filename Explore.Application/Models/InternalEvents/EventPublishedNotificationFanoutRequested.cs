@@ -1,5 +1,5 @@
 // ABOUTME: Internal outbox payload requesting in-app notification fanout after an event is published.
-// ABOUTME: Kept separate from MQContract EventPublished so local fanout can retry independently.
+// ABOUTME: Keeps local notification fanout independently retryable from other publication side effects.
 
 namespace Explore.Application.Models.InternalEvents;
 

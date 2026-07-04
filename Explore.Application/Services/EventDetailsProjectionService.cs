@@ -68,34 +68,10 @@ public sealed class EventDetailsProjectionService : IEventDetailsProjectionServi
         eventDto.ActorProfilePictureUri = await ResolveImageUrlAsync(eventDto.ActorProfilePictureUri);
     }
 
-    private async Task<string?> ResolveImageUrlAsync(string? objectKeyOrUri)
-    {
-        if (string.IsNullOrEmpty(objectKeyOrUri))
-            return null;
-
-        try
-        {
-            if (objectKeyOrUri.StartsWith("/", StringComparison.OrdinalIgnoreCase))
-                return objectKeyOrUri;
-
-            if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
-                    return objectKeyOrUri;
-
-                if (uri.AbsolutePath.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
-                    return objectKeyOrUri;
-
-                return await _objectStorageService.GeneratePresignedDownloadUrl(uri.AbsolutePath.TrimStart('/'), 60);
-            }
-
-            return await _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to generate presigned URL for event detail image.");
-            return null;
-        }
-    }
+    private Task<string?> ResolveImageUrlAsync(string? objectKeyOrUri)
+        => StoragePresentationUrlResolver.ResolveImageUrlAsync(
+            objectKeyOrUri,
+            _objectStorageService,
+            _logger,
+            "event detail image");
 }

@@ -685,11 +685,12 @@ public class CreateEventCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithPublishedStatus_ValidatesReadinessAndEmitsOutboxMessages()
+    public async Task Handle_WithPublishedStatus_ValidatesReadinessAndEmitsNotificationFanoutOutboxMessage()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
+        var createdMessages = new List<OutboxMessage>();
         var command = new CreateEventCommand
         {
             Request = new CreateEventRequest
@@ -723,6 +724,13 @@ public class CreateEventCommandHandlerTests
             });
         _lifecycleReadinessEvaluator.Evaluate(Arg.Any<Explore.Domain.Event>(), ValidationProfile.EventPublish, Arg.Any<EventLifecyclePolicy>())
             .Returns(LifecycleReadinessResult.Success(ValidationProfile.EventPublish));
+        _outboxRepository.Create(Arg.Any<OutboxMessage>())
+            .Returns(callInfo =>
+            {
+                var message = callInfo.Arg<OutboxMessage>();
+                createdMessages.Add(message);
+                return message;
+            });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -730,7 +738,13 @@ public class CreateEventCommandHandlerTests
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(e => e.EventStatusId == (int)EventStatusEnum.Published));
         await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
             session.EventSessionStatusId == (int)EventSessionStatusEnum.Published));
-        await _outboxRepository.Received(2).Create(Arg.Any<OutboxMessage>());
+        await _outboxRepository.Received(1).Create(Arg.Is<OutboxMessage>(message =>
+            message.AggregateType == "Event"
+            && message.AggregateId == result.Id
+            && message.EventType == PublishEventCommandHandler.EventPublishedNotificationFanoutRequestedEventType
+            && message.Status == OutboxMessageStatus.Pending
+            && message.Payload != null));
+        await Assert.That(createdMessages).Count().IsEqualTo(1);
     }
 
     [Test]

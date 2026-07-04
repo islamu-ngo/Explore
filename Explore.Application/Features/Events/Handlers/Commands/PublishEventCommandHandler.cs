@@ -6,7 +6,6 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Models.IntegrationEvents;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Responses;
 using Explore.Application.Services;
@@ -29,7 +28,6 @@ public class PublishEventCommandHandler(
     private const string ConcurrencyConflictCode = "event_publish_concurrency_conflict";
     private const string ReadinessFailedCode = "event_publish_readiness_failed";
     private const string EventAggregateType = "Event";
-    public const string EventPublishedEventType = "EventPublished";
     public const string EventPublishedNotificationFanoutRequestedEventType = "EventPublishedNotificationFanoutRequested";
 
     public async Task<BaseCommandResponse<Guid>> Handle(PublishEventCommand request, CancellationToken cancellationToken)
@@ -70,7 +68,6 @@ public class PublishEventCommandHandler(
             await eventRepository.Update(@event);
 
             var publishedAt = DateTimeOffset.UtcNow;
-            await outboxRepository.Create(EventPublishedOutboxMessageFactory.CreatePublishedOutboxMessage(@event));
             await outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(@event, publishedAt));
 
             await cache.RemoveAsync($"event:detail:{@event.Id}", token);

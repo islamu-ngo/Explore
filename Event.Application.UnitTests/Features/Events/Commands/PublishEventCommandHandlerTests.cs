@@ -59,7 +59,7 @@ public class PublishEventCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenDraftEventIsReady_PublishesAndCreatesOutboxMessage()
+    public async Task Handle_WhenDraftEventIsReady_PublishesAndCreatesNotificationFanoutOutboxMessage()
     {
         var concurrencyStamp = Guid.NewGuid();
         var @event = CreateReadyEvent(concurrencyStamp);
@@ -85,17 +85,12 @@ public class PublishEventCommandHandlerTests
         await _outboxRepository.Received(1).Create(Arg.Is<OutboxMessage>(message =>
             message.AggregateType == "Event"
             && message.AggregateId == @event.Id
-            && message.EventType == "EventPublished"
-            && message.Status == OutboxMessageStatus.Pending
-            && message.Payload != null));
-        await _outboxRepository.Received(1).Create(Arg.Is<OutboxMessage>(message =>
-            message.AggregateType == "Event"
-            && message.AggregateId == @event.Id
             && message.EventType == "EventPublishedNotificationFanoutRequested"
             && message.Status == OutboxMessageStatus.Pending
             && message.Payload != null));
 
-        var fanoutMessage = createdMessages.Single(message => message.EventType == "EventPublishedNotificationFanoutRequested");
+        var fanoutMessage = createdMessages.Single();
+        await Assert.That(fanoutMessage.EventType).IsEqualTo("EventPublishedNotificationFanoutRequested");
         var fanoutPayload = JsonSerializer.Deserialize<EventPublishedNotificationFanoutRequested>(fanoutMessage.Payload!);
         await Assert.That(fanoutPayload).IsNotNull();
         await Assert.That(fanoutPayload!.TenantId).IsEqualTo(@event.TenantId);

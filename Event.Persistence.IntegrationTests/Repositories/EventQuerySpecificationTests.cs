@@ -301,14 +301,41 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         context.Events.AddRange(endedSingleSession, endedMultiSession, ongoingSession, futureMultiSession, draftFutureSession);
         await context.SaveChangesAsync();
 
-        context.EventSessions.AddRange(
-            CreateSession(tenantId, endedSingleSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(-2), now.AddDays(-2).AddHours(1)),
+        var endedSingleSessionRows = new[]
+        {
+            CreateSession(tenantId, endedSingleSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(-2), now.AddDays(-2).AddHours(1))
+        };
+        var endedMultiSessionRows = new[]
+        {
             CreateSession(tenantId, endedMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(-3), now.AddDays(-3).AddHours(1)),
-            CreateSession(tenantId, endedMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddHours(-3), now.AddHours(-2)),
-            CreateSession(tenantId, ongoingSession.Id, null, EventSessionStatusEnum.Published, now.AddHours(-1), now.AddHours(1)),
+            CreateSession(tenantId, endedMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddHours(-3), now.AddHours(-2))
+        };
+        var ongoingSessionRows = new[]
+        {
+            CreateSession(tenantId, ongoingSession.Id, null, EventSessionStatusEnum.Published, now.AddHours(-1), now.AddHours(1))
+        };
+        var futureMultiSessionRows = new[]
+        {
             CreateSession(tenantId, futureMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(-1), now.AddDays(-1).AddHours(1)),
-            CreateSession(tenantId, futureMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(2), now.AddDays(2).AddHours(1)),
-            CreateSession(tenantId, draftFutureSession.Id, null, EventSessionStatusEnum.Draft, now.AddDays(1), now.AddDays(1).AddHours(1)));
+            CreateSession(tenantId, futureMultiSession.Id, null, EventSessionStatusEnum.Published, now.AddDays(2), now.AddDays(2).AddHours(1))
+        };
+        var draftFutureSessionRows = new[]
+        {
+            CreateSession(tenantId, draftFutureSession.Id, null, EventSessionStatusEnum.Draft, now.AddDays(1), now.AddDays(1).AddHours(1))
+        };
+
+        AttachSessionsAndRecalculate(endedSingleSession, endedSingleSessionRows);
+        AttachSessionsAndRecalculate(endedMultiSession, endedMultiSessionRows);
+        AttachSessionsAndRecalculate(ongoingSession, ongoingSessionRows);
+        AttachSessionsAndRecalculate(futureMultiSession, futureMultiSessionRows);
+        AttachSessionsAndRecalculate(draftFutureSession, draftFutureSessionRows);
+
+        context.EventSessions.AddRange(
+            endedSingleSessionRows
+                .Concat(endedMultiSessionRows)
+                .Concat(ongoingSessionRows)
+                .Concat(futureMultiSessionRows)
+                .Concat(draftFutureSessionRows));
         await context.SaveChangesAsync();
 
         var spec = new EventQuerySpecification()
@@ -412,6 +439,17 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
 
         session.Reschedule(startsAt, endsAt ?? startsAt.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
         return session;
+    }
+
+    private static void AttachSessionsAndRecalculate(Explore.Domain.Event eventEntity, IEnumerable<EventSession> sessions)
+    {
+        foreach (var session in sessions)
+        {
+            session.Event = eventEntity;
+            eventEntity.Sessions.Add(session);
+        }
+
+        eventEntity.RecalculateScheduleSummaryFromSessions();
     }
 
     #endregion

@@ -308,13 +308,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                     e.LastSessionStartUtc == null || e.LastSessionStartUtc > (DateTimeOffset)subFilter.Value),
 
                 EventSubqueryFilterType.CurrentOrUpcomingPublishedSession => query.Where(e =>
-                    _dbContext.EventSessions.Any(es =>
-                        es.EventId == e.Id &&
-                        es.EventSessionStatusId == (int)EventSessionStatusEnum.Published &&
-                        (
-                            (es.EndTime != null && es.EndTime >= now) ||
-                            (es.EndTime == null && es.StartTime != null && es.StartTime.Value.AddDays(1) >= now)
-                        ))),
+                    e.LastSessionEndUtc != null && e.LastSessionEndUtc > now),
 
                 EventSubqueryFilterType.TemporalView => ApplyTemporalFilter(query, subFilter),
 
@@ -525,7 +519,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             TemporalView.Upcoming => query.Where(e => e.FirstSessionStartUtc != null && e.FirstSessionStartUtc > now),
             TemporalView.Ongoing => query.Where(e => e.FirstSessionStartUtc != null && e.FirstSessionStartUtc <= now && e.LastSessionEndUtc != null && e.LastSessionEndUtc > now),
             TemporalView.Past => query.Where(e => e.LastSessionEndUtc != null && e.LastSessionEndUtc <= now),
-            TemporalView.UpcomingAndOngoing => query.Where(e => e.LastSessionEndUtc == null || e.LastSessionEndUtc > now),
+            TemporalView.UpcomingAndOngoing => query.Where(e => e.LastSessionEndUtc != null && e.LastSessionEndUtc > now),
             TemporalView.All => query,
             _ => query
         };
