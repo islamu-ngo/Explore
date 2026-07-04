@@ -30,8 +30,7 @@ public class DeleteEventTechAspectCommandHandler : IRequestHandler<DeleteEventTe
             return false;
         }
 
-        // Hard delete the aspect (aspects don't implement soft delete)
-        await _techAspectRepository.HardDelete(aspect);
+        await _techAspectRepository.Delete(aspect);
 
         return true;
     }

@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for user deletion and linked PII cleanup behavior.
+// ABOUTME: Proves account deletion removes user PII while anonymizing actor identity.
+
 using System;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
@@ -163,7 +166,7 @@ public class DeleteUserCommandHandlerTests
         await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await _actorPiiRepository.DidNotReceive().HardDelete(Arg.Any<ActorPii>());
+        await _actorPiiRepository.DidNotReceive().Delete(Arg.Any<ActorPii>());
         await _actorPiiRepository.Received(1).Update(Arg.Is<ActorPii>(a =>
             a.ActorId == actorId
             && a.DisplayName.StartsWith("DeletedUser")

@@ -66,8 +66,7 @@ public class DeleteCustomRoleCommandHandler : IRequestHandler<DeleteCustomRoleCo
         // Remove all permissions first (RolePermission entries)
         await _roleRepository.RemoveAllPermissionsAsync(request.RoleId);
 
-        // Delete the role (hard delete since custom roles aren't soft-deletable)
-        await _roleRepository.HardDelete(role);
+        await _roleRepository.Delete(role);
 
         // Trigger Cerbos policy sync to remove policies for this role
         try

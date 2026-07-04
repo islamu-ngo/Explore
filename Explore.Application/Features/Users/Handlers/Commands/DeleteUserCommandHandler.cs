@@ -51,14 +51,14 @@ public class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand, Unit>
             var userPii = await _userPiiRepository.GetById(request.UserId);
             if (userPii != null)
             {
-                await _userPiiRepository.HardDelete(userPii);
+                await _userPiiRepository.Delete(userPii);
             }
 
             // Revoke all active authentication tokens.
             var tokens = await _userAuthenticationTokenRepository.GetByUser(request.UserId, ct);
             foreach (var token in tokens)
             {
-                await _userAuthenticationTokenRepository.HardDelete(token);
+                await _userAuthenticationTokenRepository.Delete(token);
             }
 
             // Anonymize linked actor identity PII so events remain visible without revealing the deleted user's identity.

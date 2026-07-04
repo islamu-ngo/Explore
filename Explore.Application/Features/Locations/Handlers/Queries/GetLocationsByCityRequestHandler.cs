@@ -26,7 +26,7 @@ public class GetLocationsByCityRequestHandler : IRequestHandler<GetLocationsByCi
 
     public async Task<List<LocationListDto>> Handle(GetLocationsByCityRequest request, CancellationToken cancellationToken)
     {
-        var locations = await _locationRepository.GetLocationsByCity(request.City);
+        var locations = await _locationRepository.GetLocationsByCity(request.City, cancellationToken);
         return _mapper.Map<List<LocationListDto>>(locations);
     }
 }

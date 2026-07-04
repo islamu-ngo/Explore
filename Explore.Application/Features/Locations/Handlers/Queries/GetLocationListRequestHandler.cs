@@ -28,7 +28,7 @@ public class GetLocationListRequestHandler : IRequestHandler<GetLocationListRequ
     public async Task<PaginatedResult<LocationListDto>> Handle(GetLocationListRequest request, CancellationToken cancellationToken)
     {
         var (pageNumber, pageSize) = PaginatedResult<LocationListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
-        var (locations, totalCount) = await _locationRepository.GetLocationsWithDetailsPaged(pageNumber, pageSize);
+        var (locations, totalCount) = await _locationRepository.GetLocationsWithDetailsPaged(pageNumber, pageSize, cancellationToken);
         var dtos = _mapper.Map<List<LocationListDto>>(locations);
         return PaginatedResult<LocationListDto>.Create(dtos, totalCount, pageNumber, pageSize);
     }

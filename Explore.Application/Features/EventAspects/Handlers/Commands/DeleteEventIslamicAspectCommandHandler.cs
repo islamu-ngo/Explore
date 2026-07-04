@@ -30,8 +30,7 @@ public class DeleteEventIslamicAspectCommandHandler : IRequestHandler<DeleteEven
             return false;
         }
 
-        // Hard delete the aspect (aspects don't implement soft delete)
-        await _islamicAspectRepository.HardDelete(aspect);
+        await _islamicAspectRepository.Delete(aspect);
 
         return true;
     }

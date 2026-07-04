@@ -1,3 +1,6 @@
+// ABOUTME: EF Core repository for location detail, listing, and PII erasure operations.
+// ABOUTME: Preserves entity-returning persistence boundaries and forwards cancellation into custom queries.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -20,53 +23,56 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
             .FirstOrDefaultAsync(l => l.Id == id);
     }
 
-    public async Task<List<Location>> GetLocationsByTenant(Guid tenantId)
+    public async Task<List<Location>> GetLocationsByTenant(Guid tenantId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Locations
             .AsNoTracking()
             .Include(l => l.Pii)
             .Where(l => l.TenantId == tenantId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<Location>> GetLocationsByCity(string city)
+    public async Task<List<Location>> GetLocationsByCity(string city, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Locations
             .AsNoTracking()
             .Include(l => l.Pii)
             .Where(l => l.City == city)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<Location>> GetLocationsByCountry(string country)
+    public async Task<List<Location>> GetLocationsByCountry(string country, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Locations
             .AsNoTracking()
             .Include(l => l.Pii)
             .Where(l => l.Country == country)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<(List<Location> Items, int TotalCount)> GetLocationsWithDetailsPaged(int pageNumber, int pageSize)
+    public async Task<(List<Location> Items, int TotalCount)> GetLocationsWithDetailsPaged(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
         var query = _dbContext.Locations
             .AsNoTracking()
             .Include(l => l.Pii)
             .OrderBy(l => l.FullName);
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }
 
-    public async Task<int> ForgetPiiAsync(Guid locationId)
+    public async Task<int> ForgetPiiAsync(Guid locationId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.LocationPii
             .Where(p => p.LocationId == locationId)
-            .ExecuteDeleteAsync();
+            .ExecuteDeleteAsync(cancellationToken);
     }
 }
