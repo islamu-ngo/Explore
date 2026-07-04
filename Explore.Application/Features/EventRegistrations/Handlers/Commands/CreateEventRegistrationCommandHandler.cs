@@ -178,6 +178,14 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             emailDispatchOutbox);
         var created = creationResult.Intent;
 
+        if (creationResult.WasExisting)
+        {
+            response.Success = true;
+            response.Id = created.Id;
+            response.Message = "Event Registration already exists.";
+            return response;
+        }
+
         if (dto.ShareEmailWithOrganizer)
         {
             try

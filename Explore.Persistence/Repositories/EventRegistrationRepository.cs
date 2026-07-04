@@ -18,20 +18,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
         _dbContext = dbContext;
     }
 
-    public async Task<EventRegistration?> GetByIdWithDetails(Guid id)
-    {
-        return await _dbContext.EventRegistrations
-            .AsNoTracking()
-            .Include(r => r.User)
-                .ThenInclude(u => u!.Pii)
-            .Include(r => r.EventSession)
-                .ThenInclude(s => s.Event)
-                    .ThenInclude(e => e!.FeaturedImage)
-            .Include(r => r.ApprovalStatus)
-            .FirstOrDefaultAsync(r => r.Id == id);
-    }
-
-    public async Task<EventRegistration?> GetRegistrationByUserAndSession(Guid userId, Guid eventSessionId)
+    public async Task<EventRegistration?> GetByIdWithDetails(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbContext.EventRegistrations
             .AsNoTracking()
@@ -39,24 +26,38 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
                 .ThenInclude(s => s.Event)
                     .ThenInclude(e => e!.FeaturedImage)
             .Include(r => r.ApprovalStatus)
-            .FirstOrDefaultAsync(r => r.UserId == userId && r.EventSessionId == eventSessionId);
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
     }
 
-    public async Task<List<EventRegistration>> GetRegistrationsBySession(Guid eventSessionId)
+    public async Task<EventRegistration?> GetRegistrationByUserAndSession(
+        Guid userId,
+        Guid eventSessionId,
+        CancellationToken cancellationToken = default)
     {
         return await _dbContext.EventRegistrations
             .AsNoTracking()
-            .Include(r => r.User)
-                .ThenInclude(u => u!.Pii)
+            .Include(r => r.EventSession)
+                .ThenInclude(s => s.Event)
+                    .ThenInclude(e => e!.FeaturedImage)
+            .Include(r => r.ApprovalStatus)
+            .FirstOrDefaultAsync(r => r.UserId == userId && r.EventSessionId == eventSessionId, cancellationToken);
+    }
+
+    public async Task<List<EventRegistration>> GetRegistrationsBySession(
+        Guid eventSessionId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.EventRegistrations
+            .AsNoTracking()
             .Include(r => r.EventSession)
                 .ThenInclude(s => s.Event)
                     .ThenInclude(e => e!.FeaturedImage)
             .Include(r => r.ApprovalStatus)
             .Where(r => r.EventSessionId == eventSessionId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<EventRegistration>> GetRegistrationsByUser(Guid userId)
+    public async Task<List<EventRegistration>> GetRegistrationsByUser(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.EventRegistrations
             .AsNoTracking()
@@ -65,7 +66,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
                     .ThenInclude(e => e!.FeaturedImage)
             .Include(r => r.ApprovalStatus)
             .Where(r => r.UserId == userId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> IsUserRegisteredForSession(Guid userId, Guid eventSessionId)
@@ -75,24 +76,27 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
             .AnyAsync(r => r.UserId == userId && r.EventSessionId == eventSessionId);
     }
 
-    public async Task<(List<EventRegistration> Items, int TotalCount)> GetRegistrationsWithDetailsPaged(int pageNumber, int pageSize)
+    public async Task<(List<EventRegistration> Items, int TotalCount)> GetRegistrationsByUserWithDetailsPaged(
+        Guid userId,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
         var query = _dbContext.EventRegistrations
             .AsNoTracking()
             .AsSplitQuery()
-            .Include(r => r.User)
-                .ThenInclude(u => u!.Pii)
             .Include(r => r.EventSession)
                 .ThenInclude(s => s.Event)
                     .ThenInclude(e => e!.FeaturedImage)
             .Include(r => r.ApprovalStatus)
+            .Where(r => r.UserId == userId)
             .OrderByDescending(r => r.Id);
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }
@@ -106,11 +110,10 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
         var query = _dbContext.EventRegistrations
             .AsNoTracking()
             .AsSplitQuery()
-            .Include(r => r.User)
-                .ThenInclude(u => u!.Pii)
             .Include(r => r.EventSession)
                 .ThenInclude(s => s.Event)
                     .ThenInclude(e => e!.FeaturedImage)
+            .Include(r => r.User)
             .Include(r => r.ApprovalStatus)
             .Where(r => r.EventId == eventId)
             .OrderByDescending(r => r.Id);

@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventRegistrations.Requests.Queries;
 
-public class GetEventRegistrationDetailsRequest : IRequest<EventRegistrationDto>
+public class GetEventRegistrationDetailsRequest : IRequest<EventRegistrationDto?>
 {
     public Guid Id { get; set; }
 }

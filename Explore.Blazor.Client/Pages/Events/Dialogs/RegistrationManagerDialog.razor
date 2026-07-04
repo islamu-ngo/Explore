@@ -1,3 +1,5 @@
+@* ABOUTME: Displays registration status rows for an event session dialog. *@
+@* ABOUTME: Uses identity-minimized registration DTOs and keeps attendee identity out of the client surface. *@
 @using Explore.Blazor.Client.Clients
 @using MudBlazor
 @inject IEventService EventService
@@ -14,15 +16,14 @@
     <MudDataGrid T="EventRegistrationListDto" Items="@registrations" ReadOnly="true"
                  Bordered="true" Dense="true" Hover="true">
         <Columns>
-            <PropertyColumn Property="x => x.UserFullName" Title="Name" />
-            <PropertyColumn Property="x => x.UserId" Title="User Id" />
+            <PropertyColumn Property="x => x.EventSessionTitle" Title="Session" />
             <PropertyColumn Property="x => x.ApprovalStatusFullName" Title="Status" />
             <TemplateColumn StickyRight="true">
                 <CellTemplate Context="context">
                     @if (context.Item.ApprovalStatusMasterCode == "PENDING")
                     {
-                        <MudIconButton Icon="@Icons.Material.Filled.Check" Size="Size.Small" OnClick="@(() => UpdateStatus(context.Item, 2))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="@(() => UpdateStatus(context.Item, 3))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Check" Size="Size.Small" aria-label="Approve registration" OnClick="@(() => UpdateStatus(context.Item, 2))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="Reject registration" OnClick="@(() => UpdateStatus(context.Item, 3))" />
                     }
                 </CellTemplate>
             </TemplateColumn>

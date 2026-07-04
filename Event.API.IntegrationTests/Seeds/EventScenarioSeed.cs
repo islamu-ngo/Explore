@@ -38,8 +38,11 @@ public static class EventScenarioSeed
                 DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)))
             .Build();
 
+        var session = CreatePublishedSession(@event, tenantId, DateTimeOffset.UtcNow.AddDays(7), sortOrder: 1);
+        @event.Sessions.Add(session);
+        @event.RecalculateScheduleSummaryFromSessions();
+
         context.Events.Add(@event);
-        context.EventSessions.Add(CreatePublishedSession(@event, tenantId, DateTimeOffset.UtcNow.AddDays(7), sortOrder: 1));
         await context.SaveChangesAsync();
 
         return new EventScenarioResult(@event.Id, @event.Title);
@@ -92,8 +95,11 @@ public static class EventScenarioSeed
                     DateOnly.FromDateTime(sessionStart.UtcDateTime))
                 .Build();
 
+            var session = CreatePublishedSession(@event, tenantId, sessionStart, sortOrder: i + 1);
+            @event.Sessions.Add(session);
+            @event.RecalculateScheduleSummaryFromSessions();
+
             context.Events.Add(@event);
-            context.EventSessions.Add(CreatePublishedSession(@event, tenantId, sessionStart, sortOrder: i + 1));
             results.Add(new EventScenarioResult(@event.Id, @event.Title));
         }
 

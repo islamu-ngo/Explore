@@ -1,7 +1,8 @@
-// ABOUTME: Event registration detail DTO for HAL and management reads.
-// ABOUTME: Exposes concurrency metadata for route-ID PATCH updates.
+// ABOUTME: Event registration detail DTO for authenticated self-service reads.
+// ABOUTME: Keeps owner context internal while exposing event/session status for PATCH flows.
 
 using System;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventRegistration;
 
@@ -10,10 +11,8 @@ public class EventRegistrationDto
     public Guid Id { get; set; }
     public Guid ConcurrencyStamp { get; set; }
 
-    // User
+    [JsonIgnore]
     public Guid UserId { get; set; }
-    public string? UserFullName { get; set; }
-    public string? UserEmail { get; set; }
 
     // Event
     public Guid EventId { get; set; }

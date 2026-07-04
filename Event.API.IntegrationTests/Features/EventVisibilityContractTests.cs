@@ -355,7 +355,10 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
 
         if (includePublishedSession)
         {
-            context.EventSessions.Add(CreatePublishedSession(@event, tenantId, sessionStart));
+            var session = CreatePublishedSession(@event, tenantId, sessionStart);
+            @event.Sessions.Add(session);
+            @event.RecalculateScheduleSummaryFromSessions();
+            context.EventSessions.Add(session);
         }
 
         return @event;

@@ -46,7 +46,6 @@ public sealed class EventRegistrationTests : IDisposable
             {
                 Id = Guid.NewGuid(),
                 EventId = eventId,
-                UserId = userId,
                 EventTitle = "Annual Conference"
             }
         ]);
@@ -180,6 +179,59 @@ public sealed class EventRegistrationTests : IDisposable
             && dto.ConsentTextAcknowledged != null
             && dto.ConsentTextAcknowledged.Contains("Community Organizer", StringComparison.Ordinal)
             && dto.ConsentUiVersion == "v1"));
+    }
+
+    [Test]
+    public async Task Submit_WhenApiReturnsAlreadyExists_ShowsAlreadyRegisteredState()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var snackbar = _ctx.Services.GetRequiredService<ISnackbar>();
+
+        _userService.GetCurrentUserAsync().Returns(new UserDto
+        {
+            Id = userId,
+            FirstName = "Amina",
+            LastName = "Rahman",
+            Email = "amina@example.test"
+        });
+        _registrationService.RegisterForSessionAsync(Arg.Any<CreateEventRegistrationDto>())
+            .Returns(Task.FromResult<BaseCommandResponseOfGuid?>(new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Message = "Event Registration already exists."
+            }));
+
+        var cut = _ctx.RenderMudComponent<EventRegistration>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.EventSessionId, sessionId)
+            .Add(component => component.RegistrationPolicyId, 3)
+            .Add(component => component.Sessions, new List<EventSessionListDto>
+            {
+                new() { Id = sessionId, Title = "Main Session" }
+            }));
+
+        SetPrivateField(cut.Instance, "currentUser", new UserDto
+        {
+            Id = userId,
+            FirstName = "Amina",
+            LastName = "Rahman",
+            Email = "amina@example.test"
+        });
+        SetPrivateField(cut.Instance, "registrationModel", new CreateEventRegistrationDto
+        {
+            EventId = eventId,
+            UserId = userId
+        });
+        SetPrivateField(cut.Instance, "_selectedScopeId", 3);
+        SetPrivateField(cut.Instance, "_selectedSessionIds", new HashSet<Guid> { sessionId });
+
+        await InvokePrivateTaskAsync(cut, "HandleSubmit");
+
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "isAlreadyRegistered")).IsTrue();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "isRegistered")).IsFalse();
+        snackbar.Received().Add("You are already registered for this event.", Severity.Info);
     }
 
     private static async Task InvokePrivateTaskAsync(IRenderedComponent<EventRegistration> cut, string methodName)

@@ -48,9 +48,10 @@ public class EventRegistrationController : ExploreControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet(Name = RouteNames.GetEventRegistrations)]
-    [EndpointSummary("Get all Event Registrations")]
-    [EndpointDescription("Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.")]
+    [EndpointSummary("Get current user's Event Registrations")]
+    [EndpointDescription("Retrieve a paginated list of the authenticated user's event registrations. Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(PaginatedResult<EventRegistrationListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PaginatedResult<EventRegistrationListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
@@ -69,12 +70,19 @@ public class EventRegistrationController : ExploreControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id}", Name = RouteNames.GetEventRegistrationById)]
     [EndpointSummary("Get Event Registration by ID")]
-    [EndpointDescription("Retrieve details of a specific event registration including approval status")]
+    [EndpointDescription("Retrieve details of the authenticated user's specific event registration including approval status.")]
     [ProducesResponseType(typeof(EventRegistrationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventRegistrationDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var eventRegistration = await _mediator.Send(new GetEventRegistrationDetailsRequest { Id = id }, cancellationToken);
+        if (eventRegistration is null)
+        {
+            return this.ToNotFoundProblem(RegistrationNotFoundProblem);
+        }
+
         return Ok(eventRegistration);
     }
 
@@ -82,9 +90,10 @@ public class EventRegistrationController : ExploreControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("by-session/{eventSessionId}", Name = RouteNames.GetRegistrationsBySession)]
-    [EndpointSummary("Get Registrations by Event Session")]
-    [EndpointDescription("Retrieve all user registrations for a specific event session")]
+    [EndpointSummary("Get current user's Registration by Event Session")]
+    [EndpointDescription("Retrieve the authenticated user's registration for a specific event session.")]
     [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<List<EventRegistrationListDto>>> GetRegistrationsBySession(Guid eventSessionId, CancellationToken cancellationToken = default)
     {
         var registrations = await _mediator.Send(new GetRegistrationsBySessionRequest { EventSessionId = eventSessionId }, cancellationToken);
@@ -96,10 +105,22 @@ public class EventRegistrationController : ExploreControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("by-user/{userId}", Name = RouteNames.GetRegistrationsByUser)]
     [EndpointSummary("Get Registrations by User")]
-    [EndpointDescription("Retrieve all event registrations for a specific user")]
+    [EndpointDescription("Retrieve registrations only when the route user matches the authenticated user.")]
     [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<EventRegistrationListDto>>> GetRegistrationsByUser(Guid userId, CancellationToken cancellationToken = default)
     {
+        if (CurrentUserId is not { } currentUserId)
+        {
+            return this.ToAuthenticationRequiredProblem(detail: "A valid authenticated user is required.");
+        }
+
+        if (userId != currentUserId)
+        {
+            return this.ToForbiddenProblem(detail: "You can only view your own event registrations.");
+        }
+
         var registrations = await _mediator.Send(new GetRegistrationsByUserRequest { UserId = userId }, cancellationToken);
         return Ok(registrations);
     }

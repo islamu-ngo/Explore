@@ -7,11 +7,18 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 
 namespace Explore.Persistence.Repositories;
 
 public class EventRegistrationIntentRepository : GenericRepository<EventRegistrationIntent, Guid>, IEventRegistrationIntentRepository
 {
+    private const string UniqueViolationSqlState = "23505";
+    private const string EventScopeUniqueIndexName = "ix_event_registration_intents_unique_event_scope";
+    private const string DayScopeUniqueIndexName = "ix_event_registration_intents_unique_day_scope";
+    private const string SessionSelectionScopeUniqueIndexName = "ix_event_registration_intents_unique_session_selection_scope";
+
     private readonly ExploreDbContext _dbContext;
 
     public EventRegistrationIntentRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -66,45 +73,65 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
         CancellationToken cancellationToken,
         EmailDispatchOutbox? emailDispatchOutbox = null)
     {
-        return await ExecuteInSerializableTransactionAsync(async () =>
+        try
         {
-            var waitlistedSessionIds = new List<Guid>();
-
-            foreach (var child in children)
+            return await ExecuteInSerializableTransactionAsync(async () =>
             {
-                var reserved = await TryReserveSessionCapacityAsync(child.EventSessionId, cancellationToken);
-                child.ApprovalStatusId = reserved ? approvedStatusId : waitlistedStatusId;
+                var waitlistedSessionIds = new List<Guid>();
 
-                if (!reserved)
+                foreach (var child in children)
                 {
-                    waitlistedSessionIds.Add(child.EventSessionId);
+                    var reserved = await TryReserveSessionCapacityAsync(child.EventSessionId, cancellationToken);
+                    child.ApprovalStatusId = reserved ? approvedStatusId : waitlistedStatusId;
+
+                    if (!reserved)
+                    {
+                        waitlistedSessionIds.Add(child.EventSessionId);
+                    }
                 }
-            }
 
-            intent.ApprovalStatusId = waitlistedSessionIds.Count == 0
-                ? approvedStatusId
-                : waitlistedStatusId;
+                intent.ApprovalStatusId = waitlistedSessionIds.Count == 0
+                    ? approvedStatusId
+                    : waitlistedStatusId;
 
-            await _dbContext.EventRegistrationIntents.AddAsync(intent, cancellationToken);
+                await _dbContext.EventRegistrationIntents.AddAsync(intent, cancellationToken);
 
-            foreach (var child in children)
+                foreach (var child in children)
+                {
+                    child.EventRegistrationIntentId = intent.Id;
+                    child.EventId = intent.EventId;
+                    await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
+                }
+
+                if (emailDispatchOutbox is not null)
+                {
+                    emailDispatchOutbox.RegistrationIntentId = intent.Id;
+                    emailDispatchOutbox.SourceId = intent.Id;
+                    await _dbContext.EmailDispatchOutbox.AddAsync(emailDispatchOutbox, cancellationToken);
+                }
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                return new EventRegistrationIntentCreationResult(intent, waitlistedSessionIds);
+            }, cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsDuplicateIntentViolation(ex))
+        {
+            _dbContext.ChangeTracker.Clear();
+            var existing = await FindExistingAsync(
+                intent.EventId,
+                intent.UserId,
+                intent.RegistrationScopeId,
+                intent.SelectedEventDayId,
+                cancellationToken);
+
+            if (existing is not null)
             {
-                child.EventRegistrationIntentId = intent.Id;
-                child.EventId = intent.EventId;
-                await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
+                return new EventRegistrationIntentCreationResult(existing, [], WasExisting: true);
             }
 
-            if (emailDispatchOutbox is not null)
-            {
-                emailDispatchOutbox.RegistrationIntentId = intent.Id;
-                emailDispatchOutbox.SourceId = intent.Id;
-                await _dbContext.EmailDispatchOutbox.AddAsync(emailDispatchOutbox, cancellationToken);
-            }
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            return new EventRegistrationIntentCreationResult(intent, waitlistedSessionIds);
-        }, cancellationToken);
+            throw;
+        }
     }
 
     public async Task<IReadOnlyList<Guid>> GetRegisteredUserFanoutBatchAsync(
@@ -158,10 +185,30 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             }
             catch
             {
-                await tx.RollbackAsync(cancellationToken);
+                await RollbackIfPendingAsync(tx, cancellationToken);
                 throw;
             }
         });
+    }
+
+    private static async Task RollbackIfPendingAsync(
+        IDbContextTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await transaction.RollbackAsync(cancellationToken);
+        }
+        catch (InvalidOperationException ex) when (IsAlreadyCompletedTransaction(ex))
+        {
+            return;
+        }
+    }
+
+    private static bool IsAlreadyCompletedTransaction(InvalidOperationException ex)
+    {
+        return ex.Message.Contains("has completed", StringComparison.Ordinal)
+            && ex.Message.Contains("no longer usable", StringComparison.Ordinal);
     }
 
     private async Task<bool> TryReserveSessionCapacityAsync(Guid sessionId, CancellationToken cancellationToken)
@@ -178,5 +225,14 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             """, cancellationToken);
 
         return affectedRows > 0;
+    }
+
+    private static bool IsDuplicateIntentViolation(DbUpdateException ex)
+    {
+        return ex.InnerException is PostgresException
+        {
+            SqlState: UniqueViolationSqlState,
+            ConstraintName: EventScopeUniqueIndexName or DayScopeUniqueIndexName or SessionSelectionScopeUniqueIndexName
+        };
     }
 }

@@ -133,7 +133,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
 
         if (effectiveUserId != eventRegistration.UserId || effectiveSessionId != eventRegistration.EventSessionId)
         {
-            var duplicate = await _eventRegistrationRepository.GetRegistrationByUserAndSession(effectiveUserId, effectiveSessionId);
+            var duplicate = await _eventRegistrationRepository.GetRegistrationByUserAndSession(effectiveUserId, effectiveSessionId, cancellationToken);
             if (duplicate is not null && duplicate.Id != eventRegistration.Id)
             {
                 return ValidationFailure("A registration for the selected user and session already exists.");

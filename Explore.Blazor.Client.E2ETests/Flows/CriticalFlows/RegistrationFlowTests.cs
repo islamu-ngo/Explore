@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
+[Category(E2ETestCategories.E2E)]
+[Category(E2ETestCategories.Email)]
 [ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
 [NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]

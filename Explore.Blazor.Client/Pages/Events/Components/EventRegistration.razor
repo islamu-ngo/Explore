@@ -2,13 +2,15 @@
 @* ABOUTME: Uses the registration service boundary so API failures become user-safe validation feedback. *@
 
 @using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Contracts.Interop
 @using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Pages.Events
 @inject IEventRegistrationService RegistrationService
 @inject IUserService UserService
 @inject IContactShareConsentService ConsentService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
-@inject IJSRuntime JsRuntime
+@inject IBrowserActionInterop BrowserActionInterop
 @inject ILogger<EventRegistration> Logger
 <MudDialog Class="registration-dialog">
     <DialogContent>
@@ -346,7 +348,8 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading user data: {ex.Message}", Severity.Warning);
+            Logger.LogWarning(ex, "Failed to load registration dialog data for event {EventId}", EventId);
+            Snackbar.Add("Could not load registration data. Please try again.", Severity.Warning);
         }
         finally
         {
@@ -453,34 +456,27 @@
 
             if (response?.Success == true)
             {
-                isWaitlisted = IsWaitlistResponse(response.Message);
-                isRegistered = true;
-                Snackbar.Add(
-                    isWaitlisted
-                        ? "You have been added to the waitlist."
-                        : "You have been successfully registered!",
-                    isWaitlisted ? Severity.Info : Severity.Success);
+                var outcome = EventListRegistrationWorkflow.ResolveOutcome(response);
+                isWaitlisted = outcome.IsWaitlisted;
+                isAlreadyRegistered = outcome.IsAlreadyRegistered;
+                isRegistered = !outcome.IsAlreadyRegistered;
+                Snackbar.Add(outcome.SnackbarMessage, outcome.SnackbarSeverity);
             }
             else
             {
-                Snackbar.Add(GetRegistrationFailureMessage(response), Severity.Error);
+                var outcome = EventListRegistrationWorkflow.ResolveOutcome(response);
+                Snackbar.Add(outcome.SnackbarMessage, outcome.SnackbarSeverity);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Registration error: {ex.Message}", Severity.Error);
+            Logger.LogError(ex, "Registration dialog submission failed for event {EventId}", EventId);
+            Snackbar.Add("Registration failed. Please try again.", Severity.Error);
         }
         finally
         {
             isSubmitting = false;
         }
-    }
-
-    private static string GetRegistrationFailureMessage(BaseCommandResponseOfGuid? response)
-    {
-        return response?.Errors?.FirstOrDefault(error => !string.IsNullOrWhiteSpace(error))
-            ?? response?.Message
-            ?? "Something went wrong. Please try again later.";
     }
 
     private void Cancel()
@@ -493,11 +489,6 @@
         DialogReference?.Close();
     }
 
-    private static bool IsWaitlistResponse(string? message)
-    {
-        return message?.Contains("waitlist", StringComparison.OrdinalIgnoreCase) == true;
-    }
-
     private async Task ShareEventAsync()
     {
         if (EventId == Guid.Empty)
@@ -508,35 +499,20 @@
 
         var url = CanonicalUrlHelper.Build(Navigation, $"/events/{EventId}");
 
-        try
+        if (await BrowserActionInterop.ShareAsync(Title, url))
         {
-            var canShare = await JsRuntime.InvokeAsync<bool>("eval", "!!navigator.share");
-            if (canShare)
-            {
-                await JsRuntime.InvokeVoidAsync("navigator.share", new
-                {
-                    title = Title,
-                    url
-                });
-                return;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Native event sharing was unavailable; falling back to clipboard.");
+            return;
         }
 
-        try
+        if (await BrowserActionInterop.CopyTextAsync(url))
         {
-            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
             Snackbar.Add("Link copied to clipboard", Severity.Success,
                 options => options.VisibleStateDuration = 2000);
+            return;
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to copy event link to clipboard");
-            Snackbar.Add("Could not copy link", Severity.Error);
-        }
+
+        Logger.LogWarning("Failed to copy event link to clipboard");
+        Snackbar.Add("Could not copy link", Severity.Error);
     }
 
     private string GetCalendarDownloadUrl()

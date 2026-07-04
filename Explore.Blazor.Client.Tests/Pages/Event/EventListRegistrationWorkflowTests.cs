@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Pages.Events;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -160,5 +161,47 @@ public sealed class EventListRegistrationWorkflowTests
         await Assert.That(EventListRegistrationWorkflow.IsWaitlistResponse("Added to WAITLIST")).IsTrue();
         await Assert.That(EventListRegistrationWorkflow.IsWaitlistResponse("Registered successfully")).IsFalse();
         await Assert.That(EventListRegistrationWorkflow.IsWaitlistResponse(null)).IsFalse();
+    }
+
+    [Test]
+    public async Task ResolveOutcome_ClassifiesSuccessfulApiMessages()
+    {
+        var confirmed = EventListRegistrationWorkflow.ResolveOutcome(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Message = "Event Registration created successfully."
+        });
+        var waitlisted = EventListRegistrationWorkflow.ResolveOutcome(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Message = "Event Registration added to the waitlist."
+        });
+        var duplicate = EventListRegistrationWorkflow.ResolveOutcome(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Message = "Event Registration already exists."
+        });
+
+        await Assert.That(confirmed.Kind).IsEqualTo(EventRegistrationOutcomeKind.Confirmed);
+        await Assert.That(confirmed.SnackbarSeverity).IsEqualTo(Severity.Success);
+        await Assert.That(waitlisted.Kind).IsEqualTo(EventRegistrationOutcomeKind.Waitlisted);
+        await Assert.That(waitlisted.Message).Contains("waitlist");
+        await Assert.That(duplicate.Kind).IsEqualTo(EventRegistrationOutcomeKind.AlreadyRegistered);
+        await Assert.That(duplicate.Message).Contains("already registered");
+    }
+
+    [Test]
+    public async Task ResolveOutcome_ForFailureUsesFirstSafeError()
+    {
+        var outcome = EventListRegistrationWorkflow.ResolveOutcome(new BaseCommandResponseOfGuid
+        {
+            Success = false,
+            Message = "Fallback message",
+            Errors = ["Check the registration details and try again."]
+        });
+
+        await Assert.That(outcome.Kind).IsEqualTo(EventRegistrationOutcomeKind.Failed);
+        await Assert.That(outcome.SnackbarSeverity).IsEqualTo(Severity.Warning);
+        await Assert.That(outcome.SnackbarMessage).IsEqualTo("Check the registration details and try again.");
     }
 }

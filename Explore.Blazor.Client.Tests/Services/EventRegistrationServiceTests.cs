@@ -36,11 +36,10 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
         var registrations = new List<EventRegistrationListDto>
         {
-            new() { Id = Guid.NewGuid(), UserId = userId, EventSessionId = sessionId },
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), EventSessionId = sessionId }
+            new() { Id = Guid.NewGuid(), EventSessionId = sessionId },
+            new() { Id = Guid.NewGuid(), EventSessionId = sessionId }
         };
         var response = new PaginatedResultOfEventRegistrationListDto
         {
@@ -105,7 +104,6 @@ public class EventRegistrationServiceTests
         var expected = new EventRegistrationDto
         {
             Id = registrationId,
-            UserId = Guid.NewGuid(),
             EventSessionId = Guid.NewGuid()
         };
 
@@ -162,7 +160,7 @@ public class EventRegistrationServiceTests
         // Arrange
         var registrations = new List<EventRegistrationListDto>
         {
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), EventSessionId = Guid.NewGuid() }
+            new() { Id = Guid.NewGuid(), EventSessionId = Guid.NewGuid() }
         };
 
         var response = new PaginatedResultOfEventRegistrationListDto
@@ -254,6 +252,66 @@ public class EventRegistrationServiceTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
+    }
+
+    [Test]
+    public async Task RegisterForSessionAsync_WhenUnauthorized_ReturnsSafeAuthRequiredFailure()
+    {
+        // Arrange
+        var dto = new CreateEventRegistrationDto
+        {
+            EventId = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            RegistrationScopeId = 3,
+            SelectedSessionIds = new List<Guid> { Guid.NewGuid() },
+        };
+        _apiClient.CreateEventRegistrationAsync(Arg.Any<string?>(), Arg.Any<string?>(), dto, Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Bearer token expired", 401, "raw auth failure"));
+
+        // Act
+        var result = await _service.RegisterForSessionAsync(dto);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_auth_required");
+        await Assert.That(result.Message).IsEqualTo("Sign in to register for this event.");
+        await Assert.That(result.Errors).IsEquivalentTo(["Sign in to register for this event."]);
+        await Assert.That(result.Message).DoesNotContain("Bearer token expired");
+        await Assert.That(result.Errors!.First()).DoesNotContain("raw auth failure");
+    }
+
+    [Test]
+    [Arguments(403, "registration_forbidden", "You do not have permission to register for this event.")]
+    [Arguments(429, "registration_rate_limited", "Too many registration attempts. Wait a moment and try again.")]
+    [Arguments(500, "registration_temporarily_unavailable", "Registration is temporarily unavailable. Please try again later.")]
+    public async Task RegisterForSessionAsync_WhenApiFails_ReturnsStatusSpecificSafeMessage(
+        int statusCode,
+        string expectedFailureCode,
+        string expectedMessage)
+    {
+        // Arrange
+        var dto = new CreateEventRegistrationDto
+        {
+            EventId = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            RegistrationScopeId = 3,
+            SelectedSessionIds = new List<Guid> { Guid.NewGuid() },
+        };
+        _apiClient.CreateEventRegistrationAsync(Arg.Any<string?>(), Arg.Any<string?>(), dto, Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Provider detail should not leak", statusCode, "raw response should not leak"));
+
+        // Act
+        var result = await _service.RegisterForSessionAsync(dto);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(expectedFailureCode);
+        await Assert.That(result.Message).IsEqualTo(expectedMessage);
+        await Assert.That(result.Errors).IsEquivalentTo([expectedMessage]);
+        await Assert.That(result.Message).DoesNotContain("Provider detail");
+        await Assert.That(result.Errors!.First()).DoesNotContain("raw response");
     }
 
     [Test]
@@ -409,8 +467,8 @@ public class EventRegistrationServiceTests
         var sessionId = Guid.NewGuid();
         var registrations = new List<EventRegistrationListDto>
         {
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), EventSessionId = sessionId },
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), EventSessionId = sessionId }
+            new() { Id = Guid.NewGuid(), EventSessionId = sessionId },
+            new() { Id = Guid.NewGuid(), EventSessionId = sessionId }
         };
 
         _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -466,7 +524,7 @@ public class EventRegistrationServiceTests
         var userId = Guid.NewGuid();
         var registrations = new List<EventRegistrationListDto>
         {
-            new() { Id = Guid.NewGuid(), UserId = userId, EventSessionId = Guid.NewGuid() }
+            new() { Id = Guid.NewGuid(), EventSessionId = Guid.NewGuid() }
         };
 
         _apiClient.GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -508,10 +566,10 @@ public class EventRegistrationServiceTests
         var userId = Guid.NewGuid();
         var registrations = new List<EventRegistrationListDto>
         {
-            new() { Id = Guid.NewGuid(), UserId = userId, EventSessionId = sessionId }
+            new() { Id = Guid.NewGuid(), EventSessionId = sessionId }
         };
 
-        _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(registrations);
 
         // Act
@@ -527,13 +585,12 @@ public class EventRegistrationServiceTests
         // Arrange
         var sessionId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        var otherUserId = Guid.NewGuid();
         var registrations = new List<EventRegistrationListDto>
         {
-            new() { Id = Guid.NewGuid(), UserId = otherUserId, EventSessionId = sessionId }
+            new() { Id = Guid.NewGuid(), EventSessionId = Guid.NewGuid() }
         };
 
-        _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(registrations);
 
         // Act
@@ -549,7 +606,7 @@ public class EventRegistrationServiceTests
         // Arrange
         var sessionId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act

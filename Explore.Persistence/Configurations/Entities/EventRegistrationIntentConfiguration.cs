@@ -68,7 +68,9 @@ public class EventRegistrationIntentConfiguration : IEntityTypeConfiguration<Eve
         // Excludes soft-deleted rows so re-registration after cancellation is allowed.
 
         // Event-scope: one intent per user per event
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.UserId })
+        builder.HasIndex(
+                e => new { e.TenantId, e.EventId, e.UserId },
+                "ix_event_registration_intents_unique_event_scope")
             .HasDatabaseName("ix_event_registration_intents_unique_event_scope")
             .IsUnique()
             .HasFilter("registration_scope_id = 1 AND is_deleted = false");
@@ -80,7 +82,9 @@ public class EventRegistrationIntentConfiguration : IEntityTypeConfiguration<Eve
             .HasFilter("registration_scope_id = 2 AND is_deleted = false");
 
         // SessionSelection-scope: one intent per user per event
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.UserId })
+        builder.HasIndex(
+                e => new { e.TenantId, e.EventId, e.UserId },
+                "ix_event_registration_intents_unique_session_selection_scope")
             .HasDatabaseName("ix_event_registration_intents_unique_session_selection_scope")
             .IsUnique()
             .HasFilter("registration_scope_id = 3 AND is_deleted = false");

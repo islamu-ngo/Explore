@@ -1,7 +1,8 @@
-// ABOUTME: Event registration list DTO for management collection reads.
-// ABOUTME: Includes concurrency metadata so list-sourced editors can issue PATCH updates.
+// ABOUTME: Event registration list DTO for authenticated self-service collection reads.
+// ABOUTME: Keeps owner context internal while exposing event/session status for clients.
 
 using System;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventRegistration;
 
@@ -10,9 +11,8 @@ public class EventRegistrationListDto
     public Guid Id { get; set; }
     public Guid ConcurrencyStamp { get; set; }
 
-    // User
+    [JsonIgnore]
     public Guid UserId { get; set; }
-    public string? UserFullName { get; set; }
 
     // Registration Intent (parent aggregate)
     public Guid? EventRegistrationIntentId { get; set; }

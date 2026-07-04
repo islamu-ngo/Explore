@@ -3,12 +3,14 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
 internal static class EventListRegistrationWorkflow
 {
     private const string ContactShareConsentUiVersion = "v1";
+    private const string DefaultFailureMessage = "Registration failed. Please try again.";
 
     public static EventListRegistrationLookup BuildRegistrationLookup(IEnumerable<EventRegistrationListDto>? registrations)
     {
@@ -164,8 +166,82 @@ internal static class EventListRegistrationWorkflow
     {
         return message?.Contains("waitlist", StringComparison.OrdinalIgnoreCase) == true;
     }
+
+    public static bool IsAlreadyRegisteredResponse(string? message)
+    {
+        return message?.Contains("already exists", StringComparison.OrdinalIgnoreCase) == true
+            || message?.Contains("already registered", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    public static EventRegistrationOutcome ResolveOutcome(BaseCommandResponseOfGuid? response)
+    {
+        if (response?.Success == true)
+        {
+            if (IsAlreadyRegisteredResponse(response.Message))
+            {
+                return new EventRegistrationOutcome(
+                    EventRegistrationOutcomeKind.AlreadyRegistered,
+                    "Already Registered",
+                    "You are already registered for this event.",
+                    "You are already registered for this event.",
+                    Severity.Info);
+            }
+
+            if (IsWaitlistResponse(response.Message))
+            {
+                return new EventRegistrationOutcome(
+                    EventRegistrationOutcomeKind.Waitlisted,
+                    "You're on the Waitlist!",
+                    "You have been added to the waitlist because one or more selected sessions are currently full.",
+                    "You have been added to the waitlist.",
+                    Severity.Info);
+            }
+
+            return new EventRegistrationOutcome(
+                EventRegistrationOutcomeKind.Confirmed,
+                "You're Registered!",
+                "You have been successfully registered for this event.",
+                "Successfully registered!",
+                Severity.Success);
+        }
+
+        var failureMessage = GetRegistrationFailureMessage(response);
+        return new EventRegistrationOutcome(
+            EventRegistrationOutcomeKind.Failed,
+            "Registration Failed",
+            failureMessage,
+            failureMessage,
+            Severity.Warning);
+    }
+
+    public static string GetRegistrationFailureMessage(BaseCommandResponseOfGuid? response)
+    {
+        return response?.Errors?.FirstOrDefault(error => !string.IsNullOrWhiteSpace(error))
+            ?? response?.Message
+            ?? DefaultFailureMessage;
+    }
 }
 
 internal sealed record EventListRegistrationLookup(
     HashSet<Guid> RegisteredEventIds,
     Dictionary<Guid, Guid> RegistrationIdByEventId);
+
+internal enum EventRegistrationOutcomeKind
+{
+    Confirmed,
+    Waitlisted,
+    AlreadyRegistered,
+    Failed
+}
+
+internal sealed record EventRegistrationOutcome(
+    EventRegistrationOutcomeKind Kind,
+    string Title,
+    string Message,
+    string SnackbarMessage,
+    Severity SnackbarSeverity)
+{
+    public bool IsSuccessful => Kind != EventRegistrationOutcomeKind.Failed;
+    public bool IsWaitlisted => Kind == EventRegistrationOutcomeKind.Waitlisted;
+    public bool IsAlreadyRegistered => Kind == EventRegistrationOutcomeKind.AlreadyRegistered;
+}

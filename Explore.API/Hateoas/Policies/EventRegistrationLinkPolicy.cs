@@ -25,7 +25,7 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
             RouteNames.GetEventRegistrationById,
             new { id = dto.Id },
             "GET",
-            $"Registration: {dto.UserFullName}");
+            dto.EventTitle ?? dto.EventSessionTitle ?? "Event registration");
 
         // Collection link
         yield return new LinkDefinition(
@@ -90,7 +90,7 @@ public sealed class EventRegistrationCollectionLinkPolicy : ICollectionLinkPolic
             RouteNames.GetEventRegistrationById,
             new { id = dto.Id },
             "GET",
-            $"Registration: {dto.UserFullName}");
+            dto.EventTitle ?? dto.EventSessionTitle ?? "Event registration");
 
         // Event session link
         yield return new LinkDefinition(

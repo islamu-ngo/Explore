@@ -100,12 +100,7 @@ public class EventRegistrationService : IEventRegistrationService
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[REGISTRATION SERVICE] API error registering for session: {StatusCode}", ex.StatusCode);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = $"API error: {ex.Message}",
-                Errors = new List<string> { ex.Response ?? ex.Message }
-            };
+            return CreateRegistrationFailureResponse(ex);
         }
         catch (Exception ex)
         {
@@ -113,10 +108,34 @@ public class EventRegistrationService : IEventRegistrationService
             return new BaseCommandResponseOfGuid
             {
                 Success = false,
-                Message = ex.Message,
-                Errors = new List<string> { ex.Message }
+                FailureCode = "registration_failed",
+                Message = "Registration failed. Please try again.",
+                Errors = new List<string> { "Registration failed. Please try again." }
             };
         }
+    }
+
+    private static BaseCommandResponseOfGuid CreateRegistrationFailureResponse(ApiException ex)
+    {
+        var (failureCode, message) = ex.StatusCode switch
+        {
+            400 => ("registration_invalid", "Check the registration details and try again."),
+            401 => ("registration_auth_required", "Sign in to register for this event."),
+            403 => ("registration_forbidden", "You do not have permission to register for this event."),
+            404 => ("registration_unavailable", "Registration is unavailable for this event."),
+            409 => ("registration_conflict", "You are already registered or this registration changed. Refresh and try again."),
+            429 => ("registration_rate_limited", "Too many registration attempts. Wait a moment and try again."),
+            >= 500 => ("registration_temporarily_unavailable", "Registration is temporarily unavailable. Please try again later."),
+            _ => ("registration_failed", "Registration failed. Please try again.")
+        };
+
+        return new BaseCommandResponseOfGuid
+        {
+            Success = false,
+            FailureCode = failureCode,
+            Message = message,
+            Errors = new List<string> { message }
+        };
     }
 
     public async Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(
@@ -215,8 +234,8 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            var registrations = await GetRegistrationsBySessionAsync(sessionId);
-            return registrations.Any(r => r.UserId == userId);
+            var registrations = await GetRegistrationsByUserAsync(userId);
+            return registrations.Any(r => r.EventSessionId == sessionId);
         }
         catch (Exception ex)
         {

@@ -1,5 +1,5 @@
-// ABOUTME: API contract tests for authenticated event registration update error responses.
-// ABOUTME: Verifies update failures use RFC7807 ProblemDetails instead of raw command envelopes.
+// ABOUTME: API contract tests for authenticated event registration reads and update error responses.
+// ABOUTME: Verifies ownership gates and update failures use RFC7807 ProblemDetails.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -53,6 +53,42 @@ public sealed class EventRegistrationControllerTests
         await Assert.That(command!.EventRegistrationDto.EventId).IsEqualTo(eventId);
         await Assert.That(command.EventRegistrationDto.UserId).IsEqualTo(authenticatedUserId);
         await Assert.That(command.EventRegistrationDto.SelectedSessionIds).IsNull();
+    }
+
+    [Test]
+    public async Task Create_WhenCommandReturnsExistingRegistration_ReturnsOkWithExistingId()
+    {
+        var existingRegistrationId = Guid.NewGuid();
+        var authenticatedUserId = Guid.NewGuid();
+        using var mediator = new EventRegistrationMediatorStub(_ => new BaseCommandResponse<Guid>
+        {
+            Success = true,
+            Id = existingRegistrationId,
+            Message = "Event Registration already exists."
+        });
+        await using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedJsonRequest(
+            HttpMethod.Post,
+            "/api/eventregistration",
+            new CreateEventRegistrationDto
+            {
+                EventId = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                RegistrationScopeId = 1,
+                SelectedSessionIds = null
+            },
+            authenticatedUserId);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body.Id).IsEqualTo(existingRegistrationId);
+        await Assert.That(body.Message).IsEqualTo("Event Registration already exists.");
+        await Assert.That(mediator.LastRequest).IsTypeOf<CreateEventRegistrationCommand>();
     }
 
     [Test]
@@ -136,6 +172,26 @@ public sealed class EventRegistrationControllerTests
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(concurrencyStamp);
     }
 
+    [Test]
+    public async Task GetRegistrationsByUser_WhenRouteUserDiffersFromAuthenticatedUser_ReturnsForbiddenWithoutDispatching()
+    {
+        var authenticatedUserId = Guid.NewGuid();
+        var requestedUserId = Guid.NewGuid();
+        using var mediator = new EventRegistrationMediatorStub(_ => throw new InvalidOperationException("Mediator should not run for cross-user reads."));
+        await using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/eventregistration/by-user/{requestedUserId}",
+            authenticatedUserId);
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Forbidden");
+        await AssertProblemJsonContentTypeAsync(response);
+        await Assert.That(mediator.LastRequest).IsNull();
+    }
+
     private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
     {
         var factory = new AuthenticatedWebApplicationFactory();
@@ -167,6 +223,16 @@ public sealed class EventRegistrationControllerTests
             request.Headers.TryAddWithoutValidation("If-Match", $"\"{ifMatch.Value:D}\"");
         }
 
+        return request;
+    }
+
+    private static HttpRequestMessage CreateAuthenticatedRequest(
+        HttpMethod method,
+        string url,
+        Guid? userId = null)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId ?? Guid.NewGuid()));
         return request;
     }
 

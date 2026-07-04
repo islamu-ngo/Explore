@@ -128,6 +128,58 @@ public sealed class CreateEventRegistrationCommandHandlerTests
     }
 
     [Test]
+    public async Task HandleWhenRepositoryReturnsExistingRaceWinnerReturnsAlreadyExists()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var existingIntentId = Guid.NewGuid();
+        var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
+        command.EventRegistrationDto.ShareEmailWithOrganizer = true;
+        command.EventRegistrationDto.ConsentTextAcknowledged = "Share my email with the organizer.";
+        command.EventRegistrationDto.ConsentUiVersion = "v1";
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>())
+            .Returns(new EventRegistrationIntentCreationResult(
+                new EventRegistrationIntent
+                {
+                    Id = existingIntentId,
+                    EventId = eventId,
+                    Event = null!,
+                    UserId = userId,
+                    User = null!,
+                    RegistrationScopeId = (int)RegistrationScopeEnum.SessionSelection,
+                    RegistrationScope = null!,
+                    TenantId = tenantId,
+                    Tenant = null!
+                },
+                [],
+                WasExisting: true));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(existingIntentId);
+        await Assert.That(result.Message).IsEqualTo("Event Registration already exists.");
+        await _consentService.DidNotReceive().ProcessRegistrationConsent(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>());
+    }
+
+    [Test]
     public async Task HandleWhenEventScopeOmitsSelectedSessionsCreatesRowsForEveryEventSession()
     {
         var tenantId = Guid.NewGuid();
