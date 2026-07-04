@@ -1,0 +1,113 @@
+# ABOUTME: Cerbos policy tests for support-access session management.
+# ABOUTME: Verifies instance-admin management and tenant-admin audit visibility boundaries.
+
+name: SupportAccessSessionPolicyTests
+description: "Validates support-access session lifecycle and audit authorization"
+
+principals:
+  islamuevent_instance_admin:
+    id: "user-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  islamuevent_tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  other_tenant_admin:
+    id: "user-other-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-2": "admin"
+      orgMemberships: {}
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  tenant1_support_session:
+    kind: "islamuevent_support_access_session"
+    id: "session-1"
+    attr:
+      tenantId: "tenant-1"
+      sessionId: "session-1"
+      actorUserId: "user-instance-admin"
+      mode: "ReadOnly"
+      status: "Active"
+
+tests:
+  - name: "Instance admin can manage support-access sessions"
+    input:
+      principals: ["islamuevent_instance_admin"]
+      resources: ["tenant1_support_session"]
+      actions: ["view", "list", "start", "stop", "view_audit", "force_stop"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "tenant1_support_session"
+        actions:
+          view: EFFECT_ALLOW
+          list: EFFECT_ALLOW
+          start: EFFECT_ALLOW
+          stop: EFFECT_ALLOW
+          view_audit: EFFECT_ALLOW
+          force_stop: EFFECT_ALLOW
+
+  - name: "Tenant admin can view tenant support-access evidence only"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["tenant1_support_session"]
+      actions: ["view", "list", "start", "stop", "view_audit", "force_stop"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "tenant1_support_session"
+        actions:
+          view: EFFECT_ALLOW
+          list: EFFECT_ALLOW
+          start: EFFECT_DENY
+          stop: EFFECT_DENY
+          view_audit: EFFECT_ALLOW
+          force_stop: EFFECT_DENY
+
+  - name: "Other tenant admin cannot view support-access evidence"
+    input:
+      principals: ["other_tenant_admin"]
+      resources: ["tenant1_support_session"]
+      actions: ["view", "list", "view_audit"]
+    expected:
+      - principal: "other_tenant_admin"
+        resource: "tenant1_support_session"
+        actions:
+          view: EFFECT_DENY
+          list: EFFECT_DENY
+          view_audit: EFFECT_DENY
+
+  - name: "Regular user cannot use support-access management"
+    input:
+      principals: ["regular_user"]
+      resources: ["tenant1_support_session"]
+      actions: ["view", "list", "start", "stop", "view_audit", "force_stop"]
+    expected:
+      - principal: "regular_user"
+        resource: "tenant1_support_session"
+        actions:
+          view: EFFECT_DENY
+          list: EFFECT_DENY
+          start: EFFECT_DENY
+          stop: EFFECT_DENY
+          view_audit: EFFECT_DENY
+          force_stop: EFFECT_DENY

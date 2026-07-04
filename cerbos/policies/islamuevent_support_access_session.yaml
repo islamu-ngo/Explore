@@ -1,0 +1,24 @@
+# ABOUTME: Cerbos resource policy for support-access session lifecycle and audit review.
+# ABOUTME: Allows instance-admin lifecycle control and tenant-admin evidence reads.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_support_access_session"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_support_access_session.json
+  rules:
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    - actions: ["view", "list", "view_audit"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin

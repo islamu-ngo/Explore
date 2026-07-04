@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for support-access sessions and audit review.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Target tenant identifier for the support-access session."
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Support-access session identifier."
+    },
+    "actorUserId": {
+      "type": "string",
+      "description": "User identifier for the actor operating under support access."
+    },
+    "mode": {
+      "type": "string",
+      "description": "Requested or active support-access mode."
+    },
+    "status": {
+      "type": "string",
+      "description": "Current support-access session status."
+    },
+    "auditEventId": {
+      "type": "string",
+      "description": "Support-access audit event identifier."
+    },
+    "eventType": {
+      "type": "string",
+      "description": "Support-access audit event type."
+    }
+  },
+  "required": ["tenantId"]
+}
