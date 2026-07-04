@@ -4,10 +4,14 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Features.Modules.Requests.Commands;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
@@ -36,16 +40,16 @@ public class ModuleController : ControllerBase
 
     private readonly IModuleService _moduleService;
     private readonly ITenantContext _tenantContext;
-    private readonly ILogger<ModuleController> _logger;
+    private readonly IMediator _mediator;
 
     public ModuleController(
         IModuleService moduleService,
         ITenantContext tenantContext,
-        ILogger<ModuleController> logger)
+        IMediator mediator)
     {
         _moduleService = moduleService;
         _tenantContext = tenantContext;
-        _logger = logger;
+        _mediator = mediator;
     }
 
     /// <summary>
@@ -140,6 +144,7 @@ public class ModuleController : ControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [HttpPost("{moduleKey}/enable", Name = RouteNames.EnableModule)]
     [EndpointSummary("Enable Module")]
     [EndpointDescription("Enables a module for the current tenant. " +
@@ -153,21 +158,17 @@ public class ModuleController : ControllerBase
         CancellationToken cancellationToken)
     {
         var tenantId = _tenantContext.TenantId;
+        var response = await _mediator.Send(new EnableTenantModuleCommand
+        {
+            TenantId = tenantId,
+            ModuleKey = moduleKey
+        }, cancellationToken);
 
-        // Get current user ID for audit
-        var userIdClaim = User.FindFirst("sub")?.Value
-            ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? User.FindFirst("sid")?.Value;
-
-        Guid? enabledBy = Guid.TryParse(userIdClaim, out var userId) ? userId : null;
-
-        var success = await _moduleService.EnableModuleAsync(tenantId, moduleKey, enabledBy, cancellationToken);
-
-        if (!success)
+        if (!response.Success)
         {
             return this.ToValidationProblem(
                 EnableValidationProblem,
-                $"Module '{moduleKey}' not found or not active.");
+                response.Message ?? $"Module '{moduleKey}' not found or not active.");
         }
 
         return Ok(new ModuleActionResponse
@@ -183,6 +184,7 @@ public class ModuleController : ControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [HttpPost("{moduleKey}/disable", Name = RouteNames.DisableModule)]
     [EndpointSummary("Disable Module")]
     [EndpointDescription("Disables a module for the current tenant. " +
@@ -197,13 +199,17 @@ public class ModuleController : ControllerBase
         CancellationToken cancellationToken)
     {
         var tenantId = _tenantContext.TenantId;
-        var success = await _moduleService.DisableModuleAsync(tenantId, moduleKey, cancellationToken);
+        var response = await _mediator.Send(new DisableTenantModuleCommand
+        {
+            TenantId = tenantId,
+            ModuleKey = moduleKey
+        }, cancellationToken);
 
-        if (!success)
+        if (!response.Success)
         {
             return this.ToValidationProblem(
                 DisableValidationProblem,
-                $"Module '{moduleKey}' is not enabled for this tenant.");
+                response.Message ?? $"Module '{moduleKey}' is not enabled for this tenant.");
         }
 
         return Ok(new ModuleActionResponse
