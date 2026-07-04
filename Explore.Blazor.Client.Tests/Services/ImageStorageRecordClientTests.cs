@@ -45,7 +45,7 @@ public sealed class ImageStorageRecordClientTests
     }
 
     [Test]
-    public async Task CreateRecordFromBytesAsync_WhenStorageApiReturnsFailure_MapsMessage()
+    public async Task CreateRecordFromBytesAsync_WhenStorageApiReturnsFailure_MapsSafeMessage()
     {
         _apiClient.CreateStorageObjectAsync(Arg.Any<CreateStorageObjectDto>())
             .Returns(new BaseCommandResponseOfGuid
@@ -59,11 +59,12 @@ public sealed class ImageStorageRecordClientTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
-        await Assert.That(result.ErrorMessage).IsEqualTo("record rejected");
+        await Assert.That(result.ErrorMessage).IsEqualTo(ImageUploadClientPolicy.MetadataFailureMessage);
+        await Assert.That(result.ErrorMessage).DoesNotContain("record rejected");
     }
 
     [Test]
-    public async Task CreateRecordFromBytesAsync_WithProblemDetails_ReturnsProblemMessage()
+    public async Task CreateRecordFromBytesAsync_WithProblemDetails_ReturnsSafeMessage()
     {
         var problemDetails = new ProblemDetails
         {
@@ -84,9 +85,9 @@ public sealed class ImageStorageRecordClientTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
-        await Assert.That(result.ErrorMessage).Contains("API call failed (400)");
-        await Assert.That(result.ErrorMessage).Contains("Invalid storage object");
-        await Assert.That(result.ErrorMessage).Contains("File type is not allowed");
+        await Assert.That(result.ErrorMessage).IsEqualTo(ImageUploadClientPolicy.MetadataFailureMessage);
+        await Assert.That(result.ErrorMessage).DoesNotContain("Invalid storage object");
+        await Assert.That(result.ErrorMessage).DoesNotContain("File type is not allowed");
     }
 
     [Test]
@@ -98,8 +99,36 @@ public sealed class ImageStorageRecordClientTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
-        await Assert.That(result.ErrorMessage).IsEqualTo("Failed to build storage metadata for uploaded image.");
+        await Assert.That(result.ErrorMessage).IsEqualTo(ImageUploadClientPolicy.MetadataBuildFailureMessage);
         await _apiClient.DidNotReceive().CreateStorageObjectAsync(Arg.Any<CreateStorageObjectDto>());
+    }
+
+    [Test]
+    public async Task CreateRecordFromBytesAsync_SanitizesDangerousBrowserFileNameInDto()
+    {
+        CreateStorageObjectDto? capturedDto = null;
+        var storageId = Guid.NewGuid();
+        _apiClient.CreateStorageObjectAsync(Arg.Do<CreateStorageObjectDto>(dto => capturedDto = dto))
+            .Returns(new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Id = storageId,
+                Message = "OK"
+            });
+        var fileData = new FileUploadData
+        {
+            Content = [1, 2, 3],
+            FileName = @"..\..\secret<script>.svg",
+            ContentType = "image/png"
+        };
+
+        var result = await CreateClient().CreateRecordFromBytesAsync(CreateUploadResponse(), fileData);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+        await Assert.That(capturedDto).IsNotNull();
+        await Assert.That(capturedDto!.FullName).IsEqualTo("secret-script.png");
+        await Assert.That(capturedDto.Extension).IsEqualTo(".png");
     }
 
     private ImageStorageRecordClient CreateClient()

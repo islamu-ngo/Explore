@@ -29,6 +29,39 @@ public class ImageStorageSupportServiceTests
     }
 
     [Test]
+    public async Task ImageFileReaderService_ReadFileAsync_SanitizesDangerousBrowserFileNameAndDoesNotLogIt()
+    {
+        var dangerousFileName = @"..\..\secret<script>.png";
+        var bytes = new byte[] { 1, 2, 3 };
+        var file = Substitute.For<IBrowserFile>();
+        file.Name.Returns(dangerousFileName);
+        file.Size.Returns(3L);
+        file.ContentType.Returns("image/png");
+        file.OpenReadStream(Arg.Any<long>()).Returns(_ => new MemoryStream(bytes));
+        var logger = Substitute.For<ILogger<ImageFileReaderService>>();
+        var service = new ImageFileReaderService(logger);
+
+        var result = await service.ReadFileAsync(file, 1024);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.FileName).IsEqualTo("secret-script.png");
+        logger.DidNotReceive().Log(
+            Arg.Any<LogLevel>(),
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => LogStateContains(state, dangerousFileName)),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Test]
+    public async Task ImageUploadClientPolicy_BuildSafeFileName_DerivesAllowedExtensionFromContentType()
+    {
+        var result = ImageUploadClientPolicy.BuildSafeFileName("../avatar.svg", "image/webp");
+
+        await Assert.That(result).IsEqualTo("avatar.webp");
+    }
+
+    [Test]
     public async Task ImageFileReaderService_ReadFileAsync_ReturnsNull_WhenFileExceedsMaxSize()
     {
         var file = Substitute.For<IBrowserFile>();
@@ -120,5 +153,10 @@ public class ImageStorageSupportServiceTests
         var result = resolver.ResolvePublicImageUrl("tenant/files/raw-object-key.jpg");
 
         await Assert.That(result).IsNull();
+    }
+
+    private static bool LogStateContains(object? state, string value)
+    {
+        return state.ToString()?.Contains(value, StringComparison.Ordinal) == true;
     }
 }

@@ -7,11 +7,14 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Explore.Blazor.IntegrationTests.Fixtures;
+using Explore.Blazor.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
 
@@ -22,17 +25,22 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
     private readonly StorageApiHandler _apiHandler = new();
-    private readonly string _authHeader = TestAuthHandler.CreateAuthHeaderValue(
-        Guid.NewGuid(),
-        "Storage Tester",
-        (ClaimTypes.Name, "Storage Tester"));
-    private readonly string _otherAuthHeader = TestAuthHandler.CreateAuthHeaderValue(
-        Guid.NewGuid(),
-        "Other Storage Tester",
-        (ClaimTypes.Name, "Other Storage Tester"));
+    private readonly Guid _userId = Guid.NewGuid();
+    private readonly Guid _otherUserId = Guid.NewGuid();
+    private readonly string _authHeader;
+    private readonly string _otherAuthHeader;
 
     public BffStorageUploadProxyTests()
     {
+        _authHeader = TestAuthHandler.CreateAuthHeaderValue(
+            _userId,
+            "Storage Tester",
+            (ClaimTypes.Name, "Storage Tester"));
+        _otherAuthHeader = TestAuthHandler.CreateAuthHeaderValue(
+            _otherUserId,
+            "Other Storage Tester",
+            (ClaimTypes.Name, "Other Storage Tester"));
+
         var antiforgery = Substitute.For<IAntiforgery>();
         antiforgery.ValidateRequestAsync(Arg.Any<HttpContext>()).Returns(Task.CompletedTask);
 
@@ -81,6 +89,19 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task UploadSession_WithReservedDeviceFileName_ReturnsBadRequestWithoutCallingApi()
+    {
+        using var request = CreateUploadSessionRequest("CON.png", "image/png");
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("reserved device name");
+        _apiHandler.CallCount.Should().Be(0);
+    }
+
+    [Test]
     public async Task UploadSession_WithInvalidContentType_ReturnsBadRequestWithoutCallingApi()
     {
         using var request = CreateUploadSessionRequest("probe.png", "not-a-mime-type");
@@ -91,6 +112,35 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         var body = await response.Content.ReadAsStringAsync();
         body.Should().Contain("valid MIME type");
         _apiHandler.CallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task UploadSession_WithMultiSegmentContentType_ReturnsBadRequestWithoutCallingApi()
+    {
+        using var request = CreateUploadSessionRequest("probe.png", "application/pdf/extra");
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("valid MIME type");
+        _apiHandler.CallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task UploadSession_WhenApiReturnsExpiredSession_ReturnsBadGatewayWithoutIssuingBrowserSession()
+    {
+        _apiHandler.ExpireNextReserveResponse();
+        using var request = CreateUploadSessionRequest("probe.png", "image/png");
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadGateway);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("invalid upload session");
+        body.Should().NotContain(_apiHandler.ApiUploadSessionId.ToString());
+        _apiHandler.ReserveCallCount.Should().Be(1);
+        _apiHandler.FinalizeCallCount.Should().Be(0);
     }
 
     [Test]
@@ -105,6 +155,56 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         var body = await response.Content.ReadAsStringAsync();
         body.Should().Contain("content type must match");
         _apiHandler.FinalizeCallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task UploadProxy_WithReservedDeviceFileName_ReturnsBadRequestWithoutUploading()
+    {
+        var uploadSessionId = await IssueUploadSessionAsync();
+        using var request = CreateUploadProxyRequest(
+            uploadSessionId,
+            "image/png",
+            "image/png",
+            fileName: "NUL.png");
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("reserved device name");
+        _apiHandler.FinalizeCallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task UploadProxy_WithUnknownSession_ReturnsBadRequestWithoutUploading()
+    {
+        using var request = CreateUploadProxyRequest("abcdefabcdefabcdefabcdefabcdefab", "image/png", "image/png");
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("server-issued upload session");
+        _apiHandler.FinalizeCallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task UploadProxy_WithExpiredCachedSession_ReturnsBadRequestConsumesSessionAndDoesNotUpload()
+    {
+        const string uploadSessionId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        await SeedCachedUploadSessionAsync(uploadSessionId, DateTimeOffset.UtcNow.AddMinutes(-1));
+        using var request = CreateUploadProxyRequest(uploadSessionId, "image/png", "image/png");
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("server-issued upload session");
+        _apiHandler.FinalizeCallCount.Should().Be(0);
+
+        var cache = _factory.Services.GetRequiredService<IDistributedCache>();
+        var payload = await cache.GetStringAsync("storage-upload-session:" + uploadSessionId);
+        payload.Should().BeNull();
     }
 
     [Test]
@@ -212,7 +312,8 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         string uploadSessionId,
         string declaredContentType,
         string fileContentType,
-        string? authHeader = null)
+        string? authHeader = null,
+        string fileName = "probe.png")
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/bff/storage/upload-proxy");
         AddBffHeaders(request, authHeader);
@@ -223,10 +324,24 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         var fileContent = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47]);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(fileContentType);
-        form.Add(fileContent, "file", "probe.png");
+        form.Add(fileContent, "file", fileName);
         request.Content = form;
 
         return request;
+    }
+
+    private async Task SeedCachedUploadSessionAsync(string uploadSessionId, DateTimeOffset expiresAtUtc)
+    {
+        var session = new StorageUploadSession(
+            uploadSessionId,
+            _userId.ToString(),
+            _apiHandler.ApiUploadSessionId,
+            "image/png",
+            4,
+            expiresAtUtc);
+        var payload = JsonSerializer.Serialize(session, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var cache = _factory.Services.GetRequiredService<IDistributedCache>();
+        await cache.SetStringAsync("storage-upload-session:" + uploadSessionId, payload);
     }
 
     private void AddBffHeaders(HttpRequestMessage request, string? authHeader = null)
@@ -251,10 +366,17 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
     {
         private readonly Guid _uploadSessionId = Guid.CreateVersion7();
         private readonly Guid _storageObjectId = Guid.CreateVersion7();
+        private DateTime? _nextReserveExpiresAtUtc;
         public int CallCount { get; private set; }
         public int ReserveCallCount { get; private set; }
         public int FinalizeCallCount { get; private set; }
         public string? CapturedReserveRequestBody { get; private set; }
+        public Guid ApiUploadSessionId => _uploadSessionId;
+
+        public void ExpireNextReserveResponse()
+        {
+            _nextReserveExpiresAtUtc = DateTime.UtcNow.AddMinutes(-1);
+        }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -270,14 +392,17 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
                     ? null
                     : await request.Content.ReadAsStringAsync(cancellationToken);
 
-                return JsonResponse(CreateSessionResponse(_uploadSessionId, null, "reserved"));
+                var expiresAtUtc = _nextReserveExpiresAtUtc ?? DateTime.UtcNow.AddMinutes(15);
+                _nextReserveExpiresAtUtc = null;
+
+                return JsonResponse(CreateSessionResponse(_uploadSessionId, null, "reserved", expiresAtUtc));
             }
 
             if (request.Method == HttpMethod.Put &&
                 string.Equals(request.RequestUri?.AbsolutePath, $"/api/storageobject/upload-sessions/{_uploadSessionId}/content", StringComparison.Ordinal))
             {
                 FinalizeCallCount++;
-                return JsonResponse(CreateSessionResponse(_uploadSessionId, _storageObjectId, "finalized"));
+                return JsonResponse(CreateSessionResponse(_uploadSessionId, _storageObjectId, "finalized", DateTime.UtcNow.AddMinutes(15)));
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -289,7 +414,11 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
                 Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
             };
 
-        private static string CreateSessionResponse(Guid uploadSessionId, Guid? storageObjectId, string status)
+        private static string CreateSessionResponse(
+            Guid uploadSessionId,
+            Guid? storageObjectId,
+            string status,
+            DateTime expiresAtUtc)
         {
             var storageObjectProperty = storageObjectId.HasValue
                 ? $"\"storageObjectId\": \"{storageObjectId.Value}\","
@@ -309,7 +438,7 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
                     "visibility": "public_image",
                     "status": "{{status}}",
                     {{storageObjectProperty}}
-                    "expiresAt": "{{DateTime.UtcNow.AddMinutes(15):O}}",
+                    "expiresAt": "{{expiresAtUtc:O}}",
                     "maxUploadBytes": 10485760,
                     "tenantQuotaBytes": 1073741824,
                     "usedBytes": 0,

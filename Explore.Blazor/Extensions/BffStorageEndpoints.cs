@@ -2,6 +2,7 @@
 // ABOUTME: Documented antiforgery exception: InteractiveServer circuit self-calls cannot forward the browser cookie pair.
 
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Explore.Application.DTOs.StorageObject;
@@ -16,6 +17,31 @@ public static class BffStorageEndpoints
     private const int MaxUploadFileNameLength = 500;
     private const int MaxUploadContentTypeLength = 100;
     private const int UploadSessionIdLength = 32;
+    private static readonly HashSet<string> ReservedFileNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "COM1",
+        "COM2",
+        "COM3",
+        "COM4",
+        "COM5",
+        "COM6",
+        "COM7",
+        "COM8",
+        "COM9",
+        "LPT1",
+        "LPT2",
+        "LPT3",
+        "LPT4",
+        "LPT5",
+        "LPT6",
+        "LPT7",
+        "LPT8",
+        "LPT9"
+    };
 
     /// <summary>
     /// Maps the storage BFF endpoints: POST /bff/storage/upload-session and POST /bff/storage/upload-proxy.
@@ -217,8 +243,7 @@ public static class BffStorageEndpoints
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning(
-                    "Upload proxy failed for API upload session {UploadSessionId}. Status={StatusCode}, HasBody={HasBody}",
-                    resolution.Session.ApiUploadSessionId,
+                    "Upload proxy failed for a resolved API upload session. Status={StatusCode}, HasBody={HasBody}",
                     (int)response.StatusCode,
                     response.Content.Headers.ContentLength.GetValueOrDefault() > 0);
 
@@ -231,8 +256,7 @@ public static class BffStorageEndpoints
             if (uploadResponse?.Success != true || uploadResponse.Id?.StorageObjectId is null)
             {
                 logger.LogWarning(
-                    "Upload proxy received invalid finalization response for API upload session {UploadSessionId}.",
-                    resolution.Session.ApiUploadSessionId);
+                    "Upload proxy received invalid finalization response for a resolved API upload session.");
                 return Results.Problem(
                     detail: "Storage upload finalized without storage object metadata.",
                     statusCode: StatusCodes.Status502BadGateway);
@@ -253,9 +277,8 @@ public static class BffStorageEndpoints
         catch (Exception ex)
         {
             logger.LogError(
-                ex,
-                "Upload proxy exception for API upload session {UploadSessionId}",
-                resolution.Session.ApiUploadSessionId);
+                "Upload proxy failed for a resolved API upload session. FailureType={FailureType}",
+                CategorizeUploadProxyFailure(ex));
             return Results.Problem(
                 detail: "Storage upload failed due to an internal proxy error.",
                 statusCode: StatusCodes.Status502BadGateway);
@@ -340,9 +363,10 @@ public static class BffStorageEndpoints
         }
 
         if (ContainsControlCharacters(candidate) ||
+            candidate.Count(static character => character == '/') != 1 ||
             !MediaTypeHeaderValue.TryParse(candidate, out mediaTypeHeader) ||
             string.IsNullOrWhiteSpace(mediaTypeHeader.MediaType) ||
-            !mediaTypeHeader.MediaType.Contains('/', StringComparison.Ordinal) ||
+            mediaTypeHeader.MediaType.Count(static character => character == '/') != 1 ||
             mediaTypeHeader.MediaType.Contains('*', StringComparison.Ordinal))
         {
             problem = "Content type must be a valid MIME type.";
@@ -378,6 +402,13 @@ public static class BffStorageEndpoints
             return false;
         }
 
+        var baseName = Path.GetFileNameWithoutExtension(fileName);
+        if (ReservedFileNames.Contains(baseName))
+        {
+            problem = "File name must not use a reserved device name.";
+            return false;
+        }
+
         problem = string.Empty;
         return true;
     }
@@ -397,6 +428,16 @@ public static class BffStorageEndpoints
 
     private static bool ContainsControlCharacters(string value) =>
         value.Any(char.IsControl);
+
+    private static string CategorizeUploadProxyFailure(Exception exception) =>
+        exception switch
+        {
+            OperationCanceledException => "canceled",
+            HttpRequestException => "api_unavailable",
+            IOException => "stream_io",
+            InvalidOperationException => "proxy_invalid_operation",
+            _ => "unknown"
+        };
 
     private static IResult InvalidStorageUploadRequest(string detail) =>
         Results.Problem(

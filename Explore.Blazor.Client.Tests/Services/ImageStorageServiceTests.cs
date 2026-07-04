@@ -299,6 +299,41 @@ public class ImageStorageServiceTests
         await uploadClient.DidNotReceive().UploadImageFromBytesAsync(Arg.Any<string>(), Arg.Any<FileUploadData>());
     }
 
+    [Test]
+    public async Task UploadAndCreateRecordFromBytesAsync_WhenUploadClientReturnsRawError_MapsGenericSafeError()
+    {
+        var uploadClient = Substitute.For<IImageUploadClient>();
+        var fileData = new FileUploadData
+        {
+            Content = new byte[] { 10, 20, 30 },
+            FileName = @"..\..\secret<script>.png",
+            ContentType = "image/png"
+        };
+        uploadClient.GetUploadUrlAsync(fileData.FileName, fileData.ContentType, fileData.Size)
+            .Returns(new ImageUploadResponse
+            {
+                UploadSessionId = "session-1",
+                ExpiresInMinutes = 15
+            });
+        uploadClient.UploadViaBffProxyAsync("session-1", fileData)
+            .Returns(new ImageUploadResult
+            {
+                Success = false,
+                ErrorMessage = "provider secret body https://upload.example.com/object?signature=abc"
+            });
+        var service = new ImageStorageService(
+            _apiClient,
+            _httpClientFactory,
+            _logger,
+            uploadClient: uploadClient);
+
+        var result = await service.UploadAndCreateRecordFromBytesAsync(fileData);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsFalse();
+        await Assert.That(result.ErrorMessage).IsEqualTo(ImageUploadClientPolicy.GenericUploadFailureMessage);
+    }
+
     #endregion
 
     #region GetImageUrlAsync

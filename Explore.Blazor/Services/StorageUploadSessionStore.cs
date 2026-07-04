@@ -98,9 +98,13 @@ public sealed class StorageUploadSessionStore(IDistributedCache cache) : IStorag
         var expiresAtUtc = response.ExpiresAt.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(response.ExpiresAt, DateTimeKind.Utc)
             : response.ExpiresAt.ToUniversalTime();
-        var expiresInMinutes = expiresAtUtc <= DateTime.UtcNow
-            ? 15
-            : Math.Min((int)Math.Ceiling((expiresAtUtc - DateTime.UtcNow).TotalMinutes), 60);
+        var nowUtc = DateTime.UtcNow;
+        if (expiresAtUtc <= nowUtc)
+        {
+            return StorageUploadSessionIssueResult.Failed("upload_session_expired");
+        }
+
+        var expiresInMinutes = Math.Min((int)Math.Ceiling((expiresAtUtc - nowUtc).TotalMinutes), 60);
         var session = new StorageUploadSession(
             SessionId: RandomNumberGenerator.GetHexString(32).ToLowerInvariant(),
             OwnerUserId: ownerUserId,

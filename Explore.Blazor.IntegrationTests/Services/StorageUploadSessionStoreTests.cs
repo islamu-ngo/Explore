@@ -2,6 +2,7 @@
 // ABOUTME: Proves upload destinations must be server-issued, user-bound, and content-type-bound.
 
 using System.Security.Claims;
+using System.Text.Json;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Blazor.Services;
 using FluentAssertions;
@@ -46,6 +47,30 @@ public sealed class StorageUploadSessionStoreTests
     }
 
     [Test]
+    public async Task IssueAsync_WithExpiredApiUploadSession_ReturnsFailure()
+    {
+        var result = await _store.IssueAsync(
+            CreateUser("user-1"),
+            new StorageUploadSessionDto
+            {
+                Id = ApiUploadSessionId,
+                Provider = "local",
+                ExpectedSizeBytes = 4,
+                ReservedBytes = 4,
+                ContentType = "image/png",
+                SafeDisplayName = "probe.png",
+                Purpose = "legacy_image",
+                Visibility = "public_image",
+                Status = "reserved",
+                ExpiresAt = DateTime.UtcNow.AddMinutes(-1)
+            },
+            "image/png");
+
+        result.Success.Should().BeFalse();
+        result.FailureCode.Should().Be("upload_session_expired");
+    }
+
+    [Test]
     public async Task ResolveAsync_WithDifferentUser_ReturnsFailure()
     {
         var issued = await IssueTrustedSessionAsync("user-1", "image/png");
@@ -78,6 +103,29 @@ public sealed class StorageUploadSessionStoreTests
         resolved.Session.Should().NotBeNull();
         resolved.Session!.ApiUploadSessionId.Should().Be(ApiUploadSessionId);
         resolved.Session.ExpectedSizeBytes.Should().Be(4);
+    }
+
+    [Test]
+    public async Task ResolveAsync_WithExpiredCachedSession_ReturnsFailureAndConsumesSession()
+    {
+        const string sessionId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        var expiredSession = new StorageUploadSession(
+            sessionId,
+            "user-1",
+            ApiUploadSessionId,
+            "image/png",
+            4,
+            DateTimeOffset.UtcNow.AddMinutes(-1));
+        var payload = JsonSerializer.Serialize(expiredSession, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await _cache.SetStringAsync("storage-upload-session:" + sessionId, payload);
+
+        var resolved = await _store.ResolveAsync(CreateUser("user-1"), sessionId, "image/png");
+        var secondResolve = await _store.ResolveAsync(CreateUser("user-1"), sessionId, "image/png");
+
+        resolved.Success.Should().BeFalse();
+        resolved.FailureCode.Should().Be("session_expired");
+        secondResolve.Success.Should().BeFalse();
+        secondResolve.FailureCode.Should().Be("session_not_found");
     }
 
     private static readonly Guid ApiUploadSessionId = Guid.CreateVersion7();

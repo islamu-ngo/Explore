@@ -127,6 +127,41 @@ public sealed class ImageUploadClientTests
         await Assert.That(handler.LastRequest?.RequestUri?.AbsolutePath).IsEqualTo("/bff/storage/upload-proxy");
     }
 
+    [Test]
+    public async Task UploadViaBffProxyAsync_WhenBffFails_SanitizesMultipartFileNameAndDoesNotLogRawBody()
+    {
+        var dangerousFileName = @"..\..\secret<script>.png";
+        var rawBody = "provider secret body https://upload.example.com/object?signature=abc";
+        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent(rawBody)
+        });
+        _httpClientFactory.CreateClient("BffClient").Returns(new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://bff.test")
+        });
+        var client = CreateClient();
+        var fileData = new FileUploadData
+        {
+            Content = [1, 2, 3],
+            FileName = dangerousFileName,
+            ContentType = "image/png"
+        };
+
+        var result = await client.UploadViaBffProxyAsync("session-1", fileData);
+
+        await Assert.That(result).IsNull();
+        var requestBody = handler.LastRequestBody ?? string.Empty;
+        await Assert.That(requestBody).Contains("secret-script.png");
+        await Assert.That(requestBody).DoesNotContain(dangerousFileName);
+        _logger.DidNotReceive().Log(
+            Arg.Any<LogLevel>(),
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => LogStateContains(state, dangerousFileName) || LogStateContains(state, rawBody)),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
     private ImageUploadClient CreateClient()
     {
         return new ImageUploadClient(_apiClient, _httpClientFactory, _logger, apiClientExecutor: new FailingExecutor());
@@ -186,11 +221,20 @@ public sealed class ImageUploadClientTests
     private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler
     {
         public HttpRequestMessage? LastRequest { get; private set; }
+        public string? LastRequestBody { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
-            return Task.FromResult(responseFactory(request));
+            LastRequestBody = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            return responseFactory(request);
         }
+    }
+
+    private static bool LogStateContains(object? state, string value)
+    {
+        return state.ToString()?.Contains(value, StringComparison.Ordinal) == true;
     }
 }

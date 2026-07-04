@@ -95,15 +95,9 @@
     [Parameter] public string? HintText { get; set; }
     [Parameter] public string? Icon { get; set; }
     [Parameter] public string? Alt { get; set; }
-    [Parameter] public string AcceptedFormats { get; set; } = ".jpg,.jpeg,.png,.gif,.webp";
-    [Parameter] public string[] AllowedContentTypes { get; set; } =
-    [
-        "image/jpeg",
-        "image/png",
-        "image/gif",
-        "image/webp"
-    ];
-    [Parameter] public long MaxFileSize { get; set; } = 5 * 1024 * 1024;
+    [Parameter] public string AcceptedFormats { get; set; } = ImageUploadClientPolicy.DefaultAcceptedImageFormats;
+    [Parameter] public string[] AllowedContentTypes { get; set; } = ImageUploadClientPolicy.AllowedImageContentTypes;
+    [Parameter] public long MaxFileSize { get; set; } = ImageUploadClientPolicy.DefaultMaxImageFileSizeBytes;
     [Parameter] public bool IsProcessing { get; set; }
 
     private MudFileUpload<IBrowserFile>? _fileUpload;
@@ -120,7 +114,7 @@
         : "image-upload__preview";
     private string PreviewStyle => $"height: {Height};";
     private string EffectiveHintText =>
-        HintText ?? $"Supported formats: JPG, PNG, GIF, WebP. Max {FormatBytes(MaxFileSize)}.";
+        HintText ?? $"Supported formats: JPG, PNG, GIF, WebP. Max {ImageUploadClientPolicy.FormatBytes(MaxFileSize)}.";
 
     private async Task OnFileSelected(IBrowserFile? file)
     {
@@ -132,13 +126,13 @@
 
         if (!IsAllowedContentType(file.ContentType))
         {
-            _errorMessage = "Select a JPG, PNG, GIF, or WebP image.";
+            _errorMessage = ImageUploadClientPolicy.UnsupportedImageTypeMessage;
             return;
         }
 
         if (file.Size > MaxFileSize)
         {
-            _errorMessage = $"Image must be {FormatBytes(MaxFileSize)} or smaller.";
+            _errorMessage = ImageUploadClientPolicy.FormatMaxFileSizeMessage(MaxFileSize);
             return;
         }
 
@@ -151,7 +145,7 @@
             var fileData = await ImageStorageService.ReadFileAsync(file, MaxFileSize);
             if (fileData is null)
             {
-                _errorMessage = "Failed to read the selected image. Try another file.";
+                _errorMessage = ImageUploadClientPolicy.ReadFailureMessage;
                 await RemoveImage();
                 return;
             }
@@ -165,7 +159,7 @@
             }
             else
             {
-                _errorMessage = "Failed to generate an image preview.";
+                _errorMessage = ImageUploadClientPolicy.PreviewFailureMessage;
             }
 
             if (FileDataSelected.HasDelegate)
@@ -176,8 +170,11 @@
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error processing selected image.");
-            _errorMessage = "An error occurred while processing the image.";
+            Logger.LogWarning(
+                "Error processing selected image. FailureType={FailureType}, SizeBucket={SizeBucket}",
+                ImageUploadClientPolicy.GetFailureType(ex),
+                ImageUploadClientPolicy.GetSizeBucket(file.Size));
+            _errorMessage = ImageUploadClientPolicy.ProcessingFailureMessage;
             await RemoveImage();
         }
         finally
@@ -210,12 +207,4 @@
     private bool IsAllowedContentType(string? contentType) =>
         !string.IsNullOrWhiteSpace(contentType)
         && AllowedContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase);
-
-    private static string FormatBytes(long bytes)
-    {
-        const double oneMiB = 1024d * 1024d;
-        return bytes >= oneMiB
-            ? $"{bytes / oneMiB:0.#} MB"
-            : $"{bytes} bytes";
-    }
 }

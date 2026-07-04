@@ -1,7 +1,6 @@
 // ABOUTME: Storage object record client for image upload metadata persistence.
 // ABOUTME: Keeps generated API record creation and ProblemDetails mapping out of ImageStorageService orchestration.
 
-using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -32,44 +31,51 @@ public sealed class ImageStorageRecordClient(
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = "Failed to build storage metadata for uploaded image."
+                ErrorMessage = ImageUploadClientPolicy.MetadataBuildFailureMessage
             };
         }
 
-        logger.LogInformation("Creating StorageObject record for {FileName}", fileData.FileName);
+        logger.LogInformation(
+            "Creating StorageObject record for selected image. SizeBucket={SizeBucket}, ContentTypeBucket={ContentTypeBucket}",
+            ImageUploadClientPolicy.GetSizeBucket(fileData.Size),
+            ImageUploadClientPolicy.GetContentTypeBucket(fileData.ContentType));
 
         BaseCommandResponseOfGuid? createResponse;
         try
         {
             createResponse = await apiClient.CreateStorageObjectAsync(createDto);
-            logger.LogInformation("StorageObject API response received: Success={Success}, Id={Id}, Message={Message}",
-                createResponse?.Success, createResponse?.Id, createResponse?.Message);
+            logger.LogInformation(
+                "StorageObject API response received. Success={Success}, HasId={HasId}, HasMessage={HasMessage}",
+                createResponse?.Success,
+                createResponse?.Id is not null,
+                !string.IsNullOrWhiteSpace(createResponse?.Message));
         }
         catch (ApiException<ProblemDetails> apiEx)
         {
-            var problemMessage = BuildProblemDetailsMessage(apiEx.Result);
-            logger.LogError(apiEx,
-                "StorageobjectPOSTAsync returned {StatusCode} for {FileName}. Details: {ProblemMessage}",
+            logger.LogWarning(
+                "StorageobjectPOSTAsync returned {StatusCode} for selected image. HasProblemDetails={HasProblemDetails}, FailureType={FailureType}",
                 apiEx.StatusCode,
-                fileData.FileName,
-                problemMessage);
+                apiEx.Result is not null,
+                ImageUploadClientPolicy.GetFailureType(apiEx));
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = $"API call failed ({apiEx.StatusCode}): {problemMessage}"
+                ErrorMessage = ImageUploadClientPolicy.MetadataFailureMessage
             };
         }
         catch (Exception apiEx)
         {
-            logger.LogError(apiEx, "Exception calling StorageobjectPOSTAsync for {FileName}", fileData.FileName);
+            logger.LogWarning(
+                "Exception calling StorageobjectPOSTAsync for selected image. FailureType={FailureType}",
+                ImageUploadClientPolicy.GetFailureType(apiEx));
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = $"API call failed: {apiEx.Message}"
+                ErrorMessage = ImageUploadClientPolicy.MetadataFailureMessage
             };
         }
 
-        return MapCreateResponse(createResponse, uploadResponse, fileData.FileName, logDetailedSuccess: true);
+        return MapCreateResponse(createResponse, uploadResponse, logDetailedSuccess: true);
     }
 
     public async Task<ImageUploadResult?> CreateRecordFromFileAsync(ImageUploadResponse uploadResponse, IBrowserFile file)
@@ -85,7 +91,7 @@ public sealed class ImageStorageRecordClient(
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = "Failed to build storage metadata for uploaded image."
+                ErrorMessage = ImageUploadClientPolicy.MetadataBuildFailureMessage
             };
         }
 
@@ -97,26 +103,24 @@ public sealed class ImageStorageRecordClient(
         }
         catch (ApiException<ProblemDetails> apiEx)
         {
-            var problemMessage = BuildProblemDetailsMessage(apiEx.Result);
-            logger.LogError(apiEx,
-                "StorageobjectPOSTAsync returned {StatusCode} for {FileName}. Details: {ProblemMessage}",
+            logger.LogWarning(
+                "StorageobjectPOSTAsync returned {StatusCode} for selected image. HasProblemDetails={HasProblemDetails}, FailureType={FailureType}",
                 apiEx.StatusCode,
-                file.Name,
-                problemMessage);
+                apiEx.Result is not null,
+                ImageUploadClientPolicy.GetFailureType(apiEx));
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = $"API call failed ({apiEx.StatusCode}): {problemMessage}"
+                ErrorMessage = ImageUploadClientPolicy.MetadataFailureMessage
             };
         }
 
-        return MapCreateResponse(createResponse, uploadResponse, file.Name, logDetailedSuccess: false);
+        return MapCreateResponse(createResponse, uploadResponse, logDetailedSuccess: false);
     }
 
     private ImageUploadResult? MapCreateResponse(
         BaseCommandResponseOfGuid? createResponse,
         ImageUploadResponse uploadResponse,
-        string fileName,
         bool logDetailedSuccess)
     {
         if (createResponse?.Success == true)
@@ -138,20 +142,16 @@ public sealed class ImageStorageRecordClient(
                 ObjectKey = uploadResponse.ObjectKey
             };
 
-            if (logDetailedSuccess)
-            {
-                logger.LogInformation("Returning successful ImageUploadResult for {FileName}", fileName);
-            }
-
             return result;
         }
 
-        var errorMsg = createResponse?.Message ?? "Failed to create storage object record";
-        logger.LogWarning("StorageObject creation failed: {Message}", errorMsg);
+        logger.LogWarning(
+            "StorageObject creation failed. HasMessage={HasMessage}",
+            !string.IsNullOrWhiteSpace(createResponse?.Message));
         return new ImageUploadResult
         {
             Success = false,
-            ErrorMessage = errorMsg
+            ErrorMessage = ImageUploadClientPolicy.MetadataFailureMessage
         };
     }
 
@@ -165,11 +165,12 @@ public sealed class ImageStorageRecordClient(
         var uri = !string.IsNullOrWhiteSpace(viewUrl) ? viewUrl : objectKey;
         if (string.IsNullOrWhiteSpace(uri))
         {
-            logger.LogError("Cannot build CreateStorageObjectDto: both ViewUrl and ObjectKey are empty for {FileName}", fileName);
+            logger.LogWarning("Cannot build CreateStorageObjectDto: both ViewUrl and ObjectKey are empty.");
             return null;
         }
 
-        var extension = Path.GetExtension(fileName);
+        var safeFileName = ImageUploadClientPolicy.BuildSafeFileName(fileName, contentType);
+        var extension = Path.GetExtension(safeFileName);
         if (string.IsNullOrWhiteSpace(extension))
         {
             extension = contentClassifier.GetDefaultExtension(contentType);
@@ -179,74 +180,10 @@ public sealed class ImageStorageRecordClient(
         {
             FileTypeId = contentClassifier.GetFileTypeId(contentType),
             Uri = uri,
-            FullName = fileName,
+            FullName = safeFileName,
             Extension = extension,
             Size = size,
             TenantId = Guid.Empty
         };
-    }
-
-    private static string BuildProblemDetailsMessage(ProblemDetails? problemDetails)
-    {
-        if (problemDetails == null)
-        {
-            return "Bad request";
-        }
-
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(problemDetails.Title))
-        {
-            parts.Add(problemDetails.Title!);
-        }
-
-        if (!string.IsNullOrWhiteSpace(problemDetails.Detail))
-        {
-            parts.Add(problemDetails.Detail!);
-        }
-
-        if (problemDetails.AdditionalProperties.TryGetValue("errors", out var errorsObject))
-        {
-            var validationErrors = FlattenValidationErrors(errorsObject);
-            if (!string.IsNullOrWhiteSpace(validationErrors))
-            {
-                parts.Add(validationErrors);
-            }
-        }
-
-        return parts.Count == 0 ? "Bad request" : string.Join(" | ", parts);
-    }
-
-    private static string FlattenValidationErrors(object? errorsObject)
-    {
-        if (errorsObject is not JsonElement errorsJson || errorsJson.ValueKind != JsonValueKind.Object)
-        {
-            return string.Empty;
-        }
-
-        var messages = new List<string>();
-        foreach (var entry in errorsJson.EnumerateObject())
-        {
-            if (entry.Value.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            var fieldMessages = new List<string>();
-            foreach (var item in entry.Value.EnumerateArray())
-            {
-                var message = item.GetString();
-                if (!string.IsNullOrWhiteSpace(message))
-                {
-                    fieldMessages.Add(message);
-                }
-            }
-
-            if (fieldMessages.Count > 0)
-            {
-                messages.Add($"{entry.Name}: {string.Join(", ", fieldMessages)}");
-            }
-        }
-
-        return string.Join("; ", messages);
     }
 }

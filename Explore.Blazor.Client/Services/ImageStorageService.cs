@@ -218,61 +218,73 @@ public class ImageStorageService : IImageStorageService
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = "No file data provided"
+                ErrorMessage = ImageUploadClientPolicy.NoImageDataMessage
             };
         }
 
         try
         {
-            _logger.LogInformation("Starting byte-based upload process for: {FileName} ({Size} bytes)",
-                fileData.FileName, fileData.Size);
+            _logger.LogInformation(
+                "Starting byte-based image upload. SizeBucket={SizeBucket}, ContentTypeBucket={ContentTypeBucket}",
+                ImageUploadClientPolicy.GetSizeBucket(fileData.Size),
+                ImageUploadClientPolicy.GetContentTypeBucket(fileData.ContentType));
 
             var uploadResponse = await GetUploadUrlAsync(fileData.FileName, fileData.ContentType, fileData.Size);
             if (uploadResponse == null)
             {
-                _logger.LogError("Failed to get upload session for file {FileName}", fileData.FileName);
+                _logger.LogWarning("Failed to get upload session for selected image.");
                 return new ImageUploadResult
                 {
                     Success = false,
-                    ErrorMessage = "Failed to get an upload session. Please check your authentication and try again."
+                    ErrorMessage = ImageUploadClientPolicy.UploadSessionUnavailableMessage
                 };
             }
 
-            _logger.LogDebug("Got upload session response for file {FileName}", fileData.FileName);
+            _logger.LogDebug("Got upload session response for selected image.");
 
             if (!string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
             {
                 var bffUploadResult = await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, fileData);
-                return bffUploadResult ?? new ImageUploadResult
+                if (bffUploadResult?.Success == true)
+                {
+                    return bffUploadResult;
+                }
+
+                return new ImageUploadResult
                 {
                     Success = false,
-                    ErrorMessage = "Failed to upload image to storage. Please check your connection and try again."
+                    ErrorMessage = ImageUploadClientPolicy.ToUserSafeUploadError(bffUploadResult?.ErrorMessage)
                 };
             }
 
-            _logger.LogError("Upload session response for file {FileName} did not include a BFF upload session", fileData.FileName);
+            _logger.LogWarning("Upload session response for selected image did not include a BFF upload session.");
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = "Failed to get an upload session. Please check your authentication and try again."
+                ErrorMessage = ImageUploadClientPolicy.UploadSessionUnavailableMessage
             };
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error during upload process: {StatusCode}", ex.StatusCode);
+            _logger.LogWarning(
+                "API error during selected image upload. StatusCode={StatusCode}, FailureType={FailureType}",
+                ex.StatusCode,
+                ImageUploadClientPolicy.GetFailureType(ex));
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = $"API error ({ex.StatusCode}): {ex.Message}"
+                ErrorMessage = ImageUploadClientPolicy.GenericUploadFailureMessage
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error in upload process for file {FileName}", fileData.FileName);
+            _logger.LogWarning(
+                "Unexpected error during selected image upload. FailureType={FailureType}",
+                ImageUploadClientPolicy.GetFailureType(ex));
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = $"Unexpected error: {ex.Message}"
+                ErrorMessage = ImageUploadClientPolicy.GenericUploadFailureMessage
             };
         }
     }
@@ -282,51 +294,65 @@ public class ImageStorageService : IImageStorageService
     {
         try
         {
-            _logger.LogInformation("Starting upload process for: {FileName}", file.Name);
+            var safeFileName = ImageUploadClientPolicy.BuildSafeFileName(file.Name, file.ContentType);
+            _logger.LogInformation(
+                "Starting legacy browser image upload. SizeBucket={SizeBucket}, ContentTypeBucket={ContentTypeBucket}",
+                ImageUploadClientPolicy.GetSizeBucket(file.Size),
+                ImageUploadClientPolicy.GetContentTypeBucket(file.ContentType));
 
-            var uploadResponse = await GetUploadUrlAsync(file.Name, file.ContentType, file.Size);
+            var uploadResponse = await GetUploadUrlAsync(safeFileName, file.ContentType, file.Size);
             if (uploadResponse == null)
             {
                 return new ImageUploadResult
                 {
                     Success = false,
-                    ErrorMessage = "Failed to get an upload session"
+                    ErrorMessage = ImageUploadClientPolicy.UploadSessionUnavailableMessage
                 };
             }
 
             if (!string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
             {
                 var bffUploadResult = await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, file);
-                return bffUploadResult ?? new ImageUploadResult
+                if (bffUploadResult?.Success == true)
+                {
+                    return bffUploadResult;
+                }
+
+                return new ImageUploadResult
                 {
                     Success = false,
-                    ErrorMessage = "Failed to upload image to storage"
+                    ErrorMessage = ImageUploadClientPolicy.ToUserSafeUploadError(bffUploadResult?.ErrorMessage)
                 };
             }
 
-            _logger.LogError("Upload session response for file {FileName} did not include a BFF upload session", file.Name);
+            _logger.LogWarning("Upload session response for selected image did not include a BFF upload session.");
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = "Failed to get an upload session"
+                ErrorMessage = ImageUploadClientPolicy.UploadSessionUnavailableMessage
             };
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error: {StatusCode}", ex.StatusCode);
+            _logger.LogWarning(
+                "API error during legacy browser image upload. StatusCode={StatusCode}, FailureType={FailureType}",
+                ex.StatusCode,
+                ImageUploadClientPolicy.GetFailureType(ex));
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = $"API error: {ex.Message}"
+                ErrorMessage = ImageUploadClientPolicy.GenericUploadFailureMessage
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in upload process");
+            _logger.LogWarning(
+                "Unexpected error during legacy browser image upload. FailureType={FailureType}",
+                ImageUploadClientPolicy.GetFailureType(ex));
             return new ImageUploadResult
             {
                 Success = false,
-                ErrorMessage = ex.Message
+                ErrorMessage = ImageUploadClientPolicy.GenericUploadFailureMessage
             };
         }
     }
