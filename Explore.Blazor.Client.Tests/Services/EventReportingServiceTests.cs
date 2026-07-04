@@ -110,7 +110,7 @@ public sealed class EventReportingServiceTests
             ReasonCode = reasonCode,
             ReasonName = reasonName,
             SubmittedAtUtc = DateTimeOffset.UtcNow,
-            _links = new Dictionary<string, Anonymous46>
+            _links = new Dictionary<string, Anonymous53>
             {
                 ["self"] = new() { Href = "/api/event-reports/my/report", Method = "GET" }
             }

@@ -124,7 +124,7 @@ public sealed class ModerationReportQueuePageTests : IDisposable
             DecisionCount = 0,
             SignalCount = 1,
             ExternalLinkCount = 0,
-            _links = new Dictionary<string, Anonymous45>
+            _links = new Dictionary<string, Anonymous52>
             {
                 ["self"] = new() { Href = "/api/events/event/moderation/reports/report", Method = "GET" }
             }
@@ -195,9 +195,9 @@ public sealed class ModerationReportQueuePageTests : IDisposable
             _links = linkRels
                 .Prepend("self")
                 .Distinct(StringComparer.Ordinal)
-                .ToDictionary(
+                .ToDictionary<string, string, Anonymous51>(
                     rel => rel,
-                    _ => new Anonymous44 { Href = "/api/events/event/moderation/reports/report", Method = "GET" })
+                    _ => new Anonymous51 { Href = "/api/events/event/moderation/reports/report", Method = "GET" })
         };
 
     private static T GetPrivateField<T>(object instance, string fieldName)

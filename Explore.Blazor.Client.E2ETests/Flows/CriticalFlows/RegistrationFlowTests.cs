@@ -5,6 +5,7 @@ using System.Text.Json;
 using Explore.Blazor.Client.E2ETests.Fixtures;
 using Explore.Blazor.Client.E2ETests.Seeds;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
@@ -250,6 +251,96 @@ public partial class RegistrationFlowTests(
         var text = await appHost.GetMailpitMessageTextAsync(message!.Id);
         await Assert.That(text).Contains("has been received");
         await Assert.That(text).Contains(scenario.EventTitle);
+
+        var html = await appHost.GetMailpitMessageHtmlAsync(message.Id);
+        var headers = await appHost.GetMailpitMessageHeadersAsync(message.Id);
+        var unsubscribeUrl = GetSingleHeaderValue(headers, "List-Unsubscribe").Trim('<', '>');
+
+        await Assert.That(GetSingleHeaderValue(headers, "X-Email-Dispatch-ID")).IsEqualTo(dispatched.Id.ToString());
+        await Assert.That(GetSingleHeaderValue(headers, "X-Correlation-ID")).IsNotEmpty();
+        AssertUnsubscribeUrlShape(unsubscribeUrl);
+        await Assert.That(GetSingleHeaderValue(headers, "List-Unsubscribe-Post"))
+            .IsEqualTo("List-Unsubscribe=One-Click");
+        await Assert.That(text).Contains(unsubscribeUrl);
+        await Assert.That(html).Contains(unsubscribeUrl);
+
+        await AssertUnsubscribeTokenDisablesPreferenceAsync(unsubscribeUrl, dispatched, scenario.TenantSlug);
+    }
+
+    private async Task AssertUnsubscribeTokenDisablesPreferenceAsync(
+        string unsubscribeUrl,
+        EmailDispatchOutbox dispatched,
+        string tenantSlug)
+    {
+        var page = await playwright.CreatePageAsync(nameof(AssertUnsubscribeTokenDisablesPreferenceAsync));
+        try
+        {
+            var response = await page.Context.APIRequest.PostAsync(
+                BuildReachableUnsubscribeUrl(unsubscribeUrl),
+                new APIRequestContextOptions
+                {
+                    Headers = new Dictionary<string, string>
+                    {
+                        [TenantSlugHeaderName] = tenantSlug
+                    },
+                    Timeout = ApiRequestTimeoutMilliseconds
+                });
+
+            if (response.Status != (int)HttpStatusCode.OK)
+            {
+                var body = await response.TextAsync();
+                throw new InvalidOperationException($"Email unsubscribe failed with status {response.Status}: {body}");
+            }
+        }
+        finally
+        {
+            await playwright.ClosePageAsync(page, nameof(AssertUnsubscribeTokenDisablesPreferenceAsync));
+        }
+
+        await using var context = appHost.CreateDbContext();
+        var userId = dispatched.UserId
+            ?? throw new InvalidOperationException("Registration confirmation dispatch did not capture a user id.");
+
+        var preference = await context.UserNotificationPreferences
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == dispatched.TenantId
+                && x.UserId == userId
+                && x.Category == NotificationPreferenceCategories.RegistrationConfirmations);
+
+        await Assert.That(preference).IsNotNull();
+        await Assert.That(preference!.IsEnabled).IsFalse();
+    }
+
+    private string BuildReachableUnsubscribeUrl(string unsubscribeUrl)
+    {
+        var uri = new Uri(unsubscribeUrl, UriKind.Absolute);
+        return $"{appHost.ApiBaseUrl}{uri.AbsolutePath}{uri.Query}";
+    }
+
+    private static string GetSingleHeaderValue(
+        IReadOnlyDictionary<string, string[]> headers,
+        string name)
+    {
+        var header = headers.FirstOrDefault(x => string.Equals(x.Key, name, StringComparison.OrdinalIgnoreCase));
+        if (header.Value is not { Length: > 0 })
+        {
+            throw new InvalidOperationException($"Mailpit message did not contain expected '{name}' header.");
+        }
+
+        return header.Value[0];
+    }
+
+    private static void AssertUnsubscribeUrlShape(string unsubscribeUrl)
+    {
+        if (!Uri.TryCreate(unsubscribeUrl, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            || (!string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase))
+            || !string.Equals(uri.AbsolutePath, "/api/email/unsubscribe", StringComparison.Ordinal)
+            || !uri.Query.StartsWith("?token=", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"Unexpected unsubscribe URL shape: {unsubscribeUrl}");
+        }
     }
 
 }

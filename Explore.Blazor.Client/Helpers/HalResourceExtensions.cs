@@ -59,6 +59,14 @@ public static class HalResourceExtensions
         return DeserializeItems<EventSessionListDto>(collection._embedded.Items);
     }
 
+    public static ICollection<EventSessionSpeakerListDto> GetItems(this HalCollectionResourceOfEventSessionSpeakerListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<EventSessionSpeakerListDto>();
+
+        return DeserializeItems<EventSessionSpeakerListDto>(collection._embedded.Items);
+    }
+
     /// <summary>
     /// Converts HalResourceOfEventSessionDto to EventSessionDto using JSON serialization.
     /// </summary>
@@ -690,6 +698,12 @@ public static class HalResourceExtensions
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
     public static bool HasHalLink(this EventSessionListDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasLink(this HalCollectionResourceOfEventSessionSpeakerListDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    public static bool HasHalLink(this EventSessionSpeakerListDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
     public static bool HasHalLink(this EventSessionGroupListModel dto, string linkRel)

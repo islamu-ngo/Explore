@@ -278,7 +278,7 @@ public sealed class EventReportModerationServiceTests
             DecisionCount = 1,
             SignalCount = 2,
             ExternalLinkCount = 1,
-            _links = new Dictionary<string, Anonymous45>
+            _links = new Dictionary<string, Anonymous52>
             {
                 ["self"] = new() { Href = "/api/events/event/moderation/reports/report", Method = "GET" }
             }

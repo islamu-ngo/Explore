@@ -155,9 +155,9 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
             Decisions = [],
             ExternalLinks = [],
             Targets = [],
-            _links = linkRels.ToDictionary(
+            _links = linkRels.ToDictionary<string, string, Anonymous51>(
                 rel => rel,
-                _ => new Anonymous44 { Href = "/api/events/event/moderation/reports/report", Method = "POST" })
+                _ => new Anonymous51 { Href = "/api/events/event/moderation/reports/report", Method = "POST" })
         };
     }
 }
