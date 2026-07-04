@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Resource attributes for tenant_user_role_grant resources. Populated by ResourceDescriptors.TenantUserRoleGrant.",
+  "description": "Resource attributes for tenant_user_role_grant resources. Read queries require tenantId; item links include tenantUserId and userId when available.",
   "type": "object",
   "properties": {
     "tenantId": {
@@ -16,5 +16,5 @@
       "description": "Global user identifier for the tenant-local user."
     }
   },
-  "required": ["tenantId", "tenantUserId", "userId"]
+  "required": ["tenantId"]
 }

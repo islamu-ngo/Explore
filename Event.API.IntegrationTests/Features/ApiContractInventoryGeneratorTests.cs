@@ -1,10 +1,9 @@
-// ABOUTME: Generates the canonical API contract inventory markdown from the live OpenAPI document.
-// ABOUTME: Test-based generator reuses ContractApiFixture and writes the committed docs artifact.
+// ABOUTME: Generates the canonical API contract inventory markdown from schemas/openapi.json.
+// ABOUTME: Test-based generator reads schemas/openapi.json and writes the committed docs artifact.
 
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Event.Api.IntegrationTests.Fixtures;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -12,22 +11,19 @@ namespace Event.Api.IntegrationTests.Features;
 /// Emits the source-of-truth API contract inventory.
 ///
 /// This is NOT an assertion test. It is a governed code-generator that runs under
-/// the integration-test harness to guarantee (a) the OpenAPI document is reachable
-/// and well-formed, and (b) downstream governance artifacts stay in sync with the
-/// live contract. CI drift detection can be layered on top via
+/// the integration-test harness to guarantee (a) the OpenAPI schema exists and is
+/// well-formed, and (b) downstream governance artifacts stay in sync with the
+/// checked-in build-time contract. CI drift detection can be layered on top via
 /// <c>git diff --exit-code docs/API_CONTRACT_INVENTORY.md</c>.
 ///
 /// Output: <c>docs/API_CONTRACT_INVENTORY.md</c>.
 ///
-/// Columns: Path | HTTP Method | OperationId | Summary | Tags | RouteName | Classification | Has Auth?
-/// RouteName is filled in Phase 1.4; Classification is populated from the `x-endpoint-class` OpenAPI
-/// extension injected by <c>EndpointClassificationTransformer</c> (Phase 1.5).
+/// Columns: Path | HTTP Method | OperationId | Summary | Tags | RouteName | Classification | Has Auth? | TenantMode | RateLimitPolicy | CachePolicy
+/// RouteName mirrors operationId because operationId is propagated from <c>RouteNames.Xxx</c>.
+/// Classification is populated from the <c>x-endpoint-class</c> OpenAPI extension.
 /// </summary>
-[ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public sealed class ApiContractInventoryGeneratorTests
 {
-    private readonly ContractApiFixture _fixture;
-
     // Fixed verb order for stable output (OpenAPI 3.0 allowed verbs).
     private static readonly string[] VerbOrder =
     [
@@ -40,19 +36,19 @@ public sealed class ApiContractInventoryGeneratorTests
     private static readonly Regex DigitSuffixBeforeAsync = new(@"\d+Async$", RegexOptions.Compiled);
     private static readonly Regex EndsWithDigit = new(@"\d$", RegexOptions.Compiled);
 
-    public ApiContractInventoryGeneratorTests(ContractApiFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
     [Test]
     public async Task ApiContractInventory_Generate_WritesMarkdownToDocs()
     {
-        using var response = await _fixture.Client.GetAsync("/openapi/event-api.json");
-        await Assert.That(response.IsSuccessStatusCode).IsTrue()
-            .Because("The OpenAPI document must be reachable before the inventory can be generated.");
+        var repoRoot = FindRepoRoot()
+            ?? throw new InvalidOperationException(
+                "Could not locate repository root from AppContext.BaseDirectory. " +
+                "Expected to find a parent directory containing AGENTS.md and Explore.API/.");
 
-        await using var stream = await response.Content.ReadAsStreamAsync();
+        var schemaPath = Path.Combine(repoRoot, "schemas", "openapi.json");
+        await Assert.That(File.Exists(schemaPath)).IsTrue()
+            .Because("schemas/openapi.json is the committed build-time contract used by generated clients.");
+
+        await using var stream = File.OpenRead(schemaPath);
         using var doc = await JsonDocument.ParseAsync(stream);
 
         var operations = EnumerateOperations(doc).ToList();
@@ -60,11 +56,6 @@ public sealed class ApiContractInventoryGeneratorTests
             .Because("A functioning API must expose at least one operation in its OpenAPI document.");
 
         var markdown = RenderMarkdown(operations);
-
-        var repoRoot = FindRepoRoot()
-            ?? throw new InvalidOperationException(
-                "Could not locate repository root from AppContext.BaseDirectory. " +
-                "Expected to find a parent directory containing AGENTS.md and Explore.API/.");
 
         var outputPath = Path.Combine(
             repoRoot,
@@ -117,6 +108,15 @@ public sealed class ApiContractInventoryGeneratorTests
                 var classification = op.TryGetProperty("x-endpoint-class", out var cls) && cls.ValueKind == JsonValueKind.String
                     ? cls.GetString()
                     : null;
+                var tenantMode = op.TryGetProperty("x-tenant-mode", out var tenant) && tenant.ValueKind == JsonValueKind.String
+                    ? tenant.GetString()
+                    : null;
+                var rateLimitPolicy = op.TryGetProperty("x-rate-limit-policy", out var rateLimit) && rateLimit.ValueKind == JsonValueKind.String
+                    ? rateLimit.GetString()
+                    : null;
+                var cachePolicy = op.TryGetProperty("x-output-cache-policy", out var cache) && cache.ValueKind == JsonValueKind.String
+                    ? cache.GetString()
+                    : null;
 
                 yield return new OperationRow(
                     Path: path,
@@ -125,7 +125,10 @@ public sealed class ApiContractInventoryGeneratorTests
                     Summary: summary,
                     Tags: tags,
                     Classification: classification,
-                    HasAuth: hasAuth);
+                    HasAuth: hasAuth,
+                    TenantMode: tenantMode,
+                    RateLimitPolicy: rateLimitPolicy,
+                    CachePolicy: cachePolicy);
             }
         }
     }
@@ -152,17 +155,35 @@ public sealed class ApiContractInventoryGeneratorTests
             .OrderBy(g => g.Key, StringComparer.Ordinal)
             .Select(g => $"`{g.Key}`={g.Count()}")
             .ToList();
+        var rateLimitPolicyCounts = sorted
+            .Where(o => !string.IsNullOrWhiteSpace(o.RateLimitPolicy))
+            .GroupBy(o => o.RateLimitPolicy!, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => $"`{g.Key}`={g.Count()}")
+            .ToList();
+        var cachePolicyCounts = sorted
+            .Where(o => !string.IsNullOrWhiteSpace(o.CachePolicy))
+            .GroupBy(o => o.CachePolicy!, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => $"`{g.Key}`={g.Count()}")
+            .ToList();
+        var tenantModeCounts = sorted
+            .Where(o => !string.IsNullOrWhiteSpace(o.TenantMode))
+            .GroupBy(o => o.TenantMode!, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => $"`{g.Key}`={g.Count()}")
+            .ToList();
 
         var sb = new StringBuilder();
 
         sb.AppendLine("<!-- ABOUTME: Canonical inventory of every OpenAPI operation exposed by Explore.API. -->");
         sb.AppendLine("<!-- ABOUTME: Regenerate by running ApiContractInventoryGeneratorTests in Event.API.IntegrationTests. -->");
         sb.AppendLine("<!-- AUTO-GENERATED by Event.API.IntegrationTests/Features/ApiContractInventoryGeneratorTests.cs. DO NOT EDIT BY HAND. -->");
-        sb.AppendLine("<!-- Source: /openapi/event-api.json -->");
+        sb.AppendLine("<!-- Source: schemas/openapi.json -->");
         sb.AppendLine();
         sb.AppendLine("# API Contract Inventory");
         sb.AppendLine();
-        sb.AppendLine($"**Source:** `/openapi/event-api.json`");
+        sb.AppendLine($"**Source:** `schemas/openapi.json`");
         sb.AppendLine($"**Governed by:** [GOVERNANCE.md#api-contract-rules](GOVERNANCE.md#api-contract-rules)");
         sb.AppendLine("**Regenerate:** `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter \"/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs\"`");
         sb.AppendLine();
@@ -178,11 +199,23 @@ public sealed class ApiContractInventoryGeneratorTests
         {
             sb.AppendLine($"- Classification breakdown: {string.Join(", ", classificationCounts)}");
         }
+        if (tenantModeCounts.Count > 0)
+        {
+            sb.AppendLine($"- Tenant-mode extension breakdown: {string.Join(", ", tenantModeCounts)}");
+        }
+        if (rateLimitPolicyCounts.Count > 0)
+        {
+            sb.AppendLine($"- Rate-limit policy extension breakdown: {string.Join(", ", rateLimitPolicyCounts)}");
+        }
+        if (cachePolicyCounts.Count > 0)
+        {
+            sb.AppendLine($"- Output-cache policy extension breakdown: {string.Join(", ", cachePolicyCounts)}");
+        }
         sb.AppendLine();
         sb.AppendLine("## Operations");
         sb.AppendLine();
-        sb.AppendLine("| # | Path | Method | OperationId | Summary | Tags | RouteName | Classification | Has Auth? |");
-        sb.AppendLine("|---:|---|---|---|---|---|---|---|---|");
+        sb.AppendLine("| # | Path | Method | OperationId | Summary | Tags | RouteName | Classification | Has Auth? | TenantMode | RateLimitPolicy | CachePolicy |");
+        sb.AppendLine("|---:|---|---|---|---|---|---|---|---|---|---|---|");
 
         for (var i = 0; i < sorted.Count; i++)
         {
@@ -193,9 +226,12 @@ public sealed class ApiContractInventoryGeneratorTests
             sb.Append("| ").Append(row.OperationId is null ? "_(missing)_" : $"`{Escape(row.OperationId)}`").Append(' ');
             sb.Append("| ").Append(string.IsNullOrWhiteSpace(row.Summary) ? "_(none)_" : Escape(row.Summary!)).Append(' ');
             sb.Append("| ").Append(string.IsNullOrWhiteSpace(row.Tags) ? "_(none)_" : Escape(row.Tags)).Append(' ');
-            sb.Append("| _(Phase 1.4)_ ");
+            sb.Append("| ").Append(row.OperationId is null ? "_(missing)_" : $"`{Escape(row.OperationId)}`").Append(' ');
             sb.Append("| ").Append(string.IsNullOrWhiteSpace(row.Classification) ? "_(missing)_" : $"`{Escape(row.Classification!)}`").Append(' ');
             sb.Append("| ").Append(row.HasAuth ? "yes" : "no").Append(' ');
+            sb.Append("| ").Append(string.IsNullOrWhiteSpace(row.TenantMode) ? "_(none)_" : $"`{Escape(row.TenantMode!)}`").Append(' ');
+            sb.Append("| ").Append(string.IsNullOrWhiteSpace(row.RateLimitPolicy) ? "_(none)_" : $"`{Escape(row.RateLimitPolicy!)}`").Append(' ');
+            sb.Append("| ").Append(string.IsNullOrWhiteSpace(row.CachePolicy) ? "_(none)_" : $"`{Escape(row.CachePolicy!)}`").Append(' ');
             sb.AppendLine("|");
         }
 
@@ -207,9 +243,12 @@ public sealed class ApiContractInventoryGeneratorTests
         sb.AppendLine("- **OperationId** — NSwag codegen hook. Must be present, unique, and non-placeholder (see governance rules).");
         sb.AppendLine("- **Summary** — from `[EndpointSummary]` on the action, if any.");
         sb.AppendLine("- **Tags** — OpenAPI tags; typically the controller short name.");
-        sb.AppendLine("- **RouteName** — filled in Phase 1.4 via cross-reference with `Explore.API/Hateoas/RouteNames`.");
+        sb.AppendLine("- **RouteName** — stable endpoint name propagated to OpenAPI `operationId` from `[Http...(Name = RouteNames.Xxx)]`.");
         sb.AppendLine("- **Classification** — `Public` / `Authenticated` / `Admin`, sourced from the `x-endpoint-class` OpenAPI extension (injected by `EndpointClassificationTransformer` from `[EndpointClassification(...)]` attributes).");
         sb.AppendLine("- **Has Auth?** — `yes` if the OpenAPI operation has at least one non-empty `security` requirement.");
+        sb.AppendLine("- **TenantMode** — sourced from the `x-tenant-mode` OpenAPI extension when the endpoint declares explicit tenant posture.");
+        sb.AppendLine("- **RateLimitPolicy** — sourced from the `x-rate-limit-policy` OpenAPI extension when the endpoint declares a named rate-limit policy.");
+        sb.AppendLine("- **CachePolicy** — sourced from the `x-output-cache-policy` OpenAPI extension when the endpoint declares a named output-cache policy.");
 
         return sb.ToString();
     }
@@ -245,5 +284,8 @@ public sealed class ApiContractInventoryGeneratorTests
         string? Summary,
         string Tags,
         string? Classification,
-        bool HasAuth);
+        bool HasAuth,
+        string? TenantMode,
+        string? RateLimitPolicy,
+        string? CachePolicy);
 }

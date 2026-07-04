@@ -101,6 +101,61 @@ Table "analytics_providers" {
   Note: 'Lookup: supported analytics engines. Values: PostHog(1), Plausible(2), GoogleAnalytics(3). Seeded.'
 }
 
+Table "support_access_audit_event_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(50) [not null]
+  "full_name" varchar(100) [not null]
+  "description" varchar(500)
+  "is_lifecycle_event" boolean [not null]
+
+  indexes {
+    master_code [unique, name: 'ix_support_access_audit_event_types_master_code']
+  }
+
+  Note: 'Lookup: support-access audit event categories. Values: Started(1), Stopped(2), Expired(3), Revoked(4), Denied(5), RequestObserved(6), CommandCommitted(7). Seeded.'
+}
+
+Table "support_access_end_reasons" {
+  "id" int [pk, not null]
+  "master_code" varchar(50) [not null]
+  "full_name" varchar(100) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_support_access_end_reasons_master_code']
+  }
+
+  Note: 'Lookup: support-access terminal reasons. Values: UserStopped(1), Expired(2), ForceStopped(3), RevokedByPolicy(4), Replaced(5). Seeded.'
+}
+
+Table "support_access_modes" {
+  "id" int [pk, not null]
+  "master_code" varchar(50) [not null]
+  "full_name" varchar(100) [not null]
+  "description" varchar(500)
+  "allows_writes" boolean [not null]
+
+  indexes {
+    master_code [unique, name: 'ix_support_access_modes_master_code']
+  }
+
+  Note: 'Lookup: support-access permission modes. Values: ReadOnly(1), Write(2). Write mode is separately governed by instance settings.'
+}
+
+Table "support_access_session_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(50) [not null]
+  "full_name" varchar(100) [not null]
+  "description" varchar(500)
+  "is_terminal" boolean [not null]
+
+  indexes {
+    master_code [unique, name: 'ix_support_access_session_statuses_master_code']
+  }
+
+  Note: 'Lookup: support-access lifecycle states. Values: PendingApproval(1), Active(2), Stopped(3), Expired(4), Revoked(5). Seeded.'
+}
+
 Table "approval_statuses" {
   "id" int [pk, not null]
   "master_code" varchar(100) [not null]
@@ -958,6 +1013,77 @@ Table "instance_policy_sets" {
   "updated_at" timestamptz
   "updated_by" uuid
   "xmin" xid [not null, note: 'rowversion / optimistic concurrency']
+}
+
+// ============================================================
+// Support Access
+// ============================================================
+
+Table "support_access_sessions" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "actor_user_id" uuid [not null]
+  "target_tenant_id" uuid [not null]
+  "target_tenant_user_id" uuid
+  "status_id" int [not null]
+  "mode_id" int [not null]
+  "reason_code" varchar(100) [not null]
+  "reason_text" varchar(1000) [not null]
+  "ticket_reference" varchar(200) [not null]
+  "approved_by_user_id" uuid
+  "started_at_utc" timestamptz [not null]
+  "expires_at_utc" timestamptz [not null]
+  "ended_at_utc" timestamptz
+  "end_reason_id" int
+  "end_reason_text" varchar(200)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (actor_user_id, status_id, expires_at_utc) [name: 'ix_support_access_sessions_actor_status_expires', note: 'expires_at_utc descending']
+    approved_by_user_id [name: 'ix_support_access_sessions_approved_by_user_id']
+    end_reason_id [name: 'ix_support_access_sessions_end_reason_id']
+    (id, actor_user_id, status_id) [name: 'ix_support_access_sessions_id_actor_status']
+    mode_id [name: 'ix_support_access_sessions_mode_id']
+    status_id [name: 'ix_support_access_sessions_status_id']
+    (target_tenant_id, started_at_utc) [name: 'ix_support_access_sessions_target_tenant_started', note: 'started_at_utc descending']
+    target_tenant_user_id [name: 'ix_support_access_sessions_target_tenant_user_id']
+    actor_user_id [unique, name: 'ux_support_access_sessions_active_actor', note: 'filter: status_id = 2 AND ended_at_utc IS NULL']
+  }
+
+  Note: 'Time-boxed, actor-bound, tenant-bound support-access sessions. Check constraints: expires_at_utc > started_at_utc; ended_at_utc is null or after started_at_utc; end_reason_id presence matches ended_at_utc presence.'
+}
+
+Table "support_access_audit_events" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "support_access_session_id" uuid [not null]
+  "occurred_at_utc" timestamptz [not null]
+  "event_type_id" int [not null]
+  "actor_user_id" uuid [not null]
+  "target_tenant_id" uuid [not null]
+  "target_tenant_user_id" uuid
+  "route_name" varchar(200)
+  "request_name" varchar(200)
+  "resource_kind" varchar(200)
+  "resource_id" varchar(200)
+  "action" varchar(100)
+  "outcome" varchar(100) [not null]
+  "http_status_code" int
+  "correlation_id" varchar(100)
+  "trace_id" varchar(100)
+  "sanitized_metadata_json" jsonb
+
+  indexes {
+    (actor_user_id, occurred_at_utc) [name: 'ix_support_access_audit_events_actor_occurred', note: 'occurred_at_utc descending']
+    event_type_id [name: 'ix_support_access_audit_events_event_type_id']
+    (support_access_session_id, occurred_at_utc) [name: 'ix_support_access_audit_events_session_occurred', note: 'occurred_at_utc descending']
+    target_tenant_user_id [name: 'ix_support_access_audit_events_target_tenant_user_id']
+    (target_tenant_id, occurred_at_utc) [name: 'ix_support_access_audit_events_tenant_occurred', note: 'occurred_at_utc descending']
+  }
+
+  Note: 'Append-only support-access audit evidence. Stores bounded request/action metadata only; no raw payloads, cookies, tokens, or provider responses.'
 }
 
 
@@ -3798,6 +3924,20 @@ Ref: "user_appearance_profiles"."user_id" > "users"."id" [delete: restrict]
 Ref: "user_appearance_preferences"."user_id" > "users"."id" [delete: restrict]
 Ref: "user_appearance_preferences"."active_profile_id" > "user_appearance_profiles"."id" [delete: restrict]
 Ref: "external_bindings"."scope_tenant_id" > "tenants"."id" [delete: restrict]
+
+// Support Access
+Ref: "support_access_sessions"."actor_user_id" > "users"."id" [delete: restrict]
+Ref: "support_access_sessions"."approved_by_user_id" > "users"."id" [delete: restrict]
+Ref: "support_access_sessions"."target_tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "support_access_sessions"."target_tenant_user_id" > "tenant_users"."id" [delete: restrict]
+Ref: "support_access_sessions"."status_id" > "support_access_session_statuses"."id" [delete: restrict]
+Ref: "support_access_sessions"."mode_id" > "support_access_modes"."id" [delete: restrict]
+Ref: "support_access_sessions"."end_reason_id" > "support_access_end_reasons"."id" [delete: restrict]
+Ref: "support_access_audit_events"."support_access_session_id" > "support_access_sessions"."id" [delete: restrict]
+Ref: "support_access_audit_events"."event_type_id" > "support_access_audit_event_types"."id" [delete: restrict]
+Ref: "support_access_audit_events"."actor_user_id" > "users"."id" [delete: restrict]
+Ref: "support_access_audit_events"."target_tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "support_access_audit_events"."target_tenant_user_id" > "tenant_users"."id" [delete: restrict]
 
 // Actors & Identity
 Ref: "actors"."actor_type_id" > "actor_types"."id" [delete: restrict]
