@@ -47,6 +47,10 @@ public class EmailDispatchOutbox : ITenantEntity, IAuditableEntity, ISoftDeletab
     public DateTime? LastFailureAt { get; set; }
     public string? ProviderMessageId { get; set; }
     public string? CorrelationId { get; set; }
+    public DateTime? RabbitMqLastPublishedAt { get; set; }
+    public DateTime? RabbitMqLastPublishAttemptAt { get; set; }
+    public int RabbitMqPublishAttemptCount { get; set; }
+    public string? RabbitMqLastPublishFailureCategory { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
@@ -77,5 +81,6 @@ public enum EmailDispatchStatus
     RetryScheduled = 4,
     DeadLettered = 5,
     Parked = 6,
-    Unknown = 7
+    Unknown = 7,
+    Skipped = 8
 }

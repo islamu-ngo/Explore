@@ -37,5 +37,6 @@ public enum EmailDispatchReceiptStatus
     Processing = 2,
     Completed = 3,
     Failed = 4,
-    Unknown = 5
+    Unknown = 5,
+    Skipped = 6
 }

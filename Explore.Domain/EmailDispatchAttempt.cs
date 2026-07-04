@@ -35,5 +35,6 @@ public enum EmailDispatchAttemptOutcome
 {
     Succeeded = 1,
     Failed = 2,
-    Unknown = 3
+    Unknown = 3,
+    Skipped = 4
 }
