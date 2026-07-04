@@ -13,6 +13,8 @@
 @using Explore.Blazor.Client.Components.Forms
 @using Microsoft.AspNetCore.Components.Forms
 
+@inject ILogger<CreateSession> Logger
+
 <PageTitle>Add program item</PageTitle>
 
 <main class="create-session" aria-labelledby="create-session-title">
@@ -307,7 +309,8 @@
         {
             if (!_errorStore.HandleApiError(ex))
             {
-                _submitState.Fail($"Program item could not be saved: {ex.Message}");
+                Logger.LogError(ex, "Exception during program item creation");
+                _submitState.Fail("Program item could not be saved. Please try again.");
             }
             else
             {
@@ -316,7 +319,8 @@
         }
         catch (Exception ex)
         {
-            _submitState.Fail($"Program item could not be saved: {ex.Message}");
+            Logger.LogError(ex, "Exception during program item creation");
+            _submitState.Fail("Program item could not be saved. Please try again.");
         }
         finally
         {

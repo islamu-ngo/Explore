@@ -8,6 +8,8 @@ using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -291,6 +293,61 @@ public sealed class EditSessionTests : IDisposable
     }
 
     [Test]
+    public async Task SaveSessionAsync_WithValidationProblemDetails_MapsServerErrorsIntoEditContext()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
+        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>())
+            .ThrowsAsync(new ApiException<ValidationProblemDetails>(
+                "Bad Request",
+                400,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                new ValidationProblemDetails
+                {
+                    Errors = new Dictionary<string, ICollection<string>>
+                    {
+                        ["Title.Value"] = new[] { "Use a clearer program item title." }
+                    }
+                },
+                null));
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await Assert.That(GetSubmitError(cut.Instance)).IsEqualTo("Please fix the validation errors below.");
+        await Assert.That(GetValidationMessages(cut.Instance)).Contains("Use a clearer program item title.");
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WithUnexpectedException_DoesNotEchoRawExceptionMessage()
+    {
+        const string rawProviderMessage = "provider rejected <script>alert(1)</script> secret";
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
+        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>())
+            .ThrowsAsync(new InvalidOperationException(rawProviderMessage));
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        var submitError = GetSubmitError(cut.Instance);
+        await Assert.That(submitError).IsEqualTo("Program item could not be saved. Please try again.");
+        await Assert.That(submitError).DoesNotContain(rawProviderMessage);
+        await Assert.That(submitError).DoesNotContain("<script>");
+    }
+
+    [Test]
     public async Task OnLocationChangedAsync_WhenLocationChanges_ClearsStaleRoom()
     {
         var eventId = Guid.NewGuid();
@@ -447,6 +504,12 @@ public sealed class EditSessionTests : IDisposable
     {
         var submitState = GetPrivateField<Explore.Blazor.Client.Components.Forms.FormSubmitState>(instance, "_submitState");
         return submitState.ErrorMessage;
+    }
+
+    private static IReadOnlyList<string> GetValidationMessages(object instance)
+    {
+        var editContext = GetPrivateField<EditContext>(instance, "_editContext");
+        return editContext.GetValidationMessages().ToList();
     }
 
     private static void SetPrivateField<T>(object instance, string fieldName, T value)

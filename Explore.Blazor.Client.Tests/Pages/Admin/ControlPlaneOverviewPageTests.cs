@@ -86,7 +86,7 @@ public sealed class ControlPlaneOverviewPageTests : IDisposable
     public async Task TenantsPage_WithAdminClaimsButNoHalLinks_HidesActions()
     {
         _ctx.SetAuthenticatedUserWithClaims(
-            AuthenticationTestConstants.AdminUserId,
+            Guid.NewGuid(),
             "Instance Admin",
             new Claim("explore:admin:instance", "true"));
 

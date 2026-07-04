@@ -7,6 +7,7 @@ using Explore.API.Attributes;
 using Explore.API.Controllers;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.API.Hateoas.Assemblers;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
@@ -16,6 +17,7 @@ using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Features.Webhooks.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
+using Explore.Infrastructure.Configuration;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -25,6 +27,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -158,6 +161,44 @@ public sealed class WebhooksControllerTests
         await Assert.That(detailAuthorization!.Action).IsEqualTo(AuthorizationActions.Webhooks.View);
         await Assert.That(createAuthorization).IsNotNull();
         await Assert.That(createAuthorization!.Action).IsEqualTo(AuthorizationActions.Webhooks.Create);
+    }
+
+    [Test]
+    [Arguments("Svix", "Svix")]
+    [Arguments("Composite", "Composite")]
+    public async Task ConsumerDetailLinks_WhenSvixPortalEnabled_ExposeOpenPortalAuthorizationMetadata(
+        string consumerProviderMode,
+        string configuredProviderMode)
+    {
+        var consumer = CreateConsumerDto(consumerProviderMode);
+
+        var links = CreateConsumerDetailLinkPolicy(configuredProviderMode, appPortalEnabled: true)
+            .GetLinks(consumer, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        var portal = links.Single(link => link.Rel == LinkRelations.OpenProviderPortal);
+        await Assert.That(portal.RouteName).IsEqualTo(RouteNames.OpenSvixAppPortal);
+        await Assert.That(portal.Method).IsEqualTo("POST");
+        await Assert.That(portal.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.OpenProviderPortal);
+    }
+
+    [Test]
+    [Arguments("Svix", "Svix", false)]
+    [Arguments("Svix", "Local", true)]
+    [Arguments("Local", "Svix", true)]
+    public async Task ConsumerDetailLinks_WhenSvixPortalUnavailable_HideOpenPortalAffordance(
+        string consumerProviderMode,
+        string configuredProviderMode,
+        bool appPortalEnabled)
+    {
+        var consumer = CreateConsumerDto(consumerProviderMode);
+
+        var links = CreateConsumerDetailLinkPolicy(configuredProviderMode, appPortalEnabled)
+            .GetLinks(consumer, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.OpenProviderPortal)).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.Self)).IsTrue();
     }
 
     [Test]
@@ -798,6 +839,49 @@ public sealed class WebhooksControllerTests
     }
 
     [Test]
+    public async Task EndpointAssembler_WhenMutationAuthorizationDenied_OmitsMutationAffordances()
+    {
+        var endpoint = CreateEndpointDto();
+        var evaluator = Substitute.For<IHateoasAuthorizationEvaluator>();
+        evaluator.AreLinksAllowedAsync(
+                Arg.Any<IReadOnlyList<LinkDefinition>>(),
+                Arg.Any<ClaimsPrincipal?>(),
+                Arg.Any<HttpContext>())
+            .Returns(call =>
+            {
+                var definitions = call.ArgAt<IReadOnlyList<LinkDefinition>>(0);
+                return Task.FromResult<IReadOnlyList<bool>>(
+                    definitions.Select(link => link.Rel == LinkRelations.Self).ToArray());
+            });
+        var linkGenerator = Substitute.For<IHateoasLinkGenerator>();
+        linkGenerator.GenerateLink(Arg.Any<LinkDefinition>(), Arg.Any<HttpContext>())
+            .Returns(call =>
+            {
+                var definition = call.ArgAt<LinkDefinition>(0);
+                return HalLink.CreateAction($"/{definition.RouteName}", definition.Method);
+            });
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = new ServiceCollection()
+                .AddSingleton(evaluator)
+                .BuildServiceProvider(),
+            User = new ClaimsPrincipal(new ClaimsIdentity("TestAuth"))
+        };
+        var assembler = new WebhookEndpointResourceAssembler(
+            linkGenerator,
+            new WebhookEndpointDetailLinkPolicy(),
+            new WebhookEndpointCollectionLinkPolicy());
+
+        var resource = await assembler.ToResource(endpoint, httpContext);
+
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Self)).IsTrue();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Update)).IsFalse();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.RotateSecret)).IsFalse();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Test)).IsFalse();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Delete)).IsFalse();
+    }
+
+    [Test]
     public async Task WebhookAuditDtos_ExposeOnlySafeOperationalMetadata()
     {
         var messageProperties = typeof(WebhookMessageDto)
@@ -1246,7 +1330,16 @@ public sealed class WebhooksControllerTests
         };
     }
 
-    private WebhookConsumerDto CreateConsumerDto() =>
+    private static WebhookConsumerDetailLinkPolicy CreateConsumerDetailLinkPolicy(
+        string providerMode,
+        bool appPortalEnabled) =>
+        new(new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
+        {
+            Provider = providerMode,
+            Svix = new WebhookSvixOptions { AppPortalEnabled = appPortalEnabled }
+        }));
+
+    private WebhookConsumerDto CreateConsumerDto(string providerModeName = "Local") =>
         new()
         {
             Id = Guid.CreateVersion7(),
@@ -1255,8 +1348,8 @@ public sealed class WebhooksControllerTests
             ConsumerKindName = "Tenant",
             StatusId = 1,
             StatusName = "Active",
-            ProviderModeId = 2,
-            ProviderModeName = "Local",
+            ProviderModeId = ProviderModeId(providerModeName),
+            ProviderModeName = providerModeName,
             Name = "Tenant automation",
             CreatedAt = DateTime.UtcNow
         };
@@ -1309,6 +1402,15 @@ public sealed class WebhooksControllerTests
             "DryRun" => 5,
             _ => 2
         };
+
+    private sealed class StaticOptionsMonitor<TOptions>(TOptions currentValue) : IOptionsMonitor<TOptions>
+    {
+        public TOptions CurrentValue { get; } = currentValue;
+
+        public TOptions Get(string? name) => CurrentValue;
+
+        public IDisposable? OnChange(Action<TOptions, string?> listener) => null;
+    }
 
     private WebhookMessageDto CreateMessageDto() =>
         new()
