@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for CreateTenantUserRoleGrantCommandHandler tenant-context and audit behavior.
 // ABOUTME: Verifies active TenantUser gating, duplicate prevention, and grant persistence.
 
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TenantUserRoleGrant;
@@ -29,6 +30,28 @@ public sealed class CreateTenantUserRoleGrantCommandHandlerTests
             _roleRepository,
             _tenantContext,
             _currentUserService);
+    }
+
+    [Test]
+    public async Task Command_CarriesTenantUserRoleGrantCreateAuthorizationContext()
+    {
+        var tenantId = Guid.NewGuid();
+        var command = new CreateTenantUserRoleGrantCommand
+        {
+            TenantUserRoleGrantDto = CreateValidDto(),
+            TenantId = tenantId
+        };
+        var attribute = typeof(CreateTenantUserRoleGrantCommand)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+        var secureRequest = (ISecureRequest)command;
+
+        await Assert.That(attribute).IsNotNull();
+        await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.TenantUserRoleGrant);
+        await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Create);
+        await Assert.That(secureRequest.ResourceId).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
     }
 
     [Test]

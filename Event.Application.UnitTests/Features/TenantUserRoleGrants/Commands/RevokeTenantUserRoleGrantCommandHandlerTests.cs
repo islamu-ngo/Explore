@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for RevokeTenantUserRoleGrantCommandHandler revocation behavior.
 // ABOUTME: Verifies audit field mutation and missing/already-revoked grant short-circuiting.
 
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.TenantUserRoleGrants.Handlers.Commands;
@@ -20,6 +21,29 @@ public sealed class RevokeTenantUserRoleGrantCommandHandlerTests
     public RevokeTenantUserRoleGrantCommandHandlerTests()
     {
         _handler = new RevokeTenantUserRoleGrantCommandHandler(_tenantUserRoleGrantRepository, _currentUserService);
+    }
+
+    [Test]
+    public async Task Command_CarriesTenantUserRoleGrantDeleteAuthorizationContext()
+    {
+        var grantId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new RevokeTenantUserRoleGrantCommand
+        {
+            Id = grantId,
+            TenantId = tenantId
+        };
+        var attribute = typeof(RevokeTenantUserRoleGrantCommand)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+        var secureRequest = (ISecureRequest)command;
+
+        await Assert.That(attribute).IsNotNull();
+        await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.TenantUserRoleGrant);
+        await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Delete);
+        await Assert.That(secureRequest.ResourceId).IsEqualTo(grantId.ToString("D"));
+        await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
     }
 
     [Test]

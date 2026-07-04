@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.Features.TenantUserRoleGrants.Requests.Commands;
 using Explore.Application.Features.TenantUserRoleGrants.Requests.Queries;
@@ -33,13 +34,16 @@ public class TenantUserRoleGrantController : ExploreControllerBase
         "Tenant user role grant not found.");
 
     private readonly IMediator _mediator;
+    private readonly ITenantContext _tenantContext;
     private readonly IResourceAssembler<TenantUserRoleGrantDto, TenantUserRoleGrantListDto> _resourceAssembler;
 
     public TenantUserRoleGrantController(
         IMediator mediator,
+        ITenantContext tenantContext,
         IResourceAssembler<TenantUserRoleGrantDto, TenantUserRoleGrantListDto> resourceAssembler)
     {
         _mediator = mediator;
+        _tenantContext = tenantContext;
         _resourceAssembler = resourceAssembler;
     }
 
@@ -48,9 +52,13 @@ public class TenantUserRoleGrantController : ExploreControllerBase
     [EndpointDescription("Retrieve tenant-scoped user role grants")]
     [EndpointClassification(EndpointClass.Authenticated)]
     [ProducesResponseType(typeof(HalCollectionResource<TenantUserRoleGrantListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<HalCollectionResource<TenantUserRoleGrantListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var tenantUserRoleGrants = await _mediator.Send(new GetTenantUserRoleGrantListRequest(), cancellationToken);
+        var tenantUserRoleGrants = await _mediator.Send(
+            new GetTenantUserRoleGrantListRequest { TenantId = _tenantContext.TenantId },
+            cancellationToken);
         var halResource = await _resourceAssembler.ToCollectionResource(
             tenantUserRoleGrants,
             RouteNames.GetTenantUserRoleGrants,
@@ -65,10 +73,14 @@ public class TenantUserRoleGrantController : ExploreControllerBase
     [EndpointDescription("Retrieve details of a tenant user role grant")]
     [EndpointClassification(EndpointClass.Authenticated)]
     [ProducesResponseType(typeof(HalResource<TenantUserRoleGrantDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<TenantUserRoleGrantDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var tenantUserRoleGrant = await _mediator.Send(new GetTenantUserRoleGrantDetailsRequest { Id = id }, cancellationToken);
+        var tenantUserRoleGrant = await _mediator.Send(
+            new GetTenantUserRoleGrantDetailsRequest { Id = id, TenantId = _tenantContext.TenantId },
+            cancellationToken);
         if (tenantUserRoleGrant is null)
         {
             return this.ToNotFoundProblem(TenantUserRoleGrantNotFoundProblem);
@@ -86,7 +98,11 @@ public class TenantUserRoleGrantController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTenantUserRoleGrantDto dto, CancellationToken cancellationToken = default)
     {
-        var command = new CreateTenantUserRoleGrantCommand { TenantUserRoleGrantDto = dto };
+        var command = new CreateTenantUserRoleGrantCommand
+        {
+            TenantUserRoleGrantDto = dto,
+            TenantId = _tenantContext.TenantId
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
@@ -105,7 +121,9 @@ public class TenantUserRoleGrantController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Revoke(Guid id, CancellationToken cancellationToken = default)
     {
-        var revoked = await _mediator.Send(new RevokeTenantUserRoleGrantCommand { Id = id }, cancellationToken);
+        var revoked = await _mediator.Send(
+            new RevokeTenantUserRoleGrantCommand { Id = id, TenantId = _tenantContext.TenantId },
+            cancellationToken);
         if (!revoked)
         {
             return this.ToNotFoundProblem(TenantUserRoleGrantNotFoundProblem);

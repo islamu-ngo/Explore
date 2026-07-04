@@ -2,6 +2,7 @@
 // ABOUTME: Covers repository forwarding, DTO list mapping, and empty-list results.
 
 using AutoMapper;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.Features.TenantUserRoleGrants.Handlers.Queries;
@@ -21,6 +22,47 @@ public sealed class GetTenantUserRoleGrantListRequestHandlerTests
     public GetTenantUserRoleGrantListRequestHandlerTests()
     {
         _handler = new GetTenantUserRoleGrantListRequestHandler(_tenantUserRoleGrantRepository, _mapper);
+    }
+
+    [Test]
+    public async Task QueryRequests_RequireTenantUserRoleGrantViewAuthorization()
+    {
+        var listAttribute = typeof(GetTenantUserRoleGrantListRequest)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+        var detailAttribute = typeof(GetTenantUserRoleGrantDetailsRequest)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+
+        await Assert.That(listAttribute).IsNotNull();
+        await Assert.That(listAttribute!.Resource).IsEqualTo(ResourceKinds.TenantUserRoleGrant);
+        await Assert.That(listAttribute.Action).IsEqualTo(AuthorizationActions.TenantUserRoleGrants.View);
+        await Assert.That(detailAttribute).IsNotNull();
+        await Assert.That(detailAttribute!.Resource).IsEqualTo(ResourceKinds.TenantUserRoleGrant);
+        await Assert.That(detailAttribute.Action).IsEqualTo(AuthorizationActions.TenantUserRoleGrants.View);
+        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetTenantUserRoleGrantListRequest))).IsTrue();
+        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetTenantUserRoleGrantDetailsRequest))).IsTrue();
+    }
+
+    [Test]
+    public async Task QueryRequests_CarryTenantAuthorizationContext()
+    {
+        var tenantId = Guid.NewGuid();
+        var grantId = Guid.NewGuid();
+
+        var listRequest = (ISecureRequest)new GetTenantUserRoleGrantListRequest { TenantId = tenantId };
+        var detailRequest = (ISecureRequest)new GetTenantUserRoleGrantDetailsRequest
+        {
+            Id = grantId,
+            TenantId = tenantId
+        };
+
+        await Assert.That(listRequest.ResourceId).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(listRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(detailRequest.ResourceId).IsEqualTo(grantId.ToString("D"));
+        await Assert.That(detailRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
     }
 
     [Test]

@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for tenant_user_role_grant resources.
-# ABOUTME: Tenant admins grant/revoke tenant-scoped roles for active tenant-local users.
+# ABOUTME: Tenant admins read, grant, and revoke identity-bearing tenant-local role grants.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -19,14 +19,7 @@ resourcePolicy:
       derivedRoles:
         - islamuevent_instance_admin
 
-    # Tenant admins can manage role grants within their tenant
     - actions: ["view", "create", "delete"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
-
-    # All authenticated users can view tenant role grants
-    - actions: ["view"]
-      effect: EFFECT_ALLOW
-      roles:
-        - islamuevent_authenticated_user

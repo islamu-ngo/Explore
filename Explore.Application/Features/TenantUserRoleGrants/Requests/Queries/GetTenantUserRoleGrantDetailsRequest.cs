@@ -1,12 +1,23 @@
 // ABOUTME: CQRS query request for getting a tenant user role grant by ID.
 // ABOUTME: Returns TenantUserRoleGrantDto with tenant-local user, role, and audit info.
 
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.TenantUserRoleGrant;
 using MediatR;
 
 namespace Explore.Application.Features.TenantUserRoleGrants.Requests.Queries;
 
-public class GetTenantUserRoleGrantDetailsRequest : IRequest<TenantUserRoleGrantDto?>
+[AuthorizeResource(ResourceKinds.TenantUserRoleGrant, AuthorizationActions.TenantUserRoleGrants.View)]
+public class GetTenantUserRoleGrantDetailsRequest : IRequest<TenantUserRoleGrantDto?>, ISecureRequest
 {
     public Guid Id { get; set; }
+
+    public Guid TenantId { get; init; }
+
+    string? ISecureRequest.ResourceId => Id == Guid.Empty ? null : Id.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString("D")
+    };
 }

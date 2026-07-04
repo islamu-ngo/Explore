@@ -11,5 +11,12 @@ public class RevokeTenantUserRoleGrantCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }
 
-    string? ISecureRequest.ResourceId => Id.ToString();
+    public Guid TenantId { get; init; }
+
+    string? ISecureRequest.ResourceId => Id == Guid.Empty ? null : Id.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString("D")
+    };
 }

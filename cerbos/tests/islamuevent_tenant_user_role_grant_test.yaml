@@ -1,0 +1,102 @@
+# ABOUTME: Cerbos policy test suite for tenant_user_role_grant resources.
+# ABOUTME: Ensures identity-bearing role grant reads are tenant-admin-only.
+
+name: TenantUserRoleGrantPolicyTests
+description: "Validates tenant_user_role_grant read and mutation policies across admin hierarchy levels"
+
+principals:
+  islamuevent_instance_admin:
+    id: "user-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  islamuevent_tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  other_tenant_admin:
+    id: "user-other-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-2": "admin"
+      orgMemberships: {}
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  grant_in_tenant1:
+    kind: "islamuevent_tenant_user_role_grant"
+    id: "grant-1"
+    attr:
+      tenantId: "tenant-1"
+      tenantUserId: "tenant-user-1"
+      userId: "user-1"
+
+tests:
+  - name: "Instance admin has full access to tenant user role grants"
+    input:
+      principals: ["islamuevent_instance_admin"]
+      resources: ["grant_in_tenant1"]
+      actions: ["view", "create", "delete"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "grant_in_tenant1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+
+  - name: "Tenant admin can read and manage grants in their tenant"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["grant_in_tenant1"]
+      actions: ["view", "create", "delete"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "grant_in_tenant1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+
+  - name: "Tenant admin cannot read or manage grants in another tenant"
+    input:
+      principals: ["other_tenant_admin"]
+      resources: ["grant_in_tenant1"]
+      actions: ["view", "create", "delete"]
+    expected:
+      - principal: "other_tenant_admin"
+        resource: "grant_in_tenant1"
+        actions:
+          view: EFFECT_DENY
+          create: EFFECT_DENY
+          delete: EFFECT_DENY
+
+  - name: "Regular user cannot read tenant role grants"
+    input:
+      principals: ["regular_user"]
+      resources: ["grant_in_tenant1"]
+      actions: ["view", "create", "delete"]
+    expected:
+      - principal: "regular_user"
+        resource: "grant_in_tenant1"
+        actions:
+          view: EFFECT_DENY
+          create: EFFECT_DENY
+          delete: EFFECT_DENY

@@ -13,6 +13,12 @@ public class CreateTenantUserRoleGrantCommand : IRequest<BaseCommandResponse<Gui
 {
     public required CreateTenantUserRoleGrantDto TenantUserRoleGrantDto { get; set; }
 
-    string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
+    public Guid TenantId { get; init; }
+
+    string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString("D")
+    };
 }
