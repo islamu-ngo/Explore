@@ -538,7 +538,8 @@ public static class HalResourceExtensions
             Items = collection.GetEventTemplateItems().ToList(),
             PageNumber = collection.PageNumber ?? 1,
             PageSize = collection.PageSize ?? 20,
-            TotalCount = collection.TotalCount ?? 0
+            TotalCount = collection.TotalCount ?? 0,
+            Links = ToClientLinks(collection._links)
         };
     }
 
@@ -694,6 +695,9 @@ public static class HalResourceExtensions
     public static bool HasHalLink(this EventSessionGroupListModel dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
+    public static bool HasHalLink(this Explore.Blazor.Client.Models.EventTemplates.EventTemplateListModel dto, string linkRel)
+        => dto.Links?.ContainsKey(linkRel) == true;
+
     // ========== Organization HAL Link Helpers ==========
 
     public static bool HasHalLink(this OrganizationDto dto, string linkRel)
@@ -813,5 +817,16 @@ public static class HalResourceExtensions
             }
         }
         return result;
+    }
+
+    private static IReadOnlyDictionary<string, HalLinkDto>? ToClientLinks(IDictionary<string, HalLink>? links)
+    {
+        if (links is null || links.Count == 0)
+            return null;
+
+        return links.ToDictionary(
+            pair => pair.Key,
+            pair => new HalLinkDto(pair.Value.Href, pair.Value.Method, pair.Value.Title, pair.Value.Templated),
+            StringComparer.Ordinal);
     }
 }

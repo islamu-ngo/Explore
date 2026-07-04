@@ -1,4 +1,4 @@
-// ABOUTME: Unit tests for LocationService covering location CRUD, city/country lookups, and alias behavior.
+// ABOUTME: Unit tests for LocationService covering location CRUD and city/country lookup behavior.
 // ABOUTME: Verifies HAL conversion, pagination constants, If-Match forwarding, and failure handling.
 
 using Explore.Blazor.Client.Constants;
@@ -6,16 +6,6 @@ using Explore.Blazor.Client.Helpers;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
-/// <summary>
-/// Unit tests for LocationService.
-/// </summary>
-/// <remarks>
-/// These tests verify:
-/// - HAL collection/resource conversion for location reads
-/// - Alias behavior for GetLocations() to GetAllLocationsAsync()
-/// - Create/Update returning failure responses on API errors
-/// - City and country filtering behavior
-/// </remarks>
 public class LocationServiceTests
 {
     private readonly IEventApiClient _apiClient;
@@ -95,29 +85,6 @@ public class LocationServiceTests
             ApiConstants.FirstPage,
             ApiConstants.DefaultPageSize,
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-    }
-
-    #endregion
-
-    // ========== GetLocations Alias ==========
-
-    #region GetLocations Alias Tests
-
-    [Test]
-    public async Task GetLocations_ReturnsLocations_WhenApiSucceeds()
-    {
-        // Arrange
-        var locations = ComponentDataBuilder.LocationListDto.Generate(2);
-        var halResponse = CreateLocationCollectionResponse(locations);
-
-        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(halResponse);
-
-        // Act
-        var result = await _service.GetLocations();
-
-        // Assert
-        await Assert.That(result.Count).IsEqualTo(2);
     }
 
     #endregion

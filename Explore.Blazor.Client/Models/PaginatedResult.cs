@@ -30,6 +30,8 @@ public sealed class PaginatedResult<T>
     /// </summary>
     public required int TotalCount { get; init; }
 
+    public IReadOnlyDictionary<string, HalLinkDto>? Links { get; init; }
+
     /// <summary>
     /// Gets the total number of pages.
     /// </summary>
@@ -55,4 +57,7 @@ public sealed class PaginatedResult<T>
         PageSize = pageSize,
         TotalCount = 0
     };
+
+    public bool HasHalLink(string rel) =>
+        !string.IsNullOrWhiteSpace(rel) && Links?.ContainsKey(rel) == true;
 }

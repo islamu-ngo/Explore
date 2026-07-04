@@ -144,6 +144,10 @@
                                          Text="API Keys"
                                          Class="@GetNavItemClass("api-keys")"
                                          OnClick="@(() => SelectSection("api-keys"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.ReceiptLong"
+                                         Text="Support Evidence"
+                                         Class="@GetNavItemClass("support-access-evidence")"
+                                         OnClick="@(() => SelectSection("support-access-evidence"))" />
                             <MudListItem Icon="@Icons.Material.Outlined.Gavel"
                                          Text="Community Guidelines"
                                          Class="@GetNavItemClass("community-guidelines")"
@@ -267,6 +271,10 @@
                         {
                             <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="4" Title="Tenant API Keys" Description="Create and manage API keys for this tenant." />
                         }
+                        else if (_currentSection == "support-access-evidence")
+                        {
+                            <TenantSupportAccessEvidenceSection />
+                        }
                         else if (_currentSection == "community-guidelines")
                         {
                             <div class="settings-section">
@@ -320,7 +328,7 @@
                             </div>
                         }
 
-                        @if (_currentSection != "nav-links")
+                        @if (!IsReadOnlySection)
                         {
                             <MudDivider Class="my-4" />
 
@@ -588,10 +596,14 @@
     private bool CanSaveCurrentSection =>
         _currentSection switch
         {
+            "support-access-evidence" => false,
             "branding" => _brandingModel.Exists && _brandingModel.CanReplace,
             "storage" => _storageModel.IsEditable,
             _ => true
         };
+
+    private bool IsReadOnlySection =>
+        _currentSection is "nav-links" or "support-access-evidence";
 
     private async Task RefreshShellExperienceAsync()
     {

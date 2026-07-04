@@ -11,7 +11,6 @@ namespace Explore.Blazor.Client.Services;
 public interface ILocationService
 {
     Task<ICollection<LocationListDto>> GetAllLocationsAsync();
-    Task<ICollection<LocationListDto>> GetLocations(); // Alias for admin pages
     Task<PaginatedResult<LocationListDto>> GetLocationsPagedAsync(int pageNumber, int pageSize);
     Task<LocationDto?> GetLocationByIdAsync(Guid locationId);
     Task<BaseCommandResponseOfGuid?> CreateLocationAsync(CreateLocationDto dto);
@@ -45,8 +44,6 @@ public class LocationService : ILocationService
             return new List<LocationListDto>();
         }
     }
-
-    public Task<ICollection<LocationListDto>> GetLocations() => GetAllLocationsAsync();
 
     public async Task<PaginatedResult<LocationListDto>> GetLocationsPagedAsync(int pageNumber, int pageSize)
     {

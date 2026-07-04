@@ -1,3 +1,6 @@
+// ABOUTME: Code-behind for the organization creation wizard and logo upload workflow.
+// ABOUTME: Handles organization submission, upload state, preview synchronization, and step validation.
+
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
@@ -101,14 +104,16 @@ public partial class CreateOrganization
             }
             else
             {
-                _logoUploadError = uploadResult?.ErrorMessage ?? "Failed to upload logo.";
+                _logoUploadError = ImageUploadClientPolicy.ToUserSafeUploadError(uploadResult?.ErrorMessage);
                 await ClearLogoUploadState();
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Exception during logo upload");
-            _logoUploadError = $"Upload error: {ex.Message}";
+            Logger.LogWarning(
+                "Exception during logo upload. FailureType={FailureType}",
+                ImageUploadClientPolicy.GetFailureType(ex));
+            _logoUploadError = ImageUploadClientPolicy.GenericUploadFailureMessage;
             await ClearLogoUploadState();
         }
         finally

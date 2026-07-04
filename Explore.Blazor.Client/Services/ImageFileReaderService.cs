@@ -23,13 +23,17 @@ public sealed class ImageFileReaderService(ILogger<ImageFileReaderService> logge
 
         try
         {
-            logger.LogInformation("Reading file into memory: {FileName}, Size: {Size} bytes, ContentType: {ContentType}",
-                file.Name, file.Size, file.ContentType);
+            logger.LogInformation(
+                "Reading selected image into memory. SizeBucket={SizeBucket}, ContentTypeBucket={ContentTypeBucket}",
+                ImageUploadClientPolicy.GetSizeBucket(file.Size),
+                ImageUploadClientPolicy.GetContentTypeBucket(file.ContentType));
 
             if (file.Size > maxFileSize)
             {
-                logger.LogWarning("File {FileName} exceeds max size ({Size} > {MaxSize})",
-                    file.Name, file.Size, maxFileSize);
+                logger.LogWarning(
+                    "Selected image exceeds client read limit. SizeBucket={SizeBucket}, MaxSizeBucket={MaxSizeBucket}",
+                    ImageUploadClientPolicy.GetSizeBucket(file.Size),
+                    ImageUploadClientPolicy.GetSizeBucket(maxFileSize));
                 return null;
             }
 
@@ -37,19 +41,25 @@ public sealed class ImageFileReaderService(ILogger<ImageFileReaderService> logge
             using var memoryStream = new MemoryStream();
             await stream.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
+            var safeFileName = ImageUploadClientPolicy.BuildSafeFileName(file.Name, file.ContentType);
 
-            logger.LogDebug("Successfully read {ByteCount} bytes from {FileName}", bytes.Length, file.Name);
+            logger.LogDebug(
+                "Successfully read selected image into memory. SizeBucket={SizeBucket}",
+                ImageUploadClientPolicy.GetSizeBucket(bytes.Length));
 
             return new FileUploadData
             {
                 Content = bytes,
-                FileName = file.Name,
+                FileName = safeFileName,
                 ContentType = file.ContentType
             };
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error reading file {FileName} into memory", file.Name);
+            logger.LogWarning(
+                "Selected image could not be read into memory. FailureType={FailureType}, SizeBucket={SizeBucket}",
+                ImageUploadClientPolicy.GetFailureType(ex),
+                ImageUploadClientPolicy.GetSizeBucket(file.Size));
             return null;
         }
     }

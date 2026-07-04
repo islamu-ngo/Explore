@@ -1,6 +1,7 @@
 // ABOUTME: Shared service registrations used by both Blazor Server (BFF) and WASM host.
 // ABOUTME: Eliminates duplication between server Program.cs and client Program.cs (DRY).
 
+using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
@@ -12,6 +13,8 @@ using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
+using Explore.Blazor.Client.Contracts.Services.SupportAccess;
+using Explore.Blazor.Client.Contracts.Services.Webhooks;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Accessibility;
 using Explore.Blazor.Client.Services.Ai;
@@ -20,6 +23,7 @@ using Explore.Blazor.Client.Services.EventSessionTemplateSync;
 using Explore.Blazor.Client.Services.EventTemplateSync;
 using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Client.Services.Lookup;
+using Explore.Blazor.Client.Services.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Blazor.Client.Extensions;
@@ -39,6 +43,7 @@ public static class ServiceCollectionExtensions
         // Domain services (NSwag IEventApiClient consumers)
         services.AddScoped<IApiClientExecutor, ApiClientExecutor>();
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
+        services.AddScoped<IWebhookManagementService, WebhookManagementService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddBffRefitClient<IGroupApi>(configureBffRefitClient)
@@ -59,6 +64,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Explore.Blazor.Client.Services.EventSessionTemplateSync.IEventSessionTemplateSyncService, EventSessionTemplateSyncService>();
         services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<ISupportAccessClientService, SupportAccessClientService>();
         services.AddScoped<IAiAssistantClientService, AiAssistantClientService>();
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
         services.AddBffRefitClient<ITenantNavigationApi>(configureBffRefitClient)
@@ -176,6 +182,7 @@ public static class ServiceCollectionExtensions
         // Accessibility services (ARIA announcements + focus management)
         services.AddScoped<IAccessibilityAnnouncerService, AccessibilityAnnouncerService>();
         services.AddScoped<IAccessibilityFocusService, AccessibilityFocusService>();
+        services.AddScoped<IBrowserActionInterop, BrowserActionInterop>();
 
         // Feature flags (hydrated from API, no OpenFeature SDK dependency)
         services.AddScoped<FeatureStateContainer>();

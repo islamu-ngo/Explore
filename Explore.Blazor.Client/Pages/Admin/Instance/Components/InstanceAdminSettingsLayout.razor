@@ -183,27 +183,13 @@
                         {
                             <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="5" Title="Platform API Keys" Description="Create and manage instance-level API keys for platform-wide programmatic access." />
                         }
+                        else if (_currentSection == "support-access")
+                        {
+                            <SupportAccessConsoleSection />
+                        }
                         else if (_currentSection == "webhooks" && IsSingleTenantMode)
                         {
-                            <div class="settings-section">
-                                <div class="settings-section-header">
-                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                        <div>
-                                            <MudText Typo="Typo.h5" Style="font-weight: 700;">Webhooks</MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-                                                Configure webhook endpoints to receive event notifications.
-                                            </MudText>
-                                        </div>
-                                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
-                                                   Disabled="true">
-                                            Add Webhook
-                                        </MudButton>
-                                    </MudStack>
-                                </div>
-                                <MudAlert Severity="Severity.Info" Class="mt-4">
-                                    Webhook management is coming soon.
-                                </MudAlert>
-                            </div>
+                            <Explore.Blazor.Client.Components.Webhooks.WebhookManagementPanel />
                         }
                         else if (_currentSection == "tenants" && !IsSingleTenantMode)
                         {
@@ -621,10 +607,11 @@
                 new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
                 new("footer",           Icons.Material.Filled.ViewAgenda,      "Footer"),
                 new("localization",     Icons.Material.Filled.Translate,       "Localization"),
-                new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
-                new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
-                new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
-            ];
+            new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
+            new("support-access",   Icons.Material.Filled.SupportAgent,    "Support Access", Group: "Operations"),
+            new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
+            new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
+        ];
 
         return
         [
@@ -642,6 +629,7 @@
             new("localization",     Icons.Material.Filled.Translate,       "Localization"),
             new("ai",               Icons.Material.Filled.SmartToy,        "AI"),
             new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
+            new("support-access",   Icons.Material.Filled.SupportAgent,    "Support Access", Group: "Operations"),
             new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
         ];
     }
