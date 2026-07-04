@@ -4,6 +4,7 @@
 using System.ComponentModel.DataAnnotations;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.Responses;
+using Explore.Application.Specifications.Events;
 
 namespace Explore.API.Models;
 
@@ -98,6 +99,22 @@ internal static class QueryValidationRules
         }
     }
 
+    public static IEnumerable<ValidationResult> ValidateTemporalView(string? value, string memberName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            yield break;
+        }
+
+        if (!Enum.TryParse<TemporalView>(value.Trim(), ignoreCase: true, out var view)
+            || !Enum.IsDefined(typeof(TemporalView), view))
+        {
+            yield return new ValidationResult(
+                $"{memberName} must be one of: upcoming, ongoing, past, upcomingAndOngoing, all.",
+                [memberName]);
+        }
+    }
+
     public static IEnumerable<ValidationResult> ValidateFilterMode(string? value, string memberName)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -146,6 +163,52 @@ internal static class QueryValidationRules
             yield return new ValidationResult(
                 "DateFrom must be earlier than or equal to DateTo.",
                 [DateFromMemberName, DateToMemberName]);
+        }
+    }
+
+    public static IEnumerable<ValidationResult> ValidateRequiredDateRange(
+        DateOnly from,
+        DateOnly to,
+        string fromMemberName,
+        string toMemberName,
+        int maxRangeDays)
+    {
+        var hasFrom = from != default;
+        var hasTo = to != default;
+
+        if (!hasFrom)
+        {
+            yield return new ValidationResult(
+                $"{fromMemberName} is required.",
+                [fromMemberName]);
+        }
+
+        if (!hasTo)
+        {
+            yield return new ValidationResult(
+                $"{toMemberName} is required.",
+                [toMemberName]);
+        }
+
+        if (!hasFrom || !hasTo)
+        {
+            yield break;
+        }
+
+        if (from > to)
+        {
+            yield return new ValidationResult(
+                $"{fromMemberName} must be earlier than or equal to {toMemberName}.",
+                [fromMemberName, toMemberName]);
+            yield break;
+        }
+
+        var rangeDays = to.DayNumber - from.DayNumber + 1;
+        if (rangeDays > maxRangeDays)
+        {
+            yield return new ValidationResult(
+                $"{fromMemberName} and {toMemberName} must span at most {maxRangeDays} days.",
+                [fromMemberName, toMemberName]);
         }
     }
 

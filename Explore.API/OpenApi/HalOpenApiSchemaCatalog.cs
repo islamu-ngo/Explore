@@ -122,6 +122,14 @@ internal static class HalOpenApiSchemaCatalog
         // Storage DTOs
         typeof(Explore.Application.DTOs.StorageObject.StorageObjectDto),
         typeof(Explore.Application.DTOs.StorageObject.StorageObjectListDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOverviewDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneDomainOverviewDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneDnsRecordDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOperationsDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOperationStatusDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOperationMetricDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantDetailDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantListItemDto),
         typeof(Explore.Application.DTOs.Onboarding.InstanceStorageSettingsDto),
         typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
     ];
@@ -193,8 +201,15 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfAiRunDto"] = typeof(Explore.Application.DTOs.Ai.AiRunDto),
         ["HalResourceOfStorageObjectDto"] = typeof(Explore.Application.DTOs.StorageObject.StorageObjectDto),
         ["HalResourceOfStorageObjectListDto"] = typeof(Explore.Application.DTOs.StorageObject.StorageObjectListDto),
+        ["HalResourceOfControlPlaneOverviewDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOverviewDto),
+        ["HalResourceOfControlPlaneDomainOverviewDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneDomainOverviewDto),
+        ["HalResourceOfControlPlaneOperationsDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOperationsDto),
+        ["HalResourceOfControlPlaneTenantDetailDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantDetailDto),
+        ["HalResourceOfControlPlaneTenantListItemDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantListItemDto),
         ["HalResourceOfInstanceStorageSettingsDto"] = typeof(Explore.Application.DTOs.Onboarding.InstanceStorageSettingsDto),
         ["HalResourceOfTenantStorageSettingsDto"] = typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
+        ["HalResourceOfEventSessionSpeakerDto"] = typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerDto),
+        ["HalResourceOfEventSessionSpeakerListDto"] = typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerListDto),
     };
 
     public static IReadOnlyDictionary<string, string> CollectionEmbeddedItemResourceMappings { get; } = new Dictionary<string, string>
@@ -237,6 +252,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfAiConversationSummaryDto"] = "HalResourceOfAiConversationSummaryDto",
         ["HalCollectionEmbeddedOfAiReferenceSearchResultDto"] = "HalResourceOfAiReferenceSearchResultDto",
         ["HalCollectionEmbeddedOfStorageObjectListDto"] = "HalResourceOfStorageObjectListDto",
+        ["HalCollectionEmbeddedOfControlPlaneTenantListItemDto"] = "HalResourceOfControlPlaneTenantListItemDto",
+        ["HalCollectionEmbeddedOfEventSessionSpeakerListDto"] = "HalResourceOfEventSessionSpeakerListDto",
     };
 
     public static bool IsCatalogedDetailResourceSchema(string schemaName)

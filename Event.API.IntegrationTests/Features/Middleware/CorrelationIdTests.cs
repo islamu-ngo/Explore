@@ -65,6 +65,39 @@ public class CorrelationIdTests
     }
 
     [Test]
+    public async Task Request_WithUnsafeCorrelationId_ShouldGenerateSafeId()
+    {
+        var unsafeId = new string('a', 129);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/category");
+        request.Headers.TryAddWithoutValidation("X-Correlation-ID", unsafeId);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var returnedId = response.Headers.GetValues("X-Correlation-ID").First();
+        await Assert.That(returnedId).IsNotEqualTo(unsafeId);
+        await Assert.That(returnedId).IsNotNull();
+        await Assert.That(returnedId).IsNotEmpty();
+    }
+
+    [Test]
+    public async Task Request_WithUnsafeCorrelationIdAndSafeRequestId_ShouldUseRequestId()
+    {
+        var expectedId = Guid.NewGuid().ToString("N");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/category");
+        request.Headers.TryAddWithoutValidation("X-Correlation-ID", new string('a', 129));
+        request.Headers.Add("X-Request-ID", expectedId);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var returnedId = response.Headers.GetValues("X-Correlation-ID").First();
+        await Assert.That(returnedId).IsEqualTo(expectedId);
+    }
+
+    [Test]
     public async Task MultipleRequests_WithoutCorrelationId_ShouldGenerateUniqueIds()
     {
         var response1 = await _fixture.Client.GetAsync("/api/category");

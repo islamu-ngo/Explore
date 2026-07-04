@@ -2,6 +2,10 @@
 // ABOUTME: Verifies abusive public discovery query inputs fail before repository access.
 
 using System.ComponentModel.DataAnnotations;
+using System.Net;
+using System.Text.Json;
+using Event.Api.IntegrationTests.Fixtures;
+using Event.Api.IntegrationTests.Helpers;
 using Explore.API.Models;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Domain.Enums;
@@ -36,6 +40,45 @@ public sealed class PublicQueryValidationTests
         var results = Validate(request);
 
         await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.SortBy)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenViewIsUnknown_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            View = "sideways"
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.View)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenViewIsUndefinedNumber_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            View = "999"
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.View)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenViewIsKnown_IsValid()
+    {
+        var request = new EventFilterRequest
+        {
+            View = "upcomingAndOngoing"
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.View)))).IsFalse();
     }
 
     [Test]
@@ -148,6 +191,21 @@ public sealed class PublicQueryValidationTests
         var results = Validate(request);
 
         await Assert.That(results.Any(result => HasMember(result, nameof(EventSessionFilterRequest.CustomPropertySearchTerm)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventSessionFilterRequest_WhenPaginationIsOutOfRange_IsInvalid()
+    {
+        var request = new EventSessionFilterRequest
+        {
+            PageNumber = 0,
+            PageSize = 101
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventSessionFilterRequest.PageNumber)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventSessionFilterRequest.PageSize)))).IsTrue();
     }
 
     [Test]
@@ -298,6 +356,62 @@ public sealed class PublicQueryValidationTests
     }
 
     [Test]
+    public async Task ExternalApiKeyUsageReportQueryRequest_WhenDatesAreMissing_IsInvalid()
+    {
+        var request = new ExternalApiKeyUsageReportQueryRequest();
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(ExternalApiKeyUsageReportQueryRequest.From)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(ExternalApiKeyUsageReportQueryRequest.To)))).IsTrue();
+    }
+
+    [Test]
+    public async Task ExternalApiKeyUsageReportQueryRequest_WhenDateRangeIsInverted_IsInvalid()
+    {
+        var request = new ExternalApiKeyUsageReportQueryRequest
+        {
+            From = new DateOnly(2026, 2, 1),
+            To = new DateOnly(2026, 1, 31)
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(ExternalApiKeyUsageReportQueryRequest.From)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(ExternalApiKeyUsageReportQueryRequest.To)))).IsTrue();
+    }
+
+    [Test]
+    public async Task ExternalApiKeyUsageReportQueryRequest_WhenRangeIsTooLarge_IsInvalid()
+    {
+        var request = new ExternalApiKeyUsageReportQueryRequest
+        {
+            From = new DateOnly(2026, 1, 1),
+            To = new DateOnly(2027, 1, 2)
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(ExternalApiKeyUsageReportQueryRequest.From)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(ExternalApiKeyUsageReportQueryRequest.To)))).IsTrue();
+    }
+
+    [Test]
+    public async Task ExternalApiKeyUsageReportQueryRequest_WhenTenantIdIsEmpty_IsInvalid()
+    {
+        var request = new ExternalApiKeyUsageReportQueryRequest
+        {
+            From = new DateOnly(2026, 1, 1),
+            To = new DateOnly(2026, 1, 31),
+            TenantId = Guid.Empty
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(ExternalApiKeyUsageReportQueryRequest.TenantId)))).IsTrue();
+    }
+
+    [Test]
     public async Task CustomPropertyGovernanceReportQueryRequest_WhenTenantAndEnumAreInvalid_IsInvalid()
     {
         var request = new CustomPropertyGovernanceReportQueryRequest
@@ -351,4 +465,28 @@ public sealed class PublicQueryValidationTests
 
     private static bool HasMember(ValidationResult result, string memberName)
         => result.MemberNames.Contains(memberName, StringComparer.Ordinal);
+}
+
+[NotInParallel("ApiTestFixture")]
+[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
+public sealed class PublicQueryRuntimeValidationTests(ApiTestFixture fixture)
+{
+    [Test]
+    public async Task EventList_WhenViewIsUnknown_ReturnsValidationProblemDetails()
+    {
+        var response = await fixture.Client.GetAsync("/api/Event?view=sideways");
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation failed");
+
+        var content = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(content);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("Validation failed");
+        await Assert.That(root.GetProperty("errors").TryGetProperty("view", out _)).IsTrue();
+        await Assert.That(content.Contains("sideways", StringComparison.Ordinal)).IsFalse();
+    }
 }

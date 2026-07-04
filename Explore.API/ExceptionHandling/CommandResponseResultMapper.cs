@@ -198,15 +198,31 @@ internal static class CommandResponseResultMapper
 
         if (statusCode == StatusCodes.Status400BadRequest)
         {
+            if (TryResolveStorageUploadPublicDetail(response.FailureCode, out var validationDetail))
+            {
+                var validationProblemDetails = ApiProblemFactory.CreateValidationProblem(
+                    controller.HttpContext,
+                    StorageUploadValidationProblem,
+                    [validationDetail],
+                    validationDetail,
+                    response.FailureCode ?? ApiProblemCodes.ValidationFailed);
+
+                return ApiProblemFactory.ToProblemResult(validationProblemDetails);
+            }
+
             return controller.ToCommandValidationProblem(response, StorageUploadValidationProblem);
         }
+
+        var detail = TryResolveStorageUploadPublicDetail(response.FailureCode, out var publicDetail)
+            ? publicDetail
+            : response.Message ?? StorageUploadValidationProblem.FallbackDetail;
 
         var problemDetails = ApiProblemFactory.CreateProblem(
             controller.HttpContext,
             statusCode,
             ResolveStorageUploadTitle(statusCode),
             ResolveStorageUploadType(statusCode, response.FailureCode),
-            response.Message ?? StorageUploadValidationProblem.FallbackDetail,
+            detail,
             response.FailureCode ?? ApiProblemCodes.UnexpectedError);
 
         return ApiProblemFactory.ToProblemResult(problemDetails);
@@ -314,6 +330,26 @@ internal static class CommandResponseResultMapper
             FailureCodes.StorageUploadWriteFailed => StatusCodes.Status503ServiceUnavailable,
             _ => StatusCodes.Status400BadRequest
         };
+
+    private static bool TryResolveStorageUploadPublicDetail(string? failureCode, out string detail)
+    {
+        detail = failureCode switch
+        {
+            FailureCodes.StorageUploadTooLarge => "Upload exceeds the configured per-file limit.",
+            FailureCodes.QuotaExceeded => "Storage quota has been exceeded.",
+            FailureCodes.StorageUploadSessionNotFound => "Upload session was not found.",
+            FailureCodes.StorageUploadSessionFinalized => "Finalized upload sessions cannot be canceled.",
+            FailureCodes.StorageUploadSessionExpired => "Upload session has expired.",
+            FailureCodes.StorageUploadSessionInvalidState => "Upload session cannot accept bytes in its current state.",
+            FailureCodes.StorageUploadSizeMismatch => "Upload content length does not match the reserved byte count.",
+            FailureCodes.StorageUploadContentTypeMismatch => "Upload content type does not match the reserved content type.",
+            FailureCodes.StorageUploadContentSignatureMismatch => "Upload content did not match the reserved content policy.",
+            FailureCodes.StorageUploadWriteFailed => "Storage provider returned invalid upload metadata.",
+            _ => string.Empty
+        };
+
+        return detail.Length > 0;
+    }
 
     private static string ResolveStorageUploadTitle(int statusCode)
         => statusCode switch

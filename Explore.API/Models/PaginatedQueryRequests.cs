@@ -142,6 +142,87 @@ public sealed class ContactShareConsentExportQueryRequest : IValidatableObject
             .Concat(QueryValidationRules.ValidateOptionalGuid(EventId, nameof(EventId)));
 }
 
+public sealed class ExternalApiKeyUsageReportQueryRequest : IValidatableObject
+{
+    public const int MaxRangeDays = 366;
+
+    public DateOnly From { get; set; }
+
+    public DateOnly To { get; set; }
+
+    public Guid? TenantId { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        => QueryValidationRules.ValidateRequiredDateRange(
+                From,
+                To,
+                nameof(From),
+                nameof(To),
+                MaxRangeDays)
+            .Concat(QueryValidationRules.ValidateOptionalGuid(TenantId, nameof(TenantId)));
+}
+
+public sealed class EmailDispatchStatusQueryRequest : IValidatableObject
+{
+    public const int MaxLimit = 200;
+
+    public Guid TenantId { get; set; }
+
+    public int Limit { get; set; } = 50;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        foreach (var result in QueryValidationRules.ValidateRequiredGuid(TenantId, nameof(TenantId)))
+        {
+            yield return result;
+        }
+
+        if (Limit is < 1 or > MaxLimit)
+        {
+            yield return new ValidationResult(
+                $"{nameof(Limit)} must be between 1 and {MaxLimit}.",
+                [nameof(Limit)]);
+        }
+    }
+}
+
+public sealed class EmailDispatchPauseTenantQueryRequest : IValidatableObject
+{
+    public const int MaxReasonLength = 500;
+
+    public string? Reason { get; set; }
+
+    public string? GetNormalizedReason() => string.IsNullOrWhiteSpace(Reason) ? null : Reason.Trim();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        => QueryValidationRules.ValidateBoundedText(Reason, nameof(Reason), MaxReasonLength);
+}
+
+public sealed class EmailDispatchParkQueryRequest : IValidatableObject
+{
+    public const int MaxReasonLength = 500;
+
+    public string? Reason { get; set; }
+
+    public string GetNormalizedReason() => Reason?.Trim() ?? string.Empty;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrWhiteSpace(Reason))
+        {
+            yield return new ValidationResult(
+                $"{nameof(Reason)} is required.",
+                [nameof(Reason)]);
+            yield break;
+        }
+
+        foreach (var result in QueryValidationRules.ValidateBoundedText(Reason, nameof(Reason), MaxReasonLength))
+        {
+            yield return result;
+        }
+    }
+}
+
 public sealed class CustomPropertyGovernanceReportQueryRequest : PaginationQueryRequest
 {
     public Guid TenantId { get; set; }

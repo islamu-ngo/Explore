@@ -859,9 +859,6 @@ public sealed class McpProtocolContractTests
             return Task.CompletedTask;
         }
 
-        public Task HardDelete(AiConversation entity)
-            => Delete(entity);
-
         public Task<AiConversation?> GetByIdWithDetailsAsync(Guid conversationId, CancellationToken cancellationToken)
             => GetById(conversationId);
 

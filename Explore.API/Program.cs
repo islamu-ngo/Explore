@@ -361,7 +361,8 @@ builder.Services.AddHealthChecks()
     .AddCheck<SmtpHealthCheck>(
         "smtp",
         failureStatus: HealthStatus.Unhealthy,
-        tags: ["ready", "smtp", "infrastructure"])
+        tags: ["ready", "smtp", "infrastructure"],
+        timeout: TimeSpan.FromSeconds(5))
     .AddCheck<EmailDispatchHealthCheck>(
         "email-dispatch",
         failureStatus: HealthStatus.Unhealthy,
