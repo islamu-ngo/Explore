@@ -1,0 +1,25 @@
+// ABOUTME: Holds shared browser-BFF hosting options derived from host configuration.
+// ABOUTME: Carries profile and API proxy settings without referencing app-specific layers.
+
+using Event.Web.BffHosting.Authentication;
+
+namespace Event.Web.BffHosting.Options;
+
+public sealed class EventBffHostingOptions
+{
+    public const string SectionName = "Bff";
+
+    public EventBffHostProfile HostProfile { get; set; } = EventBffHostProfile.PublicWeb;
+
+    public string ApiBaseAddress { get; set; } = "https://localhost:7039/";
+
+    public bool StripPrivilegedHeaders { get; set; } = true;
+
+    public bool ForwardAccessToken { get; set; } = true;
+
+    public bool ForwardTrustedTenantHint { get; set; } = true;
+
+    public bool ForwardSetupSecret { get; set; } = true;
+
+    public bool ForwardSupportAccessSession { get; set; } = true;
+}
