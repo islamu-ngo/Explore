@@ -37,7 +37,7 @@ public class GetOrganizationListRequestHandler : IRequestHandler<GetOrganization
     public async Task<PaginatedResult<OrganizationListDto>> Handle(GetOrganizationListRequest request, CancellationToken cancellationToken)
     {
         // Get organizations with ApprovalStatus for admin purposes
-        var (organizations, totalCount) = await _organizationRepository.GetOrganizationsWithDetailsPaged(request.PageNumber, request.PageSize);
+        var (organizations, totalCount) = await _organizationRepository.GetOrganizationsWithDetailsPaged(request.PageNumber, request.PageSize, cancellationToken);
         var organizationDtos = _mapper.Map<List<OrganizationListDto>>(organizations);
 
         // Resolve presigned URLs for profile pictures

@@ -40,13 +40,14 @@ public sealed class GetEventListAggregateViewQueryHandler
 
         var (pageNumber, pageSize) = PaginatedResult<EventListAggregateViewDto>.NormalizeParameters(request.Page, request.PageSize);
         var filter = request.Filter ?? new AggregateViewFilterDto();
+        var repositoryFilter = ToRepositoryFilter(filter);
         var cacheKey = $"event-aggregate:list:{pageNumber}:{pageSize}:{request.ExposureCeiling}:{BuildFilterCacheKey(filter)}";
 
         return await _cache.GetOrCreateAsync(
             cacheKey,
             async _ =>
             {
-                var (items, totalCount) = await _repository.GetPagedAsync(filter, pageNumber, pageSize, cancellationToken);
+                var (items, totalCount) = await _repository.GetPagedAsync(repositoryFilter, pageNumber, pageSize, cancellationToken);
                 var definitionLookup = (await _repository.GetEventDefinitionsByEventIdsAsync(items.Select(x => x.EventId).ToList(), cancellationToken))
                     .GroupBy(x => x.EventId)
                     .ToDictionary(x => x.Key, x => (IReadOnlyCollection<Explore.Domain.EventCustomPropertyDefinition>)x.ToList());
@@ -73,6 +74,9 @@ public sealed class GetEventListAggregateViewQueryHandler
             },
             cancellationToken: cancellationToken);
     }
+
+    private static EventAggregateViewFilter ToRepositoryFilter(AggregateViewFilterDto filter)
+        => new(filter.Title, filter.StartAtFrom, filter.StartAtTo, filter.Status, filter.Visibility);
 
     private static string BuildFilterCacheKey(AggregateViewFilterDto filter)
         => string.Join(

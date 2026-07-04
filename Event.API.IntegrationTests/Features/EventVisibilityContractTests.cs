@@ -287,6 +287,43 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
     }
 
     [Test]
+    public async Task GetByIdForCrossTenantEventReturnsSafeNotFound()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var title = $"Cross Tenant Detail Event {marker}";
+        var otherTenantId = Guid.NewGuid();
+        Guid eventId;
+
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            var seed = await EnsureTenantActorAsync(
+                context,
+                otherTenantId,
+                $"Other Detail Tenant {marker}",
+                $"other-detail-tenant-{marker}");
+
+            var hiddenEvent = AddEvent(
+                context,
+                seed.TenantId,
+                seed.ActorId,
+                title,
+                EventStatusEnum.Published,
+                VisibilityTypeEnum.Public,
+                includePublishedSession: true);
+            eventId = hiddenEvent.Id;
+            await context.SaveChangesAsync();
+        }
+
+        var response = await _fixture.Client.GetAsync($"/api/event/{eventId}");
+        var content = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(content).DoesNotContain(title);
+        await Assert.That(content).DoesNotContain(otherTenantId.ToString());
+    }
+
+    [Test]
     public async Task GetManagementDetailsForModeratedEventReturnsUnauthorizedForAnonymousUser()
     {
         var eventId = await SeedHiddenEventAsync(EventStatusEnum.Moderated);
@@ -388,17 +425,27 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
         return session;
     }
 
-    private static async Task<DefaultTenantSeed> EnsureDefaultTenantActorAsync(ExploreDbContext context)
+    private static Task<DefaultTenantSeed> EnsureDefaultTenantActorAsync(ExploreDbContext context) =>
+        EnsureTenantActorAsync(
+            context,
+            PlatformDefaults.DefaultTenantId,
+            "Default Test Tenant",
+            "default-test");
+
+    private static async Task<DefaultTenantSeed> EnsureTenantActorAsync(
+        ExploreDbContext context,
+        Guid tenantId,
+        string tenantFullName,
+        string tenantSlug)
     {
-        var tenantId = PlatformDefaults.DefaultTenantId;
         var tenant = await context.Tenants.FindAsync(tenantId);
 
         if (tenant is null)
         {
             tenant = new TenantBuilder()
                 .WithId(tenantId)
-                .WithFullName("Default Test Tenant")
-                .WithSlug("default-test")
+                .WithFullName(tenantFullName)
+                .WithSlug(tenantSlug)
                 .Build();
             context.Tenants.Add(tenant);
             await context.SaveChangesAsync();

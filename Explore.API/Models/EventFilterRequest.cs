@@ -88,6 +88,9 @@ public sealed class EventFilterRequest : IValidatableObject
         foreach (var result in QueryValidationRules.ValidateSortBy(SortBy))
             yield return result;
 
+        foreach (var result in QueryValidationRules.ValidateTemporalView(View, nameof(View)))
+            yield return result;
+
         foreach (var result in QueryValidationRules.ValidateFilterMode(CategoryInclusionMode, nameof(CategoryInclusionMode)))
             yield return result;
 

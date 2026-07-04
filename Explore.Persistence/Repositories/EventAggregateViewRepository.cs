@@ -2,7 +2,6 @@
 // ABOUTME: Keeps aggregate filtering, pagination, and definition enrichment close to the DbContext while returning entities only.
 
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.EventAggregateView;
 using Explore.Domain;
 using Explore.Domain.Views;
 using Microsoft.EntityFrameworkCore;
@@ -26,12 +25,12 @@ public sealed class EventAggregateViewRepository : IEventAggregateViewRepository
     }
 
     public async Task<(List<EventWithSessionsView> Items, int TotalCount)> GetPagedAsync(
-        AggregateViewFilterDto filter,
+        EventAggregateViewFilter filter,
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken)
     {
-        var query = ApplyFilters(_dbContext.EventsWithSessions.AsNoTracking(), filter ?? new AggregateViewFilterDto());
+        var query = ApplyFilters(_dbContext.EventsWithSessions.AsNoTracking(), filter);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
@@ -73,7 +72,7 @@ public sealed class EventAggregateViewRepository : IEventAggregateViewRepository
 
     private static IQueryable<EventWithSessionsView> ApplyFilters(
         IQueryable<EventWithSessionsView> query,
-        AggregateViewFilterDto filter)
+        EventAggregateViewFilter filter)
     {
         if (!string.IsNullOrWhiteSpace(filter.Title))
         {

@@ -195,6 +195,50 @@ public class EventSessionVisibilityContractTests(ContractApiFixture fixture)
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
+    [Test]
+    public async Task GetByIdReturnsSafeNotFoundForCrossTenantSession()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var hiddenTitle = $"Cross Tenant Detail Session {marker}";
+        var otherTenantId = Guid.NewGuid();
+        Guid sessionId;
+
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            var seed = await EnsureTenantActorAsync(
+                context,
+                otherTenantId,
+                $"Other Session Tenant {marker}",
+                $"other-session-tenant-{marker}");
+            var otherTenantEvent = CreateEvent(
+                seed,
+                EventStatusEnum.Published,
+                VisibilityTypeEnum.Public,
+                $"Cross Tenant Session Parent {marker}");
+
+            context.Events.Add(otherTenantEvent);
+            await context.SaveChangesAsync();
+
+            var session = CreateScheduledSession(
+                otherTenantEvent,
+                seed.TenantId,
+                hiddenTitle,
+                EventSessionStatusEnum.Published,
+                0);
+            sessionId = session.Id;
+            context.EventSessions.Add(session);
+            await context.SaveChangesAsync();
+        }
+
+        var response = await _fixture.Client.GetAsync($"/api/eventsession/{sessionId}");
+        var content = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(content).DoesNotContain(hiddenTitle);
+        await Assert.That(content).DoesNotContain(otherTenantId.ToString());
+    }
+
     private static Explore.Domain.Event CreateEvent(
         DefaultTenantSeed seed,
         EventStatusEnum status,

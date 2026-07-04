@@ -43,7 +43,7 @@ public class GetMyOrganizationsRequestHandler : IRequestHandler<GetMyOrganizatio
         }
 
         // Get paginated organizations for the user
-        var (organizations, totalCount) = await _organizationRepository.GetMyOrganizationsPaged(userGuid, request.PageNumber, request.PageSize);
+        var (organizations, totalCount) = await _organizationRepository.GetMyOrganizationsPaged(userGuid, request.PageNumber, request.PageSize, cancellationToken);
 
         // Get memberships to add user role info
         var memberships = await _organizationMemberRepository.GetMembershipsByUser(userGuid);

@@ -1,3 +1,6 @@
+// ABOUTME: Generic persistence contract for entity-first CRUD repositories.
+// ABOUTME: Keeps shared repository operations soft-delete aware without exposing blanket hard-delete APIs.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -27,10 +30,4 @@ public interface IGenericRepository<T, TKey> where T : class
     /// </summary>
     Task Delete(T entity);
 
-    /// <summary>
-    /// Performs a hard delete (permanent removal from database) regardless of ISoftDeletable.
-    /// Use with caution - this operation is irreversible.
-    /// Should only be used by system administrators for data cleanup.
-    /// </summary>
-    Task HardDelete(T entity);
 }

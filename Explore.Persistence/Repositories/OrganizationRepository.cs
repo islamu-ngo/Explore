@@ -1,6 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+// ABOUTME: EF Core repository for Organization aggregate detail, membership, listing, and PII erasure queries.
+// ABOUTME: Preserves entity-returning persistence boundaries and forwards cancellation into database operations.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +23,7 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
-    public async Task<List<Organization>> GetOrganizationsWithDetails()
+    public async Task<List<Organization>> GetOrganizationsWithDetails(CancellationToken cancellationToken = default)
     {
         return await _dbContext.Organizations
             .AsNoTracking()
@@ -35,19 +35,21 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.ProfilePicture)
             .Include(o => o.Tenant)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<Organization?> GetOrganizationWithDetails(Guid id)
+    public async Task<Organization?> GetOrganizationWithDetails(Guid id, CancellationToken cancellationToken = default)
     {
         return await OrganizationDetailsQuery()
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
     }
 
-    public async Task<Organization?> GetOrganizationWithDetailsByActorId(Guid actorId)
+    public async Task<Organization?> GetOrganizationWithDetailsByActorId(
+        Guid actorId,
+        CancellationToken cancellationToken = default)
     {
         return await OrganizationDetailsQuery()
-            .FirstOrDefaultAsync(o => o.ActorId == actorId);
+            .FirstOrDefaultAsync(o => o.ActorId == actorId, cancellationToken);
     }
 
     private IQueryable<Organization> OrganizationDetailsQuery()
@@ -73,7 +75,7 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
                 .ThenInclude(m => m.OrganizationPosition);
     }
 
-    public async Task<List<Organization>> GetMyOrganizations(Guid userId)
+    public async Task<List<Organization>> GetMyOrganizations(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Organizations
             .AsNoTracking()
@@ -87,10 +89,13 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .Include(o => o.Members)
                 .ThenInclude(m => m.Role)
             .Where(o => o.Members.Any(m => m.UserId == userId))
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<(List<Organization> Items, int TotalCount)> GetOrganizationsWithDetailsPaged(int pageNumber, int pageSize)
+    public async Task<(List<Organization> Items, int TotalCount)> GetOrganizationsWithDetailsPaged(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
         var query = _dbContext.Organizations
             .AsNoTracking()
@@ -104,16 +109,20 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .Include(o => o.Tenant)
             .OrderBy(o => o.Pii != null ? o.Pii.FullName : string.Empty);
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }
 
-    public async Task<(List<Organization> Items, int TotalCount)> GetMyOrganizationsPaged(Guid userId, int pageNumber, int pageSize)
+    public async Task<(List<Organization> Items, int TotalCount)> GetMyOrganizationsPaged(
+        Guid userId,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
         var query = _dbContext.Organizations
             .AsNoTracking()
@@ -129,19 +138,19 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .Where(o => o.Members.Any(m => m.UserId == userId))
             .OrderBy(o => o.Pii != null ? o.Pii.FullName : string.Empty);
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }
 
-    public async Task<int> ForgetPiiAsync(Guid organizationId)
+    public async Task<int> ForgetPiiAsync(Guid organizationId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.OrganizationPii
             .Where(p => p.OrganizationId == organizationId)
-            .ExecuteDeleteAsync();
+            .ExecuteDeleteAsync(cancellationToken);
     }
 }

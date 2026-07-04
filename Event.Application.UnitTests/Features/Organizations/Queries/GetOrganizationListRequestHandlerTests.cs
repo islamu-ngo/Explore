@@ -58,7 +58,7 @@ public class GetOrganizationListRequestHandlerTests
             ApprovalStatusFullName = string.Empty
         }).ToList();
 
-        _organizationRepository.GetOrganizationsWithDetailsPaged(1, 20)
+        _organizationRepository.GetOrganizationsWithDetailsPaged(1, 20, Arg.Any<CancellationToken>())
             .Returns((organizations, 5));
         _mapper.Map<List<OrganizationListDto>>(organizations).Returns(organizationDtos);
 
@@ -96,7 +96,7 @@ public class GetOrganizationListRequestHandlerTests
             ApprovalStatusFullName = string.Empty
         }).ToList();
 
-        _organizationRepository.GetOrganizationsWithDetailsPaged(2, 10)
+        _organizationRepository.GetOrganizationsWithDetailsPaged(2, 10, Arg.Any<CancellationToken>())
             .Returns((organizations, 25));
         _mapper.Map<List<OrganizationListDto>>(organizations).Returns(organizationDtos);
 
@@ -124,7 +124,7 @@ public class GetOrganizationListRequestHandlerTests
         var emptyList = new List<Organization>();
         var emptyDtos = new List<OrganizationListDto>();
 
-        _organizationRepository.GetOrganizationsWithDetailsPaged(1, 20)
+        _organizationRepository.GetOrganizationsWithDetailsPaged(1, 20, Arg.Any<CancellationToken>())
             .Returns((emptyList, 0));
         _mapper.Map<List<OrganizationListDto>>(emptyList).Returns(emptyDtos);
 
@@ -137,5 +137,26 @@ public class GetOrganizationListRequestHandlerTests
         await Assert.That(result.TotalCount).IsEqualTo(0);
         await Assert.That(result.HasNextPage).IsFalse();
         await Assert.That(result.HasPreviousPage).IsFalse();
+    }
+
+    [Test]
+    public async Task Handle_ForwardsCancellationTokenToRepository()
+    {
+        var request = new GetOrganizationListRequest
+        {
+            PageNumber = 3,
+            PageSize = 7
+        };
+        var cancellationToken = new CancellationTokenSource().Token;
+        var organizations = new List<Organization>();
+
+        _organizationRepository.GetOrganizationsWithDetailsPaged(3, 7, cancellationToken)
+            .Returns((organizations, 0));
+        _mapper.Map<List<OrganizationListDto>>(organizations).Returns([]);
+
+        await _handler.Handle(request, cancellationToken);
+
+        await _organizationRepository.Received(1)
+            .GetOrganizationsWithDetailsPaged(3, 7, cancellationToken);
     }
 }

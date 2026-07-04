@@ -33,7 +33,7 @@ public class GetEventListAggregateViewQueryHandlerTests
     public async Task Handle_ReturnsPaginatedResultFromRepository()
     {
         var eventId = Guid.NewGuid();
-        _repository.GetPagedAsync(Arg.Any<AggregateViewFilterDto>(), 2, 1, Arg.Any<CancellationToken>())
+        _repository.GetPagedAsync(Arg.Any<EventAggregateViewFilter>(), 2, 1, Arg.Any<CancellationToken>())
             .Returns((
                 [CreateView(eventId, "Second Event", DateTimeOffset.Parse("2026-04-25T09:00:00+00:00"))],
                 3));
@@ -62,7 +62,7 @@ public class GetEventListAggregateViewQueryHandlerTests
             StartAtTo = DateTimeOffset.Parse("2026-04-30T23:59:59+00:00")
         };
 
-        _repository.GetPagedAsync(Arg.Any<AggregateViewFilterDto>(), 1, 20, Arg.Any<CancellationToken>())
+        _repository.GetPagedAsync(Arg.Any<EventAggregateViewFilter>(), 1, 20, Arg.Any<CancellationToken>())
             .Returns((new List<EventWithSessionsView>(), 0));
         _repository.GetEventDefinitionsByEventIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -70,7 +70,7 @@ public class GetEventListAggregateViewQueryHandlerTests
         await _handler.Handle(new GetEventListAggregateViewQuery(filter, ExposureLevel.Public, 1, 20), CancellationToken.None);
 
         await _repository.Received(1).GetPagedAsync(
-            Arg.Is<AggregateViewFilterDto>(x =>
+            Arg.Is<EventAggregateViewFilter>(x =>
                 x != null &&
                 x.Title == filter.Title &&
                 x.StartAtFrom == filter.StartAtFrom &&
@@ -85,7 +85,7 @@ public class GetEventListAggregateViewQueryHandlerTests
     {
         var firstId = Guid.NewGuid();
         var secondId = Guid.NewGuid();
-        _repository.GetPagedAsync(Arg.Any<AggregateViewFilterDto>(), 1, 20, Arg.Any<CancellationToken>())
+        _repository.GetPagedAsync(Arg.Any<EventAggregateViewFilter>(), 1, 20, Arg.Any<CancellationToken>())
             .Returns((
             [
                 CreateView(firstId, "First Event", new DateTimeOffset(2026, 4, 24, 9, 0, 0, TimeSpan.Zero)),
@@ -113,7 +113,7 @@ public class GetEventListAggregateViewQueryHandlerTests
     public async Task Handle_SearchableFacetsCarryExportAndModerationFlags()
     {
         var eventId = Guid.NewGuid();
-        _repository.GetPagedAsync(Arg.Any<AggregateViewFilterDto>(), 1, 20, Arg.Any<CancellationToken>())
+        _repository.GetPagedAsync(Arg.Any<EventAggregateViewFilter>(), 1, 20, Arg.Any<CancellationToken>())
             .Returns((
             [
                 CreateView(eventId, "Flagged Event", new DateTimeOffset(2026, 4, 24, 9, 0, 0, TimeSpan.Zero))
@@ -141,7 +141,7 @@ public class GetEventListAggregateViewQueryHandlerTests
     public async Task Handle_SearchableFacetsExcludeNonSearchableDefinitions()
     {
         var eventId = Guid.NewGuid();
-        _repository.GetPagedAsync(Arg.Any<AggregateViewFilterDto>(), 1, 20, Arg.Any<CancellationToken>())
+        _repository.GetPagedAsync(Arg.Any<EventAggregateViewFilter>(), 1, 20, Arg.Any<CancellationToken>())
             .Returns((
             [
                 CreateView(eventId, "Searchable Event", new DateTimeOffset(2026, 4, 24, 9, 0, 0, TimeSpan.Zero))

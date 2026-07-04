@@ -44,8 +44,8 @@ public class GetOrganizationDetailsRequestHandler : IRequestHandler<GetOrganizat
             cacheKey,
             async _ =>
             {
-                var organization = await _organizationRepository.GetOrganizationWithDetails(request.Id)
-                    ?? await _organizationRepository.GetOrganizationWithDetailsByActorId(request.Id);
+                var organization = await _organizationRepository.GetOrganizationWithDetails(request.Id, _)
+                    ?? await _organizationRepository.GetOrganizationWithDetailsByActorId(request.Id, _);
 
                 return organization is null ? null : _mapper.Map<OrganizationDto>(organization);
             },

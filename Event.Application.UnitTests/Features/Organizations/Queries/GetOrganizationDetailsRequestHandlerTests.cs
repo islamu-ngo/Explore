@@ -44,7 +44,8 @@ public class GetOrganizationDetailsRequestHandlerTests
         var organization = CreateOrganization(organizationId, actorId);
         var dto = CreateOrganizationDto(organizationId, actorId);
 
-        _organizationRepository.GetOrganizationWithDetails(organizationId).Returns(organization);
+        _organizationRepository.GetOrganizationWithDetails(organizationId, Arg.Any<CancellationToken>())
+            .Returns(organization);
         _mapper.Map<OrganizationDto>(organization).Returns(dto);
 
         // Act
@@ -52,7 +53,8 @@ public class GetOrganizationDetailsRequestHandlerTests
 
         // Assert
         await Assert.That(result).IsSameReferenceAs(dto);
-        await _organizationRepository.DidNotReceive().GetOrganizationWithDetailsByActorId(Arg.Any<Guid>());
+        await _organizationRepository.DidNotReceive()
+            .GetOrganizationWithDetailsByActorId(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -64,8 +66,10 @@ public class GetOrganizationDetailsRequestHandlerTests
         var organization = CreateOrganization(organizationId, requestedActorId);
         var dto = CreateOrganizationDto(organizationId, requestedActorId);
 
-        _organizationRepository.GetOrganizationWithDetails(requestedActorId).Returns((Organization?)null);
-        _organizationRepository.GetOrganizationWithDetailsByActorId(requestedActorId).Returns(organization);
+        _organizationRepository.GetOrganizationWithDetails(requestedActorId, Arg.Any<CancellationToken>())
+            .Returns((Organization?)null);
+        _organizationRepository.GetOrganizationWithDetailsByActorId(requestedActorId, Arg.Any<CancellationToken>())
+            .Returns(organization);
         _mapper.Map<OrganizationDto>(organization).Returns(dto);
 
         // Act
@@ -82,8 +86,10 @@ public class GetOrganizationDetailsRequestHandlerTests
     {
         // Arrange
         var requestedId = Guid.NewGuid();
-        _organizationRepository.GetOrganizationWithDetails(requestedId).Returns((Organization?)null);
-        _organizationRepository.GetOrganizationWithDetailsByActorId(requestedId).Returns((Organization?)null);
+        _organizationRepository.GetOrganizationWithDetails(requestedId, Arg.Any<CancellationToken>())
+            .Returns((Organization?)null);
+        _organizationRepository.GetOrganizationWithDetailsByActorId(requestedId, Arg.Any<CancellationToken>())
+            .Returns((Organization?)null);
 
         // Act
         var result = await _handler.Handle(new GetOrganizationDetailsRequest { Id = requestedId }, CancellationToken.None);

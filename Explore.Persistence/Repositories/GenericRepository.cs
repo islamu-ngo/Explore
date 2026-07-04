@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -60,21 +61,34 @@ public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : 
         }
     }
 
-    /// <summary>
-    /// Performs a hard delete (permanent removal from database) regardless of ISoftDeletable.
-    /// Use with caution - this operation is irreversible.
-    /// Should only be used by system administrators for data cleanup.
-    /// </summary>
-    public async Task HardDelete(T entity)
-    {
-        _dbContext.Set<T>().Remove(entity);
-        await _dbContext.SaveChangesAsync();
-    }
-
     public async Task<bool> Exists(TKey id)
     {
-        var entity = await GetById(id);
-        return entity != null;
+        var entityType = _dbContext.Model.FindEntityType(typeof(T))
+            ?? throw new InvalidOperationException($"Entity type metadata not found for {typeof(T).Name}.");
+        var primaryKey = entityType.FindPrimaryKey()
+            ?? throw new InvalidOperationException($"Primary key metadata not found for {typeof(T).Name}.");
+
+        if (primaryKey.Properties.Count != 1)
+        {
+            throw new InvalidOperationException($"{typeof(T).Name} must have a single-column primary key to use {nameof(Exists)}.");
+        }
+
+        var keyProperty = primaryKey.Properties[0];
+        var entity = Expression.Parameter(typeof(T), "entity");
+        var property = Expression.Call(
+            typeof(EF),
+            nameof(EF.Property),
+            [keyProperty.ClrType],
+            entity,
+            Expression.Constant(keyProperty.Name));
+        var keyValue = Expression.Convert(Expression.Constant(id, typeof(TKey)), keyProperty.ClrType);
+        var predicate = Expression.Lambda<Func<T, bool>>(
+            Expression.Equal(property, keyValue),
+            entity);
+
+        return await _dbContext.Set<T>()
+            .AsNoTracking()
+            .AnyAsync(predicate);
     }
 
     public async Task<IReadOnlyList<T>> GetAll()
