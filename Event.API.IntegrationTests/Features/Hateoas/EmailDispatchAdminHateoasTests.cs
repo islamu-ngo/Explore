@@ -1,6 +1,7 @@
 // ABOUTME: HATEOAS contract tests for EmailDispatch operator status affordances.
 // ABOUTME: Protects replay and park links from drifting away from durable dispatch state rules.
 
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
@@ -11,6 +12,7 @@ using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features.Hateoas;
 
+[Category(TestCategories.Email)]
 public sealed class EmailDispatchAdminHateoasTests
 {
     [Test]
@@ -28,7 +30,7 @@ public sealed class EmailDispatchAdminHateoasTests
         await Assert.That(replay.Method).IsEqualTo("POST");
         await Assert.That(replay.RequiresAuth).IsTrue();
         await Assert.That(replay.PermissionResourceKind).IsEqualTo(ResourceKinds.EmailDispatch);
-        await Assert.That(replay.PermissionAction).IsEqualTo(AuthorizationActions.EmailDispatches.Update);
+        await Assert.That(replay.PermissionAction).IsEqualTo(AuthorizationActions.EmailDispatches.Replay);
         await Assert.That(replay.PermissionResourceId).IsEqualTo(outboxId.ToString());
         await Assert.That(replay.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
         await AssertPermissionAttributes(replay, tenantId, outboxId, dto);
@@ -40,7 +42,7 @@ public sealed class EmailDispatchAdminHateoasTests
         await Assert.That(park.Method).IsEqualTo("PUT");
         await Assert.That(park.RequiresAuth).IsTrue();
         await Assert.That(park.PermissionResourceKind).IsEqualTo(ResourceKinds.EmailDispatch);
-        await Assert.That(park.PermissionAction).IsEqualTo(AuthorizationActions.EmailDispatches.Update);
+        await Assert.That(park.PermissionAction).IsEqualTo(AuthorizationActions.EmailDispatches.Park);
         await Assert.That(park.PermissionResourceId).IsEqualTo(outboxId.ToString());
         await Assert.That(park.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
         await AssertPermissionAttributes(park, tenantId, outboxId, dto);

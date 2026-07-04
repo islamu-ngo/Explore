@@ -1,6 +1,7 @@
 // ABOUTME: Unit-style tests for API-hosted TickerQ email dispatch jobs.
 // ABOUTME: Proves scheduler functions delegate to Application drain contracts and preserve retry boundaries.
 
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Scheduling;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Scheduling;
@@ -13,6 +14,7 @@ using TUnit.Core;
 
 namespace ApiIntegrationTests.Features;
 
+[Category(TestCategories.Email)]
 public sealed class EmailDispatchTickerQJobsTests
 {
     [Test]
@@ -20,7 +22,7 @@ public sealed class EmailDispatchTickerQJobsTests
     {
         var drainService = Substitute.For<IEmailDispatchDrainService>();
         drainService.ProcessBatchAsync(Arg.Any<CancellationToken>())
-            .Returns(new EmailDispatchDrainResult(1, 1, 1, 0, 0, 0, 0, 0));
+            .Returns(new EmailDispatchDrainResult(1, 1, 1, 0, 0, 0, 0, 0, 0));
         var jobs = new EmailDispatchTickerQJobs(
             drainService,
             NullLogger<EmailDispatchTickerQJobs>.Instance);
@@ -115,6 +117,23 @@ public sealed class EmailDispatchTickerQJobsTests
                 UserId: Guid.CreateVersion7()));
 
         await jobs.DispatchEventReminderAsync(context, CancellationToken.None);
+
+        await drainService.DidNotReceive().ProcessSingleAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DispatchEventReminderAsyncSkipsWhenPointerContextIsMissing()
+    {
+        var drainService = Substitute.For<IEmailDispatchDrainService>();
+        var jobs = new EventLifecycleTickerQJobs(
+            drainService,
+            NullLogger<EventLifecycleTickerQJobs>.Instance);
+
+        await jobs.DispatchEventReminderAsync(context: null, CancellationToken.None);
 
         await drainService.DidNotReceive().ProcessSingleAsync(
             Arg.Any<Guid>(),

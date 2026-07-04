@@ -13,14 +13,12 @@ resourcePolicy:
     resourceSchema:
       ref: cerbos:///islamuevent_email_dispatch.json
   rules:
-    # Instance admins can do everything.
     - actions: ["*"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_instance_admin
 
-    # Tenant admins can view status and operate replay/park within their tenant.
-    - actions: ["view", "update"]
+    - actions: ["view", "manage_tenant", "park", "replay"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin

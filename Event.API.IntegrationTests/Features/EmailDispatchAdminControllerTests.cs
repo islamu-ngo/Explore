@@ -15,6 +15,7 @@ using Explore.Application.Features.EmailDispatch.Requests.Commands;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.RateLimiting;
@@ -26,6 +27,7 @@ using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
 
+[Category(TestCategories.Email)]
 public sealed class EmailDispatchAdminControllerTests
 {
     [Test]
@@ -40,6 +42,36 @@ public sealed class EmailDispatchAdminControllerTests
             content: null);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task ProtectedRoutes_WhenAuthorizationProviderDenies_ReturnForbidden()
+    {
+        var tenantId = Guid.NewGuid();
+        var outboxId = Guid.NewGuid();
+        await using var factory = new AuthenticatedWebApplicationFactory
+        {
+            AuthorizationProviderOverride = new StubAuthorizationProvider { AllowAll = false }
+        };
+        using var client = factory.CreateClient();
+        var requests = new[]
+        {
+            CreateAuthenticatedRequest(HttpMethod.Get, $"/api/admin/email-dispatch/status?tenantId={tenantId:D}"),
+            CreateAuthenticatedRequest(HttpMethod.Put, $"/api/admin/email-dispatch/tenants/{tenantId:D}/pause?reason=maintenance"),
+            CreateAuthenticatedRequest(HttpMethod.Delete, $"/api/admin/email-dispatch/tenants/{tenantId:D}/pause"),
+            CreateAuthenticatedRequest(HttpMethod.Put, $"/api/admin/email-dispatch/tenants/{tenantId:D}/outbox/{outboxId:D}/park?reason=unsafe"),
+            CreateAuthenticatedRequest(HttpMethod.Post, $"/api/admin/email-dispatch/tenants/{tenantId:D}/outbox/{outboxId:D}/replay")
+        };
+
+        foreach (var request in requests)
+        {
+            using (request)
+            {
+                var response = await client.SendAsync(request);
+
+                await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+            }
+        }
     }
 
     [Test]
@@ -176,6 +208,10 @@ public sealed class EmailDispatchAdminControllerTests
 
         await Assert.That(GetRateLimitPolicy(park)).IsEqualTo(RateLimitingExtensions.WritePolicy);
         await Assert.That(GetRateLimitPolicy(replay)).IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await AssertProducesProblem(park, StatusCodes.Status401Unauthorized);
+        await AssertProducesProblem(park, StatusCodes.Status403Forbidden);
+        await AssertProducesProblem(replay, StatusCodes.Status401Unauthorized);
+        await AssertProducesProblem(replay, StatusCodes.Status403Forbidden);
     }
 
     [Test]
@@ -189,6 +225,20 @@ public sealed class EmailDispatchAdminControllerTests
         await Assert.That(route.Template).IsEqualTo("status");
         await Assert.That(getStatus.ReturnType).IsEqualTo(typeof(Task<ActionResult<HalCollectionResource<EmailDispatchStatusDto>>>));
         await Assert.That(GetRateLimitPolicy(getStatus)).IsEqualTo(RateLimitingExtensions.AuthenticatedPolicy);
+        await AssertProducesProblem(getStatus, StatusCodes.Status401Unauthorized);
+        await AssertProducesProblem(getStatus, StatusCodes.Status403Forbidden);
+    }
+
+    [Test]
+    public async Task TenantControlRoutes_AdvertiseAuthenticationAndAuthorizationProblemDetails()
+    {
+        MethodInfo pause = typeof(EmailDispatchAdminController).GetMethod(nameof(EmailDispatchAdminController.PauseTenant))!;
+        MethodInfo resume = typeof(EmailDispatchAdminController).GetMethod(nameof(EmailDispatchAdminController.ResumeTenant))!;
+
+        await AssertProducesProblem(pause, StatusCodes.Status401Unauthorized);
+        await AssertProducesProblem(pause, StatusCodes.Status403Forbidden);
+        await AssertProducesProblem(resume, StatusCodes.Status401Unauthorized);
+        await AssertProducesProblem(resume, StatusCodes.Status403Forbidden);
     }
 
     private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
@@ -215,6 +265,15 @@ public sealed class EmailDispatchAdminControllerTests
 
     private static string? GetRateLimitPolicy(MethodInfo method)
         => method.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName;
+
+    private static async Task AssertProducesProblem(MethodInfo method, int statusCode)
+    {
+        var attributes = method.GetCustomAttributes<ProducesResponseTypeAttribute>();
+
+        await Assert.That(attributes.Any(attribute =>
+            attribute.StatusCode == statusCode &&
+            attribute.Type == typeof(ProblemDetails))).IsTrue();
+    }
 
     private static async Task<JsonDocument> AssertEmailDispatchValidationProblemAsync(HttpResponseMessage response)
     {

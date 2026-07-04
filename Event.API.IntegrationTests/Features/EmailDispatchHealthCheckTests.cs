@@ -1,6 +1,7 @@
 // ABOUTME: Unit-style tests for the API EmailDispatchHealthCheck.
 // ABOUTME: Verifies Basic Dispatch Mode health reports enabled and intentionally disabled states safely.
 
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Configuration;
 using Explore.API.HealthChecks;
 using Explore.Infrastructure;
@@ -11,6 +12,7 @@ using TUnit.Core;
 
 namespace ApiIntegrationTests.Features;
 
+[Category(TestCategories.Email)]
 public sealed class EmailDispatchHealthCheckTests
 {
     [Test]
@@ -66,6 +68,29 @@ public sealed class EmailDispatchHealthCheckTests
         result.Description.Should().Contain("intentionally disabled");
         result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(false);
         result.Data.Should().ContainKey("consumerId").WhoseValue.Should().Be("disabled-consumer");
+    }
+
+    [Test]
+    public async Task CheckHealthAsyncWhenSchedulerModeDisabledReturnsDegraded()
+    {
+        var options = Options.Create(new EmailDispatchProcessorSettings
+        {
+            Enabled = true,
+            Mode = EmailDispatchProcessorMode.Disabled,
+            ConsumerId = "disabled-mode"
+        });
+        var schedulerOptions = Options.Create(new TickerQSchedulerOptions
+        {
+            Enabled = true
+        });
+        var healthCheck = new EmailDispatchHealthCheck(options, schedulerOptions);
+
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        result.Status.Should().Be(HealthStatus.Degraded);
+        result.Description.Should().Contain("Disabled");
+        result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(true);
+        result.Data.Should().ContainKey("mode").WhoseValue.Should().Be(nameof(EmailDispatchProcessorMode.Disabled));
     }
 
     [Test]

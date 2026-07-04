@@ -48,6 +48,8 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(HalCollectionResource<EmailDispatchStatusDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<HalCollectionResource<EmailDispatchStatusDto>>> GetStatus(
         [FromQuery] Guid tenantId,
         [FromQuery] int limit = 50,
@@ -81,6 +83,8 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> PauseTenant(
         Guid tenantId,
         [FromQuery] string? reason = null,
@@ -107,6 +111,8 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> ResumeTenant(
         Guid tenantId,
         CancellationToken cancellationToken = default)
@@ -131,6 +137,8 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> ParkDispatch(
@@ -160,6 +168,8 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> ReplayDispatch(

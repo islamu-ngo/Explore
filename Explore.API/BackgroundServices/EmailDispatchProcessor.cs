@@ -1,14 +1,13 @@
 // ABOUTME: Hosted timer wrapper that triggers the EmailDispatch drain service for Basic Dispatch Mode.
 // ABOUTME: Keeps scheduling mechanics separate from PostgreSQL-owned email dispatch state transitions.
 
-using Explore.Application.Contracts.Services;
 using Explore.Infrastructure;
 using Microsoft.Extensions.Options;
 
 namespace Explore.API.BackgroundServices;
 
 public sealed class EmailDispatchProcessor(
-    IServiceProvider serviceProvider,
+    EmailDispatchHostedDrainRunner drainRunner,
     IOptions<EmailDispatchProcessorSettings> settings,
     ILogger<EmailDispatchProcessor> logger) : BackgroundService
 {
@@ -33,7 +32,7 @@ public sealed class EmailDispatchProcessor(
         {
             try
             {
-                await ProcessBatchAsync(stoppingToken);
+                await drainRunner.RunOnceAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -57,11 +56,4 @@ public sealed class EmailDispatchProcessor(
         logger.LogInformation("Email dispatch processor stopped");
     }
 
-    private async Task ProcessBatchAsync(CancellationToken stoppingToken)
-    {
-        await using var scope = serviceProvider.CreateAsyncScope();
-        var drainService = scope.ServiceProvider.GetRequiredService<IEmailDispatchDrainService>();
-        await drainService.RecoverStaleProcessingAsync(stoppingToken);
-        await drainService.ProcessBatchAsync(stoppingToken);
-    }
 }

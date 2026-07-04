@@ -1,0 +1,106 @@
+# ABOUTME: Cerbos policy test suite for EmailDispatch operator resources.
+# ABOUTME: Ensures tenant-scoped email dispatch status and replay controls are tenant-admin-only.
+
+name: EmailDispatchPolicyTests
+description: "Validates email_dispatch operator permissions across admin hierarchy levels"
+
+principals:
+  islamuevent_instance_admin:
+    id: "user-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  islamuevent_tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  other_tenant_admin:
+    id: "user-other-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-2": "admin"
+      orgMemberships: {}
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  dispatch_in_tenant1:
+    kind: "islamuevent_email_dispatch"
+    id: "dispatch-1"
+    attr:
+      tenantId: "tenant-1"
+      outboxId: "dispatch-1"
+      deliveryStatus: "DeadLettered"
+
+tests:
+  - name: "Instance admin has full email dispatch operator access"
+    input:
+      principals: ["islamuevent_instance_admin"]
+      resources: ["dispatch_in_tenant1"]
+      actions: ["view", "manage_tenant", "park", "replay"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "dispatch_in_tenant1"
+        actions:
+          view: EFFECT_ALLOW
+          manage_tenant: EFFECT_ALLOW
+          park: EFFECT_ALLOW
+          replay: EFFECT_ALLOW
+
+  - name: "Tenant admin can operate email dispatch in their tenant"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["dispatch_in_tenant1"]
+      actions: ["view", "manage_tenant", "park", "replay"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "dispatch_in_tenant1"
+        actions:
+          view: EFFECT_ALLOW
+          manage_tenant: EFFECT_ALLOW
+          park: EFFECT_ALLOW
+          replay: EFFECT_ALLOW
+
+  - name: "Other tenant admin cannot operate email dispatch outside their tenant"
+    input:
+      principals: ["other_tenant_admin"]
+      resources: ["dispatch_in_tenant1"]
+      actions: ["view", "manage_tenant", "park", "replay"]
+    expected:
+      - principal: "other_tenant_admin"
+        resource: "dispatch_in_tenant1"
+        actions:
+          view: EFFECT_DENY
+          manage_tenant: EFFECT_DENY
+          park: EFFECT_DENY
+          replay: EFFECT_DENY
+
+  - name: "Regular user cannot access email dispatch operator actions"
+    input:
+      principals: ["regular_user"]
+      resources: ["dispatch_in_tenant1"]
+      actions: ["view", "manage_tenant", "park", "replay"]
+    expected:
+      - principal: "regular_user"
+        resource: "dispatch_in_tenant1"
+        actions:
+          view: EFFECT_DENY
+          manage_tenant: EFFECT_DENY
+          park: EFFECT_DENY
+          replay: EFFECT_DENY

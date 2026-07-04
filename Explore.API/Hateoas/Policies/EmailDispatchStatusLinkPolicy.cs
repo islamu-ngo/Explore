@@ -47,7 +47,7 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
                 "POST",
                 "Replay email dispatch",
                 RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.EmailDispatches.Update,
+                .RequirePermission(AuthorizationActions.EmailDispatches.Replay,
                     ResourceDescriptors.EmailDispatchStatus,
                     dto);
         }
@@ -61,7 +61,7 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
                 "PUT",
                 "Park email dispatch",
                 RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.EmailDispatches.Update,
+                .RequirePermission(AuthorizationActions.EmailDispatches.Park,
                     ResourceDescriptors.EmailDispatchStatus,
                     dto);
         }
@@ -74,5 +74,6 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
 
     private static bool CanPark(string deliveryStatus)
         => !string.Equals(deliveryStatus, "Sent", StringComparison.Ordinal) &&
+           !string.Equals(deliveryStatus, "Skipped", StringComparison.Ordinal) &&
            !string.Equals(deliveryStatus, "Parked", StringComparison.Ordinal);
 }
