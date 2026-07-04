@@ -10,9 +10,11 @@ KEYCLOAK_REALM="${KEYCLOAK_REALM:-ISLAMU}"
 KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN:-}"
 KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-}"
 KEYCLOAK_BLAZOR_CLIENT_ID="${KEYCLOAK_BLAZOR_CLIENT_ID:-islamu-event-blazor}"
+KEYCLOAK_CONTROL_PLANE_CLIENT_ID="${KEYCLOAK_CONTROL_PLANE_CLIENT_ID:-islamu-event-control-plane}"
 KEYCLOAK_API_CLIENT_ID="${KEYCLOAK_API_CLIENT_ID:-islamu-event-api}"
 KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET="${KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET:-false}"
 DEFAULT_LOCAL_BLAZOR_SECRET="islamu-event-blazor-secret"
+DEFAULT_LOCAL_CONTROL_PLANE_SECRET="islamu-event-control-plane-secret"
 KCADM="${KCADM:-/opt/keycloak/bin/kcadm.sh}"
 
 log() {
@@ -48,6 +50,21 @@ resolve_blazor_secret() {
   fail "KEYCLOAK_BLAZOR_CLIENT_SECRET is required for the confidential Blazor BFF client. Set KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true only for throwaway local development."
 }
 
+resolve_control_plane_secret() {
+  if [ -n "${KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET:-}" ]; then
+    printf '%s' "$KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET"
+    return 0
+  fi
+
+  if [ "$KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET" = "true" ]; then
+    log "Using the opt-in local development default for ${KEYCLOAK_CONTROL_PLANE_CLIENT_ID}. Do not use this in production."
+    printf '%s' "$DEFAULT_LOCAL_CONTROL_PLANE_SECRET"
+    return 0
+  fi
+
+  return 1
+}
+
 client_uuid() {
   local client_id="$1"
   "$KCADM" get clients -r "$KEYCLOAK_REALM" -q "clientId=$client_id" --fields id --format csv --noquotes | head -n 1 | tr -d '\r'
@@ -71,6 +88,7 @@ set_client_secret() {
 
 main() {
   local blazor_secret
+  local control_plane_secret
 
   require_non_empty "KEYCLOAK_ADMIN" "$KEYCLOAK_ADMIN"
   require_non_empty "KEYCLOAK_ADMIN_PASSWORD" "$KEYCLOAK_ADMIN_PASSWORD"
@@ -88,6 +106,12 @@ main() {
 
   blazor_secret="$(resolve_blazor_secret)"
   set_client_secret "$KEYCLOAK_BLAZOR_CLIENT_ID" "$blazor_secret"
+
+  if control_plane_secret="$(resolve_control_plane_secret)"; then
+    set_client_secret "$KEYCLOAK_CONTROL_PLANE_CLIENT_ID" "$control_plane_secret"
+  else
+    log "KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET is unset; leaving optional control-plane BFF client secret unchanged."
+  fi
 
   if [ -n "${KEYCLOAK_API_CLIENT_SECRET:-}" ]; then
     set_client_secret "$KEYCLOAK_API_CLIENT_ID" "$KEYCLOAK_API_CLIENT_SECRET"

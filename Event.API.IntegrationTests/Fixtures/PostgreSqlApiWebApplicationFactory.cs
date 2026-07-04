@@ -82,6 +82,8 @@ public class PostgreSqlApiWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
+            TestHostServicePruner.RemoveNoisyHostedServices(services);
+
             services.AddAuthentication(options =>
             {
                 options.DefaultScheme = TestAuthHandler.SchemeName;

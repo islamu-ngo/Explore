@@ -3,6 +3,7 @@ using Explore.Domain.Constants;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
@@ -49,6 +50,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             // Override Redis with in-memory distributed cache for tests
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();
+        });
+
+        builder.ConfigureTestServices(services =>
+        {
+            TestHostServicePruner.RemoveNoisyHostedServices(services);
         });
     }
 

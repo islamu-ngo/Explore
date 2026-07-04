@@ -98,7 +98,7 @@ if (database is not null)
         .WithReference(database, connectionName: "DefaultConnection")
         .WaitFor(database);
 
-    migrations = ConfigureLocalMailpitSmtp(migrations);
+    migrations = ConfigureLocalMailpitSmtp(migrations, mailpit);
 }
 
 var exploreAPI = WithProfileSecretMode(
@@ -116,7 +116,7 @@ var exploreAPI = WithProfileSecretMode(
     .WithEnvironment("StorageReconciliation__DryRun", "true")
     .WaitFor(mailpit);
 
-exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI);
+exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI, mailpit);
 
 if (migrations is not null)
 {
@@ -204,6 +204,22 @@ if (fullLocalResources is not null)
         .WaitFor(fullLocalResources.Keycloak);
 }
 
+var controlPlaneBlazor = WithProfileSecretMode(
+        builder.AddProject<Projects.Event_ControlPlane_Blazor>(
+                "event-control-plane",
+                ExcludeProjectLaunchProfile)
+            .WithHttpEndpoint(name: "http"),
+        runMode,
+        builder.Configuration)
+    .WithReference(exploreAPI)
+    .WaitFor(exploreAPI);
+
+if (fullLocalResources is not null)
+{
+    controlPlaneBlazor = ConfigureFullLocalControlPlane(controlPlaneBlazor, fullLocalResources)
+        .WaitFor(fullLocalResources.Keycloak);
+}
+
 await builder.Build().RunAsync();
 
 static FullLocalResources AddFullLocalPlatform(
@@ -254,7 +270,6 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEnvironment("KC_HTTP_ENABLED", "true")
         .WithEnvironment("KC_HTTP_RELATIVE_PATH", "/auth")
         .WithEnvironment("KC_PROXY_HEADERS", "xforwarded")
-        .WithEnvironment("KC_HOSTNAME", "http://localhost:8080/auth")
         .WithEnvironment("KC_HOSTNAME_STRICT", "false")
         .WithEnvironment("KC_HEALTH_ENABLED", "true")
         .WithEnvironment("KC_METRICS_ENABLED", "true")
@@ -298,12 +313,17 @@ static FullLocalResources AddFullLocalPlatform(
         .WithArgs("server", "/data", "--console-address", ":9001")
         .WithEnvironment("MINIO_ROOT_USER", "minioadmin")
         .WithEnvironment("MINIO_ROOT_PASSWORD", "minioadmin")
-        .WithEnvironment("MINIO_SERVER_URL", "http://localhost:9005")
         .WithVolume("islamu-event-minio-data", "/data")
         .WithHttpEndpoint(targetPort: 9000, port: 9005, name: "api")
         .WithHttpEndpoint(targetPort: 9001, port: 9006, name: "console")
         .WithHttpHealthCheck("/minio/health/live", endpointName: "api")
         .WithLifetime(ContainerLifetime.Persistent);
+    var minioBootstrap = builder.AddContainer("minio-bootstrap", "minio/mc", "latest")
+        .WithEntrypoint("sh")
+        .WithArgs(
+            "-c",
+            "mc alias set local http://minio:9000 minioadmin minioadmin && (mc mb -p local/explore || mc ls local/explore >/dev/null)")
+        .WaitFor(minio);
 
     var svixDb = builder.AddContainer("svix-postgres", "postgres", "13.4")
         .WithEnvironment("POSTGRES_PASSWORD", "postgres")
@@ -325,7 +345,7 @@ static FullLocalResources AddFullLocalPlatform(
         svix = svix
             .WithEnvironment(
                 "SVIX_REDIS_DSN",
-                ReferenceExpression.Create($"redis://:{cache.Resource.PasswordParameter}@cache:6380"))
+                ReferenceExpression.Create($"redis://:{cache.Resource.PasswordParameter!}@cache:6380"))
             .WaitFor(cache);
     }
     else
@@ -369,7 +389,7 @@ static FullLocalResources AddFullLocalPlatform(
             .WithEnvironment("REDIS_USE_CLUSTER", "false")
             .WithEnvironment("REDIS_HOST", "cache")
             .WithEnvironment("REDIS_PORT", "6380")
-            .WithEnvironment("REDIS_PASSWORD", cache.Resource.PasswordParameter)
+            .WithEnvironment("REDIS_PASSWORD", cache.Resource.PasswordParameter!)
             .WaitFor(cache);
     }
 
@@ -402,6 +422,7 @@ static FullLocalResources AddFullLocalPlatform(
         Keycloak: keycloak,
         Cerbos: cerbos,
         Minio: minio,
+        MinioBootstrap: minioBootstrap,
         Svix: svix,
         Coop: coop,
         Osprey: osprey,
@@ -433,18 +454,22 @@ static void ExcludeProjectLaunchProfile(ProjectResourceOptions options)
 }
 
 static IResourceBuilder<ProjectResource> ConfigureLocalMailpitSmtp(
-    IResourceBuilder<ProjectResource> project)
+    IResourceBuilder<ProjectResource> project,
+    IResourceBuilder<ContainerResource> mailpit)
 {
+    var smtpHost = EndpointHost(mailpit, "smtp");
+    var smtpPort = EndpointPort(mailpit, "smtp");
+
     return project
-        .WithEnvironment("MAIL_SMTP_HOST", "localhost")
-        .WithEnvironment("MAIL_SMTP_PORT", "1025")
+        .WithEnvironment("MAIL_SMTP_HOST", smtpHost)
+        .WithEnvironment("MAIL_SMTP_PORT", smtpPort)
         .WithEnvironment("MAIL_SMTP_USERNAME", "")
         .WithEnvironment("MAIL_SMTP_PASSWORD", "")
         .WithEnvironment("MAIL_SMTP_ENCRYPTION", "None")
         .WithEnvironment("MAIL_SMTP_FROM_ADDRESS", "noreply@localhost")
         .WithEnvironment("MAIL_SMTP_FROM_NAME", "ISLAMU Event Dev")
-        .WithEnvironment("SMTP_HOST", "localhost")
-        .WithEnvironment("SMTP_PORT", "1025")
+        .WithEnvironment("SMTP_HOST", smtpHost)
+        .WithEnvironment("SMTP_PORT", smtpPort)
         .WithEnvironment("SMTP_USERNAME", "")
         .WithEnvironment("SMTP_PASSWORD", "")
         .WithEnvironment("SMTP_SECURITY", "None")
@@ -459,42 +484,52 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
     string localCerbosAdminPassword,
     string localCerbosAdminPasswordHash)
 {
+    var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
+    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", "/auth/realms/ISLAMU");
+    var keycloakMetadataAddress = EndpointUrl(
+        resources.Keycloak,
+        "http",
+        "/auth/realms/ISLAMU/.well-known/openid-configuration");
+    var cerbosGrpcEndpoint = HttpEndpointFromHostAndPort(resources.Cerbos, "grpc");
+    var cerbosHttpEndpoint = EndpointUrl(resources.Cerbos, "http");
+    var minioApiEndpoint = EndpointUrl(resources.Minio, "api");
+    var coopEndpoint = EndpointUrl(resources.Coop, "http");
+    var svixEndpoint = EndpointUrl(resources.Svix, "http");
+
     api = api
         .WithEnvironment("KEYCLOAK_REALM", "ISLAMU")
-        .WithEnvironment("KEYCLOAK_ENDPOINT", "http://localhost:8080/auth")
+        .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
         .WithEnvironment("Keycloak__Realm", "ISLAMU")
-        .WithEnvironment("Keycloak__Authority", "http://localhost:8080/auth/realms/ISLAMU")
-        .WithEnvironment(
-            "Keycloak__MetadataAddress",
-            "http://localhost:8080/auth/realms/ISLAMU/.well-known/openid-configuration")
+        .WithEnvironment("Keycloak__Authority", keycloakAuthority)
+        .WithEnvironment("Keycloak__MetadataAddress", keycloakMetadataAddress)
         .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
         .WithEnvironment("Keycloak__Audience", "islamu-event-api")
         .WithEnvironment("Keycloak__ValidAudiences__0", "islamu-event-api")
         .WithEnvironment("Keycloak__ValidAudiences__1", "islamu-event-blazor")
         .WithEnvironment("KeycloakBootstrap__AllowLocalUrls", "true")
-        .WithEnvironment("Cerbos__GrpcEndpoint", "http://localhost:3593")
-        .WithEnvironment("Cerbos__HttpEndpoint", "http://localhost:3592")
+        .WithEnvironment("Cerbos__GrpcEndpoint", cerbosGrpcEndpoint)
+        .WithEnvironment("Cerbos__HttpEndpoint", cerbosHttpEndpoint)
         .WithEnvironment("Cerbos__UseTls", "false")
         .WithEnvironment("Cerbos__PlaintextMode", "true")
-        .WithEnvironment("Cerbos__AdminApi__Endpoints__0", "http://localhost:3592")
+        .WithEnvironment("Cerbos__AdminApi__Endpoints__0", cerbosHttpEndpoint)
         .WithEnvironment("Cerbos__AdminApi__AdminUsername", localCerbosAdminUsername)
         .WithEnvironment("Cerbos__AdminApi__AdminPassword", localCerbosAdminPassword)
         .WithEnvironment("Cerbos__AdminUsername", localCerbosAdminUsername)
         .WithEnvironment("Cerbos__AdminPasswordHash", localCerbosAdminPasswordHash)
         .WithEnvironment("CERBOS_ADMIN_USERNAME", localCerbosAdminUsername)
         .WithEnvironment("CERBOS_ADMIN_PASSWORD", localCerbosAdminPassword)
-        .WithEnvironment("S3Settings__Endpoint", "http://localhost:9005")
-        .WithEnvironment("S3Settings__PublicEndpoint", "http://localhost:9005")
+        .WithEnvironment("S3Settings__Endpoint", minioApiEndpoint)
+        .WithEnvironment("S3Settings__PublicEndpoint", minioApiEndpoint)
         .WithEnvironment("S3Settings__Region", "us-east-1")
         .WithEnvironment("S3Settings__BucketName", "explore")
         .WithEnvironment("S3Settings__AccessKeyId", "minioadmin")
         .WithEnvironment("S3Settings__SecretAccessKey", "minioadmin")
         .WithEnvironment("Reporting__Osprey__Enabled", "false")
         .WithEnvironment("Reporting__Osprey__AllowLocalProviderEndpoints", "true")
-        .WithEnvironment("Reporting__Coop__EndpointUrl", "http://localhost:8082")
+        .WithEnvironment("Reporting__Coop__EndpointUrl", coopEndpoint)
         .WithEnvironment("Reporting__Coop__AllowLocalProviderEndpoints", "true")
         .WithEnvironment("Reporting__Coop__WebhookSecret", "local-dev-coop-webhook-secret")
-        .WithEnvironment("Webhooks__Svix__BaseUrl", "http://localhost:8071")
+        .WithEnvironment("Webhooks__Svix__BaseUrl", svixEndpoint)
         .WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", "webhooks.svix.auth_token")
         .WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", "webhooks.svix.operational_webhook_secret")
         .WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", LocalSvixAuthToken)
@@ -502,7 +537,8 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
 
     api = api
         .WaitFor(resources.Svix)
-        .WaitFor(resources.Coop);
+        .WaitFor(resources.Coop)
+        .WaitForCompletion(resources.MinioBootstrap);
 
     return api;
 }
@@ -511,20 +547,82 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalBlazor(
     IResourceBuilder<ProjectResource> blazor,
     FullLocalResources resources)
 {
+    var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
+    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", "/auth/realms/ISLAMU");
+    var keycloakMetadataAddress = EndpointUrl(
+        resources.Keycloak,
+        "http",
+        "/auth/realms/ISLAMU/.well-known/openid-configuration");
+
     return blazor
         .WithEnvironment("KEYCLOAK_REALM", "ISLAMU")
-        .WithEnvironment("KEYCLOAK_ENDPOINT", "http://localhost:8080/auth")
+        .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
         .WithEnvironment("KEYCLOAK_CLIENT_ID", "islamu-event-blazor")
         .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", "islamu-event-blazor-secret")
         .WithEnvironment("Keycloak__Realm", "ISLAMU")
-        .WithEnvironment("Keycloak__Authority", "http://localhost:8080/auth/realms/ISLAMU")
-        .WithEnvironment(
-            "Keycloak__MetadataAddress",
-            "http://localhost:8080/auth/realms/ISLAMU/.well-known/openid-configuration")
+        .WithEnvironment("Keycloak__Authority", keycloakAuthority)
+        .WithEnvironment("Keycloak__MetadataAddress", keycloakMetadataAddress)
         .WithEnvironment("Keycloak__ClientId", "islamu-event-blazor")
         .WithEnvironment("Keycloak__ClientSecret", "islamu-event-blazor-secret")
         .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
         .WaitFor(resources.Keycloak);
+}
+
+static IResourceBuilder<ProjectResource> ConfigureFullLocalControlPlane(
+    IResourceBuilder<ProjectResource> controlPlane,
+    FullLocalResources resources)
+{
+    var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
+    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", "/auth/realms/ISLAMU");
+    var keycloakMetadataAddress = EndpointUrl(
+        resources.Keycloak,
+        "http",
+        "/auth/realms/ISLAMU/.well-known/openid-configuration");
+
+    return controlPlane
+        .WithEnvironment("KEYCLOAK_REALM", "ISLAMU")
+        .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
+        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", "islamu-event-control-plane")
+        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", "islamu-event-control-plane-secret")
+        .WithEnvironment("Bff__Authentication__Authority", keycloakAuthority)
+        .WithEnvironment("Bff__Authentication__MetadataAddress", keycloakMetadataAddress)
+        .WithEnvironment("Bff__Authentication__ClientId", "islamu-event-control-plane")
+        .WithEnvironment("Bff__Authentication__ClientSecret", "islamu-event-control-plane-secret")
+        .WithEnvironment("Bff__Authentication__RequireHttpsMetadata", "false")
+        .WaitFor(resources.Keycloak);
+}
+
+static ReferenceExpression EndpointUrl(
+    IResourceBuilder<ContainerResource> resource,
+    string endpointName,
+    string path = "")
+{
+    var endpoint = resource.GetEndpoint(endpointName);
+    return ReferenceExpression.Create($"{endpoint.Property(EndpointProperty.Url)}{path}");
+}
+
+static ReferenceExpression EndpointHost(
+    IResourceBuilder<ContainerResource> resource,
+    string endpointName)
+{
+    var endpoint = resource.GetEndpoint(endpointName);
+    return ReferenceExpression.Create($"{endpoint.Property(EndpointProperty.Host)}");
+}
+
+static ReferenceExpression EndpointPort(
+    IResourceBuilder<ContainerResource> resource,
+    string endpointName)
+{
+    var endpoint = resource.GetEndpoint(endpointName);
+    return ReferenceExpression.Create($"{endpoint.Property(EndpointProperty.Port)}");
+}
+
+static ReferenceExpression HttpEndpointFromHostAndPort(
+    IResourceBuilder<ContainerResource> resource,
+    string endpointName)
+{
+    var endpoint = resource.GetEndpoint(endpointName);
+    return ReferenceExpression.Create($"http://{endpoint.Property(EndpointProperty.HostAndPort)}");
 }
 
 static IResourceBuilder<ProjectResource> WithProfileSecretMode(
@@ -669,6 +767,7 @@ internal sealed record FullLocalResources(
     IResourceBuilder<ContainerResource> Keycloak,
     IResourceBuilder<ContainerResource> Cerbos,
     IResourceBuilder<ContainerResource> Minio,
+    IResourceBuilder<ContainerResource> MinioBootstrap,
     IResourceBuilder<ContainerResource> Svix,
     IResourceBuilder<ContainerResource> Coop,
     IResourceBuilder<ContainerResource>? Osprey,

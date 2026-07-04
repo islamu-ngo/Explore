@@ -10,6 +10,7 @@ using Aspire.Hosting.Testing;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Explore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +19,10 @@ namespace Explore.Blazor.Client.E2ETests.Fixtures;
 public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 {
     public const string SetupSecret = "integration-setup-secret";
+    private const string LocalSvixJwtSecret = "local-dev-svix-jwt-secret-change-me";
+    private const string LocalSvixAuthToken =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJvcmdfMjNyYjhZZEdxTVQwcUl6cGdHd2RYZkhpck11In0.8DdxojyqoHnAeZBEL6M1Tcf5i5hnbAmezaRlPxuBXp8";
+    private const string LocalSvixOperationalWebhookSecret = "whsec_bG9jYWwtZGV2LXN2aXgtb3BlcmF0aW9uYWwtc2VjcmV0";
 
     private readonly PostgreSqlContainerFixture _database = new();
     private readonly BffKeycloakFixture _keycloak = new();
@@ -46,6 +51,14 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     public Task<string> GetMailpitMessageTextAsync(string id, CancellationToken cancellationToken = default)
         => _mailpit.GetMessageTextAsync(id, cancellationToken);
 
+    public Task<string> GetMailpitMessageHtmlAsync(string id, CancellationToken cancellationToken = default)
+        => _mailpit.GetMessageHtmlAsync(id, cancellationToken);
+
+    public Task<IReadOnlyDictionary<string, string[]>> GetMailpitMessageHeadersAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+        => _mailpit.GetMessageHeadersAsync(id, cancellationToken);
+
     public Task<string> GetTestUserAccessTokenAsync(CancellationToken cancellationToken = default)
         => _keycloak.GetTestUserAccessTokenAsync(cancellationToken);
 
@@ -72,7 +85,8 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
                 c.ConfigureHttpClient(h => h.BaseAddress = null));
 
             ConfigureDatabase(builder, _database.ConnectionString);
-            ConfigureCache(builder);
+            var cache = ConfigureCache(builder);
+            ConfigureSvix(builder, cache);
             ConfigureKeycloak(builder, _keycloak);
             ConfigureSetupSecret(builder);
             ConfigureEmailDispatch(builder);
@@ -206,7 +220,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         resource.WithEnvironment("Testing__DisableDevelopmentDataSeed", "true");
     }
 
-    private static void ConfigureCache(IDistributedApplicationTestingBuilder builder)
+    private static IResourceBuilder<RedisResource> ConfigureCache(IDistributedApplicationTestingBuilder builder)
     {
         var cache = builder.AddRedis("cache")
             .WithLifetime(ContainerLifetime.Session);
@@ -218,6 +232,38 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         builder.CreateResourceBuilder<ProjectResource>("explore-blazor")
             .WithReference(cache)
             .WaitFor(cache);
+
+        return cache;
+    }
+
+    private static void ConfigureSvix(
+        IDistributedApplicationTestingBuilder builder,
+        IResourceBuilder<RedisResource> cache)
+    {
+        var svixDb = builder.AddContainer("svix-postgres", "postgres", "13.4")
+            .WithEnvironment("POSTGRES_PASSWORD", "postgres")
+            .WithEnvironment("POSTGRES_USER", "postgres")
+            .WithEnvironment("POSTGRES_DB", "postgres")
+            .WithLifetime(ContainerLifetime.Session);
+
+        var svix = builder.AddContainer("svix", "svix/svix-server", "latest")
+            .WithEnvironment("WAIT_FOR", "true")
+            .WithEnvironment("SVIX_DB_DSN", "postgresql://postgres:postgres@svix-postgres:5432/postgres")
+            .WithEnvironment("SVIX_QUEUE_TYPE", "redis")
+            .WithEnvironment("SVIX_REDIS_DSN", ReferenceExpression.Create($"redis://:{cache.Resource.PasswordParameter!}@cache:6380"))
+            .WithEnvironment("SVIX_JWT_SECRET", LocalSvixJwtSecret)
+            .WithHttpEndpoint(targetPort: 8071, name: "http")
+            .WaitFor(cache)
+            .WaitFor(svixDb);
+
+        var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
+        api.WithEnvironment("Webhooks__Provider", "Composite");
+        api.WithEnvironment("Webhooks__Svix__BaseUrl", svix.GetEndpoint("http"));
+        api.WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken);
+        api.WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", SecretDefinitionRegistry.Keys.Webhooks.SvixOperationalWebhookSecret);
+        api.WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", LocalSvixAuthToken);
+        api.WithEnvironment("WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET", LocalSvixOperationalWebhookSecret);
+        api.WaitFor(svix);
     }
 
     private static void ConfigureProjectHttpEndpoint(
@@ -225,7 +271,13 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         string resourceName)
     {
         var resource = builder.CreateResourceBuilder<ProjectResource>(resourceName);
-        resource.WithHttpEndpoint(port: AllocateAvailableTcpPort(), name: "http");
+        var port = AllocateAvailableTcpPort();
+
+        resource.WithHttpEndpoint(port: port, name: "http");
+        if (resourceName == "explore-api")
+        {
+            resource.WithEnvironment("PublicBaseUrl", "http://127.0.0.1:" + port.ToString(CultureInfo.InvariantCulture));
+        }
     }
 
     private static int AllocateAvailableTcpPort()

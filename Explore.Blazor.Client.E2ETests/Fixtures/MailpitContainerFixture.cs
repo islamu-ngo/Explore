@@ -65,6 +65,20 @@ public sealed class MailpitContainerFixture : IAsyncInitializer, IAsyncDisposabl
         return message.Html;
     }
 
+    public async Task<IReadOnlyDictionary<string, string[]>> GetMessageHeadersAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        using var client = CreateHttpClient();
+        var messageId = string.IsNullOrWhiteSpace(id) ? "latest" : Uri.EscapeDataString(id);
+        var headers = await client.GetFromJsonAsync<Dictionary<string, string[]>>(
+            $"/api/v1/message/{messageId}/headers",
+            cancellationToken);
+
+        return headers ?? throw new InvalidOperationException(
+            $"Mailpit message '{messageId}' headers were not returned by the API.");
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_container is not null)
