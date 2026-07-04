@@ -71,7 +71,7 @@ Pending → Processing → Completed
 Task DispatchAsync(OutboxMessage message, CancellationToken ct);
 ```
 
-The current general dispatcher implementation is `CompositeOutboxMessageDispatcher`. It routes external MQContract messages such as `EventPublished` to `MqContractOutboxMessageDispatcher` and routes internal application messages such as `EventPublishedNotificationFanoutRequested` to the notification fanout service. Unknown event types fail closed by throwing so the processor can retry or dead-letter the row.
+The current general dispatcher implementation is `CompositeOutboxMessageDispatcher`. It routes internal application messages such as `EventPublishedNotificationFanoutRequested`, moderation fanout messages, and report provider sync messages to their Infrastructure dispatchers. Unknown or retired event types fail closed by throwing so the processor can retry or dead-letter the row.
 
 Dispatchers must be **idempotent** — the same message may be dispatched more than once if the processor crashes after dispatch but before marking completion.
 
@@ -120,7 +120,7 @@ Section: `OutboxProcessor`
 
 ## DI Registration
 
-- `Infrastructure` registers `OutboxProcessorSettings`, `CompositeOutboxMessageDispatcher`, and the concrete `MqContractOutboxMessageDispatcher`
+- `Infrastructure` registers `OutboxProcessorSettings` and `CompositeOutboxMessageDispatcher`
 - `Persistence` registers `OutboxRepository`
 - `API` registers `OutboxProcessor` as a hosted service
 - `DbContext` has `DbSet<OutboxMessage>`
@@ -133,11 +133,11 @@ The outbox pattern is also used for domain-specific event flows:
 |---------|---------|-------------------|
 | `PolicyChangeOutbox` | Settings/policy change propagation | `SettingScope` |
 | `PdsSyncOutbox` | AT Protocol federation sync | `Did`, `Collection`, `RecordKey`, `PdsHost` |
-| `EmailDispatchOutbox` | Basic Dispatch Mode email delivery state | `TenantId`, `PublishEventId`, `Kind`, `SourceType`, `SourceId`, recipient/subject/body snapshots, `AttemptCount`, `NextAttemptAt`, `SentAt`, `UnknownAt`, `DeadLetteredAt`, `ParkedAt`, `CorrelationId` |
+| `EmailDispatchOutbox` | Basic Dispatch Mode email delivery state plus optional RabbitMQ pointer-publish metadata | `TenantId`, `PublishEventId`, `Kind`, `SourceType`, `SourceId`, recipient/subject/body snapshots, `AttemptCount`, `NextAttemptAt`, `SentAt`, `UnknownAt`, `DeadLetteredAt`, `ParkedAt`, `CorrelationId`, `RabbitMqLastPublishedAt`, `RabbitMqLastPublishAttemptAt`, `RabbitMqPublishAttemptCount`, `RabbitMqLastPublishFailureCategory` |
 
-`EmailDispatchOutbox` is a specialized durable-intent table, not a TickerQ job table or RabbitMQ queue mirror. Registration confirmation creates an outbox row in the registration transaction. The default TickerQ `email-dispatch-drain` job triggers the shared drain service, which claims due rows, rebinds tenant context, calls the approved SMTP abstraction, records attempts/receipts, and advances delivery state. `EmailDispatchProcessor` remains a hosted-service fallback trigger over that same service. RabbitMQ Dispatch Mode, when added, must share this PostgreSQL state machine and use pointer-only transport messages.
+`EmailDispatchOutbox` is a specialized durable-intent table, not a TickerQ job table or RabbitMQ queue mirror. Registration confirmation creates an outbox row in the registration transaction. The default TickerQ `email-dispatch-drain` job triggers the shared drain service, which claims due rows, rebinds tenant context, calls the approved SMTP abstraction, records attempts/receipts, and advances delivery state. `EmailDispatchProcessor` remains a hosted-service fallback trigger over that same service. Optional RabbitMQ Dispatch Mode shares this PostgreSQL state machine: `EmailDispatchRabbitMqPointerPublisherService` publishes pointer-only messages after durable rows exist, and the manual-ack consumer calls the same drain service before settling broker deliveries.
 
-Event publication also uses the general `OutboxMessage` table for two separate side effects. The external `EventPublished` row preserves MQContract publishing. The internal `EventPublishedNotificationFanoutRequested` row drives actor-subscription notification fanout. The fanout service records resumable progress in `NotificationFanoutRun` and uses deterministic `Notification.DeduplicationKey` values so outbox retries do not create duplicate inbox rows.
+Event publication uses the general `OutboxMessage` table for internal actor-subscription notification fanout. The `EventPublishedNotificationFanoutRequested` row drives fanout; the retired external `EventPublished` MQContract route is no longer produced. The fanout service records resumable progress in `NotificationFanoutRun` and uses deterministic `Notification.DeduplicationKey` values so outbox retries do not create duplicate inbox rows.
 
 Event moderation uses the same general `OutboxMessage` table for attendee fanout. Light moderation writes `EventLightModeratedNotificationFanoutRequested`, which may include event context because the event content is preserved. Heavy redaction writes `EventHeavyRedactedNotificationFanoutRequested`, which omits event id, title, slug, URL, image URI, object key, and original content from the payload; the fanout service resolves the event id from the safe moderation record only for recipient lookup. Heavy attendee notifications are generic, linkless in-app rows.
 

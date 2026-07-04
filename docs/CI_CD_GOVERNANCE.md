@@ -221,7 +221,8 @@ This is now a missing-evidence gate for breaking OpenAPI changes, not full autom
 |---|---:|---:|---|
 | Release build + fast tests | Yes | No | Required for all code PRs. |
 | Coverage evidence | No | Yes | Artifact-only scheduled/manual Cobertura evidence for stable unit coverage. Keep non-blocking until scope, thresholds, and publication owner are documented. |
-| Infrastructure unit tests | Yes | No | Included in fast CI. |
+| Infrastructure unit tests | Yes | No | Included in fast CI with `[Category!=Runtime]` so Docker-backed provider tests do not become implicit required checks. |
+| Infrastructure email runtime tests | Conditional | Integration callers | `Explore.Infrastructure.Tests` `Email` category runs in the integration job as Mailpit/Testcontainers evidence; promote beyond conditional only after reliability data is tracked. |
 | PostgreSQL-backed integration tests | Conditional | Deploy callers | Required for integration/deploy callers; add a schedule only after reliability and runtime cost are acceptable. |
 | OpenAPI generated-artifact drift | Yes | No | Required after PR2 baseline. |
 | Skipped API contract test inventory | Yes | No | `OpenAPI Contract Guard` fails when a `Category: API contract` skip is missing from `docs/API_CONTRACT_TEST_DEBT.md` or lacks owner/removal evidence. |

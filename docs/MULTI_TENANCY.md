@@ -87,6 +87,16 @@ Notable cases:
 - `Actor` is tenant-scoped. User actors are unique by `(UserId, TenantId)` so the same global account can have separate tenant personas.
 - some entities combine tenant and soft-delete filters.
 
+## Support Access Tenant Scoping
+
+Support access is tenant-context support, not user impersonation:
+
+- A support session is persisted with the real actor id, target tenant id, mode, expiry, reason, and ticket/reference metadata.
+- The BFF forwards support context only through a server-owned `X-Support-Access-Session-Id` header after stripping browser-supplied support headers.
+- The API validates the forwarded session against the resolved tenant context before authorization can consider support access. Actor mismatch, tenant mismatch, disabled support access, stopped/revoked/expired sessions, and disallowed write mode fail closed.
+- Support access never creates `TenantUserRoleGrant` rows and never changes `ICurrentUserService.UserId`; audit records must preserve the real operator identity.
+- Tenant admins can review their tenant's support-access session history and audit evidence from tenant settings. That view uses the current tenant id from tenant onboarding status and still depends on the API/HAL `audit-events` affordance before showing audit drill-in.
+
 ## Managed Provider Tenant Provisioning
 
 Trusted managed-provider automation creates tenant boundaries explicitly rather than treating `Organization` as tenancy:

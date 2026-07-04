@@ -9,7 +9,7 @@ ABOUTME: Defines durable-intent ownership, dispatch profiles, and side-effect bo
 
 ## Context
 
-ISLAMU Event needs reliable event-lifecycle email delivery, starting with registration confirmation. The platform already has PostgreSQL, EF Core, CQRS/MediatR, SMTP abstraction, tenant-scoped configuration, a general transactional outbox, and specialized outbox precedent. It also has an in-progress RabbitMQ/MQContract workstream, but RabbitMQ must not become mandatory for self-hosters.
+ISLAMU Event needs reliable event-lifecycle email delivery, starting with registration confirmation. The platform already has PostgreSQL, EF Core, CQRS/MediatR, SMTP abstraction, tenant-scoped configuration, a general transactional outbox, and specialized outbox precedent. It also has an optional RabbitMQ transport workstream for EmailDispatch pointers, but RabbitMQ must not become mandatory for self-hosters.
 
 CRMWorx analysis showed that durable side effects become operable when business state, attempts, receipts, retries, dead-letter, parking, and unknown outcomes are persisted before transport is involved. The CTO-approved direction for ISLAMU Event is to adapt that lesson without copying CRMWorx architecture and without centering RabbitMQ.
 
@@ -25,7 +25,7 @@ Use a PostgreSQL-owned `EmailDispatchOutbox` state machine for email side effect
 |---|---|---|
 | Dispatch disabled | API + PostgreSQL, worker disabled | Valid when operators intentionally do not send email; health must make this visible. |
 | Basic Dispatch Mode | API + PostgreSQL + SMTP provider | Default and first implemented mode. Registration confirmation works without RabbitMQ. |
-| RabbitMQ Dispatch Mode | API + PostgreSQL + RabbitMQ + SMTP provider | Optional future transport profile. It must reuse the same PostgreSQL state machine. |
+| RabbitMQ Dispatch Mode | API + PostgreSQL + RabbitMQ + SMTP provider | Optional transport profile. It must reuse the same PostgreSQL state machine. |
 
 ### Side-Effect Boundary
 
@@ -45,11 +45,11 @@ Registration handler
   -> worker transitions row to Sent, RetryScheduled, DeadLettered, Parked, or Unknown
 ```
 
-### Provider Capability Gate
+### Transport Capability Gate
 
-MQContract remains a valid provider-choice abstraction candidate for self-hosters. It is analogous to EF Core only at the provider-selection layer: the common abstraction is useful, but provider-specific capabilities still matter for reliability. EmailDispatch must therefore use a capability-aware transport adapter, not a semantics-free message bus.
+The prior generic MQContract/provider-abstraction direction is retired for this EmailDispatch workstream. EmailDispatch must use a capability-aware transport adapter, not a semantics-free message bus. PostgreSQL remains the durable source of truth, while RabbitMQ is an optional pointer transport that must prove the broker capabilities required for reliable settlement.
 
-RabbitMQ Dispatch Mode cannot start until the broker abstraction or an Event-specific wrapper proves:
+RabbitMQ Dispatch Mode is allowed only through the Event-specific transport adapter that proves:
 
 - pointer-only payloads;
 - stable publish event identity;
@@ -63,9 +63,7 @@ RabbitMQ Dispatch Mode cannot start until the broker abstraction or an Event-spe
 - graceful shutdown;
 - duplicate-consume idempotency through persisted receipts.
 
-Kafka or other future provider modes must prove their own equivalent capabilities, such as delivery reports, idempotent/transactional producer settings where required, consumer group and partition assignment behavior, explicit offset store/commit policy, graceful consumer close, health/readiness, metrics, and duplicate-consume idempotency through persisted receipts.
-
-If MQContract can expose these capabilities for a provider, it may be used inside the Event-specific EmailDispatch transport adapter. If it cannot, it must be wrapped, extended, or bypassed for that provider only. Basic Dispatch Mode remains independent of all broker providers.
+Kafka or other future provider modes are out of scope for this ADR and this workstream. Reintroducing a platform integration-event broker or a cross-provider abstraction requires a separate product requirement, ADR, failure model, and verification plan. Basic Dispatch Mode remains independent of all broker providers.
 
 ## Consequences
 

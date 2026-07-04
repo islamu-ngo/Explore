@@ -6,7 +6,7 @@ ABOUTME: Keeps token handling, proxying, render policy, service state, and clien
 > **Audience:** Contributors | Frontend | AI agents
 > **Status:** Implemented
 > **Owner:** Frontend
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-07-04
 > **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
 
 ## Scope
@@ -46,6 +46,7 @@ BFF endpoints are split by concern in `Explore.Blazor/Extensions/` and wired thr
 | Preferences and appearance | `/bff/theme`, `/bff/language`, `/bff/direction`, `/bff/ui-themes`, `/bff/appearance/*` | `BffPreferenceEndpoints.cs` |
 | Setup secret | `GET/POST/DELETE /bff/setup-secret`, `/bff/setup-secret/sync` | `BffSetupSecretEndpoints.cs` |
 | Storage upload proxy | `/bff/storage/upload-session`, `/bff/storage/upload-proxy` | `BffStorageEndpoints.cs` |
+| Support access | `/bff/support-access/current`, `/bff/support-access/sessions`, `/bff/support-access/sessions/current/stop`, `/bff/support-access/tenants/{targetTenantId}/sessions`, `/bff/support-access/tenants/{targetTenantId}/sessions/{sessionId}/audit-events`, `/bff/support-access/sessions/{sessionId}/force-stop` | `BffSupportAccessEndpoints.cs` |
 
 Keep new BFF endpoints in the smallest matching extension file. `BffEndpointExtensions.cs` should remain the facade/orchestrator, not a dumping ground for endpoint logic.
 
@@ -56,11 +57,13 @@ There are two related but separate transport paths:
 1. **Browser-to-API proxy path** — `YarpProxyExtensions.cs` proxies `/api/*` calls and applies security-sensitive transforms:
    - forwards the server-side access token as `Authorization: Bearer ...`,
    - forwards trusted tenant context when route context is available,
-   - strips any browser-supplied `X-Setup-Secret` value and forwards only the value returned by `ISetupSecretResolver`.
+   - strips any browser-supplied `X-Setup-Secret` value and forwards only the value returned by `ISetupSecretResolver`,
+   - strips browser-supplied `X-Support-Access-*` values and forwards only the BFF-owned support-access session id when an active actor-bound session is stored server-side.
 2. **Server-side typed client path** — `HttpClientExtensions.cs` registers outgoing clients with separate handlers:
    - `AccessTokenForwardingHandler`,
    - `TenantHeaderForwardingHandler`,
    - `SetupSecretForwardingHandler`,
+   - `SupportAccessForwardingHandler`,
    - `BffCookieForwardingHandler` for self/BFF calls that must preserve cookie/XSRF context.
 
 All server-side handlers use `UseCookies = false` where applicable to avoid pooled `CookieContainer` leakage between requests.
@@ -77,6 +80,21 @@ Setup-secret handling is intentionally BFF-owned:
 6. The BFF limiter partitions requests by authenticated user when available, then antiforgery/session cookie state, then IP as the final fallback.
 
 When debugging onboarding, check both BFF setup-secret endpoints and API setup-secret validation rather than adding client-side storage shortcuts.
+
+## Support Access Boundary
+
+Admin support access follows the same BFF-owned trust model as tokens, tenant hints, and setup secrets:
+
+1. Browser code never owns support-access authority claims, tenant role grants, target-tenant tokens, or a durable impersonated identity.
+2. `POST /bff/support-access/sessions` starts a session through the API and stores only an opaque active-session reference in `IBffSupportAccessSessionStore`, keyed to the authenticated user and OIDC `sid`.
+3. `GET /bff/support-access/current` rechecks the API current-session endpoint and refreshes or clears the BFF store. This lets the shell recover after a refresh without making persisted active sessions ambient authority for ordinary API calls.
+4. `POST /bff/support-access/sessions/current/stop` resolves the active owned session from the store or API current-session endpoint, stops it through the API, and clears the BFF store on success.
+5. `GET /bff/support-access/tenants/{targetTenantId}/sessions` and `GET /bff/support-access/tenants/{targetTenantId}/sessions/{sessionId}/audit-events` expose bounded history and audit evidence through the same API authorization/HAL pipeline used by the operator console and tenant evidence view.
+6. `POST /bff/support-access/sessions/{sessionId}/force-stop` is an antiforgery-protected emergency revocation path. On success it clears the current BFF store entry when the revoked session is the actor's active session.
+7. `BffProxyHeaderSanitizer`, YARP transforms, and `SupportAccessForwardingHandler` remove all inbound `X-Support-Access-*` values before adding a trusted `X-Support-Access-Session-Id` from server-side state.
+8. The API validates that forwarded session id against persisted support-access state, actor identity, resolved tenant, expiry, mode, and governance settings on each request that asks for support context.
+9. Blazor UI affordances still come from BFF-confirmed state and API/HAL `_links`, not from local roles or serialized claims. The global shell banner is a visibility/safety control, not an authorization source.
+10. Tenant admins review support-access evidence from tenant settings through `TenantSupportAccessEvidenceSection`. The view is read-only, resolves the current tenant through the tenant onboarding status endpoint, and renders audit drill-in only when a session resource contains the `audit-events` HAL link.
 
 ## Auth Diagnostic Boundary
 
@@ -96,7 +114,7 @@ Cookie-authenticated BFF mutations use a double-submit-style antiforgery contrac
 3. `BrowserCredentialsMessageHandler` sends browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests when the token cookie is present.
 4. `BffCookieForwardingHandler` preserves cookie/XSRF context for InteractiveServer self-calls that legitimately call BFF endpoints from the server.
 5. Unsafe preference and appearance BFF endpoints must call `.ValidateAntiforgery()`. Missing or invalid tokens return `400` with `Antiforgery validation failed`.
-6. Positive protected examples include `/bff/auth/refresh-schemes`, `/bff/auth/refresh-session`, `/bff/storage/upload-proxy`, and the preference/appearance mutation endpoints.
+6. Positive protected examples include `/bff/auth/refresh-schemes`, `/bff/auth/refresh-session`, `/bff/support-access/sessions`, `/bff/support-access/sessions/current/stop`, `/bff/support-access/sessions/{sessionId}/force-stop`, `/bff/storage/upload-proxy`, and the preference/appearance mutation endpoints.
 7. Documented exceptions are setup-secret bootstrap endpoints and `/bff/auth/refresh-session/internal`; these use separate credentials/authorization constraints because initial setup and server-side onboarding calls cannot reliably satisfy browser antiforgery semantics.
 
 ## Storage Upload Proxy Boundary
@@ -130,6 +148,25 @@ The browser authentication state is intentionally display-only:
 4. Pages/components consume application services, not `EventApiClient` directly.
 
 Generated DTOs preserve HAL `_links` through extension data. Per-resource UI affordances must be gated by HAL links from the API, not by duplicating role checks in Razor components. Admin authorization-provider setup/sync UI surfaces server-confirmed status, sync, and manual-package download affordances; the browser never owns Cerbos Admin API credentials or access tokens.
+
+### Webhook Management UI
+
+Webhook management uses generated API clients plus client service wrappers. Components must preserve API HAL resources and render create/update/delete/test/retry/rotate/open-portal actions only when the matching `_links` relation is present.
+
+LocalProvider endpoint management is handled in ISLAMU Event. Svix advanced endpoint management is delegated to the backend-generated App Portal route, exposed in the UI only when the API emits the provider portal affordance. The browser never receives the Svix API token, endpoint signing secrets, secret refs, raw payload JSON, or full delivery response bodies.
+
+### Registration Client Outcome Handling
+
+Registration components consume `IEventRegistrationService` and shared workflow helpers rather than calling `EventApiClient` directly. The generated create-registration client contract still returns `BaseCommandResponseOfGuid`; no NSwag regeneration is required when only the server message semantics change and the response shape stays stable.
+
+Blazor registration flows must classify that command response through `EventListRegistrationWorkflow.ResolveOutcome` so the modal, event list, and preview workspace share the same user-facing states:
+
+1. `Confirmed` for normal successful create responses.
+2. `Waitlisted` when the API reports that one or more selected sessions were waitlisted.
+3. `AlreadyRegistered` when an idempotent repeat submit returns the existing registration.
+4. `Failed` for safe service-layer failures.
+
+`EventRegistrationService` converts generated-client `ApiException` values into bounded `FailureCode`, `Message`, and `Errors` values. Components should display those safe messages and log exceptions with structured context; they must not show raw exception text, provider response bodies, database details, bearer-token errors, or generated-client stack details. Event detail registration buttons remain HAL-gated: render the registration action only when the event detail resource contains the `register` link relation.
 
 ### Event Management And Moderation UI
 

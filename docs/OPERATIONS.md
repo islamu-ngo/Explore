@@ -50,14 +50,21 @@ Sensitive values are redacted before output. Do not add checks that print raw co
 
 | Launch profile | Mode | Started by Aspire |
 |---|---|---|
-| `local-full` | `FullLocal` | PostgreSQL `postgres`/`explore`, Redis `cache`, RabbitMQ `messaging`, CockroachDB `crdb`, Phase Two Keycloak `keycloak`, Cerbos database/PDP, MinIO, Svix, Coop, configured Osprey, Prometheus, Grafana, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. |
-| `local-core` | `LocalDataExternalPlatform` | PostgreSQL `postgres`/`explore`, Redis `cache`, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. Auth, policy, storage, webhooks, and moderation providers come from Infisical/config. |
-| `local-lite` | `ExternalInfra` | `Explore.API` and `Explore.Blazor` only. All infrastructure comes from Infisical/config. |
+| `https` | `FullLocal` | Compatibility alias for the contributor full-local topology. |
+| `local-full` | `FullLocal` | PostgreSQL `postgres`/`explore`, Redis `cache`, RabbitMQ `messaging`, Mailpit, CockroachDB `crdb`, Phase Two Keycloak `keycloak`, Cerbos database/PDP, MinIO, Svix, Coop, Osprey, Prometheus, Grafana, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. |
+| `local-core` | `LocalDataExternalPlatform` | PostgreSQL `postgres`/`explore`, Redis `cache`, Mailpit, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. Auth, policy, storage, webhooks, and moderation providers come from Infisical/config. |
+| `local-lite` | `ExternalInfra` | Mailpit, `Explore.API`, and `Explore.Blazor`. All other infrastructure comes from Infisical/config. |
 
 Contributor default:
 
 ```bash
 aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+```
+
+Install the Aspire CLI first if `aspire` is missing:
+
+```bash
+curl -sSL https://aspire.dev/install.sh | bash
 ```
 
 `AspireRunModeExtensions.Parse` defaults a missing `ISLAMU_ASPIRE_MODE` to `FullLocal`, so the contributor path does not require a launch-profile name. `aspire run` is interactive and exits when you press `Ctrl+C`.
@@ -80,21 +87,25 @@ ISLAMU_ASPIRE_MODE=ExternalInfra aspire run --apphost Explore.AppHost/Explore.Ap
 Launch profiles remain available through `dotnet run` for IDEs and compatibility:
 
 ```bash
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile https
 dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full
 dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-core
 dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-lite
 ```
 
+The `https` profile is the intuitive full-local alias for contributors who are used to the standard ASP.NET launch profile name.
+
 `local-full` uses persistent container lifetimes and named volumes for heavy stateful resources so local database, Keycloak, MinIO, RabbitMQ, and observability state survive AppHost restarts. Keycloak is pinned to stable local HTTP and management ports because browser cookies, OIDC callbacks, and issuer metadata are port-sensitive during development.
 
 Secret and connection priority:
 
-- `local-full` forces `SecretProvider__Provider=None` for child projects, clears Infisical bootstrap identifiers, and supplies local Keycloak, Cerbos, MinIO, Svix, Coop, storage, and database settings. Contributors should not need Infisical credentials.
+- `local-full` forces `SecretProvider__Provider=None` for child projects, clears Infisical bootstrap identifiers, and supplies local Keycloak, Cerbos, MinIO, Svix, Coop, Mailpit SMTP, storage, and database settings. Contributors should not need Infisical credentials.
 - `ConnectionStrings:DefaultConnection` has first priority for EF Core; Aspire `WithReference` supplies it in `local-full` and `local-core`.
+- Mailpit SMTP is local in every Aspire profile. AppHost starts `mailpit` on SMTP `localhost:1025` and web UI `http://localhost:8025`; Development database seeding uses `MAIL_SMTP_*` values, then `SMTP_*` aliases, then these local defaults when `email.smtp_host` is empty or still set to the retired `mailpit.openislamu.org` default.
 - When no connection string is supplied, `BootstrapSecretLoader` resolves PostgreSQL fields from Infisical `/postgresql`, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration.
 - `local-core` and `local-lite` are maintainer modes. If Infisical bootstrap credentials are present in user secrets or environment variables, raw Infisical bootstrap values can outrank local `POSTGRESQL_*` fallback values. Blank the Infisical bootstrap keys for env-only local debugging.
 
-Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize configured client secrets. Keycloak skips startup import when the realm already exists in the persistent database, so reset the Keycloak database volume before expecting changes in the JSON export to reapply automatically.
+Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize configured client secrets. Aspire sets `KC_HTTP_RELATIVE_PATH=/auth`, so its management readiness probe is `/auth/health/ready`. Keycloak skips startup import when the realm already exists in the persistent database, so reset the Keycloak database volume before expecting changes in the JSON export to reapply automatically.
 
 Startup dependencies are explicit:
 
@@ -106,11 +117,21 @@ Startup dependencies are explicit:
 
 The Blazor app resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Do not hardcode the Compose/API host port into AppHost documentation.
 
-Aspire local development uses the local filesystem storage provider by default unless a profile supplies S3-compatible settings. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`; `local-full` also supplies MinIO-compatible `S3Settings` for workflows that exercise S3 behavior.
+Aspire local development uses the local filesystem storage provider by default unless a profile supplies S3-compatible settings. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`; `local-full` also supplies MinIO-compatible `S3Settings` for workflows that exercise S3 behavior. Local Svix uses the Aspire Redis plaintext container endpoint with the generated Redis password, while .NET projects continue to consume Redis through normal Aspire references. AppHost sets a deterministic development `SVIX_JWT_SECRET`, supplies a matching `WEBHOOKS_SVIX_AUTH_TOKEN` to the API, and Development seeding binds that value to `webhooks.svix.auth_token`; rotate all local defaults outside disposable development. Local Coop uses an isolated PostgreSQL container plus development-only `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics settings so the review-queue provider can boot without external ClickHouse or production secrets.
 
-Cerbos local infrastructure uses the repository `cerbos/` folder as its source of truth. Aspire and Docker Compose mount `cerbos/config/.cerbos.yaml` into the Cerbos container, mount `cerbos/policies/` read-only for derived roles, policies, and `_schemas`, and initialize the local Cerbos PostgreSQL store from `cerbos/init/cerbos-schema.sql`. Do not copy policy files into container images for local development; update the repo-owned `cerbos/` tree and restart or sync the local Cerbos service.
+Cerbos local infrastructure uses the repository `cerbos/` folder as its source of truth. Aspire and Docker Compose mount `cerbos/config/.cerbos.yaml` into the Cerbos container, mount `cerbos/policies/` read-only for derived roles, policies, and `_schemas`, and initialize the local Cerbos PostgreSQL store from `cerbos/init/cerbos-schema.sql`. The local Cerbos PostgreSQL container uses the Postgres 18 parent data mount (`/var/lib/postgresql`) rather than the legacy direct `data` mount. Do not copy policy files into container images for local development; update the repo-owned `cerbos/` tree and restart or sync the local Cerbos service.
 
-Osprey is image-configured in `local-full`. Set `OSPREY_IMAGE` and optionally `OSPREY_TAG` when you have a verified Osprey container image; otherwise the AppHost does not create an Osprey container and API moderation provider configuration should remain disabled or external.
+Osprey starts in `local-full` from `ghcr.io/roostorg/osprey/osprey-coordinator:latest` and exposes coordinator ports `19950`/`19951`. The API's `Reporting:Osprey` HTTP adapter remains disabled until a compatible HTTP facade endpoint is configured.
+
+Webhook operations:
+
+- `Local` works without Svix and is the default self-hosted outgoing provider.
+- `Svix` and `Composite` require `webhooks.svix.auth_token` to resolve server-side. In local-full this is seeded from `WEBHOOKS_SVIX_AUTH_TOKEN`.
+- `webhook-local-delivery` readiness reports LocalProvider queue backlog and stale sending leases.
+- `webhook-svix-provider` readiness reports Svix provider selection and server-side secret resolution without exposing tokens, secret refs, or provider URLs.
+- Incoming Coop, Osprey, and Svix operational callbacks do not depend on the outgoing provider mode.
+
+See [WEBHOOKS.md](WEBHOOKS.md) and [INTEGRATIONS.md](INTEGRATIONS.md) for provider switching, signatures, and callback rules.
 
 ## API Startup Behavior
 
@@ -200,7 +221,7 @@ GitHub Actions deploys use the `staging` and `production` environments. Configur
 - `staging` should use environment-scoped secrets and can deploy automatically from `develop` unless the release process requires review.
 - Store Coolify webhook URLs and bearer tokens as environment secrets. Do not print webhook URLs or tokens in workflow logs.
 
-See [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) for the required/advisory gate matrix, branch-protection settings, and artifact retention policy.
+See [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) for the required/advisory gate matrix, branch-protection settings, and artifact retention policy. Test lanes that require Docker-backed providers, including Mailpit SMTP evidence, stay explicit runtime evidence rather than hidden prerequisites of the fast build/test gate.
 
 Deploy jobs call the existing Coolify webhook contract through the local `.ci/actions/deploy-coolify` composite action with timeout, retry, redacted error output, transport-failure summaries, and explicit HTTP status validation. Before calling the action, the deploy workflow downloads retained `container-build-*` evidence and resolves the component's expected immutable image tag and digest with `.ci/scripts/resolve-deploy-image-evidence.cs`. The action writes deployment summaries and uploads deployment evidence for 90 days through the caller workflow. Production deploys require configured `PRODUCTION_API_URL` and `PRODUCTION_UI_URL` values for components being deployed; missing production smoke URLs block the Coolify webhook call. When a smoke URL is configured, the action requires both `/alive` and `/health` to return `200` with a bounded retry budget before reporting success. Staging smoke URLs remain optional, but configured staging URLs use the same checks. The reusable container build verifies the pushed GHCR digest's artifact attestation before deploy jobs can invoke Coolify.
 
@@ -240,6 +261,7 @@ API runtime protections include:
 | `global` | Token bucket | Successfully authenticated API key ID when present, otherwise remote IP | 200 tokens, replenish 40/10s. Localhost exempt for anonymous/IP traffic |
 | `authenticated` | Sliding window | API key ID when present, otherwise `User.Identity.Name` | 200 requests/60s, 4 segments |
 | `write` | Fixed window | API key ID when present, otherwise `User.Identity.Name` | 30 requests/60s |
+| `PublicIngestion` | Fixed window | IP | 60 requests/60s |
 | `setup_secret` | Fixed window | IP | 5 requests/60s |
 | `AnalyticsRelay` | Fixed window | IP | 120 requests/60s |
 | `AiAssistant` | Fixed window | API key ID when present, otherwise authenticated user ID | 12 sends/60s |
@@ -252,7 +274,9 @@ API runtime protections include:
 - `Global:TokenLimit`, `Global:ReplenishmentPeriodSeconds`, `Global:TokensPerPeriod`
 - `Authenticated:PermitLimit`, `Authenticated:WindowSeconds`, `Authenticated:SegmentsPerWindow`
 - `Write:PermitLimit`, `Write:WindowSeconds`
+- `PublicIngestion:PermitLimit`, `PublicIngestion:WindowSeconds`
 - `SetupSecret:PermitLimit`, `SetupSecret:WindowSeconds`
+- `AnalyticsRelay:PermitLimit`, `AnalyticsRelay:WindowSeconds`
 - `AiAssistant:PermitLimit`, `AiAssistant:WindowSeconds`
 
 AI assistant send requests have layered abuse controls:
@@ -376,16 +400,26 @@ Current counters include:
 - `explore.registrations.created` (`tenant_id`)
 - `explore.organizations.created` (`tenant_id`)
 - `explore.authorization.decisions` (`resource`, `action`, `result`)
+- `explore.support_access.lifecycle_events` (`event_type`, `mode`, `outcome`, `failure_category`) — support-access start/stop/expire/revoke/force-stop decisions; labels intentionally exclude session IDs, actor/user IDs, tenant IDs, ticket references, reason text, and raw exception text.
+- `explore.support_access.request_audits` (`event_type`, `outcome`, `persistence_outcome`, `failure_category`) — support-access per-request audit persistence outcomes; labels intentionally exclude route paths, resource IDs, session IDs, actor/user IDs, ticket references, request payloads, and raw storage errors.
+- `explore.support_access.session_validation_denials` (`reason`, `mode`) — forwarded support-session validation denials such as kill-switch or write-mode shutdown; labels intentionally exclude forwarded session IDs, actor IDs, tenant IDs, and request headers.
+- `explore.support_access.authorization_boundary_denials` (`reason`, `mode`, `action_class`) — runtime support-access boundary denials such as inactive forwarded sessions, read-only write attempts, missing tenant context, and cross-tenant mismatches; labels intentionally exclude resource IDs, session IDs, actor IDs, and tenant IDs.
 - `event_role_assignment.changed` (`operation`, `outcome`, `role`)
 - `explore.email_dispatch.attempts` (`tenant_id`, `outcome`, `failure_category`) — Basic Dispatch Mode email outcomes; labels intentionally exclude recipient, subject, body, provider message ID, and raw error text.
 - `explore.email_dispatch.rabbitmq.publishes` (`tenant_id`, `outcome`, `failure_category`) — optional RabbitMQ pointer-publish outcomes; labels intentionally exclude recipient, subject, body, provider message ID, raw broker error text, and connection strings.
-- `explore.email_dispatch.rabbitmq.consumes` (`tenant_id`, `outcome`, `failure_category`) — future manual-ack RabbitMQ delivery outcomes; labels intentionally exclude recipient, subject, body, provider message ID, publish event ID, delivery tag, raw broker error text, and connection strings.
+- `explore.email_dispatch.rabbitmq.consumes` (`tenant_id`, `outcome`, `failure_category`) — manual-ack RabbitMQ delivery outcomes; labels intentionally exclude recipient, subject, body, provider message ID, publish event ID, delivery tag, raw broker error text, and connection strings.
 - `explore.notifications.fanout_runs` (`tenant_id`, `fanout_kind`, `outcome`) — notification fanout run outcomes; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
 - `explore.notifications.fanout_subscribers` (`tenant_id`, `fanout_kind`, `outcome`) — aggregate subscriber decisions for notification fanout; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
 - `explore.event_reports.submissions` (`tenant_id`, `outcome`, `failure_category`) — event-report intake outcomes; labels intentionally exclude reporter text, reporter IP/User-Agent values or hashes, event titles, slugs, URLs, report IDs, and raw validation/provider errors.
 - `explore.event_reports.workflow_actions` (`tenant_id`, `action`, `outcome`, `failure_category`) — moderation report triage/assign/decide/execute outcomes; labels intentionally exclude report IDs, case IDs, decision IDs, moderator IDs, reporter evidence, safe notes, and raw errors.
 - `explore.event_reports.provider_syncs` (`tenant_id`, `provider`, `outcome`, `failure_category`) — report provider sync outcomes for local/Osprey/Coop/composite paths; labels intentionally exclude provider URLs, credentials, external case/signal IDs, payload bodies, reporter evidence, and raw provider errors.
-- `explore.event_reports.provider_callbacks` (`tenant_id`, `provider`, `outcome`, `failure_category`) — moderation provider callback outcomes; labels intentionally exclude callback bodies, signatures, provider decision IDs, report IDs, event IDs, case IDs, reporter evidence, and raw parse/auth errors.
+- `explore.event_reports.provider_callbacks` (`tenant_id`, `provider`, `outcome`, `failure_category`) — provider callback outcomes; labels intentionally exclude callback bodies, signatures, provider decision IDs, provider message IDs, report IDs, event IDs, case IDs, reporter evidence, and raw parse/auth errors. Anonymous public-ingestion callbacks such as Svix operational webhooks use the default tenant tag even when a verified payload contains a tenant identifier.
+- `explore.webhooks.messages_created` (`tenant_id`, `event_type`, `provider`, `outcome`) — canonical outgoing webhook message creation outcomes; labels intentionally exclude payloads, aggregate titles/slugs/URLs, endpoint URLs, and secrets.
+- `explore.webhooks.delivery_attempts` (`tenant_id`, `event_type`, `outcome`, `failure_category`) — LocalProvider delivery attempt outcomes; labels intentionally exclude endpoint URLs, request payloads, response bodies, headers, and raw transport errors.
+- `explore.webhooks.delivery_success` (`tenant_id`, `event_type`) — LocalProvider successful delivery count.
+- `explore.webhooks.delivery_failure` (`tenant_id`, `event_type`, `outcome`, `failure_category`) — LocalProvider failed delivery count with bounded failure categories only.
+- `explore.webhooks.endpoint_disabled` (`tenant_id`, `failure_category`) — endpoint auto-disable count; labels intentionally exclude endpoint URLs and secrets.
+- `explore.webhooks.manual_retries` (`tenant_id`, `event_type`, `outcome`, `failure_category`) — manual retry scheduling outcomes; labels intentionally exclude message IDs, endpoint IDs, and payloads.
 - `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, tenant/user IDs, and raw errors.
 - `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, raw tool payloads, model IDs, endpoint URLs, API keys, provider request IDs, and raw provider errors.
 - `explore.ai.provider.request_duration` (`provider`, `outcome`, `failure_category`) — AI provider request duration histogram in seconds; labels intentionally use the same bounded dimensions as provider request counters.
@@ -404,13 +438,36 @@ Current counters include:
 - `explore.storage.reconciliation_objects` (`provider`, `category`, `action`, `outcome`, `failure_category`) — aggregate object decisions from reconciliation scans; labels are bounded to provider/category/action/outcome and intentionally exclude identifiers, paths, object keys, filenames, and secrets.
 - `explore.storage.provider_tests` (`provider`, `outcome`, `failure_category`) — admin storage provider test outcomes; labels intentionally exclude local filesystem roots, S3 endpoints, bucket names, access keys, secrets, and raw exception text.
 
+### Support Access Operations
+
+Support access is an operator-governed, actor-preserving session model. Browser clients never own support authority; the BFF forwards only a server-owned `X-Support-Access-Session-Id`, and the API revalidates the persisted session, actor, tenant, expiry, mode, and governance settings on each forwarded request.
+
+Operational controls:
+
+- Kill switch: set `support_access.enabled=false` to deny new starts and reject existing forwarded support-access use. Existing BFF stored session references become inert because API validation fails closed.
+- Write shutdown: set `support_access.allow_write_mode=false` to reject new write sessions and reject existing forwarded write sessions.
+- Emergency revocation: use the support-access force-stop endpoint/action for active sessions. Revocation writes a durable audit event attributed to the operator who force-stopped the session.
+- Retention and backup: support-access session and audit-event tables are security evidence. Do not include them in ephemeral cleanup jobs; include them in the normal database backup/restore plan and define retention through governance before purging historical evidence.
+
+Alert-worthy structured logs:
+
+| Event | Signal |
+|---|---|
+| Write-capable session started | Warning from `StartSupportAccessSessionCommandHandler`; investigate ticket/reference and expiry. |
+| Force-stop completed | Warning from `ForceStopSupportAccessSessionCommandHandler`; this is an emergency revocation path. |
+| Kill switch denied forwarded use | Warning from `SupportAccessSessionService` plus `explore.support_access.session_validation_denials{reason="support_access_disabled"}`. |
+| Cross-tenant mismatch denied | Warning from `RuntimeAuthorizationProvider` plus `explore.support_access.authorization_boundary_denials{reason="support_access_target_tenant_mismatch"}`. |
+| Audit persistence failed | Warning from `SupportAccessAuditMiddleware` plus `explore.support_access.request_audits{persistence_outcome="failed"}`. |
+
+Trace tags on active support-access requests use bounded support context such as `support_access.active`, `support_access.mode`, `support_access.allows_writes`, and `support_access.was_forwarded`. They intentionally do not carry ticket text or reason text.
+
 ### Notification Fanout Operations
 
 Event-published actor-subscription fanout is handled as an internal outbox side effect:
 
-1. The event publish command writes the external `EventPublished` outbox row and an internal `EventPublishedNotificationFanoutRequested` outbox row in the same transaction.
+1. The event publish command writes an internal `EventPublishedNotificationFanoutRequested` outbox row in the same transaction as the event status change.
 2. `OutboxProcessor` claims pending rows and calls `CompositeOutboxMessageDispatcher`.
-3. The composite dispatcher routes `EventPublished` to the MQContract dispatcher and routes `EventPublishedNotificationFanoutRequested` to `EventPublishedNotificationFanoutService`.
+3. The composite dispatcher routes `EventPublishedNotificationFanoutRequested` to `EventPublishedNotificationFanoutService`; retired external `EventPublished` broker rows fail closed as unknown outbox event types.
 4. The fanout service creates or resumes `NotificationFanoutRun`, scans active organization/group actor subscriptions for active tenant-local users, skips existing `Notification.DeduplicationKey` values, creates durable in-app notification rows, and marks the run completed or failed.
 
 Operator signals:
@@ -450,20 +507,23 @@ Registration confirmation email is handled as a durable side effect:
 1. The registration command creates an `EmailDispatchOutbox` row in the same PostgreSQL transaction as the registration state.
 2. TickerQ `email-dispatch-drain` triggers the shared drain service. In fallback mode, `EmailDispatchProcessor` triggers the same service with a hosted timer.
 3. The drain service checks tenant pause state, atomically claims one row, and sets tenant context before resolving SMTP settings.
-4. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly.
-5. The drain records `EmailDispatchAttempt` and `EmailDispatchReceipt` state, then marks the outbox row `Sent`, `RetryScheduled`, `DeadLettered`, or `Unknown`.
-6. TickerQ `email-dispatch-recovery-scan` marks stale `Processing` rows as `Unknown` after `EmailDispatchProcessor:ProcessingLeaseTimeoutSeconds`; the hosted-service fallback runs the same recovery scan before each drain loop.
+4. For mapped lifecycle categories with a `UserId`, the drain checks `UserNotificationPreference` immediately before SMTP handoff. A disabled preference records a `Skipped` attempt/receipt/outbox result with failure category `recipient_unsubscribed`; it does not call the SMTP provider and it does not retry.
+5. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly.
+6. The drain records `EmailDispatchAttempt` and `EmailDispatchReceipt` state, then marks the outbox row `Sent`, `RetryScheduled`, `DeadLettered`, `Unknown`, or `Skipped`.
+7. TickerQ `email-dispatch-recovery-scan` marks stale `Processing` rows as `Unknown` after `EmailDispatchProcessor:ProcessingLeaseTimeoutSeconds`; the hosted-service fallback runs the same recovery scan before each drain loop.
+
+When an absolute public base URL is configured through `PublicBaseUrl`, `App:PublicBaseUrl`, or `Application:PublicBaseUrl`, categorized lifecycle messages include `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, and a visible unsubscribe URL appended to the plain text and HTML bodies. Public launch deployments should configure the public base URL; otherwise the dispatch path still sends allowed email, but it cannot emit absolute unsubscribe links.
 
 Operator signals:
 
 | Signal | Meaning |
 |---|---|
 | `email-dispatch` health check | Selected dispatch mode, TickerQ enabled state, dashboard enabled state, and safe dispatch settings. |
-| `explore.email_dispatch.attempts` | Outcome counter for sent, tenant paused, unknown, retry-scheduled, and dead-lettered attempts. |
+| `explore.email_dispatch.attempts` | Outcome counter for sent, skipped, tenant paused, unknown, retry-scheduled, and dead-lettered attempts. |
 | TickerQ dashboard | Optional instance-admin-only scheduler internals. It is disabled by default and is not the product/operator source of truth for email delivery state. |
 | Structured drain logs | Include dispatch/outbox IDs, tenant IDs, outcomes, retry delay, and normalized failure category; do not include bodies, recipients, subjects, secrets, provider message IDs, or raw SMTP error text. |
 
-Timeout-like SMTP outcomes are recorded as `Unknown` instead of blind retry. Dead-lettered rows remain in PostgreSQL for operator inspection and later replay tooling.
+Timeout-like SMTP outcomes are recorded as `Unknown` instead of blind retry. Skipped rows are terminal preference/compliance outcomes and are not replayable. Dead-lettered rows remain in PostgreSQL for operator inspection and later replay tooling.
 
 Crash-window recovery is intentionally conservative. If a node dies after claiming a row but before persisting a final delivery state, the stale-processing recovery scan clears the processing lease, marks the outbox row `Unknown` with failure category `processing_lease_expired`, and marks any processing receipt `Unknown`. Operators should inspect the HAL-gated EmailDispatch admin status and replay only when the business context makes another send safe. The recovery path does not infer SMTP success from TickerQ job state.
 
@@ -501,6 +561,16 @@ The RabbitMQ payload is a pointer contract only: tenant ID, stable `PublishEvent
 Manual-ack dispatch consumption is bounded by `EmailDispatchRabbitMq:PrefetchCount`; ACKs are sent only after `IEmailDispatchDrainService.ProcessSingleAsync(...)` returns a durable PostgreSQL-backed outcome. Malformed or missing pointers are rejected to the queue's DLX/DLQ path, while unexpected transient failures are NACKed with requeue.
 
 DLQ replay is opt-in with `EmailDispatchRabbitMq:DeadLetterReplayEnabled=true`. The replay worker consumes the DLQ with bounded `DeadLetterReplayPrefetchCount`, validates tenant/publish-event/event metadata against the database row, resets replayable durable rows before republishing, parks unsafe messages to the parking queue, and ACKs the original DLQ delivery only after replay or parking publish succeeds. Missing parking topology makes `email-dispatch-rabbitmq` unhealthy because topology declaration is part of the enabled RabbitMQ readiness check.
+
+Operational verification commands:
+
+```bash
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+```
+
+Use the first command for SMTP/Mailpit/Basic Dispatch runtime evidence, the second for optional RabbitMQ topology/publish/consumer/DLQ evidence, and the third for API health, scheduler wrapper, and HAL-gated operator contract evidence.
 
 ## Cerbos PDP Operations
 
@@ -563,6 +633,8 @@ Instance bootstrap uses `ISetupSecretProvider`:
 - setup status returns client-safe state labels (`Environment`, `Generated`, `Expired`, `Locked`, `Unavailable`) and operator guidance without exposing raw secrets;
 - generated setup secrets expire 60 minutes after API startup, and recovery is to restart the API and use the newly logged generated secret;
 - environment-provided setup secrets remain authoritative, but a timed-out setup window still requires an API restart to reopen setup mode.
+
+Setup-secret-gated API onboarding endpoints use the dedicated `SetupSecret` rate-limit policy. Invalid setup secrets return RFC 7807 `403 Forbidden` with code `forbidden`; setup-secret endpoints called after bootstrap completion return RFC 7807 `410 Gone` with code `setup_already_completed`; rate-limit rejection returns RFC 7807 `429 Too Many Requests`.
 
 The convention-first launch path is Setup Secret → Admin Auth → Site Profile → Preflight → Launch. Preflight readiness data is non-sensitive and separates launch blockers from operational warnings.
 

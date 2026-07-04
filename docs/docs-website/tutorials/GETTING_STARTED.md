@@ -7,7 +7,11 @@ ABOUTME: Uses current repository paths, service names, ports, and seed/dev auth 
 
 - Docker Desktop
 - .NET 10 SDK (preview, aligned with `global.json`)
+- Aspire CLI
 - Git
+
+Install Aspire CLI when `aspire` is not already available:
+`curl -sSL https://aspire.dev/install.sh | bash`
 
 ## Option 1: Docker Compose
 
@@ -18,10 +22,11 @@ ABOUTME: Uses current repository paths, service names, ports, and seed/dev auth 
 3. Validate the resolved Compose model:
    `docker compose config`
 4. Start core services:
-   `docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui`
+   `docker compose up -d postgres redis mailpit keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui`
 5. Open:
    - Blazor UI: `http://localhost:7002`
    - API: `http://localhost:7039`
+   - Mailpit: `http://localhost:8025`
    - Swagger: `http://localhost:7039/swagger`
    - Keycloak: `http://localhost:8080` (admin: `admin` / `admin`)
 
@@ -33,7 +38,7 @@ Optional profiles:
 - Storage: `docker compose --profile storage up -d`
 - Cerbos: `docker compose --profile authz up -d`
 - Coop moderation: `docker compose --profile moderation up -d`
-- Osprey signal provider: `docker compose --profile osprey up -d` after setting an accessible `OSPREY_IMAGE`
+- Osprey coordinator: `docker compose --profile osprey up -d`
 
 ## Option 2: Local Aspire Orchestration
 
@@ -42,9 +47,13 @@ Run:
 
 This starts full local infrastructure, migration, API, and Blazor with local development wiring.
 
+Fallback for IDE/older workflows:
+- `dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile https`
+
 Expected local URLs:
 - Use the Aspire dashboard output for exact dynamic Blazor and API endpoints.
 - Keycloak local full mode uses `http://localhost:8080/auth`.
+- Mailpit starts in every Aspire profile with SMTP on `localhost:1025` and UI on `http://localhost:8025`.
 
 ## Development Test User (Keycloak Realm Import)
 

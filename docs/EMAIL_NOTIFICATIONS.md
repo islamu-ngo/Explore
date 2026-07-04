@@ -6,8 +6,8 @@ ABOUTME: Prevents unsupported claims about notification fanout, queueing, unsubs
 > **Audience:** Operators | Admins | Contributors
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-06-23
-> **Source Anchors:** `Explore.Infrastructure/Mail/`, `Explore.Domain/Settings/Definitions/EmailSettingDefinitions.cs`, `Explore.API/HealthChecks/SmtpHealthCheck.cs`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationNotificationFanoutService.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
+> **Last Verified:** 2026-07-04
+> **Source Anchors:** `Explore.Infrastructure/Mail/`, `Explore.Infrastructure/EmailDispatchDrainService.cs`, `Explore.Infrastructure.Tests/Infrastructure/EmailDispatchDrainMailpitTests.cs`, `Explore.Infrastructure.Tests/Infrastructure/SmtpEmailServiceMailpitTests.cs`, `Explore.Persistence/Seed/DatabaseSeeder.cs`, `Explore.AppHost/AppHost.cs`, `docker-compose.yml`, `Explore.Domain/Settings/Definitions/EmailSettingDefinitions.cs`, `Explore.API/HealthChecks/SmtpHealthCheck.cs`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationNotificationFanoutService.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Email delivery is implemented as direct SMTP sending. In-app notifications are a separate authenticated inbox feature; actor-subscription fanout and moderation attendee fanout create durable in-app notification rows and are not SMTP/email fanout pipelines.
 
@@ -42,6 +42,8 @@ The email settings model is defined by `EmailSettingDefinitions` and grouped by 
 
 `SmtpConfigResolver` reads the cascading settings model and caches resolved configuration per tenant for five minutes. It returns no SMTP configuration when required values such as host or from-address are missing.
 
+Local Aspire and Compose runs start Mailpit for email capture. Aspire exposes SMTP on `localhost:1025` and the UI at `http://localhost:8025`; Compose containers use SMTP host `mailpit` and port `1025`. Development database seeding uses `MAIL_SMTP_*`, then `SMTP_*` aliases, then these Mailpit defaults when no SMTP host has been configured.
+
 ## Secret Handling
 
 `email.smtp_username` and `email.smtp_password` are sensitive settings. Treat them as secrets in reviews, logs, exports, support bundles, and screenshots.
@@ -64,6 +66,43 @@ The docs should not claim more about email-secret encryption than the source pro
 - Attachments and inline images.
 
 The service creates a new SMTP client per send. It does not document a queue, background dispatcher, delivery tracking, bounce processor, or unsubscribe workflow in the SMTP send path.
+
+## Basic Dispatch Test Evidence
+
+Basic Dispatch uses `EmailDispatchDrainService` as the scheduler-neutral boundary. TickerQ, hosted-service fallback, and future transports must delegate to this drain instead of sending SMTP directly from handlers or controllers.
+
+| Behavior | Evidence |
+|---|---|
+| Direct SMTP provider handoff | `SmtpEmailServiceMailpitTests` sends through MailKit to Mailpit and verifies recipient, sender, subject, text body, HTML body, connection success, and result-field redaction for sentinel body/secret values. |
+| SMTP settings resolution | `SmtpConfigResolverTests` verifies tenant `SettingContext` propagation, per-tenant cache separation, missing required settings, defaults, and cache invalidation. |
+| Pending outbox drain | `EmailDispatchDrainMailpitTests` starts with a pending `EmailDispatchOutbox`, runs `ProcessBatchAsync`, sends through real SMTP to Mailpit, and records `Sent` outbox state plus succeeded attempt and completed receipt state. |
+| Duplicate claim protection | `EmailDispatchDrainMailpitTests` races two `ProcessSingleAsync` consumers for one outbox row and verifies exactly one Mailpit message, one attempt, and one completed receipt. |
+| Failure outcomes | `EmailDispatchDrainServiceTests` covers retry-scheduled SMTP failures, exhausted dead-letter outcomes, timeout-like unknown outcomes, recipient preference skips, tenant pause before SMTP handoff, and stale-processing recovery. |
+| Tenant pause/resume and operator actions | `EmailDispatchTenantControlRepositoryTests`, `EmailDispatchAdminControllerTests`, and `EmailDispatchAdminHateoasTests` cover PostgreSQL pause/resume state, API problem mapping, write-route policies, and HAL replay/park affordance rules. |
+| Scheduler triggers | `EmailDispatchTickerQJobsTests` and `EmailDispatchProcessorTests` prove TickerQ and hosted-service fallback paths call the same scheduler-neutral drain service instead of owning SMTP, RabbitMQ, or payload logic. |
+| Readiness states | `EmailDispatchHealthCheckTests` covers Basic Dispatch enabled, intentionally disabled, `Mode=Disabled`, TickerQ scheduler disabled, and HostedService states. `EmailDispatchRabbitMqHealthCheckTests` covers RabbitMQ disabled, healthy-enabled, and unhealthy transport states independently from Basic Dispatch. |
+| RabbitMQ runtime fixture | `RabbitMqContainerFixtureTests` starts a Testcontainers RabbitMQ management image, verifies an AMQP connection string, and reads bounded management overview diagnostics for later live transport tests. |
+| RabbitMQ live topology and publish outcomes | `RabbitMqEmailDispatchTransportLiveTests` enables the real transport against the fixture, declares dispatch/DLX/parking topology, verifies durable direct exchanges and queues through the management API, verifies dispatch queue DLX arguments, confirms readiness is healthy, confirms routable pointer publishes, returns `mandatory_return` for an unbound routing key, and reads the live broker payload to prove only pointer fields are serialized. |
+| RabbitMQ live consumer | `RabbitMqEmailDispatchConsumerMailpitTests` starts the manual-ack consumer, publishes a valid pointer, drains the durable outbox through real SMTP to Mailpit, persists `Sent` attempt/receipt state, and waits for RabbitMQ ready/unacknowledged counters to reach zero after the durable outcome. The same class proves malformed JSON and valid pointers without a durable outbox reject to the DLQ without sending Mailpit email. |
+| RabbitMQ DLQ replay and parking | `RabbitMqEmailDispatchDeadLetterReplayLiveTests` starts the replay worker, resets a dead-lettered durable row before republishing to the dispatch queue, ACKs the original DLQ delivery, and parks missing-outbox payloads to the parking queue. |
+| Browser registration email | `RegistrationFlowTests` clears Mailpit, registers through the Aspire-backed API/BFF/browser stack, waits for the durable outbox row to become `Sent`, verifies attempt/receipt rows, finds the Mailpit message for the registrant, and checks semantic body text plus event title. |
+
+Focused commands:
+
+```bash
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
+dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchTenantControlRepositoryTests/*" --minimum-expected-tests 1
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchAdminControllerTests/*|/*/*/EmailDispatchAdminHateoasTests/*" --minimum-expected-tests 1
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchTickerQJobsTests/*|/*/*/EmailDispatchProcessorTests/*" --minimum-expected-tests 1
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchHealthCheckTests/*" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/EmailDispatchRabbitMqHealthCheckTests/*" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/RabbitMqContainerFixtureTests/*" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/RabbitMqEmailDispatchTransportLiveTests/*" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/RabbitMqEmailDispatchConsumerMailpitTests/*" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/RabbitMqEmailDispatchDeadLetterReplayLiveTests/*" --minimum-expected-tests 1
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/RegistrationFlowTests/*" --minimum-expected-tests 1
+```
 
 ## Admin Workflow
 
@@ -101,9 +140,11 @@ Keep the future notifications doc focused on in-app notification behavior when t
 | Settings update appears ignored | Wait for the resolver cache window or re-run the settings/test path that invalidates SMTP configuration for the current tenant. |
 | Sends time out | Check `email.smtp_timeout_seconds`, firewall rules, and provider throttling. |
 | TLS/certificate failures | Verify security mode and only use `email.smtp_skip_cert_validation` for controlled non-production scenarios. |
-| Local development mail does not arrive | Confirm the seeded local SMTP defaults or your local mail sink configuration. |
+| Local development mail does not arrive | Open Mailpit at `http://localhost:8025` and confirm `email.smtp_host`/`email.smtp_port` resolve to `localhost:1025` for Aspire or `mailpit:1025` for Compose. |
+| RabbitMQ dispatch health is unhealthy | Confirm `EmailDispatchRabbitMq:Enabled` is intentional, then check broker connectivity, topology names, parking queue settings, and bounded transport logs. Basic Dispatch can stay healthy without RabbitMQ when broker dispatch is disabled. |
+| RabbitMQ DLQ grows | Inspect the HAL-gated EmailDispatch admin status before replay. Malformed or missing durable pointers should park or remain in DLQ evidence; replayable rows must reset durable state before republish. |
 
-Local development seeding can provide default SMTP-like values when SMTP host is empty. Treat those as development conveniences, not production defaults.
+Local development seeding can provide Mailpit values when SMTP host is empty or still set to the retired `mailpit.openislamu.org` seed. Treat those as development conveniences, not production defaults.
 
 ## Related Documentation
 

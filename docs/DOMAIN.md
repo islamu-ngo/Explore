@@ -214,7 +214,7 @@ Transactional outbox entity for reliable asynchronous event dispatch (at-least-o
 | `Status` | `Enum` | Pending, Processing, Completed, Failed, DeadLettered |
 | `NextRetryAt` | `DateTime?`| Exponential backoff schedule |
 
-Event publication writes both the external `EventPublished` outbox message for MQContract dispatch and an internal `EventPublishedNotificationFanoutRequested` outbox message for actor-subscription fanout. The internal fanout message is routed by the composite dispatcher to the application fanout service, which writes durable `Notification` rows and advances `NotificationFanoutRun` state idempotently.
+Event publication writes an internal `EventPublishedNotificationFanoutRequested` outbox message for actor-subscription fanout. The fanout message is routed by the composite dispatcher to the application fanout service, which writes durable `Notification` rows and advances `NotificationFanoutRun` state idempotently. External broker publication for `EventPublished` is retired from this workstream; future integration-event broker work needs a separate product requirement and failure model.
 
 Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (governance), `EmailDispatchOutbox` (basic email dispatch state).
 

@@ -62,6 +62,7 @@ Commonly consumed sections in code:
 - `RequestTimeouts:*`
 - `Cerbos:*`
 - `Deployment:*`
+- `PublicBaseUrl`, `App:PublicBaseUrl`, or `Application:PublicBaseUrl`
 - `Storage:Local:*` (deployment-managed local filesystem storage)
 - `StorageReconciliation:*` (dry-run-first storage drift worker)
 - `S3Settings:*` (fallback source for storage resolver)
@@ -73,6 +74,7 @@ Commonly consumed sections in code:
 - `AiRetentionCleanup:*` (scheduled tenant-scoped AI conversation retention cleanup)
 - `AiProvider:*` (AI provider readiness/egress validation foundation)
 - `Reporting:*` (local event-report submission limits, evidence retention, and provider runtime mode)
+- `Webhooks:*` (outgoing webhook provider mode, LocalProvider delivery limits, and Svix server-side integration)
 - `Mcp:*` (optional Model Context Protocol adapter posture)
 - `Persistence:*` (database runtime options)
 
@@ -81,6 +83,12 @@ Commonly consumed sections in code:
 | Key | Default | Description |
 |---|---:|---|
 | `Persistence:EnableRlsTenantSession` | `false` | Registers the PostgreSQL tenant-session interceptor that sets `app.current_tenant_id` when EF Core opens a connection. This does not enable RLS policies by itself; keep disabled outside prototype environments until runtime app-role, migration-role, admin/system-path, and table-policy rollout work is complete. |
+
+### Public URL Configuration
+
+`PublicBaseUrl` is the preferred static key for the instance's externally reachable HTTPS origin. The fallback lookup order is `PublicBaseUrl`, then `App:PublicBaseUrl`, then `Application:PublicBaseUrl`.
+
+The value must be an absolute `http` or `https` URL. Public deployments should use `https`. It is used by public URL builders and by the email dispatch drain when creating absolute unsubscribe URLs for `List-Unsubscribe` headers and visible unsubscribe footers. If no valid public base URL is configured, categorized email can still send when preferences allow it, but the dispatch path omits unsubscribe URLs because relative links are not valid in email headers.
 
 ### Storage Static Configuration
 
@@ -130,6 +138,28 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 | `AiProvider:RetentionDays` | `30` | Retention seed; enforcement is separate from provider health. |
 | `AiProvider:DailyMessageLimit` | `50` | Abuse/cost-control seed; enforcement is separate from provider health. |
 
+### Webhook Static Configuration
+
+`Webhooks:*` controls outgoing product webhooks only. Incoming integration callbacks under `/api/integrations/*` remain available independently of the outgoing provider mode.
+
+| Key | Default | Description |
+|---|---:|---|
+| `Webhooks:Enabled` | `true` | Master switch for outgoing product webhooks. |
+| `Webhooks:Provider` | `Local` | Supported values are `Disabled`, `Local`, `Svix`, `Composite`, and `DryRun`. |
+| `Webhooks:DefaultPayloadRetentionDays` | `14` | Default retention window for canonical webhook payload bodies. |
+| `Webhooks:Local:MaxAttempts` | `8` | LocalProvider retry ceiling. |
+| `Webhooks:Local:TimeoutSeconds` | `15` | LocalProvider total request timeout. |
+| `Webhooks:Local:ConnectTimeoutSeconds` | `3` | LocalProvider connect timeout. |
+| `Webhooks:Local:BlockPrivateNetworks` | `true` | Blocks loopback, private, link-local, metadata, localhost, and internal DNS destinations by default. |
+| `Webhooks:Local:AllowedPrivateCidrs` | empty | Operator allow-list for deliberate private-network delivery. Keep empty for public/SaaS deployments. |
+| `Webhooks:Svix:BaseUrl` | unset | Self-hosted Svix base URL. Local-full Aspire uses `http://localhost:8071`; Compose uses `http://svix:8071`. |
+| `Webhooks:Svix:AuthTokenSecretRef` | `webhooks.svix.auth_token` | Server-side secret binding for the Svix API token. |
+| `Webhooks:Svix:OperationalWebhookSecretRef` | `webhooks.svix.operational_webhook_secret` | Secret binding for incoming Svix operational callback verification. |
+| `Webhooks:Svix:AppPortalEnabled` | `true` | Enables backend-only App Portal access URL generation. |
+| `Webhooks:Svix:SyncEventTypesOnStartup` | `true` | Syncs the canonical event catalog to Svix when provider mode is `Svix` or `Composite`. |
+
+Local development can source Svix secrets from `WEBHOOKS_SVIX_AUTH_TOKEN` and `WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET`; Development seeding creates missing instance secret bindings for those variables when values are configured. Rotate the checked-in local defaults outside disposable development. See [WEBHOOKS.md](WEBHOOKS.md) for provider behavior and runbooks.
+
 ### Reporting Static Configuration
 
 `Reporting:*` controls local event-report intake and the moderation-provider runtime mode introduced by the event-reporting bounded context. Submission remains local-first: it creates the canonical report, event target, encrypted reporter-text evidence, local case, and provider-sync outbox intent before any external integration can run.
@@ -146,7 +176,7 @@ Provider runtime keys are infrastructure-only switches. They control `RuntimeMod
 | `Reporting:ExecuteDecisions` | `true` | Allows provider decision execution to delegate to the local decision executor. Set `false` to fail decision execution contracts with a non-retryable disabled result. |
 | `Reporting:EvidenceMode` | `MetadataOnly` | Evidence-sharing posture for provider envelopes. Supported values are `MetadataOnly`, `SafeSummaryOnly`, and `ReporterText`; `ReporterText` is rejected for `Disabled` and `LocalOnly` modes. |
 
-Osprey adapter keys live under `Reporting:Osprey:*`. The adapter is Infrastructure-only and posts a safe JSON evaluation request to the configured endpoint; the request contains tenant/report/event/case IDs, normalized report/case/priority codes, timestamps, idempotency/correlation IDs, and evidence mode only. It does not send reporter text, reporter IP hashes, user-agent hashes, raw provider payloads, event titles, slugs, or URLs. Public research did not identify an official .NET Osprey SDK or stable public REST contract, so the current adapter targets a configurable Osprey-compatible HTTP JSON/RPC facade and can be swapped to generated gRPC/proto wiring once a deployment supplies that contract.
+Osprey adapter keys live under `Reporting:Osprey:*`. The adapter is Infrastructure-only and posts a safe JSON evaluation request to the configured endpoint; the request contains tenant/report/event/case IDs, normalized report/case/priority codes, timestamps, idempotency/correlation IDs, and evidence mode only. It does not send reporter text, reporter IP hashes, user-agent hashes, raw provider payloads, event titles, slugs, or URLs. Public research did not identify an official .NET Osprey SDK or stable public REST contract, so the current adapter targets a configurable Osprey-compatible HTTP JSON/RPC facade and can be swapped to generated gRPC/proto wiring once a deployment supplies that contract. The local `osprey` Compose/Aspire resource uses the Roost coordinator image and exposes coordinator ports; do not set `Reporting:Osprey:EndpointUrl` to that coordinator port unless a compatible HTTP facade is in front of it.
 
 | Key | Default | Description |
 |---|---:|---|
@@ -275,7 +305,7 @@ Static dispatch settings bind from `EmailDispatchProcessor` and are validated at
 | `ConsumerId` | machine name | Drain identity recorded in receipts and logs. Must not be blank. |
 | `VerboseLogging` | `false` | Enables additional drain logs when troubleshooting. Logs must remain free of bodies, recipients, and secrets. |
 
-SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. RabbitMQ Dispatch Mode is not part of Basic mode.
+SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. Local development defaults are seeded from `MAIL_SMTP_*`, then `SMTP_*` aliases, then local Mailpit values when the instance SMTP host is empty. RabbitMQ Dispatch Mode is not part of Basic mode.
 
 TickerQ host settings bind from `Scheduler:TickerQ`:
 
@@ -294,7 +324,7 @@ TickerQ is scheduler state only. It must not contain email bodies, recipients, s
 
 ### Email Dispatch RabbitMQ Configuration
 
-RabbitMQ Dispatch Mode is optional transport infrastructure over the same PostgreSQL `EmailDispatchOutbox` state machine. The first RabbitMQ slice declares topology, publishes pointer-only dispatch messages with mandatory routing and publisher confirms, exposes a readiness check, and wires Aspire local development. It does **not** replace the Basic SMTP worker and does not make RabbitMQ required for non-Aspire/basic deployments.
+RabbitMQ Dispatch Mode is optional transport infrastructure over the same PostgreSQL `EmailDispatchOutbox` state machine. The implemented path declares topology, publishes pointer-only dispatch messages with mandatory routing and publisher confirms, consumes with manual ACK after durable drain outcomes, exposes a readiness check, and wires Aspire local development. It does **not** replace the Basic SMTP worker and does not make RabbitMQ required for non-Aspire/basic deployments.
 
 Static RabbitMQ transport settings bind from `EmailDispatchRabbitMq` and are validated at startup with `ValidateOnStart`:
 
@@ -307,19 +337,22 @@ Static RabbitMQ transport settings bind from `EmailDispatchRabbitMq` and are val
 | `DispatchQueueName` | `explore.email-dispatch.dispatch` | Durable dispatch queue bound to the exchange. |
 | `DispatchRoutingKey` | `email-dispatch.dispatch` | Routing key used for mandatory pointer publishes. |
 | `DeadLetterExchangeName` | `explore.email-dispatch.dlx` | Durable direct DLX for rejected/poison messages in later consumer slices. |
-| `DeadLetterQueueName` | `explore.email-dispatch.dlq` | Durable DLQ bound to the DLX. |
+| `DeadLetterQueueName` | `explore.email-dispatch.dead-letter` | Durable DLQ bound to the DLX. |
 | `DeadLetterRoutingKey` | `email-dispatch.dead-letter` | DLQ routing key configured on the dispatch queue. |
 | `ParkingQueueName` | `explore.email-dispatch.parking` | Durable parking queue for future operator replay/parking tooling. |
 | `ParkingRoutingKey` | `email-dispatch.parking` | Parking queue routing key. |
-| `ClientProvidedName` | `explore-email-dispatch` | RabbitMQ client identity for broker/operator diagnostics. |
-| `ConsumerId` | `explore-email-dispatch-rabbitmq-consumer` | Stable consumer identity that future manual-ack RabbitMQ deliveries record in `EmailDispatchReceipt`. Must not be blank. |
-| `PrefetchCount` | `10` | Bounded unacknowledged delivery window for the future manual-ack consumer. Must be greater than zero; `0` is not allowed because RabbitMQ treats it as unbounded. |
+| `ClientProvidedName` | `explore-email-dispatch-rabbitmq` | RabbitMQ client identity for broker/operator diagnostics. |
+| `ConsumerId` | `explore-email-dispatch-rabbitmq-consumer` | Stable consumer identity that manual-ack RabbitMQ deliveries record in `EmailDispatchReceipt`. Must not be blank. |
+| `PrefetchCount` | `10` | Bounded unacknowledged delivery window for the manual-ack consumer. Must be greater than zero; `0` is not allowed because RabbitMQ treats it as unbounded. |
 | `DeadLetterReplayEnabled` | `false` | Enables the optional DLQ replay worker. Keep disabled until operators intentionally want RabbitMQ DLQ redrive/parking. |
 | `DeadLetterReplayConsumerId` | `explore-email-dispatch-dlq-replay` | Stable consumer tag for the DLQ replay worker. Must not be blank. |
 | `DeadLetterReplayPrefetchCount` | `5` | Bounded unacknowledged delivery window for DLQ replay. Must be greater than zero. |
 | `PublishTimeoutSeconds` | `15` | Timeout around topology/publish confirm work. Must be greater than zero. |
+| `PublisherPollingIntervalSeconds` | `5` | Delay between pointer-publisher scans for due `EmailDispatchOutbox` rows. Must be greater than zero. |
+| `PublisherBatchSize` | `100` | Maximum due rows the pointer publisher reads per pass. Must be greater than zero. |
+| `PublisherRetryDelaySeconds` | `30` | Minimum delay before retrying RabbitMQ pointer publish attempts for still-pending rows. Must be greater than zero. |
 
-The RabbitMQ payload is `EmailDispatchPointer`: tenant ID, stable `PublishEventId`, kind, source IDs, and optional event/registration/user IDs only. It intentionally excludes recipient email, subject, plain text body, HTML body, reply-to, provider message IDs, raw provider errors, and SMTP credentials. The DLQ replay worker validates pointer metadata against the PostgreSQL row before redriving; unsafe payloads are routed to the parking queue instead of being blindly replayed.
+The RabbitMQ payload is `EmailDispatchPointer`: tenant ID, stable `PublishEventId`, kind, source IDs, and optional event/registration/user IDs only. It intentionally excludes recipient email, subject, plain text body, HTML body, reply-to, provider message IDs, raw provider errors, and SMTP credentials. The pointer publisher records producer metadata on `EmailDispatchOutbox` (`RabbitMqLastPublishedAt`, `RabbitMqLastPublishAttemptAt`, `RabbitMqPublishAttemptCount`, and `RabbitMqLastPublishFailureCategory`) without changing SMTP delivery state. The DLQ replay worker validates pointer metadata against the PostgreSQL row before redriving; unsafe payloads are routed to the parking queue instead of being blindly replayed.
 
 ### Idempotency Cleanup Configuration
 
@@ -370,7 +403,7 @@ Refresh behavior binds from `SecretRefresh` and runs via hosted `SecretRefreshSe
 
 | Key | Default | Purpose |
 |---|---|---|
-| `SETUP_SECRET` | generated 32-character startup secret | Optional fixed setup secret for interactive first-run onboarding. When omitted and setup mode is active, API generates a temporary secret and logs it for the operator. |
+| `SETUP_SECRET` | generated 32-character startup secret | Env-only startup secret for interactive first-run onboarding. It cannot be configured from instance administration because setup needs it before the app is initialized. When omitted and setup mode is active, API generates a temporary secret and logs it for the operator. |
 | `SETUP_SECRET_REQUIRED` | `true` | Controls whether interactive setup endpoints can validate a setup secret. `false` is effective only when trusted managed provisioning is explicitly configured; otherwise the provider fails closed and still requires a setup secret. |
 | `PROVISIONING_TRUSTED` | `false` | Must be `true` before managed-provider provisioning can disable interactive setup-secret validation. |
 | `PROVISIONING_MODE` | unset | Trusted values are managed-provider modes such as `managed-provider`, `managed_provider`, `managed-hosting`, or `managed`. Other values do not disable setup-secret validation. |
@@ -450,6 +483,7 @@ Major groups:
 - `email.*`
 - `s3.*`
 - `authorization.*`
+- `support_access.*`
 - `cerbos.*`
 - `analytics.*`
 - `ai_assistant.*`
@@ -468,8 +502,9 @@ Sensitive runtime credentials use a separate secret-setting key space. Do not ex
 | Authentication | `auth.*` | `auth.keycloak_client_secret`, `auth.google_client_secret` |
 | Cerbos admin credentials | `cerbos.*` | `cerbos.custom_admin_username`, `cerbos.custom_admin_password` |
 | AI assistant | `ai_assistant.*` | `ai_assistant.api_key` |
+| Support access | `support_access.*` | none |
 
-`SecretDefinitionRegistry` recognizes provider folders for `/api`, `/storage`, `/keycloak`, `/cerbos`, `/postgresql`, `/smtp`, `/analytics`, and `/ai`. Blazor maps Google client values from `/blazor`; do not claim Google is part of the current secret-catalog folder list unless the registry changes.
+`SecretDefinitionRegistry` recognizes provider folders for `/api`, `/storage`, `/keycloak`, `/cerbos`, `/postgresql`, `/smtp`, `/analytics`, and `/ai`. The `/smtp` folder uses `MAIL_SMTP_HOST`, `MAIL_SMTP_PORT`, `MAIL_SMTP_USERNAME`, `MAIL_SMTP_PASSWORD`, `MAIL_SMTP_FROM_ADDRESS`, and `MAIL_SMTP_FROM_NAME`. Blazor maps Google client values from `/blazor`; do not claim Google is part of the current secret-catalog folder list unless the registry changes.
 
 ## AI Assistant Settings (Governance)
 
@@ -506,6 +541,25 @@ Important notes:
 - Provider endpoint URLs are deployment/admin-controlled. Browser payloads and per-request DTOs must never choose outbound provider hosts.
 - Assistant send requests are also protected by API rate limiting under `RateLimiting:AiAssistant` and by Application-level per-user daily, per-tenant daily, and per-user concurrent-run quotas. Quota failures return safe ProblemDetails and do not call the provider.
 - Tenant delegation/admin editing for the expanded provider/model/limit settings is intentionally separate from defining the keys. Do not assume a key is tenant-admin editable until the tenant policy service and UI explicitly expose it.
+
+## Support Access Settings (Governance)
+
+Admin support access is governed through instance-only `support_access.*` keys. Defaults are fail-closed: support access is disabled, write mode is disabled, ticket/reference capture is required, and each actor is restricted to one active session.
+
+Canonical keys:
+
+| Key | Type | Default | Scope | Description |
+|---|---|---|---|---|
+| `support_access.enabled` | bool | `false` | Instance | Global kill switch for support-access session validation and new session creation. |
+| `support_access.max_read_only_minutes` | int | `30` | Instance | Maximum duration for read-only support-access sessions. |
+| `support_access.max_write_minutes` | int | `10` | Instance | Maximum duration for write-capable support-access sessions. |
+| `support_access.allow_write_mode` | bool | `false` | Instance | Allows write-capable support-access sessions only when explicit runtime authorization also permits them. |
+| `support_access.require_ticket_reference` | bool | `true` | Instance | Requires a bounded ticket/reference value before a session can be started. |
+| `support_access.one_active_session_per_actor` | bool | `true` | Instance | Matches the database invariant that allows one active support-access session per actor. |
+
+Support-access sessions are persisted in the application database, actor-bound, target-tenant-bound, mode-bound, time-boxed, and audited. They must not create `TenantUserRoleGrant` rows and must not replace `ICurrentUserService.UserId`; the real actor remains the current user for audit.
+
+The BFF stores only an opaque active-session reference and forwards `X-Support-Access-Session-Id` from server-owned state. Browser-supplied `X-Support-Access-*` headers are ignored. Changing `support_access.enabled` to `false` is the operational kill switch for new starts and runtime validation of forwarded sessions.
 
 ## Analytics Settings (Governance)
 

@@ -50,7 +50,7 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 - **👥 Member Management:** Invite members, assign roles (Owner, Admin, Editor, Viewer), and track permissions
 - **🎯 Modular Event Types:** Custom fields, event aspects, and event templates for any kind of program
 - **🧩 Custom Properties:** Per-event-type custom fields, single- and multi-select options, relations, and typed validation — see [Custom Properties][custom-properties-doc]
-- **🔔 Notifications & Email:** In-app notifications and transactional email via Svix-compatible webhooks and templated email pipelines — see [Notifications][notifications-doc] and [Email Notifications][email-notifications-doc]
+- **🔔 Notifications, Email & Webhooks:** In-app notifications, built-in/Svix-compatible outgoing webhooks, and templated email pipelines — see [Notifications][notifications-doc], [Webhooks][webhooks-doc], and [Email Notifications][email-notifications-doc]
 - **📇 Contact Sharing:** Share contact information with explicit, revocable consent — see [Contact Sharing][contact-sharing-doc]
 - **🤖 AI Assistant (when enabled):** Ask the assistant to draft event listings, suggest categories/tags, and propose schedule improvements; every AI-proposed change is reviewed and explicitly confirmed before any side effect
 
@@ -144,6 +144,7 @@ For local contribution, use the full-local Aspire loop:
 git clone https://github.com/islamu-ngo/Event.git
 cd Event
 cp .env.example .env
+curl -sSL https://aspire.dev/install.sh | bash # only needed when aspire is not installed
 aspire run
 ```
 
@@ -349,6 +350,7 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [keycloak-link]: https://www.keycloak.org/
 [cerbos-link]: https://www.cerbos.dev/
 [svix-link]: https://www.svix.com/
+[webhooks-doc]: docs/WEBHOOKS.md
 [infisical-link]: https://infisical.com/
 [mudblazor-link]: https://www.mudblazor.com/
 [penpot-link]: https://penpot.app/

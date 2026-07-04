@@ -19,6 +19,16 @@ Use this page for the shortest safe local path. For production-style hosting, st
 | Docker / Docker Compose v2 | Current | Local Aspire infrastructure and self-hosting stack. |
 | .NET Aspire CLI | Current compatible CLI | Preferred local development loop; `dotnet run --project Explore.AppHost` remains the fallback/IDE launch path. |
 
+Install the Aspire CLI before using `aspire run`:
+
+```bash
+curl -sSL https://aspire.dev/install.sh | bash
+# Alternative when .NET 10 global tools are available:
+dotnet tool install -g Aspire.Cli
+```
+
+If your shell cannot find `aspire` after the .NET tool install, add `$HOME/.dotnet/tools` to `PATH`.
+
 ## Clone And Run
 
 ```bash
@@ -64,13 +74,15 @@ If using external infrastructure with `local-core` or `local-lite`, configure yo
 
 | Profile | Use When | Infrastructure Ownership |
 |---|---|---|
-| `local-full` | Contributor default, smoke checks, first clone | Aspire starts PostgreSQL, Redis, RabbitMQ, CockroachDB, Phase Two Keycloak, Cerbos, MinIO, Svix, Coop, Prometheus, Grafana, and configured Osprey locally. |
-| `local-core` | Maintainers debugging data/cache issues | Aspire starts PostgreSQL, Redis, and migrations locally; Keycloak, Cerbos, storage, webhooks, and moderation providers come from Infisical/config. |
-| `local-lite` | Maintainers on the fast daily loop | Aspire starts only API and Blazor; all infrastructure comes from Infisical/config. |
+| `local-full` | Contributor default, smoke checks, first clone | Aspire starts PostgreSQL, Redis, RabbitMQ, Mailpit, CockroachDB, Phase Two Keycloak, Cerbos, MinIO, Svix, Coop, Osprey, Prometheus, and Grafana locally. |
+| `local-core` | Maintainers debugging data/cache issues | Aspire starts PostgreSQL, Redis, Mailpit, and migrations locally; Keycloak, Cerbos, storage, webhooks, and moderation providers come from Infisical/config. |
+| `local-lite` | Maintainers on the fast daily loop | Aspire starts Mailpit, API, and Blazor; all other infrastructure comes from Infisical/config. |
 
-`local-full` uses persistent containers and named volumes so repeated runs do not recreate the database, Keycloak, MinIO, RabbitMQ, or observability data from scratch. Keycloak keeps stable local ports for OIDC browser cookies and callbacks.
+`local-full` uses persistent containers and named volumes so repeated runs do not recreate the database, Keycloak, Mailpit messages, MinIO, RabbitMQ, or observability data from scratch. Keycloak keeps stable local ports for OIDC browser cookies and callbacks.
 
-Osprey is intentionally image-configured. The AppHost starts an `osprey` container when `OSPREY_IMAGE` is supplied, with `OSPREY_TAG` defaulting to `latest`; this avoids making contributor startup depend on an unverified public image name.
+Mailpit starts in every Aspire profile. SMTP uses `localhost:1025`, and the capture UI is `http://localhost:8025`. Development seeding applies those values when `email.smtp_host` is empty, so registration and other email workflows can use the normal SMTP path without sending real email.
+
+Osprey starts in `local-full` with `ghcr.io/roostorg/osprey/osprey-coordinator:latest`. It exposes coordinator ports `19950` and `19951`; the application `Reporting:Osprey` HTTP adapter stays disabled unless you provide a compatible facade endpoint.
 
 For more detailed information, see [SECRETS.md](SECRETS.md) and [CONFIGURATION.md](CONFIGURATION.md).
 
@@ -101,10 +113,13 @@ ISLAMU_ASPIRE_MODE=ExternalInfra aspire run --apphost Explore.AppHost/Explore.Ap
 Launch profiles remain available for IDEs or older workflows:
 
 ```bash
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile https
 dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full
 dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-core
 dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-lite
 ```
+
+The `https` launch profile is a compatibility alias for the full local topology. Prefer `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj` for the contributor path because it is shorter and works from a clean checkout.
 
 Priority rule: `ConnectionStrings:DefaultConnection` wins first, so Aspire `WithReference` owns the local database connection in `FullLocal` and `LocalDataExternalPlatform`. When no connection string is supplied, the bootstrap chain is Infisical `/postgresql` first, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration. If Infisical bootstrap credentials exist and you want env-only local behavior, remove or blank those credentials for that shell/profile.
 
@@ -115,7 +130,7 @@ Use Compose when you want the self-hosting topology locally:
 ```bash
 cp .env.example .env
 docker compose config
-docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
+docker compose up -d postgres redis mailpit keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
 ```
 
 Default Compose endpoints:
@@ -124,6 +139,7 @@ Default Compose endpoints:
 |---|---|
 | Blazor BFF/UI | `http://localhost:7002` |
 | API | `http://localhost:7039` |
+| Mailpit | `http://localhost:8025` |
 
 Swagger, Scalar, and OpenAPI JSON endpoints are mapped only for Development/Testing API runs. The Compose stack uses `ASPNETCORE_ENVIRONMENT=Production`; use [API.md](API.md) and [API_COOKBOOK.md](API_COOKBOOK.md) for API guidance unless you intentionally run the API in a development profile.
 
@@ -137,7 +153,7 @@ docker compose --profile moderation up -d
 docker compose --profile osprey up -d
 ```
 
-`moderation` starts Coop. `osprey` is separate because the sample Osprey image may require registry access or a verified replacement image.
+`moderation` starts Coop. `osprey` starts `ghcr.io/roostorg/osprey/osprey-coordinator:latest` on coordinator ports `19950` and `19951`.
 
 For setup-secret behavior, Keycloak, reverse proxy, migrations, storage, and backups, use [SELF_HOSTING.md](SELF_HOSTING.md).
 
@@ -163,11 +179,19 @@ Typical related-project examples:
 
 ```bash
 dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
 dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 ```
 
-See [TESTING.md](TESTING.md) for the full per-project validation matrix, TUnit conventions, and E2E expectations.
+When working on SMTP, EmailDispatch, or optional RabbitMQ dispatch, run the matching Docker/Testcontainers lane:
+
+```bash
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
+```
+
+See [TESTING.md](TESTING.md) for the full per-project validation matrix, TUnit conventions, runtime lane policy, and E2E expectations.
 
 ## Related
 

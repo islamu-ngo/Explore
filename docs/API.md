@@ -56,8 +56,9 @@ The middleware pipeline in `Program.cs` is ordered precisely. Changing order wil
 17. **Idempotency** — `UseMiddleware<IdempotencyMiddleware>()`. Implements `Idempotency-Key` header for write operations (POST/PUT/PATCH/DELETE). Caches responses by (Key, TenantId) and replays on duplicate requests within 24-hour window.
 18. **Rate Limiter** — `UseRateLimiter()`. Five tiered policies (see below).
 19. **Authorization** — `UseAuthorization()`.
-20. **Output Cache** — `UseOutputCache()`. Eight cache policies (see below).
-21. **ETag** — `UseETag()`. SHA256-based weak ETags, 304 Not Modified support.
+20. **Support Access Audit** — `SupportAccessAuditMiddleware`. For active BFF/server-forwarded support-access sessions, records bounded request evidence after authorization without changing the response if audit persistence fails.
+21. **Output Cache** — `UseOutputCache()`. Eight cache policies (see below).
+22. **ETag** — `UseETag()`. SHA256-based weak ETags, 304 Not Modified support.
 
 ---
 
@@ -87,9 +88,43 @@ Three-reader non-URL versioning — clients may use any of the following; all th
 - `apply` accepts an explicit sync plan plus `BaseProvenanceVersion` and uses the `Complex` timeout policy.
 - Stale-base and concurrent-update conflicts return `409 Conflict` with ProblemDetails types `/problems/stale_sync_base` and `/problems/concurrent_update`.
 
+### Support Access Endpoints
+
+Support-access routes live under `/api/support-access` and require authentication. They model support access as a persisted session for the real actor rather than as impersonation claims.
+
+- `GET /api/support-access/current` returns the authenticated actor's current active support-access session when the API can validate one for the current request or recover one for BFF status refresh.
+- `POST /api/support-access/sessions` starts a short-lived support-access session for a target tenant. The handler enforces governance settings, mode caps, ticket/reference requirements, one-active-session constraints, and authorization through the support-access resource kind.
+- `POST /api/support-access/sessions/{sessionId}/stop` stops the authenticated actor's active session.
+- `POST /api/support-access/sessions/{sessionId}/force-stop` force-stops a session for emergency revocation through the higher-privilege support-access action.
+- `GET /api/support-access/tenants/{targetTenantId}/sessions` returns bounded session history.
+- `GET /api/support-access/tenants/{targetTenantId}/sessions/{sessionId}/audit-events` returns bounded support-access audit evidence.
+
+All session and audit responses are HAL resources or HAL collections. Link policies decide start/stop/force-stop/audit affordances; clients must not recreate those decisions from roles, claims, or cached support state.
+
+### Storage Object Read Endpoints
+
+Storage object metadata and general download routes are authenticated, resource-protected contracts because metadata can include provider object keys, storage provider labels, lifecycle state, and tenant-owned file details.
+
+- `GET /api/storageobject` and `GET /api/storageobject/{id}` require authentication plus `islamuevent_storage_object:view`.
+- `GET /api/storageobject/{id}/content` requires authentication plus `islamuevent_storage_object:download`; the content reader still enforces lifecycle and visibility before opening the server-owned provider key.
+- `GET /api/storageobject/{id}/presigned-url` requires authentication plus `islamuevent_storage_object:presigned_download`, returns no provider object key, and is marked no-store. Do not place output-cache metadata on presigned URL routes.
+- `GET /api/storageobject/{id}/public` is the only anonymous storage content route. It serves active `public_image` objects by storage object ID and never accepts provider object keys, filesystem paths, or arbitrary URLs from the browser.
+- Clients must discover `content`, `presigned-download`, and `public-image` affordances from HAL `_links`; local role/claim checks are not authoritative.
+
+### Email Dispatch Admin Endpoints
+
+EmailDispatch admin routes live under `/api/admin/email-dispatch` and are authenticated operator APIs for Basic Dispatch Mode. They expose tenant-scoped delivery state and controls without exposing recipient email, subject, body, provider message ids, or raw provider errors.
+
+- `GET /api/admin/email-dispatch/status` requires a tenant id query value and authorizes `islamuevent_email_dispatch:view`.
+- `PUT /api/admin/email-dispatch/tenants/{tenantId}/pause` and `DELETE /api/admin/email-dispatch/tenants/{tenantId}/pause` authorize `islamuevent_email_dispatch:manage_tenant`.
+- `PUT /api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/park` authorizes `islamuevent_email_dispatch:park`.
+- `POST /api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/replay` authorizes `islamuevent_email_dispatch:replay`.
+- HAL item links for `replay` and `park` use the same resource/action metadata; clients must render these controls only when the server includes the link.
+- `Skipped` is a terminal dispatch status for preference/compliance skips. Sent and skipped rows are not replayable or parkable; replay links are limited to `DeadLettered`, `Parked`, `Unknown`, and `RetryScheduled`.
+
 ---
 
-## Rate Limiting (5 Tiers)
+## Rate Limiting (7 Tiers)
 
 Configured in `RateLimitingExtensions.cs`. All settings are configurable via `appsettings.json` under `RateLimiting` section.
 
@@ -110,6 +145,11 @@ Configured in `RateLimitingExtensions.cs`. All settings are configurable via `ap
 - **Mechanism**: Fixed window per API key ID when present, otherwise per `User.Identity.Name`.
 - **Defaults**: 30 requests per 60-second window.
 
+### PublicIngestion (Fixed Window)
+- **Policy**: `PublicIngestion` — for anonymous signed machine callback endpoints.
+- **Mechanism**: Fixed window per IP address.
+- **Defaults**: 60 requests per 60-second window.
+
 ### SetupSecret (Fixed Window)
 - **Policy**: `setup_secret` — for instance bootstrap endpoints.
 - **Mechanism**: Fixed window per IP address.
@@ -119,6 +159,11 @@ Configured in `RateLimitingExtensions.cs`. All settings are configurable via `ap
 - **Policy**: `AnalyticsRelay` — for anonymous browser analytics relay traffic.
 - **Mechanism**: Fixed window per IP address.
 - **Defaults**: 120 requests per 60-second window.
+
+### AiAssistant (Fixed Window)
+- **Policy**: `AiAssistant` — for AI assistant send/model/action endpoints.
+- **Mechanism**: Fixed window per API key ID when present, otherwise per authenticated user ID.
+- **Defaults**: 12 requests per 60-second window.
 
 ### Rejection Behavior
 - Returns `429 Too Many Requests` with RFC 6585 `ProblemDetails`.
@@ -285,17 +330,38 @@ Tenant role authority is exposed through explicit role-grant endpoints, not the 
 
 | Verb | Route | Route Name | Purpose | Response |
 |---|---|---|---|---|
-| `GET` | `/api/tenant-user-role-grants` | `GetTenantUserRoleGrants` | List active/revoked tenant-local role grants visible in the resolved tenant context. | HAL collection of `TenantUserRoleGrantListDto` |
-| `GET` | `/api/tenant-user-role-grants/{id}` | `GetTenantUserRoleGrantById` | Retrieve one tenant-local role grant. | HAL resource of `TenantUserRoleGrantDto` |
+| `GET` | `/api/tenant-user-role-grants` | `GetTenantUserRoleGrants` | List active/revoked tenant-local role grants for tenant admins in the resolved tenant or instance admins. | HAL collection of `TenantUserRoleGrantListDto` |
+| `GET` | `/api/tenant-user-role-grants/{id}` | `GetTenantUserRoleGrantById` | Retrieve one tenant-local role grant for an authorized tenant or instance admin. | HAL resource of `TenantUserRoleGrantDto` |
 | `POST` | `/api/tenant-user-role-grants` | `CreateTenantUserRoleGrant` | Grant a tenant-scoped role to an active `TenantUser`. | `BaseCommandResponse<Guid>` |
 | `DELETE` | `/api/tenant-user-role-grants/{id}` | `RevokeTenantUserRoleGrant` | Revoke a grant and populate revoke audit fields. | `204 No Content` |
 
 Contract rules:
 
 - Create accepts `TenantUserId` and tenant-scoped `RoleId`; tenant identity is derived from `ITenantContext`, not request body `TenantId`.
+- Read DTOs are identity-bearing administrative projections. `GET` routes require authentication plus `islamuevent_tenant_user_role_grant` resource authorization for action `view`; regular authenticated users cannot enumerate or inspect tenant role grants.
 - Handlers validate that the `TenantUser` belongs to the resolved tenant, is active, is not soft-deleted, and that the role has tenant scope.
 - Grant changes are create/revoke, not update-in-place. HAL detail resources may expose `revoke`; collection resources may expose `create`; clients must render actions from `_links`.
-- Cerbos/local authorization uses resource kind `islamuevent_tenant_user_role_grant`.
+- Cerbos/local authorization uses resource kind `islamuevent_tenant_user_role_grant` with `view`, `create`, and `delete` actions.
+
+### Organization Members
+
+Organization membership endpoints expose identity, role, and position data for organization administration:
+
+| Verb | Route | Route Name | Purpose | Response |
+|---|---|---|---|---|
+| `GET` | `/api/organizationmember/{organizationId}` | `GetOrganizationMembersByOrganization` | List members of one organization for authorized organization or tenant administrators. | HAL collection of `OrganizationMemberDto` |
+| `GET` | `/api/organizationmember/member/{id}` | `GetOrganizationMemberById` | Retrieve one organization member for authorized organization or tenant administrators. | HAL resource of `OrganizationMemberDto` |
+| `POST` | `/api/organizationmember` | `AddOrganizationMember` | Add or invite an organization member inside the resolved tenant. | `BaseCommandResponse<Guid>` |
+| `PUT` | `/api/organizationmember/role` | `UpdateOrganizationMemberRole` | Change a member role or position. | `BaseCommandResponse<Guid>` |
+| `DELETE` | `/api/organizationmember/{id}` | `DeleteOrganizationMember` | Remove a member. | `204 No Content` |
+
+Contract rules:
+
+- `OrganizationMemberDto` is an identity-bearing administrative projection. It includes `tenantId`, `organizationId`, `userId`, `userFullName`, `userEmail`, role, and position fields; it is not a public organization profile DTO.
+- Member list/detail reads require authentication plus MediatR resource authorization for resource kind `islamuevent_organization_member` and action `view`. Regular authenticated users without tenant-admin or organization-admin authority receive `403`.
+- List reads authorize with the resolved tenant id and route organization id. Detail reads authorize by member id, and `AuthorizationBehavior` enriches the resource attributes from the repository before evaluating Cerbos/local fallback policy.
+- Create and HAL collection affordances carry the resolved tenant id and organization id so tenant-admin and organization-admin checks use the same resource/action context as the API path.
+- Clients must gate member-management UI from HAL `_links` such as collection `create` and item edit/delete links, not from local role or claim inspection.
 
 ### Webhook Management
 
@@ -314,11 +380,16 @@ Outgoing product webhooks are managed under `/api/webhooks`. These routes config
 | `DELETE` | `/api/webhooks/endpoints/{endpointId}` | `DeleteWebhookEndpoint` | Archive a tenant-scoped webhook endpoint while preserving delivery history. | `204 No Content` |
 | `POST` | `/api/webhooks/endpoints/{endpointId}/rotate-secret` | `RotateWebhookEndpointSecret` | Rotate the endpoint signing secret reference while preserving a bounded previous-secret overlap window. | `BaseCommandResponse<Guid>` |
 | `POST` | `/api/webhooks/endpoints/{endpointId}/test` | `TestWebhookEndpoint` | Schedule a signed LocalProvider test delivery for one active tenant-scoped endpoint. | `BaseCommandResponse<Guid>` |
+| `GET` | `/api/webhooks/messages` | `GetWebhookMessages` | Tenant-scoped canonical webhook messages and provider handoff state. | HAL collection of `WebhookMessageDto` |
+| `GET` | `/api/webhooks/messages/{messageId}` | `GetWebhookMessageById` | One tenant-scoped webhook message without raw payload material. | HAL resource of `WebhookMessageDto` |
+| `GET` | `/api/webhooks/delivery-attempts` | `GetWebhookDeliveryAttempts` | Tenant-scoped LocalProvider delivery attempts, optionally filtered by message or endpoint. | HAL collection of `WebhookDeliveryAttemptDto` |
+| `GET` | `/api/webhooks/delivery-attempts/{attemptId}` | `GetWebhookDeliveryAttemptById` | One tenant-scoped delivery attempt with safe HTTP outcome metadata. | HAL resource of `WebhookDeliveryAttemptDto` |
+| `POST` | `/api/webhooks/delivery-attempts/{attemptId}/retry` | `RetryWebhookDeliveryAttempt` | Schedule a manual retry from a failed or abandoned LocalProvider delivery attempt. | `BaseCommandResponse<Guid>` |
 | `POST` | `/api/webhooks/svix/app-portal` | `OpenSvixAppPortal` | Generate short-lived backend-only Svix App Portal access. | `WebhookProviderPortalAccessDto` |
 
 Contract rules:
 
-- `GET /event-types` is anonymous and cacheable lookup data. Consumer management reads are authenticated, tenant-scoped, and return HAL affordances.
+- `GET /event-types` is anonymous and cacheable lookup data. It exposes registry-driven schema/example metadata and includes persisted event type IDs after startup catalog synchronization so management clients can create endpoint subscriptions.
 - Consumer DTOs expose normalized `consumerKindId/name`, `statusId/name`, and `providerModeId/name`; they never expose endpoint secrets.
 - Consumer create derives `tenantId` from `ITenantContext`, validates domain enum IDs in the Application handler, sets status to `Active`, and returns conflict ProblemDetails for duplicate tenant-local names.
 - Endpoint DTOs expose normalized status fields, provider endpoint ids, bounded timeout/retry/rate-limit settings, last success/failure timestamps, and enabled subscription event types. They never expose `secretRef` or secret material.
@@ -327,7 +398,10 @@ Contract rules:
 - Endpoint delete is a soft archive operation. Archived endpoints leave active lists and lose mutation HAL affordances while preserving canonical delivery history.
 - Endpoint secret rotation accepts `newSecretRef` and optional `previousSecretValidForSeconds` only. It never accepts or returns raw signing secret material, rejects unchanged secret references, increments `secretVersion`, stores the old reference as `previousSecretRef`, and sets a bounded `previousSecretValidUntil` transition window. Repeated calls without an `Idempotency-Key` create distinct rotations.
 - Endpoint test scheduling creates a canonical `webhook.test` message plus one LocalProvider delivery attempt for the target endpoint. It requires an active Local or Composite consumer endpoint; Svix-managed endpoint tests belong in the Svix App Portal because Svix owns provider-side endpoint delivery/replay semantics.
-- HAL collection resources may expose `create`; active endpoint detail resources may expose `update`, `rotate-secret`, `test`, and `delete`; archived endpoint detail resources expose no mutation affordances. Svix or Composite consumer detail resources may expose `open-provider-portal`. Clients must render webhook actions from `_links`, not client-side role checks.
+- Message DTOs expose tenant, event type, event id, aggregate reference, consumer/provider state, payload hash, and retention timestamps. They intentionally do not expose `payloadJson` or raw sensitive event data.
+- Delivery attempt DTOs expose endpoint/message references, attempt number, status, bounded HTTP status/failure/duration metadata, next retry time, and a safe response-body preview only. They do not expose endpoint secrets, request payloads, authorization headers, or full endpoint responses.
+- Manual retry is attempt-based. Only failed or abandoned attempt detail resources may expose `retry`, and the command delegates scheduling to the LocalProvider delivery drain service.
+- HAL collection resources may expose `create`; active endpoint detail resources may expose `update`, `rotate-secret`, `test`, and `delete`; archived endpoint detail resources expose no mutation affordances. Message detail resources may expose `delivery-attempts`; retryable attempt detail resources may expose `retry`; Svix or Composite consumer detail resources may expose `open-provider-portal`. Clients must render webhook actions from `_links`, not client-side role checks.
 - The Svix App Portal route returns only short-lived URL/token data. The Svix API token is resolved server-side through the configured secret provider and is never sent to Blazor.
 
 ### Incoming Integration Webhooks
@@ -346,7 +420,7 @@ Incoming callback rules:
 - Signed callbacks enforce bounded body sizes, timestamp tolerance, and constant-time signature comparison.
 - Verified tenant-scoped callbacks are stored in `incoming_webhook_messages` before Application commands perform side effects.
 - Duplicate provider message IDs are treated idempotently and do not re-run side effects.
-- Safe logs and ledger rows store provider, tenant, message IDs, payload hashes, bounded status/failure metadata, and redacted headers only; raw payloads, signature headers, secrets, tokens, authorization headers, and raw provider errors are not persisted by default.
+- The incoming webhook ledger stores the tenant and provider message identifiers needed for idempotency, plus payload hashes, bounded status/failure metadata, and redacted headers only. Logs, metrics, and ProblemDetails use bounded provider/outcome/failure categories and must not include raw payloads, signature headers, secrets, tokens, authorization headers, tenant/user identifiers, provider message IDs, or raw provider errors.
 
 ---
 
@@ -405,7 +479,7 @@ private void CheckEditPermissions()
 @if (canEdit) { <AppButton StartIcon="@Icons.Material.Filled.Edit">Edit</AppButton> }
 ```
 
-The helpers (`HasHalLink(this OrganizationDto, string)`, `HasHalLink(this EventListDto, string)`, etc.) read `AdditionalProperties["_links"]` from the NSwag-generated DTO (populated through `[JsonExtensionData]`) and check whether a given link relation is present.
+The helpers (`HasHalLink(this OrganizationDto, string)`, `HasHalLink(this EventListDto, string)`, etc.) read `_links` from the generated DTO extension data or from typed client models that explicitly preserve HAL links. Collection-level affordances such as `create` must come from the HAL collection `_links` carried through `PaginatedResult<T>.Links`; they must not be inferred from the first row or from an empty-list fallback.
 
 #### Anti-pattern — do not use
 **Never gate mutation UI through client-side role checks** (`RoleHelper.CanManage`, `user.IsInRole("OrgAdmin")`, `ClaimsPrincipal` inspection). These duplicate server-side policy, drift over time, and leak authorization logic into the client. If the server didn't emit an `edit` link, the user is not allowed to edit — period.
@@ -420,15 +494,17 @@ All three cases guard entire pages or menus, not per-resource actions, and none 
 
 #### DTO contract requirements
 Every client DTO consumed for affordance gating must:
-1. Expose `[JsonExtensionData] IDictionary<string, object>? AdditionalProperties` — NSwag emits this automatically for DTOs whose server-side HAL wrapper adds `_links` alongside data.
-2. Have a matching `HasHalLink(this TDto, string linkRel)` extension in `HalResourceExtensions.cs`.
-3. **Never** have a corresponding standalone permission flag (e.g. `CanEdit: bool`) on the DTO — permission state must flow exclusively through `_links`.
+1. Preserve item `_links` either through `[JsonExtensionData] IDictionary<string, object>? AdditionalProperties` or an explicit `[JsonPropertyName("_links")]` `Links` property when mapping to a UI model.
+2. Preserve collection `_links` on paginated wrappers when a page-level action such as `create` is rendered independently of rows.
+3. Have a matching `HasHalLink(this TDto, string linkRel)` extension or wrapper method.
+4. **Never** have a corresponding standalone permission flag (e.g. `CanEdit: bool`) on the DTO — permission state must flow exclusively through `_links`.
 
 #### Testing
 HAL link consumption is protected by three test layers:
 - `Event.API.IntegrationTests/Features/Hateoas/HateoasLinkDeserializationTests.cs` — wire-level regression guard that `_links` survive NSwag round-trip.
 - `Event.API.IntegrationTests/Features/Hateoas/OrganizationHateoasAuthTests.cs` — verifies authenticated vs. anonymous requests receive different link sets on embedded items.
 - `Explore.Blazor.Client.Tests/Pages/Organizations/OrganizationDetailsHateoasTests.cs` — bUnit component test confirms Edit button renders iff `_links.edit` is present and the page never calls `IOrganizationMemberService.GetMembersAsync` on load.
+- `Explore.Blazor.Client.Tests/Helpers/EventTemplateHalResourceExtensionsTests.cs` and `Explore.Blazor.Client.Tests/Pages/Admin/EventTemplateListPageTests.cs` — prove event-template collection `create` links survive empty collections and that page-level create is not inferred from row links.
 
 ---
 
@@ -577,8 +653,9 @@ Returns `403 Forbidden` with error payload when endpoint requires multi-tenant m
 
 ### `SetupSecretRequiredAttribute`
 Gates onboarding endpoints behind the setup secret:
-- If setup mode is inactive: returns `410 Gone`.
-- If `X-Setup-Secret` header is missing/invalid: returns `403 Forbidden`.
+- If setup mode is inactive: returns RFC 7807 `410 Gone` with code `setup_already_completed`.
+- If `X-Setup-Secret` header is missing/invalid: returns RFC 7807 `403 Forbidden` with code `forbidden`.
+- Setup-secret-gated onboarding endpoints use the named `SetupSecret` rate-limit policy and advertise `429 Too Many Requests` as `ProblemDetails` in OpenAPI.
 - Uses `TypeFilterAttribute` pattern for DI-aware filtering with `ISetupSecretProvider`.
 
 ---
@@ -589,6 +666,12 @@ Gates onboarding endpoints behind the setup secret:
 |---|---|
 | `PerformanceBehavior` | Logs requests taking >500ms as warnings |
 | `AuthorizationBehavior` | Checks `IAuthorizedRequest` / `[AuthorizeResource]` attribute; throws `AuthorizationException` on deny. Reflection results cached via `ConcurrentDictionary`. Emits OpenTelemetry activity spans on `Explore.Authorization` source with `resource.kind`, `resource.action`, and `request.type` tags. |
+
+---
+
+## Event Registration Read Contract
+
+Generic event-registration reads are authenticated self-service contracts. `/api/eventregistration`, `/api/eventregistration/by-session/{eventSessionId}`, `/api/eventregistration/by-user/{userId}`, and `/api/eventregistration/{id}` return only registrations owned by the authenticated user; cross-user route IDs fail with `403 Forbidden`. `EventRegistrationDto` and `EventRegistrationListDto` intentionally omit serialized user identity fields (`userId`, `userFullName`, `userEmail`). Organizer attendee-management views require a separate resource-authorized projection instead of these generic routes.
 
 ---
 
@@ -628,7 +711,7 @@ Authorization decisions are also traced via `ActivitySource` named `Explore.Auth
 ### OutboxProcessor
 - Polls `outbox_messages` table for pending events at configurable interval (default 5s).
 - Processes in batches (default 100) with optimistic locking (`TryMarkAsProcessing`).
-- Dispatches via `IOutboxMessageDispatcher`; current routing is handled by `CompositeOutboxMessageDispatcher`, which sends `EventPublished` to MQContract publishing and sends `EventPublishedNotificationFanoutRequested` to internal notification fanout.
+- Dispatches via `IOutboxMessageDispatcher`; current routing is handled by `CompositeOutboxMessageDispatcher`, which sends `EventPublishedNotificationFanoutRequested` to internal notification fanout and fails closed for retired external broker event types.
 - Exponential backoff retry: `InitialRetryDelaySeconds × 2^retryCount`, capped at `MaxRetryDelaySeconds`.
 - Dead-letters messages after `MaxRetryCount` exhausted.
 - Configuration section: `OutboxProcessor` (Enabled, PollingIntervalSeconds, BatchSize, MaxRetryCount, InitialRetryDelaySeconds, MaxRetryDelaySeconds, VerboseLogging).
@@ -756,14 +839,14 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `GET /api/footer/config` — public footer config (AllowAnonymous)
    - `GET /api/footer/link-groups` — list link groups (Authorize)
    - `GET /api/footer/link-groups/{id}` — link group detail (Authorize)
-   - `POST /api/footer/link-groups` — create link group
-   - `PUT /api/footer/link-groups/{id}` — update link group
-   - `DELETE /api/footer/link-groups/{id}` — delete link group
-   - `POST /api/footer/link-groups/reorder` — reorder link groups
-   - `POST /api/footer/link-groups/{groupId}/links` — create link in group
-   - `PUT /api/footer/links/{id}` — update link
-   - `DELETE /api/footer/links/{id}` — delete link
-   - `PUT /api/footer/settings` — update footer settings
+   - `POST /api/footer/link-groups` — create link group; requires authenticated tenant update authorization
+   - `PUT /api/footer/link-groups/{id}` — update link group; requires authenticated tenant update authorization
+   - `DELETE /api/footer/link-groups/{id}` — delete link group; requires authenticated tenant update authorization
+   - `POST /api/footer/link-groups/reorder` — reorder link groups; requires authenticated tenant update authorization
+   - `POST /api/footer/link-groups/{groupId}/links` — create link in group; requires authenticated tenant update authorization
+   - `PUT /api/footer/links/{id}` — update link; requires authenticated tenant update authorization
+   - `DELETE /api/footer/links/{id}` — delete link; requires authenticated tenant update authorization
+   - `PUT /api/footer/settings` — update footer settings; requires authenticated tenant update authorization
 10. Actor appearance:
    - Actor entities include appearance fields (BackgroundColor, BackgroundEffect, BannerColor, BannerPictureId, BackgroundImageId) managed via actor update endpoints.
 11. Instance MCP governance:

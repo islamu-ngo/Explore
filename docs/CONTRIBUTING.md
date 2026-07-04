@@ -19,6 +19,12 @@ ABOUTME: Includes architecture test requirements, CSS rules, DTO sync flow, and 
 
 See [GETTING_STARTED.md](GETTING_STARTED.md) for complete setup instructions.
 
+Install Aspire CLI before using `aspire run`:
+
+```bash
+curl -sSL https://aspire.dev/install.sh | bash
+```
+
 ## Starting Point
 
 If this is your first contribution, start with [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md). It gives the shortest safe path for docs-only and small-bug PRs without duplicating this full workflow.
@@ -107,13 +113,19 @@ dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --con
 dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
 dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 ```
 
-`Explore.Blazor.Client.E2ETests` is a ninth test project, but it is not part of the standard PR validation pass because it requires the full Aspire AppHost/browser stack.
+`Explore.Blazor.Client.E2ETests` is a tenth test project, but it is not part of the standard PR validation pass because it requires the full Aspire AppHost/browser stack. When a change touches SMTP, EmailDispatch, or optional RabbitMQ transport, also run the focused runtime category that matches the change:
+
+```bash
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
+```
 
 ### Step 3: Verify Architecture Tests
 
@@ -225,7 +237,7 @@ Before submitting:
 - [ ] Scope is focused and independently testable (target ≤ 4 hours of work)
 - [ ] Pull request template is completed with summary, linked context, docs impact, validation, and risk notes
 - [ ] Build succeeds: `dotnet build --configuration Release --verbosity quiet`
-- [ ] All 8 standard PR test projects pass individually (`Explore.Blazor.Client.E2ETests` is the ninth project and remains manual/nightly)
+- [ ] All 9 standard PR test projects pass individually (`Explore.Blazor.Client.E2ETests` is the tenth project and remains manual/nightly)
 - [ ] Architecture tests pass (layer deps, naming, accessibility, auth parity)
 - [ ] Documentation impact is recorded: `Updated`, `Not needed`, or `Deferred` with reason
 - [ ] New C# files have `ABOUTME:` headers

@@ -5,7 +5,7 @@
 
 **Status:** Proposed (matches ADR-012)
 **Authority:** `docs/adr/ADR-012-ai-context-disclosure-policy.md`
-**Last Updated:** 2026-06-28
+**Last Updated:** 2026-07-04
 
 This document is the **canonical policy** that governs how platform data may be disclosed to AI model providers, persisted into prompt transcripts, and surfaced through MCP tool responses. It is the human-readable counterpart to ADR-012 and the field classification matrix.
 
@@ -162,7 +162,7 @@ For the full per-field classification, see `dev/active/ai-context-disclosure-pol
 
 | Entity | Properties | Public | Internal | Confidential | Restricted |
 |---|---|---|---|---|---|
-| `UserPii` | 5 (excl. nav) | 0 | 1 | 0 | 3 (Phase-4 gated) |
+| `UserPii` | 4 (excl. nav) | 0 | 1 | 0 | 3 (Phase-4 gated) |
 | `OrganizationPii` | 7 (excl. nav) | 1 | 4 | 1 (Phase-4 gated) | 1 (Phase-4 gated) |
 | `ActorPii` | 5 (excl. nav) | 4 | 1 | 0 | 0 |
 | `LocationPii` | 5 (excl. nav) | 0 | 2 | 0 | 3 (Phase-4 gated) |

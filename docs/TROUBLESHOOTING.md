@@ -225,7 +225,7 @@ If `_links` are missing:
 ## 429 / 504 Responses
 
 `429`:
-- triggered by API rate limiting policies (`Global`, `Authenticated`, `Write`, `SetupSecret`, `AnalyticsRelay`).
+- triggered by API rate limiting policies (`Global`, `Authenticated`, `Write`, `PublicIngestion`, `SetupSecret`, `AnalyticsRelay`, `AiAssistant`).
 - inspect `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining` headers and caller behavior.
 
 `504`:
@@ -255,8 +255,20 @@ Checks:
 2. Check logs for `OutboxProcessor` — look for polling activity and dispatch errors.
 3. Query `outbox_messages` table: `SELECT status, COUNT(*) FROM outbox_messages GROUP BY status`.
 4. If messages are `DeadLettered`, check `last_error` column for root cause. Dead-lettered messages stay in DB indefinitely for manual review.
-5. Verify `IOutboxMessageDispatcher` registration — the general outbox path should resolve `CompositeOutboxMessageDispatcher`, which routes external MQContract messages and internal notification fanout messages.
+5. Verify `IOutboxMessageDispatcher` registration — the general outbox path should resolve `CompositeOutboxMessageDispatcher`, which routes internal notification fanout, moderation fanout, and report provider sync messages. Retired external broker event types should fail closed instead of being marked complete.
 6. Check `MaxRetryCount` setting — messages retry with exponential backoff before dead-lettering.
+
+## Email Dispatch Issues
+
+**Symptoms:** Registration confirmation email does not arrive, `email-dispatch` readiness is degraded/unhealthy, or RabbitMQ dispatch/DLQ counts grow.
+
+Checks:
+1. For local development, open Mailpit at `http://localhost:8025` and verify SMTP resolves to `localhost:1025` for Aspire or `mailpit:1025` for Compose.
+2. Check `/health`: `email-dispatch` covers Basic Dispatch trigger readiness, while `email-dispatch-rabbitmq` covers optional broker topology only when RabbitMQ mode is enabled.
+3. Inspect HAL-gated EmailDispatch admin status before replaying rows. Replay and park actions must be driven by `_links`; do not infer permissions from local roles.
+4. Query `email_dispatch_outbox` by status and tenant. `Unknown` rows are inspectable crash-window outcomes; `DeadLettered` rows require operator review; `Skipped` rows are terminal preference/compliance outcomes.
+5. In RabbitMQ mode, verify broker connectivity, dispatch/DLX/parking topology, and bounded logs. Broker payloads must contain only pointer fields, never recipient, subject, body, SMTP credentials, provider IDs, or raw errors.
+6. Use `docs/EMAIL_NOTIFICATIONS.md` for focused Mailpit and RabbitMQ verification commands.
 
 ## Footer Settings Issues
 

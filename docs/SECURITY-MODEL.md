@@ -61,6 +61,7 @@ Use `ISafeAuthDiagnosticsPolicy` for BFF auth challenge and OIDC remote-failure 
 In YARP transforms:
 
 - `X-Tenant-Slug` is forwarded when route or request context provides an explicit tenant hint.
+- Browser-supplied `X-Support-Access-*` headers are stripped before proxying. The BFF may add `X-Support-Access-Session-Id` only from server-owned support-access session storage after the authenticated actor has an active session bound to the current OIDC session.
 - Any incoming or stale proxied `X-Setup-Secret` header is removed first. The BFF then resolves a setup secret through `ISetupSecretResolver` in this source order:
   1. BFF-owned setup handshake/session state,
   2. protected BFF-issued setup cookie,
@@ -68,6 +69,61 @@ In YARP transforms:
 - Inbound request headers are never trusted as setup-secret sources. Browser-controlled `X-Setup-Secret` values must be stripped and ignored by both YARP and server-side forwarding handlers.
 
 This prevents stale outgoing proxy headers and browser-controlled privileged headers from leaking across requests. Treat the setup secret as bootstrap-only sensitive material; the BFF protects the setup cookie with ASP.NET Core Data Protection and forwards only resolver output to downstream API calls.
+
+## Support Access Trust Boundary
+
+Admin support access is a persisted, time-boxed support session, not an impersonation cookie or tenant role grant.
+
+- The real actor identity remains authoritative. `ICurrentUserService.UserId` continues to identify the authenticated instance admin; support metadata lives separately in `ISupportAccessContext`.
+- The BFF stores only an opaque support-access session reference in server-side distributed cache, keyed to the authenticated user and OIDC `sid`. The browser does not receive access tokens, target-tenant role claims, or support-access authority claims.
+- Runtime support context is explicit-header-only. Ordinary API requests without a BFF/server-injected `X-Support-Access-Session-Id` are treated as inactive even if the actor has a persisted active session.
+- `SupportAccessSessionService` validates the forwarded session against persisted state, actor id, resolved tenant id, expiry, mode, and instance governance settings. Disabled support access, missing sessions, stopped sessions, expired sessions, actor mismatch, tenant mismatch, and write-mode-disabled sessions fail closed.
+- Support access never creates `TenantUserRoleGrant` rows and never replaces tenant membership. Resource authorization must continue through MediatR, the runtime authorization provider, Cerbos/local fallback parity, and HAL link filtering.
+- `SupportAccessAuditMiddleware` records bounded API request evidence for active support sessions after authorization. It captures method, route pattern/name, status/outcome, correlation id, trace id, actor, target tenant, and session id, without raw request bodies, cookies, tokens, provider responses, or unbounded reason text.
+- Tenant-facing support-access evidence is read-only. The Blazor tenant settings view resolves the current tenant through the BFF/API status path and renders audit drill-in only from the API/HAL `audit-events` link.
+- Audit persistence failures are warning-level operational events and do not change the original API response; security-sensitive lifecycle events still belong in the support-access command transaction where the command handler creates the session/audit records.
+
+## Incoming Webhook Public Ingestion
+
+Some machine callbacks are intentionally anonymous because the provider signature is the authentication boundary. The Svix operational callback at `POST /api/integrations/svix/operational` is one of these public-ingestion exceptions.
+
+- Verify signatures over the raw body before parsing JSON. For Svix-compatible callbacks, verification uses `svix-id`, `svix-timestamp`, and `svix-signature` with a bounded timestamp tolerance and fixed-time signature comparison.
+- Enforce a configured body-size limit before dispatching to provider-specific verification or Application commands.
+- Treat the provider message ID as the replay/idempotency key. Duplicate verified deliveries are acknowledged but must not re-run side effects.
+- Persist only the durable idempotency ledger fields needed for processing: tenant binding when present, provider name, provider message ID, idempotency key, event type, payload hash, redacted headers, and bounded status/failure metadata.
+- ProblemDetails, logs, metrics, and traces must not include raw callback bodies, signature headers, authorization headers, secrets, tokens, tenant/user identifiers, provider message IDs, or raw verification exceptions.
+
+## Outgoing Webhook Egress
+
+Outgoing LocalProvider endpoints are user-configured URLs, so delivery is an SSRF-sensitive egress boundary.
+
+- Block loopback, localhost, RFC1918/private, link-local, metadata, and internal DNS destinations by default.
+- Allow private CIDRs only through explicit operator configuration for deliberate self-hosted/internal delivery.
+- Disable redirects and use bounded connect/request timeouts.
+- Sign LocalProvider requests with Svix-compatible `svix-id`, `svix-timestamp`, and `svix-signature` headers over the raw body.
+- Store endpoint signing material through secret refs and rotate through the endpoint rotation route; never return old or current secret material after the allowed one-time reveal path.
+- Health checks and metrics may report provider mode, queue counts, bounded failure categories, and secret-resolution booleans only. They must not expose endpoint URLs, query strings, payload JSON, secret refs, tokens, authorization headers, full responses, or raw transport exceptions.
+
+SvixProvider keeps the Svix API token server-side behind `webhooks.svix.auth_token`. App Portal URLs are generated by the backend and are short-lived; browser clients never receive the Svix API token.
+
+## Event Report And Moderation Privacy
+
+Event reporting separates reporter-facing status from moderator-facing review workflows.
+
+- Public report options are content-light and anonymous only for published-event reportability discovery.
+- Report submission and `my reports` reads require the authenticated current user. Reporter-facing responses contain status/reason/event/timestamp/contact-consent metadata only; they exclude evidence text, reporter hashes, provider workflow data, moderation cases, decisions, signals, and internal notes.
+- Moderator queue/detail reads and moderation actions require event-resource authorization before handlers load or mutate report state.
+- Moderator projections remain data-minimized even for authorized management callers. They expose workflow state, reason/priority/status, current case, authorized evidence text on detail reads, safe signal summaries, provider type, sync state, retry counts, and HAL action affordances. They do not expose stable reporter user/actor identifiers, evidence creator identifiers, decision moderator identifiers, raw provider case/signal identifiers, provider URLs, provider correlation identifiers, reporter fingerprints, raw provider payloads, raw provider errors, or unsafe notes.
+- Blazor and other clients must use HAL rels (`report-event`, `moderation-reports`, `triage-report`, `assign-report`, `decide-report`, and `execute-report-decision`) as the action affordance source instead of local role/claim checks.
+
+## Event Registration Privacy
+
+Event registration reads are self-service by default. Attendee identity is not a generic event-registration read concern.
+
+- Generic registration list, registration detail, and by-session reads require the authenticated current user and return only registration rows owned by that user.
+- `GET /api/eventregistration/by-user/{userId}` is self-only. A route user id that does not match the authenticated current user returns `403 Forbidden` before MediatR dispatch.
+- Client/API registration DTOs must not serialize registrant user ids, full names, or email addresses. A server-only `UserId` may remain on Application DTOs only when hidden from JSON and used for internal authorization/HAL context.
+- Organizer or admin attendee-management workflows need a separate resource-authorized management projection before exposing attendee identity. Do not reuse self-read DTOs or anonymous/public event projections for attendee rosters.
 
 ## BFF Antiforgery Contract
 
@@ -78,7 +134,7 @@ Cookie-authenticated unsafe BFF endpoints must validate antiforgery tokens becau
 - Browser client path: `BrowserCredentialsMessageHandler` attaches browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.
 - Server self-call path: `BffCookieForwardingHandler` forwards captured cookies and mirrors `XSRF-TOKEN` into `X-CSRF-TOKEN` when InteractiveServer code calls BFF endpoints.
 - Endpoint validation: unsafe minimal BFF endpoints call `.ValidateAntiforgery()`, which returns `400 Antiforgery validation failed` for missing or invalid tokens.
-- Protected endpoint families include auth refresh, storage upload proxy, preference mutations, and appearance profile mutations.
+- Protected endpoint families include auth refresh, support-access start/stop, storage upload proxy, preference mutations, and appearance profile mutations.
 - Documented exceptions are setup-secret bootstrap endpoints, `/bff/auth/refresh-session/internal`, and the storage upload session/proxy endpoints (`/bff/storage/upload-session`, `/bff/storage/upload-proxy`); these remain constrained by setup credentials, authorization, per-user session ownership binding (`IStorageUploadSessionStore`), cryptographically random short-lived session IDs, server-side stream-to-API proxying (browser never reaches the storage provider), and rate limiting because they are used before, outside, or via InteractiveServer circuit self-calls where browser antiforgery semantics cannot be reliably satisfied.
 
 Do not add new unsafe `/bff/*` endpoints without either `.ValidateAntiforgery()` or a documented bootstrap/internal exception with equivalent compensating controls.
@@ -95,6 +151,20 @@ The Blazor BFF upload proxy is an SSRF-sensitive boundary because browser upload
 - BFF/API storage logs must not include raw upstream response bodies, presigned URLs, signatures, tokens, object keys, filesystem paths, filenames, or object secrets. Use safe fields such as status code, presence booleans, bounded provider labels, and session failure code.
 
 Server-side/non-browser code paths may still use direct provider upload URLs when the server owns the trusted URL. Browser-facing upload proxy paths must use the upload-session contract.
+
+## Storage Object Download Boundary
+
+Storage download access uses stable storage object IDs, never browser-supplied provider keys or local paths. Metadata/list/detail routes are authenticated and authorized with `islamuevent_storage_object:view`; content streaming uses `download`; presigned URL generation uses `presigned_download`. The dedicated anonymous route is `GET /api/storageobject/{id}/public`, which is limited by the storage content reader to active `public_image` objects.
+
+Presigned URLs are bearer credentials. API responses containing them must not be output-cached, must send no-store cache metadata, and must not log the URL, signature, token, object key, bucket path, or raw provider error. The presigned response intentionally keeps `ObjectKey` empty; consumers must treat the returned URL as short-lived secret material.
+
+## Email Dispatch Operator Boundary
+
+EmailDispatch status and delivery controls are operational APIs, not general tenant data reads. `GET /api/admin/email-dispatch/status`, tenant pause/resume, park, and replay all require authentication plus MediatR resource authorization against `islamuevent_email_dispatch`. Status uses `view`, tenant pause/resume uses `manage_tenant`, parking uses `park`, and replay uses `replay`.
+
+Only tenant administrators for the resolved tenant and instance administrators should receive these operator decisions from Cerbos or local fallback. Regular authenticated users must receive `403 Forbidden`. The status projection must stay sanitized: no recipient email, subject, plain text or HTML body, reply-to, provider message id, raw SMTP/provider error, object key, token, or secret-derived metadata. HAL `replay` and `park` links are the only client affordance source for row-level controls.
+
+Dispatch-time unsubscribe handling is part of the same boundary. The worker checks persisted `UserNotificationPreference` after claiming a row and before SMTP handoff for mapped lifecycle categories; opted-out rows become terminal `Skipped` outcomes instead of provider failures or retries. Outgoing email may contain opaque unsubscribe tokens in `List-Unsubscribe` headers and body links, but admin status APIs, logs, metrics, and health details must not expose those tokens or rendered message bodies. `Skipped` rows are terminal and must not receive replay or park HAL affordances.
 
 Forwarded-host trust for direct API traffic:
 
@@ -365,6 +435,8 @@ Non-interactive callers (direct API consumers, integrations, automation) authent
 - API-key auth lookups are the **only API-key path** permitted to bypass the tenant filter — narrowly scoped to `GetByKeyIdForAuthentication` via `IgnoreTenantFilter`.
 - `ApiTenantPostAuthenticationMiddleware` enforces that the API-key `TenantId` matches the resolved request tenant. Mismatches return `404 Not Found` (not `401` — to avoid leaking tenant existence).
 - Tenant user authority is rooted in `TenantUserRoleGrant`, which must reference a matching `(TenantId, TenantUserId)` pair and a tenant-scoped role. Effective tenant-admin checks also require the linked `TenantUser` to be active and not soft-deleted.
+- Organization membership reads are administrative, identity-bearing resources. `OrganizationMemberDto` includes tenant, organization, user, email/name, role, and position data; list/detail routes therefore require authenticated `islamuevent_organization_member:view` authorization and are denied to regular authenticated users. Do not reuse this DTO for public organization profile display; add a separate safe public projection if product requirements later need anonymous member/profile data.
+- Footer management writes are tenant-administration actions. The API must resolve the current user and current tenant before dispatch, then footer link-group/link/reorder/settings commands authorize as `ResourceKinds.Tenant` with `AuthorizationActions.Update` and tenant attributes. A missing actor fails as authentication required; a signed-in user without tenant-admin or instance-admin authority receives `403 Forbidden`.
 
 ### Scope Model
 

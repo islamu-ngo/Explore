@@ -11,4 +11,4 @@ ABOUTME: Points readers to the maintained security model while preserving docume
 
 The maintained security model lives in [SECURITY-MODEL.md](SECURITY-MODEL.md).
 
-Use that document for the current BFF trust boundaries, token-forwarding model, antiforgery contract, auth diagnostic safety, upload-session binding, and circuit token lifecycle notes.
+Use that document for the current BFF trust boundaries, token-forwarding model, antiforgery contract, auth diagnostic safety, support-access boundary, upload-session binding, and circuit token lifecycle notes.

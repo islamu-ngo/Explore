@@ -17,6 +17,7 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 |---|---:|---|---|---|
 | PostgreSQL | Yes | `postgres` | Application database | internal |
 | Redis | Yes | `redis` | Distributed cache when configured | internal |
+| Mailpit | Local default | `mailpit` | Local SMTP capture and web UI for email testing | `1025:1025`, `8025:8025` |
 | Keycloak DB | Yes | `keycloak-db` | Keycloak PostgreSQL database | internal |
 | Keycloak | Yes | `keycloak` | OIDC identity provider and realm import | `8080:8080` |
 | Keycloak Init | Yes | `keycloak-init` | One-shot client-secret synchronization after realm import | internal |
@@ -25,22 +26,23 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 | MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile when an instance selects optional S3 mode | `9005:9000`, `9006:9001` |
 | Cerbos | Optional | `cerbos` | External authorization PDP profile | `3592:3592`, `3593:3593` |
 | Svix | Optional | `svix-db`, `svix` | Outgoing webhook provider profile | `8071:8071` |
-| Coop | Optional | `coop` | Moderation review queue profile | `8082:8080` |
-| Osprey | Optional | `osprey` | Moderation signal provider profile | `5004:5004` |
+| Coop | Optional | `coop-db`, `coop` | Moderation review queue profile | `8082:8080` |
+| Osprey coordinator | Optional | `osprey` | Roost Osprey coordinator profile | `19950:19950`, `19951:19951` |
 | AI provider | Optional | external/self-hosted | Official, compatible, or fake AI assistant provider selected by `AiProvider:*` plus tenant governance settings | deployment-specific |
 
 Profiles:
 
 - `storage` starts MinIO and creates the configured bucket for optional S3-compatible mode. It is not required for local-first storage.
-- `authz` starts Cerbos for deployments that select Cerbos authorization. It mounts `cerbos/config/.cerbos.yaml`, `cerbos/init/cerbos-schema.sql`, and `cerbos/policies/` from this repository so local infrastructure always uses the checked-in policy package.
+- `authz` starts Cerbos for deployments that select Cerbos authorization. It mounts `cerbos/config/.cerbos.yaml`, `cerbos/init/cerbos-schema.sql`, and `cerbos/policies/` from this repository so local infrastructure always uses the checked-in policy package. The Cerbos PostgreSQL profile uses the Postgres 18 parent data mount (`/var/lib/postgresql`) so local upgrades do not fail on the legacy `/var/lib/postgresql/data` mount boundary.
 - `webhooks` starts local Svix and its PostgreSQL database for outgoing webhook-provider testing.
-- `moderation` starts local Coop for moderation review-queue testing. Keep `REPORTING_MODE=LocalOnly` unless provider endpoints are intentionally enabled.
-- `osprey` starts the configured Osprey-compatible signal provider image. Enable it only after `OSPREY_IMAGE` points to an image your registry credentials can pull.
+- `moderation` starts local Coop for moderation review-queue testing with an isolated PostgreSQL database. `COOP_UI_URL` defaults to `http://localhost:8082`, matching the local Coop port; the local profile also supplies Coop's `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics adapter defaults so the provider image can boot without ClickHouse or production secrets. Keep `REPORTING_MODE=LocalOnly` unless provider endpoints are intentionally enabled.
+- `osprey` starts `ghcr.io/roostorg/osprey/osprey-coordinator:latest` by default. It exposes coordinator ports, not the app's HTTP-compatible `Reporting:Osprey` facade. Keep `REPORTING_OSPREY_ENABLED=false` unless you provide a compatible HTTP facade or adapter endpoint.
 
 Email dispatch modes:
 
 - **Basic Dispatch Mode is implemented and requires no extra Compose profile.** API + PostgreSQL + configured SMTP are sufficient for registration confirmation email. By default, API-hosted TickerQ schedules `email-dispatch-drain`, which claims `EmailDispatchOutbox` rows from PostgreSQL through the shared drain service and sends through the SMTP abstraction. `EmailDispatchProcessor:Mode=HostedService` is a fallback trigger, not a separate business workflow.
-- **RabbitMQ Dispatch Mode is optional transport infrastructure.** The repository now has a local Aspire RabbitMQ resource and an API-side publisher/topology/health foundation for pointer-only dispatch messages, but the production Compose stack still does not require or start RabbitMQ. Do not require RabbitMQ for self-hosting until a dedicated Compose profile, manual-ack consumer, DLQ replay/parking flow, and RabbitMQ integration tests are added. RabbitMQ shares the same PostgreSQL `EmailDispatchOutbox` state machine; it is transport only.
+- The Compose default SMTP target is local Mailpit: API containers use SMTP host `mailpit`, port `1025`, encryption `None`, and from-address `noreply@localhost`. Open the capture UI at `http://localhost:8025`. Replace `MAIL_SMTP_*` values before using a real external SMTP provider.
+- **RabbitMQ Dispatch Mode is optional transport infrastructure.** The repository now has a local Aspire RabbitMQ resource plus API-side pointer publishing, topology declaration, health checks, manual-ack consumption, and DLQ replay/parking for pointer-only dispatch messages. The production Compose stack still does not require or start RabbitMQ by default. Enabling RabbitMQ outside Aspire requires an operator-provided broker connection string and an explicit `EmailDispatchRabbitMq:Enabled=true` opt-in. RabbitMQ shares the same PostgreSQL `EmailDispatchOutbox` state machine; it is transport only.
 
 ## Start The Stack
 
@@ -59,7 +61,7 @@ Email dispatch modes:
 2. Start the required stack:
 
    ```bash
-   docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
+   docker compose up -d postgres redis mailpit keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
    ```
 
 3. Add optional MinIO only when S3-compatible storage is selected or tested:
@@ -184,12 +186,28 @@ Enable destructive cleanup only after reviewing dry-run output, confirming backu
 | Key | Host | Purpose |
 |---|---|---|
 | `DEPLOYMENT_MODE` | API | Optional first-run mode; omit for single-tenant, set `multi_tenant` before first launch for multi-tenant. |
-| `SETUP_SECRET` | API | Optional fixed setup secret. If absent, API generates and logs a temporary secret. |
+| `SETUP_SECRET` | API | Env-only optional fixed setup secret. If absent, API generates a temporary secret and prints it in API startup logs. |
 | `SETUP_SECRET_REQUIRED` | API | Optional. Defaults to `true`; `false` only takes effect with trusted managed-provider provisioning keys and never makes setup endpoints anonymous. |
 | `USE_COMMERCIAL_LUCKYPENNY`, `LUCKYPENNY_LICENSE_KEY`, `AUTOMAPPER_COMMERCIAL_VERSION`, `MEDIATR_COMMERCIAL_VERSION` | API | Optional commercial package/license controls. Keep disabled unless intentionally using commercial AutoMapper/MediatR builds. |
 | `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
 
 `docker-compose.yml` sets Blazor `API_ENDPOINT` with a default of `http://islamu-event-api:8080/`, matching the Compose API service name. Operators only need to override `API_ENDPOINT` when routing the BFF to a different API host.
+
+### Local SMTP Capture
+
+The default Compose stack starts Mailpit without a profile so first-run registration and SMTP tests can capture messages locally instead of delivering real email.
+
+| Key | Purpose |
+|---|---|
+| `MAILPIT_SMTP_PORT`, `MAILPIT_UI_PORT` | Host port bindings for Mailpit SMTP and the web UI. Defaults: `1025`, `8025`. |
+| `MAILPIT_TAG` | Mailpit image tag. Defaults to `latest` for disposable local development. Pin a version for shared environments. |
+| `MAILPIT_MAX_MESSAGES` | Maximum retained messages before pruning. Default: `5000`. |
+| `MAIL_SMTP_HOST`, `MAIL_SMTP_PORT` | API SMTP bootstrap/source values. Local Compose defaults: `mailpit`, `1025`. |
+| `MAIL_SMTP_ENCRYPTION` | SMTP security mode. Local Mailpit default: `None`. |
+| `MAIL_SMTP_USERNAME`, `MAIL_SMTP_PASSWORD` | Optional credentials. Leave blank for local Mailpit. |
+| `MAIL_SMTP_FROM_ADDRESS`, `MAIL_SMTP_FROM_NAME` | Default sender metadata for local SMTP testing. |
+
+The `/smtp` Infisical folder and `.env` file use the same `MAIL_SMTP_*` names. The older `SMTP_*` environment aliases are still supplied by Compose for local compatibility, but new secret bindings should prefer `MAIL_SMTP_*`.
 
 ### AI Assistant
 
@@ -323,6 +341,19 @@ Minimum proxy requirements:
 - forward `X-Forwarded-For` and `X-Forwarded-Proto`;
 - configure `ForwardedHeadersTrust` in the API before relying on forwarded host/IP values;
 - use the same public origin in Keycloak redirect URIs and web origins.
+
+## Support Access Operations
+
+Admin support access is off by default and governed by instance settings under `support_access.*`. Keep `support_access.enabled=false` until operational approval, audit retention, and tenant trust communication are ready.
+
+Operational controls:
+
+- Use `support_access.enabled=false` as the global kill switch. It denies new sessions and runtime validation of forwarded support context.
+- Keep `support_access.allow_write_mode=false` unless the deployment has an explicit break-glass approval process and alerting for write-capable sessions.
+- Keep Redis or another distributed cache available for Blazor BFF instances so `IBffSupportAccessSessionStore` can bind the active session reference to the authenticated user and OIDC `sid`.
+- Use the instance-admin support-access console to inspect session history, review audit evidence, and force-stop an active session during incident response.
+- Tenant admins can review their tenant's support-access evidence from Tenant Administration -> Support Evidence. That tenant view is read-only and shows audit drill-in only when the API/HAL response grants the `audit-events` affordance.
+- Backups must preserve `SupportAccessSession` and `SupportAccessAuditEvent` data with the application PostgreSQL database. Do not treat support-access audit evidence as disposable cache data.
 
 ## Health Checks
 

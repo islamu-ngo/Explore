@@ -255,7 +255,7 @@ Explore.API/
 │   ├── AuthenticationExtensions.cs    — Multi-auth (JWT Bearer + API Key) with PolicyScheme dispatch
 │   ├── CachingExtensions.cs           — OutputCache (5 policies) + HybridCache (L1+L2) configuration
 │   ├── CorsExtensions.cs             — 5 CORS policies (InternalApp, ExternalApp, InternalWeb, ExternalWeb, Dev)
-│   ├── RateLimitingExtensions.cs      — 4-tier rate limiting (global, authenticated, write, setup_secret)
+│   ├── RateLimitingExtensions.cs      — 7-tier rate limiting (global, authenticated, write, public ingestion, setup secret, analytics relay, AI assistant)
 │   ├── RequestTimeoutExtensions.cs    — 3-tier timeouts (default, lookup, complex)
 │   ├── ApiVersioningExtensions.cs     — Media-type versioning (Accept header v parameter)
 │   ├── HateoasServiceExtensions.cs    — HATEOAS DI registration (assemblers, policies, evaluator)

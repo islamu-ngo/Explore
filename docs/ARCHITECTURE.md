@@ -120,7 +120,7 @@ The system uses a transactional outbox for reliable asynchronous event delivery:
 
 Handlers, controllers, automation executors, and sequence processors create durable intent only. They must not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly. Side effects are owned by approved background workers, scheduler functions, or Infrastructure dispatch components.
 
-Event publication currently writes two general outbox messages in the same transaction: the external `EventPublished` message for MQContract publishing and the internal `EventPublishedNotificationFanoutRequested` message for subscription fanout. `CompositeOutboxMessageDispatcher` routes `EventPublished` to the MQContract dispatcher and routes `EventPublishedNotificationFanoutRequested` to `EventPublishedNotificationFanoutService`, which creates idempotent durable in-app notifications for eligible active actor subscribers.
+Event publication currently writes one general outbox message in the same transaction: the internal `EventPublishedNotificationFanoutRequested` message for subscription fanout. `CompositeOutboxMessageDispatcher` routes it to `EventPublishedNotificationFanoutService`, which creates idempotent durable in-app notifications for eligible active actor subscribers. Retired external `EventPublished` broker rows are not produced and fail closed if encountered.
 
 Notification refresh uses a one-way authenticated SSE endpoint at `GET /api/notification/stream`. The stream emits minimal unread-count refresh hints only; durable `Notification` rows and the authenticated notification APIs remain the source of truth. The Blazor notification bell consumes the stream through browser `EventSource` and keeps polling as fallback.
 
@@ -139,7 +139,8 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 | `PdsSyncWorker` | AT Protocol PDS synchronization from `PdsSyncOutbox` | Configurable with exponential backoff |
 | TickerQ `email-dispatch-drain` | Default Basic Dispatch Mode trigger for draining `EmailDispatchOutbox` through the shared drain service | Cron, default every 10s |
 | `EmailDispatchProcessor` | Hosted-service fallback trigger over the same EmailDispatch drain service | Configurable fallback |
-| `CompositeOutboxMessageDispatcher` | Dispatch component used by `OutboxProcessor` to route external MQContract messages and internal notification fanout messages | Invoked per outbox message |
+| `CompositeOutboxMessageDispatcher` | Dispatch component used by `OutboxProcessor` to route internal notification fanout, moderation fanout, and report provider sync messages | Invoked per outbox message |
+| `EmailDispatchRabbitMqPointerPublisherService` | Optional RabbitMQ producer loop that publishes pointer-only messages for due `EmailDispatchOutbox` rows after durable storage exists | Configurable polling, default 5s |
 
 These background services and scheduler triggers use optimistic locking or durable claim semantics for multi-worker safety and are availability-gated where dependent services are required.
 

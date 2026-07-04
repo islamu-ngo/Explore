@@ -28,7 +28,7 @@ Each project has a specific role. Run individually — never use solution-level 
 | `Event.Application.UnitTests` | Application | Handler logic, validation, mapping | No |
 | `Event.Architecture.Tests` | Cross-cutting | Convention enforcement via reflection | No |
 | `Explore.Secrets.UnitTests` | Infrastructure | Secret provider logic, encryption, rotation | No |
-| `Explore.Infrastructure.Tests` | Infrastructure | Provider adapters, configuration resolvers, authorization fallback behavior | No |
+| `Explore.Infrastructure.Tests` | Infrastructure | Provider adapters, configuration resolvers, authorization fallback behavior, and focused provider runtime checks | No for `Category!=Runtime`; Docker/Mailpit/RabbitMQ for runtime lanes |
 | `Event.Persistence.IntegrationTests` | Persistence | EF Core queries, repository behavior, migrations | PostgreSQL |
 | `Event.API.IntegrationTests` | API | HTTP endpoints, middleware, auth flows | Full stack |
 | `Explore.Blazor.IntegrationTests` | BFF | Middleware pipeline, auth endpoints, delegating handlers | No |
@@ -43,11 +43,15 @@ dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --con
 dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
 
 # Integration tests (requires Docker infrastructure running)
 dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+
+# Runtime provider tests (requires Docker/Testcontainers)
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
 
 # BFF integration tests (no infrastructure needed — uses WebApplicationFactory with in-memory services)
 dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
@@ -74,31 +78,54 @@ dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configura
 
 The solution-level build can be blocked by unrelated Blazor WebAssembly task-host issues on local SDK/tooling states where the WebAssembly workload is not installed. For the pinned .NET SDK `10.0.300`, verify the workload with `dotnet workload list` and install the official ASP.NET Core Blazor WebAssembly prerequisite with `dotnet workload install wasm-tools` when Release builds fail in `ComputeWasmBuildAssets`, `Microsoft.NETCore.App.Runtime.Mono.browser-wasm`, or `Microsoft.NET.Sdk.WebAssembly.Pack` resolution. When the change is API/Application/HAL-only, prefer the API project build plus focused tests above and report any broader build blocker separately instead of weakening lifecycle tests.
 
+### Support Access Focused Verification
+
+Use these focused commands when changing support-access domain/session rules, trusted BFF forwarding, HAL affordances, operator console UX, tenant evidence UX, or support-access docs:
+
+```bash
+dotnet build Explore.Blazor/Explore.Blazor.csproj --configuration Release --no-restore -clp:ErrorsOnly
+dotnet build Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-restore -clp:ErrorsOnly
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/BffSupportAccessEndpointsTests/*|/*/*/SupportAccessForwardingHandlerTests/*|/*/*/BffProxyHeaderSanitizerTests/*" --minimum-expected-tests 1
+dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-build --treenode-filter "/*/*/SupportAccessClientServiceTests/*|/*/*/TenantSupportAccessEvidenceSectionTests/*" --minimum-expected-tests 1
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/SupportAccessApiTests/*" --minimum-expected-tests 1
+```
+
+Support-access UI tests must assert affordances from HAL `_links`, not local role or claim checks. The tenant evidence view is intentionally read-only; tests should prove it does not render start or force-stop controls and only renders audit drill-in when the session resource contains an `audit-events` link.
+
 ### Test Taxonomy And CI Lanes
 
 Use TUnit metadata to route tests into the smallest lane that proves the behavior. TUnit uses `--treenode-filter` for metadata filtering; do not use VSTest-style `--filter` examples for TUnit projects.
 
 | Lane | TUnit Metadata | Projects | Purpose | Default Frequency |
 |------|----------------|----------|---------|-------------------|
-| Unit | `[Category("Unit")]` or project-level unit suite | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Explore.Secrets.UnitTests`, `Explore.Infrastructure.Tests` | Fast domain, handler, validator, mapping, service, provider, configuration, and fallback behavior | Every PR |
+| Unit | `[Category("Unit")]` or project-level unit suite excluding `[Category("Runtime")]` | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Explore.Secrets.UnitTests`, `Explore.Infrastructure.Tests` | Fast domain, handler, validator, mapping, service, provider, configuration, and fallback behavior | Every PR |
 | Architecture | project-level architecture suite | `Event.Architecture.Tests` | Clean Architecture, naming, accessibility structure, authorization parity, and test-suite governance | Every PR |
 | Component | `[Category("Component")]` or project-level UI suite | `Explore.Blazor.Client.Tests` | bUnit component, service, accessibility, wrapper, and design-system behavior | Every PR |
 | API Contract | `[Category(TestCategories.Fast)]`, `[Category(TestCategories.Security)]`, `[Category(TestCategories.PolicyContract)]` | `Event.API.IntegrationTests` | HTTP serialization, HAL, ProblemDetails, auth matrix, Cerbos contract, and API surface rules | Every PR where possible |
 | Real Runtime | `[NotInParallel("RealRuntimeDb")]` / PostgreSQL fixtures | `Event.Persistence.IntegrationTests`, real-runtime API tests | Provider-specific EF Core, migrations, query filters, tenant isolation, and repository behavior | Merge/nightly |
+| Email | `[Category("Email")]` | `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, `Explore.Blazor.Client.E2ETests` | SMTP config, EmailDispatch outbox drain, Mailpit delivery, operator replay, and user-facing email journeys | Deterministic tests in PR; full runtime in nightly/manual |
+| RabbitMQ | `[Category("RabbitMQ")]` | `Explore.Infrastructure.Tests`, targeted runtime tests | Optional EmailDispatch pointer transport, topology, publish confirms, consumer settlement, DLQ replay/parking, and broker fixture readiness | Nightly/manual until reliability is proven |
+| Runtime | `[Category("Runtime")]` | Provider-backed tests across integration and E2E projects | Tests requiring Docker, PostgreSQL, broker, Mailpit, Keycloak, or Aspire | Merge/nightly/manual by cost |
 | Stress | stress fixture/category | `Event.API.IntegrationTests` | Rate limiting, retry headers, timeout, and high-volume middleware behavior | Nightly/manual |
 | BFF Integration | BFF integration suite/categories | `Explore.Blazor.IntegrationTests` | Cookie auth, token refresh, YARP forwarding, tenant hints, and BFF middleware | Every PR for no-infra tests; nightly for Keycloak-backed tests |
 | E2E | `[Category("E2E")]` or E2E project | `Explore.Blazor.Client.E2ETests` | Browser-only critical journeys through Aspire | Nightly/manual |
-| Manual Visual | `[Category("Manual visual")]` or visual baseline tests | `Explore.Blazor.Client.E2ETests` | Screenshot baseline review and layout regressions | Manual/approved baseline lane |
+| Manual | `[Category("Manual")]` | Runtime and visual suites | Expensive, operator-reviewed, or artifact-heavy checks that should not block the normal PR lane | Manual/approved baseline lane |
 
 Example TUnit filters:
 
 ```bash
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "////[Category=Security]"
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "////[Category=E2E]"
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "////[Category!=Manual visual]"
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Security]"
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=E2E]" --minimum-expected-tests 1
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Manual]" --minimum-expected-tests 1
 ```
 
-The nightly E2E runtime workflow intentionally runs the full `Explore.Blazor.Client.E2ETests` project without a category filter. Some critical browser flows are not tagged with `[Category("E2E")]` yet, while manual visual flows are explicitly skipped until baseline storage is approved.
+The nightly E2E runtime workflow intentionally runs the full `Explore.Blazor.Client.E2ETests` project when artifact capture is enabled. Every flow test class under `Explore.Blazor.Client.E2ETests/Flows` is tagged with `[Category("E2E")]`; visual/operator-reviewed browser checks are additionally tagged `[Category("Manual")]` so approval lanes can include or exclude them explicitly.
+
+`Explore.Infrastructure.Tests` intentionally has both fast no-infrastructure tests and Docker-backed runtime tests. Use `Category!=Runtime` for the fast local/PR lane. Use the `Email` category when changing SMTP or EmailDispatch behavior; it includes no-container configuration failure tests, Mailpit-backed SMTP/drain tests, and RabbitMQ consumer tests that deliver to Mailpit. Use the `RabbitMQ` category when changing optional broker transport, topology, publish-confirm, consumer settlement, DLQ replay, or parking behavior.
 
 ### Disabled Test Governance
 
@@ -106,7 +133,7 @@ Disabled tests are allowed only when the test still expresses required future be
 
 Skip reason requirements:
 
-- `Category:` names the owning suite or lane (`E2E`, `Stress`, `API contract`, `Component accessibility`, `Manual visual`, etc.).
+- `Category:` names the owning suite or lane (`E2E`, `Stress`, `API contract`, `Component accessibility`, `Manual`, etc.).
 - `Removal:` states the concrete condition for re-enabling or deleting the skip.
 - No permanent skips. Infrastructure-gated tests move to a nightly/manual lane through category filters; they do not remain hidden from governance.
 - No backward-compatibility preservation tests while the project is in development mode. If a test only protects an obsolete API, DTO shape, route alias, or UI behavior, delete it instead of skipping it.
@@ -127,6 +154,21 @@ Skip reason requirements:
 | Critical browser journeys fail | `Explore.Blazor.Client.E2ETests` | Aspire-backed smoke, registration, tenant isolation, authorization enforcement, and BFF forwarding flows |
 | Accessibility/design-system drift | `Explore.Blazor.Client.Tests`, `Event.Architecture.Tests` | bUnit semantic component checks, structural accessibility guardrails, wrapper behavior |
 
+### Email And Messaging Scenario Matrix
+
+Email tests prove durable state and provider behavior at the lowest layer that can observe each risk. Unit tests can fake SMTP only when the behavior is pure decision logic; integration, runtime, and E2E tests use real infrastructure such as PostgreSQL, Mailpit, RabbitMQ, Keycloak, and Aspire.
+
+| Scenario | Primary Test Project | Required Evidence |
+|---|---|---|
+| Direct SMTP to local capture service | `Explore.Infrastructure.Tests` | `SmtpEmailServiceMailpitTests` connects to Mailpit and sends one message; `SmtpEmailServiceConfigurationTests` proves missing SMTP config fails before provider handoff without leaking secrets. |
+| SMTP settings resolution | `Explore.Infrastructure.Tests` | `SmtpConfigResolverTests` proves active tenant context reaches the hierarchical settings resolver, system-default and tenant-override values do not share cache entries, required settings fail closed, and defaults are bounded. |
+| Basic EmailDispatch drain | `Explore.Infrastructure.Tests`, `Event.Persistence.IntegrationTests` | `EmailDispatchDrainMailpitTests` proves a pending outbox row is claimed, sent through Mailpit, marked `Sent`, records succeeded attempt/completed receipt state, and duplicate consumers produce one Mailpit message; persistence tests cover PostgreSQL state transitions. |
+| Tenant pause, retry, dead-letter, unknown, and replay | `Explore.Infrastructure.Tests`, `Event.Persistence.IntegrationTests`, `Event.API.IntegrationTests` | `EmailDispatchDrainServiceTests` covers retry, exhausted dead-letter, timeout-like unknown, and stale-processing recovery behavior; repository/API tests prevent sends while paused, keep failures inspectable, and expose operator actions through authorized HAL links. |
+| TickerQ and hosted-service triggers | `Event.API.IntegrationTests` | `EmailDispatchTickerQJobsTests` and `EmailDispatchProcessorTests` prove trigger wrappers delegate to the shared drain service and do not own SMTP, RabbitMQ, or payload logic; `EmailDispatchHealthCheckTests` proves TickerQ, HostedService, Disabled, and scheduler-disabled readiness states. |
+| RabbitMQ fixture, topology, and pointer publish | `Explore.Infrastructure.Tests` | `RabbitMqContainerFixtureTests` starts a real broker with AMQP and management diagnostics; `RabbitMqEmailDispatchTransportLiveTests` proves enabled topology declaration, healthy readiness, confirmed publish, mandatory-return outcomes, and pointer-only broker payloads against a real broker; publish metadata is persisted, nack/timeout paths fail safely, and `EmailDispatchRabbitMqHealthCheckTests` proves disabled, healthy-enabled, and unhealthy transport readiness states without leaking secrets. |
+| RabbitMQ consume and DLQ replay | `Explore.Infrastructure.Tests` or runtime lane | `RabbitMqEmailDispatchConsumerMailpitTests` proves a valid pointer drains the durable row through real SMTP to Mailpit and ACKs after the durable outcome; malformed and missing-outbox pointers reject to DLQ without sending mail; `RabbitMqEmailDispatchDeadLetterReplayLiveTests` proves replayable rows reset durable state before republish and unsafe payloads park. |
+| Browser registration email | `Explore.Blazor.Client.E2ETests` | Registration completes through Aspire-backed API/BFF/browser flow, Mailpit contains one expected confirmation email, and no browser-accessible token is introduced. |
+
 ## E2E Browser Tests (Explore.Blazor.Client.E2ETests)
 
 - Uses Playwright for real browser automation.
@@ -135,6 +177,7 @@ Skip reason requirements:
 - Not run in normal PR CI; `.github/workflows/e2e.yml` runs it manually and nightly until reliability is proven.
 - Installs Chromium dependencies in CI before running tests and uploads TRX, Playwright traces, screenshots, videos, test logs, and Docker diagnostics.
 - Keep this suite intentionally small; only add flows that require a real browser.
+- Every flow test class under `Explore.Blazor.Client.E2ETests/Flows` carries `[Category(E2ETestCategories.E2E)]`; registration email coverage also carries `[Category(E2ETestCategories.Email)]`, and visual/manual browser checks carry `[Category(E2ETestCategories.Manual)]`.
 
 ### Generating TRX Reports
 
@@ -235,10 +278,12 @@ The standard CI pipeline runs the fast non-E2E test projects on every PR; integr
 
 1. Restores dependencies
 2. Builds in Release configuration
-3. Runs each fast, non-E2E test project sequentially (not solution-level), including `Explore.Infrastructure.Tests`
+3. Runs each fast, non-E2E test project sequentially (not solution-level). `Explore.Infrastructure.Tests` uses `Category!=Runtime` in the fast lane so Docker-backed provider tests do not become an implicit required gate.
 4. Publishes TRX evidence for CI troubleshooting
 5. Fails the PR if any test project reports failures
 6. Architecture tests run alongside unit tests (no infrastructure needed)
+
+Integration-enabled callers additionally run focused infrastructure runtime categories as evidence. The `Email` lane starts Mailpit through Testcontainers and publishes `Explore.Infrastructure.Tests.Email.trx`; the `RabbitMQ` lane starts the RabbitMQ management image, may also start Mailpit for consumer delivery assertions, and should publish `Explore.Infrastructure.Tests.RabbitMQ.trx` with container diagnostics.
 
 Nightly/manual runtime lanes are intentionally advisory until reliability data proves they can be merge-blocking:
 
