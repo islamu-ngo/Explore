@@ -501,6 +501,12 @@
           "TUnit.Core": "1.33.0"
         }
       },
+      "event.controlplane.client": {
+        "type": "Project",
+        "dependencies": {
+          "MudBlazor": "[9.4.0, )"
+        }
+      },
       "explore.application": {
         "type": "Project",
         "dependencies": {
@@ -520,6 +526,7 @@
           "Blazouter": "[1.0.13, )",
           "Blazouter.WebAssembly": "[1.0.13, )",
           "DiffPlex": "[1.9.0, )",
+          "Event.ControlPlane.Client": "[1.0.0, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation": "[11.9.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.7, )",
