@@ -1,0 +1,311 @@
+/* ABOUTME: Scoped styling for the webhook management panel in instance settings. */
+/* ABOUTME: Uses dense operational layout, stable table dimensions, and responsive controls. */
+
+.webhook-management {
+    --webhook-border: var(--isl-card-border);
+}
+
+.webhook-management__header {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+    align-items: flex-start;
+}
+
+.webhook-management__header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.webhook-management__loading {
+    padding-block: var(--isl-space-16);
+    padding-inline: 0;
+}
+
+.webhook-management__metrics {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--isl-space-3);
+    margin-block-end: var(--isl-space-4);
+}
+
+.webhook-management__metric {
+    border: var(--webhook-border);
+    border-radius: var(--isl-radius-sm);
+    padding: var(--isl-space-3);
+    min-width: 0;
+    background: var(--isl-color-surface);
+}
+
+.webhook-management__metric-value {
+    display: block;
+    color: var(--isl-color-text);
+    font-size: var(--isl-typography-h6-size);
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.webhook-management__metric-label {
+    display: block;
+    color: var(--isl-color-text-secondary);
+    font-size: var(--isl-typography-overline-size);
+    line-height: var(--isl-typography-body2-line-height);
+}
+
+.webhook-management__tabs {
+    border-block-start: var(--webhook-border);
+}
+
+.webhook-management__tab-panel {
+    padding-block-start: var(--isl-space-4);
+}
+
+.webhook-management__table {
+    border: var(--webhook-border);
+    border-radius: var(--isl-radius-sm);
+    overflow: hidden;
+}
+
+.webhook-management__mobile-list {
+    display: none;
+}
+
+.webhook-management__actions-cell {
+    width: 9rem;
+    white-space: nowrap;
+}
+
+.webhook-management__action-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--isl-space-1);
+}
+
+.webhook-management__url,
+.webhook-management__mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    overflow-wrap: anywhere;
+}
+
+.webhook-management__catalog {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-4);
+}
+
+.webhook-management__catalog-group {
+    border: var(--webhook-border);
+    border-radius: var(--isl-radius-sm);
+    padding: var(--isl-space-3);
+    min-width: 0;
+}
+
+.webhook-management__catalog-heading {
+    margin-block-end: var(--isl-space-2);
+    text-transform: uppercase;
+}
+
+.webhook-management__event-list {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.webhook-management__event-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--isl-space-3);
+    align-items: center;
+    padding-block-end: var(--isl-space-2);
+    border-block-end: var(--webhook-border);
+}
+
+.webhook-management__event-row:last-child {
+    padding-block-end: 0;
+    border-block-end: 0;
+}
+
+.webhook-management__event-name {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    overflow-wrap: anywhere;
+}
+
+.webhook-management__section-title {
+    margin-block-end: var(--isl-space-2);
+    font-weight: 700;
+}
+
+.webhook-management__section-title-row {
+    margin-block-end: var(--isl-space-2);
+}
+
+.webhook-management__event-picker {
+    border: var(--webhook-border);
+    border-radius: var(--isl-radius-sm);
+    padding: var(--isl-space-3);
+}
+
+.webhook-management__event-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-1) var(--isl-space-3);
+    margin-block-start: var(--isl-space-2);
+    max-height: 17.5rem;
+    overflow-y: auto;
+}
+
+@media (max-width: 74.997em) {
+    .webhook-management__metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .webhook-management__metric--wide {
+        grid-column: span 2;
+    }
+
+    .webhook-management__catalog {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 37.497em) {
+    .webhook-management__header {
+        flex-direction: column;
+    }
+
+    .webhook-management__header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .webhook-management__metrics,
+    .webhook-management__event-picker-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .webhook-management__metric--wide {
+        grid-column: auto;
+    }
+
+    .webhook-management__event-row {
+        grid-template-columns: 1fr;
+    }
+
+    .webhook-management__actions-cell {
+        width: auto;
+        white-space: normal;
+    }
+
+    .webhook-management ::deep .webhook-management__desktop-table {
+        display: none;
+    }
+
+    .webhook-management__tabs ::deep .mud-tabs-scroll-button {
+        display: none;
+    }
+
+    .webhook-management__tabs ::deep .mud-tabs-tabbar-content,
+    .webhook-management__tabs ::deep .mud-tabs-tabbar-wrapper,
+    .webhook-management__tabs ::deep .mud-tabs-tabbar-inner {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .webhook-management__tabs ::deep .mud-tab {
+        flex: 1 1 25%;
+        min-width: 0;
+        padding-inline: var(--isl-space-1);
+        font-size: var(--isl-typography-caption-size);
+    }
+
+    .webhook-management__tabs ::deep .mud-tab .mud-icon-root {
+        font-size: 1.125rem;
+    }
+
+    .webhook-management__mobile-list {
+        display: grid;
+        gap: var(--isl-space-2);
+    }
+
+    .webhook-management__mobile-card {
+        display: grid;
+        gap: var(--isl-space-2);
+        min-width: 0;
+        padding: var(--isl-space-3);
+        border: var(--webhook-border);
+        border-radius: var(--isl-radius-sm);
+        background: var(--isl-color-surface);
+    }
+
+    .webhook-management__mobile-row {
+        display: grid;
+        grid-template-columns: minmax(5.5rem, 38%) minmax(0, 1fr);
+        gap: var(--isl-space-2);
+        align-items: start;
+        min-width: 0;
+    }
+
+    .webhook-management__mobile-label {
+        color: var(--isl-color-text);
+        font-size: var(--isl-typography-body2-size);
+        font-weight: 700;
+        line-height: var(--isl-typography-body2-line-height);
+    }
+
+    .webhook-management__mobile-value {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .webhook-management__mobile-value ::deep .mud-chip,
+    .webhook-management__mobile-value ::deep .mud-typography {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    .webhook-management__table {
+        overflow: visible;
+    }
+
+    .webhook-management__table ::deep .mud-table-container,
+    .webhook-management__table ::deep .mud-table-root,
+    .webhook-management__table ::deep .mud-table-body,
+    .webhook-management__table ::deep .mud-table-row {
+        width: 100% !important;
+        max-width: 100%;
+        overflow: visible;
+    }
+
+    .webhook-management__action-group {
+        justify-content: flex-start;
+    }
+
+    .webhook-management__table ::deep .mud-table-cell {
+        display: grid !important;
+        grid-template-columns: minmax(5.5rem, 38%) minmax(0, 1fr);
+        gap: var(--isl-space-2);
+        align-items: start;
+        text-align: start !important;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .webhook-management__table ::deep .mud-table-cell::before {
+        position: static !important;
+        width: auto !important;
+        padding-inline-end: 0;
+        text-align: start;
+        white-space: normal;
+    }
+
+    .webhook-management__table ::deep .mud-table-cell > * {
+        min-width: 0;
+        justify-self: start;
+    }
+
+    .webhook-management__tabs ::deep .mud-tab {
+        min-width: 0;
+        padding-inline: var(--isl-space-2);
+    }
+}

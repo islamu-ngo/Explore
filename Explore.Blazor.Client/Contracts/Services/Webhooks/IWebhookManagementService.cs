@@ -1,0 +1,51 @@
+// ABOUTME: Blazor service contract for outgoing webhook management screens.
+// ABOUTME: Keeps webhook Razor components behind generated-client snapshots and HAL-aware action results.
+
+using Explore.Blazor.Client.Clients;
+
+namespace Explore.Blazor.Client.Contracts.Services.Webhooks;
+
+public interface IWebhookManagementService
+{
+    Task<WebhookManagementSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<HalResourceOfWebhookDeliveryAttemptDto>> GetDeliveryAttemptsAsync(
+        Guid? messageId = null,
+        Guid? endpointId = null,
+        int limit = 100,
+        CancellationToken cancellationToken = default);
+
+    Task<WebhookActionResult> CreateConsumerAsync(
+        CreateWebhookConsumerRequestDto request,
+        CancellationToken cancellationToken = default);
+
+    Task<WebhookActionResult> CreateEndpointAsync(
+        CreateWebhookEndpointRequestDto request,
+        CancellationToken cancellationToken = default);
+
+    Task<WebhookActionResult> UpdateEndpointAsync(
+        Guid endpointId,
+        UpdateWebhookEndpointRequestDto request,
+        CancellationToken cancellationToken = default);
+
+    Task<WebhookActionResult> DeleteEndpointAsync(
+        Guid endpointId,
+        CancellationToken cancellationToken = default);
+
+    Task<WebhookActionResult> RotateEndpointSecretAsync(
+        Guid endpointId,
+        RotateWebhookEndpointSecretRequestDto request,
+        CancellationToken cancellationToken = default);
+
+    Task<WebhookActionResult> TestEndpointAsync(
+        Guid endpointId,
+        CancellationToken cancellationToken = default);
+
+    Task<WebhookActionResult> RetryDeliveryAttemptAsync(
+        Guid attemptId,
+        CancellationToken cancellationToken = default);
+
+    Task<WebhookPortalResult> OpenProviderPortalAsync(
+        Guid consumerId,
+        CancellationToken cancellationToken = default);
+}

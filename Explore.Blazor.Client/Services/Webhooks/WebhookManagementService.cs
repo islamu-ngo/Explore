@@ -1,0 +1,231 @@
+// ABOUTME: Generated-client backed service for outgoing webhook management UI.
+// ABOUTME: Normalizes HAL collections, maps command failures safely, and avoids direct API calls from Razor.
+
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Webhooks;
+using Microsoft.Extensions.Logging;
+
+namespace Explore.Blazor.Client.Services.Webhooks;
+
+public sealed class WebhookManagementService(
+    IEventApiClient apiClient,
+    ILogger<WebhookManagementService> logger) : IWebhookManagementService
+{
+    private const int SnapshotLimit = 200;
+    private const int ActivityLimit = 100;
+
+    public async Task<WebhookManagementSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var eventTypesTask = apiClient.GetWebhookEventTypesAsync(cancellationToken: cancellationToken);
+            var consumersTask = apiClient.GetWebhookConsumersAsync(limit: SnapshotLimit, cancellationToken: cancellationToken);
+            var endpointsTask = apiClient.GetWebhookEndpointsAsync(limit: SnapshotLimit, cancellationToken: cancellationToken);
+            var messagesTask = apiClient.GetWebhookMessagesAsync(limit: ActivityLimit, cancellationToken: cancellationToken);
+            var attemptsTask = apiClient.GetWebhookDeliveryAttemptsAsync(limit: ActivityLimit, cancellationToken: cancellationToken);
+
+            await Task.WhenAll(eventTypesTask, consumersTask, endpointsTask, messagesTask, attemptsTask);
+
+            var consumerCollection = await consumersTask;
+            var endpointCollection = await endpointsTask;
+            var messageCollection = await messagesTask;
+            var attemptCollection = await attemptsTask;
+
+            return new WebhookManagementSnapshot
+            {
+                EventTypes = (await eventTypesTask)
+                    .OrderBy(eventType => eventType.GroupName, StringComparer.Ordinal)
+                    .ThenBy(eventType => eventType.Name, StringComparer.Ordinal)
+                    .ToList(),
+                Consumers = ToList(consumerCollection._embedded?.Items),
+                Endpoints = ToList(endpointCollection._embedded?.Items),
+                Messages = ToList(messageCollection._embedded?.Items),
+                DeliveryAttempts = ToList(attemptCollection._embedded?.Items),
+                CanCreateConsumer = WebhookHal.HasLink(consumerCollection._links, WebhookClientLinkRelations.Create),
+                CanCreateEndpoint = WebhookHal.HasLink(endpointCollection._links, WebhookClientLinkRelations.Create)
+            };
+        }
+        catch (ApiException ex)
+        {
+            logger.LogWarning(ex, "Webhook management snapshot failed with status {StatusCode}.", ex.StatusCode);
+            return WebhookManagementSnapshot.Failed("Unable to load webhook management data.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Webhook management snapshot failed.");
+            return WebhookManagementSnapshot.Failed("Unable to load webhook management data.");
+        }
+    }
+
+    public async Task<IReadOnlyList<HalResourceOfWebhookDeliveryAttemptDto>> GetDeliveryAttemptsAsync(
+        Guid? messageId = null,
+        Guid? endpointId = null,
+        int limit = ActivityLimit,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var attempts = await apiClient.GetWebhookDeliveryAttemptsAsync(
+                messageId: messageId,
+                endpointId: endpointId,
+                limit: limit,
+                cancellationToken: cancellationToken);
+            return ToList(attempts._embedded?.Items);
+        }
+        catch (ApiException ex)
+        {
+            logger.LogWarning(ex, "Webhook delivery attempt load failed with status {StatusCode}.", ex.StatusCode);
+            return [];
+        }
+    }
+
+    public async Task<WebhookActionResult> CreateConsumerAsync(
+        CreateWebhookConsumerRequestDto request,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCommandAsync(
+            () => apiClient.CreateWebhookConsumerAsync(request, cancellationToken: cancellationToken),
+            "Webhook consumer created.",
+            "Unable to create webhook consumer.");
+
+    public async Task<WebhookActionResult> CreateEndpointAsync(
+        CreateWebhookEndpointRequestDto request,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCommandAsync(
+            () => apiClient.CreateWebhookEndpointAsync(request, cancellationToken: cancellationToken),
+            "Webhook endpoint created.",
+            "Unable to create webhook endpoint.");
+
+    public async Task<WebhookActionResult> UpdateEndpointAsync(
+        Guid endpointId,
+        UpdateWebhookEndpointRequestDto request,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCommandAsync(
+            () => apiClient.UpdateWebhookEndpointAsync(endpointId, request, cancellationToken: cancellationToken),
+            "Webhook endpoint updated.",
+            "Unable to update webhook endpoint.");
+
+    public async Task<WebhookActionResult> DeleteEndpointAsync(
+        Guid endpointId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await apiClient.DeleteWebhookEndpointAsync(endpointId, cancellationToken: cancellationToken);
+            return WebhookActionResult.Succeeded("Webhook endpoint archived.", endpointId);
+        }
+        catch (ApiException ex)
+        {
+            logger.LogWarning(ex, "Webhook endpoint archive failed with status {StatusCode}.", ex.StatusCode);
+            return WebhookActionResult.Failed("Unable to archive webhook endpoint.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Webhook endpoint archive failed.");
+            return WebhookActionResult.Failed("Unable to archive webhook endpoint.");
+        }
+    }
+
+    public async Task<WebhookActionResult> RotateEndpointSecretAsync(
+        Guid endpointId,
+        RotateWebhookEndpointSecretRequestDto request,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCommandAsync(
+            () => apiClient.RotateWebhookEndpointSecretAsync(endpointId, request, cancellationToken: cancellationToken),
+            "Webhook endpoint secret rotated.",
+            "Unable to rotate webhook endpoint secret.");
+
+    public async Task<WebhookActionResult> TestEndpointAsync(
+        Guid endpointId,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCommandAsync(
+            () => apiClient.TestWebhookEndpointAsync(endpointId, cancellationToken: cancellationToken),
+            "Webhook endpoint test scheduled.",
+            "Unable to schedule webhook endpoint test.");
+
+    public async Task<WebhookActionResult> RetryDeliveryAttemptAsync(
+        Guid attemptId,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCommandAsync(
+            () => apiClient.RetryWebhookDeliveryAttemptAsync(attemptId, cancellationToken: cancellationToken),
+            "Webhook delivery retry scheduled.",
+            "Unable to retry webhook delivery.");
+
+    public async Task<WebhookPortalResult> OpenProviderPortalAsync(
+        Guid consumerId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var access = await apiClient.OpenSvixAppPortalAsync(
+                new OpenSvixAppPortalRequestDto
+                {
+                    ConsumerId = consumerId,
+                    ReadOnly = false,
+                    ExpiresInSeconds = 3600
+                },
+                cancellationToken: cancellationToken);
+
+            if (string.IsNullOrWhiteSpace(access.Url))
+            {
+                return new WebhookPortalResult(false, "Provider portal did not return a URL.");
+            }
+
+            return new WebhookPortalResult(true, "Provider portal opened.", access.Url);
+        }
+        catch (ApiException ex)
+        {
+            logger.LogWarning(ex, "Webhook provider portal request failed with status {StatusCode}.", ex.StatusCode);
+            return new WebhookPortalResult(false, "Unable to open provider portal.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Webhook provider portal request failed.");
+            return new WebhookPortalResult(false, "Unable to open provider portal.");
+        }
+    }
+
+    private static IReadOnlyList<T> ToList<T>(IEnumerable<T>? items) =>
+        items?.ToList() ?? [];
+
+    private async Task<WebhookActionResult> ExecuteCommandAsync(
+        Func<Task<BaseCommandResponseOfGuid>> action,
+        string successMessage,
+        string fallbackFailureMessage)
+    {
+        try
+        {
+            return FromCommandResponse(await action(), successMessage, fallbackFailureMessage);
+        }
+        catch (ApiException<BaseCommandResponseOfGuid> ex)
+        {
+            logger.LogWarning(ex, "Webhook command failed with status {StatusCode}.", ex.StatusCode);
+            return FromCommandResponse(ex.Result, successMessage, fallbackFailureMessage);
+        }
+        catch (ApiException ex)
+        {
+            logger.LogWarning(ex, "Webhook command failed with status {StatusCode}.", ex.StatusCode);
+            return WebhookActionResult.Failed(fallbackFailureMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Webhook command failed.");
+            return WebhookActionResult.Failed(fallbackFailureMessage);
+        }
+    }
+
+    private static WebhookActionResult FromCommandResponse(
+        BaseCommandResponseOfGuid? response,
+        string successMessage,
+        string fallbackFailureMessage)
+    {
+        if (response?.Success == true)
+        {
+            return WebhookActionResult.Succeeded(response.Message ?? successMessage, response.Id);
+        }
+
+        var errors = response?.Errors is { Count: > 0 }
+            ? string.Join(" ", response.Errors)
+            : null;
+        return WebhookActionResult.Failed(errors ?? response?.Message ?? fallbackFailureMessage);
+    }
+}
