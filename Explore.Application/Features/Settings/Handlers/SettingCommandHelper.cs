@@ -6,7 +6,9 @@ namespace Explore.Application.Features.Settings.Handlers;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Settings;
+using Explore.Application.Utilities;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Settings;
 
 internal static class SettingCommandHelper
@@ -18,6 +20,8 @@ internal static class SettingCommandHelper
     internal static (bool IsValid, string? SerializedValue, string? Error) ValidateAndSerialize(
         string plainValue, SettingDefinition definition)
     {
+        plainValue = NormalizePlainValue(plainValue, definition);
+
         switch (definition.ValueType)
         {
             case SettingValueType.String:
@@ -62,6 +66,20 @@ internal static class SettingCommandHelper
             default:
                 return (true, plainValue, null);
         }
+    }
+
+    private static string NormalizePlainValue(string plainValue, SettingDefinition definition)
+    {
+        if (definition.ValueType != SettingValueType.String)
+            return plainValue;
+
+        return definition.Key switch
+        {
+            GovernanceSettingKeys.Cerbos.GrpcEndpoint
+                or GovernanceSettingKeys.Cerbos.CustomEndpoint
+                or GovernanceSettingKeys.Cerbos.CustomAdminEndpoint => GrpcEndpointNormalizer.Normalize(plainValue),
+            _ => plainValue
+        };
     }
 
     /// <summary>

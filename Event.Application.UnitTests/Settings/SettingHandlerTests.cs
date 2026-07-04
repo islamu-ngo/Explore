@@ -3,6 +3,7 @@
 
 namespace Event.Application.UnitTests.Settings;
 
+using System.Text.Json;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -303,6 +304,33 @@ public class SettingHandlerTests
     }
 
     [Test]
+    public async Task Update_TenantCerbosEndpoint_NormalizesBareHostBeforePersisting()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        SetupResolverMetadata(GovernanceSettingKeys.Cerbos.CustomEndpoint, false);
+        var handler = CreateUpdateHandler();
+
+        var cmd = new UpdateSettingCommand
+        {
+            Key = GovernanceSettingKeys.Cerbos.CustomEndpoint,
+            Value = "tenant-cerbos.example.com:443",
+            Scope = SettingScope.Tenant
+        };
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _resolver.Received(1).SetValueAsync(
+            Arg.Is<string>(GovernanceSettingKeys.Cerbos.CustomEndpoint),
+            Arg.Is<string>(value =>
+                JsonSerializer.Deserialize<string>(value) == "https://tenant-cerbos.example.com:443"),
+            Arg.Is<SettingScope>(SettingScope.Tenant),
+            Arg.Is<Guid>(TestTenantId),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Update_PublicExperiencePrimaryOrganization_WritesTenantOverrideViaResolver()
     {
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
@@ -491,6 +519,45 @@ public class SettingHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         cerbosConfigResolver.Received(1).InvalidateCache();
+    }
+
+    [Test]
+    public async Task Batch_CerbosEndpoints_NormalizesBareHostsBeforePersisting()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var handler = CreateBatchHandler();
+        SetupResolverBatchForBatchCommand();
+
+        var cmd = new UpdateSettingBatchCommand
+        {
+            Category = "Cerbos",
+            Values = new Dictionary<string, string>
+            {
+                { GovernanceSettingKeys.Cerbos.CustomEndpoint, "cerbosgrpc.example.com:443" },
+                { GovernanceSettingKeys.Cerbos.CustomAdminEndpoint, "cerbosapi.example.com:3592" }
+            },
+            Scope = SettingScope.Instance
+        };
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _resolver.Received(1).SetValueAsync(
+            Arg.Is<string>(GovernanceSettingKeys.Cerbos.CustomEndpoint),
+            Arg.Is<string>(value =>
+                JsonSerializer.Deserialize<string>(value) == "https://cerbosgrpc.example.com:443"),
+            Arg.Is<SettingScope>(SettingScope.Instance),
+            Arg.Is<Guid>(Guid.Empty),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+        await _resolver.Received(1).SetValueAsync(
+            Arg.Is<string>(GovernanceSettingKeys.Cerbos.CustomAdminEndpoint),
+            Arg.Is<string>(value =>
+                JsonSerializer.Deserialize<string>(value) == "https://cerbosapi.example.com:3592"),
+            Arg.Is<SettingScope>(SettingScope.Instance),
+            Arg.Is<Guid>(Guid.Empty),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
     }
 
     // ──────────────────────────────────────────────

@@ -110,7 +110,7 @@ internal sealed class ApiBenchmarkHostFactory : WebApplicationFactory<global::Pr
             using var scope = serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
 
-            await DatabaseSeeder.SeedAsync(dbContext, environment, cancellationToken);
+            await DatabaseSeeder.SeedAsync(dbContext, environment, cancellationToken: cancellationToken);
             await BenchmarkApiSeedData.SeedAsync(dbContext, cancellationToken);
 
             var lookupCache = scope.ServiceProvider.GetService<ILookupDataCache>();

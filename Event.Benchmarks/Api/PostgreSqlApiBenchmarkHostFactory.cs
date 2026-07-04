@@ -117,7 +117,7 @@ internal sealed class PostgreSqlApiBenchmarkHostFactory(string connectionString)
 
             await dbContext.Database.EnsureCreatedAsync(cancellationToken);
             await PostgresModelConstraintApplier.ApplyAsync(dbContext, cancellationToken);
-            await DatabaseSeeder.SeedAsync(dbContext, environment, cancellationToken);
+            await DatabaseSeeder.SeedAsync(dbContext, environment, cancellationToken: cancellationToken);
             await BenchmarkApiSeedData.SeedAsync(dbContext, cancellationToken);
 
             var lookupCache = scope.ServiceProvider.GetService<ILookupDataCache>();
