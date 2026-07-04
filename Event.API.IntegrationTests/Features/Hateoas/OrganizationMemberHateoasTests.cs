@@ -58,12 +58,17 @@ public sealed class OrganizationMemberHateoasTests
     [Test]
     public async Task CollectionResource_OrganizationAdmin_ShouldExposeScopedCreateEditAndDeleteAffordances()
     {
+        var tenantId = Guid.NewGuid();
         var organizationId = Guid.NewGuid();
-        var member = CreateMember(Guid.NewGuid(), organizationId);
-        var assembler = CreateAssembler(check => IsOrganizationMemberActionForOrganization(check, organizationId));
+        var member = CreateMember(Guid.NewGuid(), tenantId, organizationId);
+        var assembler = CreateAssembler(check => IsOrganizationMemberActionForOrganization(check, tenantId, organizationId));
         var context = CreateHttpContext(authenticated: true);
 
-        var resource = await assembler.ToCollectionResource([member], RouteNames.GetOrganizationMembersByOrganization, new { organizationId }, context);
+        var resource = await assembler.ToCollectionResource(
+            [member],
+            RouteNames.GetOrganizationMembersByOrganization,
+            new { organizationId, tenantId },
+            context);
         var item = resource.Embedded!.Items.Single();
 
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Create)).IsTrue();
@@ -74,12 +79,17 @@ public sealed class OrganizationMemberHateoasTests
     [Test]
     public async Task CollectionResource_RegularMember_ShouldHideCreateEditAndDeleteAffordances()
     {
+        var tenantId = Guid.NewGuid();
         var organizationId = Guid.NewGuid();
-        var member = CreateMember(Guid.NewGuid(), organizationId);
+        var member = CreateMember(Guid.NewGuid(), tenantId, organizationId);
         var assembler = CreateAssembler(_ => false);
         var context = CreateHttpContext(authenticated: true);
 
-        var resource = await assembler.ToCollectionResource([member], RouteNames.GetOrganizationMembersByOrganization, new { organizationId }, context);
+        var resource = await assembler.ToCollectionResource(
+            [member],
+            RouteNames.GetOrganizationMembersByOrganization,
+            new { organizationId, tenantId },
+            context);
         var item = resource.Embedded!.Items.Single();
 
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Create)).IsFalse();
@@ -100,7 +110,7 @@ public sealed class OrganizationMemberHateoasTests
         await Assert.That(links.Single(link => link.Rel == LinkRelations.Delete).RouteName).IsEqualTo(RouteNames.DeleteOrganizationMember);
     }
 
-    private static bool IsOrganizationMemberActionForOrganization(AuthorizationCheck check, Guid organizationId)
+    private static bool IsOrganizationMemberActionForOrganization(AuthorizationCheck check, Guid tenantId, Guid organizationId)
     {
         if (check.ResourceKind != ResourceKinds.OrganizationMember)
         {
@@ -112,8 +122,11 @@ public sealed class OrganizationMemberHateoasTests
             return false;
         }
 
-        return check.ResourceId == organizationId.ToString()
-            || (check.ResourceAttributes?.TryGetValue("organizationId", out var value) == true && value?.ToString() == organizationId.ToString());
+        return check.ResourceAttributes?.TryGetValue("tenantId", out var tenantValue) == true
+            && tenantValue?.ToString() == tenantId.ToString()
+            && (check.ResourceId == organizationId.ToString()
+                || (check.ResourceAttributes.TryGetValue("organizationId", out var organizationValue)
+                    && organizationValue?.ToString() == organizationId.ToString()));
     }
 
     private static TestAssembler CreateAssembler(Func<AuthorizationCheck, bool> predicate)
@@ -154,11 +167,12 @@ public sealed class OrganizationMemberHateoasTests
 
     private static readonly AsyncLocal<IHateoasAuthorizationEvaluator?> CurrentEvaluator = new();
 
-    private static OrganizationMemberDto CreateMember(Guid memberId, Guid? organizationId = null)
+    private static OrganizationMemberDto CreateMember(Guid memberId, Guid? tenantId = null, Guid? organizationId = null)
     {
         return new OrganizationMemberDto
         {
             Id = memberId,
+            TenantId = tenantId ?? Guid.NewGuid(),
             OrganizationId = organizationId ?? Guid.NewGuid(),
             UserId = Guid.NewGuid(),
             UserEmail = "member@example.com",

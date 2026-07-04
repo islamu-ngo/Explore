@@ -1,13 +1,25 @@
 // ABOUTME: MediatR query for fetching all members of an organization.
-// ABOUTME: Returns IEnumerable<OrganizationMemberDto>.
+// ABOUTME: Returns List<OrganizationMemberDto> after organization-member view authorization.
 using System;
 using System.Collections.Generic;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.OrganizationMember;
 using MediatR;
 
 namespace Explore.Application.Features.OrganizationMembers.Requests.Queries;
 
-public class GetOrganizationMembersRequest : IRequest<List<OrganizationMemberDto>>
+[AuthorizeResource(ResourceKinds.OrganizationMember, AuthorizationActions.OrganizationMembers.View)]
+public class GetOrganizationMembersRequest : IRequest<List<OrganizationMemberDto>>, ISecureRequest
 {
     public Guid OrganizationId { get; set; }
+
+    public Guid TenantId { get; init; }
+
+    string? ISecureRequest.ResourceId => OrganizationId == Guid.Empty ? null : OrganizationId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString("D"),
+        ["organizationId"] = OrganizationId.ToString("D")
+    };
 }

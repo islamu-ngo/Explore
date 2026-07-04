@@ -1,3 +1,6 @@
+// ABOUTME: HAL assembler for organization member detail and collection resources.
+// ABOUTME: Adds scoped member-management affordances using tenant and organization authorization metadata.
+
 namespace Explore.API.Hateoas.Assemblers;
 
 using Explore.Application.Authorization;
@@ -34,6 +37,15 @@ public sealed class OrganizationMemberResourceAssembler : ResourceAssemblerBase<
             {
                 ["organizationId"] = organizationId.ToString()
             };
+            var authorizationScope = new AuthorizationScope(OrganizationId: organizationId.ToString());
+
+            if (TryGetTenantId(additionalRouteValues, out var tenantId))
+            {
+                organizationScopedAttributes["tenantId"] = tenantId.ToString();
+                authorizationScope = new AuthorizationScope(
+                    TenantId: tenantId.ToString(),
+                    OrganizationId: organizationId.ToString());
+            }
 
             var createLinks = await GenerateLinks([
                 new LinkDefinition(
@@ -48,7 +60,7 @@ public sealed class OrganizationMemberResourceAssembler : ResourceAssemblerBase<
                         ResourceKinds.OrganizationMember,
                         organizationId.ToString(),
                         organizationScopedAttributes,
-                        new AuthorizationScope(OrganizationId: organizationId.ToString()))
+                        authorizationScope)
             ], httpContext.User, httpContext);
 
             foreach (var link in createLinks)
@@ -72,38 +84,50 @@ public sealed class OrganizationMemberResourceAssembler : ResourceAssemblerBase<
     }
 
     private static bool TryGetOrganizationId(object? routeValues, out Guid organizationId)
+        => TryGetGuidRouteValue(routeValues, "organizationId", out organizationId);
+
+    private static bool TryGetTenantId(object? routeValues, out Guid tenantId)
+        => TryGetGuidRouteValue(routeValues, "tenantId", out tenantId);
+
+    private static bool TryGetGuidRouteValue(object? routeValues, string name, out Guid value)
     {
-        organizationId = default;
+        value = default;
         if (routeValues is null)
         {
             return false;
         }
 
-        object? value = null;
         if (routeValues is IReadOnlyDictionary<string, object> readOnlyDictionary)
         {
-            readOnlyDictionary.TryGetValue("organizationId", out value);
-        }
-        else if (routeValues is IDictionary<string, object> dictionary)
-        {
-            dictionary.TryGetValue("organizationId", out value);
-        }
-        else
-        {
-            value = routeValues.GetType().GetProperty("organizationId")?.GetValue(routeValues);
+            readOnlyDictionary.TryGetValue(name, out var routeValue);
+            value = default;
+            return TrySetGuid(routeValue, out value);
         }
 
+        if (routeValues is IDictionary<string, object> dictionary)
+        {
+            dictionary.TryGetValue(name, out var routeValue);
+            value = default;
+            return TrySetGuid(routeValue, out value);
+        }
+
+        return TrySetGuid(routeValues.GetType().GetProperty(name)?.GetValue(routeValues), out value);
+    }
+
+    private static bool TrySetGuid(object? value, out Guid guid)
+    {
+        guid = default;
         return value switch
         {
-            Guid typedOrganizationId => SetOrganizationId(typedOrganizationId, out organizationId),
-            string text => Guid.TryParse(text, out organizationId),
+            Guid typedValue => SetGuid(typedValue, out guid),
+            string text => Guid.TryParse(text, out guid),
             _ => false
         };
     }
 
-    private static bool SetOrganizationId(Guid value, out Guid organizationId)
+    private static bool SetGuid(Guid value, out Guid guid)
     {
-        organizationId = value;
+        guid = value;
         return value != Guid.Empty;
     }
 }

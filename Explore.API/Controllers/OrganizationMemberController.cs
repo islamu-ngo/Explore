@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Features.OrganizationMembers.Requests.Commands;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
@@ -28,26 +29,37 @@ public class OrganizationMemberController : ExploreControllerBase
         "Organization member not found.");
 
     private readonly IMediator _mediator;
+    private readonly ITenantContext _tenantContext;
     private readonly IResourceAssembler<OrganizationMemberDto, OrganizationMemberDto> _resourceAssembler;
 
     public OrganizationMemberController(
         IMediator mediator,
+        ITenantContext tenantContext,
         IResourceAssembler<OrganizationMemberDto, OrganizationMemberDto> resourceAssembler)
     {
         _mediator = mediator;
+        _tenantContext = tenantContext;
         _resourceAssembler = resourceAssembler;
     }
 
     [HttpGet("{organizationId:guid}", Name = RouteNames.GetOrganizationMembersByOrganization)]
     [EndpointClassification(EndpointClass.Authenticated)]
     [ProducesResponseType(typeof(HalCollectionResource<OrganizationMemberDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<HalCollectionResource<OrganizationMemberDto>>> Get(Guid organizationId, CancellationToken cancellationToken = default)
     {
-        var members = await _mediator.Send(new GetOrganizationMembersRequest { OrganizationId = organizationId }, cancellationToken);
+        var members = await _mediator.Send(
+            new GetOrganizationMembersRequest
+            {
+                OrganizationId = organizationId,
+                TenantId = _tenantContext.TenantId
+            },
+            cancellationToken);
         var halResource = await _resourceAssembler.ToCollectionResource(
             members,
             RouteNames.GetOrganizationMembersByOrganization,
-            new { organizationId },
+            new { organizationId, tenantId = _tenantContext.TenantId },
             HttpContext);
 
         return Ok(halResource);
@@ -56,10 +68,18 @@ public class OrganizationMemberController : ExploreControllerBase
     [HttpGet("member/{id:guid}", Name = RouteNames.GetOrganizationMemberById)]
     [EndpointClassification(EndpointClass.Authenticated)]
     [ProducesResponseType(typeof(HalResource<OrganizationMemberDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<OrganizationMemberDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var member = await _mediator.Send(new GetOrganizationMemberDetailsRequest { Id = id }, cancellationToken);
+        var member = await _mediator.Send(
+            new GetOrganizationMemberDetailsRequest
+            {
+                Id = id,
+                TenantId = _tenantContext.TenantId
+            },
+            cancellationToken);
         if (member is null)
         {
             return this.ToNotFoundProblem(OrganizationMemberNotFoundProblem);
@@ -79,7 +99,12 @@ public class OrganizationMemberController : ExploreControllerBase
             return this.ToAuthenticationRequiredProblem();
         }
 
-        var command = new AddOrganizationMemberCommand { AddOrganizationMemberDto = dto, RequesterUserId = userId };
+        var command = new AddOrganizationMemberCommand
+        {
+            AddOrganizationMemberDto = dto,
+            RequesterUserId = userId,
+            TenantId = _tenantContext.TenantId
+        };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
     }

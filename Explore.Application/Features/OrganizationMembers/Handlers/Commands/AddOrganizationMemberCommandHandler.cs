@@ -49,6 +49,13 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
             return response;
         }
 
+        if (request.TenantId != Guid.Empty && organization.TenantId != request.TenantId)
+        {
+            response.Success = false;
+            response.Message = "Organization does not belong to the current tenant.";
+            return response;
+        }
+
         // 2. Check permissions (Requester must be an Admin member)
         var members = await _organizationMemberRepository.GetMembersByOrganizationId(dto.OrganizationId);
 
@@ -96,6 +103,7 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
             User = null!,
             RoleId = (int)dto.Role,
             Role = null!,
+            TenantId = organization.TenantId,
             Tenant = null!
         };
 

@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos policy test suite for organization_member resources.
-# Tests manage_members action and cross-org isolation.
+# ABOUTME: Tests admin-only organization member reads, writes, and member-management actions.
 
 name: OrganizationMemberPolicyTests
 description: "Validates organization_member resource policies across admin hierarchy levels"
@@ -77,7 +77,7 @@ tests:
           create: EFFECT_ALLOW
           update: EFFECT_ALLOW
           delete: EFFECT_ALLOW
-          manage_members: EFFECT_DENY
+          manage_members: EFFECT_ALLOW
 
   - name: "Org admin can manage members and use manage_members action"
     input:
@@ -94,7 +94,7 @@ tests:
           delete: EFFECT_ALLOW
           manage_members: EFFECT_ALLOW
 
-  - name: "Regular user can only view org members"
+  - name: "Regular user cannot view or manage org members"
     input:
       principals: ["regular_user"]
       resources: ["member_in_org1"]
@@ -103,7 +103,7 @@ tests:
       - principal: "regular_user"
         resource: "member_in_org1"
         actions:
-          view: EFFECT_ALLOW
+          view: EFFECT_DENY
           create: EFFECT_DENY
           update: EFFECT_DENY
           delete: EFFECT_DENY
