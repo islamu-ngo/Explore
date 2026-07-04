@@ -8,6 +8,7 @@
                    Edge="@Edge"
                    Variant="@Variant"
                    OnClick="@OnClick"
+                   Disabled="@Disabled"
                    @attributes="AdditionalAttributes" />
 </div>
 
@@ -29,6 +30,9 @@
 
     /// <summary>Click callback.</summary>
     [Parameter] public EventCallback OnClick { get; set; }
+
+    /// <summary>Whether the icon button is disabled.</summary>
+    [Parameter] public bool Disabled { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IDictionary<string, object>? AdditionalAttributes { get; set; }

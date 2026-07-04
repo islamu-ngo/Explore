@@ -4,6 +4,7 @@
 @using Explore.Blazor.Client.Components.Shell.AiAssistant
 @using Explore.Blazor.Client.Services.Ai
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Rendering
 @using Microsoft.JSInterop
 @implements IAsyncDisposable
 
@@ -267,7 +268,7 @@
                         {
                             <div class="ai-rail__prompt-highlights"
                                  aria-hidden="true"
-                                 data-testid="ai-rail-prompt-highlights">@PromptReferenceHighlightMarkup</div>
+                                 data-testid="ai-rail-prompt-highlights">@PromptReferenceHighlights</div>
                         }
                         <textarea id="ai-rail-prompt"
                                   class="@PromptTextAreaClass"
@@ -495,7 +496,7 @@
         ? "ai-rail__textarea ai-rail__textarea--with-highlights"
         : "ai-rail__textarea";
 
-    private MarkupString PromptReferenceHighlightMarkup => new(BuildPromptReferenceHighlightMarkup());
+    private RenderFragment PromptReferenceHighlights => BuildPromptReferenceHighlights;
 
     private string ReferenceAutocompleteOpenData => IsReferenceAutocompleteVisible ? "true" : "false";
 
@@ -1923,15 +1924,15 @@
     private static bool RangesIntersect(int firstStart, int firstEnd, int secondStart, int secondEnd) =>
         firstStart < secondEnd && firstEnd > secondStart;
 
-    private string BuildPromptReferenceHighlightMarkup()
+    private void BuildPromptReferenceHighlights(RenderTreeBuilder builder)
     {
         var tokens = GetReferenceMentionTokens();
         if (_promptText.Length == 0 || tokens.Count == 0)
         {
-            return string.Empty;
+            return;
         }
 
-        var builder = new System.Text.StringBuilder(_promptText.Length);
+        var sequence = 0;
         var index = 0;
         while (index < _promptText.Length)
         {
@@ -1949,18 +1950,18 @@
             {
                 var text = _promptText.Substring(index, match.Length);
                 builder
-                    .Append("<span class=\"ai-rail__prompt-reference-token\" data-testid=\"ai-rail-prompt-reference-token\">")
-                    .Append(System.Net.WebUtility.HtmlEncode(text))
-                    .Append("</span>");
+                    .OpenElement(sequence++, "span");
+                builder.AddAttribute(sequence++, "class", "ai-rail__prompt-reference-token");
+                builder.AddAttribute(sequence++, "data-testid", "ai-rail-prompt-reference-token");
+                builder.AddContent(sequence++, text);
+                builder.CloseElement();
                 index += match.Length;
                 continue;
             }
 
-            builder.Append(System.Net.WebUtility.HtmlEncode(_promptText[index].ToString()));
+            builder.AddContent(sequence++, _promptText[index].ToString());
             index++;
         }
-
-        return builder.ToString();
     }
 
     private static int? FindActiveMentionStart(string text)

@@ -275,6 +275,48 @@ public sealed class AiAssistantRailTests : IDisposable
     }
 
     [Test]
+    public async Task ReferenceHighlights_EncodeDangerousReferenceDisplayNames()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var referenceId = Guid.CreateVersion7();
+        var displayName = "<img src=x onerror=alert(1)> <script>alert(1)</script>";
+        _conversationState.SelectConversation(new HalResourceOfAiConversationDto { Id = conversationId, Title = "References" });
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _clientService.SearchReferencesAsync("xss", Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiReferenceSearchResultDto>>(
+            [
+                new()
+                {
+                    Kind = "Event",
+                    ReferenceId = referenceId,
+                    DisplayName = displayName,
+                    _links = new Dictionary<string, Anonymous8>
+                    {
+                        ["event"] = new() { Href = $"/api/events/{referenceId}", Method = "GET" }
+                    }
+                }
+            ]));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+
+        await cut.Find("[data-testid='ai-rail-prompt']").InputAsync(new ChangeEventArgs { Value = "@xss" });
+        cut.WaitForElement("[data-testid='ai-rail-reference-result']");
+        await cut.Find("[data-testid='ai-rail-reference-result']").ClickAsync(new MouseEventArgs());
+
+        var token = cut.Find("[data-testid='ai-rail-prompt-reference-token']");
+        await Assert.That(token.TextContent).IsEqualTo($"@{displayName}");
+        await Assert.That(token.InnerHtml).Contains("&lt;img");
+        await Assert.That(token.InnerHtml).Contains("&lt;script");
+        await Assert.That(token.InnerHtml).DoesNotContain("<img");
+        await Assert.That(token.InnerHtml).DoesNotContain("<script");
+        await Assert.That(cut.FindAll("img")).IsEmpty();
+        await Assert.That(cut.FindAll("script")).IsEmpty();
+    }
+
+    [Test]
     public async Task ReferenceSearch_WhenMentionTriggerIsDeleted_ClosesAutocomplete()
     {
         var conversationId = Guid.CreateVersion7();

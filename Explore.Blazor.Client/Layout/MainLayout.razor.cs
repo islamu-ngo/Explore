@@ -19,10 +19,12 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private static readonly TimeSpan DockLayoutAutosaveDelay = TimeSpan.FromMilliseconds(500);
     private const int NavbarHeightPx = 64;
     private const int AnnouncementBarHeightPx = 48;
+    private const int SupportAccessBannerHeightPx = 56;
 
     private bool _isDarkMode = false;
     private bool _isInitialized = false;
     private bool _announcementVisible;
+    private bool _supportAccessBannerVisible;
     private MudTheme? _theme;
     private MudThemeProvider _mudThemeProvider = null!;
     private bool _hideChrome;
@@ -512,9 +514,21 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         }
     }
 
+    private void OnSupportAccessBannerVisibilityChanged(bool isVisible)
+    {
+        _supportAccessBannerVisible = isVisible;
+        if (_theme is not null)
+        {
+            _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight());
+            StateHasChanged();
+        }
+    }
+
     private string GetAppbarHeight()
     {
-        var height = NavbarHeightPx + (_announcementVisible ? AnnouncementBarHeightPx : 0);
+        var height = NavbarHeightPx
+            + (_announcementVisible ? AnnouncementBarHeightPx : 0)
+            + (_supportAccessBannerVisible ? SupportAccessBannerHeightPx : 0);
         return $"{height}px";
     }
 

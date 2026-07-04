@@ -1,3 +1,6 @@
+// ABOUTME: Component tests for the public Home page shell and public-experience rendering.
+// ABOUTME: Verifies authentication states, organization-centric projection, and encoded rich text.
+
 using Explore.Blazor.Client.Pages;
 using MudBlazor;
 
@@ -185,6 +188,57 @@ public class HomeTests : IDisposable
         await Assert.That(cut.Markup).Contains("Connect with Northside Masjid");
         await Assert.That(cut.Markup).Contains("Volunteer");
         await Assert.That(cut.Markup).DoesNotContain("Never Miss a Muslim Event Again");
+    }
+
+    [Test]
+    public async Task Home_OrganizationRichTextBlock_RendersTenantContentAsEncodedText()
+    {
+        _ctx.SetAnonymousUser();
+        SetupLandingPageServices(new PublicExperienceShellModel
+        {
+            Mode = "OrganizationCentric",
+            EventCatalog = new PublicExperienceEventCatalogModel
+            {
+                Label = "Programs",
+                Url = "/events"
+            },
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            {
+                State = "Available",
+                DisplayName = "Northside Masjid",
+                ActorId = Guid.Parse("11111111-1111-1111-1111-111111111111")
+            },
+            Home = new PublicExperienceHomeModel
+            {
+                Blocks =
+                [
+                    new PublicExperienceHomeBlockModel
+                    {
+                        Key = "rich-text",
+                        Kind = "RichText",
+                        Title = "<img src=x onerror=alert(1)>",
+                        Subtitle = "<script>alert(1)</script>",
+                        Body = "<strong>Community update</strong><script>alert(1)</script><img src=x onerror=alert(1)>",
+                        SortOrder = 10
+                    }
+                ]
+            }
+        });
+
+        var cut = _ctx.RenderMudComponent<Home>();
+        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
+
+        var richTextBlock = cut.FindAll(".organization-home__block")
+            .Single(element => element.TextContent.Contains("<strong>Community update</strong>", StringComparison.Ordinal));
+
+        await Assert.That(richTextBlock.TextContent).Contains("<img src=x onerror=alert(1)>");
+        await Assert.That(richTextBlock.TextContent).Contains("<script>alert(1)</script>");
+        await Assert.That(richTextBlock.InnerHtml).Contains("&lt;strong&gt;Community update&lt;/strong&gt;");
+        await Assert.That(richTextBlock.InnerHtml).Contains("&lt;script&gt;alert(1)&lt;/script&gt;");
+        await Assert.That(richTextBlock.InnerHtml).DoesNotContain("<script");
+        await Assert.That(richTextBlock.InnerHtml).DoesNotContain("<img");
+        await Assert.That(cut.FindAll("script").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("img").Count).IsEqualTo(0);
     }
 
     [Test]

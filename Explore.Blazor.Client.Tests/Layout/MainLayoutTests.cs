@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Ai;
+using Explore.Blazor.Client.Contracts.Services.SupportAccess;
 using Explore.Blazor.Client.Layout;
 using Explore.Blazor.Client.Services.Ai;
 using Explore.Blazor.Client.Services.Docking;
@@ -78,6 +79,12 @@ public class MainLayoutTests : IDisposable
         _appearanceThemeService.SetThemeModeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         _ctx.Services.AddSingleton(_appearanceThemeService);
+
+        var supportAccessClientService = Substitute.For<ISupportAccessClientService>();
+        supportAccessClientService.RefreshAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        supportAccessClientService.StopCurrentAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(SupportAccessCommandResult.Succeeded()));
+        _ctx.Services.AddSingleton(supportAccessClientService);
 
         // AnalyticsInitializer child deps (GetSettingsAsync returns null → early-return, no JS calls)
         _ctx.Services.AddSingleton(Substitute.For<IAnalyticsInterop>());
