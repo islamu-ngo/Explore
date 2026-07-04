@@ -175,5 +175,34 @@ public class CleanArchitectureTests
         await Assert.That(result.IsSuccessful).IsTrue();
     }
 
+    [Test]
+    public async Task Persistence_ShouldNotHaveDependencyOn_ApplicationDtos()
+    {
+        var result = Types.InAssembly(PersistenceAssembly)
+            .ShouldNot()
+            .HaveDependencyOn("Explore.Application.DTOs")
+            .GetResult();
+
+        await Assert.That(result.IsSuccessful).IsTrue()
+            .Because("repositories must return entities and accept persistence-neutral query contracts, not DTOs owned by Application presentation mapping.");
+    }
+
+    [Test]
+    public async Task GenericRepository_ShouldNotExpose_IrreversibleDeleteMethod()
+    {
+        var violations = new[]
+            {
+                typeof(Explore.Application.Contracts.Persistence.IGenericRepository<,>),
+                typeof(Explore.Persistence.Repositories.GenericRepository<,>)
+            }
+            .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .Where(method => method.Name == "HardDelete")
+                .Select(method => $"{type.FullName}.{method.Name}"))
+            .ToList();
+
+        await Assert.That(violations).IsEmpty()
+            .Because("irreversible deletes must not be globally exposed from the shared repository contract.");
+    }
+
     #endregion
 }
