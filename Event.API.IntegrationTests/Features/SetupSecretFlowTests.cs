@@ -4,13 +4,18 @@
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.Onboarding;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -47,6 +52,24 @@ public class SetupSecretFlowTests
         var body = await response.Content.ReadFromJsonAsync<ValidateSecretResponse>();
         await Assert.That(body).IsNotNull();
         await Assert.That(body!.Valid).IsFalse();
+    }
+
+    [Test]
+    public async Task ValidateSecret_WithWrongSecret_ShouldEmitRejectedAuditEvent()
+    {
+        var auditLogger = new CapturingBootstrapAuditLogger();
+        using var factory = CreateFactoryWithSetupSecret(auditLogger);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync($"{BaseUrl}/validate-secret", new { secret = "wrong-secret" });
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(auditLogger.Events.Any(auditEvent =>
+            auditEvent.EventType == InstanceBootstrapAuditEventType.SetupSecretRejected
+            && auditEvent.Operation == "setup_secret_validate"
+            && auditEvent.Outcome == "rejected"
+            && auditEvent.FailureCode == "invalid_setup_secret"
+            && !auditEvent.ToString().Contains("wrong-secret", StringComparison.Ordinal))).IsTrue();
     }
 
     [Test]
@@ -201,6 +224,13 @@ public class SetupSecretFlowTests
         return new AuthenticatedWebApplicationFactory();
     }
 
+    private static AuthenticatedWebApplicationFactory CreateFactoryWithSetupSecret(
+        IInstanceBootstrapAuditLogger auditLogger)
+    {
+        Environment.SetEnvironmentVariable("SETUP_SECRET", SetupSecret);
+        return new BootstrapAuditFactory(auditLogger);
+    }
+
     private static async Task EnsureUserExistsAsync(AuthenticatedWebApplicationFactory factory, Guid userId)
     {
         using var scope = factory.Services.CreateScope();
@@ -256,6 +286,32 @@ public class SetupSecretFlowTests
     private sealed class ValidateSecretResponse
     {
         public bool Valid { get; set; }
+    }
+
+    private sealed class BootstrapAuditFactory(IInstanceBootstrapAuditLogger auditLogger)
+        : AuthenticatedWebApplicationFactory
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IInstanceBootstrapAuditLogger>();
+                services.AddSingleton(auditLogger);
+            });
+        }
+    }
+
+    private sealed class CapturingBootstrapAuditLogger : IInstanceBootstrapAuditLogger
+    {
+        private readonly List<InstanceBootstrapAuditEvent> _events = [];
+
+        public IReadOnlyList<InstanceBootstrapAuditEvent> Events => _events;
+
+        public void Log(InstanceBootstrapAuditEvent auditEvent)
+        {
+            _events.Add(auditEvent);
+        }
     }
 
     #endregion

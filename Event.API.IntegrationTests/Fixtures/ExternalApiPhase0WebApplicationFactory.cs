@@ -247,7 +247,11 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
                                 Title = "Too Many Requests",
                                 Status = StatusCodes.Status429TooManyRequests,
                                 Detail = "Rate limit exceeded. Please retry after the period indicated in the Retry-After header.",
-                                Instance = ctx.HttpContext.Request.Path
+                                Instance = ctx.HttpContext.Request.Path,
+                                Extensions =
+                                {
+                                    ["code"] = "rate_limited"
+                                }
                             }
                         });
                     };

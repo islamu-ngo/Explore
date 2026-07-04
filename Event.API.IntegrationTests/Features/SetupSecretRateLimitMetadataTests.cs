@@ -4,8 +4,10 @@
 using System.Reflection;
 using Explore.API.Controllers;
 using Explore.API.Extensions;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -31,5 +33,62 @@ public sealed class SetupSecretRateLimitMetadataTests
         var rateLimit = method.GetCustomAttribute<EnableRateLimitingAttribute>();
         await Assert.That(rateLimit).IsNotNull();
         await Assert.That(rateLimit!.PolicyName).IsEqualTo(RateLimitingExtensions.SetupSecretPolicy);
+
+        AssertProducesProblem(method, StatusCodes.Status410Gone);
+        AssertProducesProblem(method, StatusCodes.Status429TooManyRequests);
+    }
+
+    [Test]
+    public async Task SetupSecretRequiredActionsUseSetupSecretRateLimitPolicy()
+    {
+        var methods = SetupSecretRequiredActions();
+
+        await Assert.That(methods).IsNotEmpty();
+
+        foreach (var method in methods)
+        {
+            var rateLimit = method.GetCustomAttribute<EnableRateLimitingAttribute>();
+
+            await Assert.That(rateLimit)
+                .IsNotNull()
+                .Because($"{method.Name} is setup-secret gated and must use the setup-secret brute-force limiter.");
+            await Assert.That(rateLimit!.PolicyName).IsEqualTo(RateLimitingExtensions.SetupSecretPolicy);
+        }
+    }
+
+    [Test]
+    public async Task SetupSecretRequiredActionsAdvertiseProblemDetailsForFilterFailures()
+    {
+        var methods = SetupSecretRequiredActions();
+
+        await Assert.That(methods).IsNotEmpty();
+
+        foreach (var method in methods)
+        {
+            AssertProducesProblem(method, StatusCodes.Status403Forbidden);
+            AssertProducesProblem(method, StatusCodes.Status410Gone);
+            AssertProducesProblem(method, StatusCodes.Status429TooManyRequests);
+        }
+    }
+
+    private static IReadOnlyList<MethodInfo> SetupSecretRequiredActions()
+    {
+        return typeof(InstanceOnboardingController)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Where(method => method.GetCustomAttribute<SetupSecretRequiredAttribute>() is not null)
+            .OrderBy(method => method.Name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static void AssertProducesProblem(MethodInfo method, int statusCode)
+    {
+        var hasProblemMetadata = method.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Any(attribute => attribute.StatusCode == statusCode && attribute.Type == typeof(ProblemDetails));
+
+        if (!hasProblemMetadata)
+        {
+            throw new InvalidOperationException(
+                $"{method.Name} must advertise ProblemDetails for HTTP {statusCode}.");
+        }
     }
 }

@@ -90,7 +90,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
             return null;
         }
 
-        var persistedClient = await _externalApiKeyRepository.GetByKeyIdForAuthentication(keyId);
+        var persistedClient = await _externalApiKeyRepository.GetByKeyIdForAuthentication(keyId, Context.RequestAborted);
         if (persistedClient is null)
         {
             return null;

@@ -164,7 +164,7 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
         {
             using var scope = serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-            await DatabaseSeeder.SeedAsync(db, environment, cancellationToken);
+            await DatabaseSeeder.SeedAsync(db, environment, cancellationToken: cancellationToken);
 
             // Refresh the lookup cache to ensure it picks up the seeded data (roles, etc.)
             var cache = scope.ServiceProvider.GetService<ILookupDataCache>();

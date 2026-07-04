@@ -12,7 +12,9 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Modules;
 using Explore.Persistence;
+using Explore.Persistence.Seed;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
@@ -248,6 +250,58 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
             "regular user should be denied instance setting update via local RBAC");
+    }
+
+    #endregion
+
+    #region Module Governance
+
+    [Test]
+    public async Task LocalRbac_TenantAdmin_CanEnableTenantModule()
+    {
+        var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/module/Mod_Tech/enable", token);
+
+        var response = await _tenantAdminClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "tenant admin should be allowed to enable modules for their tenant via local RBAC");
+    }
+
+    [Test]
+    public async Task LocalRbac_TenantAdmin_CanDisableTenantModule()
+    {
+        var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/module/Mod_Islamic/disable", token);
+
+        var response = await _tenantAdminClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "tenant admin should be allowed to disable modules for their tenant via local RBAC");
+    }
+
+    [Test]
+    public async Task LocalRbac_RegularUser_DeniedModuleEnable()
+    {
+        var token = await _keycloak.TokenClient.GetUserTokenAsync();
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/module/Mod_Tech/enable", token);
+
+        var response = await _regularUserClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+            "regular user should be denied module enablement via local RBAC");
+    }
+
+    [Test]
+    public async Task LocalRbac_RegularUser_DeniedModuleDisable()
+    {
+        var token = await _keycloak.TokenClient.GetUserTokenAsync();
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/module/Mod_Islamic/disable", token);
+
+        var response = await _regularUserClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+            "regular user should be denied module disablement via local RBAC");
     }
 
     #endregion
@@ -491,10 +545,76 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
                 CreatedAt = DateTime.UtcNow
             });
 
+            await SeedModuleGovernanceAsync(dbContext, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        private static async Task SeedModuleGovernanceAsync(
+            ExploreDbContext dbContext,
+            CancellationToken cancellationToken)
+        {
+            var seedTimestamp = DateTime.UtcNow;
+
+            if (!await dbContext.ModuleDefinitions.AnyAsync(cancellationToken))
+            {
+                dbContext.ModuleDefinitions.AddRange(
+                    new ModuleDefinition
+                    {
+                        Id = SeedIds.ModuleCoreId,
+                        ModuleKey = "Mod_Core",
+                        Name = "Core Events",
+                        Description = "Basic event functionality",
+                        IconName = "Event",
+                        Category = "Core",
+                        DisplayOrder = 0,
+                        IsActive = true,
+                        CreatedAt = seedTimestamp
+                    },
+                    new ModuleDefinition
+                    {
+                        Id = SeedIds.ModuleIslamicId,
+                        ModuleKey = "Mod_Islamic",
+                        Name = "Islamic Events",
+                        Description = "Islamic-specific event features",
+                        IconName = "Mosque",
+                        Category = "Domain",
+                        DisplayOrder = 1,
+                        IsActive = true,
+                        CreatedAt = seedTimestamp
+                    },
+                    new ModuleDefinition
+                    {
+                        Id = SeedIds.ModuleTechId,
+                        ModuleKey = "Mod_Tech",
+                        Name = "Tech Events",
+                        Description = "Developer event features",
+                        IconName = "Code",
+                        Category = "Domain",
+                        DisplayOrder = 2,
+                        IsActive = true,
+                        CreatedAt = seedTimestamp
+                    });
+            }
+
+            if (!await dbContext.TenantCapabilities.AnyAsync(
+                    capability => capability.TenantId == DefaultTenantId &&
+                        capability.ModuleId == SeedIds.ModuleIslamicId,
+                    cancellationToken))
+            {
+                dbContext.TenantCapabilities.Add(new TenantCapability
+                {
+                    Id = SeedIds.DefaultTenantIslamicCapabilityId,
+                    TenantId = DefaultTenantId,
+                    Tenant = null!,
+                    ModuleId = SeedIds.ModuleIslamicId,
+                    Module = null!,
+                    IsEnabled = true,
+                    EnabledAt = seedTimestamp
+                });
+            }
+        }
     }
 
     #endregion

@@ -7,12 +7,14 @@ using System.Net.Sockets;
 using System.Security.Claims;
 using Explore.API.Authentication;
 using Explore.API.Configuration;
+using Explore.API.ExceptionHandling;
 using Explore.API.Mcp;
 using Explore.Application.Authorization;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
 using Explore.Domain.Constants;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -67,6 +69,7 @@ public static class AuthenticationExtensions
             })
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
             {
+                options.MapInboundClaims = false;
                 options.RequireHttpsMetadata = string.Equals(
                     configuration["Keycloak:RequireHttpsMetadata"],
                     "true",
@@ -232,6 +235,8 @@ public static class AuthenticationExtensions
             .AddPolicy(TickerQSchedulerOptions.InstanceAdminPolicyName, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireClaim(AdminClaimTypes.InstanceAdmin, "true"));
+
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler, ProblemDetailsAuthorizationMiddlewareResultHandler>();
 
         return services;
     }

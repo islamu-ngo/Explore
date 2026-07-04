@@ -29,6 +29,7 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
         var controller = new InstanceOnboardingController(
             mediator,
             Substitute.For<ISetupSecretProvider>(),
+            Substitute.For<IInstanceBootstrapAuditLogger>(),
             Substitute.For<ILogger<InstanceOnboardingController>>());
 
         IActionResult result = await controller.DownloadAuthorizationPolicyPackage(CancellationToken.None);

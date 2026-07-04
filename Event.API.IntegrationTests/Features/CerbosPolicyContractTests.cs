@@ -45,7 +45,7 @@ public class CerbosPolicyContractTests : IDisposable
         yield return ("islamuevent_organization_member", (string[])["view", "create", "update", "delete", "manage_members"]);
         yield return ("islamuevent_group", (string[])["view", "create", "update", "delete"]);
         yield return ("islamuevent_group_member", (string[])["view", "create", "update", "delete"]);
-        yield return ("islamuevent_storage_object", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_storage_object", (string[])["view", "create", "update", "delete", "download", "presigned_download"]);
         yield return ("islamuevent_instance_setting", (string[])["view", "update", "delete", "lock", "unlock"]);
         yield return ("islamuevent_tenant_setting", (string[])["view", "update", "delete"]);
         yield return ("islamuevent_event_session", (string[])["view", "create", "update", "delete"]);
@@ -57,6 +57,8 @@ public class CerbosPolicyContractTests : IDisposable
         yield return ("islamuevent_notification", (string[])["view", "create", "update", "delete"]);
         yield return ("islamuevent_custom_property_definition", (string[])["view", "create", "update", "delete"]);
         yield return ("islamuevent_custom_property_value", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_email_dispatch", (string[])["view", "manage_tenant", "park", "replay"]);
+        yield return ("islamuevent_support_access_session", (string[])["view", "list", "start", "stop", "view_audit", "force_stop"]);
     }
 
     [Test]
@@ -70,7 +72,7 @@ public class CerbosPolicyContractTests : IDisposable
             principalAttrs: new { isInstanceAdmin = true, tenantMemberships = new { }, orgMemberships = new { } },
             resourceKind: resourceKind,
             resourceId: "resource-1",
-            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
+            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1", userId = "user-1" },
             actions: actions);
 
         foreach (var action in actions)
@@ -89,7 +91,7 @@ public class CerbosPolicyContractTests : IDisposable
             principalAttrs: new { isInstanceAdmin = true, tenantMemberships = new { }, orgMemberships = new { } },
             resourceKind: "islamuevent_event",
             resourceId: "event-1",
-            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
+            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1", userId = "user-1" },
             actions: ["view", "view-management", "create", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate"]);
 
         result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
@@ -230,6 +232,30 @@ public class CerbosPolicyContractTests : IDisposable
     }
 
     [Test]
+    public async Task TenantAdmin_ShouldBeAllowed_ManageOrganizationMembersInOwnTenant()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-tenant-admin",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                isInstanceAdmin = false,
+                tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
+                orgMemberships = new { }
+            },
+            resourceKind: "islamuevent_organization_member",
+            resourceId: "member-1",
+            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1", userId = "user-1" },
+            actions: ["view", "create", "update", "delete", "manage_members"]);
+
+        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("manage_members").WhoseValue.Should().Be("EFFECT_ALLOW");
+    }
+
+    [Test]
     public async Task TenantAdmin_ShouldBeDenied_CreateOrganizationsInOtherTenant()
     {
         var result = await _cerbos.CheckResourceAsync(
@@ -291,6 +317,126 @@ public class CerbosPolicyContractTests : IDisposable
 
         result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY",
             "tenant admin must be denied update when instance admin has locked the setting");
+    }
+
+    [Test]
+    public async Task SupportAccessSession_ShouldEnforceLifecycleAndEvidenceAuthority()
+    {
+        string[] actions = ["view", "list", "start", "stop", "view_audit", "force_stop"];
+        var resourceAttrs = new
+        {
+            tenantId = "tenant-1",
+            sessionId = "session-1",
+            actorUserId = "user-instance-admin",
+            mode = "ReadOnly",
+            status = "Active"
+        };
+
+        var instanceAdmin = await _cerbos.CheckResourceAsync(
+            principalId: "user-instance-admin",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = true, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_support_access_session",
+            resourceId: "session-1",
+            resourceAttrs: resourceAttrs,
+            actions: actions);
+
+        foreach (var action in actions)
+            instanceAdmin.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW");
+
+        var tenantAdmin = await _cerbos.CheckResourceAsync(
+            principalId: "user-tenant-admin",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                isInstanceAdmin = false,
+                tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
+                orgMemberships = new { }
+            },
+            resourceKind: "islamuevent_support_access_session",
+            resourceId: "session-1",
+            resourceAttrs: resourceAttrs,
+            actions: actions);
+
+        tenantAdmin.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdmin.Should().ContainKey("list").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdmin.Should().ContainKey("view_audit").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdmin.Should().ContainKey("start").WhoseValue.Should().Be("EFFECT_DENY");
+        tenantAdmin.Should().ContainKey("stop").WhoseValue.Should().Be("EFFECT_DENY");
+        tenantAdmin.Should().ContainKey("force_stop").WhoseValue.Should().Be("EFFECT_DENY");
+
+        var otherTenantAdmin = await _cerbos.CheckResourceAsync(
+            principalId: "user-other-tenant-admin",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                isInstanceAdmin = false,
+                tenantMemberships = new Dictionary<string, string> { ["tenant-other"] = "admin" },
+                orgMemberships = new { }
+            },
+            resourceKind: "islamuevent_support_access_session",
+            resourceId: "session-1",
+            resourceAttrs: resourceAttrs,
+            actions: ["view", "list", "view_audit"]);
+
+        otherTenantAdmin.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY");
+        otherTenantAdmin.Should().ContainKey("list").WhoseValue.Should().Be("EFFECT_DENY");
+        otherTenantAdmin.Should().ContainKey("view_audit").WhoseValue.Should().Be("EFFECT_DENY");
+
+        var regularUser = await _cerbos.CheckResourceAsync(
+            principalId: "user-regular",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_support_access_session",
+            resourceId: "session-1",
+            resourceAttrs: resourceAttrs,
+            actions: actions);
+
+        foreach (var action in actions)
+            regularUser.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_DENY");
+    }
+
+    [Test]
+    public async Task TenantAdmin_ShouldBeAllowed_ManageEmailDispatchInOwnTenant()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-tenant-admin",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                isInstanceAdmin = false,
+                tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
+                orgMemberships = new { }
+            },
+            resourceKind: "islamuevent_email_dispatch",
+            resourceId: "dispatch-1",
+            resourceAttrs: new { tenantId = "tenant-1", outboxId = "dispatch-1", deliveryStatus = "DeadLettered" },
+            actions: ["view", "manage_tenant", "park", "replay"]);
+
+        foreach (var action in new[] { "view", "manage_tenant", "park", "replay" })
+        {
+            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW",
+                $"tenant admin should be allowed '{action}' on email dispatch rows in their tenant");
+        }
+    }
+
+    [Test]
+    public async Task RegularUser_ShouldBeDenied_ManageEmailDispatch()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-regular",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_email_dispatch",
+            resourceId: "dispatch-1",
+            resourceAttrs: new { tenantId = "tenant-1", outboxId = "dispatch-1", deliveryStatus = "DeadLettered" },
+            actions: ["view", "manage_tenant", "park", "replay"]);
+
+        foreach (var action in new[] { "view", "manage_tenant", "park", "replay" })
+        {
+            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_DENY",
+                $"regular users must not access email dispatch operator actions");
+        }
     }
 
     [Test]
@@ -442,7 +588,7 @@ public class CerbosPolicyContractTests : IDisposable
             },
             resourceKind: "islamuevent_organization_member",
             resourceId: "member-1",
-            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
+            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1", userId = "user-1" },
             actions: ["view", "create", "update", "delete", "manage_members"]);
 
         result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
@@ -637,7 +783,7 @@ public class CerbosPolicyContractTests : IDisposable
     }
 
     [Test]
-    public async Task RegularUser_ShouldBeAllowed_ViewAndUploadStorageObjects()
+    public async Task RegularUser_ShouldBeAllowed_CreateAndDownloadReadableStorageObjects()
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
@@ -645,11 +791,19 @@ public class CerbosPolicyContractTests : IDisposable
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
             resourceKind: "islamuevent_storage_object",
             resourceId: "obj-1",
-            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
-            actions: ["view", "create"]);
+            resourceAttrs: new
+            {
+                tenantId = "tenant-1",
+                organizationId = "org-1",
+                visibility = "authenticated_tenant",
+                lifecycleState = "active"
+            },
+            actions: ["view", "create", "download", "presigned_download"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY");
         result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("download").WhoseValue.Should().Be("EFFECT_ALLOW");
+        result.Should().ContainKey("presigned_download").WhoseValue.Should().Be("EFFECT_ALLOW");
     }
 
     [Test]
@@ -713,11 +867,8 @@ public class CerbosPolicyContractTests : IDisposable
         yield return "islamuevent_tag";
         yield return "islamuevent_location";
         yield return "islamuevent_actor";
-        yield return "islamuevent_tenant_user_role_grant";
-        yield return "islamuevent_organization_member";
         yield return "islamuevent_group";
         yield return "islamuevent_group_member";
-        yield return "islamuevent_storage_object";
         yield return "islamuevent_instance_setting";
         yield return "islamuevent_event_session";
         yield return "islamuevent_event_day";
@@ -745,6 +896,38 @@ public class CerbosPolicyContractTests : IDisposable
 
         result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW",
             $"regular users should be able to view '{resourceKind}' resources");
+    }
+
+    [Test]
+    public async Task RegularUser_ShouldBeDenied_ViewTenantUserRoleGrants()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-regular",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_tenant_user_role_grant",
+            resourceId: "role-grant-1",
+            resourceAttrs: new { tenantId = "tenant-1", tenantUserId = "tenant-user-1", userId = "user-1" },
+            actions: ["view"]);
+
+        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY",
+            "tenant role grants include identity, role, grant, and revocation metadata and are tenant-admin-only");
+    }
+
+    [Test]
+    public async Task RegularUser_ShouldBeDenied_ViewOrganizationMembers()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-regular",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_organization_member",
+            resourceId: "member-1",
+            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1", userId = "user-1" },
+            actions: ["view"]);
+
+        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY",
+            "organization members include identity, role, and position metadata and are admin/member-management data");
     }
 
     #endregion
