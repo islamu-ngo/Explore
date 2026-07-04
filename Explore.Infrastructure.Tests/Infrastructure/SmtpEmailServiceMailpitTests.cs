@@ -1,0 +1,82 @@
+// ABOUTME: Mailpit-backed integration tests for SmtpEmailService.
+// ABOUTME: Proves MailKit SMTP sends and connection checks work against local test infrastructure.
+
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Models;
+using Explore.Infrastructure.Mail;
+using Explore.Infrastructure.Tests.Fixtures;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+
+namespace Explore.Infrastructure.Tests.Infrastructure;
+
+[Category(InfrastructureTestCategories.Email)]
+[Category(InfrastructureTestCategories.Runtime)]
+[ClassDataSource<MailpitContainerFixture>(Shared = SharedType.PerClass)]
+[NotInParallel("MailpitSmtp")]
+public sealed class SmtpEmailServiceMailpitTests(MailpitContainerFixture mailpit)
+{
+    [Test]
+    [Timeout(180_000)]
+    public async Task SendAsync_WithMailpitSmtpConfig_DeliversMessageToMailpit()
+    {
+        await mailpit.ClearMessagesAsync();
+        var subject = $"Registration confirmation {Guid.CreateVersion7():N}";
+        var body = $"Your registration has been received. sentinel-{Guid.CreateVersion7():N}";
+        var smtpPassword = $"smtp-secret-{Guid.CreateVersion7():N}";
+        var service = CreateService(CreateConfig(password: smtpPassword));
+
+        var result = await service.SendAsync(new EmailMessage
+        {
+            To = "attendee@example.test",
+            Subject = subject,
+            PlainTextBody = body,
+            HtmlBody = $"<p>{body}</p>"
+        });
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message ?? string.Empty).DoesNotContain(body);
+        await Assert.That(result.Message ?? string.Empty).DoesNotContain(smtpPassword);
+        await Assert.That(result.ErrorMessage ?? string.Empty).DoesNotContain(body);
+        await Assert.That(result.ErrorMessage ?? string.Empty).DoesNotContain(smtpPassword);
+
+        var summary = await mailpit.WaitForMessageAsync(
+            message => message.Subject == subject
+                && message.To.Any(address => address.Address == "attendee@example.test"),
+            TimeSpan.FromSeconds(10));
+        var detail = await mailpit.GetMessageAsync(summary.Id);
+
+        await Assert.That(summary.From.Address).IsEqualTo("noreply@example.test");
+        await Assert.That(detail.Text).Contains(body);
+        await Assert.That(detail.Html).Contains(body);
+    }
+
+    [Test]
+    [Timeout(180_000)]
+    public async Task TestConnectionAsync_WithMailpitSmtpConfig_ReturnsSuccess()
+    {
+        var service = CreateService(CreateConfig());
+
+        var result = await service.TestConnectionAsync();
+
+        await Assert.That(result.Success).IsTrue();
+    }
+
+    private SmtpConfiguration CreateConfig(string? password = null) => new()
+    {
+        Host = mailpit.SmtpHost,
+        Port = mailpit.SmtpPort,
+        Security = SmtpSecurityMode.None,
+        FromAddress = "noreply@example.test",
+        FromName = "ISLAMU Event Tests",
+        Password = password,
+        TimeoutSeconds = 10
+    };
+
+    private static SmtpEmailService CreateService(SmtpConfiguration? config)
+    {
+        var resolver = Substitute.For<ISmtpConfigResolver>();
+        resolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(config);
+        return new SmtpEmailService(resolver, NullLogger<SmtpEmailService>.Instance);
+    }
+}

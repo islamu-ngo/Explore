@@ -1,12 +1,15 @@
 // ABOUTME: Drains durable EmailDispatchOutbox rows into SMTP attempts for Basic Dispatch Mode.
 // ABOUTME: Preserves PostgreSQL-owned delivery state while exposing a scheduler-friendly execution boundary.
 
+using System.Net;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Models;
 using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Constants;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -21,6 +24,8 @@ public sealed class EmailDispatchDrainService(
 {
     private const string ProcessingLeaseExpiredFailureCategory = "processing_lease_expired";
     private const string ProcessingLeaseExpiredMessage = "Email dispatch processing lease expired before a durable outcome was recorded. Outcome is unknown and requires operator review or replay.";
+    private const string RecipientUnsubscribedFailureCategory = "recipient_unsubscribed";
+    private const string RecipientUnsubscribedMessage = "Recipient is unsubscribed from this email category; SMTP send was skipped before provider handoff.";
 
     private readonly EmailDispatchProcessorSettings _settings = settings.Value;
 
@@ -37,7 +42,7 @@ public sealed class EmailDispatchDrainService(
                 logger.LogDebug("No pending email dispatch rows");
             }
 
-            return new EmailDispatchDrainResult(0, 0, 0, 0, 0, 0, 0, 0);
+            return new EmailDispatchDrainResult(0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
 
         logger.LogInformation("Processing {Count} email dispatch rows", pending.Count);
@@ -46,6 +51,7 @@ public sealed class EmailDispatchDrainService(
         var retryScheduled = 0;
         var deadLettered = 0;
         var unknown = 0;
+        var skipped = 0;
         var tenantPaused = 0;
         var alreadyClaimed = 0;
         var processed = 0;
@@ -77,6 +83,10 @@ public sealed class EmailDispatchDrainService(
                     unknown++;
                     processed++;
                     break;
+                case EmailDispatchDrainOutcome.Skipped:
+                    skipped++;
+                    processed++;
+                    break;
                 case EmailDispatchDrainOutcome.TenantPaused:
                     tenantPaused++;
                     break;
@@ -93,6 +103,7 @@ public sealed class EmailDispatchDrainService(
             retryScheduled,
             deadLettered,
             unknown,
+            skipped,
             tenantPaused,
             alreadyClaimed);
     }
@@ -188,6 +199,9 @@ public sealed class EmailDispatchDrainService(
         await using var scope = scopeFactory.CreateAsyncScope();
         var repository = scope.ServiceProvider.GetRequiredService<IEmailDispatchOutboxRepository>();
         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+        var preferenceRepository = scope.ServiceProvider.GetRequiredService<IUserNotificationPreferenceRepository>();
+        var unsubscribeTokenService = scope.ServiceProvider.GetRequiredService<IEmailUnsubscribeTokenService>();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         var tenantAccessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
 
         if (await repository.IsTenantPaused(dispatch.TenantId, cancellationToken))
@@ -235,19 +249,49 @@ public sealed class EmailDispatchDrainService(
                 logger.LogDebug("Email dispatch receipt already exists for publish event {PublishEventId}", dispatch.PublishEventId);
             }
 
-            var message = new EmailMessage
+            var preferenceCategory = ResolvePreferenceCategory(dispatch.Kind);
+            if (await ShouldSkipForPreferenceAsync(preferenceRepository, dispatch, preferenceCategory))
             {
-                To = dispatch.RecipientEmail,
-                Subject = dispatch.Subject,
-                PlainTextBody = dispatch.PlainTextBody,
-                HtmlBody = dispatch.HtmlBody,
-                ReplyTo = dispatch.ReplyTo,
-                CustomHeaders = new Dictionary<string, string>
+                var skippedAt = DateTime.UtcNow;
+                await repository.RecordAttempt(new EmailDispatchAttempt
                 {
-                    ["X-Correlation-ID"] = dispatch.CorrelationId ?? dispatch.Id.ToString(),
-                    ["X-Email-Dispatch-ID"] = dispatch.Id.ToString()
+                    TenantId = dispatch.TenantId,
+                    EmailDispatchOutboxId = dispatch.Id,
+                    AttemptNumber = dispatch.AttemptCount + 1,
+                    Outcome = EmailDispatchAttemptOutcome.Skipped,
+                    StartedAt = now,
+                    CompletedAt = skippedAt,
+                    FailureCategory = RecipientUnsubscribedFailureCategory,
+                    SanitizedErrorMessage = RecipientUnsubscribedMessage,
+                    CorrelationId = dispatch.CorrelationId
+                }, cancellationToken);
+
+                await repository.MarkAsSkipped(
+                    dispatch.Id,
+                    RecipientUnsubscribedFailureCategory,
+                    RecipientUnsubscribedMessage,
+                    skippedAt,
+                    cancellationToken);
+                if (receipt is not null)
+                {
+                    await repository.MarkReceiptSkipped(
+                        receipt.Id,
+                        RecipientUnsubscribedFailureCategory,
+                        RecipientUnsubscribedMessage,
+                        skippedAt,
+                        cancellationToken);
                 }
-            };
+
+                metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "skipped", RecipientUnsubscribedFailureCategory);
+                logger.LogInformation(
+                    "Email dispatch {Id} skipped for tenant {TenantId} because recipient is unsubscribed from category {Category}",
+                    dispatch.Id,
+                    dispatch.TenantId,
+                    preferenceCategory);
+                return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Skipped, dispatch.Id);
+            }
+
+            var message = BuildEmailMessage(dispatch, unsubscribeTokenService, configuration, preferenceCategory, now);
 
             var startedAt = DateTime.UtcNow;
             var result = await emailService.SendAsync(message, cancellationToken);
@@ -419,11 +463,136 @@ public sealed class EmailDispatchDrainService(
         return failedAttemptCount >= Math.Min(dispatch.MaxAttempts, _settings.MaxAttemptCount);
     }
 
+    private static async Task<bool> ShouldSkipForPreferenceAsync(
+        IUserNotificationPreferenceRepository preferenceRepository,
+        EmailDispatchOutbox dispatch,
+        string? preferenceCategory)
+    {
+        if (preferenceCategory is null || dispatch.UserId is null)
+        {
+            return false;
+        }
+
+        var preference = await preferenceRepository.GetByUserAndCategory(
+            dispatch.TenantId,
+            dispatch.UserId.Value,
+            preferenceCategory);
+
+        return preference is { IsEnabled: false };
+    }
+
+    private static EmailMessage BuildEmailMessage(
+        EmailDispatchOutbox dispatch,
+        IEmailUnsubscribeTokenService unsubscribeTokenService,
+        IConfiguration configuration,
+        string? preferenceCategory,
+        DateTime issuedAt)
+    {
+        var headers = new Dictionary<string, string>
+        {
+            ["X-Correlation-ID"] = dispatch.CorrelationId ?? dispatch.Id.ToString(),
+            ["X-Email-Dispatch-ID"] = dispatch.Id.ToString()
+        };
+
+        var plainTextBody = dispatch.PlainTextBody;
+        var htmlBody = dispatch.HtmlBody;
+        var unsubscribeUrl = BuildUnsubscribeUrl(dispatch, preferenceCategory, unsubscribeTokenService, configuration, issuedAt);
+        if (unsubscribeUrl is not null)
+        {
+            headers["List-Unsubscribe"] = $"<{unsubscribeUrl}>";
+            headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+            plainTextBody = AppendPlainTextUnsubscribe(plainTextBody, unsubscribeUrl);
+            htmlBody = AppendHtmlUnsubscribe(htmlBody, unsubscribeUrl);
+        }
+
+        return new EmailMessage
+        {
+            To = dispatch.RecipientEmail,
+            Subject = dispatch.Subject,
+            PlainTextBody = plainTextBody,
+            HtmlBody = htmlBody,
+            ReplyTo = dispatch.ReplyTo,
+            CustomHeaders = headers
+        };
+    }
+
+    private static string? BuildUnsubscribeUrl(
+        EmailDispatchOutbox dispatch,
+        string? preferenceCategory,
+        IEmailUnsubscribeTokenService unsubscribeTokenService,
+        IConfiguration configuration,
+        DateTime issuedAt)
+    {
+        if (preferenceCategory is null || dispatch.UserId is null)
+        {
+            return null;
+        }
+
+        var publicBaseUrl = ResolvePublicBaseUrl(configuration);
+        if (publicBaseUrl is null)
+        {
+            return null;
+        }
+
+        var token = unsubscribeTokenService.GenerateToken(new EmailUnsubscribeTokenPayload(
+            dispatch.TenantId,
+            dispatch.UserId.Value,
+            preferenceCategory,
+            issuedAt));
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        return $"{publicBaseUrl}/api/email/unsubscribe?token={Uri.EscapeDataString(token)}";
+    }
+
+    private static string? ResolvePublicBaseUrl(IConfiguration configuration)
+    {
+        var configured = configuration["PublicBaseUrl"]
+            ?? configuration["App:PublicBaseUrl"]
+            ?? configuration["Application:PublicBaseUrl"];
+        if (string.IsNullOrWhiteSpace(configured)
+            || !Uri.TryCreate(configured.Trim(), UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            return null;
+        }
+
+        return uri.ToString().TrimEnd('/');
+    }
+
+    private static string AppendPlainTextUnsubscribe(string? body, string unsubscribeUrl)
+    {
+        var prefix = string.IsNullOrWhiteSpace(body) ? string.Empty : body.TrimEnd() + "\n\n";
+        return $"{prefix}To stop receiving this category of email, unsubscribe: {unsubscribeUrl}";
+    }
+
+    private static string AppendHtmlUnsubscribe(string? body, string unsubscribeUrl)
+    {
+        var encodedUrl = WebUtility.HtmlEncode(unsubscribeUrl);
+        var footer = $"<p>To stop receiving this category of email, <a href=\"{encodedUrl}\">unsubscribe</a>.</p>";
+        return string.IsNullOrWhiteSpace(body) ? footer : body + footer;
+    }
+
+    private static string? ResolvePreferenceCategory(EmailDispatchKind kind) => kind switch
+    {
+        EmailDispatchKind.RegistrationConfirmation => NotificationPreferenceCategories.RegistrationConfirmations,
+        EmailDispatchKind.EventReminder => NotificationPreferenceCategories.EventReminders,
+        EmailDispatchKind.OrganizerNotification => NotificationPreferenceCategories.OrganizerAnnouncements,
+        EmailDispatchKind.RegistrationApproved
+            or EmailDispatchKind.RegistrationRejected
+            or EmailDispatchKind.WaitlistPromoted
+            or EmailDispatchKind.EventCancelled => NotificationPreferenceCategories.EventUpdates,
+        _ => null
+    };
+
     private static bool IsSettled(EmailDispatchStatus status)
     {
         return status is EmailDispatchStatus.Sent
             or EmailDispatchStatus.DeadLettered
             or EmailDispatchStatus.Parked
-            or EmailDispatchStatus.Unknown;
+            or EmailDispatchStatus.Unknown
+            or EmailDispatchStatus.Skipped;
     }
 }

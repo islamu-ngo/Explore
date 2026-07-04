@@ -39,6 +39,21 @@ public sealed class EmailDispatchRabbitMqSettingsValidator : IValidateOptions<Em
             failures.Add("PublishTimeoutSeconds must be greater than zero.");
         }
 
+        if (options.PublisherPollingIntervalSeconds <= 0)
+        {
+            failures.Add("PublisherPollingIntervalSeconds must be greater than zero.");
+        }
+
+        if (options.PublisherBatchSize <= 0)
+        {
+            failures.Add("PublisherBatchSize must be greater than zero.");
+        }
+
+        if (options.PublisherRetryDelaySeconds <= 0)
+        {
+            failures.Add("PublisherRetryDelaySeconds must be greater than zero.");
+        }
+
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);

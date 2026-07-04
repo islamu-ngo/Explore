@@ -7,6 +7,7 @@ using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.Infrastructure.HealthChecks;
 using Explore.Infrastructure.Messaging;
+using Explore.Infrastructure.Tests.Fixtures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,6 +16,7 @@ using NSubstitute;
 
 namespace Explore.Infrastructure.Tests.Infrastructure;
 
+[Category(InfrastructureTestCategories.RabbitMQ)]
 public sealed class EmailDispatchRabbitMqHealthCheckTests
 {
     [Test]
@@ -37,6 +39,28 @@ public sealed class EmailDispatchRabbitMqHealthCheckTests
         await Assert.That(result.Data["enabled"]).IsEqualTo(false);
         await Assert.That(result.Data.ContainsKey("password")).IsFalse();
         await Assert.That(result.Data.ContainsKey("secret")).IsFalse();
+    }
+
+    [Test]
+    public async Task CheckHealthAsyncWhenTransportHealthyReturnsHealthy()
+    {
+        var healthCheck = new EmailDispatchRabbitMqHealthCheck(new StubTransport(
+            new EmailDispatchTransportHealth(
+                Enabled: true,
+                Healthy: true,
+                Description: "broker ready",
+                Data: new Dictionary<string, object>
+                {
+                    ["enabled"] = true,
+                    ["exchange"] = "explore.email-dispatch"
+                })));
+
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+        await Assert.That(result.Description).Contains("broker ready");
+        await Assert.That(result.Data["enabled"]).IsEqualTo(true);
+        await Assert.That(result.Data["exchange"]).IsEqualTo("explore.email-dispatch");
     }
 
     [Test]

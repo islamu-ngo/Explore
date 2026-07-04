@@ -2,9 +2,11 @@
 // ABOUTME: Verifies optional RabbitMQ Dispatch Mode rejects unsafe topology settings.
 
 using Explore.Infrastructure;
+using Explore.Infrastructure.Tests.Fixtures;
 
 namespace Explore.Infrastructure.Tests.Infrastructure;
 
+[Category(InfrastructureTestCategories.RabbitMQ)]
 public sealed class EmailDispatchRabbitMqSettingsValidatorTests
 {
     private readonly EmailDispatchRabbitMqSettingsValidator _validator = new();
@@ -39,6 +41,42 @@ public sealed class EmailDispatchRabbitMqSettingsValidatorTests
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.PublishTimeoutSeconds));
+    }
+
+    [Test]
+    public async Task ValidateInvalidPublisherPollingIntervalReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchRabbitMqSettings
+        {
+            PublisherPollingIntervalSeconds = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.PublisherPollingIntervalSeconds));
+    }
+
+    [Test]
+    public async Task ValidateInvalidPublisherBatchSizeReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchRabbitMqSettings
+        {
+            PublisherBatchSize = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.PublisherBatchSize));
+    }
+
+    [Test]
+    public async Task ValidateInvalidPublisherRetryDelayReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchRabbitMqSettings
+        {
+            PublisherRetryDelaySeconds = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.PublisherRetryDelaySeconds));
     }
 
     [Test]

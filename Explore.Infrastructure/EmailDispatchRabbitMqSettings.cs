@@ -42,4 +42,10 @@ public sealed class EmailDispatchRabbitMqSettings
     public ushort DeadLetterReplayPrefetchCount { get; set; } = 5;
 
     public int PublishTimeoutSeconds { get; set; } = 15;
+
+    public int PublisherPollingIntervalSeconds { get; set; } = 5;
+
+    public int PublisherBatchSize { get; set; } = 100;
+
+    public int PublisherRetryDelaySeconds { get; set; } = 30;
 }

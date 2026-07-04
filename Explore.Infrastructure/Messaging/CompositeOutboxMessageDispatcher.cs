@@ -1,5 +1,5 @@
-// ABOUTME: Routes durable outbox messages to external MQ or internal application dispatchers.
-// ABOUTME: Preserves external MQContract publishing while handling local notification fanout events.
+// ABOUTME: Routes durable outbox messages to local application side-effect dispatchers.
+// ABOUTME: Handles notification fanout and provider synchronization after durable transaction commits.
 
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
@@ -14,7 +14,6 @@ using Microsoft.Extensions.Logging;
 namespace Explore.Infrastructure.Messaging;
 
 public sealed class CompositeOutboxMessageDispatcher(
-    MqContractOutboxMessageDispatcher mqContractDispatcher,
     IEventPublishedNotificationFanoutService notificationFanoutService,
     IEventModerationNotificationFanoutService moderationNotificationFanoutService,
     IReportProviderSyncDispatcher reportProviderSyncDispatcher,
@@ -24,10 +23,6 @@ public sealed class CompositeOutboxMessageDispatcher(
     {
         switch (message.EventType)
         {
-            case PublishEventCommandHandler.EventPublishedEventType:
-                await mqContractDispatcher.DispatchAsync(message, ct);
-                return;
-
             case PublishEventCommandHandler.EventPublishedNotificationFanoutRequestedEventType:
                 await DispatchNotificationFanoutAsync(message, ct);
                 return;

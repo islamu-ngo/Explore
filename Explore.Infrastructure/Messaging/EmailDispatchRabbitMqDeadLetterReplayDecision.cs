@@ -39,6 +39,11 @@ internal static class EmailDispatchRabbitMqDeadLetterReplayDecision
             return EmailDispatchRabbitMqDeadLetterReplaySettlement.Park("already_sent");
         }
 
+        if (dispatch.Status == EmailDispatchStatus.Skipped)
+        {
+            return EmailDispatchRabbitMqDeadLetterReplaySettlement.Park("already_skipped");
+        }
+
         if (dispatch.Status == EmailDispatchStatus.Processing)
         {
             return EmailDispatchRabbitMqDeadLetterReplaySettlement.Park("already_processing");

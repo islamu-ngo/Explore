@@ -4,9 +4,12 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
 using Explore.Infrastructure.Messaging;
+using Explore.Infrastructure.Tests.Fixtures;
 
 namespace Explore.Infrastructure.Tests.Infrastructure;
 
+[Category(InfrastructureTestCategories.Email)]
+[Category(InfrastructureTestCategories.RabbitMQ)]
 public sealed class EmailDispatchRabbitMqDeadLetterReplayDecisionTests
 {
     [Test]

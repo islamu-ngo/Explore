@@ -6,12 +6,15 @@ using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Infrastructure.Mail;
+using Explore.Infrastructure.Tests.Fixtures;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using NSubstitute.Core;
 
 namespace Explore.Infrastructure.Tests.Infrastructure;
 
+[Category(InfrastructureTestCategories.Email)]
 public class SmtpConfigResolverTests : IDisposable
 {
     private readonly IHierarchicalSettingsResolver _settingsResolver;
@@ -88,6 +91,57 @@ public class SmtpConfigResolverTests : IDisposable
         await Assert.That(result.FromName).IsEqualTo("Test Platform");
         await Assert.That(result.Username).IsEqualTo("user@example.com");
         await Assert.That(result.Security).IsEqualTo(SmtpSecurityMode.StartTls);
+    }
+
+    [Test]
+    public async Task ResolveAsync_UsesTenantContextForSettingsCascade()
+    {
+        SetupValidSmtpSettings();
+
+        var result = await _resolver.ResolveAsync();
+
+        await Assert.That(result).IsNotNull();
+        await _settingsResolver.Received(1)
+            .ResolveAsync<string>(
+                GovernanceSettingKeys.Email.SmtpHost,
+                Arg.Is<SettingContext>(ctx => ctx.TenantId == TestTenantId),
+                Arg.Any<CancellationToken>());
+        await _settingsResolver.Received(1)
+            .ResolveAsync<string>(
+                InfrastructureSecretSettingKeys.Email.SmtpPassword,
+                Arg.Is<SettingContext>(ctx => ctx.TenantId == TestTenantId),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ResolveAsync_WhenTenantChanges_UsesSeparateCacheEntry()
+    {
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        var activeTenantId = tenantA;
+        _tenantContext.TenantId.Returns(_ => activeTenantId);
+        SetupTenantAwareSmtpSettings(
+            tenantB,
+            systemHost: "smtp.system.example.com",
+            tenantOverrideHost: "smtp.tenant.example.com");
+
+        var systemDefaultConfig = await _resolver.ResolveAsync();
+        activeTenantId = tenantB;
+        var tenantOverrideConfig = await _resolver.ResolveAsync();
+        activeTenantId = tenantA;
+        var cachedSystemDefaultConfig = await _resolver.ResolveAsync();
+
+        await Assert.That(systemDefaultConfig).IsNotNull();
+        await Assert.That(tenantOverrideConfig).IsNotNull();
+        await Assert.That(cachedSystemDefaultConfig).IsNotNull();
+        await Assert.That(systemDefaultConfig!.Host).IsEqualTo("smtp.system.example.com");
+        await Assert.That(tenantOverrideConfig!.Host).IsEqualTo("smtp.tenant.example.com");
+        await Assert.That(cachedSystemDefaultConfig!.Host).IsEqualTo("smtp.system.example.com");
+        await _settingsResolver.Received(2)
+            .ResolveAsync<string>(
+                GovernanceSettingKeys.Email.SmtpHost,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -219,5 +273,78 @@ public class SmtpConfigResolverTests : IDisposable
             .Returns("Test Platform");
         _settingsResolver.ResolveAsync<bool>(GovernanceSettingKeys.Email.SmtpSkipCertValidation, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(false);
+    }
+
+    private void SetupTenantAwareSmtpSettings(
+        Guid tenantOverrideTenantId,
+        string systemHost,
+        string tenantOverrideHost)
+    {
+        _settingsResolver
+            .ResolveAsync<string>(
+                GovernanceSettingKeys.Email.SmtpHost,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => ResolveTenantValue(call, tenantOverrideTenantId, systemHost, tenantOverrideHost));
+        _settingsResolver
+            .ResolveAsync<string>(
+                GovernanceSettingKeys.Email.FromAddress,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns("noreply@example.com");
+        _settingsResolver
+            .ResolveAsync<int>(
+                GovernanceSettingKeys.Email.SmtpPort,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(587);
+        _settingsResolver
+            .ResolveAsync<string>(
+                GovernanceSettingKeys.Email.SmtpSecurity,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns("StartTls");
+        _settingsResolver
+            .ResolveAsync<int>(
+                GovernanceSettingKeys.Email.SmtpTimeoutSeconds,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(30);
+        _settingsResolver
+            .ResolveAsync<string>(
+                InfrastructureSecretSettingKeys.Email.SmtpUsername,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns("user@example.com");
+        _settingsResolver
+            .ResolveAsync<string>(
+                InfrastructureSecretSettingKeys.Email.SmtpPassword,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns("secret123");
+        _settingsResolver
+            .ResolveAsync<string>(
+                GovernanceSettingKeys.Email.FromName,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns("Test Platform");
+        _settingsResolver
+            .ResolveAsync<bool>(
+                GovernanceSettingKeys.Email.SmtpSkipCertValidation,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+    }
+
+    private static string ResolveTenantValue(
+        CallInfo call,
+        Guid tenantOverrideTenantId,
+        string systemValue,
+        string tenantOverrideValue)
+    {
+        var context = call.ArgAt<SettingContext>(1);
+        return context.TenantId == tenantOverrideTenantId
+            ? tenantOverrideValue
+            : systemValue;
     }
 }
