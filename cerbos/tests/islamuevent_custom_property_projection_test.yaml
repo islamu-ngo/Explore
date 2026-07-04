@@ -1,0 +1,97 @@
+# ABOUTME: Cerbos policy test suite for custom-property projection admin resources.
+# ABOUTME: Ensures projection status, rebuild, and dirty-scope controls are tenant-admin-only.
+
+name: CustomPropertyProjectionPolicyTests
+description: "Validates custom_property_projection operator permissions across admin hierarchy levels"
+
+principals:
+  islamuevent_instance_admin:
+    id: "user-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  islamuevent_tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  other_tenant_admin:
+    id: "user-other-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-2": "admin"
+      orgMemberships: {}
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  projection_in_tenant1:
+    kind: "islamuevent_custom_property_projection"
+    id: "tenant-1:event_custom_property_projection"
+    attr:
+      tenantId: "tenant-1"
+      projectionName: "event_custom_property_projection"
+
+tests:
+  - name: "Instance admin has full projection operator access"
+    input:
+      principals: ["islamuevent_instance_admin"]
+      resources: ["projection_in_tenant1"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "projection_in_tenant1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+
+  - name: "Tenant admin can operate projections in their tenant"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["projection_in_tenant1"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "projection_in_tenant1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+
+  - name: "Other tenant admin cannot operate projections outside their tenant"
+    input:
+      principals: ["other_tenant_admin"]
+      resources: ["projection_in_tenant1"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "other_tenant_admin"
+        resource: "projection_in_tenant1"
+        actions:
+          view: EFFECT_DENY
+          update: EFFECT_DENY
+
+  - name: "Regular user cannot access projection operator actions"
+    input:
+      principals: ["regular_user"]
+      resources: ["projection_in_tenant1"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "regular_user"
+        resource: "projection_in_tenant1"
+        actions:
+          view: EFFECT_DENY
+          update: EFFECT_DENY

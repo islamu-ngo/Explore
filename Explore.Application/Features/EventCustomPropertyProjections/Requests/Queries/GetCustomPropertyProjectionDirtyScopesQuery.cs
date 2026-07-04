@@ -16,6 +16,29 @@ public class GetCustomPropertyProjectionDirtyScopesQuery : IRequest<PaginatedRes
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = PaginatedResult<ProjectionDirtyScopeDto>.DefaultPageSize;
 
-    string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
+    string? ISecureRequest.ResourceId => TenantId == Guid.Empty
+        ? null
+        : string.IsNullOrWhiteSpace(ProjectionName)
+            ? TenantId.ToString("D")
+            : $"{TenantId:D}:{ProjectionName}";
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes
+    {
+        get
+        {
+            if (TenantId == Guid.Empty)
+                return null;
+
+            var attributes = new Dictionary<string, object>
+            {
+                ["tenantId"] = TenantId.ToString("D"),
+                ["authorizationScope"] = "dirty_scope_collection"
+            };
+
+            if (!string.IsNullOrWhiteSpace(ProjectionName))
+                attributes["projectionName"] = ProjectionName;
+
+            return attributes;
+        }
+    }
 }

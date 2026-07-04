@@ -1,8 +1,9 @@
 // ABOUTME: Verifies custom-property projection inspection queries fail closed through resource authorization metadata.
-// ABOUTME: Covers event and session projection read surfaces that expose status, dirty scopes, and projection rows.
+// ABOUTME: Covers tenant, event, and session projection read surfaces that feed Cerbos/fallback resource context.
 
 using System.Reflection;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
 
@@ -24,5 +25,59 @@ public class ProjectionQueryAuthorizationMetadataTests
         await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.CustomPropertyProjection);
         await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.CustomPropertyProjections.View);
         await Assert.That(typeof(ISecureRequest).IsAssignableFrom(queryType)).IsTrue();
+    }
+
+    public static IEnumerable<(ISecureRequest Request, string ExpectedResourceId, string ExpectedContextKey, string ExpectedContextValue)> AuthorizedProjectionQueries()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var eventSessionId = Guid.NewGuid();
+
+        yield return (
+            new GetEventCustomPropertyProjectionStatusQuery { TenantId = tenantId },
+            tenantId.ToString("D"),
+            "projectionName",
+            IEventCustomPropertyProjectionUpdater.ProjectionName);
+        yield return (
+            new GetEventSessionCustomPropertyProjectionStatusQuery { TenantId = tenantId },
+            tenantId.ToString("D"),
+            "projectionName",
+            IEventSessionCustomPropertyProjectionUpdater.ProjectionName);
+        yield return (
+            new GetCustomPropertyProjectionDirtyScopesQuery
+            {
+                TenantId = tenantId,
+                ProjectionName = IEventCustomPropertyProjectionUpdater.ProjectionName
+            },
+            $"{tenantId:D}:{IEventCustomPropertyProjectionUpdater.ProjectionName}",
+            "projectionName",
+            IEventCustomPropertyProjectionUpdater.ProjectionName);
+        yield return (
+            new GetEventCustomPropertyProjectionsForEventQuery { EventId = eventId },
+            eventId.ToString("D"),
+            "eventId",
+            eventId.ToString("D"));
+        yield return (
+            new GetEventSessionCustomPropertyProjectionsForSessionQuery { EventSessionId = eventSessionId },
+            eventSessionId.ToString("D"),
+            "eventSessionId",
+            eventSessionId.ToString("D"));
+    }
+
+    [Test]
+    [MethodDataSource(nameof(AuthorizedProjectionQueries))]
+    public async Task ProjectionInspectionQueriesExposeResourceAuthorizationContext(
+        (ISecureRequest Request, string ExpectedResourceId, string ExpectedContextKey, string ExpectedContextValue) testCase)
+    {
+        await Assert.That(testCase.Request.ResourceId).IsEqualTo(testCase.ExpectedResourceId);
+        await Assert.That(testCase.Request.ResourceAttributes).IsNotNull();
+        await Assert.That(testCase.Request.ResourceAttributes![testCase.ExpectedContextKey]).IsEqualTo(testCase.ExpectedContextValue);
+
+        if (testCase.Request is GetEventCustomPropertyProjectionStatusQuery
+            or GetEventSessionCustomPropertyProjectionStatusQuery
+            or GetCustomPropertyProjectionDirtyScopesQuery)
+        {
+            await Assert.That(testCase.Request.ResourceAttributes.ContainsKey("tenantId")).IsTrue();
+        }
     }
 }

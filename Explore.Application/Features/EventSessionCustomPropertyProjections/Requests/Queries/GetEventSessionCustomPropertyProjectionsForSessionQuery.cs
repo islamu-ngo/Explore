@@ -15,6 +15,13 @@ public class GetEventSessionCustomPropertyProjectionsForSessionQuery : IRequest<
     public Guid EventSessionId { get; set; }
     public ExposureLevel? ExposureCeiling { get; set; }
 
-    string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
+    string? ISecureRequest.ResourceId => EventSessionId == Guid.Empty ? null : EventSessionId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => EventSessionId == Guid.Empty
+        ? null
+        : new Dictionary<string, object>
+        {
+            ["eventSessionId"] = EventSessionId.ToString("D"),
+            ["authorizationScope"] = "event_session_projection_rows"
+        };
 }

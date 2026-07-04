@@ -5,7 +5,9 @@
 @using Explore.Blazor.Client.Models.CustomProperties
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Rendering
 @using MudBlazor
+@using System.Globalization
 @inject ICustomPropertyAdminService AdminService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -239,22 +241,39 @@
         => _eventStatus.FirstOrDefault(status => status.HasLink("dirty-scopes") || status.HasLink("drain-dirty-scopes"))?.ProjectionName
             ?? _eventStatus.FirstOrDefault()?.ProjectionName;
 
-    private static string FormatDateOrDash(DateTimeOffset? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-dd HH:mm") : "—";
+    private static string FormatDateOrDash(DateTimeOffset? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) : "—";
 
     private RenderFragment RenderStatusBody(ProjectionStatusModel? status) => builder =>
     {
+        var sequence = 0;
         if (status is null)
         {
-            builder.AddMarkupContent(0, "<div style=\"color:var(--mud-palette-text-secondary)\">No status available.</div>");
+            builder.OpenElement(sequence++, "div");
+            builder.AddAttribute(sequence++, "style", "color:var(--mud-palette-text-secondary)");
+            builder.AddContent(sequence++, "No status available.");
+            builder.CloseElement();
         }
         else
         {
-            builder.AddMarkupContent(0, $"<div><strong>Version:</strong> {status.ProjectionVersion}</div>");
-            builder.AddMarkupContent(1, $"<div><strong>Rows processed:</strong> {status.RowsProcessed}</div>");
-            builder.AddMarkupContent(2, $"<div><strong>Rows failed:</strong> {status.RowsFailed}</div>");
-            builder.AddMarkupContent(3, $"<div><strong>Last rebuild:</strong> {FormatDateOrDash(status.LastRebuildCompletedAt)}</div>");
+            AddStatusRow(builder, ref sequence, "Version:", status.ProjectionVersion.ToString(CultureInfo.InvariantCulture));
+            AddStatusRow(builder, ref sequence, "Rows processed:", status.RowsProcessed.ToString(CultureInfo.InvariantCulture));
+            AddStatusRow(builder, ref sequence, "Rows failed:", status.RowsFailed.ToString(CultureInfo.InvariantCulture));
+            AddStatusRow(builder, ref sequence, "Last rebuild:", FormatDateOrDash(status.LastRebuildCompletedAt));
             if (!string.IsNullOrWhiteSpace(status.LastErrorMessage))
-                builder.AddMarkupContent(4, $"<div style=\"color:var(--mud-palette-error)\"><strong>Last error:</strong> {System.Net.WebUtility.HtmlEncode(status.LastErrorMessage)}</div>");
+                AddStatusRow(builder, ref sequence, "Last error:", status.LastErrorMessage, isError: true);
         }
     };
+
+    private static void AddStatusRow(RenderTreeBuilder builder, ref int sequence, string label, string value, bool isError = false)
+    {
+        builder.OpenElement(sequence++, "div");
+        if (isError)
+            builder.AddAttribute(sequence++, "style", "color:var(--mud-palette-error)");
+        builder.OpenElement(sequence++, "strong");
+        builder.AddContent(sequence++, label);
+        builder.CloseElement();
+        builder.AddContent(sequence++, " ");
+        builder.AddContent(sequence++, value);
+        builder.CloseElement();
+    }
 }

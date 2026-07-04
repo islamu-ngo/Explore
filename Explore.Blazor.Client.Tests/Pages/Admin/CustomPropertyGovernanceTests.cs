@@ -216,6 +216,37 @@ public class CustomPropertyGovernanceTests : IDisposable
         await Assert.That(cut.Markup).Contains("Session Projection");
     }
 
+    [Test]
+    public async Task ProjectionStatus_EncodesDangerousLastErrorText()
+    {
+        const string dangerousError = "<img src=x onerror=alert(1)><script>alert(2)</script>";
+
+        _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>
+            {
+                new()
+                {
+                    ProjectionName = "event_custom_property_projection",
+                    ProjectionVersion = 1,
+                    RowsProcessed = 100,
+                    LastErrorMessage = dangerousError
+                }
+            });
+        _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>());
+        _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+
+        var cut = Render("ProjectionStatusSection");
+        cut.WaitForState(() => cut.Markup.Contains("Last error:", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("&lt;img");
+        await Assert.That(cut.Markup).Contains("&lt;script&gt;");
+        await Assert.That(cut.FindAll("img").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("script").Count).IsEqualTo(0);
+    }
+
 
     [Test]
     public async Task ProjectionStatus_HidesActions_WhenHalLinksAreMissing()

@@ -339,11 +339,13 @@
         builder.AddAttribute(3, "Spacing", 1);
         builder.AddAttribute(4, "ChildContent", (RenderFragment)(inner =>
         {
-            inner.AddMarkupContent(0, $"<span>{label}</span>");
-            inner.OpenComponent<MudTooltip>(1);
-            inner.AddAttribute(2, "Text", tooltip);
-            inner.AddAttribute(3, "Placement", Placement.Top);
-            inner.AddAttribute(4, "ChildContent", (RenderFragment)(tip =>
+            inner.OpenElement(0, "span");
+            inner.AddContent(1, label);
+            inner.CloseElement();
+            inner.OpenComponent<MudTooltip>(2);
+            inner.AddAttribute(3, "Text", tooltip);
+            inner.AddAttribute(4, "Placement", Placement.Top);
+            inner.AddAttribute(5, "ChildContent", (RenderFragment)(tip =>
             {
                 tip.OpenComponent<MudIcon>(0);
                 tip.AddAttribute(1, "Icon", Icons.Material.Filled.Info);

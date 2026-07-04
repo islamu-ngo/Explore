@@ -2,6 +2,7 @@
 // ABOUTME: Authorized through custom-property projection resource metadata; uses Complex request timeout.
 
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.Responses;
 using MediatR;
@@ -13,6 +14,16 @@ public class RebuildEventCustomPropertyProjectionCommand : IRequest<BaseCommandR
 {
     public required RebuildProjectionRequestDto RequestDto { get; set; }
 
-    string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
+    private Guid TenantId => RequestDto?.TenantId ?? Guid.Empty;
+
+    string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+        ? null
+        : new Dictionary<string, object>
+        {
+            ["tenantId"] = TenantId.ToString("D"),
+            ["authorizationScope"] = "tenant_projection_rebuild",
+            ["projectionName"] = IEventCustomPropertyProjectionUpdater.ProjectionName
+        };
 }

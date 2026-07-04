@@ -13,6 +13,32 @@ public class DrainCustomPropertyProjectionDirtyScopesCommand : IRequest<BaseComm
 {
     public required DrainDirtyScopesRequestDto RequestDto { get; set; }
 
-    string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
+    private Guid TenantId => RequestDto?.TenantId ?? Guid.Empty;
+    private string ProjectionName => RequestDto?.ProjectionName ?? string.Empty;
+
+    string? ISecureRequest.ResourceId => TenantId == Guid.Empty
+        ? null
+        : string.IsNullOrWhiteSpace(ProjectionName)
+            ? TenantId.ToString("D")
+            : $"{TenantId:D}:{ProjectionName}";
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes
+    {
+        get
+        {
+            if (TenantId == Guid.Empty)
+                return null;
+
+            var attributes = new Dictionary<string, object>
+            {
+                ["tenantId"] = TenantId.ToString("D"),
+                ["authorizationScope"] = "dirty_scope_drain"
+            };
+
+            if (!string.IsNullOrWhiteSpace(ProjectionName))
+                attributes["projectionName"] = ProjectionName;
+
+            return attributes;
+        }
+    }
 }

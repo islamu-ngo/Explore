@@ -15,6 +15,13 @@ public class GetEventCustomPropertyProjectionsForEventQuery : IRequest<BaseComma
     public Guid EventId { get; set; }
     public ExposureLevel? ExposureCeiling { get; set; }
 
-    string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
+    string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => EventId == Guid.Empty
+        ? null
+        : new Dictionary<string, object>
+        {
+            ["eventId"] = EventId.ToString("D"),
+            ["authorizationScope"] = "event_projection_rows"
+        };
 }
