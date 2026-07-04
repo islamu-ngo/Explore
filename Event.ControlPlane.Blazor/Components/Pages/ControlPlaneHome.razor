@@ -1,0 +1,19 @@
+@* ABOUTME: Redirects the separate control-plane host root to the shared instance console overview.
+   ABOUTME: Keeps routed overview content in Event.ControlPlane.Client for embedded and separate hosts. *@
+@page "/"
+@attribute [Authorize]
+@inject NavigationManager Navigation
+
+<PageTitle>Event Control Plane</PageTitle>
+
+<main class="cp-page">
+    <h1>Event Control Plane</h1>
+    <p>Opening the instance console.</p>
+</main>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo(ControlPlaneRoutes.Overview, replace: true);
+    }
+}

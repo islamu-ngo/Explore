@@ -1,0 +1,50 @@
+@* ABOUTME: Minimal operator shell for the separate Event control-plane host.
+   ABOUTME: Keeps public and tenant navigation out of the dedicated control-plane app. *@
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider DefaultFocus="DefaultFocus.FirstChild" />
+<MudSnackbarProvider />
+
+<div class="cp-shell">
+    <aside class="cp-sidebar" aria-label="Control-plane navigation">
+        <a class="cp-brand" href="@ControlPlaneRoutes.Overview">Event Control Plane</a>
+        <nav class="cp-nav">
+            @foreach (var route in RouteCatalog.All)
+            {
+                <NavLink class="cp-nav__link" href="@route.Path" Match="@NavLinkMatch.Prefix">
+                    @LabelFor(route.Key)
+                </NavLink>
+            }
+        </nav>
+    </aside>
+
+    <div class="cp-main">
+        <header class="cp-topbar">
+            <span>Instance administration</span>
+            <a class="cp-link" href="/auth/signout">Sign out</a>
+        </header>
+        @Body
+    </div>
+</div>
+
+@code {
+    [Inject]
+    private IControlPlaneRouteCatalog RouteCatalog { get; set; } = null!;
+
+    private static string LabelFor(string key) =>
+        key switch
+        {
+            ControlPlaneRouteKeys.Overview => "Overview",
+            ControlPlaneRouteKeys.Tenants => "Tenants",
+            ControlPlaneRouteKeys.Domains => "Domains",
+            ControlPlaneRouteKeys.Onboarding => "Onboarding",
+            ControlPlaneRouteKeys.Health => "Health",
+            ControlPlaneRouteKeys.Storage => "Storage",
+            ControlPlaneRouteKeys.Jobs => "Jobs",
+            ControlPlaneRouteKeys.Security => "Security",
+            ControlPlaneRouteKeys.Policies => "Policies",
+            _ => key
+        };
+}

@@ -1,0 +1,12 @@
+@* ABOUTME: Displays a bounded error page for the separate control-plane Blazor host.
+   ABOUTME: Avoids exposing exception details, tokens, provider responses, or internal URLs to operators. *@
+@page "/Error"
+
+<PageTitle>Error - Event Control Plane</PageTitle>
+
+<main class="cp-page">
+    <section class="cp-panel cp-panel--warning">
+        <h1>Something went wrong</h1>
+        <p>The control-plane host could not complete the request. Check server logs with the request correlation details.</p>
+    </section>
+</main>

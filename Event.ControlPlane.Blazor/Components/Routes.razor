@@ -1,0 +1,31 @@
+@* ABOUTME: Routes requests for the separate control-plane host to app and shared client components.
+   ABOUTME: Uses authorization-aware routing so anonymous operators are sent through the BFF login flow. *@
+@using Event.ControlPlane.Client
+
+<Router AppAssembly="@typeof(Program).Assembly"
+        AdditionalAssemblies="@_additionalAssemblies">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(ControlPlaneLayout)">
+            <NotAuthorized>
+                <RedirectToLogin />
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(ControlPlaneLayout)">
+            <PageTitle>Not found - Event Control Plane</PageTitle>
+            <main class="cp-page">
+                <h1>Not found</h1>
+                <p>The requested control-plane page was not found.</p>
+            </main>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private static readonly System.Reflection.Assembly[] _additionalAssemblies =
+    [
+        ControlPlaneClientAssembly.Value
+    ];
+}

@@ -1,0 +1,14 @@
+@* ABOUTME: Redirects unauthorized Blazor route access through the BFF-hosted login endpoint.
+   ABOUTME: Preserves only a same-origin relative return URL and avoids browser token handling. *@
+@inject NavigationManager Navigation
+
+<p class="cp-muted">Redirecting to sign in...</p>
+
+@code {
+    protected override void OnInitialized()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var returnUrl = "/" + relative;
+        Navigation.NavigateTo($"/auth/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+    }
+}
