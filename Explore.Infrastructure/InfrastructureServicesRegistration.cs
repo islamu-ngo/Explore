@@ -102,11 +102,12 @@ public static class InfrastructureServicesRegistration
         });
         services.AddScoped<CoopReviewQueueProvider>();
         services.AddScoped<NoopReviewQueueProvider>();
+        services.AddScoped<IReportingRoutingPolicyResolver, ReportingRoutingPolicyResolver>();
         services.AddScoped<CompositeEventReportProvider>(sp => new CompositeEventReportProvider(
             sp.GetRequiredService<LocalEventReportProvider>(),
             sp.GetRequiredService<OspreyModerationSignalProvider>(),
             sp.GetRequiredService<CoopReviewQueueProvider>(),
-            sp.GetRequiredService<IOptionsMonitor<ModerationProviderOptions>>()));
+            sp.GetRequiredService<IReportingRoutingPolicyResolver>()));
         services.AddScoped<RuntimeModerationProviderResolver>();
         services.AddScoped<IReportProviderSyncDispatcher, ReportProviderSyncDispatcher>();
         services.AddScoped<IEventReportProvider>(sp => sp.GetRequiredService<RuntimeModerationProviderResolver>());

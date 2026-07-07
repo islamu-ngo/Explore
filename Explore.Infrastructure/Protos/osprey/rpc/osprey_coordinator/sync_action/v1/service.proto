@@ -1,0 +1,26 @@
+// ABOUTME: Local copy of the upstream Osprey coordinator synchronous action gRPC service.
+// ABOUTME: Allows Islamu Event to call the real ProcessAction endpoint instead of a fake HTTP facade.
+syntax = "proto3";
+
+package osprey.rpc.osprey_coordinator.sync_action.v1;
+
+option csharp_namespace = "Explore.Infrastructure.Osprey";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "osprey/rpc/common/v1/verdicts.proto";
+
+message ProcessActionRequest {
+  google.protobuf.UInt64Value action_id = 1;
+  string action_name = 2;
+  string action_data_json = 3;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+message ProcessActionResponse {
+  osprey.rpc.common.v1.Verdicts verdicts = 2;
+}
+
+service OspreyCoordinatorSyncActionService {
+  rpc ProcessAction(ProcessActionRequest) returns (ProcessActionResponse);
+}

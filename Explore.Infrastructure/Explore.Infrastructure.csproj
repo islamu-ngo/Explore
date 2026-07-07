@@ -21,6 +21,9 @@
     <PackageReference Include="Azure.AI.OpenAI" />
     <PackageReference Include="Azure.Identity" />
     <PackageReference Include="Cerbos.Sdk" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
     <PackageReference Include="MailKit" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
@@ -35,6 +38,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\osprey\rpc\common\v1\verdicts.proto" GrpcServices="None" ProtoRoot="Protos" />
+    <Protobuf Include="Protos\osprey\rpc\osprey_coordinator\sync_action\v1\service.proto" GrpcServices="Client" ProtoRoot="Protos" />
   </ItemGroup>
 
   <ItemGroup>

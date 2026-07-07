@@ -203,6 +203,33 @@ public class AdminContextTests
     }
 
     [Test]
+    public async Task ResolveUserIdAsync_WithOnlySidClaim_DefaultsToKeycloakExternalLogin()
+    {
+        var userId = Guid.NewGuid();
+        const string sid = "keycloak-session-id";
+
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        externalLoginRepository
+            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), sid)
+            .Returns(NewExternalLogin(userId, AuthSchemeNames.Keycloak.ToLowerInvariant(), sid));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sid", sid)], "TestAuth"));
+        var sut = CreateSut(
+            CreateHttpContextAccessor(principal),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository);
+
+        var result = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(result).IsEqualTo(userId);
+        await externalLoginRepository.Received(1)
+            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), sid);
+    }
+
+    [Test]
     public async Task ResolveUserIdAsync_WithVerifiedGoogleEmail_UsesEmailFallbackWhenExternalLoginMissing()
     {
         var userId = Guid.NewGuid();

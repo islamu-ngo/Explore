@@ -94,7 +94,8 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             return internalUserId;
 
         var subject = user.FindFirst("sub")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user.FindFirst("sid")?.Value;
 
         if (string.IsNullOrWhiteSpace(subject))
             return null;
