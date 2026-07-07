@@ -120,6 +120,7 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<ITenantRouteContextAccessor, TenantRouteContextAccessor>();
         services.AddScoped<CircuitHandler, TenantCircuitHandler>();
         services.AddScoped<CircuitHandler, TokenCircuitHandler>();
+        services.AddSingleton<AdminHostControlPlaneShellSelector>();
 
         // BFF admin claims enrichment — invoked at cookie/session boundaries, not per request.
         services.AddScoped<BffAdminClaimsTransformation>();

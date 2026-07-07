@@ -669,6 +669,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
     private static bool IsAnonymousAllowedPath(string pathAndQuery)
     {
         return pathAndQuery.Contains("/api/PublicExperience/settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/PublicExperience/shell", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/InstanceOnboarding/status", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configuration/internal", StringComparison.OrdinalIgnoreCase)

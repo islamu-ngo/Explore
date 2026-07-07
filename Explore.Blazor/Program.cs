@@ -3,8 +3,10 @@
 
 using Blazouter.Extensions;
 using Blazouter.Server.Extensions;
+using Event.ControlPlane.Client.Extensions;
 using Event.Web.BffHosting.Authentication;
 using Event.Web.BffHosting.Extensions;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor;
 using Explore.Blazor.Components;
 using Explore.Blazor.Extensions;
@@ -69,6 +71,7 @@ builder.Services.AddMudServices(config =>
 });
 builder.Services.AddApplicationServices();
 builder.Services.AddServerOnlyServices(builder.Configuration);
+builder.Services.AddEventControlPlaneClient();
 builder.Services.AddApiHttpClients(builder.Configuration, builder.Environment);
 
 builder.Services.AddRazorComponents()
@@ -146,6 +149,7 @@ var app = builder.Build();
 await app.InitializeDynamicAuthSchemesAsync();
 
 app.UseForwardedHeadersMiddleware();
+app.UseEventBffAdminHostAccessControl();
 app.ConfigureGracefulShutdown(shutdownState);
 app.UseBffSecurityHeaders();
 app.MapDefaultEndpoints();

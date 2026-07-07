@@ -1,12 +1,15 @@
 @* ABOUTME: Root Blazor host document that wires render mode, CSP, auth state, and routing.
    ABOUTME: Provides global error-boundary fallback UI and logs unhandled component exceptions. *@
 @using Explore.Domain.Common.Localization
+@using Explore.Blazor.Components.ControlPlane
 @using Explore.Blazor.Client.Layout
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Services
 @using Microsoft.AspNetCore.Components.Web
 @using System.Security.Cryptography
 @inject IHttpContextAccessor HttpContextAccessor
 @inject IRuntimeRenderPolicyService RuntimeRenderPolicyService
+@inject AdminHostControlPlaneShellSelector AdminHostShellSelector
 @inject ILogger<App> Logger
 
 @{
@@ -49,6 +52,8 @@
 	<link href="Explore.Blazor.styles.css" rel="stylesheet" />
 	<link rel="stylesheet" href="_content/Blazouter/blazouter.min.css" />
 	<ImportMap nonce="@cspNonce" />
+	<link rel="manifest" href="manifest.webmanifest" />
+	<meta name="theme-color" content="#2563eb" />
 	<link rel="icon" type="image/ico" href="favicon.ico" />
 	<HeadOutlet @rendermode="@_effectiveRenderMode" />
 </head>
@@ -63,7 +68,14 @@
         <CascadingValue Value="isDark" Name="InitialTheme">
             <ErrorBoundary>
                 <ChildContent>
-		            <Routes @rendermode="@_effectiveRenderMode" />
+                    @if (ShouldUseControlPlaneShell())
+                    {
+                        <EmbeddedControlPlaneRoutes @rendermode="@_effectiveRenderMode" />
+                    }
+                    else
+                    {
+		                <Routes @rendermode="@_effectiveRenderMode" />
+                    }
                 </ChildContent>
                 <ErrorContent Context="ex">
                     @{
@@ -109,6 +121,11 @@
                 return new InteractiveServerRenderMode(prerender: true);
             }
 
+            if (ShouldUseControlPlaneShell())
+            {
+                return new InteractiveServerRenderMode(prerender: true);
+            }
+
             return _asyncResolvedMode ?? new InteractiveServerRenderMode(prerender: true);
         }
     }
@@ -117,8 +134,8 @@
     {
         var requestPath = HttpContextAccessor.HttpContext?.Request.Path.Value;
 
-        // Onboarding paths don't need async resolution — handled synchronously in _effectiveRenderMode.
-        if (IsOnboardingPath(requestPath))
+        // Onboarding and dedicated admin-host paths don't need async resolution — handled synchronously in _effectiveRenderMode.
+        if (IsOnboardingPath(requestPath) || ShouldUseControlPlaneShell())
         {
             return;
         }
@@ -138,6 +155,11 @@
     private void LogBoundaryError(Exception exception)
     {
         Logger.LogError(exception, "Global Blazor error boundary caught an unhandled component exception.");
+    }
+
+    private bool ShouldUseControlPlaneShell()
+    {
+        return AdminHostShellSelector.ShouldUseControlPlaneShell(HttpContextAccessor.HttpContext);
     }
 
     private static bool IsOnboardingPath(string? path)

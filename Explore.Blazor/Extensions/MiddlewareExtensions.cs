@@ -16,13 +16,17 @@ public static class MiddlewareExtensions
 {
     private const string ContentSecurityPolicy =
         "default-src 'self'; " +
-        "img-src 'self' data: https:; " +
-        "style-src 'self' 'unsafe-inline'; " +
-        "script-src 'self' 'wasm-unsafe-eval'; " +
-        "connect-src 'self'; " +
+        "img-src 'self' data: https: blob:; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "script-src 'self' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-qnHnQs7NjQNHHNYv/I9cW+I62HzDJjbnyS/OFzqlix0='; " +
+        "connect-src 'self' https: http: ws: wss:; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
         "frame-ancestors 'none'; " +
         "base-uri 'self'; " +
-        "object-src 'none'";
+        "object-src 'none'; " +
+        "form-action 'self'";
+
+    private const string PermissionsPolicy = "camera=(), microphone=(), geolocation=(), payment=()";
 
     /// <summary>
     /// Configures forwarded headers for reverse proxy / SSL termination (Coolify, Nginx).
@@ -32,7 +36,9 @@ public static class MiddlewareExtensions
     {
         var options = new ForwardedHeadersOptions
         {
-            ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                | ForwardedHeaders.XForwardedProto
+                | ForwardedHeaders.XForwardedHost
         };
 
         // Clear defaults to trust all proxies — required for containerized environments
@@ -167,6 +173,7 @@ public static class MiddlewareExtensions
             headers[HeaderNames.XFrameOptions] = "DENY";
             headers[HeaderNames.XContentTypeOptions] = "nosniff";
             headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+            headers["Permissions-Policy"] = PermissionsPolicy;
             return Task.CompletedTask;
         });
 
