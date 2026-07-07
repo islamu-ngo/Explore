@@ -1,4 +1,4 @@
-// ABOUTME: HAL link policy for the multi-tenant control-plane operations resource.
+// ABOUTME: HAL link policy for the Control Plane operations resource.
 // ABOUTME: Emits instance-setting permission metadata for operational status navigation.
 
 namespace Explore.API.Hateoas.Policies;
@@ -30,6 +30,13 @@ public sealed class ControlPlaneOperationsLinkPolicy : ILinkPolicy<ControlPlaneO
             "GET",
             "Control-plane overview",
             GetControlPlaneOverviewQuery.SettingKey);
+
+        yield return InstanceSettingLink(
+            LinkRelations.DeploymentModeRunbook,
+            RouteNames.GetControlPlaneDeploymentModeRunbook,
+            "GET",
+            "Deployment mode runbook",
+            GetControlPlaneDeploymentModeRunbookQuery.SettingKey);
 
         yield return InstanceSettingLink(
             "storage",

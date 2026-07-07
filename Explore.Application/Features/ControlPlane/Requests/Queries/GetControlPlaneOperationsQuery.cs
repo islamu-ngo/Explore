@@ -1,4 +1,4 @@
-// ABOUTME: Secured query for the multi-tenant control-plane operations snapshot.
+// ABOUTME: Secured query for the Control Plane operations snapshot.
 // ABOUTME: Authorizes operational status through instance-setting metadata before handlers run.
 
 using Explore.Application.Authorization;

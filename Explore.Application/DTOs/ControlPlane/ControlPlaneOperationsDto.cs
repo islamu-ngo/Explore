@@ -1,4 +1,4 @@
-// ABOUTME: Read model for multi-tenant control-plane operational status.
+// ABOUTME: Read model for Control Plane operational status.
 // ABOUTME: Exposes bounded job, outbox, email, and storage signals without payloads or secrets.
 
 namespace Explore.Application.DTOs.ControlPlane;
