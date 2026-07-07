@@ -1,5 +1,5 @@
 // ABOUTME: Setting definitions for tenant delegation lock controls.
-// ABOUTME: Controls whether tenant admins can override platform-governed SMTP, storage, analytics, AI, and MCP settings.
+// ABOUTME: Controls whether tenant admins can override platform-governed SMTP, storage, reporting, analytics, AI, and MCP settings.
 
 namespace Explore.Domain.Settings.Definitions;
 
@@ -47,6 +47,36 @@ public static class TenantDelegationSettingDefinitions
         MaxScope: SettingScope.Instance,
         IsLockable: false);
 
+    public static readonly SettingDefinition LockReportingProviders = new(
+        Key: GovernanceSettingKeys.TenantDelegation.LockReportingProviders,
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "true",
+        Category: "TenantDelegation",
+        Description: "Whether tenant administrators can configure their own reporting moderation providers",
+        MinScope: SettingScope.Instance,
+        MaxScope: SettingScope.Instance,
+        IsLockable: false);
+
+    public static readonly SettingDefinition LockTenantOspreyProvider = new(
+        Key: GovernanceSettingKeys.TenantDelegation.LockTenantOspreyProvider,
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "true",
+        Category: "TenantDelegation",
+        Description: "Whether tenant administrators can configure their own Osprey reporting provider",
+        MinScope: SettingScope.Instance,
+        MaxScope: SettingScope.Instance,
+        IsLockable: false);
+
+    public static readonly SettingDefinition LockTenantCoopProvider = new(
+        Key: GovernanceSettingKeys.TenantDelegation.LockTenantCoopProvider,
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "true",
+        Category: "TenantDelegation",
+        Description: "Whether tenant administrators can configure their own Coop reporting provider",
+        MinScope: SettingScope.Instance,
+        MaxScope: SettingScope.Instance,
+        IsLockable: false);
+
     public static readonly SettingDefinition LockMcp = new(
         Key: GovernanceSettingKeys.TenantDelegation.LockMcp,
         ValueType: SettingValueType.Boolean,
@@ -67,5 +97,16 @@ public static class TenantDelegationSettingDefinitions
         MaxScope: SettingScope.Instance,
         IsLockable: false);
 
-    public static IReadOnlyList<SettingDefinition> All => [LockSmtp, LockStorage, LockAnalytics, LockAiAssistant, LockMcp, LockMcpLegacySse];
+    public static IReadOnlyList<SettingDefinition> All =>
+    [
+        LockSmtp,
+        LockStorage,
+        LockAnalytics,
+        LockAiAssistant,
+        LockReportingProviders,
+        LockTenantOspreyProvider,
+        LockTenantCoopProvider,
+        LockMcp,
+        LockMcpLegacySse
+    ];
 }
