@@ -19,6 +19,13 @@ public static class DomainSettingDefinitions
         Category: "Domains",
         Description: "Whether tenant administrators can configure custom domains");
 
+    public static readonly SettingDefinition AdminHost = new(
+        Key: "domains.admin_host",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"\"",
+        Category: "Domains",
+        Description: "Dedicated admin/control-plane host for multi-tenant operator access");
+
     public static readonly SettingDefinition TenantSubdomain = new(
         Key: "domains.tenant_subdomain",
         ValueType: SettingValueType.String,
@@ -36,5 +43,5 @@ public static class DomainSettingDefinitions
         MaxScope: SettingScope.Tenant);
 
     public static IReadOnlyList<SettingDefinition> All =>
-        [InstanceBaseDomain, AllowTenantCustomDomain, TenantSubdomain, TenantCustomDomain];
+        [InstanceBaseDomain, AdminHost, AllowTenantCustomDomain, TenantSubdomain, TenantCustomDomain];
 }

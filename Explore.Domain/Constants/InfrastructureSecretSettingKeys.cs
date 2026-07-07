@@ -28,4 +28,12 @@ public static class InfrastructureSecretSettingKeys
         public const string KeycloakClientSecret = "auth.keycloak_client_secret";
         public const string GoogleClientSecret = "auth.google_client_secret";
     }
+
+    public static class Reporting
+    {
+        public const string OspreyApiKey = "reporting.osprey_api_key";
+        public const string OspreyWebhookSecret = "reporting.osprey_webhook_secret";
+        public const string CoopApiKey = "reporting.coop_api_key";
+        public const string CoopWebhookSecret = "reporting.coop_webhook_secret";
+    }
 }

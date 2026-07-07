@@ -35,6 +35,7 @@ public static class SettingRegistry
         all.AddRange(SecuritySettingDefinitions.All);
         all.AddRange(SupportAccessSettingDefinitions.All);
         all.AddRange(CerbosSettingDefinitions.All);
+        all.AddRange(ReportingSettingDefinitions.All);
         all.AddRange(AnalyticsSettingDefinitions.All);
         all.AddRange(McpSettingDefinitions.All);
         all.AddRange(AiAssistantSettingDefinitions.All);

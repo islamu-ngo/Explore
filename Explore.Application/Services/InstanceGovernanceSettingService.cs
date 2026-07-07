@@ -98,6 +98,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             Domains = new DomainSettingsDto
             {
                 InstanceBaseDomain = domains.InstanceBaseDomain,
+                AdminHost = domains.AdminHost,
                 AllowTenantCustomDomains = domains.AllowTenantCustomDomain,
                 LockTenantSubdomain = IsLocked(resolved, GovernanceSettingKeys.Domains.TenantSubdomain),
                 LockTenantCustomDomain = IsLocked(resolved, GovernanceSettingKeys.Domains.TenantCustomDomain)
@@ -260,10 +261,15 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     public async Task ApplyDomainSettingsAsync(DomainSettingsDto d, Guid? actorUserId)
     {
         d.InstanceBaseDomain = NormalizeOptionalHost(d.InstanceBaseDomain);
+        d.AdminHost = NormalizeOptionalHost(d.AdminHost);
 
         await _upsertService.UpsertValueAsync(
             GovernanceSettingKeys.Domains.InstanceBaseDomain,
             SettingValueSerializer.Serialize(d.InstanceBaseDomain), actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Domains.AdminHost,
+            SettingValueSerializer.Serialize(d.AdminHost), actorUserId);
 
         await _upsertService.UpsertValueAsync(
             GovernanceSettingKeys.Domains.AllowTenantCustomDomain,

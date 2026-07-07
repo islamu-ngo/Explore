@@ -18,6 +18,15 @@
                       Placeholder="example.com"
                       HelperText="Used for tenant subdomains (e.g., tenant.example.com)." />
 
+        @if (IsMultiTenantMode)
+        {
+            <MudTextField T="string" Label="Dedicated Admin Host"
+                          Variant="Variant.Outlined"
+                          @bind-Value="Model.AdminHost"
+                          Placeholder="admin.example.org"
+                          HelperText="Optional operator host for the multi-tenant control plane." />
+        }
+
         <MudSwitch T="bool" @bind-Value="Model.AllowTenantCustomDomains" Color="Color.Primary">
             Allow tenant custom domains
         </MudSwitch>
@@ -35,4 +44,7 @@
 @code {
     [Parameter, EditorRequired]
     public DomainSettingsModel Model { get; set; } = null!;
+
+    [Parameter]
+    public bool IsMultiTenantMode { get; set; }
 }

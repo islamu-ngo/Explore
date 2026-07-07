@@ -108,22 +108,27 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds complete secret management with configurable auditing and background refresh.
+    /// Adds complete secret management with configurable auditing, background refresh, and resolver registration.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The configuration root.</param>
     /// <param name="enableAuditing">Whether to enable audit logging decorator.</param>
     /// <param name="enableRefreshService">Whether to register the background refresh service.</param>
+    /// <param name="enableSecretResolution">Whether to register repository-backed secret resolution services.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddSecretManagement(
         this IServiceCollection services,
         IConfiguration configuration,
         bool enableAuditing,
-        bool enableRefreshService)
+        bool enableRefreshService,
+        bool enableSecretResolution = true)
     {
         // Add core secret provider
         services.AddSecretProvider(configuration);
-        services.AddSecretResolution();
+        if (enableSecretResolution)
+        {
+            services.AddSecretResolution();
+        }
 
         // Bind refresh options
         services.AddOptions<SecretRefreshOptions>()
@@ -152,16 +157,21 @@ public static class ServiceCollectionExtensions
     /// <param name="configuration">The configuration root.</param>
     /// <param name="configureProvider">Action to configure provider options.</param>
     /// <param name="configureRefresh">Action to configure refresh options.</param>
+    /// <param name="enableSecretResolution">Whether to register repository-backed secret resolution services.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddSecretManagement(
         this IServiceCollection services,
         IConfiguration configuration,
         Action<SecretProviderOptions>? configureProvider = null,
-        Action<SecretRefreshOptions>? configureRefresh = null)
+        Action<SecretRefreshOptions>? configureRefresh = null,
+        bool enableSecretResolution = true)
     {
         // Add core secret provider with custom configuration
         services.AddSecretProvider(configuration, configureProvider ?? (_ => { }));
-        services.AddSecretResolution();
+        if (enableSecretResolution)
+        {
+            services.AddSecretResolution();
+        }
 
         // Bind refresh options with custom configuration
         var refreshOptionsBuilder = services.AddOptions<SecretRefreshOptions>()

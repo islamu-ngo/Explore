@@ -5,6 +5,8 @@ namespace Explore.Application.Contracts.Persistence;
 
 using Explore.Domain;
 
+public sealed record TenantSettingOverrideUpsert(string SettingKey, string Value, bool IsLocked);
+
 /// <summary>
 /// Repository for tenant-specific setting overrides.
 /// </summary>
@@ -43,4 +45,9 @@ public interface ITenantSettingRepository : IGenericRepository<TenantSetting, Gu
     /// Gets all locked settings for a tenant.
     /// </summary>
     Task<List<TenantSetting>> GetLockedForTenant(Guid tenantId);
+
+    Task UpsertManyForTenantAsync(
+        Guid tenantId,
+        IReadOnlyCollection<TenantSettingOverrideUpsert> overrides,
+        CancellationToken cancellationToken = default);
 }

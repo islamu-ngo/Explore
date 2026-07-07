@@ -83,4 +83,44 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
             .Where(s => s.TenantId == tenantId && s.IsLocked)
             .ToListAsync();
     }
+
+    public async Task UpsertManyForTenantAsync(
+        Guid tenantId,
+        IReadOnlyCollection<TenantSettingOverrideUpsert> overrides,
+        CancellationToken cancellationToken = default)
+    {
+        if (overrides.Count == 0)
+        {
+            return;
+        }
+
+        string[] keys = overrides.Select(overrideValue => overrideValue.SettingKey).Distinct().ToArray();
+        List<TenantSetting> existing = await _dbContext.TenantSettingOverrides
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .Where(setting => setting.TenantId == tenantId && keys.Contains(setting.SettingKey))
+            .ToListAsync(cancellationToken);
+
+        Dictionary<string, TenantSetting> existingByKey = existing.ToDictionary(setting => setting.SettingKey);
+        foreach (TenantSettingOverrideUpsert overrideValue in overrides)
+        {
+            if (existingByKey.TryGetValue(overrideValue.SettingKey, out TenantSetting? setting))
+            {
+                setting.Value = overrideValue.Value;
+                setting.IsLocked = overrideValue.IsLocked;
+                continue;
+            }
+
+            _dbContext.TenantSettingOverrides.Add(new TenantSetting
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Tenant = null!,
+                SettingKey = overrideValue.SettingKey,
+                Value = overrideValue.Value,
+                IsLocked = overrideValue.IsLocked
+            });
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

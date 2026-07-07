@@ -131,6 +131,7 @@ public static class GovernanceSettingKeys
     public static class Domains
     {
         public const string InstanceBaseDomain = "domains.instance_base_domain";
+        public const string AdminHost = "domains.admin_host";
         public const string AllowTenantCustomDomain = "domains.allow_tenant_custom_domain";
         public const string TenantSubdomain = "domains.tenant_subdomain";
         public const string TenantCustomDomain = "domains.tenant_custom_domain";
@@ -203,6 +204,18 @@ public static class GovernanceSettingKeys
         public const string DecentralizationEnabled = "federation.decentralization_enabled";
     }
 
+    public static class Reporting
+    {
+        public const string TenantExternalSyncEnabled = "reporting.tenant_external_sync_enabled";
+        public const string EnableTenantOspreyProvider = "reporting.enable_tenant_osprey_provider";
+        public const string EnableTenantCoopProvider = "reporting.enable_tenant_coop_provider";
+        public const string OspreyRoutingMode = "reporting.osprey_routing_mode";
+        public const string CoopRoutingMode = "reporting.coop_routing_mode";
+        public const string EvidenceMode = "reporting.evidence_mode";
+        public const string OspreyEndpointUrl = "reporting.osprey_endpoint_url";
+        public const string CoopEndpointUrl = "reporting.coop_endpoint_url";
+    }
+
     public static class Analytics
     {
         public const string Provider = "analytics.provider";
@@ -269,6 +282,9 @@ public static class GovernanceSettingKeys
         public const string LockStorage = "governance.lock_tenant_storage";
         public const string LockAnalytics = "governance.lock_tenant_analytics";
         public const string LockAiAssistant = "governance.lock_tenant_ai_assistant";
+        public const string LockReportingProviders = "governance.lock_tenant_reporting_providers";
+        public const string LockTenantOspreyProvider = "governance.lock_tenant_osprey_provider";
+        public const string LockTenantCoopProvider = "governance.lock_tenant_coop_provider";
         public const string LockMcp = "governance.lock_tenant_mcp";
         public const string LockMcpLegacySse = "governance.lock_tenant_mcp_legacy_sse";
     }
