@@ -29,7 +29,7 @@ public class KeycloakClientSecretRotationRequestDtoValidator : AbstractValidator
         {
             RuleFor(x => x.ConfirmApplicationManagedSecret)
                 .Equal(true)
-                .WithMessage("Confirm that ISLAMU Event should manage the new Keycloak client secret.");
+                .WithMessage("Confirm that the platform should manage the new Keycloak client secret.");
 
             RuleFor(x => x.NewClientSecret)
                 .NotEmpty()

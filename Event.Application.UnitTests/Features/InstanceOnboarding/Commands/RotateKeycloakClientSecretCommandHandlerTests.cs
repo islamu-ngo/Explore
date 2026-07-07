@@ -166,7 +166,7 @@ public class RotateKeycloakClientSecretCommandHandlerTests
 
         await Assert.That(result.IsValid).IsFalse();
         await Assert.That(result.Errors.Select(x => x.ErrorMessage))
-            .Contains("Confirm that ISLAMU Event should manage the new Keycloak client secret.");
+            .Contains("Confirm that the platform should manage the new Keycloak client secret.");
         await Assert.That(result.Errors.Select(x => x.ErrorMessage))
             .Contains("New Keycloak client secret is required for application-managed rotation.");
         await Assert.That(result.Errors.Select(x => x.ErrorMessage))

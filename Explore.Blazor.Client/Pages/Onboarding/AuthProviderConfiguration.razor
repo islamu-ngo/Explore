@@ -142,12 +142,12 @@
                                     {
                                         <div data-testid="keycloak-bootstrap-fields">
                                              <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
-                                                 ISLAMU will use the bootstrap admin credential one time to create or patch Keycloak clients. The admin credential is not stored after this request.
+                                                  The platform will use the bootstrap admin credential one time to create or patch Keycloak clients. The admin credential is not stored after this request.
                                              </MudAlert>
                                             <MudSelect T="int" Variant="Variant.Outlined"
                                                        Label="Bootstrap action"
                                                        @bind-Value="_keycloakBootstrap.Mode"
-                                                       HelperText="Choose whether ISLAMU should create the realm when it is missing, or only patch an existing realm.">
+                                                       HelperText="Choose whether the platform should create the realm when it is missing, or only patch an existing realm.">
                                                 <MudSelectItem T="int" Value="@PatchExistingRealmMode">Patch existing realm</MudSelectItem>
                                                 <MudSelectItem T="int" Value="@CreateRealmMode">Create realm if missing</MudSelectItem>
                                             </MudSelect>
@@ -161,7 +161,7 @@
                                                            Label="Realm (Required)"
                                                            @bind-Value="_keycloakBootstrap.Realm"
                                                            Immediate="true"
-                                                           Placeholder="ISLAMU" />
+                                                            Placeholder="events" />
                                              <MudTextField Variant="Variant.Outlined" T="string"
                                                            Label="Blazor BFF client ID (Required)"
                                                            @bind-Value="_keycloakBootstrap.BlazorClientId"
@@ -183,12 +183,12 @@
                                                            InputType="InputType.Password"
                                                            @bind-Value="_keycloakBootstrap.ApiClientSecret"
                                                            Immediate="true"
-                                                           HelperText="Only sent when you want ISLAMU to synchronize the API resource-server client secret." />
+                                                            HelperText="Only sent when you want the platform to synchronize the API resource-server client secret." />
                                              <MudTextField Variant="Variant.Outlined" T="string"
                                                            Label="One-time Keycloak admin username (Required)"
                                                            @bind-Value="_keycloakBootstrap.BootstrapAdminUsername"
                                                            Immediate="true"
-                                                           HelperText="Used only for this bootstrap request and never stored by ISLAMU." />
+                                                            HelperText="Used only for this bootstrap request and never stored by the platform." />
                                               <MudTextField Variant="Variant.Outlined" T="string"
                                                             Label="One-time Keycloak admin password (Required)"
                                                             InputType="InputType.Password"

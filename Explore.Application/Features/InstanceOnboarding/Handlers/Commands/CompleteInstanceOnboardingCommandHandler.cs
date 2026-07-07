@@ -137,6 +137,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
             await PersistDeploymentModeSettingAsync(deploymentMode);
             await PersistSiteProfileSettingsAsync(siteProfile, isSingleTenant);
+            await PersistAdministrationAccessSettingsAsync(request.Settings, isSingleTenant);
 
             await EnsurePlatformAdministratorRoleAsync(request.UserId);
             _logger.LogInformation("Onboarding: Assigned Platform Admin role to user {UserId}", request.UserId);
@@ -419,6 +420,31 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         await PersistSingleTenantPublicExperienceDefaultsAsync(siteProfile.SiteName);
     }
 
+    private async Task PersistAdministrationAccessSettingsAsync(CompleteInstanceOnboardingRequest settings, bool isSingleTenant)
+    {
+        if (isSingleTenant
+            || !settings.AdministrationAccessMode.Equals(
+                CompleteInstanceOnboardingRequest.DedicatedAdminHostAdministrationAccess,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var adminHost = NormalizeOptionalHost(settings.AdminHost);
+        if (string.IsNullOrWhiteSpace(adminHost))
+        {
+            return;
+        }
+
+        await PersistSystemSettingAsync(
+            GovernanceSettingKeys.Domains.AdminHost,
+            JsonSerializer.Serialize(adminHost),
+            SettingValueType.String,
+            "Domains",
+            2,
+            "Dedicated admin/control-plane host for multi-tenant operator access");
+    }
+
     private async Task PersistSingleTenantPublicExperienceDefaultsAsync(string siteName)
     {
         await PersistSystemSettingAsync(
@@ -553,6 +579,26 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         }
 
         return uri.Host.Trim().ToLowerInvariant();
+    }
+
+    private static string? NormalizeOptionalHost(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+        {
+            return uri.Host.Trim().ToLowerInvariant();
+        }
+
+        return trimmed
+            .Replace("https://", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("http://", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Trim('/')
+            .ToLowerInvariant();
     }
 
     private async Task EnsureDefaultTenantAdministratorAsync(Guid tenantId, User user)

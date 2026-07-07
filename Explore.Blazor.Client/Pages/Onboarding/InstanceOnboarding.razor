@@ -158,7 +158,7 @@
                                                   RequiredError="Site name is required."
                                                   For="@(() => _siteProfile.SiteName)"
                                                   @bind-Value="_siteProfile.SiteName"
-                                                  Placeholder="e.g. ISLAMU Explore, My Community Events" />
+                                  Placeholder="e.g. Community Events, My Events Platform" />
                                     <ValidationMessage For="@(() => _siteProfile.SiteName)" />
 
                                     <MudTextField T="string" Label="Support Email (Optional)"
@@ -175,16 +175,46 @@
                                                   Placeholder="https://events.example.org" />
                                     <ValidationMessage For="@(() => _siteProfile.CanonicalUrl)" />
 
-                                    <MudTextField T="string" Label="Purpose (Optional)"
-                                                  Variant="Variant.Outlined"
-                                                  Lines="3"
-                                                  For="@(() => _siteProfile.Purpose)"
-                                                  @bind-Value="_siteProfile.Purpose"
-                                                  Placeholder="A short note for future admins about what this site is for." />
-                                    <ValidationMessage For="@(() => _siteProfile.Purpose)" />
+                                     <MudTextField T="string" Label="Purpose (Optional)"
+                                                   Variant="Variant.Outlined"
+                                                   Lines="3"
+                                                   For="@(() => _siteProfile.Purpose)"
+                                                   @bind-Value="_siteProfile.Purpose"
+                                                   Placeholder="A short note for future admins about what this site is for." />
+                                     <ValidationMessage For="@(() => _siteProfile.Purpose)" />
 
-                                    <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
-                                        Onboarding will apply safe launch defaults for the public event catalog. Advanced modules,
+                                     @if (IsMultiTenantMode)
+                                     {
+                                         <MudDivider />
+
+                                         <MudText Typo="Typo.h6">Platform administration access</MudText>
+                                         <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                             Choose how instance admins will reach the control plane after launch.
+                                         </MudText>
+
+                                         <MudSelect T="string" Label="Administration Access"
+                                                    Variant="Variant.Outlined"
+                                                    @bind-Value="_administrationAccessMode">
+                                             <MudSelectItem T="string" Value="@AdministrationAccessEmbedded">Embedded admin area</MudSelectItem>
+                                             <MudSelectItem T="string" Value="@AdministrationAccessDedicatedAdminHost">Dedicated admin hostname</MudSelectItem>
+                                         </MudSelect>
+
+                                         @if (IsDedicatedAdminHostMode)
+                                         {
+                                             <MudTextField T="string" Label="Dedicated Admin Host"
+                                                           Variant="Variant.Outlined"
+                                                           @bind-Value="_adminHost"
+                                                           Placeholder="admin.example.org"
+                                                           HelperText="Use the operator-only host that will serve the embedded control plane." />
+                                         }
+
+                                         <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                                             A separate control-plane app can be enabled later when the standalone host is deployed.
+                                         </MudAlert>
+                                     }
+
+                                     <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                                         Onboarding will apply safe launch defaults for the public event catalog. Advanced modules,
                                         policies, domains, federation, and branding remain available in instance settings.
                                     </MudAlert>
                                 </MudStack>
@@ -392,11 +422,18 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Small" Color="Color.Primary" />
                                 <MudText Typo="Typo.body2"><strong>Auth:</strong> Configured</MudText>
                             </MudStack>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Color="Color.Primary" />
-                                <MudText Typo="Typo.body2"><strong>Destination:</strong> Events Dashboard</MudText>
-                            </MudStack>
-                        </MudStack>
+                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                 <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Color="Color.Primary" />
+                                 <MudText Typo="Typo.body2"><strong>Destination:</strong> Events Dashboard</MudText>
+                             </MudStack>
+                            @if (IsMultiTenantMode)
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" Color="Color.Primary" />
+                                    <MudText Typo="Typo.body2"><strong>Administration:</strong> @AdministrationAccessSummary</MudText>
+                                </MudStack>
+                            }
+                         </MudStack>
 
                         @if (_activeStep == ReviewStepIndex && _preflight is not null)
                         {
@@ -423,6 +460,8 @@
 @code {
     private const int SiteProfileStepIndex = 0;
     private const int ReviewStepIndex = 1;
+    private const string AdministrationAccessEmbedded = "Embedded";
+    private const string AdministrationAccessDedicatedAdminHost = "DedicatedAdminHost";
 
     private static readonly (int Number, string Label)[] OnboardingSteps =
     [
@@ -433,6 +472,8 @@
     private string _deploymentMode = "SingleTenant";
     private readonly SelfHostOnboardingProfileModel _siteProfile = new();
     private EditContext _profileEditContext = default!;
+    private string _administrationAccessMode = AdministrationAccessEmbedded;
+    private string _adminHost = string.Empty;
     public OnboardingPreflightModel? _preflight;
     private bool _isLoading = true;
     private bool _isPreflightLoading;
@@ -448,6 +489,10 @@
 
     private bool IsSingleTenantMode => _deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
     private bool IsMultiTenantMode => _deploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+    private bool IsDedicatedAdminHostMode => _administrationAccessMode.Equals(AdministrationAccessDedicatedAdminHost, StringComparison.OrdinalIgnoreCase);
+    private string AdministrationAccessSummary => IsDedicatedAdminHostMode
+        ? $"Dedicated admin host ({NormalizeOptional(_adminHost) ?? "not configured"})"
+        : "Embedded admin area";
 
     private bool AllAcknowledgementsChecked
     {
@@ -553,11 +598,40 @@
             ? "MultiTenant"
             : "SingleTenant";
 
+    private bool ValidateAdministrationAccessChoice()
+    {
+        if (!IsMultiTenantMode)
+        {
+            _administrationAccessMode = AdministrationAccessEmbedded;
+            _adminHost = string.Empty;
+            return true;
+        }
+
+        if (!IsDedicatedAdminHostMode)
+        {
+            _adminHost = string.Empty;
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_adminHost))
+        {
+            return true;
+        }
+
+        _errorMessage = "Enter the dedicated admin host or choose embedded admin area.";
+        return false;
+    }
+
     private async Task ContinueToReviewAsync()
     {
         _errorMessage = null;
 
         if (!_profileEditContext.Validate())
+        {
+            return;
+        }
+
+        if (!ValidateAdministrationAccessChoice())
         {
             return;
         }
@@ -598,6 +672,12 @@
             return;
         }
 
+        if (!ValidateAdministrationAccessChoice())
+        {
+            _activeStep = SiteProfileStepIndex;
+            return;
+        }
+
         if (_preflight?.IsReadyToLaunch != true)
         {
             _errorMessage = "Resolve blocking preflight checks before completing setup.";
@@ -626,6 +706,8 @@
                 TimeZone = string.IsNullOrWhiteSpace(_siteProfile.TimeZone) ? "UTC" : _siteProfile.TimeZone.Trim(),
                 Purpose = NormalizeOptional(_siteProfile.Purpose)
             },
+            AdministrationAccessMode = IsMultiTenantMode ? _administrationAccessMode : AdministrationAccessEmbedded,
+            AdminHost = IsMultiTenantMode && IsDedicatedAdminHostMode ? NormalizeOptional(_adminHost) : null,
             InstanceName = _siteProfile.SiteName.Trim()
         };
 

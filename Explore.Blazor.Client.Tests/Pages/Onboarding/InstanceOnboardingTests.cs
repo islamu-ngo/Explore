@@ -108,6 +108,41 @@ public class InstanceOnboardingTests : IDisposable
     }
 
     [Test]
+    public async Task MultiTenantAdministrationAccessChoice_IsRendered()
+    {
+        var cut = RenderForDeploymentMode("MultiTenant");
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Platform administration access", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Embedded admin area", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected multi-tenant onboarding to render the administration access choice.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task SingleTenantAdministrationAccessChoice_IsNotRendered()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.Markup.Contains("Platform administration access", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Embedded admin area", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Dedicated admin hostname", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Single-tenant onboarding must not expose platform administration access choices.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
     public async Task CompleteOnboarding_SingleTenant_ShowsLaunchHandoff()
     {
         var cut = RenderForDeploymentMode("SingleTenant");
@@ -167,7 +202,9 @@ public class InstanceOnboardingTests : IDisposable
         await _instanceOnboardingService.Received(1).CompleteAsync(
             Arg.Is<OnboardingCompletionModel>(model => model != null
                 && model.DeploymentMode == "MultiTenant"
-                && model.SiteProfile.SiteName == "ISLAMU Explore"));
+                && model.SiteProfile.SiteName == "ISLAMU Explore"
+                && model.AdministrationAccessMode == "Embedded"
+                && string.IsNullOrWhiteSpace(model.AdminHost)));
     }
 
     [Test]
@@ -361,6 +398,51 @@ public class InstanceOnboardingTests : IDisposable
                 || !cut.Markup.Contains("Critical launch requirements passed", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Expected Critical Launch Requirements section with passed checks summary.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ReviewAndLaunch_MultiTenant_ShowsDnsChecklistWarnings()
+    {
+        var cut = RenderForDeploymentMode("MultiTenant", new OnboardingPreflightModel
+        {
+            DeploymentMode = "MultiTenant",
+            IsReadyToLaunch = true,
+            BlockingChecks = new List<OnboardingPreflightCheckModel>
+            {
+                new OnboardingPreflightCheckModel
+                {
+                    Code = "setup_secret",
+                    Name = "Setup Secret",
+                    Severity = "Blocking",
+                    Status = "Pass",
+                    Message = "Setup secret is active."
+                }
+            },
+            WarningChecks = new List<OnboardingPreflightCheckModel>
+            {
+                new OnboardingPreflightCheckModel
+                {
+                    Code = "dns_public_platform",
+                    Name = "Public platform DNS",
+                    Severity = "Warning",
+                    Status = "Warning",
+                    Message = "Point the public platform host events.example.org at the Blazor/BFF entry point before launch.",
+                    Detail = "Create an A/AAAA or CNAME record at your edge provider."
+                }
+            }
+        });
+        GoToReviewAndLaunch(cut);
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Public platform DNS", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("events.example.org", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected DNS checklist warning to render in Review & Launch.");
             }
         });
 

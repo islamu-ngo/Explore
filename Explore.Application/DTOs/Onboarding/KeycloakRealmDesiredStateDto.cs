@@ -1,4 +1,4 @@
-// ABOUTME: Typed desired-state contract for ISLAMU-owned Keycloak realm requirements.
+// ABOUTME: Typed desired-state contract for platform-owned Keycloak realm requirements.
 // ABOUTME: Supports additive drift planning while explicitly excluding destructive operations.
 
 namespace Explore.Application.DTOs.Onboarding;

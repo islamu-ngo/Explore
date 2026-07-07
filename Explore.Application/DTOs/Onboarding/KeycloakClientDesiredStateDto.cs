@@ -1,4 +1,4 @@
-// ABOUTME: Describes an ISLAMU-owned Keycloak client requirement for drift planning.
+// ABOUTME: Describes a platform-owned Keycloak client requirement for drift planning.
 // ABOUTME: Used by realm sync preview to model additive client updates without mutations.
 
 namespace Explore.Application.DTOs.Onboarding;

@@ -72,7 +72,7 @@ public class RotateKeycloakClientSecretCommandHandler(
                 ClientId = clientId,
                 SecretOwnershipMode = ownershipMode,
                 RequiresRestart = true,
-                OperatorInstructions = "Rotate the Keycloak client secret in the deployment secret provider, update the matching Keycloak client, then restart or refresh the deployment. ISLAMU Event did not contact Keycloak or store a new secret."
+                OperatorInstructions = "Rotate the Keycloak client secret in the deployment secret provider, update the matching Keycloak client, then restart or refresh the deployment. The platform did not contact Keycloak or store a new secret."
             };
         }
 

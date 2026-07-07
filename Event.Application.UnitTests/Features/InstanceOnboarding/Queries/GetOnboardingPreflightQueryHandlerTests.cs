@@ -51,7 +51,40 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
         await Assert.That(result.BlockingChecks).Contains(check => check.Code == "canonical_host" && check.Status == OnboardingPreflightCheckStatus.Pass);
         await Assert.That(result.WarningChecks).Contains(check => check.Code == "smtp" && check.Status == OnboardingPreflightCheckStatus.Warning);
         await Assert.That(result.WarningChecks).Contains(check => check.Code == "object_storage" && check.Status == OnboardingPreflightCheckStatus.Warning);
+        await Assert.That(result.WarningChecks.Any(check => check.Code.StartsWith("dns_", StringComparison.Ordinal))).IsFalse();
         await _bootstrapRepository.Received(1).GetCurrent(cancellationSource.Token);
+    }
+
+    [Test]
+    public async Task Handle_WhenMultiTenantSetupIsActive_ReturnsDnsChecklistWarnings()
+    {
+        var handler = CreateHandler(new Dictionary<string, string?>
+        {
+            ["Keycloak:Authority"] = "https://auth.example.org/realms/islamu",
+            ["Keycloak:ClientId"] = "islamu-event-blazor",
+            ["PublicBaseUrl"] = "https://events.example.org",
+            ["ControlPlane:PublicOrigin"] = "https://admin.example.org"
+        });
+
+        _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns((InstanceBootstrapState?)null);
+        _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.MultiTenant);
+        _setupSecretProvider.IsSetupModeActive.Returns(true);
+        _setupSecretProvider.IsTimedOut.Returns(false);
+        _setupSecretProvider.IsFromEnvironmentVariable.Returns(true);
+        _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
+        _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain).Returns(new SystemSetting
+        {
+            SettingKey = GovernanceSettingKeys.Domains.AllowTenantCustomDomain,
+            Value = "true"
+        });
+
+        var result = await handler.Handle(new GetOnboardingPreflightQuery(), CancellationToken.None);
+
+        await Assert.That(result.DeploymentMode).IsEqualTo("MultiTenant");
+        await Assert.That(result.WarningChecks).Contains(check => check.Code == "dns_public_platform" && check.Message.Contains("events.example.org", StringComparison.Ordinal));
+        await Assert.That(result.WarningChecks).Contains(check => check.Code == "dns_wildcard_tenant" && check.Message.Contains("*.events.example.org", StringComparison.Ordinal));
+        await Assert.That(result.WarningChecks).Contains(check => check.Code == "dns_control_plane" && check.Message.Contains("admin.example.org", StringComparison.Ordinal));
+        await Assert.That(result.WarningChecks).Contains(check => check.Code == "dns_custom_domain_cname" && check.Message.Contains("Tenant custom domains are enabled", StringComparison.Ordinal));
     }
 
     [Test]

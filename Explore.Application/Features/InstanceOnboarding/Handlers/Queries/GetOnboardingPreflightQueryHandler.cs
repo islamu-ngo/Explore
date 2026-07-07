@@ -39,6 +39,7 @@ public sealed class GetOnboardingPreflightQueryHandler(
         await AddDefaultTenantCheckAsync(result, deploymentMode, onboardingCompleted);
         await AddAuthConfigurationCheckAsync(result);
         await AddCanonicalHostCheckAsync(result);
+        await AddDnsChecklistWarningsAsync(result, deploymentMode);
         await AddOperationalWarningsAsync(result);
 
         return result;
@@ -165,6 +166,63 @@ public sealed class GetOnboardingPreflightQueryHandler(
                 : "Set the canonical URL in Site Profile or provide a public base URL configuration before launch.");
     }
 
+    private async Task AddDnsChecklistWarningsAsync(OnboardingPreflightDto result, DeploymentMode deploymentMode)
+    {
+        if (deploymentMode != DeploymentMode.MultiTenant)
+        {
+            return;
+        }
+
+        var configuredPublicHost = HostFromValue(configuration["PublicBaseUrl"])
+            ?? HostFromValue(configuration["App:PublicBaseUrl"])
+            ?? HostFromValue(configuration["ASPNETCORE_URLS"]);
+        var instanceBaseDomain = await GetSettingValueAsync(GovernanceSettingKeys.Domains.InstanceBaseDomain);
+        var publicHost = configuredPublicHost ?? NormalizeHost(instanceBaseDomain);
+        var adminHost = HostFromValue(configuration["ControlPlane:PublicOrigin"])
+            ?? HostFromValue(configuration["Bff:PublicOrigin"])
+            ?? HostFromValue(configuration["CONTROL_PLANE_PUBLIC_ORIGIN"])
+            ?? NormalizeHost(await GetSettingValueAsync(GovernanceSettingKeys.Domains.AdminHost));
+        var customDomainsEnabled = await HasEnabledSettingAsync(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
+
+        AddWarning(
+            result,
+            "dns_public_platform",
+            "Public platform DNS",
+            string.IsNullOrWhiteSpace(publicHost)
+                ? "Public platform host is not configured yet; add the canonical URL in Site Profile before creating DNS records."
+                : $"Point the public platform host {publicHost} at the Blazor/BFF entry point before launch.",
+            "Create an A/AAAA or CNAME record at your edge provider, then verify TLS termination and forwarded headers.");
+
+        AddWarning(
+            result,
+            "dns_wildcard_tenant",
+            "Wildcard tenant DNS",
+            string.IsNullOrWhiteSpace(publicHost)
+                ? "Wildcard tenant DNS is skipped until the public platform host is known."
+                : $"Point *.{publicHost} at the Blazor/BFF entry point so tenant subdomains can resolve.",
+            "Use a wildcard CNAME when possible; otherwise document the per-tenant DNS process before creating tenants.");
+
+        AddWarning(
+            result,
+            "dns_control_plane",
+            "Control-plane host DNS",
+            string.IsNullOrWhiteSpace(adminHost)
+                ? "Dedicated control-plane host is not configured; embedded administration remains available after launch."
+                : $"Point the dedicated control-plane host {adminHost} at the admin/BFF entry point.",
+            "Use a host restricted to instance admins. If you keep embedded administration, no extra DNS record is required now.");
+
+        AddWarning(
+            result,
+            "dns_custom_domain_cname",
+            "Tenant custom-domain CNAME",
+            customDomainsEnabled
+                ? "Tenant custom domains are enabled; publish CNAME guidance for tenant-owned hostnames before inviting tenants."
+                : "Tenant custom domains are disabled; custom-domain CNAME guidance can wait until the feature is enabled.",
+            string.IsNullOrWhiteSpace(publicHost)
+                ? "Use the platform host or documented edge target once it is configured."
+                : $"Tenants should CNAME their hostnames to {publicHost} or the documented edge target.");
+    }
+
     private async Task AddOperationalWarningsAsync(OnboardingPreflightDto result)
     {
         if (!await HasSettingValueAsync(GovernanceSettingKeys.Email.SmtpHost))
@@ -199,6 +257,38 @@ public sealed class GetOnboardingPreflightQueryHandler(
         return string.IsNullOrWhiteSpace(setting?.Value)
             ? null
             : setting.Value.Trim('"');
+    }
+
+    private static string? HostFromValue(string? value)
+    {
+        var normalized = NormalizeHost(value);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return null;
+        }
+
+        var firstUrl = normalized.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+        return NormalizeHost(firstUrl);
+    }
+
+    private static string? NormalizeHost(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var candidate = value.Trim();
+        if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri))
+        {
+            return uri.Host.Trim().ToLowerInvariant();
+        }
+
+        return candidate
+            .Replace("https://", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("http://", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Trim('/')
+            .ToLowerInvariant();
     }
 
     private static void AddBlocking(OnboardingPreflightDto result, string code, string name, string status, string message, string? detail = null)

@@ -871,6 +871,8 @@ public class OnboardingCompletionModel
 {
     public string DeploymentMode { get; set; } = "SingleTenant";
     public SelfHostOnboardingProfileModel SiteProfile { get; set; } = new();
+    public string AdministrationAccessMode { get; set; } = "Embedded";
+    public string? AdminHost { get; set; }
     public string? InstanceName { get; set; }
 }
 
@@ -961,6 +963,7 @@ public class BrandingSettingsModel
 public class DomainSettingsModel
 {
     public string InstanceBaseDomain { get; set; } = string.Empty;
+    public string AdminHost { get; set; } = string.Empty;
     public bool AllowTenantCustomDomains { get; set; } = true;
     public bool LockTenantSubdomain { get; set; }
     public bool LockTenantCustomDomain { get; set; }
@@ -1077,7 +1080,7 @@ public class SecretOwnershipModel
     public string Mode { get; set; } = "application-managed";
     public string Source { get; set; } = "application";
     public string Badge { get; set; } = "Managed by Application";
-    public string Description { get; set; } = "Stored securely by ISLAMU Event and editable from Admin UI.";
+    public string Description { get; set; } = "Stored securely by the platform and editable from Admin UI.";
     public bool Editable { get; set; } = true;
     public bool Configured { get; set; }
     public bool BootstrapAvailable { get; set; }

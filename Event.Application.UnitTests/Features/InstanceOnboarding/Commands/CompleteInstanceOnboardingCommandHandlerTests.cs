@@ -158,6 +158,8 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.Domains.InstanceBaseDomain
             && setting.Value == JsonSerializer.Serialize("events.example.org")));
+        _ = _systemSettingRepository.DidNotReceive().Create(Arg.Is<SystemSetting>(setting =>
+            setting.SettingKey == GovernanceSettingKeys.Domains.AdminHost));
         await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.PublicExperience.Mode
@@ -255,6 +257,38 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             && auditEvent.Outcome == "disabled"
             && auditEvent.ActorUserId == TestUserId
             && auditEvent.DeploymentMode == DeploymentMode.MultiTenant.ToString()));
+    }
+
+    [Test]
+    public async Task Handle_MultiTenantDedicatedAdminHost_PersistsNormalizedAdminHost()
+    {
+        _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.MultiTenant);
+
+        var command = new CompleteInstanceOnboardingCommand
+        {
+            UserId = TestUserId,
+            Settings = new CompleteInstanceOnboardingRequest
+            {
+                DeploymentMode = DeploymentMode.MultiTenant,
+                AdministrationAccessMode = CompleteInstanceOnboardingRequest.DedicatedAdminHostAdministrationAccess,
+                AdminHost = "https://Admin.Example.Org/console",
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = "Multi Tenant Events",
+                    SupportEmail = "support@example.org",
+                    CanonicalUrl = "https://events.example.org/start",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+            setting.SettingKey == GovernanceSettingKeys.Domains.AdminHost
+            && setting.Value == JsonSerializer.Serialize("admin.example.org")));
     }
 
     private static bool ContainsDefaultHomeBlock(string value, string expectedTitle)

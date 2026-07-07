@@ -57,7 +57,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
                 bootstrapAvailable: !keycloakSecretDeploymentManaged
                     && !storedKeycloakSecretConfigured
                     && configuredKeycloakSecretConfigured,
-                applicationManagedDescription: "Keycloak client secret can be rotated and stored by ISLAMU Event. Deployment values only seed runtime configuration until an application-managed secret is saved.",
+                applicationManagedDescription: "Keycloak client secret can be rotated and stored by the platform. Deployment values only seed runtime configuration until an application-managed secret is saved.",
                 deploymentManagedDescription: "Keycloak client secret is deployment-managed. Rotate it in the deployment secret provider and update the matching Keycloak client outside the Admin UI."),
             AtprotoLoginEnabled = DeserializeBoolean(atprotoLoginEnabled?.Value, false),
             AtprotoPublicUrl = DeserializeString(atprotoPublicUrl?.Value, string.Empty),

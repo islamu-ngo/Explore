@@ -14,7 +14,7 @@ public class AuthorizationProviderConfigurationDto
     public string Provider { get; set; } = "local";
 
     /// <summary>
-    /// The Cerbos gRPC endpoint (e.g., "https://cerbosgrpc.openislamu.org:443").
+    /// The Cerbos gRPC endpoint (e.g., "https://cerbosgrpc.example.org:443").
     /// Only required when Provider is "cerbos".
     /// </summary>
     public string CerbosGrpcEndpoint { get; set; } = string.Empty;
