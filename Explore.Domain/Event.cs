@@ -62,6 +62,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public ICollection<EventModerationRecord> ModerationRecords { get; set; } = new List<EventModerationRecord>();
 
     public string? Slug { get; set; }
+    public string PublicCode { get; set; } = string.Empty;
 
     [ForeignKey("VisibilityType")]
     public int VisibilityTypeId { get; set; }

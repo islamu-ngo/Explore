@@ -329,6 +329,27 @@ public class EventController : ExploreControllerBase
     }
 
     /// <summary>
+    /// Get public event details by slug-code URL token.
+    /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("public/{slugCode}", Name = RouteNames.GetEventByPublicCode)]
+    [EndpointSummary("Get Event Details By Public Code")]
+    [EndpointDescription("Get full public event details from a clean slug-code URL token.")]
+    [ProducesResponseType(typeof(HalResource<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<HalResource<EventDto>>> GetByPublicCode(string slugCode, CancellationToken cancellationToken = default)
+    {
+        var @event = await _mediator.Send(new GetPublicEventDetailsRequest { SlugCode = slugCode }, cancellationToken);
+        if (@event == null)
+            return this.ToNotFoundProblem(EventNotFoundProblem);
+
+        var halResource = await _resourceAssembler.ToResource(@event, HttpContext);
+        return Ok(halResource);
+    }
+
+    /// <summary>
     /// Get authorized management event details by ID, including moderated events.
     /// </summary>
     [Authorize]

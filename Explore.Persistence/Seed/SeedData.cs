@@ -1115,6 +1115,7 @@ public static class SeedData
             Description = BuildCardDescription(spec.Description),
             Content = spec.Description,
             Slug = spec.Slug,
+            PublicCode = $"seed{spec.Number:D8}",
             EventTypeId = (int)spec.EventType,
             AudienceGenderId = (int)spec.AudienceGender,
             AudienceAgeId = (int)spec.AudienceAge,

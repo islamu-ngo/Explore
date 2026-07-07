@@ -46,6 +46,16 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .FirstOrDefaultAsync(e => e.Id == id);
     }
 
+    public async Task<Event?> GetPublicEventWithDetailsByCodeAsync(string publicCode, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Events
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
+            .IncludeStandardDetails()
+            .Include(e => e.AtprotoRecord)
+            .FirstOrDefaultAsync(e => e.PublicCode == publicCode, cancellationToken);
+    }
+
     public async Task<Event?> GetAuthorizationTargetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _dbContext.Events

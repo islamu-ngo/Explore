@@ -29,6 +29,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Description).HasMaxLength(150);
         builder.Property(e => e.Content).HasMaxLength(5000);
         builder.Property(e => e.Slug).HasMaxLength(200);
+        builder.Property(e => e.PublicCode).HasMaxLength(12).IsRequired();
         builder.Property(e => e.CurrencyCode).HasMaxLength(3);
         builder.Property(e => e.EventUrl).HasMaxLength(2048);
         builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(2048);
@@ -141,6 +142,10 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         // Slug lookup (for URL-friendly event access)
         builder.HasIndex(e => new { e.TenantId, e.Slug })
             .HasDatabaseName("ix_events_tenant_slug");
+
+        builder.HasIndex(e => new { e.TenantId, e.PublicCode })
+            .IsUnique()
+            .HasDatabaseName("ix_events_tenant_public_code");
 
         builder.ToTable(t =>
         {
