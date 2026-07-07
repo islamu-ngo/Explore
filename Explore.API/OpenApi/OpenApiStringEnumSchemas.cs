@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
 using Explore.Application.DTOs.Settings;
+using Explore.Application.Features.EventReporting.Models;
 using Explore.Application.Models;
 using Explore.Application.Models.PublicExperience;
 using Explore.Application.Onboarding;
@@ -31,6 +32,7 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(DeclineBehavior),
         typeof(EntityTypeName),
         typeof(EventReportDecisionKind),
+        typeof(EventReportProviderEvidenceMode),
         typeof(EventReportPriority),
         typeof(EventReportSeverityHint),
         typeof(EventRoleAssignmentStatus),

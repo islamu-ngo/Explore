@@ -80,6 +80,12 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<ModerationReportDetailDto>, ModerationReportDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<ModerationReportQueueItemDto>, ModerationReportQueueCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<ModerationReportDetailDto, ModerationReportQueueItemDto>, ModerationReportResourceAssembler>();
+        services.AddScoped<ILinkPolicy<ReportingRoutingStateDto>, ReportingRoutingStateLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ReportingRoutingStateDto>, ReportingRoutingStateCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ReportingRoutingStateDto, ReportingRoutingStateDto>, ReportingRoutingStateResourceAssembler>();
+        services.AddScoped<ILinkPolicy<TenantModerationReportingDashboardDto>, TenantModerationReportingDashboardLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<TenantModerationReportingDashboardDto>, TenantModerationReportingDashboardCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<TenantModerationReportingDashboardDto, TenantModerationReportingDashboardDto>, TenantModerationReportingDashboardResourceAssembler>();
 
         // EventSession
         services.AddScoped<ILinkPolicy<EventSessionDto>, EventSessionDetailLinkPolicy>();
@@ -220,9 +226,15 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<ControlPlaneOperationsDto>, ControlPlaneOperationsLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<ControlPlaneOperationsDto>, ControlPlaneOperationsCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<ControlPlaneOperationsDto, ControlPlaneOperationsDto>, ControlPlaneOperationsResourceAssembler>();
+        services.AddScoped<ILinkPolicy<ControlPlaneDeploymentModeRunbookDto>, ControlPlaneDeploymentModeRunbookLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ControlPlaneDeploymentModeRunbookDto>, ControlPlaneDeploymentModeRunbookCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ControlPlaneDeploymentModeRunbookDto, ControlPlaneDeploymentModeRunbookDto>, ControlPlaneDeploymentModeRunbookResourceAssembler>();
         services.AddScoped<ILinkPolicy<ControlPlaneTenantDetailDto>, ControlPlaneTenantDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<ControlPlaneTenantListItemDto>, ControlPlaneTenantCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<ControlPlaneTenantDetailDto, ControlPlaneTenantListItemDto>, ControlPlaneTenantResourceAssembler>();
+        services.AddScoped<ILinkPolicy<ControlPlaneTenantPlanDetailDto>, ControlPlaneTenantPlanDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ControlPlaneTenantPlanListItemDto>, ControlPlaneTenantPlanCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ControlPlaneTenantPlanDetailDto, ControlPlaneTenantPlanListItemDto>, ControlPlaneTenantPlanResourceAssembler>();
 
         // Storage administration
         services.AddScoped<ILinkPolicy<InstanceStorageSettingsDto>, InstanceStorageSettingsLinkPolicy>();

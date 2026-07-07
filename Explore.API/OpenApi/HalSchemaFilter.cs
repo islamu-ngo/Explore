@@ -4,6 +4,7 @@
 
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using Explore.Application.Hateoas;
 
 namespace Explore.API.OpenApi;
 
@@ -46,7 +47,11 @@ public class HalSchemaFilter : ISchemaFilter
                 var resolvedSchema = ResolveSchema(dtoSchema, context);
                 if (resolvedSchema is not null)
                 {
-                    HalOpenApiSchemaMutator.FlattenDtoIntoHalResource(openApiSchema, resolvedSchema);
+                    var linkSchema = context.SchemaGenerator.GenerateSchema(typeof(HalLink), context.SchemaRepository);
+                    HalOpenApiSchemaMutator.FlattenDtoIntoHalResource(
+                        openApiSchema,
+                        resolvedSchema,
+                        linkValueSchema: linkSchema);
                 }
             }
         }
@@ -122,7 +127,11 @@ public sealed class HalSchemaDocumentFilter : IDocumentFilter
                 continue;
             }
 
-            HalOpenApiSchemaMutator.FlattenDtoIntoHalResource(halSchema, dtoSchema);
+            var linkSchema = context.SchemaGenerator.GenerateSchema(typeof(HalLink), context.SchemaRepository);
+            HalOpenApiSchemaMutator.FlattenDtoIntoHalResource(
+                halSchema,
+                dtoSchema,
+                linkValueSchema: linkSchema);
         }
     }
 

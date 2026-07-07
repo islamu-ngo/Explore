@@ -3,6 +3,8 @@
 
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using Explore.Application.Hateoas;
+using System.Text.Json.Serialization;
 
 namespace Explore.API.OpenApi;
 
@@ -35,6 +37,12 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
             document.AddComponent(schemaName, schema);
         }
 
+        if (!document.Components.Schemas.ContainsKey(nameof(HalLink)))
+        {
+            var halLinkSchema = await context.GetOrCreateSchemaAsync(typeof(HalLink), cancellationToken: cancellationToken);
+            document.AddComponent(nameof(HalLink), halLinkSchema);
+        }
+
         // Also populate the empty HAL wrapper schemas with flattened DTO properties + HAL links
         await PopulateHalResourceSchemas(document, context, cancellationToken);
 
@@ -46,6 +54,8 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
         // which causes NSwag to generate duplicate types with conflicting names.
         ReplaceInlineArrayItemsWithReferences(document);
         ReplaceInlineObjectPropertiesWithReferences(document);
+        ReplaceInlineHalLinkDictionaryPropertiesWithReferences(document);
+        ReplaceInlineHalLinkDictionaryArrayItemsWithReferences(document);
     }
 
     private async Task PopulateHalResourceSchemas(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -69,7 +79,10 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
             // Get or create schema for the inner DTO
             var dtoSchema = await context.GetOrCreateSchemaAsync(dtoType, cancellationToken: cancellationToken);
 
-            HalOpenApiSchemaMutator.FlattenDtoIntoHalResource(halSchema, dtoSchema);
+            HalOpenApiSchemaMutator.FlattenDtoIntoHalResource(
+                halSchema,
+                dtoSchema,
+                linkValueSchema: new OpenApiSchemaReference(nameof(HalLink), document));
         }
     }
 
@@ -225,4 +238,144 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
         }
     }
 
+    private static void ReplaceInlineHalLinkDictionaryPropertiesWithReferences(OpenApiDocument document)
+    {
+        foreach (var dtoType in HalOpenApiSchemaCatalog.RegisteredDtoTypes)
+        {
+            foreach (var prop in dtoType.GetProperties())
+            {
+                if (!TryGetDictionaryValueType(prop.PropertyType, out var valueType) || valueType != typeof(HalLink))
+                    continue;
+
+                var jsonName = GetJsonPropertyName(prop);
+
+                ReplaceInlineDictionaryValueWithReference(document, dtoType.Name, jsonName, nameof(HalLink));
+
+                foreach (var halSchemaName in HalOpenApiSchemaCatalog.DetailResourceMappings
+                    .Where(mapping => mapping.Value == dtoType)
+                    .Select(mapping => mapping.Key))
+                {
+                    ReplaceInlineDictionaryValueWithReference(document, halSchemaName, jsonName, nameof(HalLink));
+                }
+            }
+        }
+    }
+
+    private static bool TryGetDictionaryValueType(Type propertyType, out Type valueType)
+    {
+        valueType = typeof(object);
+
+        var dictionaryType = propertyType.IsGenericType
+            && IsSupportedDictionaryType(propertyType.GetGenericTypeDefinition())
+                ? propertyType
+                : propertyType.GetInterfaces().FirstOrDefault(type =>
+                    type.IsGenericType && IsSupportedDictionaryType(type.GetGenericTypeDefinition()));
+
+        if (dictionaryType == null)
+            return false;
+
+        valueType = dictionaryType.GetGenericArguments()[1];
+        return true;
+    }
+
+    private static bool IsSupportedDictionaryType(Type genericDefinition) =>
+        genericDefinition == typeof(Dictionary<,>)
+        || genericDefinition == typeof(IDictionary<,>)
+        || genericDefinition == typeof(IReadOnlyDictionary<,>);
+
+    private static void ReplaceInlineHalLinkDictionaryArrayItemsWithReferences(OpenApiDocument document)
+    {
+        foreach (var dtoType in HalOpenApiSchemaCatalog.RegisteredDtoTypes)
+        {
+            foreach (var collectionProp in dtoType.GetProperties())
+            {
+                if (!TryGetCollectionItemType(collectionProp.PropertyType, out var itemType))
+                    continue;
+
+                var collectionJsonName = GetJsonPropertyName(collectionProp);
+
+                foreach (var itemProp in itemType.GetProperties())
+                {
+                    if (!TryGetDictionaryValueType(itemProp.PropertyType, out var valueType) || valueType != typeof(HalLink))
+                        continue;
+
+                    var itemJsonName = GetJsonPropertyName(itemProp);
+                    ReplaceInlineArrayItemDictionaryValueWithReference(
+                        document,
+                        dtoType.Name,
+                        collectionJsonName,
+                        itemJsonName,
+                        nameof(HalLink));
+
+                    foreach (var halSchemaName in HalOpenApiSchemaCatalog.DetailResourceMappings
+                        .Where(mapping => mapping.Value == dtoType)
+                        .Select(mapping => mapping.Key))
+                    {
+                        ReplaceInlineArrayItemDictionaryValueWithReference(
+                            document,
+                            halSchemaName,
+                            collectionJsonName,
+                            itemJsonName,
+                            nameof(HalLink));
+                    }
+                }
+            }
+        }
+    }
+
+    private static string GetJsonPropertyName(System.Reflection.PropertyInfo prop) =>
+        prop.GetCustomAttributes(typeof(JsonPropertyNameAttribute), inherit: true)
+            .OfType<JsonPropertyNameAttribute>()
+            .FirstOrDefault()?.Name
+        ?? char.ToLowerInvariant(prop.Name[0]) + prop.Name[1..];
+
+    private static void ReplaceInlineDictionaryValueWithReference(OpenApiDocument document, string schemaName, string propertyName, string targetSchemaName)
+    {
+        if (document.Components?.Schemas?.TryGetValue(schemaName, out var schemaI) != true)
+            return;
+
+        if (schemaI is not OpenApiSchema schema || schema.Properties == null)
+            return;
+
+        if (!schema.Properties.TryGetValue(propertyName, out var propertySchemaI))
+            return;
+
+        if (propertySchemaI is OpenApiSchema propertySchema
+            && propertySchema.AdditionalProperties is not OpenApiSchemaReference)
+        {
+            propertySchema.AdditionalProperties = new OpenApiSchemaReference(targetSchemaName, document);
+        }
+    }
+
+    private static void ReplaceInlineArrayItemDictionaryValueWithReference(
+        OpenApiDocument document,
+        string schemaName,
+        string arrayPropertyName,
+        string dictionaryPropertyName,
+        string targetSchemaName)
+    {
+        if (document.Components?.Schemas?.TryGetValue(schemaName, out var schemaI) != true)
+            return;
+
+        if (schemaI is not OpenApiSchema schema || schema.Properties == null)
+            return;
+
+        if (!schema.Properties.TryGetValue(arrayPropertyName, out var arraySchemaI))
+            return;
+
+        if (arraySchemaI is not OpenApiSchema { Items: OpenApiSchema itemSchema })
+            return;
+
+        if (itemSchema.Properties == null)
+            return;
+
+        if (!itemSchema.Properties.TryGetValue(dictionaryPropertyName, out var dictionarySchemaI))
+            return;
+
+        if (dictionarySchemaI is OpenApiSchema dictionarySchema
+            && dictionarySchema.AdditionalProperties is not OpenApiSchemaReference)
+        {
+            dictionarySchema.AdditionalProperties = new OpenApiSchemaReference(targetSchemaName, document);
+        }
+    }
 }

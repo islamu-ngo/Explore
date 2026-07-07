@@ -7,7 +7,11 @@ namespace Explore.API.OpenApi;
 
 internal static class HalOpenApiSchemaMutator
 {
-    public static void FlattenDtoIntoHalResource(OpenApiSchema halSchema, OpenApiSchema dtoSchema, bool copyRequired = true)
+    public static void FlattenDtoIntoHalResource(
+        OpenApiSchema halSchema,
+        OpenApiSchema dtoSchema,
+        bool copyRequired = true,
+        IOpenApiSchema? linkValueSchema = null)
     {
         EnsureObject(halSchema);
 
@@ -22,7 +26,7 @@ internal static class HalOpenApiSchemaMutator
             CopyRequired(halSchema, dtoSchema);
         }
 
-        AddHalLinksProperty(halSchema);
+        AddHalLinksProperty(halSchema, linkValueSchema);
         AddHalEmbeddedProperty(halSchema);
     }
 

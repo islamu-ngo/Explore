@@ -1,10 +1,10 @@
 // ABOUTME: Central link-relation catalog for HAL resources emitted by the API.
-// ABOUTME: Separates standard IANA relations from ISLAMU Event custom action relations.
+// ABOUTME: Separates standard IANA relations from platform custom action relations.
 
 namespace Explore.Application.Hateoas;
 
 /// <summary>
-/// Standard link relation types as defined by IANA and custom relations for ISLAMU Event.
+/// Standard link relation types as defined by IANA and custom platform relations.
 /// See: https://www.iana.org/assignments/link-relations/link-relations.xhtml
 /// </summary>
 public static class LinkRelations
@@ -102,7 +102,7 @@ public static class LinkRelations
 
     #endregion
 
-    #region ISLAMU Event Custom Relations
+    #region Platform Custom Relations
 
     /// <summary>
     /// Events belonging to an organization or actor.
@@ -123,6 +123,21 @@ public static class LinkRelations
     /// Server-backed program summary for an event.
     /// </summary>
     public const string ProgramSummary = "program-summary";
+
+    /// <summary>
+    /// Deployment-mode migration runbook for deliberate instance-mode transitions.
+    /// </summary>
+    public const string DeploymentModeRunbook = "deployment-mode-runbook";
+
+    /// <summary>
+    /// Action link for switching an instance to multi-tenant mode through the runbook.
+    /// </summary>
+    public const string TransitionToMultiTenant = "transition-to-multi-tenant";
+
+    /// <summary>
+    /// Action link for switching an instance to single-tenant mode through the runbook.
+    /// </summary>
+    public const string TransitionToSingleTenant = "transition-to-single-tenant";
 
     /// <summary>
     /// Action link for adding a session to an event program.
