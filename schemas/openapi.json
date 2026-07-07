@@ -5145,7 +5145,7 @@
           "ControlPlane"
         ],
         "summary": "Get Control Plane Overview",
-        "description": "Returns the multi-tenant instance control-plane overview for instance administrators.",
+        "description": "Returns the instance control-plane overview for single-tenant or multi-tenant administrators.",
         "operationId": "GetControlPlaneOverview",
         "parameters": [
           {
@@ -5217,8 +5217,7 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Authenticated",
-        "x-tenant-mode": "multi-tenant-required"
+        "x-rate-limit-policy": "ControlPlane"
       }
     },
     "/api/admin/control-plane/domains": {
@@ -5299,7 +5298,7 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Authenticated",
+        "x-rate-limit-policy": "ControlPlane",
         "x-tenant-mode": "multi-tenant-required"
       }
     },
@@ -5309,7 +5308,7 @@
           "ControlPlane"
         ],
         "summary": "Get Control Plane Operations",
-        "description": "Returns multi-tenant control-plane operational status for jobs, outbox, email dispatch, and storage.",
+        "description": "Returns control-plane operational status for jobs, outbox, email dispatch, moderation reporting, and storage.",
         "operationId": "GetControlPlaneOperations",
         "parameters": [
           {
@@ -5381,8 +5380,7 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Authenticated",
-        "x-tenant-mode": "multi-tenant-required"
+        "x-rate-limit-policy": "ControlPlane"
       }
     },
     "/api/admin/control-plane/tenants": {
@@ -5463,7 +5461,7 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Authenticated",
+        "x-rate-limit-policy": "ControlPlane",
         "x-tenant-mode": "multi-tenant-required"
       },
       "post": {
@@ -5580,7 +5578,1594 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Write",
+        "x-rate-limit-policy": "ControlPlane",
+        "x-tenant-mode": "multi-tenant-required"
+      }
+    },
+    "/api/admin/control-plane/plans": {
+      "get": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Get Control Plane Tenant Plans",
+        "description": "Returns SaaS tenant plan templates for instance administrators.",
+        "operationId": "GetControlPlaneTenantPlans",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfControlPlaneTenantPlanListItemDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfControlPlaneTenantPlanListItemDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      },
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Create Control Plane Tenant Plan Draft",
+        "description": "Creates a draft SaaS tenant plan template for instance administrators.",
+        "operationId": "CreateControlPlaneTenantPlanDraft",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/plans/{key}": {
+      "get": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Get Control Plane Tenant Plan",
+        "description": "Returns one SaaS tenant plan template with version, setting, and quota metadata.",
+        "operationId": "GetControlPlaneTenantPlanByKey",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfControlPlaneTenantPlanDetailDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfControlPlaneTenantPlanDetailDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/plans/{key}/versions": {
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Create Control Plane Tenant Plan Version Draft",
+        "description": "Creates a draft version for an existing SaaS tenant plan template.",
+        "operationId": "CreateControlPlaneTenantPlanVersionDraft",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/plans/versions/{versionId}": {
+      "put": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Update Control Plane Tenant Plan Version Draft",
+        "description": "Updates a draft SaaS tenant plan version before publication.",
+        "operationId": "UpdateControlPlaneTenantPlanVersionDraft",
+        "parameters": [
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/plans/versions/{versionId}/publish": {
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Publish Control Plane Tenant Plan Version",
+        "description": "Publishes a draft tenant plan version with an explicit existing-tenant assignment policy.",
+        "operationId": "PublishControlPlaneTenantPlanVersion",
+        "parameters": [
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishTenantPlanVersionRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishTenantPlanVersionRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishTenantPlanVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/plans/versions/{versionId}/archive": {
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Archive Control Plane Tenant Plan Version",
+        "description": "Archives a tenant plan version that should no longer be used for provisioning.",
+        "operationId": "ArchiveControlPlaneTenantPlanVersion",
+        "parameters": [
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/plans/versions/{sourceVersionId}/clone": {
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Clone Control Plane Tenant Plan",
+        "description": "Clones an existing tenant plan version into a new draft plan template.",
+        "operationId": "CloneControlPlaneTenantPlan",
+        "parameters": [
+          {
+            "name": "sourceVersionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CloneTenantPlanRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CloneTenantPlanRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CloneTenantPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/plans/validate": {
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Validate Control Plane Tenant Plan Draft",
+        "description": "Validates a tenant plan draft against registered settings, sensitive values, and quota rules.",
+        "operationId": "ValidateControlPlaneTenantPlanDraft",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPlanDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantPlanValidationResult"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantPlanValidationResult"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/plans/preview-diff": {
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Preview Control Plane Tenant Plan Diff",
+        "description": "Previews setting changes between a tenant's effective configuration and a tenant plan draft.",
+        "operationId": "PreviewControlPlaneTenantPlanDiff",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewTenantPlanDiffRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewTenantPlanDiffRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewTenantPlanDiffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantPlanDiffResult"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantPlanDiffResult"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/tenants/{tenantId}/plan-assignment": {
+      "get": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Get Control Plane Tenant Plan Assignment",
+        "description": "Returns the active tenant plan assignment for one tenant.",
+        "operationId": "GetControlPlaneTenantPlanAssignment",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlPlaneTenantPlanAssignmentDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlPlaneTenantPlanAssignmentDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane",
+        "x-tenant-mode": "multi-tenant-required"
+      },
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Switch Control Plane Tenant Plan Assignment",
+        "description": "Switches one tenant to a selected tenant plan version without automatically applying settings.",
+        "operationId": "SwitchControlPlaneTenantPlanAssignment",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchTenantPlanAssignmentRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchTenantPlanAssignmentRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchTenantPlanAssignmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane",
+        "x-tenant-mode": "multi-tenant-required"
+      }
+    },
+    "/api/admin/control-plane/tenants/{tenantId}/plan-assignments/{assignmentId}/apply": {
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Apply Control Plane Tenant Plan Assignment",
+        "description": "Explicitly applies a tenant plan assignment's settings to the tenant setting store.",
+        "operationId": "ApplyControlPlaneTenantPlanAssignment",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane",
+        "x-tenant-mode": "multi-tenant-required"
+      }
+    },
+    "/api/admin/control-plane/tenants/{tenantId}/plan-assignments/{assignmentId}/rollback": {
+      "post": {
+        "tags": [
+          "ControlPlane"
+        ],
+        "summary": "Rollback Control Plane Tenant Plan Assignment",
+        "description": "Rolls one tenant back to a previous tenant plan assignment.",
+        "operationId": "RollbackControlPlaneTenantPlanAssignment",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane",
         "x-tenant-mode": "multi-tenant-required"
       }
     },
@@ -5688,7 +7273,7 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Authenticated",
+        "x-rate-limit-policy": "ControlPlane",
         "x-tenant-mode": "multi-tenant-required"
       }
     },
@@ -5836,7 +7421,7 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Write",
+        "x-rate-limit-policy": "ControlPlane",
         "x-tenant-mode": "multi-tenant-required"
       }
     },
@@ -5984,7 +7569,7 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Write",
+        "x-rate-limit-policy": "ControlPlane",
         "x-tenant-mode": "multi-tenant-required"
       }
     },
@@ -6132,7 +7717,7 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Write",
+        "x-rate-limit-policy": "ControlPlane",
         "x-tenant-mode": "multi-tenant-required"
       }
     },
@@ -6280,7 +7865,7 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Write",
+        "x-rate-limit-policy": "ControlPlane",
         "x-tenant-mode": "multi-tenant-required"
       }
     },
@@ -6428,8 +8013,227 @@
           }
         },
         "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "Write",
+        "x-rate-limit-policy": "ControlPlane",
         "x-tenant-mode": "multi-tenant-required"
+      }
+    },
+    "/api/admin/control-plane/deployment-mode": {
+      "get": {
+        "tags": [
+          "ControlPlaneDeploymentMode"
+        ],
+        "summary": "Get Deployment Mode Runbook",
+        "description": "Returns the Control Plane runbook for deliberate single-tenant and multi-tenant mode migration.",
+        "operationId": "GetControlPlaneDeploymentModeRunbook",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfControlPlaneDeploymentModeRunbookDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfControlPlaneDeploymentModeRunbookDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
+      }
+    },
+    "/api/admin/control-plane/deployment-mode/transition": {
+      "post": {
+        "tags": [
+          "ControlPlaneDeploymentMode"
+        ],
+        "summary": "Transition Deployment Mode",
+        "description": "Runs the Control Plane deployment-mode runbook after validating typed confirmation and tenant-count preconditions.",
+        "operationId": "TransitionControlPlaneDeploymentMode",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ControlPlaneDeploymentModeTransitionRequestDto"
+                  }
+                ]
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ControlPlaneDeploymentModeTransitionRequestDto"
+                  }
+                ]
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ControlPlaneDeploymentModeTransitionRequestDto"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "ControlPlane"
       }
     },
     "/api/custompropertydefinition": {
@@ -11321,6 +13125,78 @@
           }
         },
         "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/event/public/{slugCode}": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Get Event Details By Public Code",
+        "description": "Get full public event details from a clean slug-code URL token.",
+        "operationId": "GetEventByPublicCode",
+        "parameters": [
+          {
+            "name": "slugCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/event/{id}/management-detail": {
@@ -26894,6 +28770,118 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/instance/settings/moderation-reporting/locks": {
+      "put": {
+        "tags": [
+          "InstanceModerationReportingSettings"
+        ],
+        "summary": "Update Instance Moderation Reporting Provider Locks",
+        "description": "Updates instance governance locks that control tenant Osprey and Coop reporting provider overrides.",
+        "operationId": "UpdateInstanceModerationReportingProviderLocks",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReportingProviderLocksDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReportingProviderLocksDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/instanceonboarding/status": {
       "get": {
         "tags": [
@@ -35088,6 +37076,301 @@
         },
         "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/tenant/settings/moderation-reporting/routing-state": {
+      "get": {
+        "tags": [
+          "ModerationReportingRouting"
+        ],
+        "summary": "Get Moderation Reporting Routing State",
+        "description": "Returns the current tenant's effective moderation reporting provider routing state with all secrets redacted.",
+        "operationId": "GetModerationReportingRoutingState",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfReportingRoutingStateDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfReportingRoutingStateDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "put": {
+        "tags": [
+          "ModerationReportingRouting"
+        ],
+        "summary": "Update Moderation Reporting Routing Settings",
+        "description": "Updates current-tenant moderation reporting provider overrides when instance policy allows tenant edits.",
+        "operationId": "UpdateModerationReportingRoutingSettings",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReportingRoutingSettingsDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReportingRoutingSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/tenant/settings/moderation-reporting/routing-state/test/{provider}": {
+      "post": {
+        "tags": [
+          "ModerationReportingRouting"
+        ],
+        "summary": "Test Moderation Reporting Provider",
+        "description": "Checks whether the current tenant provider target is ready for reporting dispatch without returning provider secrets.",
+        "operationId": "TestModerationReportingProvider",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/EventReportExternalProvider"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/module/available": {
@@ -43364,6 +45647,86 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/tenant/settings/moderation-reporting/dashboard": {
+      "get": {
+        "tags": [
+          "TenantModerationReportingDashboard"
+        ],
+        "summary": "Get Tenant Moderation Reporting Dashboard",
+        "description": "Returns current-tenant moderation reporting queue and provider sync health without report payloads or provider secrets.",
+        "operationId": "GetTenantModerationReportingDashboard",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantModerationReportingDashboardDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantModerationReportingDashboardDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/tenantonboarding/status": {
       "get": {
         "tags": [
@@ -51052,51 +53415,7 @@
                     "object"
                   ],
                   "additionalProperties": {
-                    "required": [
-                      "href"
-                    ],
-                    "type": "object",
-                    "properties": {
-                      "href": {
-                        "type": "string"
-                      },
-                      "templated": {
-                        "type": [
-                          "null",
-                          "boolean"
-                        ]
-                      },
-                      "type": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      },
-                      "hreflang": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      },
-                      "title": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      },
-                      "name": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      },
-                      "method": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      }
-                    }
+                    "$ref": "#/components/schemas/HalLink"
                   }
                 }
               }
@@ -51950,6 +54269,55 @@
           }
         }
       },
+      "BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ControlPlaneDeploymentModeTransitionDto"
+              }
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quotaExceeded": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QuotaExceededDetails"
+              }
+            ]
+          }
+        }
+      },
       "BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto": {
         "type": "object",
         "properties": {
@@ -52714,6 +55082,21 @@
           }
         }
       },
+      "CloneTenantPlanRequest": {
+        "required": [
+          "key",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "CompleteInstanceOnboardingRequest": {
         "type": "object",
         "properties": {
@@ -52723,7 +55106,153 @@
           "siteProfile": {
             "$ref": "#/components/schemas/SelfHostOnboardingProfileDto"
           },
+          "administrationAccessMode": {
+            "type": "string"
+          },
+          "adminHost": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "instanceName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ControlPlaneDeploymentModeRunbookDto": {
+        "type": "object",
+        "properties": {
+          "currentMode": {
+            "type": "string"
+          },
+          "activeTenantCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "generatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "targetOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ControlPlaneDeploymentModeTargetOptionDto"
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ControlPlaneDeploymentModeRunbookStepDto"
+            }
+          }
+        }
+      },
+      "ControlPlaneDeploymentModeRunbookStepDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          }
+        }
+      },
+      "ControlPlaneDeploymentModeTargetOptionDto": {
+        "type": "object",
+        "properties": {
+          "targetMode": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "allowed": {
+            "type": "boolean"
+          },
+          "confirmationText": {
+            "type": "string"
+          },
+          "blockingReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "remediation": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ControlPlaneDeploymentModeTransitionDto": {
+        "type": "object",
+        "properties": {
+          "previousMode": {
+            "type": "string"
+          },
+          "newMode": {
+            "type": "string"
+          },
+          "activeTenantCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "operatorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "transitionedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ControlPlaneDeploymentModeTransitionRequestDto": {
+        "type": "object",
+        "properties": {
+          "targetMode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "confirmationText": {
             "type": [
               "null",
               "string"
@@ -52824,6 +55353,12 @@
                 },
                 "message": {
                   "type": "string"
+                },
+                "remediation": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
                 }
               }
             }
@@ -52878,6 +55413,12 @@
                 },
                 "message": {
                   "type": "string"
+                },
+                "remediation": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
                 }
               }
             }
@@ -53014,6 +55555,12 @@
                 },
                 "message": {
                   "type": "string"
+                },
+                "remediation": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
                 }
               }
             }
@@ -53207,6 +55754,12 @@
               "null",
               "string"
             ]
+          },
+          "confirmationText": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -53256,6 +55809,226 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "ControlPlaneTenantPlanAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "planId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "planKey": {
+            "type": "string"
+          },
+          "planVersionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ControlPlaneTenantPlanDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ControlPlaneTenantPlanVersionDto"
+            }
+          }
+        }
+      },
+      "ControlPlaneTenantPlanListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latestVersionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "publishedVersionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "priceAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "billingPeriod": {
+            "type": "string"
+          },
+          "isActiveForProvisioning": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ControlPlaneTenantPlanQuotaDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "limit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ControlPlaneTenantPlanSettingDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "jsonValue": {
+            "type": "string"
+          },
+          "isLocked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ControlPlaneTenantPlanVersionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "billingPeriod": {
+            "type": "string"
+          },
+          "isActiveForProvisioning": {
+            "type": "boolean"
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ControlPlaneTenantPlanSettingDto"
+            }
+          },
+          "quotas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ControlPlaneTenantPlanQuotaDto"
+            }
           }
         }
       },
@@ -57521,6 +60294,9 @@
           "instanceBaseDomain": {
             "type": "string"
           },
+          "adminHost": {
+            "type": "string"
+          },
           "allowTenantCustomDomains": {
             "type": "boolean"
           },
@@ -58688,6 +61464,12 @@
               "string"
             ]
           },
+          "publicCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "eventTypeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -59232,6 +62014,12 @@
             ]
           },
           "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicCode": {
             "type": [
               "null",
               "string"
@@ -60101,6 +62889,9 @@
         ],
         "type": "string"
       },
+      "EventReportExternalProvider": {
+        "type": "integer"
+      },
       "EventReportOptionsDto": {
         "type": "object",
         "properties": {
@@ -60169,6 +62960,14 @@
           "Normal",
           "High",
           "Urgent"
+        ],
+        "type": "string"
+      },
+      "EventReportProviderEvidenceMode": {
+        "enum": [
+          "MetadataOnly",
+          "SafeSummaryOnly",
+          "ReporterText"
         ],
         "type": "string"
       },
@@ -64348,6 +67147,17 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfControlPlaneTenantPlanListItemDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfControlPlaneTenantPlanListItemDto"
+            }
+          }
+        }
+      },
       "HalCollectionEmbeddedOfCustomPropertyDefinitionListDto": {
         "type": "object",
         "properties": {
@@ -65020,6 +67830,58 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfControlPlaneTenantListItemDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfControlPlaneTenantPlanListItemDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfControlPlaneTenantPlanListItemDto"
           }
         }
       },
@@ -66956,24 +69818,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -67130,24 +69975,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -67261,24 +70089,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -67384,24 +70195,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -67565,24 +70359,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -67774,51 +70551,7 @@
                     "object"
                   ],
                   "additionalProperties": {
-                    "required": [
-                      "href"
-                    ],
-                    "type": "object",
-                    "properties": {
-                      "href": {
-                        "type": "string"
-                      },
-                      "templated": {
-                        "type": [
-                          "null",
-                          "boolean"
-                        ]
-                      },
-                      "type": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      },
-                      "hreflang": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      },
-                      "title": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      },
-                      "name": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      },
-                      "method": {
-                        "type": [
-                          "null",
-                          "string"
-                        ]
-                      }
-                    }
+                    "$ref": "#/components/schemas/HalLink"
                   }
                 }
               }
@@ -67892,24 +70625,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -67993,24 +70709,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -68088,24 +70787,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -68167,24 +70849,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -68238,24 +70903,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -68305,24 +70953,53 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfControlPlaneDeploymentModeRunbookDto": {
+        "type": "object",
+        "properties": {
+          "currentMode": {
+            "type": "string"
+          },
+          "activeTenantCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "generatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "targetOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ControlPlaneDeploymentModeTargetOptionDto"
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ControlPlaneDeploymentModeRunbookStepDto"
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -68402,6 +71079,12 @@
                 },
                 "message": {
                   "type": "string"
+                },
+                "remediation": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
                 }
               }
             }
@@ -68409,24 +71092,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -68465,6 +71131,12 @@
                 },
                 "message": {
                   "type": "string"
+                },
+                "remediation": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
                 }
               }
             }
@@ -68472,24 +71144,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -68603,6 +71258,12 @@
                 },
                 "message": {
                   "type": "string"
+                },
+                "remediation": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
                 }
               }
             }
@@ -68610,24 +71271,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -68769,24 +71413,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -68849,24 +71476,117 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfControlPlaneTenantPlanDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ControlPlaneTenantPlanVersionDto"
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfControlPlaneTenantPlanListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latestVersionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "publishedVersionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "priceAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "billingPeriod": {
+            "type": "string"
+          },
+          "isActiveForProvisioning": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -69108,24 +71828,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -69214,24 +71917,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -69323,24 +72009,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -69477,24 +72146,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -69574,24 +72226,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -69870,24 +72505,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -69958,24 +72576,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -70059,24 +72660,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -70131,24 +72715,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -70205,6 +72772,12 @@
             ]
           },
           "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicCode": {
             "type": [
               "null",
               "string"
@@ -70597,24 +73170,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -70661,6 +73217,12 @@
             ]
           },
           "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicCode": {
             "type": [
               "null",
               "string"
@@ -70928,24 +73490,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -71021,24 +73566,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -71317,24 +73845,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -71405,24 +73916,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -71764,24 +74258,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -71879,24 +74356,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -71982,24 +74442,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -72292,24 +74735,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -72364,24 +74790,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -72436,24 +74845,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -72754,24 +75146,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -72844,24 +75219,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -73167,24 +75525,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -73262,24 +75603,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -73424,24 +75748,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -73560,24 +75867,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -73655,24 +75945,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -73727,24 +76000,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -73786,24 +76042,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -74119,24 +76358,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -74213,24 +76435,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -74281,24 +76486,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -74374,24 +76562,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -74445,24 +76616,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -75198,24 +77352,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -75477,24 +77614,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -75583,24 +77703,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -75765,24 +77868,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -75927,24 +78013,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76026,24 +78095,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76104,24 +78156,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76191,24 +78226,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76304,24 +78322,71 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfReportingRoutingStateDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "localCanonicalRequired": {
+            "type": "boolean"
+          },
+          "externalSyncEnabled": {
+            "type": "boolean"
+          },
+          "tenantProviderConfigurationLocked": {
+            "type": "boolean"
+          },
+          "tenantOspreyProviderLocked": {
+            "type": "boolean"
+          },
+          "tenantCoopProviderLocked": {
+            "type": "boolean"
+          },
+          "evidenceModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "evidenceModeCode": {
+            "type": "string"
+          },
+          "evidenceModeName": {
+            "type": "string"
+          },
+          "ospreyRoutingMode": {
+            "type": "string"
+          },
+          "coopRoutingMode": {
+            "type": "string"
+          },
+          "osprey": {
+            "$ref": "#/components/schemas/ReportingProviderStateDto"
+          },
+          "coop": {
+            "$ref": "#/components/schemas/ReportingProviderStateDto"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76483,24 +78548,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76595,24 +78643,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76729,24 +78760,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76855,24 +78869,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76909,24 +78906,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -76959,24 +78939,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -77064,24 +79027,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -77173,24 +79119,40 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfTenantModerationReportingDashboardDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "generatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "queueHealth": {
+            "$ref": "#/components/schemas/TenantModerationReportQueueHealthDto"
+          },
+          "providerSyncHealth": {
+            "$ref": "#/components/schemas/TenantModerationProviderSyncHealthDto"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -77440,24 +79402,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -77560,24 +79505,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -77649,24 +79577,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -77766,24 +79677,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -77918,24 +79812,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -78105,24 +79982,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -78243,24 +80103,7 @@
           "_links": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string",
-                  "description": "Link URL"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "HTTP method"
-                },
-                "title": {
-                  "type": [
-                    "null",
-                    "string"
-                  ],
-                  "description": "Link title"
-                }
-              }
+              "$ref": "#/components/schemas/HalLink"
             },
             "description": "HAL hypermedia links"
           },
@@ -82229,6 +84072,18 @@
             ],
             "format": "uuid"
           },
+          "providerTargetScope": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerTargetId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "providerSignalId": {
             "type": [
               "null",
@@ -82707,6 +84562,21 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "PreviewTenantPlanDiffRequest": {
+        "required": [
+          "current",
+          "draft"
+        ],
+        "type": "object",
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/TenantPlanEffectiveConfiguration"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/TenantPlanDraft"
           }
         }
       },
@@ -83402,6 +85272,17 @@
           }
         }
       },
+      "PublishTenantPlanVersionRequest": {
+        "required": [
+          "existingTenantPolicy"
+        ],
+        "type": "object",
+        "properties": {
+          "existingTenantPolicy": {
+            "$ref": "#/components/schemas/TenantPlanExistingAssignmentPolicy"
+          }
+        }
+      },
       "PurgeCustomPropertyDefinitionDto": {
         "required": [
           "reason"
@@ -83727,6 +85608,129 @@
           },
           "payload": {
             "$ref": "#/components/schemas/TenantBrandingSettingsPayloadDto"
+          }
+        }
+      },
+      "ReportingProviderStateDto": {
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "instanceEnabled": {
+            "type": "boolean"
+          },
+          "tenantEnabled": {
+            "type": "boolean"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportingProviderTargetDto"
+            }
+          }
+        }
+      },
+      "ReportingProviderTargetDto": {
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "scopeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "scopeCode": {
+            "type": "string"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "endpointConfigured": {
+            "type": "boolean"
+          },
+          "apiKeyConfigured": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReportingRoutingStateDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "localCanonicalRequired": {
+            "type": "boolean"
+          },
+          "externalSyncEnabled": {
+            "type": "boolean"
+          },
+          "tenantProviderConfigurationLocked": {
+            "type": "boolean"
+          },
+          "tenantOspreyProviderLocked": {
+            "type": "boolean"
+          },
+          "tenantCoopProviderLocked": {
+            "type": "boolean"
+          },
+          "evidenceModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "evidenceModeCode": {
+            "type": "string"
+          },
+          "evidenceModeName": {
+            "type": "string"
+          },
+          "ospreyRoutingMode": {
+            "type": "string"
+          },
+          "coopRoutingMode": {
+            "type": "string"
+          },
+          "osprey": {
+            "$ref": "#/components/schemas/ReportingProviderStateDto"
+          },
+          "coop": {
+            "$ref": "#/components/schemas/ReportingProviderStateDto"
           }
         }
       },
@@ -85281,6 +87285,18 @@
           }
         }
       },
+      "SwitchTenantPlanAssignmentRequest": {
+        "required": [
+          "tenantPlanVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantPlanVersionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "SyncConflictDto": {
         "required": [
           "key",
@@ -85863,6 +87879,139 @@
           }
         }
       },
+      "TenantModerationProviderSyncHealthDto": {
+        "type": "object",
+        "properties": {
+          "pendingSyncs": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "stuckPendingSyncs": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failedSyncs": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "disabledSyncs": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ignoredSyncs": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "TenantModerationReportingDashboardDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "generatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "queueHealth": {
+            "$ref": "#/components/schemas/TenantModerationReportQueueHealthDto"
+          },
+          "providerSyncHealth": {
+            "$ref": "#/components/schemas/TenantModerationProviderSyncHealthDto"
+          }
+        }
+      },
+      "TenantModerationReportQueueHealthDto": {
+        "type": "object",
+        "properties": {
+          "submittedReports": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "inReviewReports": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "closedReports": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "openCases": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "assignedCases": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "waitingExternalCases": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "waitingReporterCases": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "decisionReadyCases": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "TenantNavigationLinkDto": {
         "type": "object",
         "properties": {
@@ -85943,6 +88092,228 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "TenantPlanChangeType": {
+        "type": "integer"
+      },
+      "TenantPlanDiffResult": {
+        "required": [
+          "settingChanges"
+        ],
+        "type": "object",
+        "properties": {
+          "settingChanges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantPlanSettingChange"
+            }
+          }
+        }
+      },
+      "TenantPlanDraft": {
+        "required": [
+          "key",
+          "name",
+          "pricing",
+          "isActiveForProvisioning",
+          "settingOverrides",
+          "quotaLimits"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pricing": {
+            "$ref": "#/components/schemas/TenantPlanPricing"
+          },
+          "isActiveForProvisioning": {
+            "type": "boolean"
+          },
+          "settingOverrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantPlanSettingOverride"
+            }
+          },
+          "quotaLimits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantPlanQuotaLimit"
+            }
+          }
+        }
+      },
+      "TenantPlanEffectiveConfiguration": {
+        "required": [
+          "settings"
+        ],
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantPlanEffectiveSetting"
+            }
+          }
+        }
+      },
+      "TenantPlanEffectiveSetting": {
+        "required": [
+          "key",
+          "jsonValue",
+          "isLocked"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "jsonValue": {
+            "type": "string"
+          },
+          "isLocked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TenantPlanExistingAssignmentPolicy": {
+        "type": "integer"
+      },
+      "TenantPlanPricing": {
+        "required": [
+          "amount",
+          "currencyCode",
+          "billingPeriod"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "billingPeriod": {
+            "type": "string"
+          }
+        }
+      },
+      "TenantPlanQuotaLimit": {
+        "required": [
+          "key",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "limit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "TenantPlanSettingChange": {
+        "required": [
+          "key",
+          "changeType",
+          "beforeValue",
+          "afterValue",
+          "lockChanged"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "changeType": {
+            "$ref": "#/components/schemas/TenantPlanChangeType"
+          },
+          "beforeValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "afterValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lockChanged": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TenantPlanSettingOverride": {
+        "required": [
+          "key",
+          "jsonValue",
+          "isLocked"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "jsonValue": {
+            "type": "string"
+          },
+          "isLocked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TenantPlanValidationError": {
+        "required": [
+          "code",
+          "target",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "TenantPlanValidationResult": {
+        "required": [
+          "errors"
+        ],
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantPlanValidationError"
+            }
+          },
+          "isValid": {
+            "type": "boolean"
           }
         }
       },
@@ -89919,6 +92290,79 @@
           }
         }
       },
+      "UpdateReportingProviderLocksDto": {
+        "type": "object",
+        "properties": {
+          "lockReportingProviders": {
+            "type": "boolean"
+          },
+          "lockTenantOspreyProvider": {
+            "type": "boolean"
+          },
+          "lockTenantCoopProvider": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateReportingRoutingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "externalSyncEnabled": {
+            "type": "boolean"
+          },
+          "enableTenantOspreyProvider": {
+            "type": "boolean"
+          },
+          "enableTenantCoopProvider": {
+            "type": "boolean"
+          },
+          "ospreyRoutingMode": {
+            "type": "string"
+          },
+          "coopRoutingMode": {
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/EventReportProviderEvidenceMode"
+          },
+          "ospreyEndpointUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ospreyApiKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ospreyWebhookSecret": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coopEndpointUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coopApiKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coopWebhookSecret": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "UpdateSettingBatchDto": {
         "required": [
           "values"
@@ -91783,6 +94227,9 @@
       "name": "ControlPlane"
     },
     {
+      "name": "ControlPlaneDeploymentMode"
+    },
+    {
       "name": "CustomPropertyDefinition"
     },
     {
@@ -91900,6 +94347,9 @@
       "name": "IndexedDid"
     },
     {
+      "name": "InstanceModerationReportingSettings"
+    },
+    {
       "name": "InstanceOnboarding"
     },
     {
@@ -91928,6 +94378,9 @@
     },
     {
       "name": "ModerationReport"
+    },
+    {
+      "name": "ModerationReportingRouting"
     },
     {
       "name": "Module"
@@ -91988,6 +94441,9 @@
     },
     {
       "name": "Tenant"
+    },
+    {
+      "name": "TenantModerationReportingDashboard"
     },
     {
       "name": "TenantOnboarding"

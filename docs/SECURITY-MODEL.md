@@ -60,6 +60,12 @@ Use `ISafeAuthDiagnosticsPolicy` for BFF auth challenge and OIDC remote-failure 
 
 ## Header and Secret Hardening
 
+Browser-facing BFF hosts emit security headers before HTML, error, static asset, and proxied responses are written:
+
+- `Content-Security-Policy` keeps scripts self-hosted with the Blazor WebAssembly runtime allowances, blocks framing with `frame-ancestors 'none'`, limits forms to `self`, allows the documented Google font endpoints, and allows `data:`, `https:`, and `blob:` images so event images and browser-generated downloads keep working.
+- `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: strict-origin-when-cross-origin` are set at the BFF boundary.
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()` disables browser capabilities that are not part of the launch surface.
+
 In YARP transforms:
 
 - `X-Tenant-Slug` is forwarded when route or request context provides an explicit tenant hint.
@@ -84,6 +90,7 @@ The separate control-plane app is a browser BFF, not a native client and not a m
 - The BFF enforces a coarse `ControlPlaneAccess` policy before rendering the shell, but `Explore.API` and Application/MediatR authorization remain the authoritative boundary for every control-plane action.
 - Control-plane UI affordances must still come from API/HAL `_links` or server-confirmed status endpoints. Local claim checks are UX hints only and must not unlock actions.
 - Browser-supplied privileged headers are stripped before proxying. Trusted tenant hints, setup-secret forwarding, and support-access forwarding remain server-owned BFF adapter decisions.
+- The existing `Explore.Blazor` BFF can also render an embedded control-plane shell on hosts configured in `Bff:AdminHosts`. Optional `Bff:AdminHostAllowedIpRanges` restricts those admin hosts by IP/CIDR, and configured admin hosts are excluded from tenant custom-domain/subdomain resolution. This host classification is routing and shell selection only; it is not a replacement for instance-admin authorization, HAL affordance gating, or API/Application checks.
 
 A separate control-plane UI host does not guarantee operational rescue if the shared API, database, or reverse proxy is saturated. Reserved-resource management APIs/workers are a future management-plane concern, not something implied by this BFF split.
 
@@ -132,6 +139,7 @@ Event reporting separates reporter-facing status from moderator-facing review wo
 - Moderator queue/detail reads and moderation actions require event-resource authorization before handlers load or mutate report state.
 - Moderator projections remain data-minimized even for authorized management callers. They expose workflow state, reason/priority/status, current case, authorized evidence text on detail reads, safe signal summaries, provider type, sync state, retry counts, and HAL action affordances. They do not expose stable reporter user/actor identifiers, evidence creator identifiers, decision moderator identifiers, raw provider case/signal identifiers, provider URLs, provider correlation identifiers, reporter fingerprints, raw provider payloads, raw provider errors, or unsafe notes.
 - Blazor and other clients must use HAL rels (`report-event`, `moderation-reports`, `triage-report`, `assign-report`, `decide-report`, and `execute-report-decision`) as the action affordance source instead of local role/claim checks.
+- Managed reporting routing uses the same privacy boundary. Tenant routing-state, tenant dashboard, and control-plane operations surfaces expose only redacted provider target identifiers, configured flags, aggregate queue/provider-sync counts, and server-emitted HAL actions (`routing-state`, `edit`, `test-osprey-provider`, `test-coop-provider`). Raw endpoint URLs, API keys, webhook secrets, provider payloads, callback signatures, raw provider errors, report evidence, and tenant lists are never returned by read DTOs, HAL resources, generated response models, logs, telemetry, or disabled-state text. Provider test actions are readiness checks only; they do not dispatch external HTTP requests.
 
 ## Event Registration Privacy
 

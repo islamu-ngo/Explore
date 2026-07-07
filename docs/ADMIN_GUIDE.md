@@ -6,8 +6,8 @@ ABOUTME: Maps implemented admin UI surfaces to roles, entry points, dangerous op
 > **Audience:** Admins | Operators | Contributors
 > **Status:** Mixed
 > **Owner:** Product/Admin
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.Blazor.Client/Pages/Admin/`, `docs/ADMIN_HIERARCHY.md`, `docs/AUTHORIZATION.md`, `docs/AUTHORIZATION_PATTERNS.md`
+> **Last Verified:** 2026-07-05
+> **Source Anchors:** `Explore.Blazor.Client/Pages/Admin/`, `Event.ControlPlane.Client/`, `Explore.API/Controllers/ControlPlaneController.cs`, `docs/ADMIN_HIERARCHY.md`, `docs/AUTHORIZATION.md`, `docs/AUTHORIZATION_PATTERNS.md`
 
 ## Scope
 
@@ -19,7 +19,7 @@ Each workflow below states the required role, the UI entry point, and the recove
 
 | Scope | Typical role | UI entry point | Boundary |
 |---|---|---|---|
-| Instance | Instance administrator | `/admin/instance/settings` | Platform-wide settings, tenant management, platform API keys, global provider settings. |
+| Instance | Instance administrator | Multi-tenant: `/admin/instance`, `/admin/instance/tenants`, `/admin/instance/domains`; single-tenant settings: `/admin/instance/settings` | Platform-wide settings, tenant lifecycle, domain/admin-host guidance, platform API keys, global provider settings. |
 | Tenant | Tenant administrator | `/admin/tenant/settings` and tenant admin sub-pages | Tenant policies, public experience, lookup tables, tenant API keys, navigation, footer, templates, custom properties. |
 | Organization | Organization administrator | `/admin/organization/{OrganizationId}/settings` | Organization profile, members, verification state, organization API keys. |
 | Group | Group administrator | `/admin/group/{GroupId}/settings` | Group profile, branding, members, group API keys. |
@@ -30,9 +30,9 @@ Admin pages require authentication. Editability is still checked at runtime by r
 
 **Required role:** Instance administrator.
 
-**UI entry point:** `/admin/instance/settings`.
+**UI entry points:** `/admin/instance/settings` in single-tenant or legacy settings flows; `/admin/instance`, `/admin/instance/tenants`, and `/admin/instance/domains` for the multi-tenant Instance Console.
 
-Instance settings are the platform-control surface. Use them for:
+Instance settings are the platform-control surface for static/default policy. Use them for:
 
 - Governance and render policy defaults.
 - Authentication provider configuration.
@@ -40,13 +40,17 @@ Instance settings are the platform-control surface. Use them for:
 - Provider-neutral storage policy, quotas, delegation, optional S3-compatible settings, and SMTP settings.
 - Analytics and privacy settings.
 - Footer governance and platform API keys.
-- Tenant management in multi-tenant deployments.
+- Tenant management in multi-tenant deployments now lives in the Instance Console. The console is suppressed in single-tenant mode and its API endpoints return `403 Multi-tenant required` through `[RequireMultiTenant]`.
+
+Configured admin hosts from `Bff:AdminHosts` can render the embedded Instance Console shell in the existing Blazor BFF, while public and tenant hosts keep the public shell. This host classification selects the shell only; instance-admin authorization and API/HAL checks still decide access and action availability.
+
+Tenant lifecycle buttons must be driven by HAL `_links`, not by local role guesses. Destructive purge scheduling requires an operator reason and exact tenant-slug confirmation before an archived tenant can move to `Purged`; no tenant data is physically deleted in the request path. Overview and operations warnings include remediation text so operators can see the next corrective action beside the warning.
 
 ### Dangerous Operations
 
 | Operation | Risk | Recovery note |
 |---|---|---|
-| Delete tenant | Permanent tenant removal if exposed by the current UI path. | Confirm backups and export tenant-critical data before deleting. Use [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for restore/rollback planning. |
+| Schedule tenant purge | Moves an archived tenant to the `Purged` lifecycle state after exact slug confirmation and an operator reason. | Confirm backups and export tenant-critical data first. The request records lifecycle audit evidence and does not physically delete tenant data inline; use [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for restore/rollback planning. |
 | Revoke platform API key | Direct callers using the key fail immediately. | Create and distribute a replacement key before revocation when possible. |
 | Change auth provider settings | Administrators can lock themselves out if authority/client settings are wrong. | Keep a known-good configuration snapshot from [SECRETS.md](SECRETS.md) and [CONFIGURATION.md](CONFIGURATION.md). |
 | Switch Cerbos/local authorization provider | Cerbos mode is fail-closed when the external provider is unavailable. | Switch back to local authorization if Cerbos availability breaks production authorization. |

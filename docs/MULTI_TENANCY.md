@@ -27,15 +27,18 @@ Standard runtime authority lives in `Explore.API.Middleware.ApiTenantResolutionM
 In multi-tenant mode, the API resolves tenant in this strict order:
 
 1. trusted `X-Tenant-Slug` header forwarded by the BFF,
-2. custom-domain lookup (`domains.tenant_custom_domain`) if custom domains are allowed,
-3. subdomain lookup (`domains.tenant_subdomain`),
-4. unresolved request fails closed with `404`.
+2. configured admin-host exclusion before tenant host matching,
+3. custom-domain lookup (`domains.tenant_custom_domain`) if custom domains are allowed,
+4. subdomain lookup (`domains.tenant_subdomain`),
+5. unresolved request fails closed with `404`.
 
 In single-tenant mode, tenant context always resolves to the configured default tenant ID.
 
 Request host source:
 
 - uses normalized `Request.Host.Host` after trusted forwarded-header processing.
+
+Admin-host classification is deployment-static BFF configuration, not tenant routing state. `Bff:AdminHosts` accepts exact non-wildcard admin host/origin values; those hosts are skipped before custom-domain and subdomain tenant resolution so an admin host such as `admin.example.org` is not treated as tenant slug `admin` or as a tenant custom domain. `Bff:AdminHostAllowedIpRanges` can additionally restrict configured admin hosts by exact IP/CIDR and fails closed with `403` when the remote IP is missing or outside the allowlist. Onboarding may persist the operator-entered dedicated host in `domains.admin_host` for review and DNS guidance, but runtime host classification still comes from BFF config.
 
 For standard authenticated-browser requests, the middleware binds the resolved tenant into the request-scoped tenant context accessor immediately.
 
@@ -58,6 +61,8 @@ Subdomain extraction behavior:
 - requires active tenant status for resolved tenant IDs.
 
 Custom/subdomain values are stored as JSON-serialized strings in `TenantSetting.Value`.
+
+The multi-tenant Instance Console (`/admin/instance`, `/admin/instance/tenants`, `/admin/instance/domains`) and `Explore.API` control-plane endpoints are multi-tenant-only. In single-tenant mode, the Blazor route guard redirects the control-plane console back to tenant/instance settings surfaces, while API endpoints marked `[RequireMultiTenant]` return `403` with a multi-tenant-required problem response.
 
 ## Data Isolation Enforcement
 
@@ -127,6 +132,14 @@ Cache behavior:
 - Each tier has its own cache prefix (e.g., `HierSettings:Tenant:{id}`).
 - Default TTL: 5 minutes.
 - Updates to settings invalidate the corresponding scope cache.
+
+### Reporting Provider Delegation
+
+Moderation reporting uses the same hierarchy but keeps the instance baseline authoritative. Local canonical report and case creation always happens first. Static `Reporting:*`, `Reporting:Osprey:*`, and `Reporting:Coop:*` configuration defines the instance provider baseline; tenant settings may only add tenant-owned Osprey or Coop targets.
+
+Instance administrators control delegation with three instance-scope locks that default closed: `governance.lock_tenant_reporting_providers`, `governance.lock_tenant_osprey_provider`, and `governance.lock_tenant_coop_provider`. When unlocked, a tenant may configure `reporting.enable_tenant_osprey_provider` or `reporting.enable_tenant_coop_provider` plus the matching endpoint and secret settings. `reporting.tenant_external_sync_enabled=false` disables only tenant-added external targets; it does not disable local reporting or any enabled instance baseline provider.
+
+Routing-state, update, provider-test, and tenant dashboard APIs are tenant-scoped and derive tenant identity from the normal tenant context. Tenant dashboard counts use exact tenant predicates and return aggregate queue/provider-sync health only. Instance control-plane operations intentionally aggregate moderation reporting provider-sync and lock-impact counts across tenants through an explicit tenant-filter bypass reason; those aggregates never return tenant identifiers, report identifiers, provider URLs, provider IDs, correlation IDs, payloads, raw errors, or secret material.
 
 ## Tenant Lifecycle States
 

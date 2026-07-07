@@ -405,6 +405,26 @@ Contract rules:
 - HAL collection resources may expose `create`; active endpoint detail resources may expose `update`, `rotate-secret`, `test`, and `delete`; archived endpoint detail resources expose no mutation affordances. Message detail resources may expose `delivery-attempts`; retryable attempt detail resources may expose `retry`; Svix or Composite consumer detail resources may expose `open-provider-portal`. Clients must render webhook actions from `_links`, not client-side role checks.
 - The Svix App Portal route returns only short-lived URL/token data. The Svix API token is resolved server-side through the configured secret provider and is never sent to Blazor.
 
+### Moderation Reporting Routing And Dashboards
+
+Managed reporting routing APIs expose tenant-owned provider configuration, readiness, and dashboards without returning provider secrets or report payloads.
+
+| Verb | Route | Route Name | Purpose | Response |
+|---|---|---|---|---|
+| `GET` | `/api/tenant/settings/moderation-reporting/routing-state` | `GetModerationReportingRoutingState` | Current-tenant routing state, lock flags, provider target configured flags, and HAL affordances. | HAL resource of `ReportingRoutingStateDto` |
+| `PUT` | `/api/tenant/settings/moderation-reporting/routing-state` | `UpdateModerationReportingRoutingSettings` | Update current-tenant provider routing settings when instance delegation locks allow it. Secret input fields are write-only and omitted/blank secret fields preserve existing values. | `BaseCommandResponse<Guid>` |
+| `POST` | `/api/tenant/settings/moderation-reporting/routing-state/test/{provider}` | `TestModerationReportingProvider` | Readiness-check a tenant Osprey or Coop target without external HTTP dispatch or secret output. | `BaseCommandResponse<Guid>` |
+| `PUT` | `/api/instance/settings/moderation-reporting/locks` | `UpdateInstanceModerationReportingProviderLocks` | Update instance reporting-provider delegation locks for tenant Osprey/Coop configuration. | `BaseCommandResponse<Guid>` |
+| `GET` | `/api/tenant/settings/moderation-reporting/dashboard` | `GetTenantModerationReportingDashboard` | Current-tenant aggregate queue and provider-sync health. | HAL resource of `TenantModerationReportingDashboardDto` |
+| `GET` | `/api/admin/control-plane/operations` | `GetControlPlaneOperations` | Instance control-plane operations status now includes aggregate `moderation-reporting` provider-sync and tenant lock-impact metrics. | HAL resource of `ControlPlaneOperationsDto` |
+
+Contract rules:
+
+- Routing-state and dashboard reads are tenant-scoped and redacted. They may expose provider target identifiers, configured flags, aggregate counts, and HAL links, but never raw endpoint URLs, API keys, webhook secrets, provider payloads, correlation IDs, report evidence, or raw provider errors.
+- Tenant update commands accept endpoint URLs and secret values only as request input. Response DTOs, HAL resources, generated response models, logs, metrics, traces, screenshots, and ProblemDetails must not echo those values.
+- Provider test actions are readiness checks over effective routing state. They validate lock state, provider enablement, tenant target presence, and configured endpoint/API-key flags; they do not call external provider endpoints.
+- HAL rels `routing-state`, `edit`, `test-osprey-provider`, and `test-coop-provider` are the client action source of truth. Clients must not recreate hidden actions from local roles or claims.
+
 ### Incoming Integration Webhooks
 
 Incoming webhooks are provider callbacks received by ISLAMU Event. They are separate from outgoing product webhooks and continue to work when the outgoing provider is `Disabled`, `Local`, `Svix`, `Composite`, or `DryRun`.
@@ -859,12 +879,14 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 
 ## OpenAPI Export And Client Generation
 
-1. Building `Explore.API/Explore.API.csproj` runs ASP.NET Core build-time OpenAPI generation and refreshes the checked-in `schemas/openapi.json` contract.
+1. Building `Explore.API/Explore.API.csproj` in `Release` runs ASP.NET Core build-time OpenAPI generation and refreshes the checked-in `schemas/openapi.json` contract.
 2. Contract invariant and parity tests assert the runtime `/openapi/event-api.json` shape without writing generated files.
 3. `ApiContractInventoryGeneratorTests` writes the committed endpoint inventory to [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md).
 4. HAL schema transformers shape OpenAPI schemas so generated clients preserve HAL extension data.
 5. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `schemas/openapi.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
 6. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
+
+Public HAL detail wrappers must be registered in `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`. If a new `HalResourceOf*Dto` wrapper is omitted, OpenAPI can emit an empty wrapper schema and generated clients lose the DTO fields even though runtime HAL responses are correct.
 
 For lifecycle contract changes, the current safe regeneration path is:
 

@@ -6,7 +6,7 @@ ABOUTME: Keeps token handling, proxying, render policy, service state, and clien
 > **Audience:** Contributors | Frontend | AI agents
 > **Status:** Implemented
 > **Owner:** Frontend
-> **Last Verified:** 2026-07-04
+> **Last Verified:** 2026-07-05
 > **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Event.ControlPlane.Blazor/Program.cs`, `Event.ControlPlane.Blazor/Components/App.razor`, `Event.ControlPlane.Client/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
 
 ## Scope
@@ -58,11 +58,12 @@ BFF endpoints are split by concern in `Explore.Blazor/Extensions/` and wired thr
 | Auth refresh support | `/bff/auth/refresh-schemes`, `/bff/auth/refresh-session`, `/bff/auth/refresh-session/internal` | `BffAuthEndpoints.cs` |
 | User/session view | `/bff/me` | `BffPreferenceEndpoints.cs` |
 | Preferences and appearance | `/bff/theme`, `/bff/language`, `/bff/direction`, `/bff/ui-themes`, `/bff/appearance/*` | `BffPreferenceEndpoints.cs` |
+| White-label manifest | `/manifest.webmanifest` | `BffManifestEndpoints.cs` |
 | Setup secret | `GET/POST/DELETE /bff/setup-secret`, `/bff/setup-secret/sync` | `BffSetupSecretEndpoints.cs` |
 | Storage upload proxy | `/bff/storage/upload-session`, `/bff/storage/upload-proxy` | `BffStorageEndpoints.cs` |
 | Support access | `/bff/support-access/current`, `/bff/support-access/sessions`, `/bff/support-access/sessions/current/stop`, `/bff/support-access/tenants/{targetTenantId}/sessions`, `/bff/support-access/tenants/{targetTenantId}/sessions/{sessionId}/audit-events`, `/bff/support-access/sessions/{sessionId}/force-stop` | `BffSupportAccessEndpoints.cs` |
 
-Keep new BFF endpoints in the smallest matching extension file. `BffEndpointExtensions.cs` should remain the facade/orchestrator, not a dumping ground for endpoint logic.
+Keep new BFF endpoints in the smallest matching extension file. `BffEndpointExtensions.cs` should remain the facade/orchestrator, not a dumping ground for endpoint logic. The manifest endpoint resolves public-experience branding through the server-side API client and falls back to generic install metadata when branding cannot be read; do not reintroduce a static tenant-branded manifest file.
 
 ## Proxy And Token Forwarding
 
@@ -81,6 +82,16 @@ There are two related but separate transport paths:
    - `BffCookieForwardingHandler` for self/BFF calls that must preserve cookie/XSRF context.
 
 All server-side handlers use `UseCookies = false` where applicable to avoid pooled `CookieContainer` leakage between requests.
+
+## Dedicated Admin Host Classification
+
+Dedicated control-plane hostnames are static BFF configuration, not tenant database routing state. Configure exact hosts or origins under `Bff:AdminHosts`, for example `admin.example.org` or `https://admin.example.org`. Wildcards are invalid because admin hosts must not overlap tenant subdomains or tenant custom domains.
+
+Host classification runs against `HttpContext.Request.Host` after `UseEventBffForwardedHeaders()` applies trusted forwarded headers. The tenant subdomain and custom-domain resolvers skip configured admin hosts, so `admin.example.org` is not resolved as tenant slug `admin` under `example.org` and is not looked up as a tenant-owned custom domain.
+
+Optional admin-host IP allowlisting is configured with `Bff:AdminHostAllowedIpRanges` using exact IP addresses or CIDR ranges, for example `203.0.113.10` or `203.0.113.0/24`. When the allowlist is set, admin-host requests fail closed with `403` if the remote address is missing or outside the configured ranges. Public and tenant hosts are not affected by this allowlist.
+
+Supported now: exact admin-host classification, optional IP/CIDR allowlisting, server-side BFF cookies, and the existing CSP/frame protections. Deferred: per-admin-host cookie domain/name switching, a separate mutation rate-limit policy, and per-admin-host CSP variants. MFA for instance administrators should be enforced by the identity provider policy rather than by browser-side checks.
 
 ## Setup Secret Boundary
 

@@ -121,6 +121,7 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/keycloak/KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` | Control-plane BFF `Bff:Authentication:ClientSecret` and Compose `keycloak-init` client-secret sync input for `islamu-event-control-plane` |
 | `/keycloak/KEYCLOAK_CONTROL_PLANE_AUTHORITY` | Optional control-plane BFF `Bff:Authentication:Authority`; otherwise derived from `KEYCLOAK_ENDPOINT` and `KEYCLOAK_REALM` |
 | `/keycloak/KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future Compose `keycloak-init` sync input for deployments that intentionally make the API resource-server client confidential; not needed by the current bearer-only API audience client |
+| `/keycloak/KEYCLOAK_SMTP_*` | Optional Compose `keycloak-init` realm SMTP bootstrap. Leave `KEYCLOAK_SMTP_HOST` blank to preserve existing Keycloak SMTP settings; set host/port/from to apply deployment-managed SMTP. |
 | `/control-plane/CONTROL_PLANE_API_ENDPOINT` | Control-plane BFF `ExploreApi:BaseUrl` / API proxy target |
 | root or AI path + `AI_TOOL_PROPOSALS_ENABLED` | `AiProvider:ToolProposalsEnabled` |
 | `/postgresql/POSTGRESQL_HOST` | PostgreSQL bootstrap host |
@@ -136,6 +137,10 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/smtp/MAIL_SMTP_FROM_ADDRESS` | `smtp.from_address` secret binding default; Development seed maps it to `email.from_address` when no SMTP setting exists |
 | `/smtp/MAIL_SMTP_FROM_NAME` | `smtp.from_name` secret binding default; Development seed maps it to `email.from_name` when no SMTP setting exists |
 | `/cerbos/CERBOS_USE_POLICY_SCOPE` | `Cerbos:UsePolicyScope` |
+| `/reporting/OSPREY_API_KEY` | `reporting.osprey_api_key` tenant Osprey provider credential |
+| `/reporting/OSPREY_WEBHOOK_SECRET` | `reporting.osprey_webhook_secret` tenant Osprey callback/signing secret when a deployment uses one |
+| `/reporting/COOP_API_KEY` | `reporting.coop_api_key` tenant Coop provider credential |
+| `/reporting/COOP_WEBHOOK_SECRET` | `reporting.coop_webhook_secret` tenant Coop callback HMAC secret |
 | raw process environment + `STORAGE_S3_*` | consumed directly by the S3 resolver as a compatibility fallback |
 
 Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding.
@@ -157,7 +162,9 @@ Secrets use a platform-wide ownership model so environment variables and externa
 
 Do not merge application-managed and deployment-managed values for the same field at runtime. The `SecretResolver` dispatches through one `SecretBinding` source and intentionally does not fallback to another source after a binding is selected. For settings still migrating to the shared secret control plane, the same contract applies at the DTO/UI boundary: deployment values may prefill forms, but they do not silently override saved application settings unless that key is explicitly marked deployment-managed.
 
-Current migrated surface: Cerbos authorization settings expose endpoint and Admin API credential ownership metadata. Cerbos Admin API credentials are now registered in `SecretDefinitionRegistry`; the browser sees only configured flags and ownership badges. SMTP, S3, OAuth, localization/TMS, and AI keys still have area-specific storage/UI paths and must not be documented as fully migrated until their resolvers use the shared ownership metadata consistently.
+Reporting provider secrets are server-side tenant settings. API keys and webhook secrets for Osprey and Coop must never be returned in browser DTOs, HAL links, health checks, logs, metrics, traces, screenshots, issue templates, or support bundles; browser/control-plane surfaces may expose only configured/source/editability metadata. Routing update actions are write-only for secret values: supplying a new Osprey/Coop API key or webhook secret rotates that tenant value, while omitting the field or sending it blank preserves the currently stored secret. There is no implicit clear-secret endpoint and no readback path; confirm rotation through configured flags, provider readiness checks, and secret-provider audit trails.
+
+Current migrated surface: Cerbos authorization settings expose endpoint and Admin API credential ownership metadata. Cerbos Admin API credentials are now registered in `SecretDefinitionRegistry`; the browser sees only configured flags and ownership badges. Reporting provider secret keys are registered as sensitive hierarchical settings for the moderation routing foundation. SMTP, S3, OAuth, localization/TMS, and AI keys still have area-specific storage/UI paths and must not be documented as fully migrated until their resolvers use the shared ownership metadata consistently.
 
 ## ISecretProvider Interface
 

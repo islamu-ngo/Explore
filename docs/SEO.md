@@ -6,8 +6,8 @@ ABOUTME: Separates source-backed SEO features from planned or unsupported site-w
 > **Audience:** Operators | Admins | Integrators | Contributors
 > **Status:** Mixed
 > **Owner:** Frontend
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.API/Controllers/SitemapController.cs`, `Explore.Application/Features/Seo/Handlers/Queries/GetSitemapEventsQueryHandler.cs`, `Explore.Infrastructure/Services/PublicUrlBuilder.cs`, `Explore.Blazor/Controllers/RobotsController.cs`, `Explore.Blazor.Client/Routes.razor`, `Explore.Blazor.Client/Services/RuntimeRenderPolicyService.cs`, `Explore.Application/Features/PublicExperience/`, `Explore.Application/Services/TenantPolicySettingService.Read.cs`, `Explore.Application/Services/TenantPolicySettingService.Apply.cs`, `docs/RENDER_POLICIES.md`, `docs/ADMIN_GUIDE.md`
+> **Last Verified:** 2026-07-05
+> **Source Anchors:** `Explore.API/Controllers/SitemapController.cs`, `Explore.Application/Features/Seo/Handlers/Queries/GetSitemapEventsQueryHandler.cs`, `Explore.Infrastructure/Services/PublicUrlBuilder.cs`, `Explore.Blazor/Controllers/RobotsController.cs`, `Explore.Blazor/Components/App.razor`, `Explore.Blazor/Extensions/BffManifestEndpoints.cs`, `Explore.Blazor.Client/Routes.razor`, `Explore.Blazor.Client/Services/RuntimeRenderPolicyService.cs`, `Explore.Blazor.Client/Pages/Events/EventDetail.razor`, `Explore.Blazor.Client/Pages/Events/EventDetail.razor.cs`, `Explore.Application/Features/PublicExperience/`, `Explore.Application/Services/TenantPolicySettingService.Read.cs`, `Explore.Application/Services/TenantPolicySettingService.Apply.cs`, `docs/RENDER_POLICIES.md`, `docs/ADMIN_GUIDE.md`
 
 SEO support is implemented as a focused set of public-discovery primitives: sitemap generation, robots output, render-policy decisions for public routes, and tenant public-experience settings. Do not describe this as full site-wide SEO automation.
 
@@ -22,7 +22,7 @@ SEO support is implemented as a focused set of public-discovery primitives: site
 | URL base | Uses the public request base URL, including forwarded host/proto and path base handling. |
 | Size boundary | Event projection is clamped for sitemap safety; do not document unlimited event output. |
 
-The sitemap endpoint is source-backed, but sitemap endpoint tests were not identified during the Batch C source map. Query-level sitemap tests exist; avoid claiming broader endpoint test coverage unless new tests are added.
+Repository-level sitemap coverage verifies that the event set is tenant-filtered and limited to published public events. Controller output still combines those event entries with the static public routes listed above.
 
 ## Robots Behavior
 
@@ -33,7 +33,7 @@ The sitemap endpoint is source-backed, but sitemap endpoint tests were not ident
 | Production | Allows crawling and advertises `/sitemap.xml`. |
 | Non-production | Returns `Disallow: /`. |
 
-Robots output uses forwarded host/proto context for the sitemap URL. Do not document non-production environments as indexable.
+Robots output uses forwarded host/proto context for the sitemap URL. Integration coverage verifies that non-production hosts disallow crawlers and production robots output uses forwarded proto/host for the canonical sitemap URL. Do not document non-production environments as indexable.
 
 ## Render Policy And Public Routes
 
@@ -61,6 +61,23 @@ Public discovery settings are tenant-scoped and managed through admin settings r
 
 Tenant resolution and public URL generation are domain-aware. See [MULTI_TENANCY.md](MULTI_TENANCY.md) and [ADMIN_GUIDE.md](ADMIN_GUIDE.md) for the broader administration context.
 
+## Event Detail Metadata
+
+Public event detail pages emit crawler and preview metadata from the same canonical event URL helper used by the share and calendar flows.
+
+| Metadata | Behavior |
+|---|---|
+| Canonical URL | Built from the public event slug/code through `CanonicalUrlHelper`. |
+| Open Graph and Twitter | Uses event title, normalized description, canonical URL, and featured image/public storage image URL. |
+| Structured data | Emits schema.org `Event` JSON-LD for crawlable public events only. JSON is generated through `System.Text.Json`; no raw HTML rendering helper is used. |
+| Noindex | Emits `robots noindex, nofollow` for non-public visibility or non-crawlable event statuses such as draft, cancelled, or moderated states. |
+
+Do not claim structured data for every route. Current structured data automation is scoped to public event detail pages.
+
+## Web Manifest
+
+The public Blazor shell links a minimal web app manifest for launch install metadata. The BFF serves the manifest dynamically from public-experience branding, using the configured brand display name, logo URL, and favicon URL when available, with generic fallback values when branding cannot be resolved. No service worker, offline cache, push, or background sync behavior is registered by the manifest work.
+
 ## Implemented Vs Planned
 
 Implemented:
@@ -69,13 +86,16 @@ Implemented:
 - Public robots endpoint with environment-sensitive indexing behavior.
 - Public route render-policy classification.
 - Event detail page metadata/canonical behavior in the Blazor client.
+- Event detail schema.org `Event` JSON-LD for crawlable public event pages.
+- Event detail noindex metadata for non-public or non-crawlable event states.
+- Minimal public web app manifest and app-shell manifest link.
 - Error pages with page-level noindex behavior.
 - Tenant public-experience controls for discovery-oriented presentation.
 
 Not proven by inspected source:
 
 - Site-wide dynamic metadata on every route.
-- Structured data / JSON-LD automation.
+- Structured data / JSON-LD automation outside public event detail pages.
 - Canonical URL management for every possible page.
 - SEO score auditing, keyword tools, or search-console integrations.
 - A standalone SEO admin page.

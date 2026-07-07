@@ -206,6 +206,28 @@ Enable destructive cleanup only after reviewing dry-run output, confirming backu
 
 `docker-compose.yml` sets the separate control-plane BFF `CONTROL_PLANE_API_ENDPOINT` and `ExploreApi__BaseUrl` with the same internal API default. Operators only need to override this when the control-plane BFF talks to a different API host.
 
+### Multi-Tenant Hostnames And Reverse Proxy
+
+Multi-tenant deployments use three host classes in front of the Blazor BFF:
+
+| Host | Example | Proxy target | Notes |
+|---|---|---|---|
+| Public platform host | `events.example.org` | `islamu-event-ui:8080` | Configure as the public `PublicBaseUrl` / canonical URL. |
+| Wildcard tenant host | `*.events.example.org` | `islamu-event-ui:8080` | Used for tenant subdomain resolution. Keep it on the same Blazor BFF entry point. |
+| Dedicated admin host | `admin.example.org` | `islamu-event-ui:8080` | Configure the exact host or origin in `Bff:AdminHosts`; optional `Bff:AdminHostAllowedIpRanges` can restrict source networks. |
+
+The reverse proxy must preserve the original host and scheme with trusted forwarded headers:
+
+```text
+X-Forwarded-Host: <browser-facing-host>
+X-Forwarded-Proto: https
+X-Forwarded-For: <client-ip>
+```
+
+Do not route `admin.example.org` through tenant wildcard DNS. The Blazor BFF classifies configured admin hosts after forwarded-header processing and skips tenant subdomain/custom-domain lookup for those hosts. If `Bff:AdminHostAllowedIpRanges` is configured, admin-host requests outside the allowed exact IP/CIDR ranges fail closed with `403`.
+
+Tenant custom domains are operator/tenant-owned CNAMEs to the public edge target. Publish the CNAME target you expect tenants to use, but keep custom-domain validation separate from the dedicated admin host.
+
 ### Local SMTP Capture
 
 The default Compose stack starts Mailpit without a profile so first-run registration and SMTP tests can capture messages locally instead of delivering real email.

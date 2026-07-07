@@ -5,16 +5,16 @@ ABOUTME: Helps AI agents and developers locate code quickly without full-repo sc
 
 > Complete directory map for AI agents and developers.
 > Lists all folders with max 2 key files per folder for quick lookup.
-> Last Updated: April 2026
+> Last Updated: July 2026
 
 ---
 
 ## Solution Overview
 
-The solution uses **Clean Architecture** with CQRS (MediatR). There are **two naming prefixes**:
+The solution uses **Clean Architecture** with CQRS (MediatR). There are **two naming prefixes** during the Explore-to-Event transition:
 
 - **Explore.\*** - Main application projects (API, Domain, Application, Persistence, Blazor, Infrastructure) (historical naming from when the project was "Explore", were not renamed to "Event" yet)
-- **Event.\*** - Test projects (for now, later all projects will be renamed to "Event" prefix)
+- **Event.\*** - Test projects plus newer shared/runtime projects such as shared BFF hosting and the control-plane UI.
 
 ---
 
@@ -30,8 +30,11 @@ Explore.Infrastructure  (depends on Application - email, storage, identity)
 Explore.Secrets         (standalone - secrets management)
     ↑
 Explore.API             (depends on all above - controllers, middleware, DI)
-Explore.Blazor          (Blazor Server host - depends on API indirectly)
-Explore.Blazor.Client   (Blazor WASM - standalone client, calls API via BFF)
+Event.Web.BffHosting    (shared BFF auth/proxy/header/admin-host primitives)
+Event.ControlPlane.Client (shared host-neutral control-plane RCL)
+Explore.Blazor          (public Blazor BFF host; can embed control-plane shell on admin hosts)
+Explore.Blazor.Client   (public interactive client, calls API via BFF)
+Event.ControlPlane.Blazor (optional separate Interactive Server-only control-plane BFF)
     ↑
 Explore.AppHost         (.NET Aspire orchestrator)
 Explore.ServiceDefaults (shared Aspire defaults)
@@ -239,14 +242,17 @@ Explore.API/
 │   ├── OrganizationController.cs  — Organization endpoints
 │   ├── InstanceOnboardingController.cs — Instance admin bootstrap
 │   ├── TenantOnboardingController.cs   — Tenant setup wizard
+│   ├── ControlPlaneController.cs — Multi-tenant instance console API (`[RequireMultiTenant]`)
 │   ├── FooterController.cs         — Footer link groups, links, settings, governance (11 endpoints)
 │   └── [40+ more controllers]     — Inherit ExploreControllerBase; GET=AllowAnonymous, POST/PUT/DELETE=Authorize
 ├── Models/                        — API transport models (not DTOs)
 │   └── EventFilterRequest.cs      — 42-property filter model for [FromQuery] binding
 ├── Services/                      — API-layer services
-│   └── TenantContext.cs           — Multi-tenant resolution (header → custom domain → subdomain → default)
+│   └── TenantContext.cs           — Legacy/request tenant context bridge; middleware is the tenant-resolution authority
 ├── Middleware/                     — HTTP pipeline middleware
 │   ├── SecurityHeadersMiddleware.cs   — X-Content-Type-Options, X-Frame-Options, CSP, etc.
+│   ├── ApiTenantResolutionMiddleware.cs — Tenant resolution (BFF hint → admin-host exclusion → custom domain → subdomain)
+│   ├── ApiTenantPostAuthenticationMiddleware.cs — Final API-key tenant binding after auth
 │   ├── CorrelationIdMiddleware.cs     — X-Correlation-ID / X-Request-ID propagation to Serilog
 │   ├── ETagMiddleware.cs              — SHA256-based weak ETags, 304 Not Modified
 │   ├── RequestLoggingMiddleware.cs    — Structured logging: method, path, status, duration, userId
@@ -279,6 +285,7 @@ Explore.API/
 │   └── Policies/                      — 19 entity-specific link policies (EventLinkPolicy, etc.)
 ├── OpenApi/                       — Scalar/OpenAPI customization and build-time contract transformers
 │   ├── HalDtoSchemaTransformer.cs — Native OpenAPI HAL schema shaping
+│   ├── EndpointClassificationTransformer.cs — Emits endpoint tenant-mode/admin metadata
 │   └── HalSchemaFilter.cs         — Swashbuckle transition HAL schema shaping
 ├── BackgroundServices/            — Hosted background workers
 │   ├── OutboxProcessor.cs         — Polls outbox_messages, dispatches events, retry + dead-letter
@@ -291,9 +298,9 @@ Explore.API/
 
 ---
 
-### Explore.Blazor/ — Blazor Server Host
+### Explore.Blazor/ — Public Blazor BFF Host
 
-Server-side host for the Blazor application. Handles SSR, authentication, and proxies to API.
+Server-side BFF host for the public Blazor application. Handles SSR/interactive rendering, authentication, proxying to API, tenant host resolution, and configured admin-host shell selection.
 
 ```
 Explore.Blazor/
@@ -301,6 +308,7 @@ Explore.Blazor/
 ├── Components/
 │   ├── App.razor                  — Root component (HTML head, body, Blazor script tags)
 │   └── Routes.razor               — Router configuration with render modes
+│   └── ControlPlane/              — Embedded admin-host shell backed by Event.ControlPlane.Client
 ├── Extensions/
 │   └── ConfigurationExtension.cs  — Configuration helpers for Blazor Server
 ├── Services/
@@ -310,13 +318,14 @@ Explore.Blazor/
 
 ---
 
-### Explore.Blazor.Client/ — Blazor WebAssembly Client
+### Explore.Blazor.Client/ — Public Blazor Client
 
-Interactive WASM client. Contains all pages, components, and service proxies.
+Public interactive client. Contains pages, components, route guards, generated/HAL API client boundary, and public/tenant/legacy instance-admin surfaces.
 
 ```
 Explore.Blazor.Client/
 ├── Program.cs                     — WASM host builder, service registration, HttpClient setup
+├── Routes.razor                   — Route map, including embedded Event.ControlPlane.Client routes
 ├── Pages/                         — Routable page components
 │   ├── Event/                     — Event pages
 │   │   ├── EventList.razor/.cs    — Event listing/discovery page
@@ -329,7 +338,7 @@ Explore.Blazor.Client/
 │   │   └── OrganizationProfile.razor/.cs — Organization profile management
 │   ├── Admin/                     — Admin pages
 │   │   ├── LookupTables.razor/.cs — Admin panel for all lookup tables
-│   │   ├── Instance/              — Instance-level admin settings
+│   │   ├── Instance/              — Instance-level settings and multi-tenant console host pages
 │   │   └── Tenant/                — Tenant-level admin settings
 │   ├── Auth/                      — Authentication pages
 │   ├── Landing/                   — Public landing page
@@ -390,9 +399,22 @@ Explore.Blazor.Client/
 ├── Routing/
 │   └── Guards/                    — Route guard implementations
 │       ├── AuthenticatedRouteGuard.cs — Requires authentication
-│       └── AdminRouteGuard.cs     — Requires admin role
+│       ├── AdminRouteGuard.cs     — Requires admin role
+│       └── MultiTenantControlPlaneRouteGuard.cs — Suppresses Instance Console routes outside multi-tenant BFF status
 └── wwwroot/                       — Static web assets
 ```
+
+### Event.Web.BffHosting/ — Shared BFF Hosting Primitives
+
+Shared authentication, YARP, header-sanitization, host-profile, admin-host classification, and control-plane authorization primitives used by `Explore.Blazor` and `Event.ControlPlane.Blazor`.
+
+### Event.ControlPlane.Client/ — Shared Control-Plane RCL
+
+Host-neutral Razor Class Library for Instance Console routes, contracts, local design primitives, and fail-closed service interfaces. It must not depend on API/Application/Domain/Infrastructure/Persistence or browser token storage.
+
+### Event.ControlPlane.Blazor/ — Optional Separate Control-Plane BFF
+
+Interactive Server-only Blazor BFF using the `EventBffHostProfile.ControlPlane` profile, dedicated Keycloak confidential client, dedicated cookie, and `Event.ControlPlane.Client` UI surface.
 
 ---
 

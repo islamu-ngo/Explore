@@ -200,6 +200,26 @@ If `_links` are missing:
 - admin/sync affordances are also filtered server-side before link materialization. Do not re-enable hidden actions in Blazor by checking client-side roles or claims.
 - for sync/history/status navigation links that are auth-only, verify the caller is authenticated and the endpoint is not returning a minimal representation.
 
+## Control-Plane Operations Warnings
+
+The instance control plane exposes warning codes with operator remediation text. Use the code first, then follow the linked status card or backing worker logs.
+
+| Code | What it means | Operator action |
+|---|---|---|
+| `general_outbox_due_backlog_capped` | The general outbox due backlog reached the bounded reporting cap. | Verify the outbox worker is running and inspect due rows before raising the reporting cap. |
+| `general_outbox_failures_present` | General outbox rows are failed or dead-lettered. | Fix the downstream handler or payload issue, then replay from an operator-approved path. |
+| `email_provider_missing` | SMTP is not configured for platform email delivery. | Configure SMTP in instance settings before relying on platform email delivery. |
+| `email_dispatch_dead_letters` | Email dispatch has dead-lettered rows. | Review dead-lettered dispatch rows, fix provider/configuration failures, and replay only after confirming recipients and payloads. |
+| `email_dispatch_stale_processing` | Email dispatch rows are stuck in processing. | Check the worker lease/heartbeat and restart the worker before replaying stuck rows. |
+| `email_dispatch_due_backlog` | Email dispatch due backlog exceeds the configured threshold. | Scale or restart dispatch processing and check SMTP provider throttling before increasing thresholds. |
+| `moderation_reporting_provider_sync_failures` | Moderation reporting provider-sync links have failed rows at or above the configured threshold. | Review failed reporting provider sync records and provider configuration from an operator-approved path. Do not paste provider payloads, endpoint URLs, API keys, webhook secrets, raw provider errors, report evidence, or callback signatures into tickets or logs. |
+| `moderation_reporting_provider_sync_stuck` | Moderation reporting provider-sync links have pending rows older than `Reporting:Health:StuckProviderSyncMinutes`. | Verify the report provider sync dispatcher is running, then check provider connectivity and tenant/instance routing locks without exposing provider identifiers or payload material. |
+| `storage_provider_unavailable` | The configured storage provider reports unavailable. | Verify storage provider settings, credentials, bucket/root reachability, and health checks before upload-heavy operations. |
+| `deployment_mode_not_multi_tenant` | Control-plane overview was reached outside multi-tenant mode. | Switch to a configured multi-tenant deployment; do not toggle mode casually from runtime settings. |
+| `public_host_missing` | No public origin or instance base domain is configured. | Set `PublicBaseUrl` or the instance base domain before creating tenant DNS records. |
+| `authentication_provider_missing` | No authentication provider is configured. | Complete authentication-provider setup and verify OIDC discovery before tenant onboarding. |
+| `authorization_provider_missing` | No explicit authorization provider configuration has been saved. | Save the intended authorization provider configuration; local authorization remains the default until changed. |
+
 ## Cerbos / Authorization Provider Issues
 
 ### Instance Cerbos PDP Unavailable

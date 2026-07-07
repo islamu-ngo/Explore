@@ -46,6 +46,15 @@ When active, the API-authoritative resolver middleware resolves tenant by reques
 
 Tenant-scoped queries are filtered by global EF query filters.
 
+Dedicated admin hosts are static BFF configuration, not tenant routing data. Configure `Bff:AdminHosts` with exact host/origin values such as `admin.example.org`; the Blazor BFF renders the control-plane shell for those hosts and skips tenant subdomain/custom-domain lookup. Optional `Bff:AdminHostAllowedIpRanges` can restrict those admin hosts to exact IP/CIDR ranges.
+
+Typical multi-tenant DNS:
+
+- public platform host: `events.example.org` -> Blazor BFF edge;
+- wildcard tenant host: `*.events.example.org` -> same Blazor BFF edge;
+- dedicated admin host: `admin.example.org` -> same Blazor BFF edge, with `Bff:AdminHosts` configured;
+- tenant custom domains: tenant-owned CNAMEs to the documented public edge target.
+
 ## Default Tenant Contract
 
 If no configured default tenant exists in single-tenant mode, runtime uses fallback:

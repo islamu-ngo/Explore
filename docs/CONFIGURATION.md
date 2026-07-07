@@ -64,6 +64,7 @@ Commonly consumed sections in code:
 - `Cerbos:*`
 - `Deployment:*`
 - `PublicBaseUrl`, `App:PublicBaseUrl`, or `Application:PublicBaseUrl`
+- `Bff:AdminHosts` and `Bff:AdminHostAllowedIpRanges`
 - `Storage:Local:*` (deployment-managed local filesystem storage)
 - `StorageReconciliation:*` (dry-run-first storage drift worker)
 - `S3Settings:*` (fallback source for storage resolver)
@@ -90,6 +91,14 @@ Commonly consumed sections in code:
 `PublicBaseUrl` is the preferred static key for the instance's externally reachable HTTPS origin. The fallback lookup order is `PublicBaseUrl`, then `App:PublicBaseUrl`, then `Application:PublicBaseUrl`.
 
 The value must be an absolute `http` or `https` URL. Public deployments should use `https`. It is used by public URL builders and by the email dispatch drain when creating absolute unsubscribe URLs for `List-Unsubscribe` headers and visible unsubscribe footers. If no valid public base URL is configured, categorized email can still send when preferences allow it, but the dispatch path omits unsubscribe URLs because relative links are not valid in email headers.
+
+### Dedicated Admin Host Configuration
+
+`Bff:AdminHosts` is a deployment-managed list of exact hosts or origins that should render the existing Blazor app's control-plane shell instead of the public/tenant shell. Examples: `admin.example.org`, `https://admin.example.org`. Wildcards are rejected because they can overlap tenant subdomains or tenant custom domains.
+
+`Bff:AdminHostAllowedIpRanges` is optional. When set, values must be exact IP addresses or CIDR ranges, for example `203.0.113.10` or `203.0.113.0/24`. The allowlist applies only to configured admin hosts. If a request arrives on an admin host with a missing remote IP or an address outside the allowed ranges, the BFF returns `403`.
+
+Admin-host classification runs after trusted forwarded-header processing. Reverse proxies must forward `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-For` so the BFF sees the browser-facing host, scheme, and client IP.
 
 ### Storage Static Configuration
 
@@ -176,6 +185,37 @@ Provider runtime keys are infrastructure-only switches. They control `RuntimeMod
 | `Reporting:MirrorReviewQueue` | `false` | Enables external review-case mirroring only for `Coop` or `Composite` modes. When enabled with a configured Coop endpoint, the runtime resolver mirrors local report cases after local report sync. |
 | `Reporting:ExecuteDecisions` | `true` | Allows provider decision execution to delegate to the local decision executor. Set `false` to fail decision execution contracts with a non-retryable disabled result. |
 | `Reporting:EvidenceMode` | `MetadataOnly` | Evidence-sharing posture for provider envelopes. Supported values are `MetadataOnly`, `SafeSummaryOnly`, and `ReporterText`; `ReporterText` is rejected for `Disabled` and `LocalOnly` modes. |
+
+Control-plane health uses additional static reporting keys. These affect only aggregate operations dashboards and do not change report intake, routing, or provider dispatch behavior:
+
+| Key | Default | Description |
+|---|---:|---|
+| `Reporting:Health:StuckProviderSyncMinutes` | `120` | Pending provider-sync links older than this window are counted as stuck in the control-plane `moderation-reporting` operations card. |
+| `Reporting:Health:FailedProviderSyncWarningThreshold` | `1` | Failed provider-sync links at or above this count produce the `moderation_reporting_provider_sync_failures` warning. |
+
+Hierarchical reporting settings add tenant provider targets on top of the instance baseline. Static `Reporting:*`, `Reporting:Osprey:*`, and `Reporting:Coop:*` remain the instance-level runtime authority, and local canonical reporting is always required before any external provider sync. Tenant settings are additive only: they can enable tenant-owned Osprey or Coop targets when instance administrators unlock them, but they cannot weaken an enabled instance Osprey or Coop baseline.
+
+| Hierarchical key | Default | Scope | Description |
+|---|---:|---|---|
+| `governance.lock_tenant_reporting_providers` | `true` | Instance | Broad lock for all tenant-owned reporting providers. Keep locked unless tenant admins may configure their own moderation providers. |
+| `governance.lock_tenant_osprey_provider` | `true` | Instance | Provider-specific lock for tenant Osprey targets. |
+| `governance.lock_tenant_coop_provider` | `true` | Instance | Provider-specific lock for tenant Coop targets. |
+| `reporting.tenant_external_sync_enabled` | `true` | Tenant | Gates tenant-added external targets only. It does not disable local intake or instance baseline providers. |
+| `reporting.enable_tenant_osprey_provider` | `false` | Tenant | Enables a tenant-owned Osprey target when the broad and Osprey-specific locks are open and endpoint credentials are configured. |
+| `reporting.enable_tenant_coop_provider` | `false` | Tenant | Enables a tenant-owned Coop target when the broad and Coop-specific locks are open and endpoint credentials are configured. |
+| `reporting.osprey_routing_mode` | `both` | Tenant | Requested Osprey routing posture: `instance`, `tenant`, or `both`. Dispatch must still preserve instance-first/additive behavior. |
+| `reporting.coop_routing_mode` | `both` | Tenant | Requested Coop routing posture: `instance`, `tenant`, or `both`. Dispatch must still preserve local-first provider sync semantics. |
+| `reporting.evidence_mode` | `MetadataOnly` | Tenant | Tenant evidence posture for reporting provider envelopes. Supported values are `MetadataOnly`, `SafeSummaryOnly`, and `ReporterText`; runtime safety gates still apply. |
+| `reporting.osprey_endpoint_url` | unset | Tenant | Tenant-owned Osprey-compatible endpoint URL. |
+| `reporting.coop_endpoint_url` | unset | Tenant | Tenant-owned Coop-compatible endpoint URL. |
+| `reporting.osprey_api_key` | unset | Tenant secret | Sensitive tenant Osprey credential. Never expose in browser DTOs, HAL links, logs, metrics, traces, screenshots, or support bundles. |
+| `reporting.osprey_webhook_secret` | unset | Tenant secret | Sensitive tenant Osprey callback/signing secret for deployments that use one. |
+| `reporting.coop_api_key` | unset | Tenant secret | Sensitive tenant Coop credential. Never expose in browser DTOs, HAL links, logs, metrics, traces, screenshots, or support bundles. |
+| `reporting.coop_webhook_secret` | unset | Tenant secret | Sensitive tenant Coop callback HMAC secret. |
+
+Tenant routing updates accept endpoint and secret fields only at the write boundary. Omitted or blank API-key/webhook-secret fields preserve the existing tenant secret; there is no implicit clear-secret behavior. Rotate by writing a new value through an authorized tenant settings action or by rotating the backing deployment secret, and verify through configured/readiness flags rather than secret readback.
+
+Tenant provider test actions are readiness checks over effective routing state. They validate lock state, provider enablement, tenant target presence, and configured endpoint/API-key flags without making external HTTP calls and without returning endpoint URLs, API keys, webhook secrets, provider payloads, or raw provider errors.
 
 Osprey adapter keys live under `Reporting:Osprey:*`. The adapter is Infrastructure-only and posts a safe JSON evaluation request to the configured endpoint; the request contains tenant/report/event/case IDs, normalized report/case/priority codes, timestamps, idempotency/correlation IDs, and evidence mode only. It does not send reporter text, reporter IP hashes, user-agent hashes, raw provider payloads, event titles, slugs, or URLs. Public research did not identify an official .NET Osprey SDK or stable public REST contract, so the current adapter targets a configurable Osprey-compatible HTTP JSON/RPC facade and can be swapped to generated gRPC/proto wiring once a deployment supplies that contract. The local `osprey` Compose/Aspire resource uses the Roost coordinator image and exposes coordinator ports; do not set `Reporting:Osprey:EndpointUrl` to that coordinator port unless a compatible HTTP facade is in front of it.
 
