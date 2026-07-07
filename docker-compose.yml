@@ -14,7 +14,7 @@ x-keycloak-env: &keycloak-env
 # If SecretProvider__Provider=Infisical, ISecretResolver also uses the Infisical provider.
 x-secrets-env: &secrets-env
   SecretProvider__Provider: ${SECRET_PROVIDER:-None}
-  SecretProvider__Infisical__Url: ${INFISICAL_URL:-https://app.infisical.com}
+  SecretProvider__Infisical__Url: ${INFISICAL_URL:-}
   SecretProvider__Infisical__ProjectId: ${INFISICAL_PROJECT_ID:-}
   SecretProvider__Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
   SecretProvider__Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
@@ -28,14 +28,14 @@ x-secrets-env: &secrets-env
 x-postgres-env: &postgres-env
   POSTGRES_USER: ${POSTGRESQL_USERNAME:-explore}
   POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD:-explore}
-  POSTGRES_DB: ${POSTGRESQL_DATABASE:-explore}
+  POSTGRES_DB: ${POSTGRESQL_DATABASE:-islamu_event_db}
 
 # Discrete Postgres credentials consumed by BootstrapSecretLoader.
 # Never pre-build ConnectionStrings__DefaultConnection here - the loader composes the string.
 x-postgres-bootstrap-env: &postgres-bootstrap-env
   POSTGRESQL_HOST: ${POSTGRESQL_HOST:-postgres}
   POSTGRESQL_PORT: ${POSTGRESQL_PORT:-5432}
-  POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE:-explore}
+  POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE:-islamu_event_db}
   POSTGRESQL_USERNAME: ${POSTGRESQL_USERNAME:-explore}
   POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD:-explore}
 
@@ -93,7 +93,7 @@ x-smtp-env: &smtp-env
 
 x-email-dispatch-rabbitmq-env: &email-dispatch-rabbitmq-env
   ConnectionStrings__messaging: ${MESSAGING_URI:-}
-  EmailDispatchRabbitMq__Enabled: ${EMAIL_DISPATCH_RABBITMQ_ENABLED:-false}
+  EmailDispatchRabbitMq__Enabled: ${EMAIL_DISPATCH_RABBITMQ_ENABLED:-true}
   EmailDispatchRabbitMq__ConnectionStringName: ${EMAIL_DISPATCH_RABBITMQ_CONNECTION_STRING_NAME:-messaging}
   EmailDispatchRabbitMq__ConnectionString: ${EMAIL_DISPATCH_RABBITMQ_CONNECTION_STRING:-}
   EmailDispatchRabbitMq__ExchangeName: ${EMAIL_DISPATCH_RABBITMQ_EXCHANGE_NAME:-explore.email-dispatch}
@@ -117,24 +117,24 @@ x-email-dispatch-rabbitmq-env: &email-dispatch-rabbitmq-env
 
 x-reporting-env: &reporting-env
   Reporting__Enabled: ${REPORTING_ENABLED:-true}
-  Reporting__Mode: ${REPORTING_MODE:-LocalOnly}
+  Reporting__Mode: ${REPORTING_MODE:-Coop}
   Reporting__SyncReports: ${REPORTING_SYNC_REPORTS:-true}
   Reporting__EvaluateSignals: ${REPORTING_EVALUATE_SIGNALS:-false}
-  Reporting__MirrorReviewQueue: ${REPORTING_MIRROR_REVIEW_QUEUE:-false}
+  Reporting__MirrorReviewQueue: ${REPORTING_MIRROR_REVIEW_QUEUE:-true}
   Reporting__ExecuteDecisions: ${REPORTING_EXECUTE_DECISIONS:-true}
   Reporting__Osprey__Enabled: ${REPORTING_OSPREY_ENABLED:-false}
   Reporting__Osprey__EndpointUrl: ${REPORTING_OSPREY_ENDPOINT_URL:-}
   Reporting__Osprey__ApiKey: ${REPORTING_OSPREY_API_KEY:-}
   Reporting__Osprey__AllowLocalProviderEndpoints: ${REPORTING_OSPREY_ALLOW_LOCAL_PROVIDER_ENDPOINTS:-true}
-  Reporting__Coop__Enabled: ${REPORTING_COOP_ENABLED:-false}
+  Reporting__Coop__Enabled: ${REPORTING_COOP_ENABLED:-true}
   Reporting__Coop__EndpointUrl: ${REPORTING_COOP_ENDPOINT_URL:-http://coop:8080}
-  Reporting__Coop__ApiKey: ${REPORTING_COOP_API_KEY:-}
+  Reporting__Coop__ApiKey: ${REPORTING_COOP_API_KEY:-local-dev-coop-api-key}
   Reporting__Coop__AllowLocalProviderEndpoints: ${REPORTING_COOP_ALLOW_LOCAL_PROVIDER_ENDPOINTS:-true}
-  Reporting__Coop__WebhookSecret: ${REPORTING_COOP_WEBHOOK_SECRET:-}
+  Reporting__Coop__WebhookSecret: ${REPORTING_COOP_WEBHOOK_SECRET:-local-dev-coop-webhook-secret}
 
 x-webhooks-env: &webhooks-env
   Webhooks__Enabled: ${WEBHOOKS_ENABLED:-true}
-  Webhooks__Provider: ${WEBHOOKS_PROVIDER:-Local}
+  Webhooks__Provider: ${WEBHOOKS_PROVIDER:-Svix}
   Webhooks__Svix__BaseUrl: ${WEBHOOKS_SVIX_BASE_URL:-http://svix:8071}
   Webhooks__Svix__AuthTokenSecretRef: ${WEBHOOKS_SVIX_AUTH_TOKEN_SECRET_REF:-webhooks.svix.auth_token}
   Webhooks__Svix__OperationalWebhookSecretRef: ${WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET_REF:-webhooks.svix.operational_webhook_secret}
@@ -260,6 +260,18 @@ services:
       KEYCLOAK_API_CLIENT_ID: islamu-event-api
       KEYCLOAK_API_CLIENT_SECRET: ${KEYCLOAK_API_CLIENT_SECRET:-}
       KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET: ${KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET:-false}
+      KEYCLOAK_SMTP_HOST: ${KEYCLOAK_SMTP_HOST:-}
+      KEYCLOAK_SMTP_PORT: ${KEYCLOAK_SMTP_PORT:-}
+      KEYCLOAK_SMTP_FROM: ${KEYCLOAK_SMTP_FROM:-}
+      KEYCLOAK_SMTP_FROM_DISPLAY_NAME: ${KEYCLOAK_SMTP_FROM_DISPLAY_NAME:-}
+      KEYCLOAK_SMTP_AUTH: ${KEYCLOAK_SMTP_AUTH:-false}
+      KEYCLOAK_SMTP_SSL: ${KEYCLOAK_SMTP_SSL:-false}
+      KEYCLOAK_SMTP_STARTTLS: ${KEYCLOAK_SMTP_STARTTLS:-false}
+      KEYCLOAK_SMTP_REPLY_TO: ${KEYCLOAK_SMTP_REPLY_TO:-}
+      KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME: ${KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME:-}
+      KEYCLOAK_SMTP_ENVELOPE_FROM: ${KEYCLOAK_SMTP_ENVELOPE_FROM:-}
+      KEYCLOAK_SMTP_USER: ${KEYCLOAK_SMTP_USER:-}
+      KEYCLOAK_SMTP_PASSWORD: ${KEYCLOAK_SMTP_PASSWORD:-}
     volumes:
       - ./docker/keycloak/keycloak-init.sh:/opt/keycloak/bin/keycloak-init.sh:ro
     entrypoint: ["/bin/bash", "/opt/keycloak/bin/keycloak-init.sh"]
@@ -524,7 +536,7 @@ services:
       NODE_ENV: ${COOP_NODE_ENV:-development}
       OTEL_SERVICE_NAME: ${COOP_OTEL_SERVICE_NAME:-coop}
       PORT: "8080"
-      UI_URL: ${COOP_UI_URL:-http://localhost:8082}
+      UI_URL: ${COOP_UI_URL:-http://localhost:3001}
       SESSION_SECRET: ${COOP_SESSION_SECRET:-local-dev-coop-session-secret}
       DATABASE_HOST: coop-db
       DATABASE_READ_ONLY_HOST: coop-db
@@ -545,10 +557,45 @@ services:
     ports:
       - "${COOP_HTTP_PORT:-8082}:8080"
     depends_on:
+      coop-migrations:
+        condition: service_completed_successfully
       coop-db:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  coop-migrations:
+    image: ${COOP_MIGRATIONS_IMAGE:-ghcr.io/roostorg/coop-migrations:latest}
+    profiles: ["moderation"]
+    restart: "no"
+    environment:
+      DATABASE_HOST: coop-db
+      DATABASE_READ_ONLY_HOST: coop-db
+      DATABASE_PORT: "5432"
+      DATABASE_USER: ${COOP_DATABASE_USER:-coop}
+      DATABASE_PASSWORD: ${COOP_DATABASE_PASSWORD:-coop_password}
+      DATABASE_NAME: ${COOP_DATABASE_NAME:-coop}
+      API_SERVER_DATABASE_HOST: coop-db
+      API_SERVER_DATABASE_PORT: "5432"
+      API_SERVER_DATABASE_USER: ${COOP_DATABASE_USER:-coop}
+      API_SERVER_DATABASE_PASSWORD: ${COOP_DATABASE_PASSWORD:-coop_password}
+      API_SERVER_DATABASE_NAME: ${COOP_DATABASE_NAME:-coop}
+    entrypoint: ["sh", "-c", "npm run db:create -- --db api-server-pg --env staging && npm run db:update -- --db api-server-pg --env staging"]
+    depends_on:
+      coop-db:
+        condition: service_healthy
+
+  coop-client:
+    image: ${COOP_CLIENT_IMAGE:-ghcr.io/roostorg/coop-client:latest}
+    profiles: ["moderation"]
+    restart: unless-stopped
+    volumes:
+      - ./Explore.AppHost/Config/coop/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${COOP_CLIENT_HTTP_PORT:-3001}:80"
+    depends_on:
+      coop:
+        condition: service_started
 
   coop-db:
     image: postgres:18-alpine

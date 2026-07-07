@@ -8,6 +8,12 @@
         "resolved": "10.0.8",
         "contentHash": "v6KocthydFtUHBIRI29YsOHKOgsqcQubkNywVOxiYr4GSDSv+XO/AeyMJywlX+1tGUTGdydu/X7V+Tzeq4SsoA=="
       },
+      "Microsoft.Extensions.ApiDescription.Client": {
+        "type": "Direct",
+        "requested": "[10.0.7, )",
+        "resolved": "10.0.7",
+        "contentHash": "s87TklIpCWGRe/UsDlgndEyyMfSlebU5ERt9gzcfztCdBZQ0JzGFUiDVtFpyzp4SagPZmJqBCBtt1pgHNQkCZQ=="
+      },
       "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": {
         "type": "Direct",
         "requested": "[1.23.0, )",

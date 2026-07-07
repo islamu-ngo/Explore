@@ -3,7 +3,7 @@
   "enabled": true,
   "displayName": "ISLAMU (Test)",
   "sslRequired": "none",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": false,

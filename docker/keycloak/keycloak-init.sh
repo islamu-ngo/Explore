@@ -1,4 +1,4 @@
-# ABOUTME: One-shot Keycloak realm bootstrap for synchronizing Compose-managed OIDC client secrets.
+# ABOUTME: One-shot Keycloak realm bootstrap for synchronizing local realm auth settings and OIDC clients.
 # ABOUTME: Uses kcadm.sh idempotently and keeps admin credentials, tokens, and client secrets out of logs.
 
 #!/usr/bin/env bash
@@ -13,9 +13,23 @@ KEYCLOAK_BLAZOR_CLIENT_ID="${KEYCLOAK_BLAZOR_CLIENT_ID:-islamu-event-blazor}"
 KEYCLOAK_CONTROL_PLANE_CLIENT_ID="${KEYCLOAK_CONTROL_PLANE_CLIENT_ID:-islamu-event-control-plane}"
 KEYCLOAK_API_CLIENT_ID="${KEYCLOAK_API_CLIENT_ID:-islamu-event-api}"
 KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET="${KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET:-false}"
+KEYCLOAK_SMTP_HOST="${KEYCLOAK_SMTP_HOST:-}"
+KEYCLOAK_SMTP_PORT="${KEYCLOAK_SMTP_PORT:-}"
+KEYCLOAK_SMTP_FROM="${KEYCLOAK_SMTP_FROM:-}"
+KEYCLOAK_SMTP_FROM_DISPLAY_NAME="${KEYCLOAK_SMTP_FROM_DISPLAY_NAME:-}"
+KEYCLOAK_SMTP_AUTH="${KEYCLOAK_SMTP_AUTH:-false}"
+KEYCLOAK_SMTP_SSL="${KEYCLOAK_SMTP_SSL:-false}"
+KEYCLOAK_SMTP_STARTTLS="${KEYCLOAK_SMTP_STARTTLS:-false}"
+KEYCLOAK_SMTP_REPLY_TO="${KEYCLOAK_SMTP_REPLY_TO:-}"
+KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME="${KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME:-}"
+KEYCLOAK_SMTP_ENVELOPE_FROM="${KEYCLOAK_SMTP_ENVELOPE_FROM:-}"
+KEYCLOAK_SMTP_USER="${KEYCLOAK_SMTP_USER:-}"
+KEYCLOAK_SMTP_PASSWORD="${KEYCLOAK_SMTP_PASSWORD:-}"
 DEFAULT_LOCAL_BLAZOR_SECRET="islamu-event-blazor-secret"
 DEFAULT_LOCAL_CONTROL_PLANE_SECRET="islamu-event-control-plane-secret"
 KCADM="${KCADM:-/opt/keycloak/bin/kcadm.sh}"
+CONTROL_PLANE_REDIRECT_URIS='["http://localhost:7003/*","https://localhost:7188/*","http://localhost/*","https://localhost/*","http://127.0.0.1:7003/*","https://127.0.0.1:7188/*","http://127.0.0.1/*","https://127.0.0.1/*","https://100.64.0.2:7188/*","https://100.64.0.2/*","http://100.64.0.2:7003/*","http://100.64.0.2/*","http://admin.localhost/*","https://admin.localhost/*","http://control.localhost/*","https://control.localhost/*","http://host.docker.internal:7003/*","http://host.docker.internal/*"]'
+CONTROL_PLANE_LOGOUT_REDIRECT_URIS='http://localhost:7003/*##https://localhost:7188/*##http://localhost/*##https://localhost/*##http://127.0.0.1:7003/*##https://127.0.0.1:7188/*##http://127.0.0.1/*##https://127.0.0.1/*##https://100.64.0.2:7188/*##https://100.64.0.2/*##http://100.64.0.2:7003/*##http://100.64.0.2/*##http://admin.localhost/*##https://admin.localhost/*##http://control.localhost/*##https://control.localhost/*##http://host.docker.internal:7003/*##http://host.docker.internal/*'
 
 log() {
   printf '[keycloak-init] %s\n' "$1" >&2
@@ -33,6 +47,12 @@ require_non_empty() {
   if [ -z "$value" ]; then
     fail "$name is required. Set it through environment/secret-provider configuration."
   fi
+}
+
+json_escape() {
+  local value="${1//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '%s' "$value"
 }
 
 resolve_blazor_secret() {
@@ -86,6 +106,66 @@ set_client_secret() {
   log "Synchronized secret for client '$client_id' (value redacted)."
 }
 
+enable_realm_registration() {
+  "$KCADM" update "realms/$KEYCLOAK_REALM" -s registrationAllowed=true >/dev/null
+  log "Enabled self-registration for realm '$KEYCLOAK_REALM'."
+}
+
+sync_realm_smtp_settings() {
+  local smtp_server
+
+  if [ -z "$KEYCLOAK_SMTP_HOST$KEYCLOAK_SMTP_PORT$KEYCLOAK_SMTP_FROM" ]; then
+    log "KEYCLOAK_SMTP_* is unset; leaving realm SMTP settings unchanged."
+    return 0
+  fi
+
+  require_non_empty "KEYCLOAK_SMTP_HOST" "$KEYCLOAK_SMTP_HOST"
+  require_non_empty "KEYCLOAK_SMTP_PORT" "$KEYCLOAK_SMTP_PORT"
+  require_non_empty "KEYCLOAK_SMTP_FROM" "$KEYCLOAK_SMTP_FROM"
+
+  smtp_server="{\"host\":\"$(json_escape "$KEYCLOAK_SMTP_HOST")\",\"port\":\"$(json_escape "$KEYCLOAK_SMTP_PORT")\",\"from\":\"$(json_escape "$KEYCLOAK_SMTP_FROM")\",\"fromDisplayName\":\"$(json_escape "$KEYCLOAK_SMTP_FROM_DISPLAY_NAME")\",\"auth\":\"$(json_escape "$KEYCLOAK_SMTP_AUTH")\",\"ssl\":\"$(json_escape "$KEYCLOAK_SMTP_SSL")\",\"starttls\":\"$(json_escape "$KEYCLOAK_SMTP_STARTTLS")\""
+
+  if [ -n "$KEYCLOAK_SMTP_REPLY_TO" ]; then
+    smtp_server="$smtp_server,\"replyTo\":\"$(json_escape "$KEYCLOAK_SMTP_REPLY_TO")\""
+  fi
+  if [ -n "$KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME" ]; then
+    smtp_server="$smtp_server,\"replyToDisplayName\":\"$(json_escape "$KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME")\""
+  fi
+  if [ -n "$KEYCLOAK_SMTP_ENVELOPE_FROM" ]; then
+    smtp_server="$smtp_server,\"envelopeFrom\":\"$(json_escape "$KEYCLOAK_SMTP_ENVELOPE_FROM")\""
+  fi
+  if [ -n "$KEYCLOAK_SMTP_USER" ]; then
+    smtp_server="$smtp_server,\"user\":\"$(json_escape "$KEYCLOAK_SMTP_USER")\""
+  fi
+  if [ -n "$KEYCLOAK_SMTP_PASSWORD" ]; then
+    smtp_server="$smtp_server,\"password\":\"$(json_escape "$KEYCLOAK_SMTP_PASSWORD")\""
+  fi
+
+  smtp_server="$smtp_server}"
+
+  "$KCADM" update "realms/$KEYCLOAK_REALM" -s "smtpServer=$smtp_server" >/dev/null
+  log "Synchronized SMTP settings for realm '$KEYCLOAK_REALM'."
+}
+
+sync_control_plane_client_settings() {
+  local uuid
+  local attributes
+
+  uuid="$(client_uuid "$KEYCLOAK_CONTROL_PLANE_CLIENT_ID")"
+  if [ -z "$uuid" ]; then
+    fail "Keycloak client '$KEYCLOAK_CONTROL_PLANE_CLIENT_ID' was not found in realm '$KEYCLOAK_REALM'. Confirm realm import completed successfully."
+  fi
+
+  attributes="{\"pkce.code.challenge.method\":\"S256\",\"post.logout.redirect.uris\":\"$CONTROL_PLANE_LOGOUT_REDIRECT_URIS\",\"backchannel.logout.session.required\":\"true\",\"backchannel.logout.revoke.offline.tokens\":\"false\",\"use.refresh.tokens\":\"true\",\"oauth2.device.authorization.grant.enabled\":\"false\",\"oidc.ciba.grant.enabled\":\"false\"}"
+
+  "$KCADM" update "clients/$uuid" -r "$KEYCLOAK_REALM" \
+    -s "redirectUris=$CONTROL_PLANE_REDIRECT_URIS" \
+    -s 'webOrigins=["+"]' \
+    -s "attributes=$attributes" >/dev/null
+
+  log "Synchronized redirect URIs for client '$KEYCLOAK_CONTROL_PLANE_CLIENT_ID'."
+}
+
 main() {
   local blazor_secret
   local control_plane_secret
@@ -103,6 +183,10 @@ main() {
     --realm master \
     --user "$KEYCLOAK_ADMIN" \
     --password "$KEYCLOAK_ADMIN_PASSWORD" >/dev/null
+
+  enable_realm_registration
+  sync_realm_smtp_settings
+  sync_control_plane_client_settings
 
   blazor_secret="$(resolve_blazor_secret)"
   set_client_secret "$KEYCLOAK_BLAZOR_CLIENT_ID" "$blazor_secret"

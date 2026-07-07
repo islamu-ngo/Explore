@@ -155,11 +155,6 @@
           "Google.Protobuf": "[3.31.1, 4.0.0]"
         }
       },
-      "Google.Protobuf": {
-        "type": "Transitive",
-        "resolved": "3.34.1",
-        "contentHash": "212vdYxRuVopGE5bess6Jg5oXWyizA6hcLPTI7G+qA4PthQEvfeof3njT+7VSY5v/+O0P22xTydiP5fSJJpGEA=="
-      },
       "Grpc": {
         "type": "Transitive",
         "resolved": "2.46.6",
@@ -180,15 +175,6 @@
         "type": "Transitive",
         "resolved": "2.76.0",
         "contentHash": "cSxC2tdnFdXXuBgIn1pjc4YBx7LXTCp4M0qn+SMBS35VWZY+cEQYLWTBDDhdBH1HzU7BV+ncVZlniGQHMpRJKQ=="
-      },
-      "Grpc.Net.Client": {
-        "type": "Transitive",
-        "resolved": "2.76.0",
-        "contentHash": "K1oldmqw2+Gn69nGRzZLhqSiUZwelX1GrBu/cUl9wNf1C0uB61vFS6JcxUUv9P8VoUJhFsmV44JA6lI2EUt4xw==",
-        "dependencies": {
-          "Grpc.Net.Common": "2.76.0",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
-        }
       },
       "Grpc.Net.Common": {
         "type": "Transitive",
@@ -1063,6 +1049,23 @@
           "TUnit.Core": "1.33.0"
         }
       },
+      "event.controlplane.blazor": {
+        "type": "Project",
+        "dependencies": {
+          "Event.ControlPlane.Client": "[1.0.0, )",
+          "Event.Web.BffHosting": "[1.0.0, )",
+          "Explore.Secrets": "[1.0.0, )",
+          "Explore.ServiceDefaults": "[1.0.0, )",
+          "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": "[1.23.0, )",
+          "MudBlazor": "[9.4.0, )",
+          "Serilog.AspNetCore": "[10.0.0, )",
+          "Serilog.Enrichers.Environment": "[3.0.1, )",
+          "Serilog.Enrichers.Process": "[3.0.0, )",
+          "Serilog.Enrichers.Thread": "[4.0.0, )",
+          "Serilog.Formatting.Compact": "[3.0.0, )",
+          "Serilog.Settings.Configuration": "[10.0.0, )"
+        }
+      },
       "event.controlplane.client": {
         "type": "Project",
         "dependencies": {
@@ -1099,6 +1102,7 @@
           "Aspire.StackExchange.Redis.DistributedCaching": "[13.4.6, )",
           "Blazouter": "[1.0.13, )",
           "Blazouter.Server": "[1.0.13, )",
+          "Event.ControlPlane.Client": "[1.0.0, )",
           "Event.Web.BffHosting": "[1.0.0, )",
           "Explore.Application": "[1.0.0, )",
           "Explore.Blazor.Client": "[1.0.0, )",
@@ -1154,6 +1158,8 @@
           "Azure.Identity": "[1.21.0, )",
           "Cerbos.Sdk": "[1.9.1, )",
           "Explore.Application": "[1.0.0, )",
+          "Google.Protobuf": "[3.34.1, )",
+          "Grpc.Net.Client": "[2.76.0, )",
           "MailKit": "[4.16.0, )",
           "Microsoft.Extensions.AI.Abstractions": "[10.4.0, )",
           "Microsoft.Extensions.AI.OpenAI": "[10.4.0, )",
@@ -1357,6 +1363,22 @@
         "dependencies": {
           "FluentValidation": "12.0.0",
           "Microsoft.Extensions.Dependencyinjection.Abstractions": "2.1.0"
+        }
+      },
+      "Google.Protobuf": {
+        "type": "CentralTransitive",
+        "requested": "[3.34.1, )",
+        "resolved": "3.34.1",
+        "contentHash": "212vdYxRuVopGE5bess6Jg5oXWyizA6hcLPTI7G+qA4PthQEvfeof3njT+7VSY5v/+O0P22xTydiP5fSJJpGEA=="
+      },
+      "Grpc.Net.Client": {
+        "type": "CentralTransitive",
+        "requested": "[2.76.0, )",
+        "resolved": "2.76.0",
+        "contentHash": "K1oldmqw2+Gn69nGRzZLhqSiUZwelX1GrBu/cUl9wNf1C0uB61vFS6JcxUUv9P8VoUJhFsmV44JA6lI2EUt4xw==",
+        "dependencies": {
+          "Grpc.Net.Common": "2.76.0",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
         }
       },
       "Infisical.Sdk": {

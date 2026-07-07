@@ -244,11 +244,6 @@
         "resolved": "7.3.0",
         "contentHash": "2bETFWLBc8b7Ut2SVi+bxhGVwiSpknHYGBh2PADyGWONLkTxT7bKyDRhF8ao+XUv90tq8Fl7GTPxSI5bacIRJw=="
       },
-      "Google.Protobuf": {
-        "type": "Transitive",
-        "resolved": "3.34.1",
-        "contentHash": "212vdYxRuVopGE5bess6Jg5oXWyizA6hcLPTI7G+qA4PthQEvfeof3njT+7VSY5v/+O0P22xTydiP5fSJJpGEA=="
-      },
       "Grpc.AspNetCore": {
         "type": "Transitive",
         "resolved": "2.80.0",
@@ -281,15 +276,6 @@
         "resolved": "2.80.0",
         "contentHash": "i/8s+MOrYa6n7BmZ5bilcbHk+EMJDQHm2MKLhwGAT+urQqlZ6cpjvSivYvuULjebuX+UKieLYZbLRCmVQxFRkw=="
       },
-      "Grpc.Net.Client": {
-        "type": "Transitive",
-        "resolved": "2.80.0",
-        "contentHash": "I1Aa24nTRMHqx0pmQfvthFsOpejquDjiJV6092KBqjw6EEr3wA9CMXlrdkoEgHartOiJrpKyZiQRl7n0NVlfBg==",
-        "dependencies": {
-          "Grpc.Net.Common": "2.80.0",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
-        }
-      },
       "Grpc.Net.ClientFactory": {
         "type": "Transitive",
         "resolved": "2.80.0",
@@ -306,11 +292,6 @@
         "dependencies": {
           "Grpc.Core.Api": "2.80.0"
         }
-      },
-      "Grpc.Tools": {
-        "type": "Transitive",
-        "resolved": "2.80.0",
-        "contentHash": "NS1AxwVZnrdbBoMf5L5ruGjBjoLBej9avhqxWNsgfu2GU6FhpxEVJOwLJsdljlDCjvquJiAH2zf/WodIWMvf2w=="
       },
       "Humanizer.Core": {
         "type": "Transitive",
@@ -1315,6 +1296,28 @@
           "FluentValidation": "12.0.0",
           "Microsoft.Extensions.Dependencyinjection.Abstractions": "2.1.0"
         }
+      },
+      "Google.Protobuf": {
+        "type": "CentralTransitive",
+        "requested": "[3.34.1, )",
+        "resolved": "3.34.1",
+        "contentHash": "212vdYxRuVopGE5bess6Jg5oXWyizA6hcLPTI7G+qA4PthQEvfeof3njT+7VSY5v/+O0P22xTydiP5fSJJpGEA=="
+      },
+      "Grpc.Net.Client": {
+        "type": "CentralTransitive",
+        "requested": "[2.76.0, )",
+        "resolved": "2.80.0",
+        "contentHash": "I1Aa24nTRMHqx0pmQfvthFsOpejquDjiJV6092KBqjw6EEr3wA9CMXlrdkoEgHartOiJrpKyZiQRl7n0NVlfBg==",
+        "dependencies": {
+          "Grpc.Net.Common": "2.80.0",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
+        }
+      },
+      "Grpc.Tools": {
+        "type": "CentralTransitive",
+        "requested": "[2.76.0, )",
+        "resolved": "2.80.0",
+        "contentHash": "NS1AxwVZnrdbBoMf5L5ruGjBjoLBej9avhqxWNsgfu2GU6FhpxEVJOwLJsdljlDCjvquJiAH2zf/WodIWMvf2w=="
       },
       "Infisical.Sdk": {
         "type": "CentralTransitive",
