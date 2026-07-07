@@ -10,6 +10,7 @@ public sealed class ControlPlaneRouteCatalog : IControlPlaneRouteCatalog
         new(ControlPlaneRouteKeys.Overview, ControlPlaneRoutes.Overview),
         new(ControlPlaneRouteKeys.Tenants, ControlPlaneRoutes.Tenants),
         new(ControlPlaneRouteKeys.Domains, ControlPlaneRoutes.Domains),
+        new(ControlPlaneRouteKeys.Operations, ControlPlaneRoutes.Operations),
         new(ControlPlaneRouteKeys.Onboarding, ControlPlaneRoutes.Onboarding),
         new(ControlPlaneRouteKeys.Health, ControlPlaneRoutes.Health),
         new(ControlPlaneRouteKeys.Storage, ControlPlaneRoutes.Storage),

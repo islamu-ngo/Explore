@@ -1,4 +1,4 @@
-// ABOUTME: Builds the multi-tenant control-plane overview from existing instance services.
+// ABOUTME: Builds the mode-agnostic Control Plane overview from existing instance services.
 // ABOUTME: Keeps the first read model small, redacted, and server-authoritative for HAL-driven UI.
 
 using System.Reflection;
@@ -144,9 +144,10 @@ public sealed class GetControlPlaneOverviewQueryHandler(
         {
             warnings.Add(new ControlPlaneWarningDto
             {
-                Code = "deployment_mode_not_multi_tenant",
-                Severity = "critical",
-                Message = "Control-plane overview is only available for multi-tenant deployments."
+                Code = "single_tenant_mode",
+                Severity = "info",
+                Message = "Control Plane is running this instance in single-tenant mode; tenant-fleet controls stay hidden.",
+                Remediation = "Use the Operations deployment-mode runbook for a deliberate migration to multi-tenant mode when needed."
             });
         }
 
@@ -156,7 +157,8 @@ public sealed class GetControlPlaneOverviewQueryHandler(
             {
                 Code = "public_host_missing",
                 Severity = "warning",
-                Message = "No public origin or instance base domain is configured."
+                Message = "No public origin or instance base domain is configured.",
+                Remediation = "Set PublicBaseUrl or the instance base domain before creating tenant DNS records."
             });
         }
 
@@ -166,7 +168,8 @@ public sealed class GetControlPlaneOverviewQueryHandler(
             {
                 Code = "authentication_provider_missing",
                 Severity = "critical",
-                Message = "No authentication provider is configured."
+                Message = "No authentication provider is configured.",
+                Remediation = "Complete authentication-provider setup and verify OIDC discovery before enabling tenant onboarding."
             });
         }
 
@@ -176,7 +179,8 @@ public sealed class GetControlPlaneOverviewQueryHandler(
             {
                 Code = "authorization_provider_missing",
                 Severity = "warning",
-                Message = "No explicit authorization provider configuration has been saved."
+                Message = "No explicit authorization provider configuration has been saved.",
+                Remediation = "Save the intended authorization provider configuration; local authorization remains the default until changed."
             });
         }
 
@@ -186,7 +190,8 @@ public sealed class GetControlPlaneOverviewQueryHandler(
             {
                 Code = "email_provider_missing",
                 Severity = "warning",
-                Message = "SMTP is not configured for platform email delivery."
+                Message = "SMTP is not configured for platform email delivery.",
+                Remediation = "Configure SMTP in instance settings before relying on platform email delivery."
             });
         }
 
@@ -197,7 +202,8 @@ public sealed class GetControlPlaneOverviewQueryHandler(
             {
                 Code = "storage_provider_unavailable",
                 Severity = "critical",
-                Message = "The configured storage provider is reporting an unavailable state."
+                Message = "The configured storage provider is reporting an unavailable state.",
+                Remediation = "Verify storage provider settings, credentials, bucket or root reachability, and health checks before allowing upload-heavy operations."
             });
         }
 

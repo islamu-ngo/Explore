@@ -2,9 +2,12 @@
 // ABOUTME: Wires Infisical/env configuration, Keycloak OIDC, server-side BFF proxying, and Razor components.
 
 using Event.ControlPlane.Blazor.Components;
+using Event.ControlPlane.Blazor.Clients;
 using Event.ControlPlane.Blazor.Extensions;
+using Event.ControlPlane.Blazor.Services;
 using Event.ControlPlane.Client;
 using Event.ControlPlane.Client.Extensions;
+using Event.ControlPlane.Client.Services;
 using Event.Web.BffHosting.Authentication;
 using Event.Web.BffHosting.Endpoints;
 using Event.Web.BffHosting.Extensions;
@@ -28,7 +31,12 @@ builder.Configuration.AddInfisicalControlPlaneCompatibility();
 builder.AddServiceDefaults();
 builder.AddOidcDiscoveryReadinessCheck();
 
-builder.Services.AddSecretManagement(builder.Configuration);
+builder.Services.AddSecretManagement(
+    builder.Configuration,
+    enableAuditing: true,
+    enableRefreshService: true,
+    enableSecretResolution: false);
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddOptions();
 
@@ -42,6 +50,7 @@ builder.Services.AddEventBffKeycloakAuthentication(
     EventBffHostProfile.ControlPlane);
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 builder.Services.AddEventApiProxy(builder.Configuration, builder.Environment);
+builder.Services.AddScoped<IEventBffCookieSessionHandler, ControlPlaneBffCookieSessionHandler>();
 
 builder.Services.AddMudServices(config =>
 {
@@ -55,6 +64,26 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.ShowTransitionDuration = 200;
 });
 builder.Services.AddEventControlPlaneClient();
+builder.Services.AddTransient<EventBffBearerForwardingHandler>();
+builder.Services.AddHttpClient(ControlPlaneBffCookieSessionHandler.AdminAuthorityHttpClientName, client =>
+{
+    client.BaseAddress = new Uri(EventApiBaseAddressResolver.Resolve(builder.Configuration));
+    client.Timeout = TimeSpan.FromSeconds(5);
+})
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false });
+builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
+    client.BaseAddress = new Uri(EventApiBaseAddressResolver.Resolve(builder.Configuration)))
+    .AddHttpMessageHandler<EventBffBearerForwardingHandler>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false });
+builder.Services.AddScoped<ControlPlaneApiAdapter>();
+builder.Services.AddScoped<IControlPlaneOverviewService>(provider =>
+    provider.GetRequiredService<ControlPlaneApiAdapter>());
+builder.Services.AddScoped<IControlPlaneTenantService>(provider =>
+    provider.GetRequiredService<ControlPlaneApiAdapter>());
+builder.Services.AddScoped<IControlPlaneDomainService>(provider =>
+    provider.GetRequiredService<ControlPlaneApiAdapter>());
+builder.Services.AddScoped<IControlPlaneOperationsService>(provider =>
+    provider.GetRequiredService<ControlPlaneApiAdapter>());
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

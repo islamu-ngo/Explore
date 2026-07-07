@@ -37,4 +37,5 @@ public sealed class ControlPlaneWarningDto
     public string Code { get; set; } = string.Empty;
     public string Severity { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string? Remediation { get; set; }
 }

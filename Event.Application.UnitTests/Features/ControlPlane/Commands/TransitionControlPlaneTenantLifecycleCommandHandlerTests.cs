@@ -102,6 +102,29 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenSchedulingPurgeWithoutTenantSlugConfirmation_ReturnsFailureAndDoesNotPersist()
+    {
+        var tenant = CreateTenant(TenantStatusEnum.Archived);
+        var tenantRepository = Substitute.For<ITenantRepository>();
+        var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
+        tenantRepository.GetById(tenant.Id).Returns(tenant);
+        var handler = CreateSut(tenantRepository, lifecycleLogRepository);
+
+        var result = await handler.Handle(
+            new TransitionControlPlaneTenantLifecycleCommand(
+                tenant.Id,
+                TenantStatusEnum.Purged,
+                "operator confirmed backup",
+                confirmationText: "wrong-slug"),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains($"Purged requires confirmation with tenant slug '{tenant.Slug}'.");
+        await tenantRepository.DidNotReceiveWithAnyArgs().Update(default!);
+        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Test]
     public async Task Handle_WhenArchivedTenantPurgeIsScheduled_UpdatesStatusAndWritesLifecycleLog()
     {
         var operatorId = Guid.NewGuid();
@@ -115,7 +138,11 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         var handler = CreateSut(tenantRepository, lifecycleLogRepository, operatorId);
 
         var result = await handler.Handle(
-            new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Purged, "  operator confirmed backup  "),
+            new TransitionControlPlaneTenantLifecycleCommand(
+                tenant.Id,
+                TenantStatusEnum.Purged,
+                "  operator confirmed backup  ",
+                confirmationText: tenant.Slug),
             CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
@@ -142,7 +169,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         var handler = CreateSut(tenantRepository, lifecycleLogRepository);
 
         var result = await handler.Handle(
-            new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Purged, "confirmed"),
+            new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Purged, "confirmed", tenant.Slug),
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();

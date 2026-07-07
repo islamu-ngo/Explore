@@ -16,4 +16,7 @@ public static class ControlPlaneLinkRelations
     public const string Verify = "verify";
     public const string Retry = "retry";
     public const string Test = "test";
+    public const string DeploymentModeRunbook = "deployment-mode-runbook";
+    public const string TransitionToMultiTenant = "transition-to-multi-tenant";
+    public const string TransitionToSingleTenant = "transition-to-single-tenant";
 }

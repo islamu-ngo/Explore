@@ -9,6 +9,7 @@ public static class ControlPlaneRoutes
     public const string Overview = Root;
     public const string Tenants = Root + "/tenants";
     public const string Domains = Root + "/domains";
+    public const string Operations = Root + "/operations";
     public const string Onboarding = Root + "/onboarding";
     public const string Health = Root + "/health";
     public const string Storage = Root + "/storage";

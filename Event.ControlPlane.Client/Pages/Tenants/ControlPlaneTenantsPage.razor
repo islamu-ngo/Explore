@@ -76,19 +76,32 @@
                             <div class="control-plane-tenants__actions" aria-label="@($"Tenant actions for {tenant.Name}")">
                                 @if (ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Provision))
                                 {
-                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Provision {tenant.Name}")">Provision</ControlPlaneActionButton>
+                                    <ControlPlaneActionButton Size="Size.Small"
+                                                              Disabled="@IsBusy"
+                                                              AriaLabel="@($"Provision {tenant.Name}")"
+                                                              OnClick="@(() => RunTenantCommandAsync(tenant, ControlPlaneLinkRelations.Provision))">Provision</ControlPlaneActionButton>
                                 }
                                 @if (ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Suspend))
                                 {
-                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Suspend {tenant.Name}")">Suspend</ControlPlaneActionButton>
+                                    <ControlPlaneActionButton Size="Size.Small"
+                                                              Disabled="@IsBusy"
+                                                              AriaLabel="@($"Suspend {tenant.Name}")"
+                                                              OnClick="@(() => RunTenantCommandAsync(tenant, ControlPlaneLinkRelations.Suspend))">Suspend</ControlPlaneActionButton>
                                 }
                                 @if (ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Archive))
                                 {
-                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Archive {tenant.Name}")">Archive</ControlPlaneActionButton>
+                                    <ControlPlaneActionButton Size="Size.Small"
+                                                              Disabled="@IsBusy"
+                                                              AriaLabel="@($"Archive {tenant.Name}")"
+                                                              OnClick="@(() => RunTenantCommandAsync(tenant, ControlPlaneLinkRelations.Archive))">Archive</ControlPlaneActionButton>
                                 }
                                 @if (ControlPlaneHal.HasLink(tenant, ControlPlaneLinkRelations.Purge))
                                 {
-                                    <ControlPlaneActionButton Size="Size.Small" Color="Color.Error" Disabled="true" AriaLabel="@($"Schedule purge for {tenant.Name}")">Schedule purge</ControlPlaneActionButton>
+                                    <ControlPlaneActionButton Size="Size.Small"
+                                                              Color="Color.Error"
+                                                              Disabled="@IsBusy"
+                                                              AriaLabel="@($"Schedule purge for {tenant.Name}")"
+                                                              OnClick="@(() => StartPurgeConfirmation(tenant))">Schedule purge</ControlPlaneActionButton>
                                 }
                             </div>
                         }
@@ -99,14 +112,58 @@
     }
 </div>
 
+@if (_purgeTenant is not null)
+{
+    <ControlPlanePanel Title="Confirm tenant purge" Description="Type the tenant slug and provide an operator reason before scheduling purge.">
+        <div class="control-plane-tenants__purge-confirmation">
+            <p>Tenant: <strong>@_purgeTenant.Name</strong> (<code>@_purgeTenant.Slug</code>)</p>
+            <label>
+                Operator reason
+                <input aria-label="Purge reason" @bind="_purgeReason" />
+            </label>
+            <label>
+                Type tenant slug to confirm
+                <input aria-label="Purge confirmation" @bind="_purgeConfirmation" />
+            </label>
+            <div class="control-plane-tenants__actions">
+                <ControlPlaneActionButton Color="Color.Error"
+                                          Disabled="@(!CanConfirmPurge || IsBusy)"
+                                          AriaLabel="@($"Confirm purge for {_purgeTenant.Name}")"
+                                          OnClick="ConfirmPurgeAsync">Confirm purge</ControlPlaneActionButton>
+                <ControlPlaneActionButton Disabled="@IsBusy"
+                                          AriaLabel="Cancel tenant purge"
+                                          OnClick="CancelPurgeConfirmation">Cancel</ControlPlaneActionButton>
+            </div>
+        </div>
+    </ControlPlanePanel>
+}
+
+@if (_commandMessage is not null)
+{
+    <ControlPlanePanel Title="Tenant action result">
+        <p class="control-plane-tenants__message" role="alert">@_commandMessage</p>
+    </ControlPlanePanel>
+}
+
 @code {
     private ControlPlaneResult<ControlPlaneTenantList>? _result;
+    private Guid? _busyTenantId;
+    private ControlPlaneTenantSummary? _purgeTenant;
+    private string? _purgeReason;
+    private string? _purgeConfirmation;
+    private string? _commandMessage;
 
     private bool CanCreateTenant => ControlPlaneHal.HasLink(_result?.Value, ControlPlaneLinkRelations.Create);
 
+    private bool IsBusy => _busyTenantId is not null;
+
+    private bool CanConfirmPurge => _purgeTenant is not null
+        && !string.IsNullOrWhiteSpace(_purgeReason)
+        && string.Equals(_purgeConfirmation?.Trim(), _purgeTenant.Slug, StringComparison.Ordinal);
+
     private ControlPlaneTenantList Tenants => _result?.Value ?? ControlPlaneTenantList.Empty();
 
-    private string ProblemMessage => _result?.Problem.Message ?? "The control-plane API adapter is not configured for this host.";
+    private string ProblemMessage => _result?.Problem?.Message ?? "The control-plane API adapter is not configured for this host.";
 
     private string TenantCountLabel => Tenants.TotalCount == 1
         ? "1 tenant returned by the control-plane API."
@@ -115,6 +172,69 @@
     protected override async Task OnInitializedAsync()
     {
         _result = await TenantService.GetTenantsAsync();
+    }
+
+    private async Task RunTenantCommandAsync(ControlPlaneTenantSummary tenant, string relation)
+    {
+        _busyTenantId = tenant.Id;
+        _commandMessage = null;
+
+        ControlPlaneCommandResult result = relation switch
+        {
+            ControlPlaneLinkRelations.Provision => await TenantService.ActivateTenantAsync(tenant.Id),
+            ControlPlaneLinkRelations.Suspend => await TenantService.SuspendTenantAsync(tenant.Id),
+            ControlPlaneLinkRelations.Archive => await TenantService.ArchiveTenantAsync(tenant.Id),
+            _ => ControlPlaneCommandResult.Failed("This tenant action is not supported by the current control-plane client.", "control_plane_action_not_supported")
+        };
+
+        _commandMessage = result.Message;
+
+        if (result.Success)
+        {
+            _result = await TenantService.GetTenantsAsync();
+        }
+
+        _busyTenantId = null;
+    }
+
+    private void StartPurgeConfirmation(ControlPlaneTenantSummary tenant)
+    {
+        _purgeTenant = tenant;
+        _purgeReason = null;
+        _purgeConfirmation = null;
+        _commandMessage = null;
+    }
+
+    private void CancelPurgeConfirmation()
+    {
+        _purgeTenant = null;
+        _purgeReason = null;
+        _purgeConfirmation = null;
+    }
+
+    private async Task ConfirmPurgeAsync()
+    {
+        if (!CanConfirmPurge || _purgeTenant is null)
+        {
+            return;
+        }
+
+        _busyTenantId = _purgeTenant.Id;
+
+        ControlPlaneCommandResult result = await TenantService.ScheduleTenantPurgeAsync(
+            _purgeTenant.Id,
+            _purgeReason!.Trim(),
+            _purgeConfirmation!.Trim());
+
+        _commandMessage = result.Message;
+
+        if (result.Success)
+        {
+            CancelPurgeConfirmation();
+            _result = await TenantService.GetTenantsAsync();
+        }
+
+        _busyTenantId = null;
     }
 
     private static bool HasTenantAction(ControlPlaneTenantSummary tenant) =>

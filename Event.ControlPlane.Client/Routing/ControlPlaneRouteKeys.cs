@@ -8,6 +8,7 @@ public static class ControlPlaneRouteKeys
     public const string Overview = "overview";
     public const string Tenants = "tenants";
     public const string Domains = "domains";
+    public const string Operations = "operations";
     public const string Onboarding = "onboarding";
     public const string Health = "health";
     public const string Storage = "storage";

@@ -25,4 +25,5 @@ public sealed record ControlPlaneStatusCard(
 public sealed record ControlPlaneWarning(
     string Code,
     string Message,
-    string Severity = ControlPlaneSeverity.Warning);
+    string Severity = ControlPlaneSeverity.Warning,
+    string? Remediation = null);

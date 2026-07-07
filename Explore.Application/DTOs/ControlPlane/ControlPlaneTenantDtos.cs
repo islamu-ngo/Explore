@@ -52,6 +52,7 @@ public sealed class ControlPlaneTenantLifecycleEntryDto
 public sealed class ControlPlaneTenantLifecycleTransitionRequestDto
 {
     public string? Reason { get; set; }
+    public string? ConfirmationText { get; set; }
 }
 
 public sealed class ControlPlaneTenantLifecycleTransitionDto

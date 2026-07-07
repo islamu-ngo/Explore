@@ -64,7 +64,33 @@ public sealed class GetControlPlaneDomainsQueryHandlerTests
             .Contains("wildcard_tenant_domain_missing");
     }
 
-    private static InstanceGovernanceSettings CreateSettings(string instanceBaseDomain, bool allowCustomDomains) => new()
+    [Test]
+    public async Task Handle_WhenAdminOriginIsMissing_UsesPersistedAdminHost()
+    {
+        var governanceService = Substitute.For<IInstanceGovernanceSettingService>();
+        governanceService.ReadSettingsAsync()
+            .Returns(CreateSettings("events.example.org", allowCustomDomains: false, adminHost: "admin.events.example.org"));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["PublicBaseUrl"] = "https://events.example.org"
+            })
+            .Build();
+        var handler = new GetControlPlaneDomainsQueryHandler(governanceService, configuration);
+
+        var result = await handler.Handle(new GetControlPlaneDomainsQuery(), CancellationToken.None);
+
+        await Assert.That(result.AdminHost).IsEqualTo("admin.events.example.org");
+        await Assert.That(result.DnsRecords.Single(record => record.Purpose == "Control plane").Name)
+            .IsEqualTo("admin.events.example.org");
+        await Assert.That(result.Warnings.Select(warning => warning.Code))
+            .DoesNotContain("control_plane_host_not_configured");
+    }
+
+    private static InstanceGovernanceSettings CreateSettings(
+        string instanceBaseDomain,
+        bool allowCustomDomains,
+        string adminHost = "") => new()
     {
         DeploymentMode = new DeploymentModeDto { Mode = DeploymentMode.MultiTenant },
         Modules = new ModuleSettingsDto(),
@@ -74,6 +100,7 @@ public sealed class GetControlPlaneDomainsQueryHandlerTests
         Domains = new DomainSettingsDto
         {
             InstanceBaseDomain = instanceBaseDomain,
+            AdminHost = adminHost,
             AllowTenantCustomDomains = allowCustomDomains
         },
         TenantDelegation = new TenantDelegationSettingsDto(),

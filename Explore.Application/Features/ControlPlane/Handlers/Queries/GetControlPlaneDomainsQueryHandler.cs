@@ -34,7 +34,7 @@ public sealed class GetControlPlaneDomainsQueryHandler(
 
         var instanceBaseDomain = NormalizeHost(domains.InstanceBaseDomain);
         var publicHost = HostFromOrigin(publicOrigin) ?? instanceBaseDomain;
-        var adminHost = HostFromOrigin(adminOrigin);
+        var adminHost = HostFromOrigin(adminOrigin) ?? NormalizeHost(domains.AdminHost);
         var wildcardTenantHost = string.IsNullOrWhiteSpace(instanceBaseDomain)
             ? null
             : $"*.{instanceBaseDomain}";

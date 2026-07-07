@@ -9,4 +9,30 @@ public interface IControlPlaneTenantService
 {
     Task<ControlPlaneResult<ControlPlaneTenantList>> GetTenantsAsync(
         CancellationToken cancellationToken = default);
+
+    Task<ControlPlaneCommandResult> ActivateTenantAsync(
+        Guid tenantId,
+        string? reason = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ControlPlaneCommandResult> SuspendTenantAsync(
+        Guid tenantId,
+        string? reason = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ControlPlaneCommandResult> ArchiveTenantAsync(
+        Guid tenantId,
+        string? reason = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ControlPlaneCommandResult> ReactivateTenantAsync(
+        Guid tenantId,
+        string? reason = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ControlPlaneCommandResult> ScheduleTenantPurgeAsync(
+        Guid tenantId,
+        string reason,
+        string confirmationText,
+        CancellationToken cancellationToken = default);
 }

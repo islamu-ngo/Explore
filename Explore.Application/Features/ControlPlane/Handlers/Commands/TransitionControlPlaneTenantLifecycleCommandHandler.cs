@@ -43,6 +43,11 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
                 return Failure("Tenant was not found.");
             }
 
+            if (RequiresConfirmation(request.TargetStatus) && !IsConfirmed(request.ConfirmationText, tenant.Slug))
+            {
+                return Failure($"{request.TargetStatus} requires confirmation with tenant slug '{tenant.Slug}'.");
+            }
+
             var currentStatus = (TenantStatusEnum)tenant.TenantStatusId;
             if (!IsAllowedTransition(currentStatus, request.TargetStatus))
             {
@@ -98,6 +103,12 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
 
     private static bool RequiresReason(TenantStatusEnum targetStatus) =>
         targetStatus is TenantStatusEnum.Suspended or TenantStatusEnum.Archived or TenantStatusEnum.Purged;
+
+    private static bool RequiresConfirmation(TenantStatusEnum targetStatus) =>
+        targetStatus is TenantStatusEnum.Purged;
+
+    private static bool IsConfirmed(string? confirmationText, string tenantSlug) =>
+        string.Equals(confirmationText?.Trim(), tenantSlug, StringComparison.Ordinal);
 
     private static bool IsAllowedTransition(TenantStatusEnum currentStatus, TenantStatusEnum targetStatus) =>
         currentStatus switch

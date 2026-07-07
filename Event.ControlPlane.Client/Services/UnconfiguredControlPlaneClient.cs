@@ -8,7 +8,8 @@ namespace Event.ControlPlane.Client.Services;
 internal sealed class UnconfiguredControlPlaneClient :
     IControlPlaneOverviewService,
     IControlPlaneTenantService,
-    IControlPlaneDomainService
+    IControlPlaneDomainService,
+    IControlPlaneOperationsService
 {
     private static readonly ControlPlaneProblem Problem = new(
         "control_plane_adapter_not_configured",
@@ -26,9 +27,64 @@ internal sealed class UnconfiguredControlPlaneClient :
             ControlPlaneResultKind.NotConfigured,
             Problem));
 
+    public Task<ControlPlaneCommandResult> ActivateTenantAsync(
+        Guid tenantId,
+        string? reason = null,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> SuspendTenantAsync(
+        Guid tenantId,
+        string? reason = null,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> ArchiveTenantAsync(
+        Guid tenantId,
+        string? reason = null,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> ReactivateTenantAsync(
+        Guid tenantId,
+        string? reason = null,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> ScheduleTenantPurgeAsync(
+        Guid tenantId,
+        string reason,
+        string confirmationText,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
     public Task<ControlPlaneResult<ControlPlaneDomainList>> GetDomainsAsync(
         CancellationToken cancellationToken = default) =>
         Task.FromResult(ControlPlaneResult.Failure<ControlPlaneDomainList>(
             ControlPlaneResultKind.NotConfigured,
             Problem));
+
+    public Task<ControlPlaneResult<ControlPlaneOperations>> GetOperationsAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ControlPlaneResult.Failure<ControlPlaneOperations>(
+            ControlPlaneResultKind.NotConfigured,
+            Problem));
+
+    public Task<ControlPlaneResult<ControlPlaneDeploymentModeRunbook>> GetDeploymentModeRunbookAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ControlPlaneResult.Failure<ControlPlaneDeploymentModeRunbook>(
+            ControlPlaneResultKind.NotConfigured,
+            Problem));
+
+    public Task<ControlPlaneCommandResult> TransitionDeploymentModeAsync(
+        string targetMode,
+        string confirmationText,
+        string? reason = null,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    private static Task<ControlPlaneCommandResult> CommandNotConfiguredAsync() =>
+        Task.FromResult(ControlPlaneCommandResult.Failed(
+            "The control-plane API adapter is not configured for this host.",
+            "control_plane_adapter_not_configured"));
 }

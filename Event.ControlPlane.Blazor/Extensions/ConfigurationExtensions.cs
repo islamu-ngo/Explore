@@ -52,6 +52,9 @@ public static class ConfigurationExtensions
         var rawApiUrl = config["CONTROL_PLANE_API_ENDPOINT"]
             ?? config["API_ENDPOINT"]
             ?? config["ExploreApi:BaseUrl"];
+        var hasAspireApiReference =
+            !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "https"))
+            || !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "http"));
         var explicitAuthority = config["KEYCLOAK_CONTROL_PLANE_AUTHORITY"]
             ?? config["ControlPlane:Keycloak:Authority"]
             ?? config["Bff:Authentication:Authority"];
@@ -76,7 +79,9 @@ public static class ConfigurationExtensions
             keycloakAuthority ?? "(not mapped)",
             rawClientId,
             !string.IsNullOrWhiteSpace(rawClientSecret),
-            rawApiUrl ?? "(not set, will use default)");
+            hasAspireApiReference
+                ? "(not mapped, Aspire service discovery configured)"
+                : rawApiUrl ?? "(not set, will use default)");
 
         var mappedConfig = new Dictionary<string, string?>();
 
@@ -90,7 +95,10 @@ public static class ConfigurationExtensions
             mappedConfig["Bff:Authentication:ClientSecret"] = rawClientSecret;
         }
 
-        TrySet(mappedConfig, config, "ExploreApi:BaseUrl", rawApiUrl);
+        if (!hasAspireApiReference)
+        {
+            TrySet(mappedConfig, config, "ExploreApi:BaseUrl", rawApiUrl);
+        }
 
         configBuilder.AddInMemoryCollection(
             mappedConfig
@@ -111,4 +119,8 @@ public static class ConfigurationExtensions
 
         mappedConfig[key] = value;
     }
+
+    private static string? GetAspireApiReference(IConfiguration config, string scheme) =>
+        config[$"services:explore-api:{scheme}:0"]
+        ?? config[$"services__explore-api__{scheme}__0"];
 }

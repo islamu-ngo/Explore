@@ -88,7 +88,7 @@
 
     private ControlPlaneDomainList Domains => _result?.Value ?? ControlPlaneDomainList.Empty();
 
-    private string ProblemMessage => _result?.Problem.Message ?? "The control-plane API adapter is not configured for this host.";
+    private string ProblemMessage => _result?.Problem?.Message ?? "The control-plane API adapter is not configured for this host.";
 
     private string DomainCountLabel => Domains.Items.Count == 1
         ? "1 domain returned by the control-plane API."

@@ -1,4 +1,4 @@
-// ABOUTME: HAL assembler for the multi-tenant control-plane overview resource.
+// ABOUTME: HAL assembler for the Control Plane overview resource.
 // ABOUTME: Reuses the shared link authorization pipeline for instance-console affordances.
 
 namespace Explore.API.Hateoas.Assemblers;

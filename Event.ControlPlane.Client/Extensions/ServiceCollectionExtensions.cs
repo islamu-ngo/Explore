@@ -18,7 +18,9 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IControlPlaneOverviewService, UnconfiguredControlPlaneClient>();
         services.TryAddScoped<IControlPlaneTenantService, UnconfiguredControlPlaneClient>();
         services.TryAddScoped<IControlPlaneDomainService, UnconfiguredControlPlaneClient>();
+        services.TryAddScoped<IControlPlaneOperationsService, UnconfiguredControlPlaneClient>();
 
         return services;
     }
+
 }

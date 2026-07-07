@@ -13,7 +13,8 @@ namespace Explore.Application.Features.ControlPlane.Requests.Commands;
 public sealed class TransitionControlPlaneTenantLifecycleCommand(
     Guid tenantId,
     TenantStatusEnum targetStatus,
-    string? reason)
+    string? reason,
+    string? confirmationText = null)
     : IRequest<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>, ISecureRequest
 {
     public const string SettingKey = "control-plane.tenants.lifecycle";
@@ -21,6 +22,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommand(
     public Guid TenantId { get; } = tenantId;
     public TenantStatusEnum TargetStatus { get; } = targetStatus;
     public string? Reason { get; } = reason;
+    public string? ConfirmationText { get; } = confirmationText;
 
     string? ISecureRequest.ResourceId => SettingKey;
 
