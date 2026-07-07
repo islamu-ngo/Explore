@@ -1,5 +1,5 @@
 // ABOUTME: Registers named request timeout policies for different endpoint categories.
-// ABOUTME: Provides default (30s), lookup (10s), and complex (60s) timeout tiers.
+// ABOUTME: Provides default, lookup, complex, and control-plane timeout tiers.
 
 using Microsoft.AspNetCore.Http.Timeouts;
 
@@ -20,6 +20,7 @@ public static class RequestTimeoutExtensions
     public const string DefaultPolicy = "Default";
     public const string LookupPolicy = "Lookup";
     public const string ComplexPolicy = "Complex";
+    public const string ControlPlanePolicy = "ControlPlane";
 
     public static IServiceCollection AddApiRequestTimeouts(
         this IServiceCollection services, IConfiguration configuration)
@@ -29,6 +30,7 @@ public static class RequestTimeoutExtensions
         var defaultSeconds = section.GetValue("DefaultSeconds", 30);
         var lookupSeconds = section.GetValue("LookupSeconds", 10);
         var complexSeconds = section.GetValue("ComplexSeconds", 60);
+        var controlPlaneSeconds = section.GetValue("ControlPlaneSeconds", 20);
 
         services.AddRequestTimeouts(options =>
         {
@@ -50,6 +52,12 @@ public static class RequestTimeoutExtensions
             options.AddPolicy(ComplexPolicy, new RequestTimeoutPolicy
             {
                 Timeout = TimeSpan.FromSeconds(complexSeconds),
+                TimeoutStatusCode = StatusCodes.Status504GatewayTimeout
+            });
+
+            options.AddPolicy(ControlPlanePolicy, new RequestTimeoutPolicy
+            {
+                Timeout = TimeSpan.FromSeconds(controlPlaneSeconds),
                 TimeoutStatusCode = StatusCodes.Status504GatewayTimeout
             });
         });

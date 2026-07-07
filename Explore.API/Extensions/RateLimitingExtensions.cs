@@ -1,5 +1,5 @@
 // ABOUTME: Registers tiered rate limiting policies for the API.
-// ABOUTME: Provides global IP-based, authenticated user, and write-operation rate limit tiers.
+// ABOUTME: Provides global, authenticated, write, and control-plane rate/concurrency tiers.
 
 using System.Globalization;
 using System.Net;
@@ -32,6 +32,9 @@ public static class RateLimitingExtensions
     public const string SetupSecretPolicy = "SetupSecret";
     public const string AnalyticsRelayPolicy = "AnalyticsRelay";
     public const string AiAssistantPolicy = "AiAssistant";
+    public const string ControlPlanePolicy = "ControlPlane";
+
+    private const string ControlPlanePathPrefix = "/api/admin/control-plane";
 
     public static IServiceCollection AddApiRateLimiting(
         this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
@@ -59,6 +62,8 @@ public static class RateLimitingExtensions
                 options.AddPolicy(AnalyticsRelayPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(AiAssistantPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(ControlPlanePolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
             });
 
@@ -95,6 +100,11 @@ public static class RateLimitingExtensions
         // Setup-secret bootstrap limits
         var setupSecretPermitLimit = section.GetValue("SetupSecret:PermitLimit", 5);
         var setupSecretWindowSeconds = section.GetValue("SetupSecret:WindowSeconds", 60);
+
+        var controlPlanePermitLimit = section.GetValue("ControlPlane:PermitLimit", 60);
+        var controlPlaneWindowSeconds = section.GetValue("ControlPlane:WindowSeconds", 60);
+        var controlPlaneConcurrencyLimit = section.GetValue("ControlPlane:ConcurrencyLimit", 4);
+        var controlPlaneQueueLimit = section.GetValue("ControlPlane:QueueLimit", 0);
 
         services.AddRateLimiter(options =>
         {
@@ -152,10 +162,11 @@ public static class RateLimitingExtensions
                 });
             };
 
-            // Global limiter: token bucket per IP.
             // API-key callers are partitioned by authenticated key id; other callers remain IP-based.
             // RemoteIpAddress is already proxy-aware when UseForwardedHeaders is configured.
-            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(CreateGlobalPartition);
+            options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
+                PartitionedRateLimiter.Create<HttpContext, string>(CreateControlPlaneConcurrencyPartition),
+                PartitionedRateLimiter.Create<HttpContext, string>(CreateGlobalPartition));
             options.AddPolicy(GlobalPolicy, CreateGlobalPartition);
 
             // Authenticated: sliding window per user identity
@@ -247,12 +258,32 @@ public static class RateLimitingExtensions
                         AutoReplenishment = true
                     });
             });
+
+            options.AddPolicy(ControlPlanePolicy, httpContext =>
+            {
+                var userId = GetAuthenticatedPartitionKey(httpContext);
+
+                return RateLimitPartition.GetFixedWindowLimiter($"control-plane:{userId}", _ =>
+                    new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = controlPlanePermitLimit,
+                        Window = TimeSpan.FromSeconds(controlPlaneWindowSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    });
+            });
         });
 
         return services;
 
         RateLimitPartition<string> CreateGlobalPartition(HttpContext httpContext)
         {
+            if (IsControlPlaneRequest(httpContext))
+            {
+                return RateLimitPartition.GetNoLimiter(ControlPlanePolicy);
+            }
+
             var apiKeyId = httpContext.User.GetApiKeyId();
             if (!string.IsNullOrWhiteSpace(apiKeyId))
             {
@@ -289,6 +320,22 @@ public static class RateLimitingExtensions
                 });
         }
 
+        RateLimitPartition<string> CreateControlPlaneConcurrencyPartition(HttpContext httpContext)
+        {
+            if (!IsControlPlaneRequest(httpContext))
+            {
+                return RateLimitPartition.GetNoLimiter("non-control-plane");
+            }
+
+            return RateLimitPartition.GetConcurrencyLimiter(ControlPlanePolicy, _ =>
+                new ConcurrencyLimiterOptions
+                {
+                    PermitLimit = controlPlaneConcurrencyLimit,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = controlPlaneQueueLimit
+                });
+        }
+
         int ResolvePolicyLimit(string policyName) => policyName switch
         {
             AuthenticatedPolicy => authPermitLimit,
@@ -297,6 +344,7 @@ public static class RateLimitingExtensions
             SetupSecretPolicy => setupSecretPermitLimit,
             AnalyticsRelayPolicy => analyticsRelayPermitLimit,
             AiAssistantPolicy => aiAssistantPermitLimit,
+            ControlPlanePolicy => controlPlanePermitLimit,
             _ => globalTokenLimit
         };
     }
@@ -311,6 +359,11 @@ public static class RateLimitingExtensions
 
     private static string InferPolicyName(HttpContext context)
     {
+        if (IsControlPlaneRequest(context))
+        {
+            return ControlPlanePolicy;
+        }
+
         if (context.Request.Path.StartsWithSegments("/api/setup", StringComparison.OrdinalIgnoreCase)
             || context.Request.Path.StartsWithSegments("/setup", StringComparison.OrdinalIgnoreCase))
         {
@@ -341,6 +394,11 @@ public static class RateLimitingExtensions
         }
 
         return context.User.Identity?.IsAuthenticated == true ? AuthenticatedPolicy : GlobalPolicy;
+    }
+
+    private static bool IsControlPlaneRequest(HttpContext context)
+    {
+        return context.Request.Path.StartsWithSegments(ControlPlanePathPrefix, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string GetAuthenticatedPartitionKey(HttpContext context)

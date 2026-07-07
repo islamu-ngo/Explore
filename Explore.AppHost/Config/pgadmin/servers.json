@@ -1,0 +1,40 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Explore App PostgreSQL",
+      "Group": "ISLAMU Local",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "islamu_event_db",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    },
+    "2": {
+      "Name": "Cerbos PostgreSQL",
+      "Group": "ISLAMU Local",
+      "Host": "cerbos-db",
+      "Port": 5432,
+      "MaintenanceDB": "cerbos",
+      "Username": "cerbos_user",
+      "SSLMode": "prefer"
+    },
+    "3": {
+      "Name": "Svix PostgreSQL",
+      "Group": "ISLAMU Local",
+      "Host": "svix-postgres",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    },
+    "4": {
+      "Name": "Coop PostgreSQL",
+      "Group": "ISLAMU Local",
+      "Host": "coop-postgres",
+      "Port": 5432,
+      "MaintenanceDB": "coop",
+      "Username": "coop",
+      "SSLMode": "prefer"
+    }
+  }
+}

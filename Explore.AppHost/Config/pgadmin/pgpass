@@ -1,0 +1,3 @@
+cerbos-db:5432:cerbos:cerbos_user:cerbos_password
+svix-postgres:5432:postgres:postgres:postgres
+coop-postgres:5432:coop:coop:coop_password

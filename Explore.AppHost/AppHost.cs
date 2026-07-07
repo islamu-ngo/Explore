@@ -20,6 +20,8 @@ const string LocalSvixJwtSecret = "local-dev-svix-jwt-secret-change-me";
 const string LocalSvixAuthToken =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJvcmdfMjNyYjhZZEdxTVQwcUl6cGdHd2RYZkhpck11In0.8DdxojyqoHnAeZBEL6M1Tcf5i5hnbAmezaRlPxuBXp8";
 const string LocalSvixOperationalWebhookSecret = "whsec_bG9jYWwtZGV2LXN2aXgtb3BlcmF0aW9uYWwtc2VjcmV0";
+const string LocalCoopApiKey = "local-dev-coop-api-key";
+const string LocalCoopWebhookSecret = "local-dev-coop-webhook-secret";
 
 var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
@@ -29,9 +31,13 @@ var cerbosPolicyPackagePath = Path.Combine(repositoryRoot, "cerbos", "policies")
 var cerbosConfigPath = Path.Combine(repositoryRoot, "cerbos", "config", ".cerbos.yaml");
 var cerbosSchemaPath = Path.Combine(repositoryRoot, "cerbos", "init", "cerbos-schema.sql");
 var keycloakRealmExportPath = Path.Combine(repositoryRoot, "docker", "keycloak", "realm-export.json");
+var keycloakInitScriptPath = Path.Combine(repositoryRoot, "docker", "keycloak", "keycloak-init.sh");
+var coopNginxConfigPath = Path.Combine(appHostConfigRoot, "coop", "nginx.conf");
 var localStorageRootPath = Path.Combine(repositoryRoot, "storage-data", "aspire-local");
 var prometheusConfigPath = Path.Combine(appHostConfigRoot, "prometheus.yaml");
 var grafanaDashboardPath = Path.Combine(appHostConfigRoot, "grafana-dashboard");
+var pgAdminServersPath = Path.Combine(appHostConfigRoot, "pgadmin", "servers.json");
+var pgAdminPassFilePath = Path.Combine(appHostConfigRoot, "pgadmin", "pgpass");
 Directory.CreateDirectory(localStorageRootPath);
 Directory.CreateDirectory(grafanaDashboardPath);
 
@@ -58,7 +64,7 @@ if (runMode.UsesLocalData())
         .WithImageTag("18-alpine")
         .WithDataVolume("islamu-event-postgres-data")
         .WithLifetime(ContainerLifetime.Persistent)
-        .AddDatabase("explore");
+        .AddDatabase("islamu-event-db", "islamu_event_db");
 
     cache = builder.AddRedis("cache")
         .WithDataVolume("islamu-event-redis-data")
@@ -80,8 +86,14 @@ if (runMode == AspireRunMode.FullLocal)
         LocalCerbosAdminUsername,
         LocalCerbosAdminPasswordHash,
         keycloakRealmExportPath,
+        keycloakInitScriptPath,
+        mailpit,
+        coopNginxConfigPath,
         prometheusConfigPath,
         grafanaDashboardPath,
+        pgAdminServersPath,
+        pgAdminPassFilePath,
+        database,
         cache);
 }
 
@@ -230,8 +242,14 @@ static FullLocalResources AddFullLocalPlatform(
     string localCerbosAdminUsername,
     string localCerbosAdminPasswordHash,
     string keycloakRealmExportPath,
+    string keycloakInitScriptPath,
+    IResourceBuilder<ContainerResource> mailpit,
+    string coopNginxConfigPath,
     string prometheusConfigPath,
     string grafanaDashboardPath,
+    string pgAdminServersPath,
+    string pgAdminPassFilePath,
+    IResourceBuilder<PostgresDatabaseResource>? appDatabase,
     IResourceBuilder<RedisResource>? cache)
 {
     var crdb = builder.AddContainer("crdb", "cockroachdb/cockroach", "v24.1.1")
@@ -281,6 +299,30 @@ static FullLocalResources AddFullLocalPlatform(
         .WithHttpHealthCheck("/auth/health/ready", endpointName: "mgmt")
         .WithLifetime(ContainerLifetime.Persistent)
         .WaitFor(crdb);
+
+    var keycloakInit = builder.AddContainer("keycloak-init", "quay.io/phasetwo/phasetwo-keycloak", "26")
+        .WithEntrypoint("/bin/bash")
+        .WithArgs("/opt/keycloak/bin/keycloak-init.sh")
+        .WithEnvironment("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080/auth")
+        .WithEnvironment("KEYCLOAK_REALM", "ISLAMU")
+        .WithEnvironment("KEYCLOAK_ADMIN", "admin")
+        .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", "admin")
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_ID", "islamu-event-blazor")
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", "islamu-event-blazor-secret")
+        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", "islamu-event-control-plane")
+        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", "islamu-event-control-plane-secret")
+        .WithEnvironment("KEYCLOAK_API_CLIENT_ID", "islamu-event-api")
+        .WithEnvironment("KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET", "true")
+        .WithEnvironment("KEYCLOAK_SMTP_HOST", "mailpit")
+        .WithEnvironment("KEYCLOAK_SMTP_PORT", "1025")
+        .WithEnvironment("KEYCLOAK_SMTP_FROM", "noreply@openislamu.org")
+        .WithEnvironment("KEYCLOAK_SMTP_FROM_DISPLAY_NAME", "ISLAMU Event Dev")
+        .WithEnvironment("KEYCLOAK_SMTP_AUTH", "false")
+        .WithEnvironment("KEYCLOAK_SMTP_SSL", "false")
+        .WithEnvironment("KEYCLOAK_SMTP_STARTTLS", "false")
+        .WithBindMount(keycloakInitScriptPath, "/opt/keycloak/bin/keycloak-init.sh", isReadOnly: true)
+        .WaitFor(keycloak)
+        .WaitFor(mailpit);
 
     var cerbosDb = builder.AddContainer("cerbos-db", "postgres", "18-alpine")
         .WithEnvironment("POSTGRES_USER", "cerbos_user")
@@ -360,11 +402,29 @@ static FullLocalResources AddFullLocalPlatform(
         .WithVolume("islamu-event-coop-postgres-data", "/var/lib/postgresql")
         .WithLifetime(ContainerLifetime.Persistent);
 
+    var coopMigrations = builder.AddContainer("coop-migrations", "ghcr.io/roostorg/coop-migrations", "latest")
+        .WithEntrypoint("sh")
+        .WithArgs(
+            "-c",
+            "npm run db:create -- --db api-server-pg --env staging && npm run db:update -- --db api-server-pg --env staging")
+        .WithEnvironment("DATABASE_HOST", "coop-postgres")
+        .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
+        .WithEnvironment("DATABASE_PORT", "5432")
+        .WithEnvironment("DATABASE_USER", "coop")
+        .WithEnvironment("DATABASE_PASSWORD", "coop_password")
+        .WithEnvironment("DATABASE_NAME", "coop")
+        .WithEnvironment("API_SERVER_DATABASE_HOST", "coop-postgres")
+        .WithEnvironment("API_SERVER_DATABASE_PORT", "5432")
+        .WithEnvironment("API_SERVER_DATABASE_USER", "coop")
+        .WithEnvironment("API_SERVER_DATABASE_PASSWORD", "coop_password")
+        .WithEnvironment("API_SERVER_DATABASE_NAME", "coop")
+        .WaitFor(coopDb);
+
     var coop = builder.AddContainer("coop", "ghcr.io/roostorg/coop-server", "latest")
         .WithEnvironment("NODE_ENV", "development")
         .WithEnvironment("OTEL_SERVICE_NAME", "coop")
         .WithEnvironment("PORT", "8080")
-        .WithEnvironment("UI_URL", "http://localhost:8082")
+        .WithEnvironment("UI_URL", "http://localhost:3001")
         .WithEnvironment("SESSION_SECRET", "local-dev-coop-session-secret")
         .WithEnvironment("DATABASE_HOST", "coop-postgres")
         .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
@@ -381,7 +441,8 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEnvironment("SCYLLA_SSL", "false")
         .WithHttpEndpoint(targetPort: 8080, port: 8082, name: "http")
         .WithLifetime(ContainerLifetime.Persistent)
-        .WaitFor(coopDb);
+        .WaitFor(coopDb)
+        .WaitForCompletion(coopMigrations);
 
     if (cache is not null)
     {
@@ -391,6 +452,33 @@ static FullLocalResources AddFullLocalPlatform(
             .WithEnvironment("REDIS_PORT", "6380")
             .WithEnvironment("REDIS_PASSWORD", cache.Resource.PasswordParameter!)
             .WaitFor(cache);
+    }
+
+    var coopClient = builder.AddContainer("coop-client", "ghcr.io/roostorg/coop-client", "latest")
+        .WithBindMount(coopNginxConfigPath, "/etc/nginx/conf.d/default.conf", isReadOnly: true)
+        .WithHttpEndpoint(targetPort: 80, port: 3001, name: "http")
+        .WithLifetime(ContainerLifetime.Persistent)
+        .WaitFor(coop);
+
+    var pgAdmin = builder.AddContainer("pgadmin", "dpage/pgadmin4", "latest")
+        .WithEnvironment("PGADMIN_DEFAULT_EMAIL", "admin@openislamu.org")
+        .WithEnvironment("PGADMIN_DEFAULT_PASSWORD", "admin")
+        .WithEnvironment("PGADMIN_DISABLE_POSTFIX", "true")
+        .WithEnvironment("PGADMIN_SERVER_JSON_FILE", "/pgadmin4/servers.json")
+        .WithEnvironment("PGADMIN_REPLACE_SERVERS_ON_STARTUP", "True")
+        .WithEnvironment("PGPASS_FILE", "/pgadmin4/pgpass")
+        .WithBindMount(pgAdminServersPath, "/pgadmin4/servers.json", isReadOnly: true)
+        .WithBindMount(pgAdminPassFilePath, "/pgadmin4/pgpass", isReadOnly: true)
+        .WithVolume("islamu-event-pgadmin-data", "/var/lib/pgadmin")
+        .WithHttpEndpoint(targetPort: 80, port: 5050, name: "http")
+        .WithLifetime(ContainerLifetime.Persistent)
+        .WaitFor(cerbosDb)
+        .WaitFor(svixDb)
+        .WaitFor(coopDb);
+
+    if (appDatabase is not null)
+    {
+        pgAdmin = pgAdmin.WaitFor(appDatabase);
     }
 
     var (ospreyImage, ospreyTag) = ResolveImageAndTag(
@@ -420,11 +508,15 @@ static FullLocalResources AddFullLocalPlatform(
 
     return new FullLocalResources(
         Keycloak: keycloak,
+        KeycloakInit: keycloakInit,
         Cerbos: cerbos,
         Minio: minio,
         MinioBootstrap: minioBootstrap,
         Svix: svix,
         Coop: coop,
+        CoopMigrations: coopMigrations,
+        CoopClient: coopClient,
+        PgAdmin: pgAdmin,
         Osprey: osprey,
         Prometheus: prometheus,
         Grafana: grafana);
@@ -524,11 +616,21 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
         .WithEnvironment("S3Settings__BucketName", "explore")
         .WithEnvironment("S3Settings__AccessKeyId", "minioadmin")
         .WithEnvironment("S3Settings__SecretAccessKey", "minioadmin")
+        .WithEnvironment("Reporting__Enabled", "true")
+        .WithEnvironment("Reporting__Mode", "Coop")
+        .WithEnvironment("Reporting__SyncReports", "true")
+        .WithEnvironment("Reporting__EvaluateSignals", "false")
+        .WithEnvironment("Reporting__MirrorReviewQueue", "true")
+        .WithEnvironment("Reporting__ExecuteDecisions", "true")
         .WithEnvironment("Reporting__Osprey__Enabled", "false")
         .WithEnvironment("Reporting__Osprey__AllowLocalProviderEndpoints", "true")
+        .WithEnvironment("Reporting__Coop__Enabled", "true")
         .WithEnvironment("Reporting__Coop__EndpointUrl", coopEndpoint)
+        .WithEnvironment("Reporting__Coop__ApiKey", LocalCoopApiKey)
         .WithEnvironment("Reporting__Coop__AllowLocalProviderEndpoints", "true")
-        .WithEnvironment("Reporting__Coop__WebhookSecret", "local-dev-coop-webhook-secret")
+        .WithEnvironment("Reporting__Coop__WebhookSecret", LocalCoopWebhookSecret)
+        .WithEnvironment("Webhooks__Enabled", "true")
+        .WithEnvironment("Webhooks__Provider", "Svix")
         .WithEnvironment("Webhooks__Svix__BaseUrl", svixEndpoint)
         .WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", "webhooks.svix.auth_token")
         .WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", "webhooks.svix.operational_webhook_secret")
@@ -538,6 +640,7 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
     api = api
         .WaitFor(resources.Svix)
         .WaitFor(resources.Coop)
+        .WaitForCompletion(resources.KeycloakInit)
         .WaitForCompletion(resources.MinioBootstrap);
 
     return api;
@@ -565,7 +668,8 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalBlazor(
         .WithEnvironment("Keycloak__ClientId", "islamu-event-blazor")
         .WithEnvironment("Keycloak__ClientSecret", "islamu-event-blazor-secret")
         .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
-        .WaitFor(resources.Keycloak);
+        .WaitFor(resources.Keycloak)
+        .WaitForCompletion(resources.KeycloakInit);
 }
 
 static IResourceBuilder<ProjectResource> ConfigureFullLocalControlPlane(
@@ -589,7 +693,8 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalControlPlane(
         .WithEnvironment("Bff__Authentication__ClientId", "islamu-event-control-plane")
         .WithEnvironment("Bff__Authentication__ClientSecret", "islamu-event-control-plane-secret")
         .WithEnvironment("Bff__Authentication__RequireHttpsMetadata", "false")
-        .WaitFor(resources.Keycloak);
+        .WaitFor(resources.Keycloak)
+        .WaitForCompletion(resources.KeycloakInit);
 }
 
 static ReferenceExpression EndpointUrl(
@@ -765,11 +870,15 @@ internal static class AspireRunModeExtensions
 
 internal sealed record FullLocalResources(
     IResourceBuilder<ContainerResource> Keycloak,
+    IResourceBuilder<ContainerResource> KeycloakInit,
     IResourceBuilder<ContainerResource> Cerbos,
     IResourceBuilder<ContainerResource> Minio,
     IResourceBuilder<ContainerResource> MinioBootstrap,
     IResourceBuilder<ContainerResource> Svix,
     IResourceBuilder<ContainerResource> Coop,
+    IResourceBuilder<ContainerResource> CoopMigrations,
+    IResourceBuilder<ContainerResource> CoopClient,
+    IResourceBuilder<ContainerResource> PgAdmin,
     IResourceBuilder<ContainerResource>? Osprey,
     IResourceBuilder<ContainerResource> Prometheus,
     IResourceBuilder<ContainerResource> Grafana);
