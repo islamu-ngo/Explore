@@ -1,4 +1,4 @@
-// ABOUTME: Default canonical event catalog for outgoing ISLAMU Event webhooks.
+// ABOUTME: Default canonical event catalog for outgoing platform webhooks.
 // ABOUTME: Provides stable event descriptors used by payload builders, APIs, providers, and documentation.
 
 using Explore.Application.Contracts.Webhooks;
