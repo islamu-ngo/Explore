@@ -3,7 +3,7 @@
 
 # MVP Launch Context
 
-Last Updated: 2026-07-04 Europe/Brussels
+Last Updated: 2026-07-05 Europe/Brussels
 
 ## Current Status
 
@@ -149,10 +149,26 @@ Completed during Phase 4.1 BFF token-boundary slice:
 - Added `BffCurrentUserEndpointTokenBoundaryTests` to prove `/bff/me` filters token-shaped claims and values even when the authenticated principal contains them.
 - Phase 4.1 BFF boundary checks are now closed for setup-secret stripping/rate limiting, storage upload antiforgery/self-call handling, browser credential-header stripping, and browser-visible access/refresh token leakage.
 
+Completed during July 5 launch-closure slices:
+
+- Phase 4.2 audit evidence is complete. `Explore.Persistence/ExploreDbContext.SaveChanges.cs` now records `UpdatedBy` whenever a current user exists for modified `IAuditableEntity` rows, even when handlers set `UpdatedAt` themselves; a PostgreSQL-backed `GenericRepositoryTests` regression proves actor evidence survives handler-supplied timestamps.
+- Phase 4.3 HAL affordance cleanup is complete for the concrete create-event nav gap. `EventCreationEligibilityService` now uses the API `EventCreationContextDto.PublisherOptions.CanPublish` contract instead of local role checks; focused Blazor client tests prove personal, organization, group, and no-publisher routing behavior.
+- Phase 4.4 security-header polish is complete. Public/shared BFF hosts emit CSP, frame/content/referrer protections, and `Permissions-Policy`; Blazor integration tests prove headers on app shell, error, static asset, manifest, robots, and no-Keycloak startup routes.
+- Phase 5.1 SEO metadata is complete. Event detail pages emit canonical/OG/Twitter metadata, schema.org `Event` JSON-LD for crawlable public events, and `robots noindex,nofollow` for non-public or non-crawlable states; source tests and raw-HTML safety checks are green.
+- Phase 5.2 sitemap/robots proof is complete. Persistence tests prove sitemap events are tenant-filtered and limited to published public events; Blazor runtime tests prove non-production robots disallows crawling and production robots uses forwarded proto/host for the canonical sitemap URL.
+- Phase 5.3 manifest/install metadata is complete and white-label-safe. `/manifest.webmanifest` is served by `BffManifestEndpoints` from DB-backed public-experience branding with generic fallback; the static tenant-branded manifest file was deleted so it cannot shadow the dynamic endpoint.
+- White-label remediation is complete for runtime/user-facing surfaces. Public shell/manifest/EventDetail metadata use DB-backed public-experience branding where available; legal/setup/error/AI/admin/email/operator copy now uses generic platform wording. Remaining `ISLAMU`/`islamu` strings are technical identifiers only: auth client IDs, Cerbos/resource kinds, metrics, hidden schema markers, and internal BFF protocol headers.
+- Phase 5.4 automated accessibility and placeholder cleanup is complete, but desktop/mobile browser visual QA remains blocked. Source guards, `MainLayoutTests`, `ErrorPagesTests`, and shared component accessibility tests passed; fake tenant member rows and “coming soon” settings copy were removed. The Debug/AppHost OpenAPI build blocker was fixed by limiting build-time OpenAPI generation to Release while keeping the documented Release contract-generation path green, and Keycloak later recovered to Healthy; live Blazor page routes still cannot be honestly visually proven because the local API fails during migration on duplicate existing `events(tenant_id, public_code)` data.
+- Phase 6.1 contract sync is complete. `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` were regenerated through project builds.
+- Phase 6.2 feasible required verification is complete. Full Release build, Architecture, Domain, Application, Persistence integration, Blazor client, BFF no-Keycloak, and targeted API OpenAPI contract tests passed. Full API integration remains blocked by gateway-timeout/status failures tied to the local API startup/runtime state after the deterministic HAL schema gap was fixed.
+
+Current blocker:
+
+- Local Aspire runtime visual QA is blocked by `explore-api` failing while applying `AddEventPublicCode` with PostgreSQL `23505` on duplicate `(tenant_id, public_code)` rows before `ix_events_tenant_public_code` can be created. The owner corrected that migrations must not be manually edited; the manual edit was reverted, `dotnet ef migrations add eventmoderation --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API` produced an empty migration, and it was removed via `dotnet ef migrations remove`. A later migration cannot repair data needed by this earlier migration; recovery needs owner-approved database cleanup/reset or a proper generated workflow that can run before the failing constraint. Latest runtime check after the Debug/OpenAPI fix: Aspire starts, Keycloak is Healthy, migration service exits 0, and `explore-api` still exits with the same `23505` unique-index creation failure.
+
 In progress:
 
-- Remaining MVP launch phases. Phase 1 core startup/health/public-smoke proof, bounded SMTP outage readiness, registration-driven Mailpit proof, focused BFF Data Protection cookie restart proof, Data Protection key-store failure visibility, and email-dispatch backlog/dead-letter degraded-health proof are green, but full browser/OIDC restart proof, security/audit/HAL cleanup, public polish, and release evidence remain open.
-- Phase 3 source/test/docs work is complete; remaining launch risk is runtime/visual release evidence, not more registration service design.
+- Remaining MVP launch closure is blocked on owner action for local runtime data. Phase 4 security/audit/HAL cleanup, Phase 5 source/test public polish, Phase 6 contract sync, required feasible test evidence, docs, and journal updates are complete; runtime/browser/OIDC proof remains open until the duplicate `public_code` data is cleaned/reset with approval or explicitly accepted as a local-data blocker.
 
 Known context note:
 

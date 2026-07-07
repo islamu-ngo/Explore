@@ -1,5 +1,7 @@
 ## Key Decisions
 
+- [2026-07-05 Europe/Brussels] **Managed reporting dashboards use write-only secrets and aggregate-only reads** — While implementing the managed moderation reporting routing and dashboard workstream, the non-obvious boundary was that tenant provider secrets must be accepted only at write boundaries while every read/dashboard/HAL/generated response remains redacted. Tenant routing updates now preserve existing Osprey/Coop API keys and webhook secrets when secret fields are omitted or blank, and provider readiness tests validate effective configuration without external HTTP or secret output. Control-plane moderation reporting metrics aggregate provider-sync and lock-impact counts only, using explicit tenant-filter bypass for instance-wide counts and exact tenant predicates for tenant dashboards, so operators see health without tenant identifiers, report identifiers, provider URLs, provider IDs, correlation IDs, payloads, raw errors, or secrets. Future reporting/provider dashboard slices should keep this split: write DTOs may carry secrets, read DTOs/HAL/generated clients/logs/metrics must expose only configured flags and aggregate counts. References: `docs/CONFIGURATION.md:191`, `docs/CONFIGURATION.md:216`, `docs/MULTI_TENANCY.md:136`, `Explore.Application/DTOs/EventReporting/ReportingRoutingStateDto.cs:1`, `Explore.Application/DTOs/EventReporting/TenantModerationReportingDashboardDto.cs:1`, `Explore.Application/Features/ControlPlane/Handlers/Queries/GetControlPlaneOperationsQueryHandler.cs:1`.
+
 - [2026-05-22 Europe/Brussels] **Dock policy metadata must avoid `Panel` enums** — During the dock layout UX overhaul, descriptor-level stack/mobile policy metadata was first modeled as enums named `DockPanelStackStrategy` and `DockPanelMobilePresentation`. `Event.Architecture.Tests.DockLayoutArchitectureTests.DockPanelIds_MustNotBeModeledAsCentralEnums` rejected that shape because the dock architecture intentionally forbids central enums with `Panel` in the type name under `Explore.Blazor.Client`. The fixed pattern is sealed value-object records with static instances (`DockPanelStackStrategy.Tabbed`, `DockPanelStackStrategy.Split`, `DockPanelMobilePresentation.TemporaryOverlay`, `DockPanelMobilePresentation.FullscreenOverlay`) instead of enums. This preserves explicit descriptor policy without reintroducing central panel registries or enum-driven extensibility. Key files: `Explore.Blazor.Client/Services/Docking/DockPanelStackStrategy.cs`, `Explore.Blazor.Client/Services/Docking/DockPanelMobilePresentation.cs`, `Explore.Blazor.Client/Services/Docking/DockPanelDescriptor.cs`, `Event.Architecture.Tests/DockLayoutArchitectureTests.cs`, `Explore.Blazor.Client.Tests/Services/Docking/DockPanelDescriptorTests.cs`.
 
 - [2026-05-22 Europe/Brussels] **All-skipped TUnit visual filters return exit code 8** — While adding the skipped/manual dock responsive visual matrix, `rtk dotnet test --project "Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj" --configuration Release --verbosity quiet --treenode-filter "/*/*/*SidebarLayoutVisualTests/*"` compiled and discovered the visual tests, but every matched test had the manual visual skip reason, so TUnit reported `Zero tests ran` and returned exit code 8. Treat this as a visual-lane status signal, not a compile failure. The reliable compile gate for skipped manual visual scenarios is `rtk dotnet build "Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj" --configuration Release --verbosity quiet`; execute the filtered tests only when the Aspire-backed visual baseline lane is enabled with seeded data and approved screenshot storage. Key files: `Explore.Blazor.Client.E2ETests/Flows/SidebarLayoutVisualTests.cs`, `Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj`, `dev/active/dock-layout-ux-overhaul/dock-layout-ux-overhaul-tasks.md`, `docs/DOCK_LAYOUT.md`.
@@ -124,6 +126,72 @@
 - [x] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
 - [x] Candidate for new `.claude/rules/*.md` entry
 - [ ] Candidate for skill update: `<skill name>`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-07-05 Europe/Brussels] — Dynamic BFF manifests must not have static same-path files
+
+**Context**:
+During MVP launch white-label hardening, the public web app manifest was moved from a static tenant-branded file to a BFF endpoint backed by the existing public-experience branding model.
+
+**Symptom / Observation**:
+`/manifest.webmanifest` kept returning hardcoded static `ISLAMU Event` metadata even after the dynamic endpoint and fake DB-backed shell test were implemented. `BffNoKeycloakResilienceTests.ManifestWebManifest_ReturnsDbBackedWhiteLabelInstallMetadata` passed only after `Explore.Blazor/wwwroot/manifest.webmanifest` was removed.
+
+**Root Cause**:
+The static asset endpoint and the BFF endpoint used the same route path. In the integration host, the static `wwwroot/manifest.webmanifest` response won for that path, bypassing `Explore.Blazor/Extensions/BffManifestEndpoints.cs` and its DB-backed public-experience branding lookup.
+
+**Resolution**:
+Delete the static manifest file and keep the generic fallback inside the dynamic endpoint. `Explore.Blazor/Extensions/BffEndpointExtensions.cs` maps the manifest endpoint before static assets, and `BffNoKeycloakResilienceTests` now proves `/manifest.webmanifest` uses the public-experience shell values instead of tenant-specific static text.
+
+**Why This Matters for Future Work**:
+White-label browser metadata cannot be safely implemented by adding a dynamic endpoint while leaving a same-path static file behind. Future manifest or crawler metadata work should ensure one authoritative path owner, preferably the BFF endpoint when DB-backed tenant branding is required.
+
+**References**:
+- `Explore.Blazor/Extensions/BffManifestEndpoints.cs`
+- `Explore.Blazor/Extensions/BffEndpointExtensions.cs`
+- `Explore.Blazor/Components/App.razor`
+- `Explore.Blazor.IntegrationTests/Endpoints/BffNoKeycloakResilienceTests.cs`
+- `docs/BLAZOR.md`
+- `docs/SEO.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `blazor-bff-patterns`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-07-05 Europe/Brussels] — Later EF migrations cannot repair earlier failed migration data
+
+**Context**:
+Phase 5.4 runtime visual QA was blocked because the Aspire API resource failed while applying `AddEventPublicCode`. A manual edit was briefly made to the migration, then reverted after the owner reiterated that migrations must go through EF generation.
+
+**Symptom / Observation**:
+`explore-api` exited during startup with PostgreSQL `23505` while creating `ix_events_tenant_public_code` because existing rows had duplicate `(tenant_id, public_code)` values. Running `dotnet ef migrations add eventmoderation --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API` generated an empty migration, which was removed via `dotnet ef migrations remove`.
+
+**Root Cause**:
+The failing migration is earlier in the migration chain. A later generated migration cannot repair data needed by an earlier migration, because EF must successfully apply the earlier migration before it can reach the later one. Manually editing migration files also violates the repository migration discipline.
+
+**Resolution**:
+The manual migration edit was reverted, the requested EF generation command was run, and the empty migration was removed through EF tooling. The runtime blocker is documented instead of hidden: future recovery needs owner-approved database cleanup/reset or a proper model/migration workflow that does not hand-edit existing migration files.
+
+**Why This Matters for Future Work**:
+When startup is blocked by data that violates an earlier migration, do not try to fix it with a later migration or by editing generated migration files. Diagnose migration order first, then choose an owner-approved data repair/reset path or a properly generated corrective path that can actually execute before the failing constraint.
+
+**References**:
+- `Explore.Persistence/Migrations/20260705120000_AddEventPublicCode.cs`
+- `dev/active/mvp-launch/mvp-launch-tasks.md`
+- `.claude/rules/efcore-migrations.md`
+- `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
+
+**Promotion Consideration**:
+- [x] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `dotnet-efcore-guidelines`
 - [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
 - [ ] Stays in journal only (one-off debugging lesson)
 
