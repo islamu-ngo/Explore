@@ -1,7 +1,5 @@
 // ABOUTME: Determines whether the current user should see the "Create Event" button in the nav menu.
-// ABOUTME: Combines tenant policy (user/org/group submission) with org/group membership role authority.
-
-using Explore.Blazor.Client.Helpers;
+// ABOUTME: Uses the API event-creation context so write affordances stay server-authorized.
 
 namespace Explore.Blazor.Client.Services;
 
@@ -63,20 +61,14 @@ public sealed record EventCreationEligibility
 
 public class EventCreationEligibilityService : IEventCreationEligibilityService
 {
-    private readonly IPublicExperienceService _publicExperienceService;
-    private readonly IOrganizationService _organizationService;
-    private readonly IGroupService _groupService;
+    private readonly IEventService _eventService;
     private readonly ILogger<EventCreationEligibilityService> _logger;
 
     public EventCreationEligibilityService(
-        IPublicExperienceService publicExperienceService,
-        IOrganizationService organizationService,
-        IGroupService groupService,
+        IEventService eventService,
         ILogger<EventCreationEligibilityService> logger)
     {
-        _publicExperienceService = publicExperienceService;
-        _organizationService = organizationService;
-        _groupService = groupService;
+        _eventService = eventService;
         _logger = logger;
     }
 
@@ -84,52 +76,34 @@ public class EventCreationEligibilityService : IEventCreationEligibilityService
     {
         try
         {
-            var settings = await _publicExperienceService.GetCachedSettingsAsync();
+            var context = await _eventService.GetEventCreationContextAsync();
 
-            if (settings?.AllowUserSubmittedEvents == true)
+            if (context?.CanCreate != true)
             {
-                return new EventCreationEligibility
+                return EventCreationEligibility.NotEligible;
+            }
+
+            var publisher = context.PublisherOptions.FirstOrDefault(option => option.CanPublish == true);
+
+            return publisher?.PublisherMode switch
+            {
+                "personal" => new EventCreationEligibility
                 {
                     CanCreate = true,
                     IsUserSubmissionMode = true
-                };
-            }
-
-            // Check org membership when org submission is enabled
-            if (settings?.AllowOrganizationSubmittedEvents == true)
-            {
-                var orgs = await _organizationService.GetMyOrganizationsAsync();
-                var eligibleOrg = orgs.FirstOrDefault(o => RoleHelper.CanManage(o.CurrentUserRole));
-
-                if (eligibleOrg is not null)
+                },
+                "organization" when publisher.PublisherId.HasValue => new EventCreationEligibility
                 {
-                    return new EventCreationEligibility
-                    {
-                        CanCreate = true,
-                        IsUserSubmissionMode = false,
-                        EligibleOrganizationId = eligibleOrg.Id
-                    };
-                }
-            }
-
-            // Check group membership when group submission is enabled
-            if (settings?.AllowGroupSubmittedEvents == true)
-            {
-                var groups = await _groupService.GetMyGroupsAsync();
-                var eligibleGroup = groups.FirstOrDefault(g => RoleHelper.CanManageGroup(g.CurrentUserRole));
-
-                if (eligibleGroup is not null)
+                    CanCreate = true,
+                    EligibleOrganizationId = publisher.PublisherId
+                },
+                "group" when publisher.PublisherId.HasValue => new EventCreationEligibility
                 {
-                    return new EventCreationEligibility
-                    {
-                        CanCreate = true,
-                        IsUserSubmissionMode = false,
-                        EligibleGroupId = eligibleGroup.Id
-                    };
-                }
-            }
-
-            return EventCreationEligibility.NotEligible;
+                    CanCreate = true,
+                    EligibleGroupId = publisher.PublisherId
+                },
+                _ => EventCreationEligibility.NotEligible
+            };
         }
         catch (Exception ex)
         {

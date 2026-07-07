@@ -1,7 +1,7 @@
 namespace Explore.Blazor.Client.Configuration;
 
 /// <summary>
-/// Multi-tenancy configuration for ISLAMU Event.
+/// Multi-tenancy configuration for the event platform.
 ///
 /// DEPLOYMENT MODES:
 /// - MODE 1 (Default): Single-Instance Deployment

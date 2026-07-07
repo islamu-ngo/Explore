@@ -95,7 +95,7 @@
                         }
                         else if (_currentSection == "domain")
                         {
-                            <InstanceDomainSection Model="_domain" />
+                        <InstanceDomainSection Model="_domain" IsMultiTenantMode="!IsSingleTenantMode" />
                         }
                         else if (_currentSection == "branding" && !IsSingleTenantMode)
                         {

@@ -91,6 +91,22 @@
                                    BackgroundEffectChanged="SetBackgroundEffectAsync"
                                    OnAdvancedRequested="OpenThemeStudioAsync" />
 
+                    <MudCheckBox T="bool"
+                                 Value="_isCustomSlugEnabled"
+                                 ValueChanged="SetCustomSlugEnabledAsync"
+                                 Label="Edit event URL"
+                                 Class="mt-3" />
+
+                    @if (_isCustomSlugEnabled)
+                    {
+                        <MudTextField T="string" @bind-Value="createDto.Slug"
+                                      Label="Event URL slug"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true"
+                                      Immediate="false"
+                                      Class="mt-2" />
+                    }
+
                     @if (_uploadError != null)
                     {
                         <MudAlert Severity="Severity.Error" Class="mt-2" Dense="true"
@@ -217,6 +233,7 @@
                                   FullWidth="true"
                                   Immediate="true"
                                   Required="true"
+                                  OnBlur="ApplyTitleSlugAsync"
                                   Class="create-event__title-input mb-1" />
 
                     <MudTextField T="string" @bind-Value="createDto.Subtitle"

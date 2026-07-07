@@ -4,6 +4,7 @@
 @using Blazouter.Enums
 @using Blazouter.Interfaces
 @using Event.ControlPlane.Client.Pages.Domains
+@using Event.ControlPlane.Client.Pages.Operations
 @using Event.ControlPlane.Client.Pages.Overview
 @using Event.ControlPlane.Client.Pages.Tenants
 @using Event.ControlPlane.Client.Routing
@@ -49,6 +50,7 @@
     private static List<Type> RequireAuthenticated() => [typeof(AuthenticatedRouteGuard)];
     private static List<Type> RequireMultiTenantOnboarding() => [typeof(AuthenticatedRouteGuard), typeof(MultiTenantOnboardingRouteGuard)];
     private static List<Type> RequireAdmin() => [typeof(AdminRouteGuard)];
+    private static List<Type> RequireMultiTenantAdmin() => [typeof(AdminRouteGuard), typeof(MultiTenantControlPlaneRouteGuard)];
     private static List<Type> RequireTenantAdmin() => [typeof(TenantAdminRouteGuard)];
     private static List<Type> RequireOrgAdmin() => [typeof(OrgAdminRouteGuard)];
     private static List<Type> RequireGroupAdmin() => [typeof(GroupAdminRouteGuard)];
@@ -116,8 +118,8 @@
             new RouteConfig { Path = "/events/:eventId/sessions/:sessionId", Component = typeof(EventSessionDetail), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/event-created/:eventId", Component = typeof(EventCreated), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/organizations/:organizationId/events/create", Component = typeof(CreateEvent), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
-            // Parameterized event route last — catches /events/{any-guid}
-            new RouteConfig { Path = "/events/:eventId", Component = typeof(EventDetail), Transition = RouteTransition.Fade },
+            // Parameterized event route last — catches /events/{slug}-{publicCode}
+            new RouteConfig { Path = "/events/:slugCode", Component = typeof(EventDetail), Transition = RouteTransition.Fade },
 
             // Legal & informational routes — public, no guards
             new RouteConfig { Path = "/about", Component = typeof(AboutUs), Transition = RouteTransition.Fade },
@@ -130,9 +132,10 @@
             new RouteConfig { Path = "/admin/organization/:organizationId", Component = typeof(AdminListDetails), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
 
             // Admin settings routes
-            new RouteConfig { Path = ControlPlaneRoutes.Overview, Component = typeof(ControlPlaneOverviewPage), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
-            new RouteConfig { Path = ControlPlaneRoutes.Tenants, Component = typeof(ControlPlaneTenantsPage), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
-            new RouteConfig { Path = ControlPlaneRoutes.Domains, Component = typeof(ControlPlaneDomainsPage), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = ControlPlaneRoutes.Overview, Component = typeof(ControlPlaneOverviewPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
+            new RouteConfig { Path = ControlPlaneRoutes.Tenants, Component = typeof(ControlPlaneTenantsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
+            new RouteConfig { Path = ControlPlaneRoutes.Domains, Component = typeof(ControlPlaneDomainsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
+            new RouteConfig { Path = ControlPlaneRoutes.Operations, Component = typeof(ControlPlaneOperationsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
             new RouteConfig { Path = "/admin/instance/settings", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
             new RouteConfig { Path = "/admin/tenant/settings", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireTenantAdmin() },
             new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin() },

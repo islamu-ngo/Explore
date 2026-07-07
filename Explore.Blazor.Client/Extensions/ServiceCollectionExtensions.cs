@@ -1,6 +1,7 @@
 // ABOUTME: Shared service registrations used by both Blazor Server (BFF) and WASM host.
 // ABOUTME: Eliminates duplication between server Program.cs and client Program.cs (DRY).
 
+using Event.ControlPlane.Client.Services;
 using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
@@ -18,6 +19,7 @@ using Explore.Blazor.Client.Contracts.Services.Webhooks;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Accessibility;
 using Explore.Blazor.Client.Services.Ai;
+using Explore.Blazor.Client.Services.ControlPlane;
 using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Services.EventSessionTemplateSync;
 using Explore.Blazor.Client.Services.EventTemplateSync;
@@ -25,6 +27,7 @@ using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Client.Services.Lookup;
 using Explore.Blazor.Client.Services.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
+using ExploreControlPlaneApiAdapter = Explore.Blazor.Client.Services.ControlPlane.ControlPlaneApiAdapter;
 
 namespace Explore.Blazor.Client.Extensions;
 
@@ -42,6 +45,11 @@ public static class ServiceCollectionExtensions
     {
         // Domain services (NSwag IEventApiClient consumers)
         services.AddScoped<IApiClientExecutor, ApiClientExecutor>();
+        services.AddScoped<ExploreControlPlaneApiAdapter>();
+        services.AddScoped<IControlPlaneOverviewService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
+        services.AddScoped<IControlPlaneTenantService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
+        services.AddScoped<IControlPlaneDomainService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
+        services.AddScoped<IControlPlaneOperationsService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IWebhookManagementService, WebhookManagementService>();
         services.AddScoped<IEventService, EventService>();

@@ -1,0 +1,51 @@
+// ABOUTME: Builds clean public event URLs from server-owned slug and public code fields.
+// ABOUTME: Keeps public links away from raw event GUIDs while preserving GUID management routes.
+
+using System.Globalization;
+using System.Text;
+
+namespace Explore.Blazor.Client.Helpers;
+
+public static class EventUrlHelper
+{
+    public static string? BuildPublicPath(string? slug, string? publicCode)
+    {
+        if (string.IsNullOrWhiteSpace(publicCode))
+            return null;
+
+        var cleanSlug = FormatSlug(slug);
+        if (string.IsNullOrWhiteSpace(cleanSlug))
+            cleanSlug = "event";
+
+        return $"/events/{cleanSlug}-{publicCode}";
+    }
+
+    public static string FormatSlug(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var builder = new StringBuilder(value.Length);
+        var previousWasDash = false;
+
+        foreach (var character in value.Trim().ToLower(CultureInfo.InvariantCulture))
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(character);
+                previousWasDash = false;
+                continue;
+            }
+
+            if (char.IsWhiteSpace(character) || character == '-')
+            {
+                if (!previousWasDash && builder.Length > 0)
+                    builder.Append('-');
+
+                previousWasDash = true;
+            }
+        }
+
+        return builder.ToString().Trim('-');
+    }
+}

@@ -63,6 +63,7 @@ public interface IEventService
     Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(int pageNumber, int pageSize);
     Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
     Task<EventDto?> GetEventByIdAsync(Guid eventId);
+    Task<EventDto?> GetEventBySlugCodeAsync(string slugCode);
     Task<EventCreationContextDto?> GetEventCreationContextAsync(CancellationToken cancellationToken = default);
     Task<EventSessionCreateContextDto?> GetEventSessionCreateContextAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventProgramSummaryDto?> GetEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default);
@@ -336,6 +337,25 @@ public partial class EventService : IEventService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching event {EventId}", eventId);
+            return null;
+        }
+    }
+
+    public async Task<EventDto?> GetEventBySlugCodeAsync(string slugCode)
+    {
+        try
+        {
+            var result = await _apiClient.GetEventByPublicCodeAsync(slugCode);
+            return result?.ToDto();
+        }
+        catch (ApiException ex) when (ex.StatusCode == 404)
+        {
+            _logger.LogDebug("Public event detail hidden or missing for slug-code {SlugCode}.", slugCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching public event {SlugCode}", slugCode);
             return null;
         }
     }

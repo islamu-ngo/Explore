@@ -10,7 +10,7 @@
 @inject IPublicExperienceService PublicExperienceService
 @inject IEventService EventService
 
-<PageTitle>ISLAMU Explore</PageTitle>
+<PageTitle>@HomePageTitle</PageTitle>
 <HeadContent>
     <link rel="canonical" href="@CanonicalUrlHelper.Build(Navigation)" />
 </HeadContent>
@@ -243,6 +243,10 @@ else
     private bool isAuthenticated = false;
     private PublicExperienceShellModel? _shell;
     private IReadOnlyList<EventListDto> _featuredEvents = [];
+
+    private string HomePageTitle => string.IsNullOrWhiteSpace(_shell?.Home.BrandDisplayName)
+        ? "Event Platform"
+        : _shell.Home.BrandDisplayName;
 
     private bool IsOrganizationCentricMode => _shell?.Mode.Equals("OrganizationCentric", StringComparison.OrdinalIgnoreCase) == true;
 

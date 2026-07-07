@@ -90,7 +90,7 @@
                                         <MudTextField Variant="Variant.Outlined" T="string" Label="Temporary admin username" @bind-Value="_rotationKeycloakAdminUsername" />
                                         <MudTextField Variant="Variant.Outlined" T="string" Label="Temporary admin password" InputType="InputType.Password" @bind-Value="_rotationKeycloakAdminPassword" />
                                         <MudCheckBox T="bool" @bind-Value="_confirmApplicationManagedKeycloakSecret" Color="Color.Warning">
-                                            I understand ISLAMU Event will store this new application-managed Keycloak client secret and refresh authentication schemes after rotation.
+                                            I understand the platform will store this new application-managed Keycloak client secret and refresh authentication schemes after rotation.
                                         </MudCheckBox>
                                     }
                                     else
@@ -191,7 +191,7 @@
                                      </MudAlert>
 
                                      <MudCheckBox T="bool" @bind-Value="_keycloakBackupConfirmed" Color="Color.Warning">
-                                         I have a current Keycloak backup and understand apply only adds or updates ISLAMU-owned realm settings.
+                                          I have a current Keycloak backup and understand apply only adds or updates platform-owned realm settings.
                                      </MudCheckBox>
 
                                      <MudButton Elevation="0"

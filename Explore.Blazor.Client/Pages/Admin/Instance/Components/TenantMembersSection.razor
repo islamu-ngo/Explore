@@ -1,5 +1,5 @@
 @* ABOUTME: Displays tenant members in a searchable, filterable table with role badges. *@
-@* ABOUTME: UI-only placeholder for single-tenant admin; backend integration pending. *@
+@* ABOUTME: Avoids fake member data while the backing tenant-member source is unavailable. *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Helpers
@@ -34,10 +34,6 @@
                     }
                 </MudSelect>
 
-                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd"
-                           Disabled="true">
-                    Add Member
-                </MudButton>
             </MudStack>
         </MudStack>
     </div>
@@ -81,7 +77,7 @@
                     }
                     else
                     {
-                        @:Members will appear here once the backend is connected.
+                        @:No tenant members are available in this view.
                     }
                 </MudText>
             </div>
@@ -102,20 +98,12 @@
         (13, "Member")
     ];
 
-    // Placeholder data — will be replaced by API call
-    private static readonly List<TenantMemberRow> _mockMembers =
-    [
-        new("Ibrahim Al-Rashid", "ibrahim.r", "ibrahim@example.com", 10),
-        new("Fatima Zahra", "fatima.z", "fatima@example.com", 11),
-        new("Omar Benali", "omar.b", "omar@example.com", 12),
-        new("Aisha Khalid", "aisha.k", "aisha@example.com", 13),
-        new("Yusuf Amin", "yusuf.a", "yusuf@example.com", 13)
-    ];
+    private static readonly IReadOnlyList<TenantMemberRow> Members = [];
 
     private bool HasActiveFilters => !string.IsNullOrWhiteSpace(_searchString) || _selectedRoleIds.Any();
 
     private IEnumerable<TenantMemberRow> FilteredMembers =>
-        _mockMembers
+        Members
             .Where(m => string.IsNullOrWhiteSpace(_searchString)
                 || m.FullName.Contains(_searchString, StringComparison.OrdinalIgnoreCase)
                 || m.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase)

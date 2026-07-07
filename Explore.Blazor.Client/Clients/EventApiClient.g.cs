@@ -587,7 +587,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get Control Plane Overview
         /// </summary>
         /// <remarks>
-        /// Returns the multi-tenant instance control-plane overview for instance administrators.
+        /// Returns the instance control-plane overview for single-tenant or multi-tenant administrators.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -609,7 +609,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get Control Plane Operations
         /// </summary>
         /// <remarks>
-        /// Returns multi-tenant control-plane operational status for jobs, outbox, email dispatch, and storage.
+        /// Returns control-plane operational status for jobs, outbox, email dispatch, moderation reporting, and storage.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -636,6 +636,160 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateControlPlaneTenantAsync(CreateTenantDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Control Plane Tenant Plans
+        /// </summary>
+        /// <remarks>
+        /// Returns SaaS tenant plan templates for instance administrators.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalCollectionResourceOfControlPlaneTenantPlanListItemDto> GetControlPlaneTenantPlansAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Create Control Plane Tenant Plan Draft
+        /// </summary>
+        /// <remarks>
+        /// Creates a draft SaaS tenant plan template for instance administrators.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateControlPlaneTenantPlanDraftAsync(TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Control Plane Tenant Plan
+        /// </summary>
+        /// <remarks>
+        /// Returns one SaaS tenant plan template with version, setting, and quota metadata.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfControlPlaneTenantPlanDetailDto> GetControlPlaneTenantPlanByKeyAsync(string key, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Create Control Plane Tenant Plan Version Draft
+        /// </summary>
+        /// <remarks>
+        /// Creates a draft version for an existing SaaS tenant plan template.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateControlPlaneTenantPlanVersionDraftAsync(string key, TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Control Plane Tenant Plan Version Draft
+        /// </summary>
+        /// <remarks>
+        /// Updates a draft SaaS tenant plan version before publication.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateControlPlaneTenantPlanVersionDraftAsync(System.Guid versionId, TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Publish Control Plane Tenant Plan Version
+        /// </summary>
+        /// <remarks>
+        /// Publishes a draft tenant plan version with an explicit existing-tenant assignment policy.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> PublishControlPlaneTenantPlanVersionAsync(System.Guid versionId, PublishTenantPlanVersionRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Archive Control Plane Tenant Plan Version
+        /// </summary>
+        /// <remarks>
+        /// Archives a tenant plan version that should no longer be used for provisioning.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ArchiveControlPlaneTenantPlanVersionAsync(System.Guid versionId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Clone Control Plane Tenant Plan
+        /// </summary>
+        /// <remarks>
+        /// Clones an existing tenant plan version into a new draft plan template.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CloneControlPlaneTenantPlanAsync(System.Guid sourceVersionId, CloneTenantPlanRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Validate Control Plane Tenant Plan Draft
+        /// </summary>
+        /// <remarks>
+        /// Validates a tenant plan draft against registered settings, sensitive values, and quota rules.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<TenantPlanValidationResult> ValidateControlPlaneTenantPlanDraftAsync(TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Preview Control Plane Tenant Plan Diff
+        /// </summary>
+        /// <remarks>
+        /// Previews setting changes between a tenant's effective configuration and a tenant plan draft.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<TenantPlanDiffResult> PreviewControlPlaneTenantPlanDiffAsync(PreviewTenantPlanDiffRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Control Plane Tenant Plan Assignment
+        /// </summary>
+        /// <remarks>
+        /// Returns the active tenant plan assignment for one tenant.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ControlPlaneTenantPlanAssignmentDto> GetControlPlaneTenantPlanAssignmentAsync(System.Guid tenantId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Switch Control Plane Tenant Plan Assignment
+        /// </summary>
+        /// <remarks>
+        /// Switches one tenant to a selected tenant plan version without automatically applying settings.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> SwitchControlPlaneTenantPlanAssignmentAsync(System.Guid tenantId, SwitchTenantPlanAssignmentRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Apply Control Plane Tenant Plan Assignment
+        /// </summary>
+        /// <remarks>
+        /// Explicitly applies a tenant plan assignment's settings to the tenant setting store.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ApplyControlPlaneTenantPlanAssignmentAsync(System.Guid tenantId, System.Guid assignmentId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Rollback Control Plane Tenant Plan Assignment
+        /// </summary>
+        /// <remarks>
+        /// Rolls one tenant back to a previous tenant plan assignment.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> RollbackControlPlaneTenantPlanAssignmentAsync(System.Guid tenantId, System.Guid assignmentId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -702,6 +856,28 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto> ScheduleControlPlaneTenantPurgeAsync(System.Guid tenantId, string? api_version = null, string? x_Api_Version = null, ControlPlaneTenantLifecycleTransitionRequestDto? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Deployment Mode Runbook
+        /// </summary>
+        /// <remarks>
+        /// Returns the Control Plane runbook for deliberate single-tenant and multi-tenant mode migration.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfControlPlaneDeploymentModeRunbookDto> GetControlPlaneDeploymentModeRunbookAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Transition Deployment Mode
+        /// </summary>
+        /// <remarks>
+        /// Runs the Control Plane deployment-mode runbook after validating typed confirmation and tenant-count preconditions.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto> TransitionControlPlaneDeploymentModeAsync(string? api_version = null, string? x_Api_Version = null, ControlPlaneDeploymentModeTransitionRequestDto? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1122,6 +1298,17 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>No Content</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task DeleteEventAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Event Details By Public Code
+        /// </summary>
+        /// <remarks>
+        /// Get full public event details from a clean slug-code URL token.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfEventDto> GetEventByPublicCodeAsync(string slugCode, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -2601,6 +2788,17 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Update Instance Moderation Reporting Provider Locks
+        /// </summary>
+        /// <remarks>
+        /// Updates instance governance locks that control tenant Osprey and Coop reporting provider overrides.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateInstanceModerationReportingProviderLocksAsync(UpdateReportingProviderLocksDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get Instance Onboarding Status
         /// </summary>
         /// <remarks>
@@ -3555,6 +3753,39 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ExecuteModerationReportDecisionAsync(System.Guid eventId, System.Guid reportId, ExecuteModerationReportDecisionRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Moderation Reporting Routing State
+        /// </summary>
+        /// <remarks>
+        /// Returns the current tenant's effective moderation reporting provider routing state with all secrets redacted.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfReportingRoutingStateDto> GetModerationReportingRoutingStateAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Moderation Reporting Routing Settings
+        /// </summary>
+        /// <remarks>
+        /// Updates current-tenant moderation reporting provider overrides when instance policy allows tenant edits.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateModerationReportingRoutingSettingsAsync(UpdateReportingRoutingSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Test Moderation Reporting Provider
+        /// </summary>
+        /// <remarks>
+        /// Checks whether the current tenant provider target is ready for reporting dispatch without returning provider secrets.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> TestModerationReportingProviderAsync(int provider, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -4519,6 +4750,17 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BaseCommandResponseOfboolean> ReorderTenantNavigationLinksAsync(System.Collections.Generic.IEnumerable<UpdateTenantNavigationLinkOrderDto> body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Tenant Moderation Reporting Dashboard
+        /// </summary>
+        /// <remarks>
+        /// Returns current-tenant moderation reporting queue and provider sync health without report payloads or provider secrets.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfTenantModerationReportingDashboardDto> GetTenantModerationReportingDashboardAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -11212,7 +11454,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get Control Plane Overview
         /// </summary>
         /// <remarks>
-        /// Returns the multi-tenant instance control-plane overview for instance administrators.
+        /// Returns the instance control-plane overview for single-tenant or multi-tenant administrators.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -11424,7 +11666,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get Control Plane Operations
         /// </summary>
         /// <remarks>
-        /// Returns multi-tenant control-plane operational status for jobs, outbox, email dispatch, and storage.
+        /// Returns control-plane operational status for jobs, outbox, email dispatch, moderation reporting, and storage.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -11665,6 +11907,1717 @@ namespace Explore.Blazor.Client.Clients
 
                     // Operation Path: "api/admin/control-plane/tenants"
                     urlBuilder_.Append("api/admin/control-plane/tenants");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Control Plane Tenant Plans
+        /// </summary>
+        /// <remarks>
+        /// Returns SaaS tenant plan templates for instance administrators.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfControlPlaneTenantPlanListItemDto> GetControlPlaneTenantPlansAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans"
+                    urlBuilder_.Append("api/admin/control-plane/plans");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalCollectionResourceOfControlPlaneTenantPlanListItemDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Create Control Plane Tenant Plan Draft
+        /// </summary>
+        /// <remarks>
+        /// Creates a draft SaaS tenant plan template for instance administrators.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateControlPlaneTenantPlanDraftAsync(TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans"
+                    urlBuilder_.Append("api/admin/control-plane/plans");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Control Plane Tenant Plan
+        /// </summary>
+        /// <remarks>
+        /// Returns one SaaS tenant plan template with version, setting, and quota metadata.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfControlPlaneTenantPlanDetailDto> GetControlPlaneTenantPlanByKeyAsync(string key, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (key == null)
+                throw new System.ArgumentNullException("key");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans/{key}"
+                    urlBuilder_.Append("api/admin/control-plane/plans/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(key, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfControlPlaneTenantPlanDetailDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Create Control Plane Tenant Plan Version Draft
+        /// </summary>
+        /// <remarks>
+        /// Creates a draft version for an existing SaaS tenant plan template.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateControlPlaneTenantPlanVersionDraftAsync(string key, TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (key == null)
+                throw new System.ArgumentNullException("key");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans/{key}/versions"
+                    urlBuilder_.Append("api/admin/control-plane/plans/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(key, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/versions");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Control Plane Tenant Plan Version Draft
+        /// </summary>
+        /// <remarks>
+        /// Updates a draft SaaS tenant plan version before publication.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateControlPlaneTenantPlanVersionDraftAsync(System.Guid versionId, TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (versionId == null)
+                throw new System.ArgumentNullException("versionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans/versions/{versionId}"
+                    urlBuilder_.Append("api/admin/control-plane/plans/versions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(versionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Publish Control Plane Tenant Plan Version
+        /// </summary>
+        /// <remarks>
+        /// Publishes a draft tenant plan version with an explicit existing-tenant assignment policy.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> PublishControlPlaneTenantPlanVersionAsync(System.Guid versionId, PublishTenantPlanVersionRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (versionId == null)
+                throw new System.ArgumentNullException("versionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans/versions/{versionId}/publish"
+                    urlBuilder_.Append("api/admin/control-plane/plans/versions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(versionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/publish");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Archive Control Plane Tenant Plan Version
+        /// </summary>
+        /// <remarks>
+        /// Archives a tenant plan version that should no longer be used for provisioning.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ArchiveControlPlaneTenantPlanVersionAsync(System.Guid versionId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (versionId == null)
+                throw new System.ArgumentNullException("versionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans/versions/{versionId}/archive"
+                    urlBuilder_.Append("api/admin/control-plane/plans/versions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(versionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/archive");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Clone Control Plane Tenant Plan
+        /// </summary>
+        /// <remarks>
+        /// Clones an existing tenant plan version into a new draft plan template.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CloneControlPlaneTenantPlanAsync(System.Guid sourceVersionId, CloneTenantPlanRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sourceVersionId == null)
+                throw new System.ArgumentNullException("sourceVersionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans/versions/{sourceVersionId}/clone"
+                    urlBuilder_.Append("api/admin/control-plane/plans/versions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sourceVersionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/clone");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Validate Control Plane Tenant Plan Draft
+        /// </summary>
+        /// <remarks>
+        /// Validates a tenant plan draft against registered settings, sensitive values, and quota rules.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<TenantPlanValidationResult> ValidateControlPlaneTenantPlanDraftAsync(TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans/validate"
+                    urlBuilder_.Append("api/admin/control-plane/plans/validate");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<TenantPlanValidationResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Preview Control Plane Tenant Plan Diff
+        /// </summary>
+        /// <remarks>
+        /// Previews setting changes between a tenant's effective configuration and a tenant plan draft.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<TenantPlanDiffResult> PreviewControlPlaneTenantPlanDiffAsync(PreviewTenantPlanDiffRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/plans/preview-diff"
+                    urlBuilder_.Append("api/admin/control-plane/plans/preview-diff");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<TenantPlanDiffResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Control Plane Tenant Plan Assignment
+        /// </summary>
+        /// <remarks>
+        /// Returns the active tenant plan assignment for one tenant.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ControlPlaneTenantPlanAssignmentDto> GetControlPlaneTenantPlanAssignmentAsync(System.Guid tenantId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/tenants/{tenantId}/plan-assignment"
+                    urlBuilder_.Append("api/admin/control-plane/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/plan-assignment");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ControlPlaneTenantPlanAssignmentDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Switch Control Plane Tenant Plan Assignment
+        /// </summary>
+        /// <remarks>
+        /// Switches one tenant to a selected tenant plan version without automatically applying settings.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> SwitchControlPlaneTenantPlanAssignmentAsync(System.Guid tenantId, SwitchTenantPlanAssignmentRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/tenants/{tenantId}/plan-assignment"
+                    urlBuilder_.Append("api/admin/control-plane/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/plan-assignment");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Apply Control Plane Tenant Plan Assignment
+        /// </summary>
+        /// <remarks>
+        /// Explicitly applies a tenant plan assignment's settings to the tenant setting store.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ApplyControlPlaneTenantPlanAssignmentAsync(System.Guid tenantId, System.Guid assignmentId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (assignmentId == null)
+                throw new System.ArgumentNullException("assignmentId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/tenants/{tenantId}/plan-assignments/{assignmentId}/apply"
+                    urlBuilder_.Append("api/admin/control-plane/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/plan-assignments/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(assignmentId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/apply");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Rollback Control Plane Tenant Plan Assignment
+        /// </summary>
+        /// <remarks>
+        /// Rolls one tenant back to a previous tenant plan assignment.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> RollbackControlPlaneTenantPlanAssignmentAsync(System.Guid tenantId, System.Guid assignmentId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (assignmentId == null)
+                throw new System.ArgumentNullException("assignmentId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/tenants/{tenantId}/plan-assignments/{assignmentId}/rollback"
+                    urlBuilder_.Append("api/admin/control-plane/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/plan-assignments/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(assignmentId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/rollback");
                     urlBuilder_.Append('?');
                     if (api_version != null)
                     {
@@ -12458,6 +14411,232 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Deployment Mode Runbook
+        /// </summary>
+        /// <remarks>
+        /// Returns the Control Plane runbook for deliberate single-tenant and multi-tenant mode migration.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfControlPlaneDeploymentModeRunbookDto> GetControlPlaneDeploymentModeRunbookAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/deployment-mode"
+                    urlBuilder_.Append("api/admin/control-plane/deployment-mode");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfControlPlaneDeploymentModeRunbookDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Transition Deployment Mode
+        /// </summary>
+        /// <remarks>
+        /// Runs the Control Plane deployment-mode runbook after validating typed confirmation and tenant-count preconditions.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto> TransitionControlPlaneDeploymentModeAsync(string? api_version = null, string? x_Api_Version = null, ControlPlaneDeploymentModeTransitionRequestDto? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/admin/control-plane/deployment-mode/transition"
+                    urlBuilder_.Append("api/admin/control-plane/deployment-mode/transition");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         if (status_ == 401)
@@ -17888,6 +20067,106 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Event Details By Public Code
+        /// </summary>
+        /// <remarks>
+        /// Get full public event details from a clean slug-code URL token.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfEventDto> GetEventByPublicCodeAsync(string slugCode, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (slugCode == null)
+                throw new System.ArgumentNullException("slugCode");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/event/public/{slugCode}"
+                    urlBuilder_.Append("api/event/public/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(slugCode, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfEventDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
                         }
                         else
                         if (status_ == 404)
@@ -35409,6 +37688,129 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Update Instance Moderation Reporting Provider Locks
+        /// </summary>
+        /// <remarks>
+        /// Updates instance governance locks that control tenant Osprey and Coop reporting provider overrides.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateInstanceModerationReportingProviderLocksAsync(UpdateReportingProviderLocksDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/instance/settings/moderation-reporting/locks"
+                    urlBuilder_.Append("api/instance/settings/moderation-reporting/locks");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get Instance Onboarding Status
         /// </summary>
         /// <remarks>
@@ -44971,6 +47373,356 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Moderation Reporting Routing State
+        /// </summary>
+        /// <remarks>
+        /// Returns the current tenant's effective moderation reporting provider routing state with all secrets redacted.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfReportingRoutingStateDto> GetModerationReportingRoutingStateAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenant/settings/moderation-reporting/routing-state"
+                    urlBuilder_.Append("api/tenant/settings/moderation-reporting/routing-state");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfReportingRoutingStateDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Moderation Reporting Routing Settings
+        /// </summary>
+        /// <remarks>
+        /// Updates current-tenant moderation reporting provider overrides when instance policy allows tenant edits.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateModerationReportingRoutingSettingsAsync(UpdateReportingRoutingSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenant/settings/moderation-reporting/routing-state"
+                    urlBuilder_.Append("api/tenant/settings/moderation-reporting/routing-state");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Test Moderation Reporting Provider
+        /// </summary>
+        /// <remarks>
+        /// Checks whether the current tenant provider target is ready for reporting dispatch without returning provider secrets.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> TestModerationReportingProviderAsync(int provider, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (provider == null)
+                throw new System.ArgumentNullException("provider");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenant/settings/moderation-reporting/routing-state/test/{provider}"
+                    urlBuilder_.Append("api/tenant/settings/moderation-reporting/routing-state/test/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(provider, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -55156,6 +57908,112 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get Tenant Moderation Reporting Dashboard
+        /// </summary>
+        /// <remarks>
+        /// Returns current-tenant moderation reporting queue and provider sync health without report payloads or provider secrets.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfTenantModerationReportingDashboardDto> GetTenantModerationReportingDashboardAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenant/settings/moderation-reporting/dashboard"
+                    urlBuilder_.Append("api/tenant/settings/moderation-reporting/dashboard");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfTenantModerationReportingDashboardDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get Tenant Onboarding Status
         /// </summary>
         /// <remarks>
@@ -64536,6 +67394,39 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public ControlPlaneDeploymentModeTransitionDto? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("success")]
+        public bool? Success { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<string>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCode")]
+        public string? FailureCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
+        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto
     {
 
@@ -65171,6 +68062,29 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class CloneTenantPlanRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class CompleteInstanceOnboardingRequest
     {
 
@@ -65181,8 +68095,166 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("siteProfile")]
         public SelfHostOnboardingProfileDto? SiteProfile { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("administrationAccessMode")]
+        public string? AdministrationAccessMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminHost")]
+        public string? AdminHost { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("instanceName")]
         public string? InstanceName { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneDeploymentModeRunbookDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("currentMode")]
+        public string? CurrentMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("activeTenantCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ActiveTenantCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("generatedAtUtc")]
+        public System.DateTimeOffset? GeneratedAtUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetOptions")]
+        public System.Collections.Generic.ICollection<ControlPlaneDeploymentModeTargetOptionDto>? TargetOptions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("steps")]
+        public System.Collections.Generic.ICollection<ControlPlaneDeploymentModeRunbookStepDto>? Steps { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneDeploymentModeRunbookStepDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        public string? Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("severity")]
+        public string? Severity { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneDeploymentModeTargetOptionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetMode")]
+        public string? TargetMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("label")]
+        public string? Label { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowed")]
+        public bool? Allowed { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("confirmationText")]
+        public string? ConfirmationText { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("blockingReason")]
+        public string? BlockingReason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("remediation")]
+        public string? Remediation { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneDeploymentModeTransitionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("previousMode")]
+        public string? PreviousMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("newMode")]
+        public string? NewMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("activeTenantCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ActiveTenantCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operatorUserId")]
+        public System.Guid? OperatorUserId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reason")]
+        public string? Reason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("transitionedAtUtc")]
+        public System.DateTimeOffset? TransitionedAtUtc { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneDeploymentModeTransitionRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetMode")]
+        public string? TargetMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reason")]
+        public string? Reason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("confirmationText")]
+        public string? ConfirmationText { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -65520,6 +68592,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("reason")]
         public string? Reason { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("confirmationText")]
+        public string? ConfirmationText { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -65565,6 +68640,225 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("updatedAt")]
         public System.DateTimeOffset? UpdatedAt { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneTenantPlanAssignmentDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("planId")]
+        public System.Guid? PlanId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("planKey")]
+        public string? PlanKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("planVersionId")]
+        public System.Guid? PlanVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("versionNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? VersionNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        public string? StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("assignedAt")]
+        public System.DateTimeOffset? AssignedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("assignedByUserId")]
+        public System.Guid? AssignedByUserId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneTenantPlanDetailDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        public string? Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("versions")]
+        public System.Collections.Generic.ICollection<ControlPlaneTenantPlanVersionDto>? Versions { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneTenantPlanListItemDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        public string? Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("latestVersionNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? LatestVersionNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publishedVersionNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PublishedVersionNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("priceAmount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? PriceAmount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("billingPeriod")]
+        public string? BillingPeriod { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActiveForProvisioning")]
+        public bool? IsActiveForProvisioning { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneTenantPlanQuotaDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        public string? Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("limit")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? Limit { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneTenantPlanSettingDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        public string? Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("jsonValue")]
+        public string? JsonValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isLocked")]
+        public bool? IsLocked { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ControlPlaneTenantPlanVersionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("versionNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? VersionNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        public string? StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("priceAmount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? PriceAmount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("billingPeriod")]
+        public string? BillingPeriod { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActiveForProvisioning")]
+        public bool? IsActiveForProvisioning { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("settings")]
+        public System.Collections.Generic.ICollection<ControlPlaneTenantPlanSettingDto>? Settings { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quotas")]
+        public System.Collections.Generic.ICollection<ControlPlaneTenantPlanQuotaDto>? Quotas { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -68996,6 +72290,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("instanceBaseDomain")]
         public string? InstanceBaseDomain { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("adminHost")]
+        public string? AdminHost { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("allowTenantCustomDomains")]
         public bool? AllowTenantCustomDomains { get; set; } = default!;
 
@@ -69688,6 +72985,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("slug")]
         public string? Slug { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("publicCode")]
+        public string? PublicCode { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("eventTypeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? EventTypeId { get; set; } = default!;
@@ -70041,6 +73341,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("slug")]
         public string? Slug { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicCode")]
+        public string? PublicCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("eventTypeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -70812,6 +74115,21 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Runtime.Serialization.EnumMember(Value = @"Urgent")]
         Urgent = 3,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum EventReportProviderEvidenceMode
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"MetadataOnly")]
+        MetadataOnly = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"SafeSummaryOnly")]
+        SafeSummaryOnly = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ReporterText")]
+        ReporterText = 2,
 
     }
 
@@ -73834,6 +77152,24 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalCollectionEmbeddedOfControlPlaneTenantPlanListItemDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("items")]
+        public System.Collections.Generic.ICollection<HalResourceOfControlPlaneTenantPlanListItemDto>? Items { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalCollectionEmbeddedOfCustomPropertyDefinitionListDto
     {
 
@@ -74673,6 +78009,49 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
         public HalCollectionEmbeddedOfControlPlaneTenantListItemDto? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalCollectionResourceOfControlPlaneTenantPlanListItemDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PageNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PageSize { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalPages { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
+        public bool? HasPrevious { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
+        public bool? HasNext { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public HalCollectionEmbeddedOfControlPlaneTenantPlanListItemDto? _embedded { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -76232,7 +79611,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76330,7 +79709,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous2>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76411,7 +79790,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous3>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76486,7 +79865,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous4>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76547,7 +79926,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous5>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76623,7 +80002,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous6>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76687,7 +80066,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous7>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76746,7 +80125,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous8>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76800,7 +80179,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous9>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76850,7 +80229,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous10>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76897,7 +80276,50 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous11>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfControlPlaneDeploymentModeRunbookDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("currentMode")]
+        public string? CurrentMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("activeTenantCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ActiveTenantCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("generatedAtUtc")]
+        public System.DateTimeOffset? GeneratedAtUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetOptions")]
+        public System.Collections.Generic.ICollection<ControlPlaneDeploymentModeTargetOptionDto>? TargetOptions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("steps")]
+        public System.Collections.Generic.ICollection<ControlPlaneDeploymentModeRunbookStepDto>? Steps { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76957,7 +80379,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous12>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -76993,7 +80415,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous13>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77052,7 +80474,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous14>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77119,7 +80541,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous15>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77177,7 +80599,109 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous16>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfControlPlaneTenantPlanDetailDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        public string? Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("versions")]
+        public System.Collections.Generic.ICollection<ControlPlaneTenantPlanVersionDto>? Versions { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfControlPlaneTenantPlanListItemDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        public string? Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("latestVersionNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? LatestVersionNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publishedVersionNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PublishedVersionNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("priceAmount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? PriceAmount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("billingPeriod")]
+        public string? BillingPeriod { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActiveForProvisioning")]
+        public bool? IsActiveForProvisioning { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77315,7 +80839,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous17>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77401,7 +80925,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous18>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77468,7 +80992,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous19>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77565,7 +81089,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous20>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77632,7 +81156,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous21>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77786,7 +81310,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous22>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77851,7 +81375,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous23>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77919,7 +81443,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous24>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -77972,7 +81496,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous25>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -78016,6 +81540,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("slug")]
         public string? Slug { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicCode")]
+        public string? PublicCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("eventTypeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -78237,7 +81764,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous26>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -78275,6 +81802,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("slug")]
         public string? Slug { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicCode")]
+        public string? PublicCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("eventTypeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -78433,7 +81963,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous27>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -78479,7 +82009,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous28>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -78633,7 +82163,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous29>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -78698,7 +82228,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous30>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -78872,7 +82402,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous31>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -78943,7 +82473,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous32>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79008,7 +82538,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous33>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79158,7 +82688,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous34>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79209,7 +82739,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous35>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79260,7 +82790,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous36>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79334,7 +82864,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous37>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79397,7 +82927,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous38>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79472,7 +83002,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous39>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79536,7 +83066,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous40>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79628,7 +83158,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous41>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79712,7 +83242,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous42>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79771,7 +83301,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous43>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79821,7 +83351,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous44>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79865,7 +83395,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous45>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -79953,7 +83483,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous46>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80020,7 +83550,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous47>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80072,7 +83602,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous48>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80132,7 +83662,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous49>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80180,7 +83710,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous50>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80328,7 +83858,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous51>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80461,7 +83991,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous52>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80533,7 +84063,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous53>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80645,7 +84175,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous54>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80752,7 +84282,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous55>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80814,7 +84344,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous56>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80866,7 +84396,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous57>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80925,7 +84455,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous58>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -80998,7 +84528,74 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous59>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfReportingRoutingStateDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("localCanonicalRequired")]
+        public bool? LocalCanonicalRequired { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("externalSyncEnabled")]
+        public bool? ExternalSyncEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantProviderConfigurationLocked")]
+        public bool? TenantProviderConfigurationLocked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantOspreyProviderLocked")]
+        public bool? TenantOspreyProviderLocked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantCoopProviderLocked")]
+        public bool? TenantCoopProviderLocked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("evidenceModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EvidenceModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("evidenceModeCode")]
+        public string? EvidenceModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("evidenceModeName")]
+        public string? EvidenceModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ospreyRoutingMode")]
+        public string? OspreyRoutingMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("coopRoutingMode")]
+        public string? CoopRoutingMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("osprey")]
+        public ReportingProviderStateDto? Osprey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("coop")]
+        public ReportingProviderStateDto? Coop { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81113,7 +84710,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous60>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81195,7 +84792,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous61>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81278,7 +84875,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous62>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81362,7 +84959,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous63>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81403,7 +85000,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous64>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81441,7 +85038,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous65>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81506,7 +85103,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous66>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81568,7 +85165,46 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous67>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfTenantModerationReportingDashboardDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("generatedAtUtc")]
+        public System.DateTimeOffset? GeneratedAtUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("queueHealth")]
+        public TenantModerationReportQueueHealthDto? QueueHealth { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSyncHealth")]
+        public TenantModerationProviderSyncHealthDto? ProviderSyncHealth { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81658,7 +85294,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous68>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81738,7 +85374,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous69>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81803,7 +85439,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous70>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81879,7 +85515,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous71>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -81968,7 +85604,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous72>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -82064,7 +85700,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous73>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -82156,7 +85792,7 @@ namespace Explore.Blazor.Client.Clients
         /// HAL hypermedia links
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous74>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         /// <summary>
         /// Embedded related resources
@@ -85118,6 +88754,12 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("caseId")]
         public System.Guid? CaseId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("providerTargetScope")]
+        public string? ProviderTargetScope { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerTargetId")]
+        public string? ProviderTargetId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("providerSignalId")]
         public string? ProviderSignalId { get; set; } = default!;
 
@@ -85558,6 +89200,29 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("expiresInMinutes")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ExpiresInMinutes { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PreviewTenantPlanDiffRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("current")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public TenantPlanEffectiveConfiguration Current { get; set; } = new TenantPlanEffectiveConfiguration();
+
+        [System.Text.Json.Serialization.JsonPropertyName("draft")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public TenantPlanDraft Draft { get; set; } = new TenantPlanDraft();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -86356,6 +90021,24 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PublishTenantPlanVersionRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("existingTenantPolicy")]
+        public int ExistingTenantPolicy { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PurgeCustomPropertyDefinitionDto
     {
 
@@ -86711,6 +90394,139 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("payload")]
         [System.ComponentModel.DataAnnotations.Required]
         public TenantBrandingSettingsPayloadDto Payload { get; set; } = new TenantBrandingSettingsPayloadDto();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ReportingProviderStateDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProviderId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerCode")]
+        public string? ProviderCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerName")]
+        public string? ProviderName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("instanceEnabled")]
+        public bool? InstanceEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantEnabled")]
+        public bool? TenantEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targets")]
+        public System.Collections.Generic.ICollection<ReportingProviderTargetDto>? Targets { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ReportingProviderTargetDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProviderId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerCode")]
+        public string? ProviderCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerName")]
+        public string? ProviderName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scopeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ScopeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scopeCode")]
+        public string? ScopeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scopeName")]
+        public string? ScopeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetId")]
+        public string? TargetId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpointConfigured")]
+        public bool? EndpointConfigured { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("apiKeyConfigured")]
+        public bool? ApiKeyConfigured { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ReportingRoutingStateDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("localCanonicalRequired")]
+        public bool? LocalCanonicalRequired { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("externalSyncEnabled")]
+        public bool? ExternalSyncEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantProviderConfigurationLocked")]
+        public bool? TenantProviderConfigurationLocked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantOspreyProviderLocked")]
+        public bool? TenantOspreyProviderLocked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantCoopProviderLocked")]
+        public bool? TenantCoopProviderLocked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("evidenceModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EvidenceModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("evidenceModeCode")]
+        public string? EvidenceModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("evidenceModeName")]
+        public string? EvidenceModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ospreyRoutingMode")]
+        public string? OspreyRoutingMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("coopRoutingMode")]
+        public string? CoopRoutingMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("osprey")]
+        public ReportingProviderStateDto? Osprey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("coop")]
+        public ReportingProviderStateDto? Coop { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -88225,6 +92041,25 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SwitchTenantPlanAssignmentRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantPlanVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid TenantPlanVersionId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SyncConflictDto
     {
 
@@ -88786,6 +92621,115 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantModerationProviderSyncHealthDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingSyncs")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PendingSyncs { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("stuckPendingSyncs")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StuckPendingSyncs { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failedSyncs")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? FailedSyncs { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("disabledSyncs")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DisabledSyncs { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ignoredSyncs")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? IgnoredSyncs { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantModerationReportingDashboardDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("generatedAtUtc")]
+        public System.DateTimeOffset? GeneratedAtUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("queueHealth")]
+        public TenantModerationReportQueueHealthDto? QueueHealth { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSyncHealth")]
+        public TenantModerationProviderSyncHealthDto? ProviderSyncHealth { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantModerationReportQueueHealthDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("submittedReports")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SubmittedReports { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("inReviewReports")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? InReviewReports { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("closedReports")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ClosedReports { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("openCases")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OpenCases { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("assignedCases")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AssignedCases { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("waitingExternalCases")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? WaitingExternalCases { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("waitingReporterCases")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? WaitingReporterCases { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("decisionReadyCases")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DecisionReadyCases { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class TenantNavigationLinkDto
     {
 
@@ -88852,6 +92796,266 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("progressPercentage")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ProgressPercentage { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanDiffResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("settingChanges")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<TenantPlanSettingChange> SettingChanges { get; set; } = new System.Collections.Generic.List<TenantPlanSettingChange>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanDraft
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pricing")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public TenantPlanPricing Pricing { get; set; } = new TenantPlanPricing();
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActiveForProvisioning")]
+        public bool IsActiveForProvisioning { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("settingOverrides")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<TenantPlanSettingOverride> SettingOverrides { get; set; } = new System.Collections.Generic.List<TenantPlanSettingOverride>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("quotaLimits")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<TenantPlanQuotaLimit> QuotaLimits { get; set; } = new System.Collections.Generic.List<TenantPlanQuotaLimit>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanEffectiveConfiguration
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("settings")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<TenantPlanEffectiveSetting> Settings { get; set; } = new System.Collections.Generic.List<TenantPlanEffectiveSetting>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanEffectiveSetting
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("jsonValue")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string JsonValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isLocked")]
+        public bool IsLocked { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanPricing
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("amount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double Amount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("billingPeriod")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string BillingPeriod { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanQuotaLimit
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("limit")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long Limit { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanSettingChange
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("changeType")]
+        public int ChangeType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("beforeValue")]
+        public string? BeforeValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("afterValue")]
+        public string? AfterValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockChanged")]
+        public bool LockChanged { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanSettingOverride
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("jsonValue")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string JsonValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isLocked")]
+        public bool IsLocked { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanValidationError
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Code { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("target")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Target { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Message { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TenantPlanValidationResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<TenantPlanValidationError> Errors { get; set; } = new System.Collections.Generic.List<TenantPlanValidationError>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("isValid")]
+        public bool? IsValid { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -93042,6 +97246,82 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateReportingProviderLocksDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockReportingProviders")]
+        public bool? LockReportingProviders { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantOspreyProvider")]
+        public bool? LockTenantOspreyProvider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantCoopProvider")]
+        public bool? LockTenantCoopProvider { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateReportingRoutingSettingsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("externalSyncEnabled")]
+        public bool? ExternalSyncEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enableTenantOspreyProvider")]
+        public bool? EnableTenantOspreyProvider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enableTenantCoopProvider")]
+        public bool? EnableTenantCoopProvider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ospreyRoutingMode")]
+        public string? OspreyRoutingMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("coopRoutingMode")]
+        public string? CoopRoutingMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("evidenceMode")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<EventReportProviderEvidenceMode>))]
+        public EventReportProviderEvidenceMode? EvidenceMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ospreyEndpointUrl")]
+        public string? OspreyEndpointUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ospreyApiKey")]
+        public string? OspreyApiKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ospreyWebhookSecret")]
+        public string? OspreyWebhookSecret { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("coopEndpointUrl")]
+        public string? CoopEndpointUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("coopApiKey")]
+        public string? CoopApiKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("coopWebhookSecret")]
+        public string? CoopWebhookSecret { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UpdateSettingBatchDto
     {
 
@@ -94886,7 +99166,7 @@ namespace Explore.Blazor.Client.Clients
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous75>? _links { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -94912,6 +99192,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("remediation")]
+        public string? Remediation { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -94935,6 +99218,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("remediation")]
+        public string? Remediation { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -95011,6 +99297,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("remediation")]
+        public string? Remediation { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -95548,138 +99837,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous2
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous3
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous4
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ActorContexts2
     {
 
@@ -95782,39 +99939,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("dailyMessageLimit")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? DailyMessageLimit { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous5
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -95938,205 +100062,7 @@ namespace Explore.Blazor.Client.Clients
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("_links")]
-        public System.Collections.Generic.IDictionary<string, Anonymous76>? _links { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous6
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous7
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous8
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous9
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous10
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous11
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -96162,38 +100088,8 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
 
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous12
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("remediation")]
+        public string? Remediation { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -96219,38 +100115,8 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
 
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous13
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("remediation")]
+        public string? Remediation { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -96328,38 +100194,8 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
 
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous14
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("remediation")]
+        public string? Remediation { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -96423,72 +100259,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous15
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous16
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Options4
     {
 
@@ -96523,171 +100293,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? SortOrder { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous17
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous18
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous19
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous20
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous21
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -96747,204 +100352,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous22
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous23
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous24
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous25
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous26
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous27
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ReasonOptions2
     {
 
@@ -96963,39 +100370,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Description { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous28
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -97055,72 +100429,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous29
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous30
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SessionGroups3
     {
 
@@ -97156,105 +100464,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous31
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous32
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous33
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SessionGroups4
     {
 
@@ -97277,105 +100486,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? SortOrder { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous34
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous35
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous36
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -97506,72 +100616,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous37
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous38
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Definitions4
     {
 
@@ -97676,237 +100720,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("options")]
         public System.Collections.Generic.ICollection<Options10>? Options { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous39
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous40
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous41
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous42
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous43
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous44
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous45
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -98059,171 +100872,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous46
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous47
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous48
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous49
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous50
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -98671,39 +101319,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous51
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class CurrentCase2
     {
 
@@ -98768,501 +101383,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous52
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous53
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous54
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous55
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous56
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous57
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous58
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous59
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous60
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous61
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous62
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous63
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous64
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous65
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous66
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Payload
     {
 
@@ -99277,39 +101397,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("customCssUrl")]
         public string? CustomCssUrl { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous67
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -99446,171 +101533,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous68
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous69
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous70
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous71
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous72
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Subscriptions
     {
 
@@ -99633,72 +101555,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous73
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous74
-    {
-
-        /// <summary>
-        /// Link URL
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        public string? Href { get; set; } = default!;
-
-        /// <summary>
-        /// HTTP method
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        /// <summary>
-        /// Link title
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -100297,43 +102153,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous75
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Href { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("templated")]
-        public bool? Templated { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("type")]
-        public string? Type { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hreflang")]
-        public string? Hreflang { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-        public string? Name { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Options7
     {
 
@@ -100432,43 +102251,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("sizeBytes")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public long? SizeBytes { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Anonymous76
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("href")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Href { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("templated")]
-        public bool? Templated { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("type")]
-        public string? Type { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hreflang")]
-        public string? Hreflang { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-        public string? Name { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("method")]
-        public string? Method { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

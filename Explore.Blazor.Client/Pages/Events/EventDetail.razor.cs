@@ -18,6 +18,8 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using MudBlazor;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
@@ -34,6 +36,10 @@ public partial class EventDetail : ComponentBase, IDisposable
     private const string CancelledStatusMasterCode = "CANCELLED";
     private const string CompletedStatusMasterCode = "COMPLETED";
     private const string ModeratedStatusMasterCode = "MODERATED";
+    private const string PublicVisibilityMasterCode = "PUBLIC";
+    private const string SchemaEventScheduled = "https://schema.org/EventScheduled";
+    private const string SchemaEventCancelled = "https://schema.org/EventCancelled";
+    private const string DefaultBrandDisplayName = "Event Platform";
     private const string EditLinkRelation = "edit";
     private const string DeleteLinkRelation = "delete";
     private const string TeamLinkRelation = "team";
@@ -52,6 +58,11 @@ public partial class EventDetail : ComponentBase, IDisposable
     private const string ReportIntentQueryValue = "1";
     private const string ReportLoginPromptTitle = "Need to report this?";
     private const string ReportLoginPromptMessage = "Sign in to report content that breaks our rules. You can also file a legal complaint without signing in.";
+
+    private static readonly JsonSerializerOptions EventStructuredDataJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
     private static readonly IReadOnlyList<EventModerationReasonOption> LightModerationReasonOptions =
     [
@@ -77,6 +88,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     [Inject] private MainContentAppearanceState MainContentAppearanceState { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private IEventService EventService { get; set; } = default!;
+    [Inject] private IPublicExperienceService PublicExperienceService { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private IMapsService MapsService { get; set; } = default!;
     [Inject] private RouterStateService RouterState { get; set; } = default!;
@@ -130,6 +142,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     private Guid _lastRenderedEventId;
     private bool _wasLoading = true;
     private bool _hasHandledReportIntent;
+    private string _brandDisplayName = DefaultBrandDisplayName;
 
     private ICollection<EventDayListDto>? _eventDays;
 
@@ -166,25 +179,30 @@ public partial class EventDetail : ComponentBase, IDisposable
          _eventDetails.HasHalLink(ModerationReportsLinkRelation));
 
     private bool HasMultipleSessions => _eventSessions?.Count > 1;
+    private string BrandDisplayName => _brandDisplayName;
 
     /// <summary>
     /// Initializes the component and loads event data.
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
-        var eventIdStr = RouterState.GetParam("eventId");
-        if (Guid.TryParse(eventIdStr, out var id))
-        {
-            EventId = id;
-        }
+        var slugCode = RouterState.GetParam("slugCode");
+        await LoadBrandingAsync();
+        await LoadEventDataAsync(slugCode);
+    }
 
-        if (TryRestoreState())
+    private async Task LoadBrandingAsync()
+    {
+        try
         {
-            PublishMainContentAppearance();
-            return;
+            var shell = await PublicExperienceService.GetCachedShellAsync();
+            _brandDisplayName = NormalizeBrandDisplayName(shell?.Home.BrandDisplayName);
         }
-
-        await LoadEventDataAsync();
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Unable to load public brand display name for event metadata");
+            _brandDisplayName = DefaultBrandDisplayName;
+        }
     }
 
     /// <summary>
@@ -217,7 +235,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     /// <summary>
     /// Loads event details, sessions, and registration status.
     /// </summary>
-    private async Task LoadEventDataAsync()
+    private async Task LoadEventDataAsync(string? slugCode = null)
     {
         _isLoading = true;
         _isCheckingRegistration = true;
@@ -227,11 +245,20 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         try
         {
-            Logger.LogInformation("Loading event {EventId}", EventId);
-            _eventDetails = await EventService.GetEventByIdAsync(EventId);
+            Logger.LogInformation("Loading event {SlugCode}", slugCode);
+            _eventDetails = string.IsNullOrWhiteSpace(slugCode)
+                ? await EventService.GetEventByIdAsync(EventId)
+                : await EventService.GetEventBySlugCodeAsync(slugCode);
 
             if (_eventDetails != null)
             {
+                if (_eventDetails.Id is not Guid loadedEventId || loadedEventId == Guid.Empty)
+                {
+                    _errorMessage = "Event not found";
+                    return;
+                }
+
+                EventId = loadedEventId;
                 Logger.LogInformation("Loaded event: {Title}", _eventDetails.Title);
                 _appearance = new AppearanceSettings
                 {
@@ -901,13 +928,14 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     private string GetCanonicalUrl()
     {
-        return CanonicalUrlHelper.Build(Navigation, $"/events/{EventId}");
+        var path = EventUrlHelper.BuildPublicPath(_eventDetails?.Slug, _eventDetails?.PublicCode) ?? "/events";
+        return CanonicalUrlHelper.Build(Navigation, path);
     }
 
     private string GetMetaDescription()
     {
         if (string.IsNullOrWhiteSpace(_eventDetails?.Description))
-            return $"{_eventDetails?.Title} — Event on ISLAMU Events";
+            return $"{_eventDetails?.Title} — Event on {BrandDisplayName}";
 
         var plainText = _eventDetails.Description
             .Replace("\r\n", " ")
@@ -932,6 +960,147 @@ public partial class EventDetail : ComponentBase, IDisposable
     private string GetOgImageUrl()
     {
         return GetFeaturedImagePublicUrl() ?? string.Empty;
+    }
+
+    private bool ShouldNoIndexEvent()
+    {
+        if (_eventDetails is null)
+        {
+            return true;
+        }
+
+        return !IsCrawlableStatus(_eventDetails.EventStatusMasterCode)
+               || !string.Equals(_eventDetails.VisibilityTypeMasterCode, PublicVisibilityMasterCode, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool ShouldRenderEventStructuredData() =>
+        _eventDetails is not null
+        && !ShouldNoIndexEvent()
+        && !string.IsNullOrWhiteSpace(_eventDetails.Title);
+
+    private static bool IsCrawlableStatus(string? status) =>
+        string.Equals(status, PublishedStatusMasterCode, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(status, CompletedStatusMasterCode, StringComparison.OrdinalIgnoreCase);
+
+    private string GetEventStructuredDataJson()
+    {
+        if (_eventDetails is null)
+        {
+            return "{}";
+        }
+
+        var data = new Dictionary<string, object?>
+        {
+            ["@context"] = "https://schema.org",
+            ["@type"] = "Event",
+            ["name"] = _eventDetails.Title,
+            ["description"] = GetMetaDescription(),
+            ["url"] = GetCanonicalUrl(),
+            ["eventStatus"] = GetSchemaEventStatus()
+        };
+
+        AddIfNotBlank(data, "image", GetOgImageUrl());
+        AddIfNotBlank(data, "startDate", _primarySession?.StartTime?.ToString("O"));
+        AddIfNotBlank(data, "endDate", _primarySession?.EndTime?.ToString("O"));
+
+        var location = BuildSchemaLocation();
+        if (location is not null)
+        {
+            data["location"] = location;
+        }
+
+        var organizer = BuildSchemaOrganizer();
+        if (organizer is not null)
+        {
+            data["organizer"] = organizer;
+        }
+
+        var offer = BuildSchemaOffer();
+        if (offer is not null)
+        {
+            data["offers"] = offer;
+        }
+
+        return JsonSerializer.Serialize(data, EventStructuredDataJsonOptions);
+    }
+
+    private string GetSchemaEventStatus() =>
+        string.Equals(_eventDetails?.EventStatusMasterCode, CancelledStatusMasterCode, StringComparison.OrdinalIgnoreCase)
+            ? SchemaEventCancelled
+            : SchemaEventScheduled;
+
+    private Dictionary<string, object?>? BuildSchemaLocation()
+    {
+        if (string.IsNullOrWhiteSpace(_primarySession?.LocationFullName)
+            && string.IsNullOrWhiteSpace(_primarySession?.LocationCity))
+        {
+            return null;
+        }
+
+        var location = new Dictionary<string, object?>
+        {
+            ["@type"] = "Place"
+        };
+
+        AddIfNotBlank(location, "name", _primarySession?.LocationFullName);
+
+        if (!string.IsNullOrWhiteSpace(_primarySession?.LocationCity))
+        {
+            location["address"] = new Dictionary<string, object?>
+            {
+                ["@type"] = "PostalAddress",
+                ["addressLocality"] = _primarySession.LocationCity
+            };
+        }
+
+        return location;
+    }
+
+    private Dictionary<string, object?>? BuildSchemaOrganizer()
+    {
+        var name = GetOrganizerName();
+        if (string.IsNullOrWhiteSpace(name) || name == "Unknown Organizer")
+        {
+            return null;
+        }
+
+        var organizer = new Dictionary<string, object?>
+        {
+            ["@type"] = IsOrganizedByOrganization() ? "Organization" : "Person",
+            ["name"] = name
+        };
+
+        var organizerProfileUrl = GetOrganizerProfileUrl();
+        if (!string.IsNullOrWhiteSpace(organizerProfileUrl))
+        {
+            organizer["url"] = CanonicalUrlHelper.Build(Navigation, organizerProfileUrl);
+        }
+
+        return organizer;
+    }
+
+    private Dictionary<string, object?>? BuildSchemaOffer()
+    {
+        if (_eventDetails?.Price is not > 0)
+        {
+            return null;
+        }
+
+        return new Dictionary<string, object?>
+        {
+            ["@type"] = "Offer",
+            ["price"] = _eventDetails.Price,
+            ["priceCurrency"] = string.IsNullOrWhiteSpace(_eventDetails.CurrencyCode) ? "EUR" : _eventDetails.CurrencyCode,
+            ["url"] = GetCanonicalUrl()
+        };
+    }
+
+    private static void AddIfNotBlank(Dictionary<string, object?> data, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            data[key] = value;
+        }
     }
 
     private static string TruncateTitle(string title)
@@ -1020,14 +1189,14 @@ public partial class EventDetail : ComponentBase, IDisposable
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("BEGIN:VCALENDAR");
         sb.AppendLine("VERSION:2.0");
-        sb.AppendLine("PRODID:-//ISLAMU//Event Platform//EN");
+        sb.AppendLine(IcsFoldLine($"PRODID:-//{IcsEscape(BrandDisplayName)}//Event Platform//EN"));
         sb.AppendLine("CALSCALE:GREGORIAN");
         sb.AppendLine("METHOD:PUBLISH");
         sb.AppendLine("BEGIN:VEVENT");
 
         var now = DateTime.UtcNow;
         sb.AppendLine($"DTSTAMP:{now:yyyyMMdd'T'HHmmss'Z'}");
-        sb.AppendLine($"UID:{EventId}@islamu.events");
+        sb.AppendLine($"UID:{EventId}@{GetCalendarUidHost()}");
 
         if (_primarySession is not null)
         {
@@ -1057,6 +1226,20 @@ public partial class EventDetail : ComponentBase, IDisposable
             .Replace(",", "\\,")
             .Replace("\n", "\\n")
             .Replace("\r", "");
+    }
+
+    private string GetCalendarUidHost()
+    {
+        return Uri.TryCreate(Navigation.BaseUri, UriKind.Absolute, out var uri) && !string.IsNullOrWhiteSpace(uri.Host)
+            ? uri.Host
+            : "event-platform.local";
+    }
+
+    private static string NormalizeBrandDisplayName(string? brandDisplayName)
+    {
+        return string.IsNullOrWhiteSpace(brandDisplayName)
+            ? DefaultBrandDisplayName
+            : brandDisplayName.Trim();
     }
 
     /// <summary>

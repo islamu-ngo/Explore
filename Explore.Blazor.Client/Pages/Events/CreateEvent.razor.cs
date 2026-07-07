@@ -124,6 +124,7 @@ public partial class CreateEvent : IDisposable
     private bool _showTimezoneSelector = false;
     private bool _isMoreOptionsExpanded;
     private bool _isThemeStudioOpen;
+    private bool _isCustomSlugEnabled;
     private string _programAnnouncement = string.Empty;
     private string ProgramSummary => BuildProgramSummary();
     private string ProgramItemsSummary => BuildProgramItemsSummary();
@@ -324,6 +325,23 @@ public partial class CreateEvent : IDisposable
     {
         _bgEffect = string.IsNullOrWhiteSpace(value) ? "None" : value;
         PublishMainContentAppearance();
+        return Task.CompletedTask;
+    }
+
+    private Task SetCustomSlugEnabledAsync(bool value)
+    {
+        _isCustomSlugEnabled = value;
+        createDto.Slug = value ? EventUrlHelper.FormatSlug(createDto.Title) : null;
+        return Task.CompletedTask;
+    }
+
+    private Task ApplyTitleSlugAsync()
+    {
+        if (_isCustomSlugEnabled)
+            createDto.Slug = EventUrlHelper.FormatSlug(createDto.Title);
+        else
+            createDto.Slug = null;
+
         return Task.CompletedTask;
     }
 
@@ -1201,7 +1219,7 @@ public partial class CreateEvent : IDisposable
                     return;
                 }
 
-                Navigation.NavigateTo($"/events/{createdEventId}");
+                Navigation.NavigateTo($"/event-created/{createdEventId}");
             }
             else
             {

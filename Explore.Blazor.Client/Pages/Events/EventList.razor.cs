@@ -1040,9 +1040,10 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private void NavigateToSelectedEventPage()
     {
-        if (_selectedEvent?.Id is Guid eventId && eventId != Guid.Empty)
+        var path = EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode);
+        if (path is not null)
         {
-            Navigation.NavigateTo($"/events/{eventId}");
+            Navigation.NavigateTo(path);
         }
     }
 
@@ -1060,8 +1061,10 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private async Task CopyEventLinkAsync()
     {
-        if (_selectedEvent?.Id == null) return;
-        var url = Navigation.ToAbsoluteUri($"/events/{_selectedEvent.Id}").ToString();
+        var path = EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode);
+        if (path is null) return;
+
+        var url = CanonicalUrlHelper.Build(Navigation, path);
         if (await BrowserActionInterop.CopyTextAsync(url))
         {
             Snackbar.Add("Link copied to clipboard", Severity.Success, options => options.VisibleStateDuration = 2000);
@@ -1085,13 +1088,14 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private async Task ShareEventAsync(EventListDto eventToShare)
     {
-        if (eventToShare.Id is not Guid eventId || eventId == Guid.Empty)
+        var path = EventUrlHelper.BuildPublicPath(eventToShare.Slug, eventToShare.PublicCode);
+        if (path is null)
         {
             Snackbar.Add("Sharing is unavailable for this event.", Severity.Warning);
             return;
         }
 
-        var url = Explore.Blazor.Client.Helpers.CanonicalUrlHelper.Build(Navigation, $"/events/{eventId}");
+        var url = CanonicalUrlHelper.Build(Navigation, path);
 
         if (await BrowserActionInterop.ShareAsync(eventToShare.Title ?? "Event", url))
         {
