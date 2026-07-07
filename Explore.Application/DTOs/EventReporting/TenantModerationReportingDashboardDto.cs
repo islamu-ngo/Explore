@@ -1,0 +1,33 @@
+// ABOUTME: Redacted tenant moderation-reporting dashboard DTOs for queue and provider sync health.
+// ABOUTME: Exposes aggregate counts only so tenant dashboards never render report payloads or provider secrets.
+
+namespace Explore.Application.DTOs.EventReporting;
+
+public sealed class TenantModerationReportingDashboardDto
+{
+    public Guid TenantId { get; init; }
+    public DateTime GeneratedAtUtc { get; init; }
+    public TenantModerationReportQueueHealthDto QueueHealth { get; init; } = new();
+    public TenantModerationProviderSyncHealthDto ProviderSyncHealth { get; init; } = new();
+}
+
+public sealed class TenantModerationReportQueueHealthDto
+{
+    public int SubmittedReports { get; init; }
+    public int InReviewReports { get; init; }
+    public int ClosedReports { get; init; }
+    public int OpenCases { get; init; }
+    public int AssignedCases { get; init; }
+    public int WaitingExternalCases { get; init; }
+    public int WaitingReporterCases { get; init; }
+    public int DecisionReadyCases { get; init; }
+}
+
+public sealed class TenantModerationProviderSyncHealthDto
+{
+    public int PendingSyncs { get; init; }
+    public int StuckPendingSyncs { get; init; }
+    public int FailedSyncs { get; init; }
+    public int DisabledSyncs { get; init; }
+    public int IgnoredSyncs { get; init; }
+}

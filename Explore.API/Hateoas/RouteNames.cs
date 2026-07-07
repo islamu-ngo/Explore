@@ -30,6 +30,7 @@ public static class RouteNames
 
     public const string GetEvents = "GetEvents";
     public const string GetEventById = "GetEventById";
+    public const string GetEventByPublicCode = "GetEventByPublicCode";
     public const string GetEventManagementDetails = "GetEventManagementDetails";
     public const string GetEventModerationHistory = "GetEventModerationHistory";
     public const string GetManagedEventsByActor = "GetManagedEventsByActor";
@@ -61,6 +62,10 @@ public static class RouteNames
     public const string SubmitEventReport = "SubmitEventReport";
     public const string GetMyEventReports = "GetMyEventReports";
     public const string GetMyEventReport = "GetMyEventReport";
+    public const string GetModerationReportingRoutingState = "GetModerationReportingRoutingState";
+    public const string UpdateModerationReportingRoutingSettings = "UpdateModerationReportingRoutingSettings";
+    public const string TestModerationReportingProvider = "TestModerationReportingProvider";
+    public const string GetTenantModerationReportingDashboard = "GetTenantModerationReportingDashboard";
     public const string GetModerationReportQueue = "GetModerationReportQueue";
     public const string GetModerationReportDetail = "GetModerationReportDetail";
     public const string TriageModerationReport = "TriageModerationReport";
@@ -716,6 +721,8 @@ public static class RouteNames
     public const string GetControlPlaneOverview = "GetControlPlaneOverview";
     public const string GetControlPlaneDomains = "GetControlPlaneDomains";
     public const string GetControlPlaneOperations = "GetControlPlaneOperations";
+    public const string GetControlPlaneDeploymentModeRunbook = "GetControlPlaneDeploymentModeRunbook";
+    public const string TransitionControlPlaneDeploymentMode = "TransitionControlPlaneDeploymentMode";
     public const string GetControlPlaneTenants = "GetControlPlaneTenants";
     public const string GetControlPlaneTenantById = "GetControlPlaneTenantById";
     public const string CreateControlPlaneTenant = "CreateControlPlaneTenant";
@@ -724,6 +731,20 @@ public static class RouteNames
     public const string ArchiveControlPlaneTenant = "ArchiveControlPlaneTenant";
     public const string ReactivateControlPlaneTenant = "ReactivateControlPlaneTenant";
     public const string ScheduleControlPlaneTenantPurge = "ScheduleControlPlaneTenantPurge";
+    public const string GetControlPlaneTenantPlans = "GetControlPlaneTenantPlans";
+    public const string GetControlPlaneTenantPlanByKey = "GetControlPlaneTenantPlanByKey";
+    public const string CreateControlPlaneTenantPlanDraft = "CreateControlPlaneTenantPlanDraft";
+    public const string CreateControlPlaneTenantPlanVersionDraft = "CreateControlPlaneTenantPlanVersionDraft";
+    public const string UpdateControlPlaneTenantPlanVersionDraft = "UpdateControlPlaneTenantPlanVersionDraft";
+    public const string PublishControlPlaneTenantPlanVersion = "PublishControlPlaneTenantPlanVersion";
+    public const string ArchiveControlPlaneTenantPlanVersion = "ArchiveControlPlaneTenantPlanVersion";
+    public const string CloneControlPlaneTenantPlan = "CloneControlPlaneTenantPlan";
+    public const string ValidateControlPlaneTenantPlanDraft = "ValidateControlPlaneTenantPlanDraft";
+    public const string PreviewControlPlaneTenantPlanDiff = "PreviewControlPlaneTenantPlanDiff";
+    public const string GetControlPlaneTenantPlanAssignment = "GetControlPlaneTenantPlanAssignment";
+    public const string SwitchControlPlaneTenantPlanAssignment = "SwitchControlPlaneTenantPlanAssignment";
+    public const string ApplyControlPlaneTenantPlanAssignment = "ApplyControlPlaneTenantPlanAssignment";
+    public const string RollbackControlPlaneTenantPlanAssignment = "RollbackControlPlaneTenantPlanAssignment";
     public const string GetInstanceModuleSettings = "GetInstanceModuleSettings";
     public const string UpdateInstanceModuleSettings = "UpdateInstanceModuleSettings";
     public const string GetInstanceEventPolicy = "GetInstanceEventPolicy";
@@ -736,6 +757,7 @@ public static class RouteNames
     public const string UpdateInstanceDomainSettings = "UpdateInstanceDomainSettings";
     public const string GetInstanceTenantDelegationSettings = "GetInstanceTenantDelegationSettings";
     public const string UpdateInstanceTenantDelegationSettings = "UpdateInstanceTenantDelegationSettings";
+    public const string UpdateInstanceModerationReportingProviderLocks = "UpdateInstanceModerationReportingProviderLocks";
     public const string GetInstanceAiAssistantGovernanceSettings = "GetInstanceAiAssistantGovernanceSettings";
     public const string UpdateInstanceAiAssistantGovernanceSettings = "UpdateInstanceAiAssistantGovernanceSettings";
     public const string GetInstanceMcpGovernanceSettings = "GetInstanceMcpGovernanceSettings";
