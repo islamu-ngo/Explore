@@ -27,6 +27,12 @@ public partial class ExploreDbContext
     public DbSet<TenantNavigationLink> TenantNavigationLinks { get; set; }
     public DbSet<TenantFooterLinkGroup> TenantFooterLinkGroups { get; set; }
     public DbSet<TenantFooterLink> TenantFooterLinks { get; set; }
+    public DbSet<TenantPlan> TenantPlans { get; set; }
+    public DbSet<TenantPlanVersion> TenantPlanVersions { get; set; }
+    public DbSet<TenantPlanVersionSetting> TenantPlanVersionSettings { get; set; }
+    public DbSet<TenantPlanVersionQuota> TenantPlanVersionQuotas { get; set; }
+    public DbSet<TenantPlanAssignment> TenantPlanAssignments { get; set; }
+    public DbSet<TenantPlanApplicationLog> TenantPlanApplicationLogs { get; set; }
     public DbSet<InstanceBootstrapState> InstanceBootstrapStates { get; set; }
     public DbSet<SupportAccessSession> SupportAccessSessions { get; set; }
     public DbSet<SupportAccessAuditEvent> SupportAccessAuditEvents { get; set; }
@@ -152,6 +158,9 @@ public partial class ExploreDbContext
     public DbSet<Language> Languages { get; set; }
     public DbSet<ApprovalStatus> ApprovalStatuses { get; set; }
     public DbSet<TenantStatus> TenantStatuses { get; set; }
+    public DbSet<TenantPlanStatus> TenantPlanStatuses { get; set; }
+    public DbSet<TenantPlanAssignmentStatus> TenantPlanAssignmentStatuses { get; set; }
+    public DbSet<TenantPlanApplicationStatus> TenantPlanApplicationStatuses { get; set; }
     public DbSet<AnalyticsProvider> AnalyticsProviders { get; set; }
 
     // ===== Categories & Tags =====
@@ -203,6 +212,17 @@ public partial class ExploreDbContext
     public DbSet<NotificationReason> NotificationReasons { get; set; }
     public DbSet<NotificationScopeType> NotificationScopeTypes { get; set; }
     public DbSet<NotificationFanoutRun> NotificationFanoutRuns { get; set; }
+    public DbSet<NotificationIntent> NotificationIntents { get; set; }
+    public DbSet<NotificationCategory> NotificationCategories { get; set; }
+    public DbSet<NotificationOwnershipType> NotificationOwnershipTypes { get; set; }
+    public DbSet<NotificationIntentStatus> NotificationIntentStatuses { get; set; }
+    public DbSet<NotificationRecipientKind> NotificationRecipientKinds { get; set; }
+    public DbSet<NotificationDelivery> NotificationDeliveries { get; set; }
+    public DbSet<NotificationDeliveryStatus> NotificationDeliveryStatuses { get; set; }
+    public DbSet<NotificationExternalDelegation> NotificationExternalDelegations { get; set; }
+    public DbSet<NotificationExternalDelegationStatus> NotificationExternalDelegationStatuses { get; set; }
+    public DbSet<ExternalWorkflowProviderKindLookup> ExternalWorkflowProviderKinds { get; set; }
+    public DbSet<AccountAuthorityKindLookup> AccountAuthorityKinds { get; set; }
 
     // ===== Module Governance =====
     public DbSet<ModuleDefinition> ModuleDefinitions { get; set; }

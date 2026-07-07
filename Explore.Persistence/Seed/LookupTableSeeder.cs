@@ -40,6 +40,14 @@ public static class LookupTableSeeder
         await SeedSecretValidationStatusesAsync(context, cancellationToken);
         await SeedExternalApiKeyOwnerTypesAsync(context, cancellationToken);
         await SeedNotificationScopeTypesAsync(context, cancellationToken);
+        await SeedNotificationCategoriesAsync(context, cancellationToken);
+        await SeedNotificationOwnershipTypesAsync(context, cancellationToken);
+        await SeedNotificationIntentStatusesAsync(context, cancellationToken);
+        await SeedNotificationRecipientKindsAsync(context, cancellationToken);
+        await SeedNotificationDeliveryStatusesAsync(context, cancellationToken);
+        await SeedNotificationExternalDelegationStatusesAsync(context, cancellationToken);
+        await SeedExternalWorkflowProviderKindsAsync(context, cancellationToken);
+        await SeedAccountAuthorityKindsAsync(context, cancellationToken);
         await SeedSupportAccessSessionStatusesAsync(context, cancellationToken);
         await SeedSupportAccessModesAsync(context, cancellationToken);
         await SeedSupportAccessEndReasonsAsync(context, cancellationToken);
@@ -47,6 +55,9 @@ public static class LookupTableSeeder
         await SeedApprovalStatusesAsync(context, cancellationToken);
         await SeedAnalyticsProvidersAsync(context, cancellationToken);
         await SeedTenantStatusesAsync(context, cancellationToken);
+        await SeedTenantPlanStatusesAsync(context, cancellationToken);
+        await SeedTenantPlanAssignmentStatusesAsync(context, cancellationToken);
+        await SeedTenantPlanApplicationStatusesAsync(context, cancellationToken);
         await SeedAudienceAgesAsync(context, cancellationToken);
         await SeedAudienceGendersAsync(context, cancellationToken);
         await SeedDidCustodyTypesAsync(context, cancellationToken);
@@ -501,6 +512,166 @@ public static class LookupTableSeeder
         await context.SaveChangesAsync(ct);
     }
 
+    private static async Task SeedNotificationCategoriesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new NotificationCategory[]
+            {
+                new() { Id = (int)NotificationCategoryEnum.IdentityLifecycle, MasterCode = "IDENTITY_LIFECYCLE", FullName = "Identity lifecycle", Description = "Credential-token lifecycle notifications owned by an account authority" },
+                new() { Id = (int)NotificationCategoryEnum.ProductLifecycle, MasterCode = "PRODUCT_LIFECYCLE", FullName = "Product lifecycle", Description = "ISLAMU product-domain lifecycle notifications" },
+                new() { Id = (int)NotificationCategoryEnum.EventLifecycle, MasterCode = "EVENT_LIFECYCLE", FullName = "Event lifecycle", Description = "Event publication, reminder, cancellation, and lifecycle notifications" },
+                new() { Id = (int)NotificationCategoryEnum.RegistrationLifecycle, MasterCode = "REGISTRATION_LIFECYCLE", FullName = "Registration lifecycle", Description = "Registration, waitlist, approval, and rejection notifications" },
+                new() { Id = (int)NotificationCategoryEnum.TrustSafetyReporting, MasterCode = "TRUST_SAFETY_REPORTING", FullName = "Trust and safety reporting", Description = "Report intake and reporter-facing trust and safety notifications" },
+                new() { Id = (int)NotificationCategoryEnum.TrustSafetyModeration, MasterCode = "TRUST_SAFETY_MODERATION", FullName = "Trust and safety moderation", Description = "Moderation decision and safety enforcement notifications" },
+                new() { Id = (int)NotificationCategoryEnum.ProviderInternal, MasterCode = "PROVIDER_INTERNAL", FullName = "Provider internal", Description = "External provider console or workflow notifications not sent as ISLAMU user-facing email" },
+                new() { Id = (int)NotificationCategoryEnum.PlatformOperations, MasterCode = "PLATFORM_OPERATIONS", FullName = "Platform operations", Description = "Platform operational notices and operator-visible lifecycle notifications" },
+                new() { Id = (int)NotificationCategoryEnum.Marketing, MasterCode = "MARKETING", FullName = "Marketing", Description = "Consent-controlled product marketing notifications" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedNotificationOwnershipTypesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new NotificationOwnershipType[]
+            {
+                new() { Id = (int)NotificationOwnershipTypeEnum.IslamuEvent, MasterCode = "ISLAMU_EVENT", FullName = "ISLAMU Event", Description = "ISLAMU Event owns the notification decision, delivery audit, and retry lifecycle" },
+                new() { Id = (int)NotificationOwnershipTypeEnum.AccountAuthority, MasterCode = "ACCOUNT_AUTHORITY", FullName = "Account authority", Description = "The credential-token owner creates and verifies the lifecycle email" },
+                new() { Id = (int)NotificationOwnershipTypeEnum.ExternalWorkflowProvider, MasterCode = "EXTERNAL_WORKFLOW_PROVIDER", FullName = "External workflow provider", Description = "An external workflow provider owns its internal notification workflow" },
+                new() { Id = (int)NotificationOwnershipTypeEnum.Disabled, MasterCode = "DISABLED", FullName = "Disabled", Description = "The notification is intentionally disabled for this category and route" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedNotificationIntentStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new NotificationIntentStatus[]
+            {
+                new() { Id = (int)NotificationIntentStatusEnum.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Intent has been recorded but ownership resolution or dispatch work has not completed" },
+                new() { Id = (int)NotificationIntentStatusEnum.Resolved, MasterCode = "RESOLVED", FullName = "Resolved", Description = "Intent ownership was resolved without queueing local delivery" },
+                new() { Id = (int)NotificationIntentStatusEnum.DispatchQueued, MasterCode = "DISPATCH_QUEUED", FullName = "Dispatch queued", Description = "Intent has queued a local ISLAMU delivery record" },
+                new() { Id = (int)NotificationIntentStatusEnum.Delegated, MasterCode = "DELEGATED", FullName = "Delegated", Description = "Intent has been delegated to an account authority or external workflow provider" },
+                new() { Id = (int)NotificationIntentStatusEnum.Skipped, MasterCode = "SKIPPED", FullName = "Skipped", Description = "Intent was safely skipped by policy or preferences" },
+                new() { Id = (int)NotificationIntentStatusEnum.Failed, MasterCode = "FAILED", FullName = "Failed", Description = "Intent processing failed and requires retry or operator review" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedNotificationRecipientKindsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new NotificationRecipientKind[]
+            {
+                new() { Id = (int)NotificationRecipientKindEnum.User, MasterCode = "USER", FullName = "User", Description = "A platform user recipient" },
+                new() { Id = (int)NotificationRecipientKindEnum.TenantAdmin, MasterCode = "TENANT_ADMIN", FullName = "Tenant administrator", Description = "A tenant administrator recipient" },
+                new() { Id = (int)NotificationRecipientKindEnum.Organizer, MasterCode = "ORGANIZER", FullName = "Organizer", Description = "An event organizer recipient" },
+                new() { Id = (int)NotificationRecipientKindEnum.Reporter, MasterCode = "REPORTER", FullName = "Reporter", Description = "A trust and safety report submitter" },
+                new() { Id = (int)NotificationRecipientKindEnum.Moderator, MasterCode = "MODERATOR", FullName = "Moderator", Description = "A trust and safety moderator recipient" },
+                new() { Id = (int)NotificationRecipientKindEnum.ProviderOperator, MasterCode = "PROVIDER_OPERATOR", FullName = "Provider operator", Description = "An external provider console or workflow operator" },
+                new() { Id = (int)NotificationRecipientKindEnum.System, MasterCode = "SYSTEM", FullName = "System", Description = "A system or operational recipient" },
+                new() { Id = (int)NotificationRecipientKindEnum.Other, MasterCode = "OTHER", FullName = "Other", Description = "A recipient kind not otherwise classified" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedNotificationDeliveryStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new NotificationDeliveryStatus[]
+            {
+                new() { Id = (int)NotificationDeliveryStatusEnum.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Delivery audit row is pending dispatch linkage" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.LinkedToEmailDispatch, MasterCode = "LINKED_TO_EMAIL_DISPATCH", FullName = "Linked to email dispatch", Description = "Delivery has a linked EmailDispatchOutbox row" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.Sent, MasterCode = "SENT", FullName = "Sent", Description = "Delivery was sent successfully" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.Skipped, MasterCode = "SKIPPED", FullName = "Skipped", Description = "Delivery was skipped by policy or preference" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.Failed, MasterCode = "FAILED", FullName = "Failed", Description = "Delivery failed and may be retried or reviewed" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.DeadLettered, MasterCode = "DEAD_LETTERED", FullName = "Dead lettered", Description = "Delivery exhausted retry policy and is retained for operator review" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedNotificationExternalDelegationStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new NotificationExternalDelegationStatus[]
+            {
+                new() { Id = (int)NotificationExternalDelegationStatusEnum.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Delegation is recorded but not requested" },
+                new() { Id = (int)NotificationExternalDelegationStatusEnum.Requested, MasterCode = "REQUESTED", FullName = "Requested", Description = "Delegation was requested from the provider" },
+                new() { Id = (int)NotificationExternalDelegationStatusEnum.Accepted, MasterCode = "ACCEPTED", FullName = "Accepted", Description = "Provider accepted responsibility for the delegated notification" },
+                new() { Id = (int)NotificationExternalDelegationStatusEnum.Delivered, MasterCode = "DELIVERED", FullName = "Delivered", Description = "Provider reported successful delivery" },
+                new() { Id = (int)NotificationExternalDelegationStatusEnum.Failed, MasterCode = "FAILED", FullName = "Failed", Description = "Provider reported failure or the delegated request failed" },
+                new() { Id = (int)NotificationExternalDelegationStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Provider rejected the delegated request" },
+                new() { Id = (int)NotificationExternalDelegationStatusEnum.Unknown, MasterCode = "UNKNOWN", FullName = "Unknown", Description = "Provider delivery state is unknown" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedExternalWorkflowProviderKindsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new ExternalWorkflowProviderKindLookup[]
+            {
+                new() { Id = (int)ExternalWorkflowProviderKindEnum.None, MasterCode = "NONE", FullName = "None", Description = "No external workflow provider is assigned" },
+                new() { Id = (int)ExternalWorkflowProviderKindEnum.Coop, MasterCode = "COOP", FullName = "Coop", Description = "Coop moderation or review workflow provider" },
+                new() { Id = (int)ExternalWorkflowProviderKindEnum.Osprey, MasterCode = "OSPREY", FullName = "Osprey", Description = "Osprey safety workflow provider" },
+                new() { Id = (int)ExternalWorkflowProviderKindEnum.TicketingProvider, MasterCode = "TICKETING_PROVIDER", FullName = "Ticketing provider", Description = "External ticketing or payment workflow provider" },
+                new() { Id = (int)ExternalWorkflowProviderKindEnum.WebhookProvider, MasterCode = "WEBHOOK_PROVIDER", FullName = "Webhook provider", Description = "External webhook workflow provider" },
+                new() { Id = (int)ExternalWorkflowProviderKindEnum.Other, MasterCode = "OTHER", FullName = "Other", Description = "External workflow provider not otherwise classified" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedAccountAuthorityKindsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new AccountAuthorityKindLookup[]
+            {
+                new() { Id = (int)AccountAuthorityKindEnum.Keycloak, MasterCode = "KEYCLOAK", FullName = "Keycloak", Description = "Keycloak account authority lifecycle email owner" },
+                new() { Id = (int)AccountAuthorityKindEnum.AtprotoPds, MasterCode = "ATPROTO_PDS", FullName = "ATProto PDS", Description = "AT Protocol personal data server account authority" },
+                new() { Id = (int)AccountAuthorityKindEnum.IslamuOperatedPds, MasterCode = "ISLAMU_OPERATED_PDS", FullName = "ISLAMU-operated PDS", Description = "ISLAMU-hosted PDS cell acting as account authority" },
+                new() { Id = (int)AccountAuthorityKindEnum.LocalIdentity, MasterCode = "LOCAL_IDENTITY", FullName = "Local identity", Description = "Future local ISLAMU account authority" },
+                new() { Id = (int)AccountAuthorityKindEnum.ExternalOidc, MasterCode = "EXTERNAL_OIDC", FullName = "External OIDC", Description = "External OIDC account authority" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedMissingLookupRowsAsync<TLookup>(
+        ExploreDbContext context,
+        IReadOnlyCollection<TLookup> requiredRows,
+        Func<TLookup, int> idSelector,
+        CancellationToken ct)
+        where TLookup : class
+    {
+        var existingIds = await context.Set<TLookup>()
+            .Select(row => EF.Property<int>(row, "Id"))
+            .ToListAsync(ct);
+        var existingIdSet = existingIds.ToHashSet();
+        var missingRows = requiredRows
+            .Where(row => !existingIdSet.Contains(idSelector(row)))
+            .ToArray();
+
+        if (missingRows.Length == 0) return;
+
+        context.Set<TLookup>().AddRange(missingRows);
+        await context.SaveChangesAsync(ct);
+    }
+
     private static async Task SeedApprovalStatusesAsync(ExploreDbContext context, CancellationToken ct)
     {
         var existingIds = await context.Set<ApprovalStatus>()
@@ -541,6 +712,38 @@ public static class LookupTableSeeder
             new TenantStatus { Id = (int)TenantStatusEnum.Suspended, MasterCode = "SUSPENDED", FullName = "Suspended", Description = "Tenant is temporarily suspended", IsActiveState = false },
             new TenantStatus { Id = (int)TenantStatusEnum.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Tenant is archived and read-only", IsActiveState = false },
             new TenantStatus { Id = (int)TenantStatusEnum.Purged, MasterCode = "PURGED", FullName = "Purged", Description = "Tenant data has been permanently removed", IsActiveState = false });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedTenantPlanStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<TenantPlanStatus>().AnyAsync(ct)) return;
+
+        context.Set<TenantPlanStatus>().AddRange(
+            new TenantPlanStatus { Id = (int)TenantPlanStatusEnum.Draft, MasterCode = "DRAFT", FullName = "Draft", Description = "Plan version is editable and unavailable for provisioning", AllowsProvisioning = false },
+            new TenantPlanStatus { Id = (int)TenantPlanStatusEnum.Published, MasterCode = "PUBLISHED", FullName = "Published", Description = "Plan version is published and may be used for tenant provisioning", AllowsProvisioning = true },
+            new TenantPlanStatus { Id = (int)TenantPlanStatusEnum.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Plan version is retained for audit but unavailable for new provisioning", AllowsProvisioning = false });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedTenantPlanAssignmentStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<TenantPlanAssignmentStatus>().AnyAsync(ct)) return;
+
+        context.Set<TenantPlanAssignmentStatus>().AddRange(
+            new TenantPlanAssignmentStatus { Id = (int)TenantPlanAssignmentStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Tenant is currently assigned to this plan version", IsActiveAssignment = true },
+            new TenantPlanAssignmentStatus { Id = (int)TenantPlanAssignmentStatusEnum.Superseded, MasterCode = "SUPERSEDED", FullName = "Superseded", Description = "Assignment was replaced by a newer plan version", IsActiveAssignment = false },
+            new TenantPlanAssignmentStatus { Id = (int)TenantPlanAssignmentStatusEnum.RolledBack, MasterCode = "ROLLED_BACK", FullName = "Rolled back", Description = "Assignment was rolled back to a previous plan version", IsActiveAssignment = false });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedTenantPlanApplicationStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<TenantPlanApplicationStatus>().AnyAsync(ct)) return;
+
+        context.Set<TenantPlanApplicationStatus>().AddRange(
+            new TenantPlanApplicationStatus { Id = (int)TenantPlanApplicationStatusEnum.Succeeded, MasterCode = "SUCCEEDED", FullName = "Succeeded", Description = "Plan application completed successfully", IsSuccessful = true },
+            new TenantPlanApplicationStatus { Id = (int)TenantPlanApplicationStatusEnum.Failed, MasterCode = "FAILED", FullName = "Failed", Description = "Plan application failed and requires operator review", IsSuccessful = false });
         await context.SaveChangesAsync(ct);
     }
 

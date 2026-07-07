@@ -158,6 +158,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IFooterLinkRepository, FooterLinkRepository>();
         services.AddScoped<ITenantInvitationRepository, TenantInvitationRepository>();
         services.AddScoped<ITenantLifecycleLogRepository, TenantLifecycleLogRepository>();
+        services.AddScoped<ITenantPlanRepository, TenantPlanRepository>();
 
         // User & Authentication Repositories
         services.AddScoped<IUserRepository, UserRepository>();
@@ -304,6 +305,7 @@ public static class PersistenceServicesRegistration
 
         // Notification Repository
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<INotificationIntentRepository, NotificationIntentRepository>();
 
         // Idempotency Repository
         services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
