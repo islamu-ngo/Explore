@@ -19,6 +19,7 @@ public class EventDto
     public string? Description { get; set; }
     public string? Content { get; set; }
     public string? Slug { get; set; }
+    public string? PublicCode { get; set; }
 
     // Event Type
     public int? EventTypeId { get; set; }

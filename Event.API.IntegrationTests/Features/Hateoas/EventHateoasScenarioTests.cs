@@ -47,6 +47,30 @@ public class EventHateoasScenarioTests(RealRuntimeApiFixture fixture)
     }
 
     [Test]
+    public async Task GetByPublicCode_WithSeededPublishedEvent_ShouldReturnEventDetails()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var tenant = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(db);
+        var seededEvent = await EventScenarioSeed.SeedPublishedEventAsync(
+            db,
+            tenant.ActorId,
+            tenant.TenantId,
+            "Public Slug Code Test");
+        var slugCode = $"public-slug-code-test-{seededEvent.PublicCode}";
+
+        var response = await _fixture.Client.GetAsync($"/api/event/public/{slugCode}");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        await Assert.That(json.RootElement.GetProperty("title").GetString()).IsEqualTo(seededEvent.Title);
+        await Assert.That(json.RootElement.GetProperty("publicCode").GetString()).IsEqualTo(seededEvent.PublicCode);
+    }
+
+    [Test]
     public async Task GetAll_SeededEventItem_ShouldIncludeSessionsLink()
     {
         await _fixture.ResetDatabaseAsync();

@@ -14,7 +14,7 @@ public interface IPublicUrlBuilder
     /// Gets the absolute canonical URL for a specific event.
     /// </summary>
     /// <param name="eventId">The event identifier.</param>
-    /// <returns>Absolute URL, e.g. "https://events.islamu.org/events/550e8400-...".</returns>
+    /// <returns>Absolute URL, e.g. "https://events.example.org/events/550e8400-...".</returns>
     string GetEventUrl(Guid eventId);
 
     /// <summary>
@@ -50,7 +50,7 @@ public interface IPublicUrlBuilder
     /// Gets the absolute base URL for the current tenant/deployment.
     /// Includes scheme, host, and path base. No trailing slash.
     /// </summary>
-    /// <returns>Absolute base URL, e.g. "https://events.islamu.org".</returns>
+    /// <returns>Absolute base URL, e.g. "https://events.example.org".</returns>
     string GetBaseUrl();
 
     /// <summary>

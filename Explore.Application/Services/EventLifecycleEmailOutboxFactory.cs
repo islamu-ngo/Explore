@@ -218,12 +218,12 @@ public sealed class EventLifecycleEmailOutboxFactory : IEventLifecycleEmailOutbo
 
     private static string ComposePlainText(string body)
     {
-        return $"Assalamu alaykum,\n\n{body}\n\nISLAMU Event";
+        return $"Assalamu alaykum,\n\n{body}\n\nEvent Platform";
     }
 
     private static string ComposeTrustedHtml(string body)
     {
-        return $"<p>Assalamu alaykum,</p><p>{body}</p><p>ISLAMU Event</p>";
+        return $"<p>Assalamu alaykum,</p><p>{body}</p><p>Event Platform</p>";
     }
 
     private static string ComposeHtmlFromText(string body)

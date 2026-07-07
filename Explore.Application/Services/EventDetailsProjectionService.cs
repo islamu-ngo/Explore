@@ -43,10 +43,23 @@ public sealed class EventDetailsProjectionService : IEventDetailsProjectionServi
     public async Task<EventDto?> BuildAsync(Guid eventId, CancellationToken cancellationToken)
     {
         var @event = await _eventRepository.GetEventWithDetails(eventId);
+        return await BuildAsync(@event, cancellationToken);
+    }
+
+    public async Task<EventDto?> BuildByPublicCodeAsync(string publicCode, CancellationToken cancellationToken)
+    {
+        var @event = await _eventRepository.GetPublicEventWithDetailsByCodeAsync(publicCode, cancellationToken);
+        return await BuildAsync(@event, cancellationToken);
+    }
+
+    private async Task<EventDto?> BuildAsync(Explore.Domain.Event? @event, CancellationToken cancellationToken)
+    {
         var dto = _mapper.Map<EventDto>(@event);
 
         if (dto is null)
             return null;
+
+        var eventId = dto.Id;
 
         var latestModerationRecord = await _eventModerationRecordRepository.GetLatestByEventAsync(
             dto.TenantId,

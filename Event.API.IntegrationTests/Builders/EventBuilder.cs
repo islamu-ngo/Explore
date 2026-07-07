@@ -14,6 +14,7 @@ public sealed class EventBuilder
 {
     private Guid _id = Guid.NewGuid();
     private string _title = "Test Event";
+    private string _publicCode = Guid.NewGuid().ToString("N")[..12];
     private string? _subtitle;
     private string? _description;
     private Guid _actorId;
@@ -29,6 +30,7 @@ public sealed class EventBuilder
 
     public EventBuilder WithId(Guid id) { _id = id; return this; }
     public EventBuilder WithTitle(string title) { _title = title; return this; }
+    public EventBuilder WithPublicCode(string publicCode) { _publicCode = publicCode; return this; }
     public EventBuilder WithSubtitle(string subtitle) { _subtitle = subtitle; return this; }
     public EventBuilder WithDescription(string description) { _description = description; return this; }
     public EventBuilder WithActorId(Guid actorId) { _actorId = actorId; return this; }
@@ -49,6 +51,7 @@ public sealed class EventBuilder
     {
         Id = _id,
         Title = _title,
+        PublicCode = _publicCode,
         Subtitle = _subtitle,
         Description = _description,
         ActorId = _actorId,

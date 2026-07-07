@@ -2,11 +2,13 @@
 // ABOUTME: Enforces organizer policy via RegistrationPolicyRules, derives child sessions from scope, writes inside a serializable transaction.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventRegistration.Validators;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
@@ -28,6 +30,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     private readonly BusinessMetrics _metrics;
     private readonly IContactShareConsentService _consentService;
     private readonly IEventLifecycleEmailOutboxFactory _emailOutboxFactory;
+    private readonly INotificationOrchestrator _notificationOrchestrator;
     private readonly ILogger<CreateEventRegistrationCommandHandler> _logger;
 
     public CreateEventRegistrationCommandHandler(
@@ -41,6 +44,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         BusinessMetrics metrics,
         IContactShareConsentService consentService,
         IEventLifecycleEmailOutboxFactory emailOutboxFactory,
+        INotificationOrchestrator notificationOrchestrator,
         ILogger<CreateEventRegistrationCommandHandler> logger)
     {
         _intentRepository = intentRepository;
@@ -53,6 +57,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _metrics = metrics;
         _consentService = consentService;
         _emailOutboxFactory = emailOutboxFactory;
+        _notificationOrchestrator = notificationOrchestrator;
         _logger = logger;
     }
 
@@ -185,6 +190,21 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             response.Message = "Event Registration already exists.";
             return response;
         }
+
+        await _notificationOrchestrator.EnqueueAsync(
+            new NotificationIntentDraft(
+                Explore.Application.Notifications.NotificationCategory.RegistrationLifecycle,
+                TenantId: tenantId,
+                RecipientKind: "User",
+                TemplateKey: "registration.confirmation",
+                SafePayloadReference: $"event-registration-intent:{created.Id}",
+                IsUserFacing: true,
+                IsIslamuInitiated: true,
+                DeduplicationKey: $"event-registration-intent:{created.Id}:registration-confirmation",
+                CorrelationId: created.Id.ToString(),
+                UserId: dto.UserId,
+                EventId: dto.EventId),
+            cancellationToken);
 
         if (dto.ShareEmailWithOrganizer)
         {

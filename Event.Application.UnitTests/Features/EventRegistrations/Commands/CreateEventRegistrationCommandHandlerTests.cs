@@ -3,11 +3,13 @@
 
 using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Features.EventRegistrations.Handlers.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
@@ -17,6 +19,8 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.EventRegistrations.Commands;
+
+using AppNotificationCategory = Explore.Application.Notifications.NotificationCategory;
 
 public sealed class CreateEventRegistrationCommandHandlerTests
 {
@@ -28,10 +32,38 @@ public sealed class CreateEventRegistrationCommandHandlerTests
     private readonly IApprovalStatusRepository _approvalStatusRepository = Substitute.For<IApprovalStatusRepository>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly IContactShareConsentService _consentService = Substitute.For<IContactShareConsentService>();
+    private readonly INotificationOrchestrator _notificationOrchestrator = Substitute.For<INotificationOrchestrator>();
     private readonly CreateEventRegistrationCommandHandler _handler;
 
     public CreateEventRegistrationCommandHandlerTests()
     {
+        _notificationOrchestrator.EnqueueAsync(
+                Arg.Any<NotificationIntentDraft>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var draft = callInfo.ArgAt<NotificationIntentDraft>(0);
+                return new NotificationOrchestrationResult(
+                    new NotificationIntent
+                    {
+                        TenantId = draft.TenantId ?? Guid.CreateVersion7(),
+                        Tenant = null!,
+                        CategoryId = (int)NotificationCategoryEnum.RegistrationLifecycle,
+                        Category = null!,
+                        OwnershipTypeId = (int)NotificationOwnershipTypeEnum.IslamuEvent,
+                        OwnershipType = null!,
+                        RecipientKindId = (int)NotificationRecipientKindEnum.User,
+                        RecipientKind = null!,
+                        StatusId = (int)NotificationIntentStatusEnum.Pending,
+                        Status = null!,
+                        TemplateKey = draft.TemplateKey ?? string.Empty,
+                        DeduplicationKey = draft.DeduplicationKey ?? string.Empty
+                    },
+                    new NotificationOwnershipDecision(
+                        draft.Category,
+                        NotificationOwnership.IslamuEvent));
+            });
+
         _handler = new CreateEventRegistrationCommandHandler(
             _intentRepository,
             _eventRepository,
@@ -43,6 +75,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             CreateBusinessMetrics(),
             _consentService,
             new EventLifecycleEmailOutboxFactory(),
+            _notificationOrchestrator,
             Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>());
     }
 
@@ -73,6 +106,20 @@ public sealed class CreateEventRegistrationCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event Registration created successfully.");
+        await _notificationOrchestrator.Received(1).EnqueueAsync(
+            Arg.Is<NotificationIntentDraft>(draft =>
+                draft.Category == AppNotificationCategory.RegistrationLifecycle
+                && draft.TenantId == tenantId
+                && draft.RecipientKind == "User"
+                && draft.TemplateKey == "registration.confirmation"
+                && draft.SafePayloadReference == $"event-registration-intent:{result.Id}"
+                && draft.DeduplicationKey == $"event-registration-intent:{result.Id}:registration-confirmation"
+                && draft.CorrelationId == result.Id.ToString()
+                && draft.UserId == userId
+                && draft.EventId == eventId
+                && draft.IsUserFacing
+                && draft.IsIslamuInitiated),
+            Arg.Any<CancellationToken>());
         await _intentRepository.Received(1).CreateWithChildrenAndCapacityAsync(
             Arg.Is<EventRegistrationIntent>(intent =>
                 intent != null
@@ -169,6 +216,9 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(existingIntentId);
         await Assert.That(result.Message).IsEqualTo("Event Registration already exists.");
+        await _notificationOrchestrator.DidNotReceive().EnqueueAsync(
+            Arg.Any<NotificationIntentDraft>(),
+            Arg.Any<CancellationToken>());
         await _consentService.DidNotReceive().ProcessRegistrationConsent(
             Arg.Any<Guid>(),
             Arg.Any<Guid>(),

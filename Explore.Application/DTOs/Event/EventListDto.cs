@@ -15,6 +15,7 @@ public class EventListDto
     public string? Subtitle { get; set; }
     public string? Description { get; set; }
     public string? Slug { get; set; }
+    public string? PublicCode { get; set; }
 
     // Event Type
     public int EventTypeId { get; set; }

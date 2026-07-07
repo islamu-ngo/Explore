@@ -315,6 +315,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             Description = dto.Description,
             Content = dto.Content,
             Slug = string.IsNullOrWhiteSpace(dto.Slug) ? SlugGenerator.FromTitle(dto.Title, "event") : dto.Slug,
+            PublicCode = GeneratePublicCode(),
             EventTypeId = dto.EventTypeId,
             AudienceGenderId = dto.AudienceGenderId,
             AudienceAgeId = dto.AudienceAgeId,
@@ -352,6 +353,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             EventFormat = null!
         };
     }
+
+    private static string GeneratePublicCode() => Guid.NewGuid().ToString("N")[..12];
 
     private async Task AssignFeaturedImageActorAsync(CreateEventRequest dto, Guid actorId)
     {

@@ -15,7 +15,7 @@ public interface IPdsService
     /// Creates a new record in the PDS repository.
     /// </summary>
     /// <param name="did">The DID of the repository owner.</param>
-    /// <param name="collection">The AT Protocol collection NSID (e.g., "app.islamu.event").</param>
+    /// <param name="collection">The AT Protocol collection NSID (e.g., "app.example.event").</param>
     /// <param name="recordKey">The record key (TID format).</param>
     /// <param name="payload">JSON-serialized record content.</param>
     /// <param name="pdsHost">Target PDS host, or null for Islamu-hosted PDS.</param>

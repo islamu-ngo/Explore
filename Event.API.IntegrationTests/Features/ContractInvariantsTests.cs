@@ -403,6 +403,9 @@ public class ContractInvariantsTests
         await Assert.That(rateLimitPolicies)
             .Contains("AiAssistant")
             .Because("Endpoints decorated with [EnableRateLimiting] must expose their policy in OpenAPI for client and governance review.");
+        await Assert.That(rateLimitPolicies)
+            .Contains("ControlPlane")
+            .Because("Control-plane endpoints must expose their dedicated API-owned saturation policy in OpenAPI.");
         await Assert.That(cachePolicies)
             .Contains("ListData")
             .Because("Endpoints decorated with [OutputCache] must expose their cache policy in OpenAPI for contract inventory review.");

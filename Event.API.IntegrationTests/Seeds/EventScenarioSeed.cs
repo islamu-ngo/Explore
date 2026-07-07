@@ -15,8 +15,7 @@ namespace Event.Api.IntegrationTests.Seeds;
 /// </summary>
 public static class EventScenarioSeed
 {
-    /// <summary>Carries the ID and title of a seeded event.</summary>
-    public sealed record EventScenarioResult(Guid EventId, string Title);
+    public sealed record EventScenarioResult(Guid EventId, string Title, string PublicCode);
 
     /// <summary>
     /// Seeds a single published event visible to public API queries.
@@ -45,7 +44,7 @@ public static class EventScenarioSeed
         context.Events.Add(@event);
         await context.SaveChangesAsync();
 
-        return new EventScenarioResult(@event.Id, @event.Title);
+        return new EventScenarioResult(@event.Id, @event.Title, @event.PublicCode);
     }
 
     /// <summary>
@@ -67,7 +66,7 @@ public static class EventScenarioSeed
         context.Events.Add(@event);
         await context.SaveChangesAsync();
 
-        return new EventScenarioResult(@event.Id, @event.Title);
+        return new EventScenarioResult(@event.Id, @event.Title, @event.PublicCode);
     }
 
     /// <summary>
@@ -100,7 +99,7 @@ public static class EventScenarioSeed
             @event.RecalculateScheduleSummaryFromSessions();
 
             context.Events.Add(@event);
-            results.Add(new EventScenarioResult(@event.Id, @event.Title));
+            results.Add(new EventScenarioResult(@event.Id, @event.Title, @event.PublicCode));
         }
 
         await context.SaveChangesAsync();

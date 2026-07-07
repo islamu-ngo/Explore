@@ -9,6 +9,7 @@ namespace Explore.Application.Contracts.Persistence;
 public interface IEventRepository : IGenericRepository<Event, Guid>
 {
     Task<Event?> GetEventWithDetails(Guid id);
+    Task<Event?> GetPublicEventWithDetailsByCodeAsync(string publicCode, CancellationToken cancellationToken);
     Task<Event?> GetScheduleGraphForUpdateAsync(Guid id, CancellationToken cancellationToken);
     Task<Event?> GetAuthorizationTargetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<List<Event>> GetEventsWithDetails();
