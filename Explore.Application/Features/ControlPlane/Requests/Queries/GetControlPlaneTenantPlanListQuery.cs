@@ -1,0 +1,21 @@
+// ABOUTME: Secured query for listing control-plane tenant plan SaaS tiers.
+// ABOUTME: Uses instance-setting view authority so pricing tiers remain instance-admin-controlled.
+
+using Explore.Application.Authorization;
+using Explore.Application.DTOs.ControlPlane;
+using MediatR;
+
+namespace Explore.Application.Features.ControlPlane.Requests.Queries;
+
+[AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.View)]
+public sealed class GetControlPlaneTenantPlanListQuery : IRequest<IReadOnlyList<ControlPlaneTenantPlanListItemDto>>, ISecureRequest
+{
+    public const string SettingKey = "control-plane.tenant-plans";
+
+    string? ISecureRequest.ResourceId => SettingKey;
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["settingKey"] = SettingKey
+    };
+}

@@ -1,0 +1,106 @@
+// ABOUTME: Maps validated tenant plan drafts into normalized domain plan/version rows.
+// ABOUTME: Keeps SaaS tier pricing, setting, and quota materialization shared by plan commands.
+
+using Explore.Application.Features.ControlPlane.Plans;
+using Explore.Domain;
+using Explore.Domain.Enums;
+
+namespace Explore.Application.Features.ControlPlane;
+
+internal static class ControlPlaneTenantPlanDraftMapper
+{
+    public static TenantPlan ToPlan(TenantPlanDraft draft)
+    {
+        var plan = new TenantPlan
+        {
+            Id = Guid.NewGuid(),
+            Key = draft.Key.Trim(),
+            DisplayName = draft.Name.Trim()
+        };
+
+        plan.Versions.Add(ToVersion(plan, draft, versionNumber: 1, TenantPlanStatusEnum.Draft));
+        return plan;
+    }
+
+    public static TenantPlanVersion ToVersion(
+        TenantPlan plan,
+        TenantPlanDraft draft,
+        int versionNumber,
+        TenantPlanStatusEnum status)
+    {
+        var version = new TenantPlanVersion
+        {
+            Id = Guid.NewGuid(),
+            TenantPlan = plan,
+            TenantPlanId = plan.Id,
+            VersionNumber = versionNumber,
+            TenantPlanStatusId = (int)status,
+            PriceAmount = draft.Pricing.Amount,
+            CurrencyCode = draft.Pricing.CurrencyCode.Trim().ToUpperInvariant(),
+            BillingPeriod = draft.Pricing.BillingPeriod.Trim(),
+            IsActiveForProvisioning = draft.IsActiveForProvisioning
+        };
+
+        foreach (TenantPlanSettingOverride setting in draft.SettingOverrides)
+        {
+            version.Settings.Add(new TenantPlanVersionSetting
+            {
+                Id = Guid.NewGuid(),
+                TenantPlanVersion = version,
+                TenantPlanVersionId = version.Id,
+                SettingKey = setting.Key,
+                JsonValue = setting.JsonValue,
+                IsLocked = setting.IsLocked
+            });
+        }
+
+        foreach (TenantPlanQuotaLimit quota in draft.QuotaLimits)
+        {
+            version.Quotas.Add(new TenantPlanVersionQuota
+            {
+                Id = Guid.NewGuid(),
+                TenantPlanVersion = version,
+                TenantPlanVersionId = version.Id,
+                QuotaKey = quota.Key,
+                Limit = quota.Limit
+            });
+        }
+
+        return version;
+    }
+
+    public static void ApplyToVersion(TenantPlanVersion version, TenantPlanDraft draft)
+    {
+        version.PriceAmount = draft.Pricing.Amount;
+        version.CurrencyCode = draft.Pricing.CurrencyCode.Trim().ToUpperInvariant();
+        version.BillingPeriod = draft.Pricing.BillingPeriod.Trim();
+        version.IsActiveForProvisioning = draft.IsActiveForProvisioning;
+        version.Settings.Clear();
+        version.Quotas.Clear();
+
+        foreach (TenantPlanSettingOverride setting in draft.SettingOverrides)
+        {
+            version.Settings.Add(new TenantPlanVersionSetting
+            {
+                Id = Guid.NewGuid(),
+                TenantPlanVersion = version,
+                TenantPlanVersionId = version.Id,
+                SettingKey = setting.Key,
+                JsonValue = setting.JsonValue,
+                IsLocked = setting.IsLocked
+            });
+        }
+
+        foreach (TenantPlanQuotaLimit quota in draft.QuotaLimits)
+        {
+            version.Quotas.Add(new TenantPlanVersionQuota
+            {
+                Id = Guid.NewGuid(),
+                TenantPlanVersion = version,
+                TenantPlanVersionId = version.Id,
+                QuotaKey = quota.Key,
+                Limit = quota.Limit
+            });
+        }
+    }
+}
