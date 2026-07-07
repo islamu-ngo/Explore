@@ -13,6 +13,10 @@ public sealed class EventBffHostingOptions
 
     public string ApiBaseAddress { get; set; } = "https://localhost:7039/";
 
+    public string[] AdminHosts { get; set; } = [];
+
+    public string[] AdminHostAllowedIpRanges { get; set; } = [];
+
     public bool StripPrivilegedHeaders { get; set; } = true;
 
     public bool ForwardAccessToken { get; set; } = true;

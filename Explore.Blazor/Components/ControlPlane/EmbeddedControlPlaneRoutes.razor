@@ -1,0 +1,31 @@
+@* ABOUTME: Routes configured admin-host requests to the shared control-plane RCL pages.
+   ABOUTME: Uses a control-plane layout instead of the public tenant shell on dedicated admin hosts. *@
+@using Event.ControlPlane.Client
+
+<Router AppAssembly="@typeof(App).Assembly"
+        AdditionalAssemblies="@_additionalAssemblies">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(EmbeddedControlPlaneLayout)">
+            <NotAuthorized>
+                <EmbeddedControlPlaneRedirectToLogin />
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(EmbeddedControlPlaneLayout)">
+            <PageTitle>Not found - Event Control Plane</PageTitle>
+            <main class="control-plane-shell__page">
+                <h1>Not found</h1>
+                <p>The requested control-plane page was not found.</p>
+            </main>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private static readonly System.Reflection.Assembly[] _additionalAssemblies =
+    [
+        ControlPlaneClientAssembly.Value
+    ];
+}

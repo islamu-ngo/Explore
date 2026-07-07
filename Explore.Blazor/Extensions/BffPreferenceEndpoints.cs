@@ -109,14 +109,14 @@ public static class BffPreferenceEndpoints
         return await BffForwardingResults.JsonStreamOrFallbackAsync(response, Array.Empty<UserAppearanceProfileDto>(), cancellationToken);
     }
 
-    private static async Task<IResult> HandleSetActiveProfileAsync(HttpContext ctx, Guid profileId, CancellationToken cancellationToken)
+    private static async Task<IResult> HandleSetActiveProfileAsync(HttpContext ctx, SetActiveProfileRequestDto request, CancellationToken cancellationToken)
     {
         if (ctx.User.Identity?.IsAuthenticated != true)
         {
             return Results.Unauthorized();
         }
 
-        using var response = await GetPreferenceForwarding(ctx).SetActiveProfileAsync(profileId, cancellationToken);
+        using var response = await GetPreferenceForwarding(ctx).SetActiveProfileAsync(request.ProfileId, cancellationToken);
         return BffForwardingResults.OkOrProblem(response, "Could not set active profile.", "Active profile update failed");
     }
 

@@ -2,6 +2,7 @@
 // ABOUTME: Keeps host profile and API proxy defaults consistent across public and control-plane hosts.
 
 using Event.Web.BffHosting.Authentication;
+using Event.Web.BffHosting.Abstractions;
 using Event.Web.BffHosting.Options;
 using Event.Web.BffHosting.Proxy;
 using Event.Web.BffHosting.Security;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Event.Web.BffHosting.Extensions;
 
@@ -32,8 +34,12 @@ public static class ServiceCollectionExtensions
             {
                 options.HostProfile = hostProfile;
                 options.ApiBaseAddress = apiBaseAddress;
-            });
+            })
+            .ValidateOnStart();
 
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<EventBffHostingOptions>, EventBffHostingOptionsValidator>());
+        services.TryAddSingleton<IEventBffHostClassifier, EventBffHostClassifier>();
+        services.TryAddSingleton<EventBffAdminHostAccessPolicy>();
         services.TryAddSingleton<ISafeAuthDiagnosticsPolicy, SafeAuthDiagnosticsPolicy>();
         services.TryAddSingleton<IEventBffOidcOptionsFactory, EventBffOidcOptionsFactory>();
         services.TryAddScoped<IEventBffCookieSessionHandler, NoopEventBffCookieSessionHandler>();

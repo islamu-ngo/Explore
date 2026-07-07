@@ -95,7 +95,7 @@ public sealed class EventBffKeycloakAuthenticationOptions
             LoginPath = First(configuration,
                 $"{SectionName}:LoginPath",
                 "Bff:Cookie:LoginPath")
-                ?? "/login",
+                ?? "/auth/login",
             AccessDeniedPath = First(configuration,
                 $"{SectionName}:AccessDeniedPath",
                 "Bff:Cookie:AccessDeniedPath")

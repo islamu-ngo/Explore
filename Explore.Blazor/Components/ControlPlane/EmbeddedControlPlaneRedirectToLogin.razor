@@ -1,0 +1,14 @@
+@* ABOUTME: Redirects unauthorized embedded control-plane route access through same-origin BFF login.
+   ABOUTME: Keeps dedicated admin-host auth in the server-side cookie flow without browser token handling. *@
+@inject NavigationManager Navigation
+
+<p class="control-plane-shell__muted">Redirecting to sign in...</p>
+
+@code {
+    protected override void OnInitialized()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var returnUrl = "/" + relative;
+        Navigation.NavigateTo($"/auth/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+    }
+}

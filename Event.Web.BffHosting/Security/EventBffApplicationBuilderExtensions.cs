@@ -21,7 +21,10 @@ public static class EventBffApplicationBuilderExtensions
         "connect-src 'self' https: http: ws: wss:; " +
         "frame-ancestors 'none'; " +
         "base-uri 'self'; " +
-        "object-src 'none'";
+        "object-src 'none'; " +
+        "form-action 'self'";
+
+    private const string PermissionsPolicy = "camera=(), microphone=(), geolocation=(), payment=()";
 
     public static WebApplication UseEventBffForwardedHeaders(this WebApplication app)
     {
@@ -54,8 +57,29 @@ public static class EventBffApplicationBuilderExtensions
                 headers[HeaderNames.XFrameOptions] = "DENY";
                 headers[HeaderNames.XContentTypeOptions] = "nosniff";
                 headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+                headers["Permissions-Policy"] = PermissionsPolicy;
                 return Task.CompletedTask;
             });
+
+            await next();
+        });
+
+        return app;
+    }
+
+    public static WebApplication UseEventBffAdminHostAccessControl(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        app.Use(async (context, next) =>
+        {
+            var accessPolicy = context.RequestServices.GetRequiredService<EventBffAdminHostAccessPolicy>();
+            if (!accessPolicy.IsAllowed(context))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsync("Admin host access is not allowed from this network.");
+                return;
+            }
 
             await next();
         });

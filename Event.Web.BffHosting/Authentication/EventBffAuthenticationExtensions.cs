@@ -107,7 +107,6 @@ public static class EventBffAuthenticationExtensions
         options.Scope.Add("openid");
         options.Scope.Add("profile");
         options.Scope.Add("email");
-        options.Scope.Add("offline_access");
         options.BackchannelHttpHandler = EventBffOidcOptionsFactory.CreateIpv4BackchannelHandler();
         options.Events = CreateEvents();
     }
