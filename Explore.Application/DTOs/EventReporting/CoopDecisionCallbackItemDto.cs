@@ -1,5 +1,5 @@
 // ABOUTME: Coop callback item metadata for a reviewed event-report case.
-// ABOUTME: Accepts public Coop camel-case fields plus ISLAMU mirror identifiers.
+// ABOUTME: Accepts public Coop camel-case fields plus platform mirror identifiers.
 
 using System.Text.Json.Serialization;
 

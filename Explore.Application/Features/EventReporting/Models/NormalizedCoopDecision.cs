@@ -18,4 +18,6 @@ public sealed record NormalizedCoopDecision(
     string ExternalDecisionId,
     string? ProviderCaseId,
     string? ProviderUrl,
+    EventReportProviderTargetScope ProviderTargetScope,
+    string ProviderTargetId,
     string CorrelationId);

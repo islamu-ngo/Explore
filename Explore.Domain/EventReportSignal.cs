@@ -12,6 +12,7 @@ public class EventReportSignal : ITenantEntity, IAuditableEntity
     private const int MaxPolicyCodeLength = 100;
     private const int MaxSafeSummaryLength = 500;
     private const int MaxExternalSignalIdLength = 200;
+    private const int MaxProviderTargetIdLength = 200;
     private const int MaxCorrelationIdLength = 100;
 
     public Guid Id { get; private set; }
@@ -22,6 +23,8 @@ public class EventReportSignal : ITenantEntity, IAuditableEntity
     public Guid EventId { get; private set; }
     public Event Event { get; private set; } = null!;
     public EventReportSignalProvider Provider { get; private set; }
+    public EventReportProviderTargetScope ProviderTargetScope { get; private set; }
+    public string ProviderTargetId { get; private set; } = null!;
     public string SignalType { get; private set; } = null!;
     public string PolicyCode { get; private set; } = null!;
     public decimal? Score { get; private set; }
@@ -48,11 +51,14 @@ public class EventReportSignal : ITenantEntity, IAuditableEntity
         string? safeSummary,
         string? externalSignalId,
         string correlationId,
-        DateTime? createdAt = null)
+        DateTime? createdAt = null,
+        EventReportProviderTargetScope providerTargetScope = EventReportProviderTargetScope.Instance,
+        string providerTargetId = "instance")
     {
         EventReportGuards.RequireGuid(tenantId, nameof(tenantId), "Tenant id is required.");
         EventReportGuards.RequireGuid(eventId, nameof(eventId), "Event id is required.");
         EventReportGuards.RequireDefined(provider, nameof(provider));
+        EventReportGuards.RequireDefined(providerTargetScope, nameof(providerTargetScope));
         EventReportGuards.RequireDefined(verdict, nameof(verdict));
         EventReportGuards.RequireScore(score, nameof(score));
 
@@ -73,6 +79,8 @@ public class EventReportSignal : ITenantEntity, IAuditableEntity
             ReportId = reportId,
             EventId = eventId,
             Provider = provider,
+            ProviderTargetScope = providerTargetScope,
+            ProviderTargetId = EventReportGuards.NormalizeRequired(providerTargetId, MaxProviderTargetIdLength, nameof(providerTargetId)),
             SignalType = EventReportGuards.NormalizeRequired(signalType, MaxSignalTypeLength, nameof(signalType)),
             PolicyCode = EventReportGuards.NormalizeRequired(policyCode, MaxPolicyCodeLength, nameof(policyCode)),
             Score = score,

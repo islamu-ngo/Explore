@@ -19,7 +19,11 @@ public sealed record ReviewCaseEnvelope(
     DateTime? SlaDueAtUtc,
     string IdempotencyKey,
     string? CorrelationId,
-    EventReportProviderEvidenceMode EvidenceMode = EventReportProviderEvidenceMode.MetadataOnly);
+    EventReportProviderEvidenceMode EvidenceMode = EventReportProviderEvidenceMode.MetadataOnly,
+    EventReportProviderTargetScope ProviderTargetScope = EventReportProviderTargetScope.Instance,
+    string ProviderTargetId = "instance",
+    string? ProviderEndpointUrl = null,
+    string? ProviderApiKey = null);
 
 public sealed record ReviewCaseSyncResult(
     bool Succeeded,

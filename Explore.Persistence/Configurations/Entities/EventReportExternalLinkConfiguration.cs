@@ -14,6 +14,8 @@ public sealed class EventReportExternalLinkConfiguration : IEntityTypeConfigurat
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
         builder.Property(e => e.Provider).HasConversion<int>().IsRequired();
+        builder.Property(e => e.ProviderTargetScope).HasConversion<int>().IsRequired();
+        builder.Property(e => e.ProviderTargetId).HasMaxLength(200).IsRequired();
         builder.Property(e => e.ProviderCaseId).HasMaxLength(200);
         builder.Property(e => e.ProviderSignalId).HasMaxLength(200);
         builder.Property(e => e.ProviderUrl).HasMaxLength(500);
@@ -38,27 +40,29 @@ public sealed class EventReportExternalLinkConfiguration : IEntityTypeConfigurat
             .HasPrincipalKey(e => new { e.TenantId, e.ReportId, e.Id })
             .OnDelete(DeleteBehavior.ClientNoAction);
 
-        builder.HasIndex(e => new { e.TenantId, e.Provider, e.SyncState, e.CreatedAt })
-            .HasDatabaseName("ix_event_report_external_links_tenant_provider_state_created")
-            .IsDescending(false, false, false, true);
+        builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderTargetScope, e.ProviderTargetId, e.SyncState, e.CreatedAt })
+            .HasDatabaseName("ix_event_report_external_links_tenant_provider_target_state_created")
+            .IsDescending(false, false, false, false, false, true);
 
-        builder.HasIndex(e => new { e.TenantId, e.Provider, e.CorrelationId })
+        builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderTargetScope, e.ProviderTargetId, e.CorrelationId })
             .IsUnique()
-            .HasDatabaseName("ux_event_report_external_links_tenant_provider_correlation");
+            .HasDatabaseName("ux_event_report_external_links_tenant_provider_target_correlation");
 
-        builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderCaseId })
+        builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderTargetScope, e.ProviderTargetId, e.ProviderCaseId })
             .IsUnique()
             .HasFilter("provider_case_id IS NOT NULL")
-            .HasDatabaseName("ux_event_report_external_links_tenant_provider_case");
+            .HasDatabaseName("ux_event_report_external_links_tenant_provider_target_case");
 
-        builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderSignalId })
+        builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderTargetScope, e.ProviderTargetId, e.ProviderSignalId })
             .IsUnique()
             .HasFilter("provider_signal_id IS NOT NULL")
-            .HasDatabaseName("ux_event_report_external_links_tenant_provider_signal");
+            .HasDatabaseName("ux_event_report_external_links_tenant_provider_target_signal");
 
         builder.ToTable("event_report_external_links", t =>
         {
             t.HasCheckConstraint("ck_event_report_external_links_provider", "provider BETWEEN 1 AND 2");
+            t.HasCheckConstraint("ck_event_report_external_links_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
+            t.HasCheckConstraint("ck_event_report_external_links_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
             t.HasCheckConstraint("ck_event_report_external_links_sync_state", "sync_state BETWEEN 1 AND 5");
             t.HasCheckConstraint("ck_event_report_external_links_retry_count_nonnegative", "retry_count >= 0");
             t.HasCheckConstraint("ck_event_report_external_links_provider_case_id_not_blank", "provider_case_id IS NULL OR length(btrim(provider_case_id)) > 0");

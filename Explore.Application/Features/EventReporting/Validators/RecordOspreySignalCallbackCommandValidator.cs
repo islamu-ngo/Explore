@@ -16,6 +16,7 @@ public sealed class RecordOspreySignalCallbackCommandValidator : AbstractValidat
     private const int MaxSafeSummaryLength = 500;
     private const int MaxExternalSignalIdLength = 200;
     private const int MaxCorrelationIdLength = 100;
+    private const int MaxProviderTargetIdLength = 200;
 
     public RecordOspreySignalCallbackCommandValidator()
     {
@@ -32,6 +33,13 @@ public sealed class RecordOspreySignalCallbackCommandValidator : AbstractValidat
         RuleFor(command => command.Request.CorrelationId)
             .MaximumLength(MaxCorrelationIdLength)
             .When(command => !string.IsNullOrWhiteSpace(command.Request.CorrelationId));
+        RuleFor(command => command.Request.ProviderTargetScope)
+            .Must(IsValidProviderTargetScope)
+            .WithMessage("ProviderTargetScope must be instance or tenant.")
+            .When(command => !string.IsNullOrWhiteSpace(command.Request.ProviderTargetScope));
+        RuleFor(command => command.Request.ProviderTargetId)
+            .MaximumLength(MaxProviderTargetIdLength)
+            .When(command => !string.IsNullOrWhiteSpace(command.Request.ProviderTargetId));
 
         RuleFor(command => command.Request.Signals)
             .NotEmpty()
@@ -71,5 +79,11 @@ public sealed class RecordOspreySignalCallbackCommandValidator : AbstractValidat
                 .MaximumLength(MaxCorrelationIdLength)
                 .When(signal => !string.IsNullOrWhiteSpace(signal.CorrelationId));
         }
+    }
+
+    private static bool IsValidProviderTargetScope(string? value)
+    {
+        return string.Equals(value, "instance", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "tenant", StringComparison.OrdinalIgnoreCase);
     }
 }

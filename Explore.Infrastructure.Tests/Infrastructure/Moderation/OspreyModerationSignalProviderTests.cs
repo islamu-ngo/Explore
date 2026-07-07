@@ -89,6 +89,50 @@ public sealed class OspreyModerationSignalProviderTests
     }
 
     [Test]
+    public async Task EvaluateAsync_WithTenantTargetOverride_UsesTenantEndpointAndMapsTarget()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse(HttpStatusCode.OK, """
+        {
+          "signals": [
+            {
+              "signal_type": "policy_match",
+              "policy_code": "event.spam",
+              "score": 0.88,
+              "verdict": "needs_review",
+              "recommended_action": "queue_review",
+              "external_signal_id": "tenant-signal-1"
+            }
+          ]
+        }
+        """));
+        var provider = CreateProvider(new OspreyProviderOptions
+        {
+            Enabled = false,
+            EndpointUrl = "https://instance-osprey.example",
+            EvaluatePath = "/evaluate",
+            ApiKey = "instance-secret"
+        }, handler);
+
+        var envelope = CreateEnvelope() with
+        {
+            ProviderTargetScope = EventReportProviderTargetScope.Tenant,
+            ProviderTargetId = "tenant-1",
+            ProviderEndpointUrl = "https://tenant-osprey.example/root",
+            ProviderApiKey = "tenant-secret"
+        };
+
+        var result = await provider.EvaluateAsync(envelope);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(handler.RequestUri!.ToString()).IsEqualTo("https://tenant-osprey.example/root/evaluate");
+        await Assert.That(handler.AuthorizationParameter).IsEqualTo("tenant-secret");
+
+        var signal = result.Signals.Single();
+        await Assert.That(signal.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
+        await Assert.That(signal.ProviderTargetId).IsEqualTo("tenant-1");
+    }
+
+    [Test]
     public async Task EvaluateAsync_WhenOspreyReturnsServerError_ReturnsRetryableFailure()
     {
         var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));

@@ -10,6 +10,10 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.EventReporting.Models;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Configuration;
+using Explore.Infrastructure.Osprey;
+using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
+using Grpc.Net.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -36,7 +40,13 @@ public sealed class OspreyModerationSignalProvider(
         cancellationToken.ThrowIfCancellationRequested();
 
         var currentOptions = options.CurrentValue;
-        if (!IsConfigured(currentOptions))
+        if (IsGrpcTransport(currentOptions))
+        {
+            return await EvaluateGrpcAsync(currentOptions, envelope, cancellationToken);
+        }
+
+        string? endpointUrl = ResolveHttpEndpointUrl(currentOptions, envelope);
+        if (string.IsNullOrWhiteSpace(endpointUrl))
         {
             return EventSafetySignalProviderResult.Failure(
                 "osprey_provider_disabled",
@@ -49,7 +59,7 @@ public sealed class OspreyModerationSignalProvider(
 
         try
         {
-            using var request = CreateRequest(currentOptions, CreatePayload(envelope, currentOptions));
+            using var request = CreateRequest(currentOptions, endpointUrl, envelope.ProviderApiKey, CreatePayload(envelope, currentOptions));
             var client = httpClientFactory.CreateClient(HttpClientName);
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token);
 
@@ -117,8 +127,91 @@ public sealed class OspreyModerationSignalProvider(
         }
     }
 
-    private static bool IsConfigured(OspreyProviderOptions currentOptions) =>
-        currentOptions.Enabled && !string.IsNullOrWhiteSpace(currentOptions.EndpointUrl);
+    private async Task<EventSafetySignalProviderResult> EvaluateGrpcAsync(
+        OspreyProviderOptions currentOptions,
+        EventReportProviderEnvelope envelope,
+        CancellationToken cancellationToken)
+    {
+        string? endpointUrl = ResolveGrpcEndpointUrl(currentOptions, envelope);
+        if (string.IsNullOrWhiteSpace(endpointUrl))
+        {
+            return EventSafetySignalProviderResult.Failure(
+                "osprey_provider_disabled",
+                isTransient: false,
+                "Osprey gRPC provider is not enabled or configured.");
+        }
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(currentOptions.TimeoutSeconds, 1, 300)));
+
+        try
+        {
+            var payload = CreatePayload(envelope, currentOptions);
+            var request = new ProcessActionRequest
+            {
+                ActionId = CreateActionId(envelope),
+                ActionName = NormalizeRequired(currentOptions.EventType, "event_report", MaxSignalTypeLength),
+                ActionDataJson = JsonSerializer.Serialize(payload, JsonOptions),
+                Timestamp = Timestamp.FromDateTime(DateTime.UtcNow)
+            };
+
+            using var channel = GrpcChannel.ForAddress(endpointUrl.Trim());
+            var client = new OspreyCoordinatorSyncActionService.OspreyCoordinatorSyncActionServiceClient(channel);
+            var response = await client.ProcessActionAsync(request, cancellationToken: timeoutCts.Token);
+            return EventSafetySignalProviderResult.Success(MapGrpcSignals(envelope, response));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            return EventSafetySignalProviderResult.Failure(
+                "osprey_timeout",
+                isTransient: true,
+                "Osprey gRPC signal evaluation timed out.");
+        }
+        catch (RpcException ex)
+        {
+            var failure = MapGrpcFailure(ex.StatusCode);
+            logger.LogWarning(
+                ex,
+                "Osprey gRPC signal evaluation failed with status {StatusCode} and category {FailureCategory}",
+                ex.StatusCode,
+                failure.Category);
+            return EventSafetySignalProviderResult.Failure(
+                failure.Category,
+                failure.IsTransient,
+                failure.SafeDetail);
+        }
+        catch (UriFormatException)
+        {
+            return EventSafetySignalProviderResult.Failure(
+                "osprey_invalid_configuration",
+                isTransient: false,
+                "Osprey gRPC endpoint configuration is invalid.");
+        }
+    }
+
+    private static string? ResolveHttpEndpointUrl(OspreyProviderOptions currentOptions, EventReportProviderEnvelope envelope)
+    {
+        if (!string.IsNullOrWhiteSpace(envelope.ProviderEndpointUrl))
+        {
+            return envelope.ProviderEndpointUrl;
+        }
+
+        return currentOptions.Enabled ? currentOptions.EndpointUrl : null;
+    }
+
+    private static string? ResolveGrpcEndpointUrl(OspreyProviderOptions currentOptions, EventReportProviderEnvelope envelope)
+    {
+        if (!string.IsNullOrWhiteSpace(envelope.ProviderEndpointUrl))
+        {
+            return envelope.ProviderEndpointUrl;
+        }
+
+        return currentOptions.Enabled ? currentOptions.GrpcEndpointUrl : null;
+    }
 
     private static OspreyEvaluateRequest CreatePayload(
         EventReportProviderEnvelope envelope,
@@ -144,21 +237,24 @@ public sealed class OspreyModerationSignalProvider(
 
     private static HttpRequestMessage CreateRequest(
         OspreyProviderOptions currentOptions,
+        string endpointUrl,
+        string? providerApiKey,
         OspreyEvaluateRequest payload)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, BuildEvaluateUri(currentOptions));
+        var request = new HttpRequestMessage(HttpMethod.Post, BuildEvaluateUri(currentOptions, endpointUrl));
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        if (!string.IsNullOrWhiteSpace(currentOptions.ApiKey))
+        string? apiKey = string.IsNullOrWhiteSpace(providerApiKey) ? currentOptions.ApiKey : providerApiKey;
+        if (!string.IsNullOrWhiteSpace(apiKey))
         {
             var headerName = currentOptions.ApiKeyHeaderName.Trim();
             if (string.Equals(headerName, "Authorization", StringComparison.OrdinalIgnoreCase))
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", currentOptions.ApiKey.Trim());
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey.Trim());
             }
             else
             {
-                request.Headers.TryAddWithoutValidation(headerName, currentOptions.ApiKey.Trim());
+                request.Headers.TryAddWithoutValidation(headerName, apiKey.Trim());
             }
         }
 
@@ -167,9 +263,9 @@ public sealed class OspreyModerationSignalProvider(
         return request;
     }
 
-    private static Uri BuildEvaluateUri(OspreyProviderOptions currentOptions)
+    private static Uri BuildEvaluateUri(OspreyProviderOptions currentOptions, string endpointUrl)
     {
-        var endpoint = new Uri(currentOptions.EndpointUrl.Trim(), UriKind.Absolute);
+        var endpoint = new Uri(endpointUrl.Trim(), UriKind.Absolute);
         var endpointPath = endpoint.AbsolutePath.TrimEnd('/');
         var evaluatePath = currentOptions.EvaluatePath.Trim();
 
@@ -205,6 +301,18 @@ public sealed class OspreyModerationSignalProvider(
         };
     }
 
+    private static OspreyFailure MapGrpcFailure(StatusCode statusCode)
+    {
+        return statusCode switch
+        {
+            StatusCode.InvalidArgument => new("osprey_invalid_request", false, "Osprey rejected the signal evaluation request."),
+            StatusCode.Unauthenticated or StatusCode.PermissionDenied => new("osprey_auth_failed", false, "Osprey rejected the configured credentials."),
+            StatusCode.DeadlineExceeded or StatusCode.Unavailable or StatusCode.ResourceExhausted => new("osprey_transient_grpc_failure", true, statusCode.ToString()),
+            StatusCode.Aborted or StatusCode.Internal or StatusCode.Unknown => new("osprey_transient_grpc_failure", true, statusCode.ToString()),
+            _ => new("osprey_grpc_failure", false, statusCode.ToString())
+        };
+    }
+
     private static IReadOnlyList<EventSafetySignalEnvelope> MapSignals(
         EventReportProviderEnvelope envelope,
         OspreyEvaluateResponse providerResponse)
@@ -232,7 +340,40 @@ public sealed class OspreyModerationSignalProvider(
                 NormalizeOptional(signal.SafeSummary, MaxSafeSummaryLength),
                 NormalizeOptional(signal.ExternalSignalId, MaxExternalSignalIdLength),
                 ResolveCorrelationId(signal.CorrelationId, providerResponse.CorrelationId, envelope),
-                signal.CreatedAtUtc?.UtcDateTime ?? utcNow))
+                signal.CreatedAtUtc?.UtcDateTime ?? utcNow,
+                envelope.ProviderTargetScope,
+                envelope.ProviderTargetId))
+            .ToList();
+    }
+
+    private static IReadOnlyList<EventSafetySignalEnvelope> MapGrpcSignals(
+        EventReportProviderEnvelope envelope,
+        ProcessActionResponse response)
+    {
+        if (response.Verdicts is null || response.Verdicts.Verdicts_.Count == 0)
+        {
+            return [];
+        }
+
+        var utcNow = response.Verdicts.Timestamp?.ToDateTime() ?? DateTime.UtcNow;
+        return response.Verdicts.Verdicts_
+            .Where(verdict => !string.IsNullOrWhiteSpace(verdict))
+            .Select((verdict, index) => new EventSafetySignalEnvelope(
+                envelope.TenantId,
+                envelope.ReportId,
+                envelope.EventId,
+                EventReportSignalProvider.Osprey,
+                "osprey_grpc_verdict",
+                NormalizeRequired(response.Verdicts.ActionName, "osprey.grpc", MaxPolicyCodeLength),
+                Score: null,
+                MapVerdict(verdict),
+                MapRecommendedAction(verdict),
+                NormalizeOptional(verdict, MaxSafeSummaryLength),
+                $"osprey-grpc-{response.Verdicts.ActionId}-{index}",
+                ResolveCorrelationId(null, null, envelope),
+                utcNow,
+                envelope.ProviderTargetScope,
+                envelope.ProviderTargetId))
             .ToList();
     }
 
@@ -325,8 +466,16 @@ public sealed class OspreyModerationSignalProvider(
         return value.Trim().Replace('-', '_').ToLowerInvariant();
     }
 
+    private static bool IsGrpcTransport(OspreyProviderOptions currentOptions) =>
+        string.Equals(currentOptions.Transport?.Trim(), OspreyProviderOptions.TransportGrpc, StringComparison.OrdinalIgnoreCase);
+
+    private static ulong CreateActionId(EventReportProviderEnvelope envelope)
+    {
+        return BitConverter.ToUInt64(envelope.ReportId.ToByteArray(), 0);
+    }
+
     private static string ToCode<TEnum>(TEnum value)
-        where TEnum : struct, Enum
+        where TEnum : struct, System.Enum
     {
         var name = value.ToString();
         var builder = new StringBuilder(name.Length + 4);

@@ -22,6 +22,7 @@ public sealed class RuntimeModerationProviderResolver :
     private readonly CoopReviewQueueProvider _coopReviewQueueProvider;
     private readonly NoopModerationSignalProvider _noopSignalProvider;
     private readonly NoopReviewQueueProvider _noopReviewQueueProvider;
+    private readonly IReportingRoutingPolicyResolver _routingPolicyResolver;
     private readonly IOptionsMonitor<ModerationProviderOptions> _options;
     private readonly ILogger<RuntimeModerationProviderResolver> _logger;
 
@@ -32,6 +33,7 @@ public sealed class RuntimeModerationProviderResolver :
         CoopReviewQueueProvider coopReviewQueueProvider,
         NoopModerationSignalProvider noopSignalProvider,
         NoopReviewQueueProvider noopReviewQueueProvider,
+        IReportingRoutingPolicyResolver routingPolicyResolver,
         IOptionsMonitor<ModerationProviderOptions> options,
         ILogger<RuntimeModerationProviderResolver> logger)
     {
@@ -41,11 +43,12 @@ public sealed class RuntimeModerationProviderResolver :
         _coopReviewQueueProvider = coopReviewQueueProvider;
         _noopSignalProvider = noopSignalProvider;
         _noopReviewQueueProvider = noopReviewQueueProvider;
+        _routingPolicyResolver = routingPolicyResolver;
         _options = options;
         _logger = logger;
     }
 
-    public Task<EventReportProviderSyncResult> SyncReportAsync(
+    public async Task<EventReportProviderSyncResult> SyncReportAsync(
         EventReportProviderEnvelope envelope,
         CancellationToken cancellationToken = default)
     {
@@ -54,16 +57,19 @@ public sealed class RuntimeModerationProviderResolver :
         var options = _options.CurrentValue;
         if (options.IsDisabled || !options.SyncReports)
         {
-            return Task.FromResult(EventReportProviderSyncResult.Disabled("Event report provider synchronization is disabled."));
+            return EventReportProviderSyncResult.Disabled("Event report provider synchronization is disabled.");
         }
 
-        if (options.IsLocalOnly)
+        ReportingRoutingPolicy policy = await _routingPolicyResolver.ResolveAsync(cancellationToken);
+        EventReportProviderEnvelope routedEnvelope = envelope with { EvidenceMode = policy.EvidenceMode };
+
+        if (!policy.ExternalSyncEnabled)
         {
-            return _localProvider.SyncReportAsync(envelope, cancellationToken);
+            return await _localProvider.SyncReportAsync(routedEnvelope, cancellationToken);
         }
 
-        return ExecuteProviderAsync(
-            () => _compositeProvider.SyncReportAsync(ApplyEvidenceMode(envelope, options), cancellationToken),
+        return await ExecuteProviderAsync(
+            () => _compositeProvider.SyncReportAsync(routedEnvelope, cancellationToken),
             ex => EventReportProviderSyncResult.Failure("provider_sync_failed", isTransient: true, ex.GetType().Name));
     }
 

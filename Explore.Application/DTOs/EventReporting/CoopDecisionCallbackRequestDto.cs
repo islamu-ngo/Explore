@@ -52,6 +52,16 @@ public sealed class CoopDecisionCallbackRequestDto
     [JsonPropertyName("provider_url")]
     public string? ProviderUrlSnake { get; init; }
 
+    public string? ProviderTargetScope { get; init; }
+
+    [JsonPropertyName("provider_target_scope")]
+    public string? ProviderTargetScopeSnake { get; init; }
+
+    public string? ProviderTargetId { get; init; }
+
+    [JsonPropertyName("provider_target_id")]
+    public string? ProviderTargetIdSnake { get; init; }
+
     public string? CorrelationId { get; init; }
 
     [JsonPropertyName("correlation_id")]

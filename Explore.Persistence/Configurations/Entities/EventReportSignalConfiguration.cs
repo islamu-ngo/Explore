@@ -14,6 +14,8 @@ public sealed class EventReportSignalConfiguration : IEntityTypeConfiguration<Ev
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
         builder.Property(e => e.Provider).HasConversion<int>().IsRequired();
+        builder.Property(e => e.ProviderTargetScope).HasConversion<int>().IsRequired();
+        builder.Property(e => e.ProviderTargetId).HasMaxLength(200).IsRequired();
         builder.Property(e => e.SignalType).HasMaxLength(100).IsRequired();
         builder.Property(e => e.PolicyCode).HasMaxLength(100).IsRequired();
         builder.Property(e => e.Score).HasPrecision(5, 4);
@@ -39,27 +41,29 @@ public sealed class EventReportSignalConfiguration : IEntityTypeConfiguration<Ev
             .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
             .OnDelete(DeleteBehavior.ClientNoAction);
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.Provider, e.CreatedAt })
-            .HasDatabaseName("ix_event_report_signals_tenant_event_provider_created")
-            .IsDescending(false, false, false, true);
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.Provider, e.ProviderTargetScope, e.ProviderTargetId, e.CreatedAt })
+            .HasDatabaseName("ix_event_report_signals_tenant_event_provider_target_created")
+            .IsDescending(false, false, false, false, false, true);
 
-        builder.HasIndex(e => new { e.TenantId, e.ReportId, e.Provider, e.CreatedAt })
+        builder.HasIndex(e => new { e.TenantId, e.ReportId, e.Provider, e.ProviderTargetScope, e.ProviderTargetId, e.CreatedAt })
             .HasFilter("report_id IS NOT NULL")
-            .HasDatabaseName("ix_event_report_signals_tenant_report_provider_created")
-            .IsDescending(false, false, false, true);
+            .HasDatabaseName("ix_event_report_signals_tenant_report_provider_target_created")
+            .IsDescending(false, false, false, false, false, true);
 
-        builder.HasIndex(e => new { e.TenantId, e.Provider, e.ExternalSignalId })
+        builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderTargetScope, e.ProviderTargetId, e.ExternalSignalId })
             .IsUnique()
             .HasFilter("external_signal_id IS NOT NULL")
-            .HasDatabaseName("ux_event_report_signals_tenant_provider_external_signal");
+            .HasDatabaseName("ux_event_report_signals_tenant_provider_target_external_signal");
 
-        builder.HasIndex(e => new { e.TenantId, e.Provider, e.CorrelationId })
+        builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderTargetScope, e.ProviderTargetId, e.CorrelationId })
             .IsUnique()
-            .HasDatabaseName("ux_event_report_signals_tenant_provider_correlation");
+            .HasDatabaseName("ux_event_report_signals_tenant_provider_target_correlation");
 
         builder.ToTable("event_report_signals", t =>
         {
             t.HasCheckConstraint("ck_event_report_signals_provider", "provider BETWEEN 1 AND 5");
+            t.HasCheckConstraint("ck_event_report_signals_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
+            t.HasCheckConstraint("ck_event_report_signals_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
             t.HasCheckConstraint("ck_event_report_signals_signal_type_not_blank", "length(btrim(signal_type)) > 0");
             t.HasCheckConstraint("ck_event_report_signals_policy_code_not_blank", "length(btrim(policy_code)) > 0");
             t.HasCheckConstraint("ck_event_report_signals_score_range", "score IS NULL OR (score >= 0 AND score <= 1)");

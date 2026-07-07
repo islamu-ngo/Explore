@@ -14,4 +14,6 @@ public sealed record NormalizedOspreySignal(
     string? SafeSummary,
     string? ExternalSignalId,
     string CorrelationId,
+    EventReportProviderTargetScope ProviderTargetScope,
+    string ProviderTargetId,
     DateTime CreatedAtUtc);

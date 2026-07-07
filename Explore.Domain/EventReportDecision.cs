@@ -11,6 +11,7 @@ public class EventReportDecision : ITenantEntity, IAuditableEntity
     public const int MaxReasonCodeLength = 100;
     public const int MaxSafeNoteLength = 1000;
     public const int MaxExternalDecisionIdLength = 200;
+    private const int MaxProviderTargetIdLength = 200;
 
     public Guid Id { get; private set; }
     public Guid TenantId { get; set; }
@@ -20,6 +21,8 @@ public class EventReportDecision : ITenantEntity, IAuditableEntity
     public Guid ReportId { get; private set; }
     public EventReport Report { get; private set; } = null!;
     public EventReportDecisionSource DecisionSource { get; private set; }
+    public EventReportProviderTargetScope ProviderTargetScope { get; private set; }
+    public string ProviderTargetId { get; private set; } = null!;
     public EventReportDecisionKind DecisionKind { get; private set; }
     public string ReasonCode { get; private set; } = null!;
     public string? SafeNote { get; private set; }
@@ -41,12 +44,15 @@ public class EventReportDecision : ITenantEntity, IAuditableEntity
         string? safeNote,
         Guid? moderatorUserId,
         string? externalDecisionId,
-        DateTime? createdAt = null)
+        DateTime? createdAt = null,
+        EventReportProviderTargetScope providerTargetScope = EventReportProviderTargetScope.Local,
+        string providerTargetId = "local")
     {
         EventReportGuards.RequireGuid(tenantId, nameof(tenantId), "Tenant id is required.");
         EventReportGuards.RequireGuid(caseId, nameof(caseId), "Case id is required.");
         EventReportGuards.RequireGuid(reportId, nameof(reportId), "Report id is required.");
         EventReportGuards.RequireDefined(decisionSource, nameof(decisionSource));
+        EventReportGuards.RequireDefined(providerTargetScope, nameof(providerTargetScope));
         EventReportGuards.RequireDefined(decisionKind, nameof(decisionKind));
 
         if (moderatorUserId == Guid.Empty)
@@ -66,6 +72,8 @@ public class EventReportDecision : ITenantEntity, IAuditableEntity
             CaseId = caseId,
             ReportId = reportId,
             DecisionSource = decisionSource,
+            ProviderTargetScope = providerTargetScope,
+            ProviderTargetId = EventReportGuards.NormalizeRequired(providerTargetId, MaxProviderTargetIdLength, nameof(providerTargetId)),
             DecisionKind = decisionKind,
             ReasonCode = EventReportGuards.NormalizeRequired(reasonCode, MaxReasonCodeLength, nameof(reasonCode)),
             SafeNote = EventReportGuards.NormalizeOptional(safeNote, MaxSafeNoteLength, nameof(safeNote)),

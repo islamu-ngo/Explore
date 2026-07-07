@@ -195,6 +195,92 @@ public class EventReportTests
         });
     }
 
+    [Test]
+    public async Task EventReportExternalLink_CreatePending_StoresProviderTargetIdentity()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var targetId = tenantId.ToString("N");
+
+        var link = EventReportExternalLink.CreatePending(
+            tenantId,
+            Guid.CreateVersion7(),
+            caseId: null,
+            EventReportExternalProvider.Osprey,
+            "sync-1",
+            providerTargetScope: EventReportProviderTargetScope.Tenant,
+            providerTargetId: $" {targetId} ");
+
+        await Assert.That(link.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
+        await Assert.That(link.ProviderTargetId).IsEqualTo(targetId);
+    }
+
+    [Test]
+    public async Task EventReportExternalLink_CreatePending_WhenProviderTargetIdBlank_ThrowsArgumentException()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+        {
+            _ = EventReportExternalLink.CreatePending(
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                caseId: null,
+                EventReportExternalProvider.Coop,
+                "sync-2",
+                providerTargetScope: EventReportProviderTargetScope.Tenant,
+                providerTargetId: " ");
+
+            return Task.CompletedTask;
+        });
+    }
+
+    [Test]
+    public async Task EventReportSignal_Create_StoresProviderTargetIdentity()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var targetId = tenantId.ToString("N");
+
+        var signal = EventReportSignal.Create(
+            tenantId,
+            reportId: Guid.CreateVersion7(),
+            eventId: Guid.CreateVersion7(),
+            EventReportSignalProvider.Osprey,
+            "policy_match",
+            "event.spam",
+            0.75m,
+            EventReportSignalVerdict.NeedsReview,
+            recommendedAction: null,
+            safeSummary: "Needs moderator review.",
+            externalSignalId: "signal-tenant-1",
+            correlationId: "correlation-tenant-1",
+            providerTargetScope: EventReportProviderTargetScope.Tenant,
+            providerTargetId: targetId);
+
+        await Assert.That(signal.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
+        await Assert.That(signal.ProviderTargetId).IsEqualTo(targetId);
+    }
+
+    [Test]
+    public async Task EventReportDecision_Create_StoresProviderTargetIdentity()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var targetId = tenantId.ToString("N");
+
+        var decision = EventReportDecision.Create(
+            tenantId,
+            caseId: Guid.CreateVersion7(),
+            reportId: Guid.CreateVersion7(),
+            EventReportDecisionSource.CoopReviewer,
+            EventReportDecisionKind.LightModerate,
+            "policy_violation",
+            safeNote: "External reviewer confirmed the case.",
+            moderatorUserId: null,
+            externalDecisionId: "coop-decision-1",
+            providerTargetScope: EventReportProviderTargetScope.Tenant,
+            providerTargetId: targetId);
+
+        await Assert.That(decision.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
+        await Assert.That(decision.ProviderTargetId).IsEqualTo(targetId);
+    }
+
     private static EventReport CreateReport()
     {
         return EventReport.Create(

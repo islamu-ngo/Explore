@@ -18,7 +18,9 @@ public sealed record EventSafetySignalEnvelope(
     string? SafeSummary,
     string? ExternalSignalId,
     string CorrelationId,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    EventReportProviderTargetScope ProviderTargetScope = EventReportProviderTargetScope.Instance,
+    string ProviderTargetId = "instance");
 
 public sealed record EventSafetySignalProviderResult(
     bool Succeeded,

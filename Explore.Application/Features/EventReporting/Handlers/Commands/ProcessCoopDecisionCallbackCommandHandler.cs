@@ -101,7 +101,13 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
             }
 
             var reportCase = target.Case!;
-            var existingDecision = FindExistingDecision(report!, decision.ExternalDecisionId);
+            var targetValidation = ValidateProviderTarget(report!, decision);
+            if (!targetValidation.Response.Success)
+            {
+                return CoopDecisionStageResult.NoExecution(targetValidation.Response);
+            }
+
+            var existingDecision = FindExistingDecision(report!, decision);
             if (existingDecision is not null)
             {
                 if (reportCase.Status == EventReportCaseStatus.Closed)
@@ -158,7 +164,9 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
                 decision.SafeNote,
                 moderatorUserId: null,
                 decision.ExternalDecisionId,
-                now);
+                now,
+                decision.ProviderTargetScope,
+                decision.ProviderTargetId);
 
             MarkCoopLinkSynced(report, decision, now);
             await eventReportRepository.Update(report);
@@ -194,11 +202,45 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
         return (Success(decision.ReportId, "Coop decision target is valid."), report, reportCase);
     }
 
-    private static EventReportDecision? FindExistingDecision(EventReport report, string externalDecisionId)
+    private static (BaseCommandResponse<Guid> Response, EventReport? Report) ValidateProviderTarget(
+        EventReport report,
+        NormalizedCoopDecision decision)
+    {
+        var conflictingDecision = report.Decisions.FirstOrDefault(candidate =>
+            candidate.DecisionSource == EventReportDecisionSource.CoopReviewer &&
+            string.Equals(candidate.ExternalDecisionId, decision.ExternalDecisionId, StringComparison.Ordinal) &&
+            !IsSameTarget(candidate.ProviderTargetScope, candidate.ProviderTargetId, decision.ProviderTargetScope, decision.ProviderTargetId));
+        if (conflictingDecision is not null)
+        {
+            return (Failure(
+                decision.ReportId,
+                "Coop callback target does not match the existing provider decision.",
+                ["Coop callback target does not match the existing provider decision."],
+                EventReportFailureCodes.ValidationFailed), null);
+        }
+
+        var conflictingLink = report.ExternalLinks.FirstOrDefault(candidate =>
+            candidate.Provider == EventReportExternalProvider.Coop &&
+            (MatchesOptional(candidate.ProviderCaseId, decision.ProviderCaseId) || MatchesOptional(candidate.CorrelationId, decision.CorrelationId)) &&
+            !IsSameTarget(candidate.ProviderTargetScope, candidate.ProviderTargetId, decision.ProviderTargetScope, decision.ProviderTargetId));
+        if (conflictingLink is not null)
+        {
+            return (Failure(
+                decision.ReportId,
+                "Coop callback target does not match the existing provider link.",
+                ["Coop callback target does not match the existing provider link."],
+                EventReportFailureCodes.ValidationFailed), null);
+        }
+
+        return (Success(decision.ReportId, "Coop provider target is valid."), report);
+    }
+
+    private static EventReportDecision? FindExistingDecision(EventReport report, NormalizedCoopDecision decision)
     {
         return report.Decisions.FirstOrDefault(candidate =>
             candidate.DecisionSource == EventReportDecisionSource.CoopReviewer &&
-            string.Equals(candidate.ExternalDecisionId, externalDecisionId, StringComparison.Ordinal));
+            string.Equals(candidate.ExternalDecisionId, decision.ExternalDecisionId, StringComparison.Ordinal) &&
+            IsSameTarget(candidate.ProviderTargetScope, candidate.ProviderTargetId, decision.ProviderTargetScope, decision.ProviderTargetId));
     }
 
     private static void ApplyReportDecisionStatus(
@@ -234,7 +276,9 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
         DateTime utcNow)
     {
         var link = report.ExternalLinks
-            .Where(candidate => candidate.Provider == EventReportExternalProvider.Coop)
+            .Where(candidate =>
+                candidate.Provider == EventReportExternalProvider.Coop &&
+                IsSameTarget(candidate.ProviderTargetScope, candidate.ProviderTargetId, decision.ProviderTargetScope, decision.ProviderTargetId))
             .OrderBy(candidate => candidate.CaseId != decision.CaseId)
             .ThenByDescending(candidate => string.Equals(candidate.ProviderCaseId, decision.ProviderCaseId, StringComparison.Ordinal))
             .FirstOrDefault();
@@ -247,7 +291,9 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
                 decision.CaseId,
                 EventReportExternalProvider.Coop,
                 decision.CorrelationId,
-                utcNow);
+                utcNow,
+                decision.ProviderTargetScope,
+                decision.ProviderTargetId);
             report.ExternalLinks.Add(link);
         }
 
@@ -280,6 +326,10 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
         var correlationId = NormalizeCorrelationId(
             NormalizeOptional(ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(request.CorrelationId, request.CorrelationIdSnake))
             ?? externalDecisionId);
+        var providerTarget = ResolveProviderTarget(
+            tenantId,
+            ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(request.ProviderTargetScope, request.ProviderTargetScopeSnake),
+            ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(request.ProviderTargetId, request.ProviderTargetIdSnake));
 
         return new NormalizedCoopDecision(
             tenantId,
@@ -294,8 +344,33 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
             Truncate(externalDecisionId, EventReportDecision.MaxExternalDecisionIdLength),
             TruncateNullable(providerCaseId, 200),
             TruncateNullable(providerUrl, 500),
+            providerTarget.Scope,
+            providerTarget.TargetId,
             correlationId);
     }
+
+    private static (EventReportProviderTargetScope Scope, string TargetId) ResolveProviderTarget(
+        Guid tenantId,
+        string? rawScope,
+        string? rawTargetId)
+    {
+        var scope = string.Equals(rawScope, "tenant", StringComparison.OrdinalIgnoreCase)
+            ? EventReportProviderTargetScope.Tenant
+            : EventReportProviderTargetScope.Instance;
+        var targetId = NormalizeOptional(rawTargetId)
+            ?? (scope == EventReportProviderTargetScope.Tenant ? tenantId.ToString("N") : "instance");
+        return (scope, Truncate(targetId, 200));
+    }
+
+    private static bool IsSameTarget(
+        EventReportProviderTargetScope leftScope,
+        string leftTargetId,
+        EventReportProviderTargetScope rightScope,
+        string rightTargetId) =>
+        leftScope == rightScope && string.Equals(leftTargetId, rightTargetId, StringComparison.Ordinal);
+
+    private static bool MatchesOptional(string? left, string? right) =>
+        !string.IsNullOrWhiteSpace(left) && !string.IsNullOrWhiteSpace(right) && string.Equals(left, right, StringComparison.Ordinal);
 
     private static EventReportDecisionKind MapDecisionKind(string? actionId)
     {

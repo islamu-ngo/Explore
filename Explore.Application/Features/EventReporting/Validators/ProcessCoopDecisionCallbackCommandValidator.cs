@@ -59,6 +59,15 @@ public sealed class ProcessCoopDecisionCallbackCommandValidator : AbstractValida
                 .MaximumLength(MaxProviderUrlLength)
                 .When(command => !string.IsNullOrWhiteSpace(FirstNonBlank(command.Request.ProviderUrl, command.Request.ProviderUrlSnake)));
 
+            RuleFor(command => FirstNonBlank(command.Request.ProviderTargetScope, command.Request.ProviderTargetScopeSnake))
+                .Must(IsValidProviderTargetScope)
+                .WithMessage("ProviderTargetScope must be instance or tenant.")
+                .When(command => !string.IsNullOrWhiteSpace(FirstNonBlank(command.Request.ProviderTargetScope, command.Request.ProviderTargetScopeSnake)));
+
+            RuleFor(command => FirstNonBlank(command.Request.ProviderTargetId, command.Request.ProviderTargetIdSnake))
+                .MaximumLength(MaxProviderIdLength)
+                .When(command => !string.IsNullOrWhiteSpace(FirstNonBlank(command.Request.ProviderTargetId, command.Request.ProviderTargetIdSnake)));
+
             RuleFor(command => FirstNonBlank(command.Request.CorrelationId, command.Request.CorrelationIdSnake))
                 .MaximumLength(EventReportReasonCodePolicy.MaxCorrelationIdLength)
                 .When(command => !string.IsNullOrWhiteSpace(FirstNonBlank(command.Request.CorrelationId, command.Request.CorrelationIdSnake)));
@@ -107,6 +116,12 @@ public sealed class ProcessCoopDecisionCallbackCommandValidator : AbstractValida
 
     private static Guid FirstNonEmpty(params Guid?[] values) =>
         values.FirstOrDefault(value => value.HasValue && value.Value != Guid.Empty) ?? Guid.Empty;
+
+    private static bool IsValidProviderTargetScope(string? value)
+    {
+        return string.Equals(value, "instance", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "tenant", StringComparison.OrdinalIgnoreCase);
+    }
 
     private sealed class CoopPolicyValidator : AbstractValidator<CoopDecisionCallbackPolicyDto>
     {

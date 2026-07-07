@@ -79,8 +79,12 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
         await Assert.That(createdDecision.DecisionKind).IsEqualTo(EventReportDecisionKind.LightModerate);
         await Assert.That(createdDecision.ModeratorUserId).IsNull();
         await Assert.That(createdDecision.ExternalDecisionId).IsEqualTo("coop-decision-1");
+        await Assert.That(createdDecision.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Instance);
+        await Assert.That(createdDecision.ProviderTargetId).IsEqualTo("instance");
         await Assert.That(createdDecision.ReasonCode).IsEqualTo("trust.policy");
         await Assert.That(coopLink.Provider).IsEqualTo(EventReportExternalProvider.Coop);
+        await Assert.That(coopLink.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Instance);
+        await Assert.That(coopLink.ProviderTargetId).IsEqualTo("instance");
         await Assert.That(coopLink.ProviderCaseId).IsEqualTo("coop-case-1");
         await Assert.That(coopLink.ProviderUrl).IsEqualTo("https://coop.example/cases/coop-case-1");
         await Assert.That(coopLink.SyncState).IsEqualTo(EventReportSyncState.Synced);
@@ -107,7 +111,9 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
             "trust.policy",
             safeNote: null,
             moderatorUserId: null,
-            externalDecisionId: "coop-decision-1");
+            externalDecisionId: "coop-decision-1",
+            providerTargetScope: EventReportProviderTargetScope.Instance,
+            providerTargetId: "instance");
         report.Cases.Add(reportCase);
         report.Decisions.Add(existingDecision);
         ConfigureTenantReport(tenantId, report);
@@ -127,6 +133,86 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(existingDecision.Id);
+        await _decisionRepository.DidNotReceive().Create(Arg.Any<EventReportDecision>());
+        await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
+        await _mediator.DidNotReceive().Send(Arg.Any<ExecuteReportDecisionCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WithTenantProviderTarget_RecordsTenantScopedDecisionAndLink()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var report = CreateReport(tenantId);
+        var reportCase = CreateCase(tenantId, report.Id);
+        var tenantTargetId = tenantId.ToString("N");
+        report.Cases.Add(reportCase);
+        var capturedDecisions = new List<EventReportDecision>();
+        ConfigureTenantReport(tenantId, report);
+        _decisionRepository.Create(Arg.Do<EventReportDecision>(decision => capturedDecisions.Add(decision)))
+            .Returns(call => call.Arg<EventReportDecision>());
+
+        var result = await CreateHandler().Handle(new ProcessCoopDecisionCallbackCommand
+        {
+            Request = new CoopDecisionCallbackRequestDto
+            {
+                TenantId = tenantId,
+                ReportId = report.Id,
+                EventId = report.EventId,
+                CaseId = reportCase.Id,
+                ProviderTargetScope = "tenant",
+                ProviderTargetId = tenantTargetId,
+                ProviderDecisionId = "coop-decision-tenant",
+                ProviderCaseId = "coop-case-tenant",
+                CorrelationId = "coop-correlation-tenant",
+                Action = new CoopDecisionCallbackActionDto { Id = "light_moderate" }
+            }
+        }, CancellationToken.None);
+
+        var createdDecision = capturedDecisions.Single();
+        var coopLink = report.ExternalLinks.Single();
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(createdDecision.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
+        await Assert.That(createdDecision.ProviderTargetId).IsEqualTo(tenantTargetId);
+        await Assert.That(coopLink.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
+        await Assert.That(coopLink.ProviderTargetId).IsEqualTo(tenantTargetId);
+    }
+
+    [Test]
+    public async Task Handle_WhenProviderTargetConflictsWithExistingLink_FailsClosed()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var report = CreateReport(tenantId);
+        var reportCase = CreateCase(tenantId, report.Id);
+        report.Cases.Add(reportCase);
+        var tenantLink = EventReportExternalLink.CreatePending(
+            tenantId,
+            report.Id,
+            reportCase.Id,
+            EventReportExternalProvider.Coop,
+            "coop-correlation-1",
+            providerTargetScope: EventReportProviderTargetScope.Tenant,
+            providerTargetId: tenantId.ToString("N"));
+        tenantLink.MarkSynced("coop-case-1", null, null, DateTime.UtcNow);
+        report.ExternalLinks.Add(tenantLink);
+        ConfigureTenantReport(tenantId, report);
+
+        var result = await CreateHandler().Handle(new ProcessCoopDecisionCallbackCommand
+        {
+            Request = new CoopDecisionCallbackRequestDto
+            {
+                TenantId = tenantId,
+                ReportId = report.Id,
+                EventId = report.EventId,
+                CaseId = reportCase.Id,
+                ProviderDecisionId = "coop-decision-1",
+                ProviderCaseId = "coop-case-1",
+                CorrelationId = "coop-correlation-1",
+                Action = new CoopDecisionCallbackActionDto { Id = "light_moderate" }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.ValidationFailed);
         await _decisionRepository.DidNotReceive().Create(Arg.Any<EventReportDecision>());
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
         await _mediator.DidNotReceive().Send(Arg.Any<ExecuteReportDecisionCommand>(), Arg.Any<CancellationToken>());

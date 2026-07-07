@@ -69,6 +69,39 @@ public sealed class CoopReviewQueueProviderTests
     }
 
     [Test]
+    public async Task MirrorCaseAsync_WithTenantTargetOverride_UsesTenantEndpointAndApiKey()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse(HttpStatusCode.Created, """
+        {
+          "provider_case_id": "tenant-coop-case-1",
+          "provider_url": "https://tenant-coop.example/cases/tenant-coop-case-1"
+        }
+        """));
+        var provider = CreateProvider(new CoopProviderOptions
+        {
+            Enabled = false,
+            EndpointUrl = "https://instance-coop.example",
+            MirrorPath = "/api/v1/items",
+            ApiKey = "instance-secret"
+        }, handler);
+
+        var envelope = CreateEnvelope() with
+        {
+            ProviderTargetScope = EventReportProviderTargetScope.Tenant,
+            ProviderTargetId = "tenant-1",
+            ProviderEndpointUrl = "https://tenant-coop.example/root",
+            ProviderApiKey = "tenant-secret"
+        };
+
+        var result = await provider.MirrorCaseAsync(envelope);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(handler.RequestUri!.ToString()).IsEqualTo("https://tenant-coop.example/root/api/v1/items");
+        await Assert.That(handler.AuthorizationParameter).IsEqualTo("tenant-secret");
+        await Assert.That(result.ProviderCaseId).IsEqualTo("tenant-coop-case-1");
+    }
+
+    [Test]
     public async Task MirrorCaseAsync_WhenCoopReturnsEmptySuccess_UsesLocalCaseFallbackForTracking()
     {
         var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Accepted)

@@ -17,6 +17,8 @@ public sealed class EventReportDecisionConfiguration : IEntityTypeConfiguration<
             .HasName("ak_event_report_decisions_tenant_id_report_id_id");
 
         builder.Property(e => e.DecisionSource).HasConversion<int>().IsRequired();
+        builder.Property(e => e.ProviderTargetScope).HasConversion<int>().IsRequired();
+        builder.Property(e => e.ProviderTargetId).HasMaxLength(200).IsRequired();
         builder.Property(e => e.DecisionKind).HasConversion<int>().IsRequired();
         builder.Property(e => e.ReasonCode).HasMaxLength(100).IsRequired();
         builder.Property(e => e.SafeNote).HasMaxLength(1000);
@@ -52,14 +54,16 @@ public sealed class EventReportDecisionConfiguration : IEntityTypeConfiguration<
             .HasDatabaseName("ix_event_report_decisions_tenant_case_created")
             .IsDescending(false, false, true);
 
-        builder.HasIndex(e => new { e.TenantId, e.DecisionSource, e.ExternalDecisionId })
+        builder.HasIndex(e => new { e.TenantId, e.DecisionSource, e.ProviderTargetScope, e.ProviderTargetId, e.ExternalDecisionId })
             .IsUnique()
             .HasFilter("external_decision_id IS NOT NULL")
-            .HasDatabaseName("ux_event_report_decisions_tenant_source_external");
+            .HasDatabaseName("ux_event_report_decisions_tenant_source_target_external");
 
         builder.ToTable("event_report_decisions", t =>
         {
             t.HasCheckConstraint("ck_event_report_decisions_source", "decision_source BETWEEN 1 AND 4");
+            t.HasCheckConstraint("ck_event_report_decisions_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
+            t.HasCheckConstraint("ck_event_report_decisions_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
             t.HasCheckConstraint("ck_event_report_decisions_kind", "decision_kind BETWEEN 1 AND 7");
             t.HasCheckConstraint("ck_event_report_decisions_reason_code_not_blank", "length(btrim(reason_code)) > 0");
             t.HasCheckConstraint("ck_event_report_decisions_safe_note_not_blank", "safe_note IS NULL OR length(btrim(safe_note)) > 0");

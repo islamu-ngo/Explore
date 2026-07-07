@@ -66,7 +66,32 @@ public sealed class ModerationProviderOptionsValidatorTests
         });
 
         await Assert.That(result.Succeeded).IsFalse();
-        await Assert.That(result.Failures).Contains("Reporting:Osprey:EndpointUrl is required when Reporting:Osprey:Enabled is true.");
+        await Assert.That(result.Failures).Contains("Reporting:Osprey:EndpointUrl is required when Reporting:Osprey:Enabled is true and Transport is HttpJson.");
+    }
+
+    [Test]
+    public async Task OspreyValidate_WithUnknownTransport_Fails()
+    {
+        var result = new OspreyProviderOptionsValidator().Validate(null, new OspreyProviderOptions
+        {
+            Transport = "Udp"
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Failures).Contains("Reporting:Osprey:Transport must be 'HttpJson' or 'Grpc'.");
+    }
+
+    [Test]
+    public async Task OspreyValidate_WithGrpcTransportWithoutEndpoint_Fails()
+    {
+        var result = new OspreyProviderOptionsValidator().Validate(null, new OspreyProviderOptions
+        {
+            Enabled = true,
+            Transport = OspreyProviderOptions.TransportGrpc
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Failures).Contains("Reporting:Osprey:GrpcEndpointUrl is required when Reporting:Osprey:Enabled is true and Transport is Grpc.");
     }
 
     [Test]
@@ -89,6 +114,34 @@ public sealed class ModerationProviderOptionsValidatorTests
         {
             Enabled = true,
             EndpointUrl = "http://127.0.0.1:7777",
+            AllowLocalProviderEndpoints = true
+        });
+
+        await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task OspreyValidate_WithPrivateGrpcEndpointWithoutOptIn_Fails()
+    {
+        var result = new OspreyProviderOptionsValidator().Validate(null, new OspreyProviderOptions
+        {
+            Enabled = true,
+            Transport = OspreyProviderOptions.TransportGrpc,
+            GrpcEndpointUrl = "http://127.0.0.1:19951"
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Failures).Contains("Reporting:Osprey:GrpcEndpointUrl must not target local, loopback, link-local, or private network hosts unless Reporting:Osprey:AllowLocalProviderEndpoints is true.");
+    }
+
+    [Test]
+    public async Task OspreyValidate_WithPrivateGrpcEndpointOptIn_Succeeds()
+    {
+        var result = new OspreyProviderOptionsValidator().Validate(null, new OspreyProviderOptions
+        {
+            Enabled = true,
+            Transport = OspreyProviderOptions.TransportGrpc,
+            GrpcEndpointUrl = "http://127.0.0.1:19951",
             AllowLocalProviderEndpoints = true
         });
 

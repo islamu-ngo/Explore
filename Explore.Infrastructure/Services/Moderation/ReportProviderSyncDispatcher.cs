@@ -40,13 +40,13 @@ public sealed class ReportProviderSyncDispatcher(
         var request = DeserializeRequest(message);
         var idempotencyKey = BuildIdempotencyKey(message);
         var currentOptions = options.CurrentValue;
-        var configuredProviders = ResolveConfiguredProviders(currentOptions);
+        var configuredTargets = ResolveConfiguredTargets(currentOptions);
         var report = await LoadReportAsync(request, cancellationToken);
         var reportCase = ResolveCase(report, request.CaseId, message.Id);
 
-        if (HasCompletedSyncMarker(report, configuredProviders, idempotencyKey))
+        if (HasCompletedSyncMarker(report, configuredTargets, idempotencyKey))
         {
-            RecordProviderSync(report.TenantId, configuredProviders, "skipped");
+            RecordProviderSync(report.TenantId, configuredTargets, "skipped");
             logger.LogInformation(
                 "Skipping already-recorded event report provider sync for report {ReportId} from outbox message {MessageId}",
                 request.ReportId,
@@ -59,8 +59,8 @@ public sealed class ReportProviderSyncDispatcher(
 
         if (result.ProviderDisabled)
         {
-            await PersistDisabledAsync(report, reportCase.Id, configuredProviders, idempotencyKey, cancellationToken);
-            RecordProviderSync(report.TenantId, configuredProviders, "disabled", "provider_disabled");
+            await PersistDisabledAsync(report, reportCase.Id, configuredTargets, idempotencyKey, cancellationToken);
+            RecordProviderSync(report.TenantId, configuredTargets, "disabled", "provider_disabled");
             logger.LogInformation(
                 "Event report provider sync disabled for report {ReportId} from outbox message {MessageId}",
                 request.ReportId,
@@ -71,10 +71,10 @@ public sealed class ReportProviderSyncDispatcher(
         if (!result.Succeeded)
         {
             var category = NormalizeErrorCategory(result.Error?.Category);
-            await PersistFailureAsync(report, reportCase.Id, configuredProviders, idempotencyKey, category, cancellationToken);
+            await PersistFailureAsync(report, reportCase.Id, configuredTargets, idempotencyKey, category, cancellationToken);
             RecordProviderSync(
                 report.TenantId,
-                configuredProviders,
+                configuredTargets,
                 result.IsRetryable ? "retryable_failure" : "nonretryable_failure",
                 category);
             logger.LogWarning(
@@ -93,7 +93,7 @@ public sealed class ReportProviderSyncDispatcher(
         }
 
         await PersistSuccessAsync(report, reportCase.Id, result, idempotencyKey, cancellationToken);
-        RecordProviderSync(report.TenantId, configuredProviders, "succeeded");
+        RecordProviderSync(report.TenantId, configuredTargets, "succeeded");
         logger.LogInformation(
             "Event report provider sync succeeded for report {ReportId} from outbox message {MessageId}",
             request.ReportId,
@@ -184,17 +184,23 @@ public sealed class ReportProviderSyncDispatcher(
                 signal.SafeSummary,
                 signal.ExternalSignalId,
                 string.IsNullOrWhiteSpace(signal.CorrelationId) ? idempotencyKey : signal.CorrelationId,
-                signal.CreatedAtUtc == default ? utcNow : signal.CreatedAtUtc));
+                signal.CreatedAtUtc == default ? utcNow : signal.CreatedAtUtc,
+                signal.ProviderTargetScope,
+                signal.ProviderTargetId));
             changed = true;
         }
 
-        foreach (var providerToMark in ResolveSuccessfulExternalProviders(result))
+        foreach (EventReportProviderExternalLinkEnvelope linkEnvelope in ResolveSuccessfulExternalLinks(result))
         {
-            var link = GetOrCreateLink(report, caseId, providerToMark, idempotencyKey, utcNow);
+            var targetToMark = new ProviderTarget(
+                linkEnvelope.Provider,
+                linkEnvelope.ProviderTargetScope,
+                linkEnvelope.ProviderTargetId);
+            var link = GetOrCreateLink(report, caseId, targetToMark, idempotencyKey, utcNow);
             link.MarkSynced(
-                providerToMark == EventReportExternalProvider.Coop ? result.ProviderCaseId : null,
-                providerToMark == EventReportExternalProvider.Osprey ? result.ProviderSignalId : null,
-                providerToMark == EventReportExternalProvider.Coop ? result.ProviderUrl : null,
+                linkEnvelope.ProviderCaseId,
+                linkEnvelope.ProviderSignalId,
+                linkEnvelope.ProviderUrl,
                 utcNow);
             changed = true;
         }
@@ -208,19 +214,19 @@ public sealed class ReportProviderSyncDispatcher(
     private async Task PersistDisabledAsync(
         EventReport report,
         Guid caseId,
-        IReadOnlyList<EventReportExternalProvider> providers,
+        IReadOnlyList<ProviderTarget> targets,
         string idempotencyKey,
         CancellationToken cancellationToken)
     {
-        if (providers.Count == 0)
+        if (targets.Count == 0)
         {
             return;
         }
 
         var utcNow = DateTime.UtcNow;
-        foreach (var configuredProvider in providers)
+        foreach (var configuredTarget in targets)
         {
-            GetOrCreateLink(report, caseId, configuredProvider, idempotencyKey, utcNow).Disable(utcNow);
+            GetOrCreateLink(report, caseId, configuredTarget, idempotencyKey, utcNow).Disable(utcNow);
         }
 
         await eventReportRepository.Update(report);
@@ -229,20 +235,20 @@ public sealed class ReportProviderSyncDispatcher(
     private async Task PersistFailureAsync(
         EventReport report,
         Guid caseId,
-        IReadOnlyList<EventReportExternalProvider> providers,
+        IReadOnlyList<ProviderTarget> targets,
         string idempotencyKey,
         string category,
         CancellationToken cancellationToken)
     {
-        if (providers.Count == 0)
+        if (targets.Count == 0)
         {
             return;
         }
 
         var utcNow = DateTime.UtcNow;
-        foreach (var configuredProvider in providers)
+        foreach (var configuredTarget in targets)
         {
-            var link = GetOrCreateLink(report, caseId, configuredProvider, idempotencyKey, utcNow);
+            var link = GetOrCreateLink(report, caseId, configuredTarget, idempotencyKey, utcNow);
             if (link.SyncState == EventReportSyncState.Synced)
             {
                 continue;
@@ -257,12 +263,14 @@ public sealed class ReportProviderSyncDispatcher(
     private static EventReportExternalLink GetOrCreateLink(
         EventReport report,
         Guid caseId,
-        EventReportExternalProvider provider,
+        ProviderTarget target,
         string idempotencyKey,
         DateTime utcNow)
     {
         var existing = report.ExternalLinks.FirstOrDefault(link =>
-            link.Provider == provider &&
+            link.Provider == target.Provider &&
+            link.ProviderTargetScope == target.Scope &&
+            string.Equals(link.ProviderTargetId, target.TargetId, StringComparison.Ordinal) &&
             string.Equals(link.CorrelationId, idempotencyKey, StringComparison.Ordinal));
 
         if (existing is not null)
@@ -274,21 +282,25 @@ public sealed class ReportProviderSyncDispatcher(
             report.TenantId,
             report.Id,
             caseId,
-            provider,
+            target.Provider,
             idempotencyKey,
-            utcNow);
+            utcNow,
+            target.Scope,
+            target.TargetId);
         report.ExternalLinks.Add(link);
         return link;
     }
 
     private static bool HasCompletedSyncMarker(
         EventReport report,
-        IReadOnlyList<EventReportExternalProvider> providers,
+        IReadOnlyList<ProviderTarget> targets,
         string idempotencyKey)
     {
-        return providers.Count > 0 && providers.All(providerToCheck =>
+        return targets.Count > 0 && targets.All(targetToCheck =>
             report.ExternalLinks.Any(link =>
-                link.Provider == providerToCheck &&
+                link.Provider == targetToCheck.Provider &&
+                link.ProviderTargetScope == targetToCheck.Scope &&
+                string.Equals(link.ProviderTargetId, targetToCheck.TargetId, StringComparison.Ordinal) &&
                 string.Equals(link.CorrelationId, idempotencyKey, StringComparison.Ordinal) &&
                 link.SyncState is EventReportSyncState.Synced or EventReportSyncState.Disabled or EventReportSyncState.Ignored));
     }
@@ -300,6 +312,8 @@ public sealed class ReportProviderSyncDispatcher(
         {
             return report.Signals.Any(existing =>
                 existing.Provider == signal.Provider &&
+                existing.ProviderTargetScope == signal.ProviderTargetScope &&
+                string.Equals(existing.ProviderTargetId, signal.ProviderTargetId, StringComparison.Ordinal) &&
                 string.Equals(existing.ExternalSignalId, externalSignalId, StringComparison.Ordinal));
         }
 
@@ -309,44 +323,60 @@ public sealed class ReportProviderSyncDispatcher(
 
         return report.Signals.Any(existing =>
             existing.Provider == signal.Provider &&
+            existing.ProviderTargetScope == signal.ProviderTargetScope &&
+            string.Equals(existing.ProviderTargetId, signal.ProviderTargetId, StringComparison.Ordinal) &&
             string.Equals(existing.SignalType, signalType, StringComparison.Ordinal) &&
             string.Equals(existing.PolicyCode, policyCode, StringComparison.Ordinal) &&
             string.Equals(existing.CorrelationId, correlationId, StringComparison.Ordinal));
     }
 
-    private static IReadOnlyList<EventReportExternalProvider> ResolveConfiguredProviders(ModerationProviderOptions currentOptions)
+    private static IReadOnlyList<ProviderTarget> ResolveConfiguredTargets(ModerationProviderOptions currentOptions)
     {
-        List<EventReportExternalProvider> providers = [];
+        List<ProviderTarget> targets = [];
 
         if (currentOptions.UsesOsprey && currentOptions.EvaluateSignals)
         {
-            providers.Add(EventReportExternalProvider.Osprey);
+            targets.Add(InstanceProviderTarget(EventReportExternalProvider.Osprey));
         }
 
         if (currentOptions.UsesCoop && currentOptions.MirrorReviewQueue)
         {
-            providers.Add(EventReportExternalProvider.Coop);
+            targets.Add(InstanceProviderTarget(EventReportExternalProvider.Coop));
         }
 
-        return providers;
+        return targets;
     }
 
-    private static IReadOnlyList<EventReportExternalProvider> ResolveSuccessfulExternalProviders(EventReportProviderSyncResult result)
+    private static IReadOnlyList<EventReportProviderExternalLinkEnvelope> ResolveSuccessfulExternalLinks(EventReportProviderSyncResult result)
     {
-        List<EventReportExternalProvider> providers = [];
+        if (result.ExternalLinks.Count > 0)
+        {
+            return result.ExternalLinks;
+        }
+
+        List<EventReportProviderExternalLinkEnvelope> links = [];
 
         if (!string.IsNullOrWhiteSpace(result.ProviderCaseId) || !string.IsNullOrWhiteSpace(result.ProviderUrl))
         {
-            providers.Add(EventReportExternalProvider.Coop);
+            links.Add(new EventReportProviderExternalLinkEnvelope(
+                EventReportExternalProvider.Coop,
+                EventReportProviderTargetScope.Instance,
+                "instance",
+                result.ProviderCaseId,
+                ProviderUrl: result.ProviderUrl));
         }
 
         if (!string.IsNullOrWhiteSpace(result.ProviderSignalId) ||
             result.Signals.Any(signal => signal.Provider == EventReportSignalProvider.Osprey))
         {
-            providers.Add(EventReportExternalProvider.Osprey);
+            links.Add(new EventReportProviderExternalLinkEnvelope(
+                EventReportExternalProvider.Osprey,
+                EventReportProviderTargetScope.Instance,
+                "instance",
+                ProviderSignalId: result.ProviderSignalId ?? result.Signals.FirstOrDefault(signal => signal.Provider == EventReportSignalProvider.Osprey)?.ExternalSignalId));
         }
 
-        return providers;
+        return links;
     }
 
     private static string BuildIdempotencyKey(OutboxMessage message) =>
@@ -354,25 +384,33 @@ public sealed class ReportProviderSyncDispatcher(
 
     private void RecordProviderSync(
         Guid tenantId,
-        IReadOnlyList<EventReportExternalProvider> providers,
+        IReadOnlyList<ProviderTarget> targets,
         string outcome,
         string? failureCategory = null)
     {
-        if (providers.Count == 0)
+        if (targets.Count == 0)
         {
             metrics.RecordEventReportProviderSync(tenantId.ToString(), "local", outcome, failureCategory);
             return;
         }
 
-        foreach (var providerToRecord in providers)
+        foreach (var targetToRecord in targets)
         {
             metrics.RecordEventReportProviderSync(
                 tenantId.ToString(),
-                ToProviderCode(providerToRecord),
+                ToProviderCode(targetToRecord.Provider),
                 outcome,
                 failureCategory);
         }
     }
+
+    private static ProviderTarget InstanceProviderTarget(EventReportExternalProvider provider) =>
+        new(provider, EventReportProviderTargetScope.Instance, "instance");
+
+    private static ProviderSignalTarget ResolveSignalProviderTarget(EventReportSignalProvider provider) =>
+        provider is EventReportSignalProvider.Osprey or EventReportSignalProvider.Coop
+            ? new ProviderSignalTarget(EventReportProviderTargetScope.Instance, "instance")
+            : new ProviderSignalTarget(EventReportProviderTargetScope.Local, "local");
 
     private static string NormalizeErrorCategory(string? category) =>
         string.IsNullOrWhiteSpace(category) ? "provider_sync_failed" : category.Trim();
@@ -423,4 +461,11 @@ public sealed class ReportProviderSyncDispatcher(
 
         return builder.ToString();
     }
+
+    private readonly record struct ProviderTarget(
+        EventReportExternalProvider Provider,
+        EventReportProviderTargetScope Scope,
+        string TargetId);
+
+    private readonly record struct ProviderSignalTarget(EventReportProviderTargetScope Scope, string TargetId);
 }

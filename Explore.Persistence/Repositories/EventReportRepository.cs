@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Specifications.EventReports;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -224,6 +225,98 @@ public sealed class EventReportRepository : GenericRepository<EventReport, Guid>
             .Where(report => report.TenantId == tenantId
                 && report.EventId == eventId
                 && report.CreatedAt >= createdAfterUtc)
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> CountByTenantAndStatusesAsync(
+        Guid tenantId,
+        IReadOnlyCollection<EventReportStatus> statuses,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || statuses.Count == 0)
+        {
+            return 0;
+        }
+
+        return await _dbContext.EventReports
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(report => report.TenantId == tenantId && statuses.Contains(report.Status))
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> CountCasesByTenantAndStatusesAsync(
+        Guid tenantId,
+        IReadOnlyCollection<EventReportCaseStatus> statuses,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || statuses.Count == 0)
+        {
+            return 0;
+        }
+
+        return await _dbContext.Set<EventReportCase>()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(reportCase => reportCase.TenantId == tenantId && statuses.Contains(reportCase.Status))
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> CountExternalLinksByTenantAndSyncStateAsync(
+        Guid tenantId,
+        EventReportSyncState syncState,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return 0;
+        }
+
+        return await _dbContext.Set<EventReportExternalLink>()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(link => link.TenantId == tenantId && link.SyncState == syncState)
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> CountExternalLinksByTenantAndSyncStateBeforeAsync(
+        Guid tenantId,
+        EventReportSyncState syncState,
+        DateTime olderThanUtc,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return 0;
+        }
+
+        return await _dbContext.Set<EventReportExternalLink>()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(link => link.TenantId == tenantId && link.SyncState == syncState && link.CreatedAt < olderThanUtc)
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> CountExternalLinksBySyncStateAsync(
+        EventReportSyncState syncState,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.Set<EventReportExternalLink>()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.ControlPlaneModerationReportingOperations)
+            .AsNoTracking()
+            .Where(link => link.SyncState == syncState)
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> CountExternalLinksBySyncStateBeforeAsync(
+        EventReportSyncState syncState,
+        DateTime olderThanUtc,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.Set<EventReportExternalLink>()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.ControlPlaneModerationReportingOperations)
+            .AsNoTracking()
+            .Where(link => link.SyncState == syncState && link.CreatedAt < olderThanUtc)
             .CountAsync(cancellationToken);
     }
 

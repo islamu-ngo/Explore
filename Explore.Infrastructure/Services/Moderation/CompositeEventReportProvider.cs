@@ -4,8 +4,6 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.EventReporting.Models;
 using Explore.Domain.Enums;
-using Explore.Infrastructure.Configuration;
-using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Services.Moderation;
 
@@ -14,18 +12,18 @@ public sealed class CompositeEventReportProvider : IEventReportProvider
     private readonly LocalEventReportProvider _localProvider;
     private readonly IModerationSignalProvider _signalProvider;
     private readonly IReviewQueueProvider _reviewQueueProvider;
-    private readonly IOptionsMonitor<ModerationProviderOptions> _options;
+    private readonly IReportingRoutingPolicyResolver _routingPolicyResolver;
 
     public CompositeEventReportProvider(
         LocalEventReportProvider localProvider,
         IModerationSignalProvider signalProvider,
         IReviewQueueProvider reviewQueueProvider,
-        IOptionsMonitor<ModerationProviderOptions> options)
+        IReportingRoutingPolicyResolver routingPolicyResolver)
     {
         _localProvider = localProvider;
         _signalProvider = signalProvider;
         _reviewQueueProvider = reviewQueueProvider;
-        _options = options;
+        _routingPolicyResolver = routingPolicyResolver;
     }
 
     public async Task<EventReportProviderSyncResult> SyncReportAsync(
@@ -40,11 +38,18 @@ public sealed class CompositeEventReportProvider : IEventReportProvider
             return localResult;
         }
 
-        var options = _options.CurrentValue;
-        IReadOnlyList<EventSafetySignalEnvelope> signals = [];
-        if (options.ShouldEvaluateSignals)
+        ReportingRoutingPolicy policy = await _routingPolicyResolver.ResolveAsync(cancellationToken);
+        if (!policy.ExternalSyncEnabled)
         {
-            var signalResult = await _signalProvider.EvaluateAsync(envelope, cancellationToken);
+            return localResult;
+        }
+
+        var signals = new List<EventSafetySignalEnvelope>();
+        var externalLinks = new List<EventReportProviderExternalLinkEnvelope>();
+        foreach (ReportingProviderTarget target in policy.OspreyTargets)
+        {
+            EventReportProviderEnvelope targetEnvelope = ApplyTarget(envelope, target, policy.EvidenceMode);
+            var signalResult = await _signalProvider.EvaluateAsync(targetEnvelope, cancellationToken);
             if (!signalResult.Succeeded)
             {
                 return EventReportProviderSyncResult.Failure(
@@ -53,14 +58,23 @@ public sealed class CompositeEventReportProvider : IEventReportProvider
                     signalResult.Error?.SafeDetail);
             }
 
-            signals = signalResult.Signals;
+            signals.AddRange(signalResult.Signals);
+            string? providerSignalId = signalResult.Signals.FirstOrDefault()?.ExternalSignalId;
+            if (!string.IsNullOrWhiteSpace(providerSignalId))
+            {
+                externalLinks.Add(new EventReportProviderExternalLinkEnvelope(
+                    target.Provider,
+                    target.Scope,
+                    target.TargetId,
+                    ProviderSignalId: providerSignalId));
+            }
         }
 
-        string? providerCaseId = null;
-        string? providerUrl = null;
-        if (options.ShouldMirrorReviewQueue)
+        foreach (ReportingProviderTarget target in policy.CoopTargets)
         {
-            var reviewResult = await _reviewQueueProvider.MirrorCaseAsync(CreateReviewCaseEnvelope(envelope, options), cancellationToken);
+            var reviewResult = await _reviewQueueProvider.MirrorCaseAsync(
+                CreateReviewCaseEnvelope(envelope, target, policy.EvidenceMode),
+                cancellationToken);
             if (!reviewResult.Succeeded && !reviewResult.ProviderDisabled)
             {
                 return EventReportProviderSyncResult.Failure(
@@ -69,26 +83,48 @@ public sealed class CompositeEventReportProvider : IEventReportProvider
                     reviewResult.Error?.SafeDetail);
             }
 
-            providerCaseId = reviewResult.ProviderCaseId;
-            providerUrl = reviewResult.ProviderUrl;
+            if (reviewResult.Succeeded)
+            {
+                externalLinks.Add(new EventReportProviderExternalLinkEnvelope(
+                    target.Provider,
+                    target.Scope,
+                    target.TargetId,
+                    reviewResult.ProviderCaseId,
+                    ProviderUrl: reviewResult.ProviderUrl));
+            }
         }
 
         return EventReportProviderSyncResult.Success(
-            providerCaseId,
-            providerSignalId: signals.FirstOrDefault()?.ExternalSignalId,
-            providerUrl,
-            signals);
+            providerCaseId: externalLinks.FirstOrDefault(link => !string.IsNullOrWhiteSpace(link.ProviderCaseId))?.ProviderCaseId,
+            providerSignalId: externalLinks.FirstOrDefault(link => !string.IsNullOrWhiteSpace(link.ProviderSignalId))?.ProviderSignalId,
+            providerUrl: externalLinks.FirstOrDefault(link => !string.IsNullOrWhiteSpace(link.ProviderUrl))?.ProviderUrl,
+            signals,
+            externalLinks);
     }
+
+    private static EventReportProviderEnvelope ApplyTarget(
+        EventReportProviderEnvelope envelope,
+        ReportingProviderTarget target,
+        EventReportProviderEvidenceMode evidenceMode) =>
+        envelope with
+        {
+            EvidenceMode = evidenceMode,
+            ProviderTargetScope = target.Scope,
+            ProviderTargetId = target.TargetId,
+            ProviderEndpointUrl = target.EndpointUrl,
+            ProviderApiKey = target.ApiKey
+        };
 
     private static ReviewCaseEnvelope CreateReviewCaseEnvelope(
         EventReportProviderEnvelope envelope,
-        ModerationProviderOptions options) =>
+        ReportingProviderTarget target,
+        EventReportProviderEvidenceMode evidenceMode) =>
         new(
             envelope.TenantId,
             envelope.ReportId,
             envelope.EventId,
             envelope.CaseId,
-            ResolveReviewProvider(options),
+            target.Provider,
             envelope.QueueCode,
             envelope.CaseStatusCode,
             envelope.PriorityCode,
@@ -97,10 +133,9 @@ public sealed class CompositeEventReportProvider : IEventReportProvider
             null,
             envelope.IdempotencyKey,
             envelope.CorrelationId,
-            options.EvidenceMode);
-
-    private static EventReportExternalProvider ResolveReviewProvider(ModerationProviderOptions options) =>
-        options.IsMode(ModerationProviderOptions.ModeOsprey)
-            ? EventReportExternalProvider.Osprey
-            : EventReportExternalProvider.Coop;
+            evidenceMode,
+            target.Scope,
+            target.TargetId,
+            target.EndpointUrl,
+            target.ApiKey);
 }

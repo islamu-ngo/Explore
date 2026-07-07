@@ -13,14 +13,45 @@ public sealed class OspreyProviderOptionsValidator : IValidateOptions<OspreyProv
     {
         List<string> failures = [];
 
-        if (!string.IsNullOrWhiteSpace(options.EndpointUrl) || options.Enabled)
+        var transport = NormalizeTransport(options.Transport);
+
+        if (transport is null)
         {
-            ValidateEndpointSafety(options, failures);
+            failures.Add("Reporting:Osprey:Transport must be 'HttpJson' or 'Grpc'.");
         }
 
-        if (options.Enabled && string.IsNullOrWhiteSpace(options.EndpointUrl))
+        if (!string.IsNullOrWhiteSpace(options.EndpointUrl)
+            || options.Enabled && string.Equals(transport, OspreyProviderOptions.TransportHttpJson, StringComparison.OrdinalIgnoreCase))
         {
-            failures.Add("Reporting:Osprey:EndpointUrl is required when Reporting:Osprey:Enabled is true.");
+            ValidateEndpointSafety(
+                options.EndpointUrl,
+                "Reporting:Osprey:EndpointUrl",
+                options.AllowLocalProviderEndpoints,
+                failures);
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.GrpcEndpointUrl)
+            || options.Enabled && string.Equals(transport, OspreyProviderOptions.TransportGrpc, StringComparison.OrdinalIgnoreCase))
+        {
+            ValidateEndpointSafety(
+                options.GrpcEndpointUrl,
+                "Reporting:Osprey:GrpcEndpointUrl",
+                options.AllowLocalProviderEndpoints,
+                failures);
+        }
+
+        if (options.Enabled
+            && string.Equals(transport, OspreyProviderOptions.TransportHttpJson, StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(options.EndpointUrl))
+        {
+            failures.Add("Reporting:Osprey:EndpointUrl is required when Reporting:Osprey:Enabled is true and Transport is HttpJson.");
+        }
+
+        if (options.Enabled
+            && string.Equals(transport, OspreyProviderOptions.TransportGrpc, StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(options.GrpcEndpointUrl))
+        {
+            failures.Add("Reporting:Osprey:GrpcEndpointUrl is required when Reporting:Osprey:Enabled is true and Transport is Grpc.");
         }
 
         if (string.IsNullOrWhiteSpace(options.EvaluatePath) || !options.EvaluatePath.Trim().StartsWith('/'))
@@ -48,28 +79,46 @@ public sealed class OspreyProviderOptionsValidator : IValidateOptions<OspreyProv
             : ValidateOptionsResult.Fail(failures);
     }
 
-    private static void ValidateEndpointSafety(OspreyProviderOptions options, List<string> failures)
+    private static string? NormalizeTransport(string? value)
     {
-        if (!Uri.TryCreate(options.EndpointUrl, UriKind.Absolute, out var endpoint)
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return OspreyProviderOptions.TransportHttpJson;
+        }
+
+        var normalized = value.Trim();
+        return string.Equals(normalized, OspreyProviderOptions.TransportHttpJson, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(normalized, OspreyProviderOptions.TransportGrpc, StringComparison.OrdinalIgnoreCase)
+            ? normalized
+            : null;
+    }
+
+    private static void ValidateEndpointSafety(
+        string endpointUrl,
+        string configKey,
+        bool allowLocalProviderEndpoints,
+        List<string> failures)
+    {
+        if (!Uri.TryCreate(endpointUrl, UriKind.Absolute, out var endpoint)
             || !IsHttpEndpoint(endpoint))
         {
-            failures.Add("Reporting:Osprey:EndpointUrl must be an absolute HTTP or HTTPS URL.");
+            failures.Add($"{configKey} must be an absolute HTTP or HTTPS URL.");
             return;
         }
 
         if (!string.IsNullOrEmpty(endpoint.UserInfo))
         {
-            failures.Add("Reporting:Osprey:EndpointUrl must not contain embedded credentials.");
+            failures.Add($"{configKey} must not contain embedded credentials.");
         }
 
         if (!string.IsNullOrEmpty(endpoint.Query) || !string.IsNullOrEmpty(endpoint.Fragment))
         {
-            failures.Add("Reporting:Osprey:EndpointUrl must not contain query strings or fragments.");
+            failures.Add($"{configKey} must not contain query strings or fragments.");
         }
 
-        if (!options.AllowLocalProviderEndpoints && IsLocalOrPrivateEndpoint(endpoint))
+        if (!allowLocalProviderEndpoints && IsLocalOrPrivateEndpoint(endpoint))
         {
-            failures.Add("Reporting:Osprey:EndpointUrl must not target local, loopback, link-local, or private network hosts unless Reporting:Osprey:AllowLocalProviderEndpoints is true.");
+            failures.Add($"{configKey} must not target local, loopback, link-local, or private network hosts unless Reporting:Osprey:AllowLocalProviderEndpoints is true.");
         }
     }
 

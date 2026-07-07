@@ -9,6 +9,7 @@ namespace Explore.Domain;
 public class EventReportExternalLink : ITenantEntity, IAuditableEntity
 {
     private const int MaxProviderIdLength = 200;
+    private const int MaxProviderTargetIdLength = 200;
     private const int MaxProviderUrlLength = 500;
     private const int MaxErrorCategoryLength = 100;
     private const int MaxCorrelationIdLength = 100;
@@ -21,6 +22,8 @@ public class EventReportExternalLink : ITenantEntity, IAuditableEntity
     public Guid? CaseId { get; private set; }
     public EventReportCase? Case { get; private set; }
     public EventReportExternalProvider Provider { get; private set; }
+    public EventReportProviderTargetScope ProviderTargetScope { get; private set; }
+    public string ProviderTargetId { get; private set; } = null!;
     public string? ProviderCaseId { get; private set; }
     public string? ProviderSignalId { get; private set; }
     public string? ProviderUrl { get; private set; }
@@ -40,11 +43,14 @@ public class EventReportExternalLink : ITenantEntity, IAuditableEntity
         Guid? caseId,
         EventReportExternalProvider provider,
         string correlationId,
-        DateTime? createdAt = null)
+        DateTime? createdAt = null,
+        EventReportProviderTargetScope providerTargetScope = EventReportProviderTargetScope.Instance,
+        string providerTargetId = "instance")
     {
         EventReportGuards.RequireGuid(tenantId, nameof(tenantId), "Tenant id is required.");
         EventReportGuards.RequireGuid(reportId, nameof(reportId), "Report id is required.");
         EventReportGuards.RequireDefined(provider, nameof(provider));
+        EventReportGuards.RequireDefined(providerTargetScope, nameof(providerTargetScope));
 
         if (caseId == Guid.Empty)
         {
@@ -58,6 +64,8 @@ public class EventReportExternalLink : ITenantEntity, IAuditableEntity
             ReportId = reportId,
             CaseId = caseId,
             Provider = provider,
+            ProviderTargetScope = providerTargetScope,
+            ProviderTargetId = EventReportGuards.NormalizeRequired(providerTargetId, MaxProviderTargetIdLength, nameof(providerTargetId)),
             SyncState = EventReportSyncState.Pending,
             CorrelationId = EventReportGuards.NormalizeRequired(correlationId, MaxCorrelationIdLength, nameof(correlationId)),
             CreatedAt = createdAt ?? DateTime.UtcNow

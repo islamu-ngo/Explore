@@ -3,6 +3,7 @@
 
 using Explore.Application.Specifications.EventReports;
 using Explore.Domain;
+using Explore.Domain.Enums;
 
 namespace Explore.Application.Contracts.Persistence;
 
@@ -77,5 +78,35 @@ public interface IEventReportRepository : IGenericRepository<EventReport, Guid>
         Guid tenantId,
         Guid eventId,
         DateTime createdAfterUtc,
+        CancellationToken cancellationToken);
+
+    Task<int> CountByTenantAndStatusesAsync(
+        Guid tenantId,
+        IReadOnlyCollection<EventReportStatus> statuses,
+        CancellationToken cancellationToken);
+
+    Task<int> CountCasesByTenantAndStatusesAsync(
+        Guid tenantId,
+        IReadOnlyCollection<EventReportCaseStatus> statuses,
+        CancellationToken cancellationToken);
+
+    Task<int> CountExternalLinksByTenantAndSyncStateAsync(
+        Guid tenantId,
+        EventReportSyncState syncState,
+        CancellationToken cancellationToken);
+
+    Task<int> CountExternalLinksByTenantAndSyncStateBeforeAsync(
+        Guid tenantId,
+        EventReportSyncState syncState,
+        DateTime olderThanUtc,
+        CancellationToken cancellationToken);
+
+    Task<int> CountExternalLinksBySyncStateAsync(
+        EventReportSyncState syncState,
+        CancellationToken cancellationToken);
+
+    Task<int> CountExternalLinksBySyncStateBeforeAsync(
+        EventReportSyncState syncState,
+        DateTime olderThanUtc,
         CancellationToken cancellationToken);
 }

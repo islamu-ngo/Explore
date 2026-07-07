@@ -39,7 +39,8 @@ public sealed class CoopReviewQueueProvider(
         cancellationToken.ThrowIfCancellationRequested();
 
         var currentOptions = options.CurrentValue;
-        if (!IsConfigured(currentOptions))
+        string? endpointUrl = ResolveEndpointUrl(currentOptions, envelope);
+        if (string.IsNullOrWhiteSpace(endpointUrl))
         {
             return ReviewCaseSyncResult.Disabled("Coop review queue provider is not enabled or configured.");
         }
@@ -49,7 +50,7 @@ public sealed class CoopReviewQueueProvider(
 
         try
         {
-            using var request = CreateRequest(currentOptions, CreatePayload(envelope, currentOptions));
+            using var request = CreateRequest(currentOptions, endpointUrl, envelope.ProviderApiKey, CreatePayload(envelope, currentOptions));
             var client = httpClientFactory.CreateClient(HttpClientName);
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token);
 
@@ -118,8 +119,15 @@ public sealed class CoopReviewQueueProvider(
         }
     }
 
-    private static bool IsConfigured(CoopProviderOptions currentOptions) =>
-        currentOptions.Enabled && !string.IsNullOrWhiteSpace(currentOptions.EndpointUrl);
+    private static string? ResolveEndpointUrl(CoopProviderOptions currentOptions, ReviewCaseEnvelope envelope)
+    {
+        if (!string.IsNullOrWhiteSpace(envelope.ProviderEndpointUrl))
+        {
+            return envelope.ProviderEndpointUrl;
+        }
+
+        return currentOptions.Enabled ? currentOptions.EndpointUrl : null;
+    }
 
     private static CoopMirrorRequest CreatePayload(
         ReviewCaseEnvelope envelope,
@@ -158,22 +166,25 @@ public sealed class CoopReviewQueueProvider(
 
     private static HttpRequestMessage CreateRequest(
         CoopProviderOptions currentOptions,
+        string endpointUrl,
+        string? providerApiKey,
         CoopMirrorRequest payload)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, BuildMirrorUri(currentOptions));
+        var request = new HttpRequestMessage(HttpMethod.Post, BuildMirrorUri(currentOptions, endpointUrl));
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.TryAddWithoutValidation("Idempotency-Key", payload.IdempotencyKey);
 
-        if (!string.IsNullOrWhiteSpace(currentOptions.ApiKey))
+        string? apiKey = string.IsNullOrWhiteSpace(providerApiKey) ? currentOptions.ApiKey : providerApiKey;
+        if (!string.IsNullOrWhiteSpace(apiKey))
         {
             var headerName = currentOptions.ApiKeyHeaderName.Trim();
             if (string.Equals(headerName, "Authorization", StringComparison.OrdinalIgnoreCase))
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", currentOptions.ApiKey.Trim());
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey.Trim());
             }
             else
             {
-                request.Headers.TryAddWithoutValidation(headerName, currentOptions.ApiKey.Trim());
+                request.Headers.TryAddWithoutValidation(headerName, apiKey.Trim());
             }
         }
 
@@ -182,9 +193,9 @@ public sealed class CoopReviewQueueProvider(
         return request;
     }
 
-    private static Uri BuildMirrorUri(CoopProviderOptions currentOptions)
+    private static Uri BuildMirrorUri(CoopProviderOptions currentOptions, string endpointUrl)
     {
-        var endpoint = new Uri(currentOptions.EndpointUrl.Trim(), UriKind.Absolute);
+        var endpoint = new Uri(endpointUrl.Trim(), UriKind.Absolute);
         var endpointPath = endpoint.AbsolutePath.TrimEnd('/');
         var mirrorPath = currentOptions.MirrorPath.Trim();
 

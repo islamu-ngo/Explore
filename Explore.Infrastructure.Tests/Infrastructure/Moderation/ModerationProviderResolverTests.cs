@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.EventReporting.Models;
+using Explore.Application.Settings.Groups;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Services.Moderation;
@@ -108,6 +109,7 @@ public sealed class ModerationProviderResolverTests
             .Build();
 
         services.ConfigureInfrastructureServices(configuration);
+        services.AddScoped<IReportingRoutingPolicyResolver>(_ => new StaticReportingRoutingPolicyResolver(CreatePolicy()));
 
         await using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
@@ -135,12 +137,10 @@ public sealed class ModerationProviderResolverTests
             new LocalEventReportProvider(),
             signalProvider,
             reviewProvider,
-            new StaticOptionsMonitor<ModerationProviderOptions>(new ModerationProviderOptions
-            {
-                Mode = ModerationProviderOptions.ModeOsprey,
-                EvaluateSignals = true,
-                MirrorReviewQueue = false
-            }));
+            new StaticReportingRoutingPolicyResolver(CreatePolicy(ospreyTargets:
+            [
+                new ReportingProviderTarget(EventReportExternalProvider.Osprey, EventReportProviderTargetScope.Instance, "instance")
+            ])));
 
         var result = await provider.SyncReportAsync(CreateProviderEnvelope());
 
@@ -162,11 +162,10 @@ public sealed class ModerationProviderResolverTests
             new LocalEventReportProvider(),
             new RecordingSignalProvider(),
             reviewProvider,
-            new StaticOptionsMonitor<ModerationProviderOptions>(new ModerationProviderOptions
-            {
-                Mode = ModerationProviderOptions.ModeCoop,
-                MirrorReviewQueue = true
-            }));
+            new StaticReportingRoutingPolicyResolver(CreatePolicy(coopTargets:
+            [
+                new ReportingProviderTarget(EventReportExternalProvider.Coop, EventReportProviderTargetScope.Instance, "instance")
+            ])));
 
         var result = await provider.SyncReportAsync(CreateProviderEnvelope());
 
@@ -185,7 +184,7 @@ public sealed class ModerationProviderResolverTests
         var noopReview = new NoopReviewQueueProvider();
         var optionsMonitor = new StaticOptionsMonitor<ModerationProviderOptions>(options);
         var local = new LocalEventReportProvider();
-        var composite = new CompositeEventReportProvider(local, noopSignal, noopReview, optionsMonitor);
+        var composite = new CompositeEventReportProvider(local, noopSignal, noopReview, new StaticReportingRoutingPolicyResolver(CreatePolicy()));
         var osprey = new OspreyModerationSignalProvider(
             new StaticHttpClientFactory(new HttpClient(new StaticOkHandler())),
             new StaticOptionsMonitor<OspreyProviderOptions>(new OspreyProviderOptions()),
@@ -202,6 +201,7 @@ public sealed class ModerationProviderResolverTests
             coop,
             noopSignal,
             noopReview,
+            new StaticReportingRoutingPolicyResolver(CreatePolicy()),
             optionsMonitor,
             Substitute.For<ILogger<RuntimeModerationProviderResolver>>());
     }
@@ -264,6 +264,24 @@ public sealed class ModerationProviderResolverTests
         "correlation-1",
         DateTime.UtcNow);
 
+    private static ReportingRoutingPolicy CreatePolicy(
+        IReadOnlyList<ReportingProviderTarget>? ospreyTargets = null,
+        IReadOnlyList<ReportingProviderTarget>? coopTargets = null) => new(
+        LocalCanonicalRequired: true,
+        ExternalSyncEnabled: true,
+        InstanceOspreyEnabled: ospreyTargets?.Count > 0,
+        TenantOspreyEnabled: false,
+        InstanceCoopEnabled: coopTargets?.Count > 0,
+        TenantCoopEnabled: false,
+        TenantProviderConfigurationLocked: true,
+        TenantOspreyProviderLocked: true,
+        TenantCoopProviderLocked: true,
+        OspreyRoutingMode: ReportingRoutingMode.Both,
+        CoopRoutingMode: ReportingRoutingMode.Both,
+        EvidenceMode: EventReportProviderEvidenceMode.MetadataOnly,
+        OspreyTargets: ospreyTargets ?? [],
+        CoopTargets: coopTargets ?? []);
+
     private sealed class RecordingSignalProvider : IModerationSignalProvider
     {
         public int Calls { get; private set; }
@@ -299,6 +317,11 @@ public sealed class ModerationProviderResolverTests
         public TOptions Get(string? name) => CurrentValue;
 
         public IDisposable? OnChange(Action<TOptions, string?> listener) => null;
+    }
+
+    private sealed class StaticReportingRoutingPolicyResolver(ReportingRoutingPolicy policy) : IReportingRoutingPolicyResolver
+    {
+        public Task<ReportingRoutingPolicy> ResolveAsync(CancellationToken cancellationToken = default) => Task.FromResult(policy);
     }
 
     private sealed class StaticHttpClientFactory(HttpClient client) : IHttpClientFactory

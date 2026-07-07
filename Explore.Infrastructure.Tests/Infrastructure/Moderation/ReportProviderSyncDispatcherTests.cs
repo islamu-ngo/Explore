@@ -69,8 +69,12 @@ public sealed class ReportProviderSyncDispatcherTests
         await Assert.That(report.Signals.Single().TenantId).IsEqualTo(report.TenantId);
         await Assert.That(report.Signals.Single().ReportId).IsEqualTo(report.Id);
         await Assert.That(report.Signals.Single().EventId).IsEqualTo(report.EventId);
+        await Assert.That(report.Signals.Single().ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Instance);
+        await Assert.That(report.Signals.Single().ProviderTargetId).IsEqualTo("instance");
         await Assert.That(report.ExternalLinks).Count().IsEqualTo(1);
         await Assert.That(report.ExternalLinks.Single().Provider).IsEqualTo(EventReportExternalProvider.Osprey);
+        await Assert.That(report.ExternalLinks.Single().ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Instance);
+        await Assert.That(report.ExternalLinks.Single().ProviderTargetId).IsEqualTo("instance");
         await Assert.That(report.ExternalLinks.Single().ProviderSignalId).IsEqualTo("signal-1");
         await Assert.That(report.ExternalLinks.Single().SyncState).IsEqualTo(EventReportSyncState.Synced);
         await Assert.That(report.ExternalLinks.Single().CorrelationId).IsEqualTo(idempotencyKey);
@@ -99,6 +103,8 @@ public sealed class ReportProviderSyncDispatcherTests
         await Assert.That(provider.Calls).IsEqualTo(1);
         await Assert.That(report.ExternalLinks).Count().IsEqualTo(1);
         await Assert.That(report.ExternalLinks.Single().Provider).IsEqualTo(EventReportExternalProvider.Coop);
+        await Assert.That(report.ExternalLinks.Single().ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Instance);
+        await Assert.That(report.ExternalLinks.Single().ProviderTargetId).IsEqualTo("instance");
         await Assert.That(report.ExternalLinks.Single().SyncState).IsEqualTo(EventReportSyncState.Failed);
         await Assert.That(report.ExternalLinks.Single().LastErrorCategory).IsEqualTo("coop_timeout");
         await Assert.That(report.ExternalLinks.Single().RetryCount).IsEqualTo(1);
@@ -127,6 +133,8 @@ public sealed class ReportProviderSyncDispatcherTests
         await Assert.That(provider.Calls).IsEqualTo(1);
         await Assert.That(report.ExternalLinks).Count().IsEqualTo(1);
         await Assert.That(report.ExternalLinks.Single().Provider).IsEqualTo(EventReportExternalProvider.Coop);
+        await Assert.That(report.ExternalLinks.Single().ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Instance);
+        await Assert.That(report.ExternalLinks.Single().ProviderTargetId).IsEqualTo("instance");
         await Assert.That(report.ExternalLinks.Single().SyncState).IsEqualTo(EventReportSyncState.Disabled);
         await repository.Received(1).Update(report);
     }
@@ -160,6 +168,111 @@ public sealed class ReportProviderSyncDispatcherTests
 
         await Assert.That(provider.Calls).IsEqualTo(0);
         await repository.DidNotReceiveWithAnyArgs().Update(default!);
+    }
+
+    [Test]
+    public async Task DispatchAsync_WhenTenantCompletedMarkerExistsForSameProvider_DoesNotSkipInstanceSync()
+    {
+        var createdAt = DateTime.UtcNow.AddMinutes(-5);
+        var (report, reportCase) = CreateReport(createdAt);
+        var message = CreateMessage(report, reportCase, createdAt, "request-correlation-5");
+        var idempotencyKey = BuildIdempotencyKey(message);
+        var tenantTargetId = report.TenantId.ToString("N");
+        var existingTenantLink = EventReportExternalLink.CreatePending(
+            report.TenantId,
+            report.Id,
+            reportCase.Id,
+            EventReportExternalProvider.Coop,
+            idempotencyKey,
+            createdAt,
+            EventReportProviderTargetScope.Tenant,
+            tenantTargetId);
+        existingTenantLink.MarkSynced("tenant-case-1", null, "https://tenant-coop.example/cases/tenant-case-1", createdAt.AddMinutes(1));
+        report.ExternalLinks.Add(existingTenantLink);
+
+        var provider = new RecordingEventReportProvider
+        {
+            Result = EventReportProviderSyncResult.Success(providerCaseId: "instance-case-1", providerUrl: "https://coop.example/cases/instance-case-1")
+        };
+        var repository = CreateRepository(report);
+        var dispatcher = CreateDispatcher(provider, repository, new ModerationProviderOptions
+        {
+            Mode = ModerationProviderOptions.ModeCoop,
+            MirrorReviewQueue = true
+        });
+
+        await dispatcher.DispatchAsync(message);
+
+        await Assert.That(provider.Calls).IsEqualTo(1);
+        await Assert.That(report.ExternalLinks).Count().IsEqualTo(2);
+        var instanceLink = report.ExternalLinks.Single(link => link.ProviderTargetScope == EventReportProviderTargetScope.Instance);
+        await Assert.That(instanceLink.ProviderTargetId).IsEqualTo("instance");
+        await Assert.That(instanceLink.ProviderCaseId).IsEqualTo("instance-case-1");
+        await Assert.That(instanceLink.SyncState).IsEqualTo(EventReportSyncState.Synced);
+        await repository.Received(1).Update(report);
+    }
+
+    [Test]
+    public async Task DispatchAsync_WhenTenantSignalExistsForSameExternalId_PersistsInstanceSignal()
+    {
+        var createdAt = DateTime.UtcNow.AddMinutes(-5);
+        var (report, reportCase) = CreateReport(createdAt);
+        var message = CreateMessage(report, reportCase, createdAt, "request-correlation-6");
+        var tenantTargetId = report.TenantId.ToString("N");
+        var tenantSignal = EventReportSignal.Create(
+            report.TenantId,
+            report.Id,
+            report.EventId,
+            EventReportSignalProvider.Osprey,
+            "policy_match",
+            "event.spam",
+            0.82m,
+            EventReportSignalVerdict.LikelyViolation,
+            EventReportRecommendedAction.LightModerate,
+            "Tenant target already produced this signal.",
+            "shared-signal-1",
+            "shared-correlation-1",
+            createdAt,
+            EventReportProviderTargetScope.Tenant,
+            tenantTargetId);
+        report.Signals.Add(tenantSignal);
+
+        var provider = new RecordingEventReportProvider
+        {
+            Result = EventReportProviderSyncResult.Success(
+                providerSignalId: "shared-signal-1",
+                signals:
+                [
+                    new EventSafetySignalEnvelope(
+                        Guid.CreateVersion7(),
+                        Guid.CreateVersion7(),
+                        Guid.CreateVersion7(),
+                        EventReportSignalProvider.Osprey,
+                        "policy_match",
+                        "event.spam",
+                        0.91m,
+                        EventReportSignalVerdict.LikelyViolation,
+                        EventReportRecommendedAction.LightModerate,
+                        "Instance target produced this signal.",
+                        "shared-signal-1",
+                        "shared-correlation-1",
+                        createdAt.AddMinutes(1))
+                ])
+        };
+        var repository = CreateRepository(report);
+        var dispatcher = CreateDispatcher(provider, repository, new ModerationProviderOptions
+        {
+            Mode = ModerationProviderOptions.ModeOsprey,
+            EvaluateSignals = true
+        });
+
+        await dispatcher.DispatchAsync(message);
+
+        await Assert.That(provider.Calls).IsEqualTo(1);
+        await Assert.That(report.Signals).Count().IsEqualTo(2);
+        await Assert.That(report.Signals.Count(signal => signal.ProviderTargetScope == EventReportProviderTargetScope.Instance)).IsEqualTo(1);
+        await Assert.That(report.Signals.Count(signal => signal.ProviderTargetScope == EventReportProviderTargetScope.Tenant)).IsEqualTo(1);
+        await repository.Received(1).Update(report);
     }
 
     private static ReportProviderSyncDispatcher CreateDispatcher(
