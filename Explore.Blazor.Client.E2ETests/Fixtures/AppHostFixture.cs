@@ -35,6 +35,9 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     public string ApiBaseUrl => _app?.GetEndpoint("explore-api", "http")?.ToString().TrimEnd('/')
         ?? throw new InvalidOperationException("API app not started");
 
+    public string ControlPlaneBaseUrl => _app?.GetEndpoint("event-control-plane", "http")?.ToString().TrimEnd('/')
+        ?? throw new InvalidOperationException("Control-plane app not started");
+
     public string KeycloakBaseUrl => _keycloak.BaseUrl;
 
     public Task ResetDatabaseAsync() => _database.ResetAsync();
@@ -93,6 +96,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
             ConfigureDiagnostics(builder);
             ConfigureProjectHttpEndpoint(builder, "explore-api");
             ConfigureProjectHttpEndpoint(builder, "explore-blazor");
+            ConfigureProjectHttpEndpoint(builder, "event-control-plane");
             ConfigureApiEndpoint(builder);
 
             _app = await builder.BuildAsync();
@@ -114,6 +118,11 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         await resourceNotificationService.WaitForResourceHealthyAsync(
             "explore-blazor",
             blazorHealthTimeout.Token);
+
+        using var controlPlaneHealthTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        await resourceNotificationService.WaitForResourceHealthyAsync(
+            "event-control-plane",
+            controlPlaneHealthTimeout.Token);
     }
 
     public async ValueTask DisposeAsync()
@@ -152,6 +161,28 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     {
         ConfigureProjectKeycloak(builder, "explore-blazor", keycloak, includeClientCredentials: true);
         ConfigureProjectKeycloak(builder, "explore-api", keycloak, includeClientCredentials: false);
+        ConfigureControlPlaneKeycloak(builder, keycloak);
+    }
+
+    private static void ConfigureControlPlaneKeycloak(
+        IDistributedApplicationTestingBuilder builder,
+        BffKeycloakFixture keycloak)
+    {
+        var resource = builder.CreateResourceBuilder<ProjectResource>("event-control-plane");
+
+        resource.WithEnvironment("Bff__Authentication__Authority", keycloak.Authority);
+        resource.WithEnvironment("Bff__Authentication__MetadataAddress", keycloak.MetadataAddress);
+        resource.WithEnvironment("Bff__Authentication__ClientId", BffKeycloakFixture.TestControlPlaneClientId);
+        resource.WithEnvironment("Bff__Authentication__ClientSecret", BffKeycloakFixture.TestControlPlaneClientSecret);
+        resource.WithEnvironment("Bff__Authentication__RequireHttpsMetadata", "false");
+        resource.WithEnvironment("KEYCLOAK_REALM", BffKeycloakFixture.RealmName);
+        resource.WithEnvironment("KEYCLOAK_ENDPOINT", keycloak.BaseUrl + "/auth");
+        resource.WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", BffKeycloakFixture.TestControlPlaneClientId);
+        resource.WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", BffKeycloakFixture.TestControlPlaneClientSecret);
+        resource.WithEnvironment("Infisical__ProjectId", string.Empty);
+        resource.WithEnvironment("Infisical__ClientId", string.Empty);
+        resource.WithEnvironment("Infisical__ClientSecret", string.Empty);
+        resource.WithEnvironment("SETUP_SECRET", SetupSecret);
     }
 
     private static void ConfigureProjectKeycloak(
@@ -195,9 +226,11 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     {
         var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
         var blazor = builder.CreateResourceBuilder<ProjectResource>("explore-blazor");
+        var controlPlane = builder.CreateResourceBuilder<ProjectResource>("event-control-plane");
 
         api.WithEnvironment("SETUP_SECRET", SetupSecret);
         blazor.WithEnvironment("SETUP_SECRET", SetupSecret);
+        controlPlane.WithEnvironment("SETUP_SECRET", SetupSecret);
     }
 
     private static void ConfigureDatabase(
@@ -291,10 +324,13 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     {
         var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
         var blazor = builder.CreateResourceBuilder<ProjectResource>("explore-blazor");
+        var controlPlane = builder.CreateResourceBuilder<ProjectResource>("event-control-plane");
         var apiEndpoint = api.GetEndpoint("http");
 
         blazor.WithEnvironment("API_ENDPOINT", apiEndpoint);
         blazor.WithEnvironment("ExploreApi__BaseUrl", apiEndpoint);
+        controlPlane.WithEnvironment("API_ENDPOINT", apiEndpoint);
+        controlPlane.WithEnvironment("ExploreApi__BaseUrl", apiEndpoint);
     }
 
     private async Task PreconfigureTenantRoutingAsync()

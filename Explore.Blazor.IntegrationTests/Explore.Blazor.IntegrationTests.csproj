@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\Event.ControlPlane.Blazor\Event.ControlPlane.Blazor.csproj" Aliases="ControlPlaneBlazor" />
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
   </ItemGroup>
   <ItemGroup>

@@ -24,7 +24,7 @@ public sealed class EventTemplateHalResourceExtensionsTests
             {
                 Items =
                 [
-                    new HalResourceOfEventTemplateListDto
+                    HalLinkTestFactory.WithLinks(new HalResourceOfEventTemplateListDto
                     {
                         Id = templateId,
                         TenantId = Guid.NewGuid(),
@@ -34,13 +34,10 @@ public sealed class EventTemplateHalResourceExtensionsTests
                         Version = 3,
                         IsPublished = true,
                         IsActive = true,
-                        DefinitionCount = 4,
-                        _links = new Dictionary<string, Anonymous40>
-                        {
-                            ["edit"] = new() { Href = $"/api/EventTemplate/{templateId}", Method = "PUT", Title = "Edit" },
-                            ["delete"] = new() { Href = $"/api/EventTemplate/{templateId}", Method = "DELETE", Title = "Delete" }
-                        }
-                    }
+                        DefinitionCount = 4
+                    },
+            new HalLinkTestLink("edit", $"/api/EventTemplate/{templateId}", "PUT", "Edit"),
+            new HalLinkTestLink("delete", $"/api/EventTemplate/{templateId}", "DELETE", "Delete"))
                 ]
             }
         };

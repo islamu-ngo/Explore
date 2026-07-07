@@ -70,6 +70,17 @@ public sealed class SafeAuthDiagnosticsPolicyTests
         redirectUrl.Should().NotContain("token exchange failed");
     }
 
+    [Test]
+    public async Task KeycloakOptions_RequestStandardOidcScopesWithoutOfflineAccess()
+    {
+        var options = CreateKeycloakOptions();
+
+        await Assert.That(options.Scope).Contains("openid");
+        await Assert.That(options.Scope).Contains("profile");
+        await Assert.That(options.Scope).Contains("email");
+        await Assert.That(options.Scope).DoesNotContain("offline_access");
+    }
+
     private static OpenIdConnectOptions CreateKeycloakOptions()
     {
         var environment = Substitute.For<IWebHostEnvironment>();

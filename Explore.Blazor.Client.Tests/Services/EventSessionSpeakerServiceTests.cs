@@ -141,15 +141,11 @@ public class EventSessionSpeakerServiceTests
     public async Task EventSessionSpeakerHalCollection_GetItemsPreservesItemLinks()
     {
         var speakerId = Guid.NewGuid();
-        var embeddedItem = new HalResourceOfEventSessionSpeakerListDto
+        var embeddedItem = HalLinkTestFactory.WithLinks(new HalResourceOfEventSessionSpeakerListDto
         {
             Id = speakerId,
-            ActorDisplayName = "Speaker One",
-            _links = new Dictionary<string, Anonymous36>
-            {
-                ["delete"] = new() { Href = "/api/eventsessionspeaker/management/by-session/session/speaker" }
-            }
-        };
+            ActorDisplayName = "Speaker One"
+        }, new HalLinkTestLink("delete", "/api/eventsessionspeaker/management/by-session/session/speaker"));
         var collection = new HalCollectionResourceOfEventSessionSpeakerListDto
         {
             _links = new Dictionary<string, HalLink>

@@ -79,4 +79,30 @@ public class SmokeTests(
             await playwright.ClosePageAsync(page, nameof(AuthStatus_KeycloakLogin_ReturnsAuthenticatedWithServerCookieOnly));
         }
     }
+
+    [Test]
+    public async Task ControlPlaneHost_AnonymousAdminRoute_ChallengesWithControlPlaneClient()
+    {
+        await appHost.ResetDatabaseAsync();
+
+        var page = await playwright.CreatePageAsync(nameof(ControlPlaneHost_AnonymousAdminRoute_ChallengesWithControlPlaneClient));
+        try
+        {
+            await BffCookieAuthHelper.AddSetupSecretBypassCookieAsync(page.Context, appHost.ControlPlaneBaseUrl);
+
+            var response = await page.GotoAsync($"{appHost.ControlPlaneBaseUrl}/admin/instance");
+            await Assert.That(response).IsNotNull();
+
+            await page.Locator("#username").WaitForAsync();
+
+            await Assert.That(page.Url).Contains("/protocol/openid-connect/auth");
+            await Assert.That(page.Url).Contains("client_id=islamu-event-control-plane");
+            await Assert.That(page.Url).Contains("redirect_uri=");
+            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page, appHost.ControlPlaneBaseUrl);
+        }
+        finally
+        {
+            await playwright.ClosePageAsync(page, nameof(ControlPlaneHost_AnonymousAdminRoute_ChallengesWithControlPlaneClient));
+        }
+    }
 }

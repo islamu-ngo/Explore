@@ -29,16 +29,12 @@ public sealed class AiAssistantConversationStateTests
     [Test]
     public async Task HasEventLink_ReadsReferenceHalLink()
     {
-        var reference = new HalResourceOfAiReferenceSearchResultDto
+        var reference = HalLinkTestFactory.WithLinks(new HalResourceOfAiReferenceSearchResultDto
         {
             Kind = "Event",
             ReferenceId = Guid.CreateVersion7(),
-            DisplayName = "Community Iftar",
-            _links = new Dictionary<string, Anonymous8>
-            {
-                ["event"] = new() { Href = "/api/events/1", Method = "GET" }
-            }
-        };
+            DisplayName = "Community Iftar"
+        }, new HalLinkTestLink("event", "/api/events/1", "GET"));
 
         await Assert.That(AiAssistantConversationState.HasEventLink(reference)).IsTrue();
 

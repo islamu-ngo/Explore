@@ -47,16 +47,12 @@ public sealed class AiAssistantClientServiceTests
             {
                 Items =
                 [
-                    new HalResourceOfAiReferenceSearchResultDto
+                    HalLinkTestFactory.WithLinks(new HalResourceOfAiReferenceSearchResultDto
                     {
                         Kind = "Event",
                         ReferenceId = referenceId,
-                        DisplayName = "Community Iftar",
-                        _links = new Dictionary<string, Anonymous8>
-                        {
-                            ["event"] = new() { Href = $"/api/events/{referenceId}", Method = "GET" }
-                        }
-                    }
+                        DisplayName = "Community Iftar"
+        }, new HalLinkTestLink("event", $"/api/events/{referenceId}", "GET"))
                 ]
             }
         };

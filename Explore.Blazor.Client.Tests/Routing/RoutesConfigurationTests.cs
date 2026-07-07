@@ -85,7 +85,7 @@ public class RoutesConfigurationTests
         const string createSessionRoute = "Path = \"/events/:eventId/sessions/create\", Component = typeof(CreateSession)";
         const string editSessionRoute = "Path = \"/events/:eventId/sessions/:sessionId/edit\", Component = typeof(EditSession)";
         const string detailSessionRoute = "Path = \"/events/:eventId/sessions/:sessionId\", Component = typeof(EventSessionDetail)";
-        const string eventDetailRoute = "Path = \"/events/:eventId\", Component = typeof(EventDetail)";
+        const string eventDetailRoute = "Path = \"/events/:slugCode\", Component = typeof(EventDetail)";
 
         await Assert.That(routesContent).Contains("@using Explore.Blazor.Client.Pages.Events.Sessions");
         await Assert.That(routesContent).Contains(createSessionRoute);
@@ -127,17 +127,22 @@ public class RoutesConfigurationTests
     }
 
     [Test]
-    public async Task EmbeddedControlPlaneOverviewRoute_ShouldUseSharedPageAndAdminGuard()
+    public async Task EmbeddedControlPlaneRoutes_ShouldUseSharedPagesAndMultiTenantAdminGuard()
     {
         var routesFilePath = FindRoutesFilePath();
         var routesContent = await File.ReadAllTextAsync(routesFilePath);
 
-        const string routeRegistration =
-            "Path = ControlPlaneRoutes.Overview, Component = typeof(ControlPlaneOverviewPage), Transition = RouteTransition.Fade, Guards = RequireAdmin()";
-
         await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Pages.Overview");
+        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Pages.Tenants");
+        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Pages.Domains");
+        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Pages.Operations");
         await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Routing");
-        await Assert.That(routesContent).Contains(routeRegistration);
+        await Assert.That(routesContent).Contains("typeof(MultiTenantControlPlaneRouteGuard)");
+        await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Overview, Component = typeof(ControlPlaneOverviewPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Tenants, Component = typeof(ControlPlaneTenantsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Domains, Component = typeof(ControlPlaneDomainsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Operations, Component = typeof(ControlPlaneOperationsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routesContent).Contains("Path = \"/admin/instance/settings\", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin()");
     }
 
     private static string FindRoutesFilePath()

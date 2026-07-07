@@ -240,7 +240,7 @@ public sealed class EventReportModerationServiceTests
         string priorityName)
     {
         var reportId = Guid.NewGuid();
-        return new HalResourceOfModerationReportQueueItemDto
+        return HalLinkTestFactory.WithLinks(new HalResourceOfModerationReportQueueItemDto
         {
             Id = reportId,
             EventId = eventId,
@@ -277,12 +277,8 @@ public sealed class EventReportModerationServiceTests
             },
             DecisionCount = 1,
             SignalCount = 2,
-            ExternalLinkCount = 1,
-            _links = new Dictionary<string, Anonymous52>
-            {
-                ["self"] = new() { Href = "/api/events/event/moderation/reports/report", Method = "GET" }
-            }
-        };
+            ExternalLinkCount = 1
+        }, new HalLinkTestLink("self", "/api/events/event/moderation/reports/report", "GET"));
     }
 
     private static ApiException CreateApiException(string message, int statusCode)

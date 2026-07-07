@@ -725,7 +725,7 @@ public class CreateEventTests : IDisposable
         await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
-        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
+        await Assert.That(navigation.Uri).EndsWith($"/event-created/{createdEventId}");
     }
 
     [Test]
@@ -766,7 +766,7 @@ public class CreateEventTests : IDisposable
         await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
-        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
+        await Assert.That(navigation.Uri).EndsWith($"/event-created/{createdEventId}");
     }
 
     [Test]
@@ -867,7 +867,7 @@ public class CreateEventTests : IDisposable
         await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
-        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
+        await Assert.That(navigation.Uri).EndsWith($"/event-created/{createdEventId}");
     }
 
     [Test]
@@ -918,7 +918,7 @@ public class CreateEventTests : IDisposable
             Arg.Any<DialogOptions>());
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
-        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}");
+        await Assert.That(navigation.Uri).EndsWith($"/event-created/{createdEventId}");
     }
 
     [Test]

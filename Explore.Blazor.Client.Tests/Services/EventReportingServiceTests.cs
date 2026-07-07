@@ -99,7 +99,7 @@ public sealed class EventReportingServiceTests
         string reasonCode,
         string reasonName)
     {
-        return new HalResourceOfMyEventReportDto
+        return HalLinkTestFactory.WithLinks(new HalResourceOfMyEventReportDto
         {
             Id = Guid.NewGuid(),
             EventId = Guid.NewGuid(),
@@ -109,12 +109,8 @@ public sealed class EventReportingServiceTests
             ReasonId = 1,
             ReasonCode = reasonCode,
             ReasonName = reasonName,
-            SubmittedAtUtc = DateTimeOffset.UtcNow,
-            _links = new Dictionary<string, Anonymous53>
-            {
-                ["self"] = new() { Href = "/api/event-reports/my/report", Method = "GET" }
-            }
-        };
+            SubmittedAtUtc = DateTimeOffset.UtcNow
+        }, new HalLinkTestLink("self", "/api/event-reports/my/report", "GET"));
     }
 
     private static ApiException CreateApiException(string message, int statusCode)

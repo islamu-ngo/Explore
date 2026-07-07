@@ -53,20 +53,17 @@ public sealed class SupportAccessClientServiceTests
                 {
                     Items =
                     [
-                        new HalResourceOfSupportAccessSessionDto
+                        HalLinkTestFactory.WithLinks(new HalResourceOfSupportAccessSessionDto
                         {
                             Id = sessionId,
                             TargetTenantId = tenantId,
                             IsActive = true,
                             AllowsWrites = true,
                             ModeName = "Write",
-                            StatusName = "Active",
-                            _links = new Dictionary<string, Anonymous63>
-                            {
-                                ["audit-events"] = new() { Href = "/audit", Method = "GET", Title = "Audit events" },
-                                ["force-stop"] = new() { Href = "/force-stop", Method = "POST", Title = "Force-stop" }
-                            }
-                        }
+                            StatusName = "Active"
+                        },
+            new HalLinkTestLink("audit-events", "/audit", "GET", "Audit events"),
+            new HalLinkTestLink("force-stop", "/force-stop", "POST", "Force-stop"))
                     ]
                 }
             }));

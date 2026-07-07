@@ -1,6 +1,7 @@
 // ABOUTME: Component tests for the moderation report detail panel.
 // ABOUTME: Verifies HAL-gated workflow affordances and safe rendering of detail evidence.
 
+using System.Collections;
 using Explore.Blazor.Client.Components.Moderation;
 
 namespace Explore.Blazor.Client.Tests.Components.Moderation;
@@ -77,7 +78,7 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
         var eventId = Guid.NewGuid();
         var reportId = Guid.NewGuid();
         var caseId = Guid.NewGuid();
-        return new HalResourceOfModerationReportDetailDto
+        var resource = new HalResourceOfModerationReportDetailDto
         {
             Id = reportId,
             EventId = eventId,
@@ -154,10 +155,37 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
             ],
             Decisions = [],
             ExternalLinks = [],
-            Targets = [],
-            _links = linkRels.ToDictionary<string, string, Anonymous51>(
-                rel => rel,
-                _ => new Anonymous51 { Href = "/api/events/event/moderation/reports/report", Method = "POST" })
+            Targets = []
         };
+
+        return WithLinks(
+            resource,
+            linkRels,
+            "/api/events/event/moderation/reports/report",
+            "POST");
+    }
+
+    private static TResource WithLinks<TResource>(
+        TResource resource,
+        IEnumerable<string> linkRels,
+        string href,
+        string method)
+    {
+        var linksProperty = typeof(TResource).GetProperty("_links")
+            ?? throw new InvalidOperationException($"{typeof(TResource).Name} does not expose HAL links.");
+        var linkType = linksProperty.PropertyType.GetGenericArguments()[1];
+        var dictionaryType = typeof(Dictionary<,>).MakeGenericType(typeof(string), linkType);
+        var links = (IDictionary)Activator.CreateInstance(dictionaryType)!;
+
+        foreach (var rel in linkRels)
+        {
+            var link = Activator.CreateInstance(linkType)!;
+            linkType.GetProperty(nameof(HalLink.Href))!.SetValue(link, href);
+            linkType.GetProperty(nameof(HalLink.Method))!.SetValue(link, method);
+            links[rel] = link;
+        }
+
+        linksProperty.SetValue(resource, links);
+        return resource;
     }
 }

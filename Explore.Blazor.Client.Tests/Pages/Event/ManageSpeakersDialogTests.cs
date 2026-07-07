@@ -70,14 +70,15 @@ public sealed class ManageSpeakersDialogTests : IDisposable
         var embeddedItem = new HalResourceOfEventSessionSpeakerListDto
         {
             Id = speakerId,
-            ActorDisplayName = "Speaker One",
-            _links = canDelete
-                ? new Dictionary<string, Anonymous36>
-                {
-                    ["delete"] = new() { Href = "/api/eventsessionspeaker/management/by-session/session/speaker" }
-                }
-                : null
+            ActorDisplayName = "Speaker One"
         };
+
+        if (canDelete)
+        {
+            embeddedItem = HalLinkTestFactory.WithLinks(
+                embeddedItem,
+                new HalLinkTestLink("delete", "/api/eventsessionspeaker/management/by-session/session/speaker"));
+        }
 
         return new HalCollectionResourceOfEventSessionSpeakerListDto
         {

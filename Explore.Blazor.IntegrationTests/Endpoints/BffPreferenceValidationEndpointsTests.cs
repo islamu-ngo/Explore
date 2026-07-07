@@ -164,6 +164,42 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task ActiveProfile_AuthenticatedJsonBody_ForwardsProfileId()
+    {
+        var profileId = Guid.NewGuid();
+        var forwarding = Substitute.For<IBffPreferenceForwardingService>();
+        var antiforgery = Substitute.For<IAntiforgery>();
+        antiforgery.ValidateRequestAsync(Arg.Any<HttpContext>()).Returns(Task.CompletedTask);
+        forwarding.SetActiveProfileAsync(profileId, Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+
+        await using var factory = new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAntiforgery>();
+                services.AddSingleton(antiforgery);
+                services.RemoveAll<IBffPreferenceForwardingService>();
+                services.AddSingleton(forwarding);
+            });
+        });
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+        var authHeader = TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid());
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/appearance/active-profile");
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, authHeader);
+        request.Content = JsonContent.Create(new SetActiveProfileRequestDto { ProfileId = profileId });
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await forwarding.Received(1).SetActiveProfileAsync(profileId, Arg.Any<CancellationToken>());
+    }
+
     public async ValueTask DisposeAsync()
     {
         _client.Dispose();

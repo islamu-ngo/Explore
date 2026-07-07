@@ -1,0 +1,85 @@
+// ABOUTME: Unit tests for multi-tenant-only embedded control-plane route suppression.
+// ABOUTME: Ensures single-tenant admins fall back to tenant settings even during onboarding.
+
+using Blazouter.Models;
+using Explore.Blazor.Client.Routing.Guards;
+
+namespace Explore.Blazor.Client.Tests.Routing.Guards;
+
+public class MultiTenantControlPlaneRouteGuardTests
+{
+    [Test]
+    public async Task CanActivateAsync_MultiTenant_ReturnsTrue()
+    {
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusModel
+        {
+            RequiresOnboarding = false,
+            DeploymentMode = "MultiTenant"
+        });
+
+        var guard = new MultiTenantControlPlaneRouteGuard(instanceOnboardingService);
+
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/instance" });
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task CanActivateAsync_CompletedSingleTenant_ReturnsFalse()
+    {
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusModel
+        {
+            RequiresOnboarding = false,
+            DeploymentMode = "SingleTenant"
+        });
+
+        var guard = new MultiTenantControlPlaneRouteGuard(instanceOnboardingService);
+
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/instance" });
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task CanActivateAsync_SingleTenantWhileOnboardingRequired_ReturnsFalse()
+    {
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusModel
+        {
+            RequiresOnboarding = true,
+            DeploymentMode = "SingleTenant"
+        });
+
+        var guard = new MultiTenantControlPlaneRouteGuard(instanceOnboardingService);
+
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/instance" });
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task CanActivateAsync_StatusUnavailable_ReturnsFalse()
+    {
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns((SystemOnboardingStatusModel?)null);
+
+        var guard = new MultiTenantControlPlaneRouteGuard(instanceOnboardingService);
+
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/instance" });
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task GetRedirectPathAsync_ReturnsTenantSettings()
+    {
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        var guard = new MultiTenantControlPlaneRouteGuard(instanceOnboardingService);
+
+        var redirectPath = await guard.GetRedirectPathAsync(new RouteMatch { MatchedPath = "/admin/instance" });
+
+        await Assert.That(redirectPath).IsEqualTo("/admin/tenant/settings");
+    }
+}

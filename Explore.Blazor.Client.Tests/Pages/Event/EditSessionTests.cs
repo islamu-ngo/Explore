@@ -9,7 +9,7 @@ using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
 using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.AspNetCore.Mvc;
+using ClientValidationProblemDetails = Explore.Blazor.Client.Clients.ValidationProblemDetails;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -132,7 +132,7 @@ public sealed class EditSessionTests : IDisposable
         SetPrivateField(cut.Instance, "_startTime", new TimeSpan(14, 0, 0));
         SetPrivateField(cut.Instance, "_endTime", new TimeSpan(15, 30, 0));
 
-        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
         await _eventService.Received(1).UpdateSessionAsync(Arg.Is<UpdateEventSessionRequest>(dto =>
             dto.Id == sessionId
@@ -186,7 +186,7 @@ public sealed class EditSessionTests : IDisposable
         session.Title = "Updated workshop";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
 
-        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
         await _eventService.Received(1).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
@@ -211,7 +211,7 @@ public sealed class EditSessionTests : IDisposable
         session.Title = "Updated workshop";
         session.LanguageIds = [1];
 
-        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
         await _eventService.Received(1).UpdateSessionAsync(Arg.Is<UpdateEventSessionRequest>(dto =>
             dto.LanguageIds.Single() == 1));
@@ -247,7 +247,7 @@ public sealed class EditSessionTests : IDisposable
         session.Title = "Updated workshop";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)null);
 
-        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
         await _eventService.Received(1).UnassignSessionFromGroupAsync(eventId, groupId, sessionId);
         await _eventService.DidNotReceive().AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
@@ -266,7 +266,7 @@ public sealed class EditSessionTests : IDisposable
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
 
-        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+        await cut.InvokeAsync(async () => await InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
         await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
         var errorMessage = GetSubmitError(cut.Instance);
@@ -285,7 +285,7 @@ public sealed class EditSessionTests : IDisposable
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
 
-        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+        await cut.InvokeAsync(async () => await InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
         await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
         var errorMessage = GetSubmitError(cut.Instance);
@@ -300,12 +300,12 @@ public sealed class EditSessionTests : IDisposable
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
         _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
         _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>())
-            .ThrowsAsync(new ApiException<ValidationProblemDetails>(
+            .ThrowsAsync(new ApiException<ClientValidationProblemDetails>(
                 "Bad Request",
                 400,
                 string.Empty,
                 new Dictionary<string, IEnumerable<string>>(),
-                new ValidationProblemDetails
+                new ClientValidationProblemDetails
                 {
                     Errors = new Dictionary<string, ICollection<string>>
                     {
@@ -318,7 +318,7 @@ public sealed class EditSessionTests : IDisposable
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
 
-        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+        await cut.InvokeAsync(async () => await InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
         await Assert.That(GetSubmitError(cut.Instance)).IsEqualTo("Please fix the validation errors below.");
         await Assert.That(GetValidationMessages(cut.Instance)).Contains("Use a clearer program item title.");
@@ -339,7 +339,7 @@ public sealed class EditSessionTests : IDisposable
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
 
-        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+        await cut.InvokeAsync(async () => await InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
         var submitError = GetSubmitError(cut.Instance);
         await Assert.That(submitError).IsEqualTo("Program item could not be saved. Please try again.");
@@ -506,7 +506,7 @@ public sealed class EditSessionTests : IDisposable
         return submitState.ErrorMessage;
     }
 
-    private static IReadOnlyList<string> GetValidationMessages(object instance)
+    private static List<string> GetValidationMessages(object instance)
     {
         var editContext = GetPrivateField<EditContext>(instance, "_editContext");
         return editContext.GetValidationMessages().ToList();

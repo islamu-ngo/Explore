@@ -89,8 +89,8 @@ public class BffSecurityTests : IAsyncDisposable
         location.Should().Contain("scope=",
             "the redirect must include OIDC scopes");
 
-        location.Should().Contain("offline_access",
-            "the BFF must request Keycloak offline refresh semantics so returning users are not reprompted after normal SSO idle expiry");
+        location.Should().NotContain("offline_access",
+            "the BFF only needs normal refresh tokens and Keycloak rejects offline-token requests for users without offline access");
 
         location.Should().Contain("state=",
             "the redirect must include a state parameter for CSRF protection");

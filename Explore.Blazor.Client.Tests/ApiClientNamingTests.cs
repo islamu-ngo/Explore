@@ -66,6 +66,9 @@ public class ApiClientNamingTests
     private static readonly Regex CleanAsyncMethodName =
         new(@"^[A-Z][A-Za-z0-9]+Async$", RegexOptions.Compiled);
 
+    private static readonly Regex GeneratedAnonymousClassName =
+        new(@"public partial class Anonymous\d+", RegexOptions.Compiled);
+
     [Test]
     public async Task IEventApiClient_IsDiscoverable()
     {
@@ -189,6 +192,22 @@ public class ApiClientNamingTests
 
         await Assert.That(offenders).IsEmpty()
             .Because("HAL embedded collection item arrays should stay typed so generated clients do not fall back to ICollection<object>. "
+                + $"Actual offenders: [{string.Join(", ", offenders)}].");
+    }
+
+    [Test]
+    public async Task GeneratedClient_DoesNotEmitAnonymousSchemaTypes()
+    {
+        var generatedClientSource = GetGeneratedClientSource();
+        var offenders = GeneratedAnonymousClassName
+            .Matches(generatedClientSource)
+            .Select(match => match.Value["public partial class ".Length..])
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(name => name)
+            .ToList();
+
+        await Assert.That(offenders).IsEmpty()
+            .Because("OpenAPI schemas should use named component references instead of inline object schemas that NSwag emits as AnonymousN classes. "
                 + $"Actual offenders: [{string.Join(", ", offenders)}].");
     }
 

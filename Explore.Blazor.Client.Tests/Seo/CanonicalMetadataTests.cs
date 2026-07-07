@@ -25,7 +25,8 @@ public sealed class CanonicalMetadataTests
     {
         var content = await ReadClientSourceAsync("Pages/Events/EventDetail.razor.cs");
 
-        await Assert.That(content).Contains("private string GetCanonicalUrl()\n    {\n        return CanonicalUrlHelper.Build(Navigation");
+        await Assert.That(content).Contains("EventUrlHelper.BuildPublicPath(_eventDetails?.Slug, _eventDetails?.PublicCode)");
+        await Assert.That(content).Contains("CanonicalUrlHelper.Build(Navigation, path)");
     }
 
     private static async Task<string> ReadClientSourceAsync(string relativePath)

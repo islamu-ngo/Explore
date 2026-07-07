@@ -1,6 +1,7 @@
 // ABOUTME: Component tests for the event-scoped moderation report queue page.
 // ABOUTME: Verifies queue rows render and detail evidence is fetched only after opening a report.
 
+using System.Collections;
 using System.Reflection;
 using Explore.Blazor.Client.Components.Moderation;
 using Explore.Blazor.Client.Contracts.Services.EventReporting;
@@ -86,7 +87,7 @@ public sealed class ModerationReportQueuePageTests : IDisposable
     public void Dispose() => _ctx.Dispose();
 
     private static HalResourceOfModerationReportQueueItemDto CreateQueueResource(Guid eventId, Guid reportId)
-        => new()
+        => HalLinkTestFactory.WithLinks(new HalResourceOfModerationReportQueueItemDto
         {
             Id = reportId,
             EventId = eventId,
@@ -123,18 +124,15 @@ public sealed class ModerationReportQueuePageTests : IDisposable
             },
             DecisionCount = 0,
             SignalCount = 1,
-            ExternalLinkCount = 0,
-            _links = new Dictionary<string, Anonymous52>
-            {
-                ["self"] = new() { Href = "/api/events/event/moderation/reports/report", Method = "GET" }
-            }
-        };
+            ExternalLinkCount = 0
+        }, new HalLinkTestLink("self", "/api/events/event/moderation/reports/report", "GET"));
 
     private static HalResourceOfModerationReportDetailDto CreateDetailResource(
         Guid eventId,
         Guid reportId,
         params string[] linkRels)
-        => new()
+    {
+        var resource = new HalResourceOfModerationReportDetailDto
         {
             Id = reportId,
             EventId = eventId,
@@ -191,14 +189,39 @@ public sealed class ModerationReportQueuePageTests : IDisposable
             Decisions = [],
             Signals = [],
             ExternalLinks = [],
-            Targets = [],
-            _links = linkRels
-                .Prepend("self")
-                .Distinct(StringComparer.Ordinal)
-                .ToDictionary<string, string, Anonymous51>(
-                    rel => rel,
-                    _ => new Anonymous51 { Href = "/api/events/event/moderation/reports/report", Method = "GET" })
+            Targets = []
         };
+
+        return WithLinks(
+            resource,
+            linkRels.Prepend("self").Distinct(StringComparer.Ordinal),
+            "/api/events/event/moderation/reports/report",
+            "GET");
+    }
+
+    private static TResource WithLinks<TResource>(
+        TResource resource,
+        IEnumerable<string> linkRels,
+        string href,
+        string method)
+    {
+        var linksProperty = typeof(TResource).GetProperty("_links")
+            ?? throw new InvalidOperationException($"{typeof(TResource).Name} does not expose HAL links.");
+        var linkType = linksProperty.PropertyType.GetGenericArguments()[1];
+        var dictionaryType = typeof(Dictionary<,>).MakeGenericType(typeof(string), linkType);
+        var links = (IDictionary)Activator.CreateInstance(dictionaryType)!;
+
+        foreach (var rel in linkRels)
+        {
+            var link = Activator.CreateInstance(linkType)!;
+            linkType.GetProperty(nameof(HalLink.Href))!.SetValue(link, href);
+            linkType.GetProperty(nameof(HalLink.Method))!.SetValue(link, method);
+            links[rel] = link;
+        }
+
+        linksProperty.SetValue(resource, links);
+        return resource;
+    }
 
     private static T GetPrivateField<T>(object instance, string fieldName)
     {

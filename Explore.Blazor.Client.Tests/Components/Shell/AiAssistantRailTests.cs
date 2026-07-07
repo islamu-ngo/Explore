@@ -234,16 +234,12 @@ public sealed class AiAssistantRailTests : IDisposable
         _clientService.SearchReferencesAsync("iftar", Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiReferenceSearchResultDto>>(
             [
-                new()
+                HalLinkTestFactory.WithLinks(new HalResourceOfAiReferenceSearchResultDto
                 {
                     Kind = "Event",
                     ReferenceId = referenceId,
-                    DisplayName = "Community Iftar",
-                    _links = new Dictionary<string, Anonymous8>
-                    {
-                        ["event"] = new() { Href = $"/api/events/{referenceId}", Method = "GET" }
-                    }
-                }
+                    DisplayName = "Community Iftar"
+                }, new HalLinkTestLink("event", $"/api/events/{referenceId}", "GET"))
             ]));
         _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
@@ -286,16 +282,12 @@ public sealed class AiAssistantRailTests : IDisposable
         _clientService.SearchReferencesAsync("xss", Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiReferenceSearchResultDto>>(
             [
-                new()
+                HalLinkTestFactory.WithLinks(new HalResourceOfAiReferenceSearchResultDto
                 {
                     Kind = "Event",
                     ReferenceId = referenceId,
-                    DisplayName = displayName,
-                    _links = new Dictionary<string, Anonymous8>
-                    {
-                        ["event"] = new() { Href = $"/api/events/{referenceId}", Method = "GET" }
-                    }
-                }
+                    DisplayName = displayName
+                }, new HalLinkTestLink("event", $"/api/events/{referenceId}", "GET"))
             ]));
         _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
@@ -355,17 +347,13 @@ public sealed class AiAssistantRailTests : IDisposable
         _clientService.SearchReferencesAsync("iftar", Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiReferenceSearchResultDto>>(
             [
-                new()
+                HalLinkTestFactory.WithLinks(new HalResourceOfAiReferenceSearchResultDto
                 {
                     Kind = "Event",
                     ReferenceId = referenceId,
                     DisplayName = "Community Iftar",
-                    Summary = "Public evening program",
-                    _links = new Dictionary<string, Anonymous8>
-                    {
-                        ["event"] = new() { Href = $"/api/events/{referenceId}", Method = "GET" }
-                    }
-                }
+                    Summary = "Public evening program"
+                }, new HalLinkTestLink("event", $"/api/events/{referenceId}", "GET"))
             ]));
         _clientService.SendMessageAsync(
                 conversationId,
@@ -1025,18 +1013,14 @@ public sealed class AiAssistantRailTests : IDisposable
         ICollection<Messages2>? messages = null,
         ICollection<ProposedActions2>? proposedActions = null)
     {
-        return new HalResourceOfAiConversationDto
+        return HalLinkTestFactory.WithLinks(new HalResourceOfAiConversationDto
         {
             Id = conversationId,
             Title = title,
             LastMessageSequence = messages?.Select(message => message.Sequence.GetValueOrDefault()).DefaultIfEmpty(0).Max() ?? 0,
             Messages = messages,
-            ProposedActions = proposedActions,
-            _links = new Dictionary<string, Anonymous6>
-            {
-                ["send-message"] = new() { Href = $"/api/ai/assistant/conversations/{conversationId}/messages", Method = "POST" }
-            }
-        };
+            ProposedActions = proposedActions
+        }, new HalLinkTestLink("send-message", $"/api/ai/assistant/conversations/{conversationId}/messages", "POST"));
     }
 
 }
