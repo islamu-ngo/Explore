@@ -29,6 +29,7 @@ public sealed partial class CacheGovernanceTests
             ["event-templates:detail"] = CacheFamilyClassification.EntityScoped("event-templates.detail"),
             ["event-templates:list"] = CacheFamilyClassification.TenantScopedList("event-templates.list"),
             ["event:detail"] = CacheFamilyClassification.EntityScoped("event.detail"),
+            ["event:public-detail"] = CacheFamilyClassification.EntityScoped("event.public-detail"),
             ["events:detail"] = CacheFamilyClassification.BoundedTag("events.detail"),
             ["events:list"] = CacheFamilyClassification.BoundedTag("events.list"),
             ["events:list:tenant"] = CacheFamilyClassification.TenantScopedList("events.list.tenant"),

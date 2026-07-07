@@ -50,6 +50,8 @@ public sealed class EventControlPlaneBlazorArchitectureTests
             "EventBffHostProfile.ControlPlane",
             "AddEventBffKeycloakAuthentication",
             "AddEventApiProxy",
+            "ControlPlaneBffCookieSessionHandler",
+            "IEventBffCookieSessionHandler",
             "AddMudServices",
             "AddEventControlPlaneClient",
             "MapEventBffAuthEndpoints",
@@ -220,6 +222,38 @@ public sealed class EventControlPlaneBlazorArchitectureTests
     }
 
     [Test]
+    public async Task EventControlPlaneBlazor_Routes_MustUseProtectedControlPlaneShellOnly()
+    {
+        var routesPath = Path.Combine(ControlPlaneBlazorRoot, "Components", "Routes.razor");
+        var programPath = Path.Combine(ControlPlaneBlazorRoot, "Program.cs");
+
+        var routesSource = await File.ReadAllTextAsync(routesPath);
+        var programSource = await File.ReadAllTextAsync(programPath);
+
+        var requiredRouteTokens = new[]
+        {
+            "AuthorizeRouteView",
+            "DefaultLayout=\"@typeof(ControlPlaneLayout)\"",
+            "<RedirectToLogin />",
+            "ControlPlaneClientAssembly.Value"
+        };
+
+        var missingRouteTokens = requiredRouteTokens
+            .Where(token => !routesSource.Contains(token, StringComparison.Ordinal))
+            .ToArray();
+
+        await Assert.That(missingRouteTokens).IsEmpty()
+            .Because($"The separate host route tree must use the protected control-plane shell only. Missing: {string.Join(", ", missingRouteTokens)}");
+
+        await Assert.That(routesSource.Contains("MainLayout", StringComparison.Ordinal)).IsFalse()
+            .Because("The separate host must not render through the public/tenant Blazor shell.");
+        await Assert.That(programSource.Contains("MapRazorComponents<App>()", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(programSource.Contains("MapReverseProxy()", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(CountOccurrences(programSource, "RequireAuthorization(EventBffAuthorizationPolicies.ControlPlaneAccess)")).IsEqualTo(2)
+            .Because("Both the control-plane UI endpoint and API proxy must require the coarse instance-admin BFF policy.");
+    }
+
+    [Test]
     public async Task EventControlPlaneBlazor_Dockerfile_MustSupportRuntimeEnvAndInfisicalSecrets()
     {
         var dockerfilePath = Path.Combine(ControlPlaneBlazorRoot, "Dockerfile");
@@ -270,17 +304,25 @@ public sealed class EventControlPlaneBlazorArchitectureTests
             .Because("The local realm export keeps a disposable default that keycloak-init can overwrite from deployment secrets.");
         await Assert.That(realmExport.Contains("\"included.client.audience\": \"islamu-event-api\"", StringComparison.Ordinal)).IsTrue()
             .Because("The control-plane client access token must receive the API audience for BFF token forwarding.");
+        await Assert.That(realmExport.Contains("\"smtpServer\"", StringComparison.Ordinal)).IsFalse()
+            .Because("The deployable realm export must not bake local SMTP infrastructure into self-hosted deployments.");
 
         await Assert.That(testRealm.Contains("\"clientId\": \"islamu-event-control-plane\"", StringComparison.Ordinal)).IsTrue()
             .Because("The integration-test realm must mirror the dedicated control-plane client.");
         await Assert.That(testRealm.Contains("\"secret\": \"test-control-plane-secret\"", StringComparison.Ordinal)).IsTrue()
             .Because("Tests need a deterministic non-production control-plane client secret.");
+        await Assert.That(testRealm.Contains("\"smtpServer\"", StringComparison.Ordinal)).IsFalse()
+            .Because("The test realm export should stay portable; SMTP is applied by environment-driven bootstrap.");
 
         await Assert.That(initScript.Contains("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", StringComparison.Ordinal)).IsTrue();
         await Assert.That(initScript.Contains("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", StringComparison.Ordinal)).IsTrue()
             .Because("keycloak-init must be able to synchronize the dedicated control-plane client secret.");
         await Assert.That(initScript.Contains("set_client_secret \"$KEYCLOAK_CONTROL_PLANE_CLIENT_ID\"", StringComparison.Ordinal)).IsTrue()
             .Because("The control-plane client secret must be updated by client id rather than manual Keycloak UI edits.");
+        await Assert.That(initScript.Contains("KEYCLOAK_SMTP_HOST", StringComparison.Ordinal)).IsTrue()
+            .Because("keycloak-init must accept environment-driven SMTP settings instead of relying on realm-export constants.");
+        await Assert.That(initScript.Contains("sync_realm_smtp_settings", StringComparison.Ordinal)).IsTrue()
+            .Because("Persistent realms must receive optional SMTP settings from environment variables without dashboard edits.");
     }
 
     [Test]
@@ -303,6 +345,7 @@ public sealed class EventControlPlaneBlazorArchitectureTests
             "Event.ControlPlane.Blazor/Dockerfile",
             "KEYCLOAK_CONTROL_PLANE_CLIENT_ID",
             "KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET",
+            "KEYCLOAK_SMTP_HOST",
             "Bff__Authentication__MetadataAddress",
             "CONTROL_PLANE_API_ENDPOINT",
             "CONTROL_PLANE_HTTP_PORT",
@@ -320,6 +363,9 @@ public sealed class EventControlPlaneBlazorArchitectureTests
             "CONTROL_PLANE_HTTP_PORT",
             "KEYCLOAK_CONTROL_PLANE_CLIENT_ID",
             "KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET",
+            "KEYCLOAK_SMTP_HOST",
+            "KEYCLOAK_SMTP_PORT",
+            "KEYCLOAK_SMTP_FROM",
             "CONTROL_PLANE_API_ENDPOINT"
         };
         var missingEnvTokens = envRequiredTokens
@@ -341,6 +387,12 @@ public sealed class EventControlPlaneBlazorArchitectureTests
             .Because("Full-local Aspire must inject local Keycloak settings for the dedicated control-plane client.");
         await Assert.That(appHost.Contains("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", StringComparison.Ordinal)).IsTrue()
             .Because("Full-local Aspire must provide a deterministic disposable control-plane client secret.");
+        await Assert.That(appHost.Contains("\"keycloak-init\"", StringComparison.Ordinal)).IsTrue()
+            .Because("Full-local Aspire must run the Keycloak bootstrap script for persistent local realms.");
+        await Assert.That(appHost.Contains("KEYCLOAK_SMTP_HOST", StringComparison.Ordinal)).IsTrue()
+            .Because("Full-local Aspire must configure Keycloak SMTP through Mailpit without dashboard edits.");
+        await Assert.That(appHost.Contains("WaitForCompletion(resources.KeycloakInit)", StringComparison.Ordinal)).IsTrue()
+            .Because("Apps must wait until Keycloak realm/client/SMTP bootstrap has completed.");
     }
 
     private static IEnumerable<string> EnumerateSourceFiles(string root) =>
@@ -355,6 +407,19 @@ public sealed class EventControlPlaneBlazorArchitectureTests
         return normalized.Contains("/bin/", StringComparison.Ordinal)
             || normalized.Contains("/obj/", StringComparison.Ordinal)
             || normalized.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int CountOccurrences(string source, string token)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = source.IndexOf(token, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += token.Length;
+        }
+
+        return count;
     }
 
     private static string ResolveRepoRoot()
