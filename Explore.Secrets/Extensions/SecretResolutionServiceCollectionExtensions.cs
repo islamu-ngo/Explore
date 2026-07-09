@@ -41,6 +41,7 @@ public static class SecretResolutionServiceCollectionExtensions
         // ---- Infrastructure ---------------------------------------------------
         services.AddMemoryCache();
         services.TryAddSingleton<IInfisicalClientFactory, InfisicalClientFactory>();
+        services.TryAddSingleton<IInlineSecretProtector, InlineSecretProtector>();
 
         // ---- Metrics ---------------------------------------------------------
         // IMeterFactory is registered by AddMetrics() (part of the default host).

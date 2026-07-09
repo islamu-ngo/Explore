@@ -47,6 +47,16 @@ public static class TenantDelegationSettingDefinitions
         MaxScope: SettingScope.Instance,
         IsLockable: false);
 
+    public static readonly SettingDefinition LockIntegrations = new(
+        Key: GovernanceSettingKeys.TenantDelegation.LockIntegrations,
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "true",
+        Category: "TenantDelegation",
+        Description: "Whether tenant administrators can configure their own integration providers",
+        MinScope: SettingScope.Instance,
+        MaxScope: SettingScope.Instance,
+        IsLockable: false);
+
     public static readonly SettingDefinition LockReportingProviders = new(
         Key: GovernanceSettingKeys.TenantDelegation.LockReportingProviders,
         ValueType: SettingValueType.Boolean,
@@ -103,6 +113,7 @@ public static class TenantDelegationSettingDefinitions
         LockStorage,
         LockAnalytics,
         LockAiAssistant,
+        LockIntegrations,
         LockReportingProviders,
         LockTenantOspreyProvider,
         LockTenantCoopProvider,

@@ -22,6 +22,7 @@ public static class SettingRegistry
 
         all.AddRange(DeploymentSettingDefinitions.All);
         all.AddRange(TenantSettingDefinitions.All);
+        all.AddRange(AdminPortalSettingDefinitions.All);
         all.AddRange(RoutingSettingDefinitions.All);
         all.AddRange(EventSettingDefinitions.All);
         all.AddRange(OrganizationSettingDefinitions.All);
@@ -36,6 +37,7 @@ public static class SettingRegistry
         all.AddRange(SupportAccessSettingDefinitions.All);
         all.AddRange(CerbosSettingDefinitions.All);
         all.AddRange(ReportingSettingDefinitions.All);
+        all.AddRange(IntegrationSettingDefinitions.All);
         all.AddRange(AnalyticsSettingDefinitions.All);
         all.AddRange(McpSettingDefinitions.All);
         all.AddRange(AiAssistantSettingDefinitions.All);

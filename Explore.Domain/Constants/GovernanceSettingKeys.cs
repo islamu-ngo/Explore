@@ -16,6 +16,13 @@ public static class GovernanceSettingKeys
         public const string WhiteLabelingEnabled = "tenants.white_labeling_enabled";
     }
 
+    public static class AdminPortal
+    {
+        public const string Enabled = "admin_portal.enabled";
+        public const string PublicUrl = "admin_portal.public_url";
+        public const string AllowTenantAdminAccess = "admin_portal.allow_tenant_admin_access";
+    }
+
     public static class Routing
     {
         public const string DefaultPublicHomePage = "routing.default_public_home_page";
@@ -146,6 +153,18 @@ public static class GovernanceSettingKeys
         public const string FromName = "email.from_name";
         public const string SmtpTimeoutSeconds = "email.smtp_timeout_seconds";
         public const string SmtpSkipCertValidation = "email.smtp_skip_cert_validation";
+    }
+
+    public static class Integrations
+    {
+        public static class Listmonk
+        {
+            public const string Enabled = "integrations.listmonk.enabled";
+            public const string InstanceUrl = "integrations.listmonk.instance_url";
+            public const string DefaultListId = "integrations.listmonk.default_list_id";
+            public const string PreconfirmSubscriptions = "integrations.listmonk.preconfirm_subscriptions";
+            public const string SyncOnRegistration = "integrations.listmonk.sync_on_registration";
+        }
     }
 
     public static class Storage
@@ -282,6 +301,7 @@ public static class GovernanceSettingKeys
         public const string LockStorage = "governance.lock_tenant_storage";
         public const string LockAnalytics = "governance.lock_tenant_analytics";
         public const string LockAiAssistant = "governance.lock_tenant_ai_assistant";
+        public const string LockIntegrations = "governance.lock_tenant_integrations";
         public const string LockReportingProviders = "governance.lock_tenant_reporting_providers";
         public const string LockTenantOspreyProvider = "governance.lock_tenant_osprey_provider";
         public const string LockTenantCoopProvider = "governance.lock_tenant_coop_provider";

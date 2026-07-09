@@ -36,4 +36,18 @@ public static class InfrastructureSecretSettingKeys
         public const string CoopApiKey = "reporting.coop_api_key";
         public const string CoopWebhookSecret = "reporting.coop_webhook_secret";
     }
+
+    public static class Integrations
+    {
+        public static class Listmonk
+        {
+            public const string ApiUsername = "integrations.listmonk.api_username";
+            public const string ApiKey = "integrations.listmonk.api_key";
+        }
+    }
+
+    public static class Localization
+    {
+        public const string TmsApiKey = "localization.tms_api_key";
+    }
 }

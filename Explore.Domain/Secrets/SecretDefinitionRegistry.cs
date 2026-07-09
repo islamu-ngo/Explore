@@ -101,6 +101,11 @@ public static class SecretDefinitionRegistry
             public const string PosthogHost = "analytics.posthog.host";
         }
 
+        public static class Localization
+        {
+            public const string TmsApiKey = InfrastructureSecretSettingKeys.Localization.TmsApiKey;
+        }
+
         public static class Cerbos
         {
             public const string GrpcEndpoint = "cerbos.grpc_endpoint";
@@ -118,6 +123,15 @@ public static class SecretDefinitionRegistry
         {
             public const string OpenAiApiKey = "ai.openai.api_key";
             public const string AnthropicApiKey = "ai.anthropic.api_key";
+        }
+
+        public static class Integrations
+        {
+            public static class Listmonk
+            {
+                public const string ApiUsername = InfrastructureSecretSettingKeys.Integrations.Listmonk.ApiUsername;
+                public const string ApiKey = InfrastructureSecretSettingKeys.Integrations.Listmonk.ApiKey;
+            }
         }
     }
 
@@ -518,6 +532,43 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "ANALYTICS_POSTHOG_HOST",
                 IsBootstrapSecret = false,
                 Description = "PostHog server URL.",
+            },
+
+            // --- localization/LOCALIZATION_TMS_* ---
+            new()
+            {
+                Key = Keys.Localization.TmsApiKey,
+                AllowedScopes = instanceOrTenant,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/localization",
+                DefaultInfisicalKey = "LOCALIZATION_TMS_API_KEY",
+                DefaultEnvironmentVariableName = "LOCALIZATION_TMS_API_KEY",
+                IsBootstrapSecret = false,
+                Description = "Tolgee/Weblate API token used only by backend TMS providers.",
+            },
+
+            // --- integrations/listmonk/LISTMONK_* ---
+            new()
+            {
+                Key = Keys.Integrations.Listmonk.ApiUsername,
+                AllowedScopes = instanceOrTenant,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/integrations/listmonk",
+                DefaultInfisicalKey = "LISTMONK_API_USERNAME",
+                DefaultEnvironmentVariableName = "LISTMONK_API_USERNAME",
+                IsBootstrapSecret = false,
+                Description = "Listmonk API username used by the backend subscriber sync worker.",
+            },
+            new()
+            {
+                Key = Keys.Integrations.Listmonk.ApiKey,
+                AllowedScopes = instanceOrTenant,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/integrations/listmonk",
+                DefaultInfisicalKey = "LISTMONK_API_KEY",
+                DefaultEnvironmentVariableName = "LISTMONK_API_KEY",
+                IsBootstrapSecret = false,
+                Description = "Listmonk API token or password used by the backend subscriber sync worker.",
             },
 
             // --- ai/AI_* ---
