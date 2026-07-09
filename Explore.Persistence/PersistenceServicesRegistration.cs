@@ -261,6 +261,8 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IOrganizationSettingRepository, OrganizationSettingRepository>();
         services.AddScoped<IGroupSettingRepository, GroupSettingRepository>();
         services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
+        services.AddScoped<INotificationChannelPreferenceRepository, NotificationChannelPreferenceRepository>();
+        services.AddScoped<INotificationPreferenceProfileRepository, NotificationPreferenceProfileRepository>();
         services.AddScoped<IAppSettingRepository, AppSettingRepository>();
         services.AddScoped<ISecretBindingRepository, SecretBindingRepository>();
         services.AddScoped<IUiThemeRepository, UiThemeRepository>();
@@ -278,6 +280,7 @@ public static class PersistenceServicesRegistration
         // Generic Outbox Repositories
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IEmailDispatchOutboxRepository, EmailDispatchOutboxRepository>();
+        services.AddScoped<IIntegrationSyncOutboxRepository, IntegrationSyncOutboxRepository>();
 
         // Webhook Repositories
         services.AddScoped<IWebhookConsumerRepository, WebhookConsumerRepository>();
@@ -302,6 +305,7 @@ public static class PersistenceServicesRegistration
 
         // Governance Policy Resolver (deterministic hierarchy walk: Instance → Tenant → Organization)
         services.AddScoped<IPolicyResolver, Services.PolicyResolver>();
+        services.AddScoped<INotificationPreferenceResolver, Services.NotificationPreferenceResolver>();
 
         // Notification Repository
         services.AddScoped<INotificationRepository, NotificationRepository>();

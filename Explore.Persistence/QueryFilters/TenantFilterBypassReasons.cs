@@ -47,6 +47,9 @@ public static class TenantFilterBypassReasons
     public const string EmailDispatchWorkerCrossTenantQueue =
         "Email dispatch worker polls and updates durable outbox rows across tenants using explicit id/status predicates.";
 
+    public const string IntegrationSyncWorkerCrossTenantQueue =
+        "Integration sync worker polls and updates durable integration outbox rows across tenants using explicit id/status predicates.";
+
     public const string EmailDispatchTenantOperation =
         "Email dispatch tenant operation bypasses ambient context only after applying an explicit tenant predicate.";
 

@@ -155,6 +155,8 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         new("notification_external_delegation_statuses"),
         new("notification_intent_statuses"),
         new("notification_ownership_types"),
+        new("notification_preference_categories"),
+        new("notification_preference_channels"),
         new("notification_recipient_kinds"),
         new("notification_scope_types"),
         new("notification_types"),

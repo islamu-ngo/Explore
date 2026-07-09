@@ -41,6 +41,8 @@ public static class LookupTableSeeder
         await SeedExternalApiKeyOwnerTypesAsync(context, cancellationToken);
         await SeedNotificationScopeTypesAsync(context, cancellationToken);
         await SeedNotificationCategoriesAsync(context, cancellationToken);
+        await SeedNotificationPreferenceCategoriesAsync(context, cancellationToken);
+        await SeedNotificationPreferenceChannelsAsync(context, cancellationToken);
         await SeedNotificationOwnershipTypesAsync(context, cancellationToken);
         await SeedNotificationIntentStatusesAsync(context, cancellationToken);
         await SeedNotificationRecipientKindsAsync(context, cancellationToken);
@@ -527,6 +529,39 @@ public static class LookupTableSeeder
                 new() { Id = (int)NotificationCategoryEnum.ProviderInternal, MasterCode = "PROVIDER_INTERNAL", FullName = "Provider internal", Description = "External provider console or workflow notifications not sent as ISLAMU user-facing email" },
                 new() { Id = (int)NotificationCategoryEnum.PlatformOperations, MasterCode = "PLATFORM_OPERATIONS", FullName = "Platform operations", Description = "Platform operational notices and operator-visible lifecycle notifications" },
                 new() { Id = (int)NotificationCategoryEnum.Marketing, MasterCode = "MARKETING", FullName = "Marketing", Description = "Consent-controlled product marketing notifications" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedNotificationPreferenceCategoriesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new NotificationPreferenceCategory[]
+            {
+                new() { Id = (int)NotificationPreferenceCategoryEnum.AccountSecurity, MasterCode = NotificationPreferenceCategoryCodes.AccountSecurity, FullName = "Account security", Description = "Credential, login, and account safety notifications", IsRequired = true, DefaultEmailEnabled = true, DefaultInAppEnabled = true, SortOrder = 10 },
+                new() { Id = (int)NotificationPreferenceCategoryEnum.BillingLegal, MasterCode = NotificationPreferenceCategoryCodes.BillingLegal, FullName = "Billing and legal", Description = "Billing, receipt, compliance, and legal notices", IsRequired = true, DefaultEmailEnabled = true, DefaultInAppEnabled = true, SortOrder = 20 },
+                new() { Id = (int)NotificationPreferenceCategoryEnum.RegistrationStatus, MasterCode = NotificationPreferenceCategoryCodes.RegistrationStatus, FullName = "Registration status", Description = "Registration, waitlist, approval, cancellation, and attendee status changes", IsRequired = false, DefaultEmailEnabled = true, DefaultInAppEnabled = true, SortOrder = 30 },
+                new() { Id = (int)NotificationPreferenceCategoryEnum.EventUpdates, MasterCode = NotificationPreferenceCategoryCodes.EventUpdates, FullName = "Event updates", Description = "Event reminders, updates, cancellations, and organizer announcements", IsRequired = false, DefaultEmailEnabled = true, DefaultInAppEnabled = true, SortOrder = 40 },
+                new() { Id = (int)NotificationPreferenceCategoryEnum.OrganizationUpdates, MasterCode = NotificationPreferenceCategoryCodes.OrganizationUpdates, FullName = "Organization updates", Description = "Organization-level announcements and membership updates", IsRequired = false, DefaultEmailEnabled = true, DefaultInAppEnabled = true, SortOrder = 50 },
+                new() { Id = (int)NotificationPreferenceCategoryEnum.GroupUpdates, MasterCode = NotificationPreferenceCategoryCodes.GroupUpdates, FullName = "Group updates", Description = "Group-level announcements and membership updates", IsRequired = false, DefaultEmailEnabled = true, DefaultInAppEnabled = true, SortOrder = 60 },
+                new() { Id = (int)NotificationPreferenceCategoryEnum.TrustSafety, MasterCode = NotificationPreferenceCategoryCodes.TrustSafety, FullName = "Trust and safety", Description = "Report, moderation, safety, and enforcement notices", IsRequired = true, DefaultEmailEnabled = true, DefaultInAppEnabled = true, SortOrder = 70 },
+                new() { Id = (int)NotificationPreferenceCategoryEnum.ProductAnnouncements, MasterCode = NotificationPreferenceCategoryCodes.ProductAnnouncements, FullName = "Product announcements", Description = "Platform feature announcements and product education", IsRequired = false, DefaultEmailEnabled = false, DefaultInAppEnabled = true, SortOrder = 80 },
+                new() { Id = (int)NotificationPreferenceCategoryEnum.Marketing, MasterCode = NotificationPreferenceCategoryCodes.Marketing, FullName = "Marketing", Description = "Consent-controlled marketing and promotional communication", IsRequired = false, DefaultEmailEnabled = false, DefaultInAppEnabled = false, SortOrder = 90 }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    private static async Task SeedNotificationPreferenceChannelsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new NotificationPreferenceChannel[]
+            {
+                new() { Id = (int)NotificationPreferenceChannelEnum.Email, MasterCode = NotificationPreferenceChannelCodes.Email, FullName = "Email", Description = "Email delivery through ISLAMU Event email dispatch infrastructure", SortOrder = 10 },
+                new() { Id = (int)NotificationPreferenceChannelEnum.InApp, MasterCode = NotificationPreferenceChannelCodes.InApp, FullName = "In-App", Description = "Durable in-app notification rows surfaced by the notification inbox", SortOrder = 20 }
             },
             row => row.Id,
             ct);

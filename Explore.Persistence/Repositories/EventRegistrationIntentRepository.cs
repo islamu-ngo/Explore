@@ -71,7 +71,8 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
         int approvedStatusId,
         int waitlistedStatusId,
         CancellationToken cancellationToken,
-        EmailDispatchOutbox? emailDispatchOutbox = null)
+        EmailDispatchOutbox? emailDispatchOutbox = null,
+        IntegrationSyncOutbox? integrationSyncOutbox = null)
     {
         try
         {
@@ -114,6 +115,13 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
                     emailDispatchOutbox.RegistrationIntentId = intent.Id;
                     emailDispatchOutbox.SourceId = intent.Id;
                     await _dbContext.EmailDispatchOutbox.AddAsync(emailDispatchOutbox, cancellationToken);
+                }
+
+                if (integrationSyncOutbox is not null)
+                {
+                    integrationSyncOutbox.RegistrationIntentId = intent.Id;
+                    integrationSyncOutbox.SourceId = intent.Id;
+                    await _dbContext.IntegrationSyncOutbox.AddAsync(integrationSyncOutbox, cancellationToken);
                 }
 
                 await _dbContext.SaveChangesAsync(cancellationToken);

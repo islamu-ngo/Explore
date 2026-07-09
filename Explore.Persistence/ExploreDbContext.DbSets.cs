@@ -194,6 +194,8 @@ public partial class ExploreDbContext
     public DbSet<GroupSetting> GroupSettingOverrides { get; set; }
     public DbSet<UserPreference> UserPreferences { get; set; }
     public DbSet<UserNotificationPreference> UserNotificationPreferences { get; set; }
+    public DbSet<NotificationChannelPreference> NotificationChannelPreferences { get; set; }
+    public DbSet<NotificationPreferenceProfile> NotificationPreferenceProfiles { get; set; }
     public DbSet<AppSetting> AppSettings { get; set; }
     public DbSet<SecretBinding> SecretBindings { get; set; }
     public DbSet<SecretSourceTypeLookup> SecretSourceTypes { get; set; }
@@ -212,6 +214,8 @@ public partial class ExploreDbContext
     public DbSet<NotificationReason> NotificationReasons { get; set; }
     public DbSet<NotificationScopeType> NotificationScopeTypes { get; set; }
     public DbSet<NotificationFanoutRun> NotificationFanoutRuns { get; set; }
+    public DbSet<NotificationPreferenceCategory> NotificationPreferenceCategories { get; set; }
+    public DbSet<NotificationPreferenceChannel> NotificationPreferenceChannels { get; set; }
     public DbSet<NotificationIntent> NotificationIntents { get; set; }
     public DbSet<NotificationCategory> NotificationCategories { get; set; }
     public DbSet<NotificationOwnershipType> NotificationOwnershipTypes { get; set; }
@@ -244,6 +248,9 @@ public partial class ExploreDbContext
     public DbSet<EmailDispatchAttempt> EmailDispatchAttempts { get; set; }
     public DbSet<EmailDispatchReceipt> EmailDispatchReceipts { get; set; }
     public DbSet<EmailDispatchTenantControl> EmailDispatchTenantControls { get; set; }
+
+    // ===== Native Integration Sync Outbox =====
+    public DbSet<IntegrationSyncOutbox> IntegrationSyncOutbox { get; set; }
 
     // ===== Event Series =====
     public DbSet<EventSeries> EventSeries { get; set; }
