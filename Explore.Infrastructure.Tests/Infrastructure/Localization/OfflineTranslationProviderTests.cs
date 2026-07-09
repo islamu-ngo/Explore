@@ -2,6 +2,7 @@
 // ABOUTME: Verifies that offline provider reads embedded JSON resources and returns translations.
 
 using Explore.Infrastructure.Localization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -9,6 +10,9 @@ namespace Explore.Infrastructure.Tests.Infrastructure.Localization;
 
 public class OfflineTranslationProviderTests
 {
+    private const string EmbeddedAppNameKey = "ui.common.appName";
+    private const string EmbeddedLoadingKey = "ui.common.loading";
+
     private readonly OfflineTranslationProvider _provider;
 
     public OfflineTranslationProviderTests()
@@ -39,13 +43,66 @@ public class OfflineTranslationProviderTests
     }
 
     [Test]
-    public async Task ExportTranslations_ForExistingLanguage_ReturnsTranslations()
+    public async Task ExportTranslations_ForExistingLanguage_ReturnsEmbeddedTranslations()
     {
         var result = await _provider.ExportTranslationsAsync("en");
-        var list = result.ToList();
+        var translations = result.ToDictionary(item => item.KeyName, item => item.Value);
 
-        // Starter bundles are empty, so expect empty list
-        await Assert.That(list).IsNotNull();
+        var hasAppName = translations.TryGetValue(EmbeddedAppNameKey, out var appName);
+        await Assert.That(hasAppName).IsTrue();
+        await Assert.That(appName).IsEqualTo("ISLAMU Event");
+    }
+
+    [Test]
+    public async Task ExportTranslations_WhenWritableBundleExists_MergesWithEmbeddedDefaults()
+    {
+        var root = CreateTempContentRoot();
+        try
+        {
+            WriteWritableBundle(root, "en", """
+                {
+                  "ui.common.appName": "Writable Event",
+                  "ui.test.localOnly": "Local Only"
+                }
+                """);
+
+            var provider = CreateProvider(root);
+            var translations = (await provider.ExportTranslationsAsync("en"))
+                .ToDictionary(item => item.KeyName, item => item.Value);
+
+            await Assert.That(translations[EmbeddedAppNameKey]).IsEqualTo("Writable Event");
+            await Assert.That(translations[EmbeddedLoadingKey]).IsEqualTo("Loading…");
+            await Assert.That(translations["ui.test.localOnly"]).IsEqualTo("Local Only");
+        }
+        finally
+        {
+            DeleteTempContentRoot(root);
+        }
+    }
+
+    [Test]
+    public async Task ExportTranslations_WhenWritableBundleIsMalformed_FallsBackToEmbeddedDefaults()
+    {
+        var root = CreateTempContentRoot();
+        try
+        {
+            WriteWritableBundle(root, "en", """
+                {
+                  "bad key": "Broken"
+                }
+                """);
+
+            var provider = CreateProvider(root);
+            var translations = (await provider.ExportTranslationsAsync("en"))
+                .ToDictionary(item => item.KeyName, item => item.Value);
+
+            await Assert.That(translations[EmbeddedAppNameKey]).IsEqualTo("ISLAMU Event");
+            await Assert.That(translations.ContainsKey("bad key")).IsFalse();
+        }
+        finally
+        {
+            DeleteTempContentRoot(root);
+        }
     }
 
     [Test]
@@ -61,7 +118,35 @@ public class OfflineTranslationProviderTests
     [Test]
     public async Task ImportKeys_IsNoOp()
     {
-        // Offline provider is read-only; import should not throw
         await _provider.ImportKeysAsync([]);
+    }
+
+    private static OfflineTranslationProvider CreateProvider(string contentRoot)
+    {
+        var environment = Substitute.For<IWebHostEnvironment>();
+        environment.ContentRootPath.Returns(contentRoot);
+        return new OfflineTranslationProvider(Substitute.For<ILogger<OfflineTranslationProvider>>(), environment);
+    }
+
+    private static string CreateTempContentRoot()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"islamu-localization-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        return root;
+    }
+
+    private static void WriteWritableBundle(string contentRoot, string languageCode, string json)
+    {
+        var directory = Path.Combine(contentRoot, "App_Data", "Localization", "Bundles");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, $"{languageCode}.json"), json);
+    }
+
+    private static void DeleteTempContentRoot(string contentRoot)
+    {
+        if (Directory.Exists(contentRoot))
+        {
+            Directory.Delete(contentRoot, recursive: true);
+        }
     }
 }

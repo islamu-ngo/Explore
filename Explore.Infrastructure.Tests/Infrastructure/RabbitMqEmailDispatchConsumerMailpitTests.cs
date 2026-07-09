@@ -233,6 +233,7 @@ public sealed class RabbitMqEmailDispatchConsumerMailpitTests(
         services.AddSingleton<IEmailService>(CreateSmtpEmailService());
         services.AddSingleton(Substitute.For<IUserNotificationPreferenceRepository>());
         services.AddSingleton(Substitute.For<IEmailUnsubscribeTokenService>());
+        services.AddSingleton(CreateEnabledNotificationPreferenceResolver());
         services.AddSingleton(tenantAccessor);
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
         services.AddSingleton<IEmailDispatchDrainService>(provider => new EmailDispatchDrainService(
@@ -266,6 +267,27 @@ public sealed class RabbitMqEmailDispatchConsumerMailpitTests(
         });
 
         return new SmtpEmailService(resolver, NullLogger<SmtpEmailService>.Instance);
+    }
+
+    private static INotificationPreferenceResolver CreateEnabledNotificationPreferenceResolver()
+    {
+        var resolver = Substitute.For<INotificationPreferenceResolver>();
+        resolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var request = call.Arg<NotificationPreferenceResolveRequest>();
+                return new NotificationPreferenceDecision(
+                    request.CategoryCode,
+                    request.ChannelCode,
+                    IsEnabled: true,
+                    IsRequired: false,
+                    IsLocked: false,
+                    IsMuted: false,
+                    EffectiveSourceScope: "Default",
+                    LockReason: null);
+            });
+
+        return resolver;
     }
 
     private static RabbitMqEmailDispatchTransport CreateTransport(

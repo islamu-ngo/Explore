@@ -22,6 +22,7 @@ using Explore.Infrastructure.Ai;
 using Explore.Infrastructure.Analytics;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Identity;
+using Explore.Infrastructure.Integrations.Listmonk;
 using Explore.Infrastructure.Localization;
 using Explore.Infrastructure.Localization.Resilience;
 using Explore.Infrastructure.Mail;
@@ -189,8 +190,15 @@ public static class InfrastructureServicesRegistration
         {
             client.Timeout = TimeSpan.FromSeconds(45);
         })
-        .ConfigurePrimaryHttpMessageHandler(CreateKeycloakBootstrapHttpHandler);
+            .ConfigurePrimaryHttpMessageHandler(CreateKeycloakBootstrapHttpHandler);
         services.AddScoped<IKeycloakBootstrapService, KeycloakBootstrapService>();
+        services.Configure<KeycloakLifecycleEmailOptions>(configuration.GetSection(KeycloakLifecycleEmailOptions.SectionName));
+        services.AddHttpClient(KeycloakAccountAuthorityLifecycleEmailService.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(45);
+        })
+        .ConfigurePrimaryHttpMessageHandler(CreateKeycloakBootstrapHttpHandler);
+        services.AddScoped<IAccountAuthorityLifecycleEmailService, KeycloakAccountAuthorityLifecycleEmailService>();
 
         // Authorization providers (runtime-switchable via SystemSetting "authorization.provider")
         // Both concrete providers are always registered; RuntimeAuthorizationProvider delegates at runtime.
@@ -365,6 +373,7 @@ public static class InfrastructureServicesRegistration
             }));
         services.AddScoped<WeblateTranslationProvider>();
         services.AddSingleton<OfflineTranslationProvider>();
+        services.AddSingleton<IStaticTranslationBundleReader>(sp => sp.GetRequiredService<OfflineTranslationProvider>());
         services.AddScoped<NullTranslationProvider>();
         services.AddScoped<ITranslationConfigResolver, TranslationConfigResolver>();
         services.AddScoped<RuntimeTranslationProvider>();
@@ -387,6 +396,15 @@ public static class InfrastructureServicesRegistration
             .Bind(configuration.GetSection(EmailDispatchRabbitMqSettings.SectionName))
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<EmailDispatchRabbitMqSettings>, EmailDispatchRabbitMqSettingsValidator>();
+        services.AddOptions<IntegrationSyncProcessorSettings>()
+            .Bind(configuration.GetSection(IntegrationSyncProcessorSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IIntegrationSyncDrainService, IntegrationSyncDrainService>();
+        services.AddHttpClient(ListmonkSyncService.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddScoped<ListmonkSyncService>();
         services.AddOptions<IdempotencyCleanupSettings>()
             .Bind(configuration.GetSection(IdempotencyCleanupSettings.SectionName))
             .ValidateOnStart();

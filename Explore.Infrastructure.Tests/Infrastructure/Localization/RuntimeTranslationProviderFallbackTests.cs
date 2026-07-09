@@ -2,23 +2,28 @@
 // ABOUTME: Verifies that a failing live provider never bubbles errors out of the runtime wrapper.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Secrets;
 using Explore.Application.Telemetry;
 using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Explore.Infrastructure.Localization;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using System.Diagnostics.Metrics;
 
 namespace Explore.Infrastructure.Tests.Infrastructure.Localization;
 
 public class RuntimeTranslationProviderFallbackTests
 {
+    private static readonly Guid TenantId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
     [Test]
     public async Task ExportTranslations_WhenForceOfflineMode_ShortCircuitsToOfflineProvider()
     {
         var resolver = new MutableConfigResolver
         {
             Current = new TranslationConfiguration(
-                TranslationManagementProviderEnum.Tolgee, "https://tolgee.test", "proj1", null, "en")
+                TranslationManagementProviderEnum.Tolgee, "https://tolgee.test", "1", null, "en")
             {
                 ForceOfflineMode = true
             }
@@ -39,7 +44,7 @@ public class RuntimeTranslationProviderFallbackTests
         var resolver = new MutableConfigResolver
         {
             Current = new TranslationConfiguration(
-                TranslationManagementProviderEnum.Tolgee, "https://tolgee.unreachable.invalid", "proj1", null, "en")
+                TranslationManagementProviderEnum.Tolgee, "https://tolgee.unreachable.invalid", "1", null, "en")
         };
 
         var provider = BuildProvider(resolver);
@@ -48,6 +53,31 @@ public class RuntimeTranslationProviderFallbackTests
         var result = await provider.ExportTranslationsAsync("en");
 
         await Assert.That(result).IsNotNull();
+    }
+
+    [Test]
+    public async Task ImportKeys_WhenLiveProviderThrows_RecordsFallbackMetricAndSwallowsException()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var resolver = new MutableConfigResolver
+        {
+            Current = new TranslationConfiguration(
+                TranslationManagementProviderEnum.Tolgee, "https://tolgee.unreachable.invalid", "1", null, "en")
+        };
+
+        var provider = BuildProvider(resolver);
+
+        await provider.ImportKeysAsync([
+            new TranslationKeyImport(
+                "lookup.tag.FIQH.full_name",
+                new Dictionary<string, string> { ["en"] = "Fiqh" })
+        ]);
+
+        var measurement = await metricsCapture.SingleAsync("islamu.tms.fallback_activated_total");
+
+        await Assert.That(measurement.Value).IsEqualTo(1);
+        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo(nameof(TolgeeTranslationProvider));
+        await Assert.That(measurement.Tags["reason"]?.ToString()).IsEqualTo("network_error");
     }
 
     private static RuntimeTranslationProvider BuildProvider(ITranslationConfigResolver resolver)
@@ -61,8 +91,10 @@ public class RuntimeTranslationProviderFallbackTests
         var weblateFactory = Substitute.For<IHttpClientFactory>();
         weblateFactory.CreateClient(Arg.Any<string>()).Returns(weblateClient);
 
-        var tolgee = new TolgeeTranslationProvider(tolgeeFactory, resolver, Substitute.For<ILogger<TolgeeTranslationProvider>>());
-        var weblate = new WeblateTranslationProvider(weblateFactory, resolver, Substitute.For<ILogger<WeblateTranslationProvider>>());
+        var secretResolver = CreateSecretResolver();
+        var tenantContext = CreateTenantContext();
+        var tolgee = new TolgeeTranslationProvider(tolgeeFactory, resolver, secretResolver, tenantContext, Substitute.For<ILogger<TolgeeTranslationProvider>>());
+        var weblate = new WeblateTranslationProvider(weblateFactory, resolver, secretResolver, tenantContext, Substitute.For<ILogger<WeblateTranslationProvider>>());
         var offline = new OfflineTranslationProvider(Substitute.For<ILogger<OfflineTranslationProvider>>());
         var nullProvider = new NullTranslationProvider(Substitute.For<ILogger<NullTranslationProvider>>());
 
@@ -94,10 +126,31 @@ public class RuntimeTranslationProviderFallbackTests
 
     private static TranslationMetrics CreateTestMetrics()
     {
-        var meter = new System.Diagnostics.Metrics.Meter("test.fallback");
-        var factory = Substitute.For<System.Diagnostics.Metrics.IMeterFactory>();
-        factory.Create(Arg.Any<System.Diagnostics.Metrics.MeterOptions>()).Returns(meter);
+        var meter = new Meter(TranslationMetrics.MeterName);
+        var factory = Substitute.For<IMeterFactory>();
+        factory.Create(Arg.Any<MeterOptions>()).Returns(meter);
         return new TranslationMetrics(factory);
+    }
+
+    private static ISecretResolver CreateSecretResolver()
+    {
+        var resolver = Substitute.For<ISecretResolver>();
+        resolver.ResolveAsync(SecretDefinitionRegistry.Keys.Localization.TmsApiKey, TenantId, Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSecret(
+                SecretDefinitionRegistry.Keys.Localization.TmsApiKey,
+                "test-tms-key",
+                SecretSourceType.InlineEncrypted,
+                SecretScope.Tenant,
+                TenantId,
+                DateTimeOffset.UtcNow));
+        return resolver;
+    }
+
+    private static ITenantContext CreateTenantContext()
+    {
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(TenantId);
+        return tenantContext;
     }
 
     private sealed class ThrowingHttpHandler : HttpMessageHandler
@@ -105,4 +158,76 @@ public class RuntimeTranslationProviderFallbackTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => throw new HttpRequestException("simulated network failure");
     }
+
+    private sealed class MetricsCapture : IDisposable
+    {
+        private readonly MeterListener _listener;
+        private readonly Lock _measurementsLock = new();
+        private readonly List<Measurement> _measurements = [];
+
+        public MetricsCapture()
+        {
+            _listener = new MeterListener();
+            _listener.InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == TranslationMetrics.MeterName)
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+            };
+
+            _listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+            {
+                lock (_measurementsLock)
+                {
+                    _measurements.Add(new Measurement(
+                        instrument.Name,
+                        measurement,
+                        tags.ToArray().ToDictionary(tag => tag.Key, tag => tag.Value)));
+                }
+            });
+
+            _listener.Start();
+        }
+
+        public async Task<Measurement> SingleAsync(string instrumentName)
+        {
+            for (var attempt = 0; attempt < 20; attempt++)
+            {
+                Measurement[] snapshot;
+                lock (_measurementsLock)
+                {
+                    snapshot = [.. _measurements];
+                }
+
+                var matches = snapshot
+                    .Where(measurement => measurement.InstrumentName == instrumentName)
+                    .ToList();
+
+                if (matches.Count > 0)
+                {
+                    return matches[^1];
+                }
+
+                await Task.Delay(10);
+            }
+
+            lock (_measurementsLock)
+            {
+                return _measurements
+                    .Where(measurement => measurement.InstrumentName == instrumentName)
+                    .Last();
+            }
+        }
+
+        public void Dispose()
+        {
+            _listener.Dispose();
+        }
+    }
+
+    private sealed record Measurement(
+        string InstrumentName,
+        long Value,
+        IReadOnlyDictionary<string, object?> Tags);
 }

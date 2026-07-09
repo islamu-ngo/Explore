@@ -1,4 +1,4 @@
-// ABOUTME: Offline translation provider — reads from {ContentRoot}/App_Data/Localization/Bundles first, falls back to embedded resources.
+// ABOUTME: Offline translation provider — merges embedded bundle defaults with writable App_Data overrides.
 // ABOUTME: Default provider when no TMS is configured; also the fallback when a live TMS throws or force_offline_mode is on.
 
 using System.Collections.Concurrent;
@@ -10,15 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Explore.Infrastructure.Localization;
 
-/// <summary>
-/// Reads flat key-value JSON bundles. Resolution order:
-/// 1. <c>{ContentRoot}/App_Data/Localization/Bundles/{lang}.json</c> (admin-exported, writable — preferred)
-/// 2. Embedded resource shipped with the assembly (read-only fallback)
-/// <para>
-/// Bundle format: <c>{ "ui.home.title": "Welcome", ... }</c>. One file per language.
-/// </para>
-/// </summary>
-public class OfflineTranslationProvider : ITranslationManagementProvider
+public class OfflineTranslationProvider : ITranslationManagementProvider, IStaticTranslationBundleReader
 {
     private readonly ILogger<OfflineTranslationProvider> _logger;
     private readonly IWebHostEnvironment? _environment;
@@ -63,6 +55,10 @@ public class OfflineTranslationProvider : ITranslationManagementProvider
         return Task.FromResult(exports);
     }
 
+    public Task<IReadOnlyDictionary<string, string>> ReadBundleAsync(
+        string languageCode,
+        CancellationToken cancellationToken = default) => Task.FromResult(GetOrLoadBundle(languageCode));
+
     public Task<IEnumerable<string>> GetAvailableLanguagesAsync(CancellationToken ct = default)
     {
         EnsureLanguagesScanned();
@@ -84,56 +80,88 @@ public class OfflineTranslationProvider : ITranslationManagementProvider
 
     private IReadOnlyDictionary<string, string> GetOrLoadBundle(string languageCode)
     {
-        var normalizedCode = languageCode.ToLowerInvariant();
+        var normalizedCode = languageCode.Trim().ToLowerInvariant();
         return _bundles.GetOrAdd(normalizedCode, LoadBundle);
     }
 
     private IReadOnlyDictionary<string, string> LoadBundle(string languageCode)
     {
-        // Preferred: writable-dir bundle (admin-exported), then fall back to embedded resource.
-        if (_environment is not null)
+        var embedded = LoadEmbeddedBundle(languageCode);
+        var writable = LoadWritableBundle(languageCode);
+        if (writable is null)
         {
-            var writablePath = Path.Combine(
-                _environment.ContentRootPath,
-                "App_Data",
-                "Localization",
-                "Bundles",
-                $"{languageCode}.json");
-
-            if (File.Exists(writablePath))
-            {
-                try
-                {
-                    using var fileStream = File.OpenRead(writablePath);
-                    var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(fileStream)
-                               ?? new Dictionary<string, string>();
-                    _logger.LogInformation(
-                        "[LOCALIZATION] Loaded writable bundle for {Language}: {Count} keys ({Path})",
-                        languageCode, dict.Count, writablePath);
-                    return dict;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        "[LOCALIZATION] Failed to read writable bundle at {Path}; falling back to embedded resource",
-                        writablePath);
-                }
-            }
+            return embedded;
         }
 
+        var merged = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in embedded)
+        {
+            merged[key] = value;
+        }
+
+        foreach (var (key, value) in writable)
+        {
+            merged[key] = value;
+        }
+
+        _logger.LogInformation(
+            "[LOCALIZATION] Merged offline bundle for {Language}: {EmbeddedCount} embedded keys, {WritableCount} writable overrides, {MergedCount} total keys",
+            languageCode, embedded.Count, writable.Count, merged.Count);
+
+        return merged;
+    }
+
+    private IReadOnlyDictionary<string, string>? LoadWritableBundle(string languageCode)
+    {
+        if (_environment is null)
+        {
+            return null;
+        }
+
+        var writablePath = Path.Combine(
+            _environment.ContentRootPath,
+            "App_Data",
+            "Localization",
+            "Bundles",
+            $"{languageCode}.json");
+
+        if (!File.Exists(writablePath))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var fileStream = File.OpenRead(writablePath);
+            var dict = BundleSchema.Read(fileStream);
+            _logger.LogInformation(
+                "[LOCALIZATION] Loaded writable bundle for {Language}: {Count} keys ({Path})",
+                languageCode, dict.Count, writablePath);
+            return dict;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "[LOCALIZATION] Failed to read writable bundle at {Path}; embedded defaults remain active",
+                writablePath);
+            return null;
+        }
+    }
+
+    private IReadOnlyDictionary<string, string> LoadEmbeddedBundle(string languageCode)
+    {
         var resourceName = $"{_bundlePrefix}{languageCode}.json";
         using var stream = _bundleAssembly.GetManifestResourceStream(resourceName);
 
         if (stream is null)
         {
             _logger.LogDebug("No offline bundle found for language {Language} (resource: {Resource})", languageCode, resourceName);
-            return new Dictionary<string, string>();
+            return new SortedDictionary<string, string>(StringComparer.Ordinal);
         }
 
         try
         {
-            var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(stream)
-                       ?? new Dictionary<string, string>();
+            var dict = BundleSchema.Read(stream);
             _logger.LogInformation("Loaded embedded translation bundle for {Language}: {Count} keys", languageCode, dict.Count);
             return dict;
         }

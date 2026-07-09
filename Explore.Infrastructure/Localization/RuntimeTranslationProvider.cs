@@ -64,6 +64,7 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
         }
         catch (Exception ex)
         {
+            _metrics.RecordFallbackActivated(provider.GetType().Name, ClassifyException(ex));
             _logger.LogWarning(ex, "TMS ImportKeys failed on {Provider}", provider.GetType().Name);
         }
     }
@@ -75,15 +76,6 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
         {
             var results = await provider.ExportTranslationsAsync(languageCode, ct);
             var list = results.ToList();
-            if (list.Count > 0) return list;
-
-            // Live provider returned empty — try offline as fallback
-            if (provider != _offlineProvider)
-            {
-                _logger.LogDebug("Live TMS returned empty for {Language}; trying offline bundles", languageCode);
-                return await _offlineProvider.ExportTranslationsAsync(languageCode, ct);
-            }
-
             return list;
         }
         catch (Exception ex)

@@ -57,7 +57,8 @@ public sealed class BundleFileWriter : IBundleFileWriter
                 bufferSize: 4096,
                 useAsync: true))
             {
-                await JsonSerializer.SerializeAsync(stream, translations, SerializerOptions, ct);
+                var sortedTranslations = BundleSchema.ValidateAndSort(translations);
+                await JsonSerializer.SerializeAsync(stream, sortedTranslations, SerializerOptions, ct);
                 await stream.FlushAsync(ct);
             }
 

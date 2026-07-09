@@ -9,6 +9,7 @@ using Explore.Application.Models;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Infrastructure;
 using Explore.Infrastructure.Tests.Fixtures;
 using Microsoft.Extensions.Configuration;
@@ -234,6 +235,116 @@ public sealed class EmailDispatchDrainServiceTests
     }
 
     [Test]
+    public async Task ProcessSingleAsyncSkipsWithoutSendingWhenMatrixDisablesEmailChannel()
+    {
+        var fixture = new Fixture();
+        var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+        dispatch.Kind = EmailDispatchKind.EventReminder;
+        fixture.Repository.GetByTenantAndPublishEventId(dispatch.TenantId, dispatch.PublishEventId, Arg.Any<CancellationToken>())
+            .Returns(dispatch);
+        fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
+        fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.Repository.TryClaimReceipt(Arg.Any<EmailDispatchReceipt>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.PreferenceRepository.GetByUserAndCategory(
+                dispatch.TenantId,
+                dispatch.UserId!.Value,
+                NotificationPreferenceCategories.EventReminders)
+            .Returns((UserNotificationPreference?)null);
+        fixture.PreferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => DisabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
+
+        var result = await fixture.Service.ProcessSingleAsync(
+            dispatch.TenantId,
+            dispatch.PublishEventId,
+            "tickerq-drain",
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
+        await fixture.EmailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await fixture.Repository.Received(1).RecordAttempt(
+            Arg.Is<EmailDispatchAttempt>(attempt =>
+                attempt.EmailDispatchOutboxId == dispatch.Id &&
+                attempt.Outcome == EmailDispatchAttemptOutcome.Skipped &&
+                attempt.FailureCategory == "recipient_notification_preference_disabled"),
+            Arg.Any<CancellationToken>());
+        await fixture.Repository.Received(1).MarkAsSkipped(
+            dispatch.Id,
+            "recipient_notification_preference_disabled",
+            Arg.Is<string>(message => message.Contains("disabled this notification category", StringComparison.OrdinalIgnoreCase)),
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+        await fixture.Repository.Received(1).MarkReceiptSkipped(
+            Arg.Any<Guid>(),
+            "recipient_notification_preference_disabled",
+            Arg.Is<string>(message => message.Contains("disabled this notification category", StringComparison.OrdinalIgnoreCase)),
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+        await fixture.PreferenceResolver.Received(1).ResolveAsync(
+            Arg.Is<NotificationPreferenceResolveRequest>(request =>
+                request.TenantId == dispatch.TenantId &&
+                request.UserId == dispatch.UserId &&
+                request.CategoryCode == NotificationPreferenceCategoryCodes.EventUpdates &&
+                request.ChannelCode == NotificationPreferenceChannelCodes.Email),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessSingleAsyncAppliesPreferencesForEveryProductLifecycleEmailKind()
+    {
+        var cases = new[]
+        {
+            (EmailDispatchKind.RegistrationConfirmation, NotificationPreferenceCategories.RegistrationConfirmations),
+            (EmailDispatchKind.RegistrationApproved, NotificationPreferenceCategories.EventUpdates),
+            (EmailDispatchKind.RegistrationRejected, NotificationPreferenceCategories.EventUpdates),
+            (EmailDispatchKind.WaitlistPromoted, NotificationPreferenceCategories.EventUpdates),
+            (EmailDispatchKind.EventReminder, NotificationPreferenceCategories.EventReminders),
+            (EmailDispatchKind.EventCancelled, NotificationPreferenceCategories.EventUpdates),
+            (EmailDispatchKind.OrganizerNotification, NotificationPreferenceCategories.OrganizerAnnouncements)
+        };
+
+        foreach (var (kind, category) in cases)
+        {
+            var fixture = new Fixture();
+            var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+            dispatch.Kind = kind;
+            fixture.Repository.GetByTenantAndPublishEventId(dispatch.TenantId, dispatch.PublishEventId, Arg.Any<CancellationToken>())
+                .Returns(dispatch);
+            fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
+            fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+                .Returns(true);
+            fixture.Repository.TryClaimReceipt(Arg.Any<EmailDispatchReceipt>(), Arg.Any<CancellationToken>())
+                .Returns(true);
+            fixture.PreferenceRepository.GetByUserAndCategory(
+                    dispatch.TenantId,
+                    dispatch.UserId!.Value,
+                    category)
+                .Returns(new UserNotificationPreference
+                {
+                    TenantId = dispatch.TenantId,
+                    Tenant = null!,
+                    UserId = dispatch.UserId.Value,
+                    Category = category,
+                    IsEnabled = false
+                });
+
+            var result = await fixture.Service.ProcessSingleAsync(
+                dispatch.TenantId,
+                dispatch.PublishEventId,
+                "tickerq-drain",
+                CancellationToken.None);
+
+            await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
+            await fixture.PreferenceRepository.Received(1).GetByUserAndCategory(
+                dispatch.TenantId,
+                dispatch.UserId.Value,
+                category);
+            await fixture.EmailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        }
+    }
+
+    [Test]
     public async Task ProcessSingleAsyncPersistsExpectedSmtpFailureWithoutThrowing()
     {
         var fixture = new Fixture();
@@ -439,6 +550,26 @@ public sealed class EmailDispatchDrainServiceTests
         };
     }
 
+    private static NotificationPreferenceDecision EnabledDecision(NotificationPreferenceResolveRequest request) => new(
+        request.CategoryCode,
+        request.ChannelCode,
+        IsEnabled: true,
+        IsRequired: false,
+        IsLocked: false,
+        IsMuted: false,
+        EffectiveSourceScope: "Default",
+        LockReason: null);
+
+    private static NotificationPreferenceDecision DisabledDecision(NotificationPreferenceResolveRequest request) => new(
+        request.CategoryCode,
+        request.ChannelCode,
+        IsEnabled: false,
+        IsRequired: false,
+        IsLocked: false,
+        IsMuted: false,
+        EffectiveSourceScope: "User",
+        LockReason: null);
+
     private sealed class Fixture
     {
         public Fixture(EmailDispatchProcessorSettings? settings = null)
@@ -446,6 +577,7 @@ public sealed class EmailDispatchDrainServiceTests
             Repository = Substitute.For<IEmailDispatchOutboxRepository>();
             EmailService = Substitute.For<IEmailService>();
             PreferenceRepository = Substitute.For<IUserNotificationPreferenceRepository>();
+            PreferenceResolver = Substitute.For<INotificationPreferenceResolver>();
             UnsubscribeTokenService = Substitute.For<IEmailUnsubscribeTokenService>();
             TenantAccessor = Substitute.For<ITenantContextAccessor>();
             Configuration = new ConfigurationBuilder()
@@ -458,11 +590,14 @@ public sealed class EmailDispatchDrainServiceTests
                     Arg.Any<EmailUnsubscribeTokenPayload>(),
                     Arg.Any<TimeSpan?>())
                 .Returns("unsubscribe-token");
+            PreferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+                .Returns(call => EnabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
 
             var services = new ServiceCollection();
             services.AddSingleton(Repository);
             services.AddSingleton(EmailService);
             services.AddSingleton(PreferenceRepository);
+            services.AddSingleton(PreferenceResolver);
             services.AddSingleton(UnsubscribeTokenService);
             services.AddSingleton(TenantAccessor);
             services.AddSingleton<IConfiguration>(Configuration);
@@ -483,6 +618,8 @@ public sealed class EmailDispatchDrainServiceTests
         public IEmailService EmailService { get; }
 
         public IUserNotificationPreferenceRepository PreferenceRepository { get; }
+
+        public INotificationPreferenceResolver PreferenceResolver { get; }
 
         public IEmailUnsubscribeTokenService UnsubscribeTokenService { get; }
 

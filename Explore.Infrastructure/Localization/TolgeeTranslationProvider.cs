@@ -2,12 +2,11 @@
 // ABOUTME: Supports import, export, language listing with X-API-Key authentication.
 
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Secrets;
+using Explore.Domain.Secrets;
+using Explore.Infrastructure.Localization.Generated.Tolgee;
 using Microsoft.Extensions.Logging;
-using Refit;
 
 namespace Explore.Infrastructure.Localization;
 
@@ -20,38 +19,70 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ITranslationConfigResolver _configResolver;
+    private readonly ISecretResolver _secretResolver;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<TolgeeTranslationProvider> _logger;
 
     public TolgeeTranslationProvider(
         IHttpClientFactory httpClientFactory,
         ITranslationConfigResolver configResolver,
+        ISecretResolver secretResolver,
+        ITenantContext tenantContext,
         ILogger<TolgeeTranslationProvider> logger)
     {
         _httpClientFactory = httpClientFactory;
         _configResolver = configResolver;
+        _secretResolver = secretResolver;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
-    private ITolgeeApi CreateApi(TranslationConfiguration config)
+    private async Task<TolgeeApiClient?> CreateApiAsync(TranslationConfiguration config, CancellationToken ct)
     {
+        var apiKey = await ResolveApiKeyAsync(ct);
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            _logger.LogWarning("Tolgee request skipped: localization TMS API key is not configured");
+            return null;
+        }
+
         var client = _httpClientFactory.CreateClient("TolgeeClient");
         client.BaseAddress = new Uri(config.ApiUrl!.TrimEnd('/'));
-        // Maintain the application/json accept header requirement
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        return RestService.For<ITolgeeApi>(client);
+        client.DefaultRequestHeaders.TryAddWithoutValidation("X-API-Key", apiKey);
+        return new TolgeeApiClient(client);
+    }
+
+    private bool TryGetProjectId(TranslationConfiguration config, out long projectId)
+    {
+        if (long.TryParse(config.ProjectId, out projectId))
+            return true;
+
+        _logger.LogWarning("Tolgee request skipped: ProjectId must be the numeric Tolgee project id");
+        return false;
+    }
+
+    private async Task<string?> ResolveApiKeyAsync(CancellationToken ct)
+    {
+        var secret = await _secretResolver.ResolveAsync(
+            SecretDefinitionRegistry.Keys.Localization.TmsApiKey,
+            _tenantContext.TenantId,
+            ct);
+        return string.IsNullOrWhiteSpace(secret?.Value) ? null : secret.Value.Trim();
     }
 
     public async Task<bool> TestConnectionAsync(CancellationToken ct = default)
     {
         var config = await _configResolver.ResolveAsync(ct);
-        if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId))
+        if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId) || !TryGetProjectId(config, out var projectId))
             return false;
 
         try
         {
-            var api = CreateApi(config);
-            var response = await api.TestConnectionAsync(config.ProjectId, ct);
-            return response.IsSuccessStatusCode;
+            var api = await CreateApiAsync(config, ct);
+            if (api is null) return false;
+            await api.GetProjectAsync(projectId, ct);
+            return true;
         }
         catch (Exception ex)
         {
@@ -63,7 +94,7 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
     public async Task ImportKeysAsync(IEnumerable<TranslationKeyImport> keys, CancellationToken ct = default)
     {
         var config = await _configResolver.ResolveAsync(ct);
-        if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId))
+        if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId) || !TryGetProjectId(config, out var projectId))
         {
             _logger.LogWarning("Tolgee import skipped: missing ApiUrl or ProjectId");
             return;
@@ -72,119 +103,55 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
         var keyList = keys.ToList();
         if (keyList.Count == 0) return;
 
-        var payload = new TolgeeImportRequest
+        var payload = new ImportKeysResolvableDto
         {
-            Keys = keyList.Select(k => new TolgeeImportKey
+            Keys = keyList.Select(k => new ImportKeysResolvableItemDto
             {
                 Name = k.KeyName,
-                Translations = k.Translations
+                Translations = k.Translations.ToDictionary(
+                    pair => pair.Key,
+                    pair => new ImportTranslationResolvableDto { Text = pair.Value })
             }).ToList()
         };
 
-        var api = CreateApi(config);
-        var response = await api.ImportKeysAsync(config.ProjectId, payload, ct);
+        var api = await CreateApiAsync(config, ct);
+        if (api is null) return;
+        await api.ImportKeysAsync(projectId, payload, cancellationToken: ct);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            var body = response.Error?.Content;
-            _logger.LogWarning("Tolgee import failed with {StatusCode}: {Body}", response.StatusCode, body);
-        }
-        else
-        {
-            _logger.LogInformation("Tolgee import completed: {Count} keys", keyList.Count);
-        }
+        _logger.LogInformation("Tolgee import completed: {Count} keys", keyList.Count);
     }
 
     public async Task<IEnumerable<TranslationExport>> ExportTranslationsAsync(string languageCode, CancellationToken ct = default)
     {
         var config = await _configResolver.ResolveAsync(ct);
-        if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId))
+        if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId) || !TryGetProjectId(config, out var projectId))
             return [];
 
-        var api = CreateApi(config);
-        var response = await api.ExportTranslationsAsync(config.ProjectId, languageCode, ct);
+        var api = await CreateApiAsync(config, ct);
+        if (api is null) return [];
+        var translations = await api.GetAllTranslationsAsync(projectId, languageCode, ".", cancellationToken: ct);
 
-        if (!response.IsSuccessStatusCode || response.Content == null)
-        {
-            _logger.LogWarning("Tolgee export failed for {Language}: {StatusCode}", languageCode, response.StatusCode);
-            return [];
-        }
-
-        var tolgeeResponse = response.Content;
-        if (tolgeeResponse?._embedded?.Keys is null)
+        if (!translations.TryGetValue(languageCode, out var languageTranslations))
             return [];
 
-        var exports = new List<TranslationExport>();
-        foreach (var key in tolgeeResponse._embedded.Keys)
-        {
-            if (key.Translations.TryGetValue(languageCode, out var translation) && translation?.Text is not null)
-            {
-                exports.Add(new TranslationExport(key.KeyName, translation.Text));
-            }
-        }
-
-        return exports;
+        return languageTranslations
+            .Where(kvp => kvp.Value is not null)
+            .Select(kvp => new TranslationExport(kvp.Key, kvp.Value!));
     }
 
     public async Task<IEnumerable<string>> GetAvailableLanguagesAsync(CancellationToken ct = default)
     {
         var config = await _configResolver.ResolveAsync(ct);
-        if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId))
+        if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId) || !TryGetProjectId(config, out var projectId))
             return [];
 
-        var api = CreateApi(config);
-        var response = await api.GetLanguagesAsync(config.ProjectId, ct);
+        var api = await CreateApiAsync(config, ct);
+        if (api is null) return [];
+        var response = await api.GetLanguagesAsync(projectId, ct);
 
-        if (!response.IsSuccessStatusCode || response.Content == null)
-        {
-            _logger.LogWarning("Tolgee list languages failed: {StatusCode}", response.StatusCode);
-            return [];
-        }
-
-        return response.Content?._embedded?.Languages?.Select(l => l.Tag) ?? [];
+        return response._embedded?.Languages?
+            .Select(l => l.Tag)
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Select(tag => tag!) ?? [];
     }
-
-    // Tolgee API response models (internal)
-    internal sealed record TolgeeTranslationsResponse(
-        [property: JsonPropertyName("_embedded")] TolgeeTranslationsEmbedded? _embedded);
-    internal sealed record TolgeeTranslationsEmbedded(List<TolgeeKeyWithTranslation>? Keys);
-    internal sealed record TolgeeKeyWithTranslation(
-        [property: JsonPropertyName("name")] string KeyName,
-        Dictionary<string, TolgeeTranslationValue> Translations);
-    internal sealed record TolgeeTranslationValue(string? Text);
-    internal sealed record TolgeeLanguagesResponse(
-        [property: JsonPropertyName("_embedded")] TolgeeLanguagesEmbedded? _embedded);
-    internal sealed record TolgeeLanguagesEmbedded(List<TolgeeLanguage>? Languages);
-    internal sealed record TolgeeLanguage(string Tag);
 }
-
-internal interface ITolgeeApi
-{
-    [Get("/v2/projects/{projectId}")]
-    Task<IApiResponse> TestConnectionAsync(string projectId, CancellationToken cancellationToken = default);
-
-    [Post("/v2/projects/{projectId}/keys/import-resolvable")]
-    Task<IApiResponse> ImportKeysAsync(string projectId, [Body] TolgeeImportRequest request, CancellationToken cancellationToken = default);
-
-    [Get("/v2/projects/{projectId}/translations/{languageCode}?structureDelimiter=.")]
-    Task<IApiResponse<TolgeeTranslationProvider.TolgeeTranslationsResponse>> ExportTranslationsAsync(string projectId, string languageCode, CancellationToken cancellationToken = default);
-
-    [Get("/v2/projects/{projectId}/languages")]
-    Task<IApiResponse<TolgeeTranslationProvider.TolgeeLanguagesResponse>> GetLanguagesAsync(string projectId, CancellationToken cancellationToken = default);
-}
-
-internal class TolgeeImportRequest
-{
-    [JsonPropertyName("keys")]
-    public List<TolgeeImportKey> Keys { get; set; } = new();
-}
-
-internal class TolgeeImportKey
-{
-    [JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
-
-    [JsonPropertyName("translations")]
-    public IDictionary<string, string> Translations { get; set; } = new Dictionary<string, string>();
-}
-

@@ -9,6 +9,7 @@ using Explore.Application.Models;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,8 @@ public sealed class EmailDispatchDrainService(
     private const string ProcessingLeaseExpiredMessage = "Email dispatch processing lease expired before a durable outcome was recorded. Outcome is unknown and requires operator review or replay.";
     private const string RecipientUnsubscribedFailureCategory = "recipient_unsubscribed";
     private const string RecipientUnsubscribedMessage = "Recipient is unsubscribed from this email category; SMTP send was skipped before provider handoff.";
+    private const string RecipientPreferenceDisabledFailureCategory = "recipient_notification_preference_disabled";
+    private const string RecipientPreferenceDisabledMessage = "Recipient disabled this notification category and channel; SMTP send was skipped before provider handoff.";
 
     private readonly EmailDispatchProcessorSettings _settings = settings.Value;
 
@@ -200,6 +203,7 @@ public sealed class EmailDispatchDrainService(
         var repository = scope.ServiceProvider.GetRequiredService<IEmailDispatchOutboxRepository>();
         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
         var preferenceRepository = scope.ServiceProvider.GetRequiredService<IUserNotificationPreferenceRepository>();
+        var notificationPreferenceResolver = scope.ServiceProvider.GetRequiredService<INotificationPreferenceResolver>();
         var unsubscribeTokenService = scope.ServiceProvider.GetRequiredService<IEmailUnsubscribeTokenService>();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         var tenantAccessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
@@ -288,6 +292,48 @@ public sealed class EmailDispatchDrainService(
                     dispatch.Id,
                     dispatch.TenantId,
                     preferenceCategory);
+                return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Skipped, dispatch.Id);
+            }
+
+            var matrixPreferenceCategory = ResolveMatrixPreferenceCategory(dispatch.Kind);
+            if (await ShouldSkipForMatrixPreferenceAsync(notificationPreferenceResolver, dispatch, matrixPreferenceCategory, cancellationToken))
+            {
+                var skippedAt = DateTime.UtcNow;
+                await repository.RecordAttempt(new EmailDispatchAttempt
+                {
+                    TenantId = dispatch.TenantId,
+                    EmailDispatchOutboxId = dispatch.Id,
+                    AttemptNumber = dispatch.AttemptCount + 1,
+                    Outcome = EmailDispatchAttemptOutcome.Skipped,
+                    StartedAt = now,
+                    CompletedAt = skippedAt,
+                    FailureCategory = RecipientPreferenceDisabledFailureCategory,
+                    SanitizedErrorMessage = RecipientPreferenceDisabledMessage,
+                    CorrelationId = dispatch.CorrelationId
+                }, cancellationToken);
+
+                await repository.MarkAsSkipped(
+                    dispatch.Id,
+                    RecipientPreferenceDisabledFailureCategory,
+                    RecipientPreferenceDisabledMessage,
+                    skippedAt,
+                    cancellationToken);
+                if (receipt is not null)
+                {
+                    await repository.MarkReceiptSkipped(
+                        receipt.Id,
+                        RecipientPreferenceDisabledFailureCategory,
+                        RecipientPreferenceDisabledMessage,
+                        skippedAt,
+                        cancellationToken);
+                }
+
+                metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "skipped", RecipientPreferenceDisabledFailureCategory);
+                logger.LogInformation(
+                    "Email dispatch {Id} skipped for tenant {TenantId} because recipient disabled matrix category {Category}",
+                    dispatch.Id,
+                    dispatch.TenantId,
+                    matrixPreferenceCategory);
                 return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Skipped, dispatch.Id);
             }
 
@@ -481,6 +527,30 @@ public sealed class EmailDispatchDrainService(
         return preference is { IsEnabled: false };
     }
 
+    private static async Task<bool> ShouldSkipForMatrixPreferenceAsync(
+        INotificationPreferenceResolver notificationPreferenceResolver,
+        EmailDispatchOutbox dispatch,
+        string? preferenceCategory,
+        CancellationToken cancellationToken)
+    {
+        if (preferenceCategory is null || dispatch.UserId is null)
+        {
+            return false;
+        }
+
+        var decision = await notificationPreferenceResolver.ResolveAsync(
+            new NotificationPreferenceResolveRequest(
+                dispatch.TenantId,
+                dispatch.UserId.Value,
+                null,
+                null,
+                preferenceCategory,
+                NotificationPreferenceChannelCodes.Email),
+            cancellationToken);
+
+        return !decision.IsEnabled;
+    }
+
     private static EmailMessage BuildEmailMessage(
         EmailDispatchOutbox dispatch,
         IEmailUnsubscribeTokenService unsubscribeTokenService,
@@ -584,6 +654,18 @@ public sealed class EmailDispatchDrainService(
             or EmailDispatchKind.RegistrationRejected
             or EmailDispatchKind.WaitlistPromoted
             or EmailDispatchKind.EventCancelled => NotificationPreferenceCategories.EventUpdates,
+        _ => null
+    };
+
+    private static string? ResolveMatrixPreferenceCategory(EmailDispatchKind kind) => kind switch
+    {
+        EmailDispatchKind.RegistrationConfirmation
+            or EmailDispatchKind.RegistrationApproved
+            or EmailDispatchKind.RegistrationRejected
+            or EmailDispatchKind.WaitlistPromoted => NotificationPreferenceCategoryCodes.RegistrationStatus,
+        EmailDispatchKind.EventReminder
+            or EmailDispatchKind.EventCancelled
+            or EmailDispatchKind.OrganizerNotification => NotificationPreferenceCategoryCodes.EventUpdates,
         _ => null
     };
 
