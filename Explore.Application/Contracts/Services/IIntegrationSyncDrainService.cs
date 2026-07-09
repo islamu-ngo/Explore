@@ -1,0 +1,29 @@
+// ABOUTME: Application boundary for draining durable native integration sync outbox rows.
+// ABOUTME: Lets Infrastructure process Listmonk syncs without leaking generated clients upward.
+
+namespace Explore.Application.Contracts.Services;
+
+public interface IIntegrationSyncDrainService
+{
+    Task<IntegrationSyncDrainResult> ProcessBatchAsync(CancellationToken cancellationToken);
+}
+
+public sealed record IntegrationSyncDrainResult(
+    int Pending,
+    int Processed,
+    int Completed,
+    int RetryScheduled,
+    int DeadLettered,
+    int AlreadyClaimed);
+
+public sealed record IntegrationSyncSingleDrainResult(
+    IntegrationSyncDrainOutcome Outcome,
+    Guid OutboxId);
+
+public enum IntegrationSyncDrainOutcome
+{
+    Completed = 1,
+    RetryScheduled = 2,
+    DeadLettered = 3,
+    AlreadyClaimed = 4
+}
