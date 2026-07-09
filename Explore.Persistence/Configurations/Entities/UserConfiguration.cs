@@ -33,6 +33,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
 
+        builder.Property(e => e.LastActiveTenantId);
+
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs
     }

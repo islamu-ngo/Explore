@@ -51,6 +51,7 @@ public class User : IAuditableEntity, ISoftDeletable, IConcurrencyAware
     public Guid? DefaultActorId { get; set; }
     public bool? EmailVerified { get; set; }
     public Guid ConcurrencyStamp { get; set; }
+    public Guid? LastActiveTenantId { get; set; }
 
     // Audit fields
     public DateTime CreatedAt { get; set; }
