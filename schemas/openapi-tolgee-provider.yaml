@@ -1,0 +1,126 @@
+# ABOUTME: Provider-normalized Tolgee OpenAPI subset used to generate the Infrastructure API client.
+# ABOUTME: Preserves the raw upstream schema while fixing project-scoped path parameters for NSwag.
+
+openapi: 3.0.3
+info:
+  title: Tolgee Provider API
+  version: provider-subset
+  description: >-
+    Provider-normalized subset of schemas/openapi-tolgee.json for NSwag generation.
+    The upstream Tolgee schema omits projectId path parameters on some project-scoped
+    operations, so this slice keeps only the operations used by the localization provider
+    and models those path parameters explicitly.
+paths:
+  /v2/projects/{projectId}:
+    get:
+      operationId: getProject
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /v2/projects/{projectId}/keys/import-resolvable:
+    post:
+      operationId: importKeys
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: branch
+          in: query
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportKeysResolvableDto' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /v2/projects/{projectId}/translations/{languages}:
+    get:
+      operationId: getAllTranslations
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: languages
+          in: path
+          required: true
+          schema: { type: string }
+        - name: structureDelimiter
+          in: query
+          required: false
+          schema: { type: string, nullable: true }
+        - name: branch
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TolgeeTranslationsResponse' }
+  /v2/projects/{projectId}/languages:
+    get:
+      operationId: getLanguages
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedModelLanguageModel' }
+components:
+  parameters:
+    projectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+  schemas:
+    ImportKeysResolvableDto:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items: { $ref: '#/components/schemas/ImportKeysResolvableItemDto' }
+    ImportKeysResolvableItemDto:
+      type: object
+      required: [name, translations]
+      properties:
+        name: { type: string, minLength: 1 }
+        namespace: { type: string, nullable: true }
+        translations:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/ImportTranslationResolvableDto' }
+    ImportTranslationResolvableDto:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, nullable: true }
+    TolgeeTranslationsResponse:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties: { type: string, nullable: true }
+    PagedModelLanguageModel:
+      type: object
+      properties:
+        _embedded:
+          type: object
+          properties:
+            languages:
+              type: array
+              items: { $ref: '#/components/schemas/LanguageModel' }
+    LanguageModel:
+      type: object
+      properties:
+        tag: { type: string }
+        name: { type: string }

@@ -1,0 +1,125 @@
+# ABOUTME: Provider-normalized Weblate OpenAPI subset used to generate the Infrastructure API client.
+# ABOUTME: Preserves the raw upstream schema while modeling translation file upload as multipart binary.
+
+openapi: 3.0.3
+info:
+  title: Weblate Provider API
+  version: provider-subset
+  description: >-
+    Provider-normalized subset of schemas/openapi-weblate.yaml for NSwag generation.
+    The upstream schema models the file part as a URI, but the provider uploads an
+    in-memory translation file, so this slice models the file part as multipart binary.
+paths:
+  /api/projects/{slug}/:
+    get:
+      operationId: api_projects_retrieve
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /api/projects/{slug}/languages/:
+    get:
+      operationId: api_projects_languages_list
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LanguageStatistics' }
+  /api/translations/{component__project__slug}/{component__slug}/{language__code}/file/:
+    get:
+      operationId: api_translations_file_retrieve
+      parameters:
+        - $ref: '#/components/parameters/componentProjectSlug'
+        - $ref: '#/components/parameters/componentSlug'
+        - $ref: '#/components/parameters/languageCode'
+      responses:
+        '200':
+          description: Translation file
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+    post:
+      operationId: api_translations_file_create
+      parameters:
+        - $ref: '#/components/parameters/componentProjectSlug'
+        - $ref: '#/components/parameters/componentSlug'
+        - $ref: '#/components/parameters/languageCode'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                method:
+                  $ref: '#/components/schemas/UploadMethod'
+                fuzzy:
+                  $ref: '#/components/schemas/UploadFuzzy'
+                conflicts:
+                  $ref: '#/components/schemas/UploadConflicts'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadResult' }
+components:
+  parameters:
+    componentProjectSlug:
+      name: component__project__slug
+      in: path
+      required: true
+      schema: { type: string }
+    componentSlug:
+      name: component__slug
+      in: path
+      required: true
+      schema: { type: string }
+    languageCode:
+      name: language__code
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    LanguageStatistics:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+    UploadMethod:
+      type: string
+      enum: [translate, approve, suggest]
+      default: translate
+    UploadFuzzy:
+      type: string
+      enum: [process, approve, empty]
+      default: empty
+    UploadConflicts:
+      type: string
+      enum: [replace, merge, add]
+      default: replace
+    UploadResult:
+      type: object
+      properties:
+        result: { type: boolean }
+        accepted: { type: integer }
+        total: { type: integer }
