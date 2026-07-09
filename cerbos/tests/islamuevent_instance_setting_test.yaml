@@ -37,6 +37,24 @@ resources:
     attr:
       settingKey: "storage"
 
+  tenant_plans_setting:
+    kind: "islamuevent_instance_setting"
+    id: "control-plane.tenant-plans"
+    attr:
+      settingKey: "control-plane.tenant-plans"
+
+  tenant_plan_assignments_setting:
+    kind: "islamuevent_instance_setting"
+    id: "control-plane.tenant-plan-assignments"
+    attr:
+      settingKey: "control-plane.tenant-plan-assignments"
+
+  tenant_effective_configuration_setting:
+    kind: "islamuevent_instance_setting"
+    id: "control-plane.tenant-effective-configuration"
+    attr:
+      settingKey: "control-plane.tenant-effective-configuration"
+
 tests:
   - name: "Instance admin can fully manage instance storage settings"
     input:
@@ -76,6 +94,50 @@ tests:
     expected:
       - principal: "regular_user"
         resource: "storage_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+
+  - name: "Instance admin can manage Control Plane tenant plan settings"
+    input:
+      principals: ["islamuevent_instance_admin"]
+      resources: ["tenant_plans_setting", "tenant_plan_assignments_setting", "tenant_effective_configuration_setting"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "tenant_plans_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+      - principal: "islamuevent_instance_admin"
+        resource: "tenant_plan_assignments_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+      - principal: "islamuevent_instance_admin"
+        resource: "tenant_effective_configuration_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+
+  - name: "Tenant admin can only view Control Plane plan and configuration settings"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["tenant_plans_setting", "tenant_plan_assignments_setting", "tenant_effective_configuration_setting"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "tenant_plans_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+      - principal: "islamuevent_tenant_admin"
+        resource: "tenant_plan_assignments_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+      - principal: "islamuevent_tenant_admin"
+        resource: "tenant_effective_configuration_setting"
         actions:
           view: EFFECT_ALLOW
           update: EFFECT_DENY

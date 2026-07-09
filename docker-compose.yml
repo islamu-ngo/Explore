@@ -320,6 +320,9 @@ services:
       svix:
         condition: service_healthy
         required: false
+      weblate:
+        condition: service_started
+        required: false
       coop:
         condition: service_started
         required: false
@@ -528,6 +531,51 @@ services:
       retries: 60
       start_period: 30s
 
+  weblate-db:
+    image: postgres:18-alpine
+    profiles: ["localization"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${WEBLATE_POSTGRES_USER:-weblate}
+      POSTGRES_PASSWORD: ${WEBLATE_POSTGRES_PASSWORD:-weblate_password}
+      POSTGRES_DB: ${WEBLATE_POSTGRES_DB:-weblate}
+    volumes:
+      - weblate_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  weblate:
+    image: ${WEBLATE_IMAGE:-weblate/weblate:latest}
+    profiles: ["localization"]
+    restart: unless-stopped
+    environment:
+      WEBLATE_SITE_DOMAIN: ${WEBLATE_SITE_DOMAIN:-localhost:8083}
+      WEBLATE_ADMIN_NAME: ${WEBLATE_ADMIN_NAME:-Admin}
+      WEBLATE_ADMIN_EMAIL: ${WEBLATE_ADMIN_EMAIL:-admin@openislamu.org}
+      WEBLATE_ADMIN_PASSWORD: ${WEBLATE_ADMIN_PASSWORD:-admin}
+      POSTGRES_HOST: weblate-db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${WEBLATE_POSTGRES_USER:-weblate}
+      POSTGRES_PASSWORD: ${WEBLATE_POSTGRES_PASSWORD:-weblate_password}
+      POSTGRES_DB: ${WEBLATE_POSTGRES_DB:-weblate}
+      VALKEY_HOST: redis
+      VALKEY_PORT: "6379"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    volumes:
+      - weblate_data:/app/data
+    ports:
+      - "${WEBLATE_HTTP_PORT:-8083}:8080"
+    depends_on:
+      weblate-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   coop:
     image: ${COOP_IMAGE:-ghcr.io/roostorg/coop-server:latest}
     profiles: ["moderation"]
@@ -580,6 +628,11 @@ services:
       API_SERVER_DATABASE_USER: ${COOP_DATABASE_USER:-coop}
       API_SERVER_DATABASE_PASSWORD: ${COOP_DATABASE_PASSWORD:-coop_password}
       API_SERVER_DATABASE_NAME: ${COOP_DATABASE_NAME:-coop}
+      SCYLLA_HOSTS: ${COOP_SCYLLA_HOSTS:-coop-scylla}
+      SCYLLA_USERNAME: ${COOP_SCYLLA_USERNAME:-cassandra}
+      SCYLLA_PASSWORD: ${COOP_SCYLLA_PASSWORD:-cassandra}
+      SCYLLA_LOCAL_DATACENTER: ${COOP_SCYLLA_LOCAL_DATACENTER:-datacenter1}
+      SCYLLA_SSL: ${COOP_SCYLLA_SSL:-false}
     entrypoint: ["sh", "-c", "npm run db:create -- --db api-server-pg --env staging && npm run db:update -- --db api-server-pg --env staging"]
     depends_on:
       coop-db:
@@ -636,4 +689,6 @@ volumes:
   minio_data:
   cerbos_data:
   svix_postgres_data:
+  weblate_data:
+  weblate_postgres_data:
   coop_postgres_data:
