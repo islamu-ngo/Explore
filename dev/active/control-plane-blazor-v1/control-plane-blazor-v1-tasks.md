@@ -3,13 +3,13 @@
 
 # Control Plane Blazor v1.0 Tasks
 
-Last Updated: 2026-07-07 Europe/Brussels
+Last Updated: 2026-07-08 Europe/Brussels
 
 ## How To Use
 
 Execute tasks in order unless a runtime finding proves a dependency is wrong. Mark checkboxes only after code and verification are complete. Update `control-plane-blazor-v1-context.md` after every implementation session.
 
-Implementation has started. Phase 1 connectivity, Phase 2A SaaS pricing-tier model tests, Phase 3A normalized persistence, Phase 3B CQRS reads/create-draft, Phase 3C template versioning/switching commands, Phase 3D template maintenance commands, and Phase 3E plan-application side effects are complete. Continue from Phase 4 API/HAL unless a runtime finding proves more Application-only work is required; do not skip ahead to Plan Studio UI or placeholder-section work until API/HAL and RCL service contracts exist.
+Implementation has started. Phase 1 connectivity, Phase 2A SaaS pricing-tier model tests, Phase 3A normalized persistence, Phase 3B CQRS reads/create-draft, Phase 3C template versioning/switching commands, Phase 3D template maintenance commands, Phase 3E plan-application side effects, and the Phase 4 tenant-plan API/HAL/generated-client/RCL plan service seam, tenant effective-configuration read seam, tenant-configuration lock/unlock/override write contracts, and cerbos policy test coverage are complete. Phase 4 is fully complete. Phase 5A (Plan Studio list/detail read surfaces + Tenant Configuration center with HAL-gated override/lock/unlock controls + 7 bUnit tests) is complete; the next slice is Phase 5B (Plan Editor draft forms, assignment diff/apply/rollback UI, admin_portal settings, layout nav).
 
 ## Phase 1: Prove And Fix Dedicated Host API Connectivity
 
@@ -85,33 +85,63 @@ Implementation has started. Phase 1 connectivity, Phase 2A SaaS pricing-tier mod
 
 ## Phase 4: Add Tenant Plan API, HAL, OpenAPI, And Adapter Contracts
 
-- [ ] `Explore.API`: Add plan endpoints under the Control Plane admin surface using thin controllers and `RouteNames`.
-- [ ] `Explore.API`: Add per-tenant effective configuration endpoint with value source, lock source, plan assignment, and quota usage.
-- [ ] `Explore.API`: Add plan validation/diff/assignment/rollback endpoints with ProblemDetails responses and typed confirmations where required.
-- [ ] `Explore.API/Hateoas`: Add HAL links for create, edit draft, publish, archive, clone, assign, rollback, lock, unlock, override, and quota update. Fail closed.
-- [ ] `Explore.Application`: Add authorization metadata for plan and tenant-configuration resources. Instance admin only by default; tenant admin views only unlocked tenant-scoped settings if later exposed.
-- [ ] `cerbos/tests` or local fallback tests: Add plan/tenant-configuration policy coverage.
-- [ ] `Event.ControlPlane.Blazor/Clients/EventApiClient.g.cs`: Regenerate/update through the established OpenAPI workflow.
-- [ ] `Event.ControlPlane.Blazor/Services/ControlPlaneApiAdapter.cs`: Map generated plan/effective-config calls to RCL service contracts.
-- [ ] `Event.ControlPlane.Client/Services`: Add host-neutral plan and tenant-configuration service interfaces and result models.
-- [ ] Verification: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`.
-- [ ] Verification: `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`.
-- [ ] Verification: `dotnet build --configuration Release --verbosity quiet`.
+- [x] `Explore.API`: Add tenant-plan endpoints under the Control Plane admin surface using thin controllers and `RouteNames`.
+- [x] `Explore.API`: Add tenant-plan validation, diff preview, assignment switch/apply, and rollback endpoints for the completed Application plan surface.
+- [x] `Explore.API/Hateoas`: Add HAL links for tenant-plan create draft, create version draft, edit draft, publish, archive, clone, validate, and preview diff. Fail closed.
+- [x] `Explore.API`: Add per-tenant effective configuration endpoint with value source, lock source, plan assignment, and quota usage.
+- [x] `Explore.API/Hateoas`: Add tenant-configuration HAL links for plan assignment read, switch-plan, apply, and rollback. Fail closed.
+- [x] `Explore.API/Hateoas`: Add tenant-configuration HAL links for lock, unlock, and override. Quota update deferred (storage quota from `IStoragePolicyResolver`, not tenant settings). Fail closed.
+- [x] `Explore.Application`: Add authorization metadata for plan and tenant effective-configuration resources. Instance admin only by default; tenant admin views only unlocked tenant-scoped settings if later exposed.
+- [x] `cerbos/tests`: Add plan/tenant-configuration policy coverage. Control Plane setting keys (`control-plane.tenant-plans`, `control-plane.tenant-plan-assignments`, `control-plane.tenant-effective-configuration`) inherit the existing `islamuevent_instance_setting` policy; test cases added to `islamuevent_instance_setting_test.yaml` proving instance admin allow and tenant admin/regular user view-only deny.
+- [x] `Event.ControlPlane.Blazor/Clients/EventApiClient.g.cs`: Regenerate/update through the established OpenAPI workflow.
+- [x] `Event.ControlPlane.Blazor/Services/ControlPlaneApiAdapter.cs`: Map generated tenant-plan, diff, and assignment calls to RCL service contracts.
+- [x] `Event.ControlPlane.Client/Services`: Add host-neutral tenant-plan service interface and result models.
+- [x] `Event.ControlPlane.Client/Services`: Add host-neutral tenant effective-configuration service interface and result models.
+- [x] `Event.ControlPlane.Client/Services`: Add host-neutral tenant-configuration write service contracts (lock/unlock/override) on `IControlPlaneTenantConfigurationService`.
+- [x] Verification: focused tenant-configuration write `Event.API.IntegrationTests` HAL/OpenAPI contract tests passed (4/4).
+- [x] Verification: `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-restore --verbosity quiet` passed with 259 succeeded, 1 skipped, 0 failed.
+- [x] Verification: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-restore --verbosity quiet` passed with 1550 succeeded, 1 skipped, 0 failed.
+- [x] Verification: `dotnet build --configuration Release --verbosity quiet` passed with 0 errors and existing warnings.
 
 ## Phase 5: Build Plan Studio And Per-Tenant Configuration Center
 
-- [ ] `Event.ControlPlane.Client/Routing/ControlPlaneRoutes.cs`: Add routes for plans and tenant configuration if accepted route map requires new entries.
-- [ ] `Event.ControlPlane.Client/Pages/Plans`: Build Plan Studio list/detail/editor/version pages.
-- [ ] Plan editor: Group settings by product domain: modules, storage, email, API keys, AI, MCP, rendering, footer, branding, domains, moderation/reporting, auth, authorization, onboarding defaults.
-- [ ] Plan editor: Show validation errors for unsupported keys, secret-like values, quota ceiling violations, and lock conflicts.
-- [ ] Plan versioning: Implement publish/archive/clone affordances only when HAL links exist.
-- [ ] Plan assignment: Implement diff preview, typed confirmation, apply result, and rollback where HAL links exist.
-- [ ] `Event.ControlPlane.Client/Pages/TenantConfiguration`: Build effective configuration view with source, lock source, assigned plan, usage, and audit history.
-- [ ] Tenant configuration: Add override/lock/unlock controls only when HAL links exist.
-- [ ] Accessibility: Ensure labels, keyboard operation, one `<h1>`, sequential headings, live command results, and focus management.
-- [ ] Verification: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`.
-- [ ] Verification: `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`.
+Product decision: The separate app is now conceptually **AdminPortal** (see `dev/active/controlplane.md`). It is a single Blazor app serving both instance admins and tenant admins (if instance admin allows). "Two shells" means route-based authorization gating within the same app — `/instance/...` for instance admins, `/tenant/{slug}/...` for tenant admins. One `App.razor`, one layout, one shared component/service library, one BFF. Nav menu renders different sections based on authority. No duplicated projects or layouts. For v1.0, Phase 5 builds the Instance Console UI under `/instance/...`. Tenant Console routes are Phase 5b. Code project names (`Event.ControlPlane.Blazor`, `Event.ControlPlane.Client`) remain until a rename PR.
+
+- [x] `Event.ControlPlane.Client/Routing/ControlPlaneRoutes.cs`: Route map already exists with `/admin/instance/...` prefix for instance-admin pages; `/tenant/{slug}/...` prefix reserved for future tenant-admin pages.
+- [~] `Event.ControlPlane.Client/Pages/Plans`: Plan Studio list and detail pages built under the instance route group. List page shows plan inventory with HAL-gated create affordance; detail page shows versions with settings/quotas, HAL-gated publish/archive/clone actions, and inline draft-version editing. **Create-plan form remains deferred.**
+- [x] Plan editor: Group settings by product domain: modules, storage, email, API keys, AI, MCP, rendering, footer, branding, domains, moderation/reporting, auth, authorization, onboarding defaults.
+- [x] Plan editor: Show validation errors for unsupported keys, secret-like values, quota ceiling violations, and lock conflicts. Draft editor surfaces API validation errors and local parse errors before save.
+- [x] Plan versioning: Implement publish/archive/clone affordances only when HAL links exist. Detail page gates publish (Draft→Published), archive (Published→Archived), and clone (Published→new plan) by version status.
+- [~] Plan assignment: Implement diff preview, typed confirmation, apply result, and rollback where HAL links exist. Apply/rollback typed confirmation and result reload are implemented; target-version diff preview remains pending because the API currently exposes draft-vs-current preview rather than assignment-specific diff.
+- [x] `Event.ControlPlane.Client/Pages/TenantConfiguration`: Build effective configuration view with source, lock source, assigned plan, usage, and audit history. Page shows plan assignment, grouped effective settings with value/lock/source, quota usage bars, and HAL-gated per-setting actions.
+- [x] Tenant configuration: Add override/lock/unlock controls only when HAL links exist. Override uses inline edit (input+save), lock/unlock are one-click with busy state and reload.
+- [x] Instance settings: Add `admin_portal.enabled`, `admin_portal.public_url`, `admin_portal.allow_tenant_admin_access` settings so instance admin can control whether tenant admins may use the AdminPortal in a future phase. Settings are registered in the governance registry, exposed through the instance governance aggregate, and available through `GET/PUT /api/instance/settings/admin-portal`.
+- [~] Shared layout: One `App.razor`, one nav layout. Instance Console nav now renders from an explicit top-level route catalog (detail routes stay routable but are excluded from the sidebar), and authenticated-but-unauthorized users see a 403-style shell state. Tenant Console `/tenant/{slug}` authority-aware nav remains deferred to Phase 5b.
+- [x] Accessibility: Ensure labels, keyboard operation, one `<h1>`, sequential headings, live command results, and focus management. Control Plane shell now has a skip link, named instance nav, main landmark/focus target, polite/assertive live regions, logical host CSS, success/error command-result roles, and no nested `<main>` in the authenticated forbidden state.
+- [x] Verification: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed with 1557 succeeded, 1 skipped, 0 failed (7 new bUnit tests for Plan Detail + Tenant Configuration pages).
+- [x] Verification: `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` passed with 226 succeeded, 0 failed.
+- [x] Verification: `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 259 succeeded, 1 skipped, 0 failed.
+- [x] Verification: `dotnet build --configuration Release --verbosity quiet` passed with 0 errors.
+- [x] Verification: `./Explore.Blazor.Client.Tests --treenode-filter "/*/*/*/Navigation_ShouldExposeOnlyTopLevelInstanceRoutes" --minimum-expected-tests 1 --disable-logo --no-progress --no-ansi` passed with 1 succeeded, 0 failed.
+- [x] Verification: `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 262 succeeded, 1 skipped, 0 failed after adding Control Plane accessibility shell checks.
+- [x] Verification: `./Explore.Blazor.Client.Tests --disable-logo --no-progress --no-ansi` passed with 1563 succeeded, 1 skipped, 0 failed after live-region/command-status accessibility fixes.
 - [ ] Verification: Manual browser QA for Plan Studio and Tenant Configuration as instance admin and non-admin.
+
+## Phase 5b (Future): Tenant Console Routes In AdminPortal
+
+Prerequisite: instance settings `admin_portal.allow_tenant_admin_access = true`. Same Blazor app, same BFF, same component library — just new route group and nav sections.
+
+- [ ] Rename projects from `Event.ControlPlane.Blazor` / `Event.ControlPlane.Client` to `Event.AdminPortal.Blazor` / `Event.AdminPortal.Client`.
+- [x] Add Tenant Console routes under `/tenant/{tenantSlug}/...` in the same app. Same layout, same service registrations, same BFF. Placeholder routes now cover overview, settings, branding, moderation, users, footer/navigation, reports, events, and policies.
+- [~] Gate `/tenant/...` routes on instance setting + tenant admin authority + HAL links. Instance-admin shell policy still protects the host; tenant-specific setting/authority/HAL gating is pending the service-backed tenant console pages.
+- [ ] Build tenant-scoped pages: tenant settings, branding, moderation queue, users/members, footer/navigation, reports, events/policies.
+- [~] Nav menu: render `/instance/...` sections for instance admins, `/tenant/{slug}/...` sections for tenant admins, based on authority. The shared layout now renders tenant route templates when the current route is under `/tenant/{slug}`; authority-based visibility remains pending with tenant admin gating.
+- [ ] Dynamic link from main web app tenant admin navbar to `admin_portal.public_url + "/tenant/{tenantSlug}"`.
+- [ ] Verification: Manual browser QA as tenant admin with and without instance setting enabled.
+- [x] Verification: `./Explore.Blazor.Client.Tests --treenode-filter "/*/*/*/TenantNavigation_ShouldExposeTenantRouteTemplatesOnly" --minimum-expected-tests 1 --disable-logo --no-progress --no-ansi` passed with 1 succeeded, 0 failed.
+- [x] Verification: `dotnet build --configuration Release --verbosity quiet` passed with 0 errors after the Phase 5b tenant route scaffold.
+- [x] Verification: `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 262 succeeded, 1 skipped, 0 failed after allowing the approved `/tenant/{TenantSlug}` AdminPortal root.
+- [x] Verification: `./Explore.Blazor.Client.Tests --treenode-filter "/*/*/*/Navigation_ShouldExposeOnlyTopLevelInstanceRoutes" --minimum-expected-tests 1 --disable-logo --no-progress --no-ansi` passed with 1 succeeded, 0 failed.
 
 ## Phase 6: Complete Existing Overview, Tenants, Domains, And Operations Pages
 

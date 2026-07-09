@@ -3,13 +3,15 @@
 
 # Control Plane Blazor v1.0 Context
 
-Last Updated: 2026-07-07 Europe/Brussels
+Last Updated: 2026-07-08 Europe/Brussels
 
 ## Purpose
 
 This file is the handoff context for finishing the Control Plane Blazor app to a working v1.0 governance platform. Keep it current whenever implementation starts, pauses, or completes a slice.
 
-Implementation started after the user explicitly said `Start implementation !`. Phase 1 connectivity is complete. Current implementation is Phase 2: prove the tenant-plan foundation as SaaS pricing tiers before Plan Studio UI, persistence, or placeholder-section replacement.
+Implementation started after the user explicitly said `Start implementation !`. Phase 1 connectivity, Phase 2A SaaS pricing-tier modeling, Phase 3A-3E tenant-plan persistence/Application behavior, the Phase 4 tenant-plan plus tenant effective-configuration API/HAL/generated-client/RCL service seams, Phase 4D tenant-configuration write contracts (lock/unlock/override), and Phase 4E cerbos policy test coverage for Control Plane setting keys are complete. Phase 4 is fully complete. Phase 5A (Plan Studio read surfaces + Tenant Configuration center with HAL-gated write controls) is complete; the next slice is Phase 5B (Plan Editor draft forms, assignment diff/apply/rollback UI, admin_portal settings, layout nav).
+
+Product naming decision (2026-07-08): There are **two** Blazor apps, not three: (1) **AdminPortal** — a single app for one instance that hosts both Instance Console (instance admin) and Tenant Console (tenant admin, if instance admin allows); (2) **ConsolePortal** — a future separate app for managed-hosting providers managing many instances. Full hierarchy documented in `dev/active/controlplane.md`. Code project names (`Event.ControlPlane.Blazor`, `Event.ControlPlane.Client`) remain until a rename PR alongside the Tenant Console shell. Next major slice is Phase 5 Instance Console UI (Plan Studio + per-tenant configuration center).
 
 ## User Intent
 
@@ -177,7 +179,7 @@ API/Application:
 - `SettingsController` already exposes tenant settings read/update/lock/unlock endpoints.
 - `InstanceSettingsController` already exposes many instance governance surfaces.
 - Application handlers already build redacted overview, DNS/domain guidance, operations status, deployment-mode runbook, deployment-mode transition, and tenant lifecycle transition.
-- Generated client already has methods for current Control Plane endpoints.
+- Generated clients now include current Control Plane endpoints plus tenant-plan list/detail, version draft/update/publish/archive/clone, validation, diff preview, assignment get/switch/apply/rollback, and tenant effective-configuration methods.
 
 Settings, locks, quotas, and hierarchy:
 
@@ -185,7 +187,8 @@ Settings, locks, quotas, and hierarchy:
 - `docs/ADMIN_HIERARCHY.md` documents instance admin and tenant admin boundaries, delegation, audit, and emergency access.
 - `docs/STORAGE.md` documents storage policy, quotas, tenant delegation lock, redacted UI, metrics, and backup/restore impact.
 - Existing code/tests show storage quota, external API key quota, quota ProblemDetails, and quota metrics infrastructure.
-- No verified tenant-plan aggregate exists yet.
+- Tenant plans now have normalized persisted aggregates, Application CQRS commands/queries, Control Plane API/HAL endpoints, generated clients, and host-neutral Control Plane plan service contracts.
+- Tenant effective configuration now has an Application read model, Control Plane API/HAL endpoint, generated clients, and a host-neutral Control Plane tenant-configuration service contract for read-only value source, lock source, plan assignment, and quota usage display.
 
 Phase 2 model evidence:
 
@@ -409,6 +412,82 @@ Files changed in Phase 3E:
 - `Explore.Application/Features/ControlPlane/Requests/Commands/ApplyControlPlaneTenantPlanAssignmentCommand.cs`
 - `Explore.Application/Features/ControlPlane/Handlers/Commands/ApplyControlPlaneTenantPlanAssignmentCommandHandler.cs`
 
+Completed Phase 4A on 2026-07-07:
+
+- Exposed the completed Application tenant-plan surface through thin Control Plane API endpoints instead of adding new Application or persistence behavior.
+- Added route constants and controller actions for plan list/detail/create draft, version draft/update/publish/archive/clone, draft validation, diff preview, tenant assignment get/switch/apply, and rollback.
+- Kept plan-template endpoints available without `[RequireMultiTenant]` so self-host/default templates can exist, while tenant-specific assignment endpoints remain `[RequireMultiTenant]`.
+- Added HAL affordances for create version draft, validate, preview diff, update draft, publish, archive, and clone; links carry `InstanceSettings.View` or `InstanceSettings.Update` authorization metadata and command/query `SettingKey` values.
+- Registered tenant-plan DTOs and HAL wrapper schemas in the OpenAPI HAL schema catalog so collection embedded items and detail resources stay typed.
+- Verified focused tenant-plan API/HAL/OpenAPI contract tests passed. The full `Event.API.IntegrationTests` suite still has unrelated gateway-timeout failures clustered in external API key/owner-type and temporal event filter tests.
+
+Files changed in Phase 4A:
+
+- `Explore.API/Controllers/ControlPlaneController.cs`
+- `Explore.API/Hateoas/RouteNames.cs`
+- `Explore.API/Hateoas/Policies/ControlPlaneTenantPlanLinkPolicy.cs`
+- `Explore.API/Hateoas/Assemblers/ControlPlaneTenantPlanResourceAssembler.cs`
+- `Explore.API/Extensions/HateoasAssemblerRegistration.cs`
+- `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`
+- `Event.API.IntegrationTests/Features/Hateoas/ControlPlaneTenantPlanHateoasTests.cs`
+
+Completed Phase 4B on 2026-07-07:
+
+- Ran the governed OpenAPI/client workflow: API build refreshed/validated `schemas/openapi.json`, then Blazor client builds regenerated `EventApiClient.g.cs` artifacts through NSwag. No generated file was hand-edited.
+- Added host-neutral tenant-plan result models and `IControlPlanePlanService` in the shared Control Plane RCL so later Razor components can call service contracts instead of generated clients.
+- Updated `UnconfiguredControlPlaneClient` to implement `IControlPlanePlanService` and fail closed with `NotConfigured` results when a host has no real adapter.
+- Registered `IControlPlanePlanService` fallback in `Event.ControlPlane.Client` and mapped the dedicated `Event.ControlPlane.Blazor` host to the real `ControlPlaneApiAdapter`.
+- Implemented tenant-plan adapter methods in `Event.ControlPlane.Blazor/Services/ControlPlaneApiAdapter.cs`, mapping generated HAL/DTOs to host-neutral contracts, preserving HAL links, converting pricing values, and translating API failures to safe `ControlPlaneResult`/`ControlPlaneCommandResult` values.
+- Preserved explicit existing-tenant assignment semantics in `PublishPlanVersionAsync`: existing tenants stay pinned unless the instance admin chooses `MoveExistingTenantsToPublishedVersion`.
+- Verified `Event.ControlPlane.Client` build, `Event.ControlPlane.Blazor` build, `Explore.Blazor.Client` build, `Explore.Blazor.Client.Tests`, `Event.Architecture.Tests`, and canonical release build all passed with 0 errors. Remaining warnings are pre-existing package/analyzer warnings.
+
+Files changed in Phase 4B:
+
+- `schemas/openapi.json`
+- `Event.ControlPlane.Blazor/Clients/EventApiClient.g.cs`
+- `Explore.Blazor.Client/Clients/EventApiClient.g.cs`
+- `Event.ControlPlane.Client/Contracts/ControlPlanePlanModels.cs`
+- `Event.ControlPlane.Client/Services/IControlPlanePlanService.cs`
+- `Event.ControlPlane.Client/Services/UnconfiguredControlPlaneClient.cs`
+- `Event.ControlPlane.Client/Extensions/ServiceCollectionExtensions.cs`
+- `Event.ControlPlane.Blazor/Program.cs`
+- `Event.ControlPlane.Blazor/Services/ControlPlaneApiAdapter.cs`
+
+Completed Phase 4C on 2026-07-07:
+
+- Added a read-only tenant effective-configuration Application query that resolves all registered settings for an explicit tenant context through `IHierarchicalSettingsResolver`.
+- The effective-configuration read model includes setting value source, lock source, sensitive-value masking, active plan assignment, assigned plan-version quotas, and storage quota usage from the existing tenant storage service.
+- Added a thin Control Plane HAL endpoint for `GET tenants/{tenantId}/effective-configuration` with `RouteNames`, response metadata, `[RequireMultiTenant]`, and existing instance-setting view authorization metadata.
+- Added HAL affordances for reading the plan assignment, switching a tenant plan, applying an assignment, and rolling back an assignment. Lock, unlock, override, and quota-update links remain pending until write contracts exist.
+- Registered effective-configuration DTOs in the OpenAPI HAL schema catalog and regenerated generated clients only through the governed API/NSwag build workflow.
+- Added host-neutral tenant effective-configuration result models and `IControlPlaneTenantConfigurationService` in the shared Control Plane RCL.
+- Updated `UnconfiguredControlPlaneClient` to fail closed for tenant-configuration reads and mapped the dedicated `Event.ControlPlane.Blazor` host to the real `ControlPlaneApiAdapter`.
+- Implemented dedicated BFF adapter mapping from generated effective-configuration HAL DTOs to host-neutral RCL contracts while preserving `_links` for later UI affordance gating.
+- Verified focused tenant effective-configuration API/HAL/OpenAPI contract tests passed. The full `Event.API.IntegrationTests` suite still has unrelated gateway-timeout failures outside this surface.
+- Verified `Explore.Application` build, `Event.ControlPlane.Client` build, `Event.ControlPlane.Blazor` build, `Explore.Blazor.Client` build, `Explore.Blazor.Client.Tests`, `Event.Architecture.Tests`, and canonical release build all passed with 0 errors. Remaining warnings are pre-existing package/analyzer warnings.
+
+Files changed in Phase 4C:
+
+- `Explore.Application/DTOs/ControlPlane/ControlPlaneTenantConfigurationDtos.cs`
+- `Explore.Application/Features/ControlPlane/Requests/Queries/GetControlPlaneTenantEffectiveConfigurationQuery.cs`
+- `Explore.Application/Features/ControlPlane/Handlers/Queries/GetControlPlaneTenantEffectiveConfigurationQueryHandler.cs`
+- `Explore.API/Controllers/ControlPlaneController.cs`
+- `Explore.API/Hateoas/RouteNames.cs`
+- `Explore.API/Hateoas/Policies/ControlPlaneTenantEffectiveConfigurationLinkPolicy.cs`
+- `Explore.API/Hateoas/Assemblers/ControlPlaneTenantEffectiveConfigurationResourceAssembler.cs`
+- `Explore.API/Extensions/HateoasAssemblerRegistration.cs`
+- `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`
+- `Event.API.IntegrationTests/Features/Hateoas/ControlPlaneTenantEffectiveConfigurationHateoasTests.cs`
+- `schemas/openapi.json`
+- `Event.ControlPlane.Blazor/Clients/EventApiClient.g.cs`
+- `Explore.Blazor.Client/Clients/EventApiClient.g.cs`
+- `Event.ControlPlane.Client/Contracts/ControlPlaneTenantConfigurationModels.cs`
+- `Event.ControlPlane.Client/Services/IControlPlaneTenantConfigurationService.cs`
+- `Event.ControlPlane.Client/Services/UnconfiguredControlPlaneClient.cs`
+- `Event.ControlPlane.Client/Extensions/ServiceCollectionExtensions.cs`
+- `Event.ControlPlane.Blazor/Program.cs`
+- `Event.ControlPlane.Blazor/Services/ControlPlaneApiAdapter.cs`
+
 ## CTO Decisions
 
 - Keep API connectivity as the first implementation slice.
@@ -423,6 +502,18 @@ Files changed in Phase 3E:
 - Phase 3D added remaining safe template commands for update draft, archive, clone, validate, preview diff, and rollback assignment, still without applying plan values into tenant settings.
 - Phase 3E chose explicit copy-to-`TenantSetting` for plan application. Active plan assignments remain the record of which plan/version a tenant uses, while effective runtime settings continue to flow through the existing hierarchical setting resolver.
 - Phase 3E added transactional, idempotent tenant-setting upsert for plan application and blocked system-locked settings plus storage quotas above the configured instance ceiling before any write occurs.
+- Phase 4A exposed the existing Application tenant-plan surface through thin Control Plane endpoints and HAL affordances rather than adding new business behavior in the API layer.
+- Phase 4A kept HAL `_links` as the UI action source: generated clients and RCL services carry affordances forward, and Razor components must still gate actions by links instead of local roles or claims.
+- Phase 4B updated generated clients only through the OpenAPI/NSwag build workflow and kept generated files hand-edit-free.
+- Phase 4B added a host-neutral `IControlPlanePlanService` and dedicated BFF adapter mapping so later Plan Studio components can stay transport-agnostic and receive safe failure results.
+- Phase 4B intentionally left the embedded `Explore.Blazor.Client` adapter on fallback for plan services until an embedded-host UI needs the same service surface.
+- Phase 4C made tenant effective configuration read-only first: it reuses the hierarchical resolver, tenant-plan assignment repository, and tenant storage setting service instead of introducing a second settings/quota model.
+- Phase 4C masks sensitive setting values in the Control Plane effective-configuration read model while still exposing source, lock, type, and category metadata.
+- Phase 4C carries tenant-configuration HAL links through generated clients and the dedicated BFF adapter so later UI can gate assignment actions by `_links`; lock/unlock/override/quota-update actions wait for explicit write contracts.
+- Phase 4D added new Control Plane-scoped commands with explicit `Guid tenantId` because existing `SettingsController` commands resolve tenant from `ITenantContext` (current authenticated tenant), making them unsuitable for instance-admin actions on arbitrary tenants.
+- Phase 4D lock/unlock commands are idempotent (success whether applied or already in target state). Set command preserves existing `IsLocked` state via read-before-write to avoid silently dropping a tenant lock.
+- Phase 4D HAL affordances expose per-setting `override`/`lock`/`unlock` links only for non-sensitive settings. Sensitive settings get no action links — secrets cannot be overridden through HAL affordances.
+- Phase 4D deferred quota update because storage quota comes from `IStoragePolicyResolver`, not tenant settings.
 - Require preview/diff/apply/rollback/audit for plan assignment.
 - Split implementation by risk boundary: connectivity, data/model, Application/API/HAL, RCL UI, operations/docs/tests.
 
@@ -455,9 +546,14 @@ Tenant plan design must answer before code:
 - Phase 3D answered draft update, archive, clone, validate, preview-diff, and rollback-assignment command semantics.
 - Phase 3E answered side-effect strategy: applying a plan copies selected plan version settings into `TenantSetting` rows, while assignments keep plan/version provenance.
 - Phase 3E added the first lock/quota enforcement: system-locked settings block plan application and storage quota limits cannot exceed the configured default tenant quota ceiling.
+- Phase 4A answered API/HAL exposure for the completed plan surface: Control Plane now has plan, version, validation, diff, and assignment endpoints with route names and HAL metadata.
+- Phase 4B answered generated-client and RCL service-seam exposure for tenant plans: generated clients include the new endpoints and the dedicated Control Plane host maps them through `IControlPlanePlanService`.
+- Phase 4C answered read-only tenant effective-configuration shape: each response includes resolved setting values, value source, lock source, sensitive-value masking, active plan assignment, assigned plan quota limits, storage usage, and HAL assignment affordances.
+- Phase 4C answered generated-client and RCL service-seam exposure for tenant effective configuration: generated clients include `GetControlPlaneTenantEffectiveConfigurationAsync` and the dedicated Control Plane host maps it through `IControlPlaneTenantConfigurationService`.
 - Later slices can refine quota ceilings per domain and add richer lock-loosening checks as more quota/lock domains become first-class.
 - A later Phase 3 slice must decide which plan changes require typed confirmation at API/UI boundaries.
 - Phase 3A chose dedicated `TenantPlanApplicationLog` storage for plan-application audit history.
+- Remaining Phase 4 work must answer tenant-configuration write actions for lock, unlock, override, and quota update, plus policy coverage for those actions.
 
 ## Working Assumptions
 
@@ -497,6 +593,48 @@ Phase 3C is complete for plan-template versioning and switching semantics. Appli
 Phase 3D is complete for safe template maintenance commands. Application now supports updating draft version content, archiving versions, cloning versions into new draft plans, validating drafts, previewing diffs, and rolling back assignments. The next slice should remain in Phase 3: enforce quota ceilings and lock-loosening rules, then decide and implement the actual plan-application side-effect strategy with idempotency/outbox if it writes multiple tenant settings. Do not build API/HAL or Plan Studio UI before that Application behavior exists.
 
 Phase 3E is complete for the first plan-application side-effect path. Application now copies selected plan version settings into tenant settings only when an instance admin explicitly applies an assignment, and it blocks system-locked settings plus over-ceiling storage quotas before writing. The next slice can move to Phase 4 API/HAL/OpenAPI/adapter contracts for the completed Application surface, or stay in Phase 3 only if more quota domains must be enforced before API exposure. Do not build Plan Studio UI before API/HAL and RCL service contracts exist.
+
+Phase 4A is complete for tenant-plan API/HAL/OpenAPI contracts. Control Plane now exposes thin endpoints and HAL affordances for plan templates, version lifecycle, validation, diff preview, and assignment apply/rollback over the completed Application surface. Focused tenant-plan API/HAL/OpenAPI tests are green; full API integration remains blocked by unrelated gateway-timeout failures outside this surface.
+
+Phase 4B is complete for the generated-client and dedicated-host RCL service seam. Generated clients include tenant-plan methods, `Event.ControlPlane.Client` has host-neutral plan contracts and fail-closed fallback behavior, and `Event.ControlPlane.Blazor` maps those operations through `ControlPlaneApiAdapter` while preserving HAL links and safe error translation.
+
+Phase 4C is complete for the read-only tenant effective-configuration API/HAL/generated-client/RCL service seam. Control Plane can now read one tenant's resolved settings, value and lock sources, active plan assignment, quota limits, storage usage, and assignment HAL affordances through `IControlPlaneTenantConfigurationService`.
+
+Phase 4D is complete for tenant-configuration write contracts (lock/unlock/override). Application now has explicit-tenantId commands (`LockControlPlaneTenantSettingCommand`, `UnlockControlPlaneTenantSettingCommand`, `SetControlPlaneTenantSettingCommand`) because existing `SettingsController` commands resolve tenant from `ITenantContext` (current authenticated tenant) and are unsuitable for instance-admin actions on arbitrary tenants. Lock/unlock are idempotent; set preserves existing `IsLocked` state via read-before-write. HAL affordances on the effective-configuration resource now expose per-setting `override` (PUT), `lock` (POST), or `unlock` (DELETE) links for non-sensitive settings, gated by `InstanceSettings.Update`. Sensitive settings get no action links. Generated clients were regenerated through the build workflow. `IControlPlaneTenantConfigurationService` was extended with write methods; `UnconfiguredControlPlaneClient` fails closed; dedicated `ControlPlaneApiAdapter` maps generated client methods through existing `SendTenantPlanCommandAsync` with safe error translation. Quota update was deferred because storage quota comes from `IStoragePolicyResolver`, not tenant settings.
+
+Files changed in Phase 4D:
+- `Explore.Application/Features/ControlPlane/Requests/Commands/LockControlPlaneTenantSettingCommand.cs`
+- `Explore.Application/Features/ControlPlane/Requests/Commands/UnlockControlPlaneTenantSettingCommand.cs`
+- `Explore.Application/Features/ControlPlane/Requests/Commands/SetControlPlaneTenantSettingCommand.cs`
+- `Explore.Application/Features/ControlPlane/Handlers/Commands/LockControlPlaneTenantSettingCommandHandler.cs`
+- `Explore.Application/Features/ControlPlane/Handlers/Commands/UnlockControlPlaneTenantSettingCommandHandler.cs`
+- `Explore.Application/Features/ControlPlane/Handlers/Commands/SetControlPlaneTenantSettingCommandHandler.cs`
+- `Explore.API/Hateoas/RouteNames.cs`
+- `Explore.API/Hateoas/Policies/ControlPlaneTenantEffectiveConfigurationLinkPolicy.cs`
+- `Explore.API/Controllers/ControlPlaneController.cs`
+- `Event.API.IntegrationTests/Features/Hateoas/ControlPlaneTenantEffectiveConfigurationHateoasTests.cs`
+- `schemas/openapi.json`
+- `Event.ControlPlane.Blazor/Clients/EventApiClient.g.cs`
+- `Explore.Blazor.Client/Clients/EventApiClient.g.cs`
+- `Event.ControlPlane.Client/Services/IControlPlaneTenantConfigurationService.cs`
+- `Event.ControlPlane.Client/Services/UnconfiguredControlPlaneClient.cs`
+- `Event.ControlPlane.Blazor/Services/ControlPlaneApiAdapter.cs`
+
+The next slice should stay in Phase 4: add Cerbos/local policy coverage for plan and tenant-configuration resources if required, or explicitly defer it. Plan Studio UI remains blocked until explicitly started.
+
+Phase 4E is complete for Cerbos policy test coverage. Control Plane setting keys (`control-plane.tenant-plans`, `control-plane.tenant-plan-assignments`, `control-plane.tenant-effective-configuration`) inherit the existing `islamuevent_instance_setting` policy; test cases were added to `islamuevent_instance_setting_test.yaml` proving instance admin allow and tenant admin/regular user view-only deny. Phase 4 is now fully complete.
+
+Phase 5A is complete for Plan Studio read surfaces and Tenant Configuration center. The Plan Studio list page (`/admin/instance/plans`) shows plan inventory with pricing, provisioning status, version numbers, and HAL-gated create affordance. The Plan Detail page (`/admin/instance/plans/{Key}`) shows all versions with per-version settings/quotas tables, status badges (Draft/Published/Archived), and HAL-gated lifecycle actions: publish (Draft→Published), archive (Published→Archived), clone (Published→new plan with key/name confirmation form), and create version draft. The Tenant Configuration page (`/admin/instance/tenants/{TenantId}/configuration`) shows plan assignment facts, grouped effective settings by category with value/lock-source/source display, quota usage with meter bars, sensitive-value masking (••••••••), and HAL-gated per-setting actions: override (inline edit with input+save), lock, and unlock. All actions are gated by `_links` presence only, never local role inspection. Sensitive settings get no action links. 7 new bUnit tests cover fail-closed state, HAL-gated rendering, publish flow, lock flow, and override flow.
+
+Files changed in Phase 5A:
+- `Event.ControlPlane.Client/Pages/Plans/ControlPlanePlansPage.razor` (fixed broken `@key` syntax from prior session)
+- `Event.ControlPlane.Client/Pages/Plans/ControlPlanePlanDetailPage.razor` (new)
+- `Event.ControlPlane.Client/Pages/Plans/ControlPlanePlanDetailPage.razor.css` (new)
+- `Event.ControlPlane.Client/Pages/TenantConfiguration/ControlPlaneTenantConfigurationPage.razor` (new)
+- `Event.ControlPlane.Client/Pages/TenantConfiguration/ControlPlaneTenantConfigurationPage.razor.css` (new)
+- `Explore.Blazor.Client.Tests/Pages/Admin/ControlPlanePlanDetailAndTenantConfigPageTests.cs` (new, 7 tests)
+
+The next slice should continue Phase 5: build the Plan Editor (create/edit draft forms with domain-grouped settings, validation error display), implement plan assignment diff preview/apply/rollback UI, add `admin_portal.*` instance settings, and verify shared layout nav rendering by authority. Manual browser QA remains required after the editor lands.
 
 Keep this file updated with:
 

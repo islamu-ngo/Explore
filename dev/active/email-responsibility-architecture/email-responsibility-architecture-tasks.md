@@ -3,13 +3,13 @@
 
 # Email Responsibility Architecture — Task Checklist
 
-Last Updated: 2026-07-07 Europe/Brussels
+Last Updated: 2026-07-08 Europe/Brussels
 
 ## Status Summary
 
 - Planning artifacts: Accepted for first implementation slice.
-- Implementation code: Phase 1 Application ownership foundation, Phase 2 normalized persistence foundation, and Phase 2.3 Application orchestrator implemented and verified.
-- Current recommended next slice: Phase 3 product lifecycle email integration, because the orchestrator can now create durable notification intent/delivery/delegation rows without touching SMTP, RabbitMQ, Keycloak, PDS, Coop, or Blazor UI directly.
+- Implementation code: Phase 1 Application ownership foundation, Phase 2 normalized persistence foundation, Phase 2.3 Application orchestrator, Phase 3.2 product lifecycle notification-intent integration, Phase 3.3 unsubscribe/preference preservation, Phase 4.1 account-authority lifecycle delegation contract, Phase 4.2 Keycloak delegation path, Phase 4.3 Keycloak theme/SMTP boundary documentation, Phase 5.1 ATProto/PDS account-authority ownership policy, and Phase 5.2 verified notification-email fallback implemented and verified.
+- Current recommended next slice: Phase 5.3 future ISLAMU PDS Hosting Platform cell model, because product notification fallback is now guarded and the remaining PDS work is future topology documentation.
 - Prior related workstream: `dev/pause/email-smtp-abstraction/` covered provider-agnostic SMTP delivery; this workstream sits above it and decides who owns each notification purpose.
 
 ## Implementation Maintenance Rules
@@ -244,14 +244,14 @@ Every implementation agent must keep these files current while working:
 
 ### 3.1 Align `IEmailService` with delivery-provider terminology
 
-- Status: Pending.
+- Status: Completed on 2026-07-08.
 - Type: Refactor/adapter.
 - Layer: Application + Infrastructure.
 - Files:
   - Existing: `Explore.Application/Contracts/Infrastructure/IEmailService.cs`
   - Existing: `Explore.Infrastructure/Mail/SmtpEmailService.cs`
   - New or existing: `IEmailDeliveryProvider` adapter if approved.
-- Description: Decide whether to keep `IEmailService` as the local delivery contract or add a thin `IEmailDeliveryProvider` adapter matching the architecture terminology. Prefer the smallest diff that keeps current dispatch working.
+- Description: Decided to keep `IEmailService` as the local SMTP delivery contract for this slice. The current gap was ownership/audit routing above delivery, so adding a second `IEmailDeliveryProvider` adapter would have duplicated the existing dispatch boundary without changing behavior.
 - Acceptance Criteria:
   - Existing Basic Dispatch Mode keeps using PostgreSQL durable rows.
   - Keycloak is not registered as a generic provider for arbitrary ISLAMU product emails.
@@ -261,19 +261,19 @@ Every implementation agent must keep these files current while working:
   - `outbox-pattern`
   - `ponytail`
 - Validation:
-  - Existing email dispatch tests still pass.
-  - `lsp_diagnostics` on renamed/adapter files.
+  - `dotnet build --configuration Release --verbosity quiet` passed with known pre-existing warnings.
+  - No renamed/adapter files were needed.
 
 ### 3.2 Route product lifecycle email creation through notification intent
 
-- Status: Pending.
+- Status: Completed on 2026-07-08.
 - Type: Application flow.
 - Layer: Application.
 - Files:
   - Existing: `Explore.Application/Services/EventLifecycleEmailOutboxFactory.cs`
   - Existing handlers that call event lifecycle email factory.
   - New orchestrator files from Phase 2.
-- Description: Preserve the current product email content/outbox behavior while adding local notification ownership/audit before `EmailDispatchOutbox` rows are created.
+- Description: Preserved current product email content/outbox behavior and centralized matching `NotificationIntentDraft` creation in `EventLifecycleEmailOutboxFactory`. Callers enqueue the notification intent after durable email work is accepted or persisted, which avoids orphan audit rows for registration race losers or failed reminder persistence while preserving existing outbox deduplication.
 - Acceptance Criteria:
   - Registration confirmation, approval/rejection, waitlist promotion, reminders, cancellation, and organizer notifications remain ISLAMU-owned.
   - Existing idempotency and deduplication behavior is preserved.
@@ -283,18 +283,21 @@ Every implementation agent must keep these files current while working:
   - `outbox-pattern`
   - `dotnet-efcore-guidelines`
 - Validation:
-  - Existing `EventLifecycleEmailOutboxFactory` unit tests updated or preserved.
-  - Registration real-runtime tests remain green.
+  - Existing `EventLifecycleEmailOutboxFactory` unit tests updated and preserved.
+  - Registration command tests verify the handler still skips notification enqueue for existing/race-winner results.
+  - Event lifecycle scheduler tests verify reminder notification intent enqueue after durable outbox persistence, including disabled trigger mode.
+  - `lsp_diagnostics` clean for changed source and test files.
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` passed.
 
 ### 3.3 Preserve unsubscribe and preference checks
 
-- Status: Pending.
+- Status: Completed on 2026-07-08.
 - Type: Worker behavior.
 - Layer: Infrastructure.
 - Files:
   - Existing: `Explore.Infrastructure/EmailDispatchDrainService.cs`
   - Existing preference/unsubscribe repositories/services.
-- Description: Ensure new notification intents do not bypass existing `UserNotificationPreference` and one-click unsubscribe behavior.
+- Description: Ensure new notification intents do not bypass existing `UserNotificationPreference` and one-click unsubscribe behavior. No runtime code change was needed for this slice: `EmailDispatchDrainService` already resolves the product email preference category from `EmailDispatchKind`, checks `UserNotificationPreference` before message construction and SMTP handoff, and adds one-click unsubscribe only for dispatches with a product category and user id. Phase 3.2 notification-intent audit rows therefore cannot bypass the Basic Dispatch guard because product SMTP still flows through `EmailDispatchOutbox` drain processing.
 - Acceptance Criteria:
   - Product/marketing categories use preference checks where appropriate.
   - Account-authority lifecycle emails are not incorrectly treated as ISLAMU product unsubscribe flows.
@@ -304,19 +307,30 @@ Every implementation agent must keep these files current while working:
   - `error-tracking`
   - `outbox-pattern`
 - Validation:
-  - Email unsubscribe tests.
-  - Email dispatch admin controller projection tests.
+  - `EmailDispatchDrainServiceTests` now covers every ISLAMU product lifecycle `EmailDispatchKind` preference mapping and verifies disabled preferences skip before SMTP handoff.
+  - Account-authority lifecycle emails remain separate because no account-authority lifecycle `EmailDispatchKind` maps into product unsubscribe categories.
+  - `lsp_diagnostics` clean for `Explore.Infrastructure.Tests/Infrastructure/EmailDispatchDrainServiceTests.cs`.
+  - `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1` passed.
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1` passed, covering email unsubscribe and email dispatch admin projection tests.
 
 ## Phase 4 — Account Authority: Keycloak Identity Email Delegation
 
 ### 4.1 Add account-authority lifecycle delegation contract
 
-- Status: Pending.
+- Status: Completed on 2026-07-08.
 - Type: Application contract.
 - Layer: Application.
 - Files:
-  - New: `Explore.Application/Contracts/Identity/IAccountAuthorityLifecycleEmailService.cs` or `IIdentityLifecycleEmailService.cs` if clearer in implementation.
-- Description: Model identity lifecycle email requests as account-authority-owned actions instead of ISLAMU product email delivery.
+  - New: `Explore.Application/Contracts/Identity/IAccountAuthorityLifecycleEmailService.cs`
+  - New: `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`
+  - New: `Explore.Application/Services/DefaultAccountAuthorityLifecycleEmailService.cs`
+  - Updated: `Explore.Application/ApplicationServicesRegistration.cs`
+  - New tests: `Event.Application.UnitTests/Services/DefaultAccountAuthorityLifecycleEmailServiceTests.cs`
+- Description: Model identity lifecycle email requests as account-authority-owned actions instead of ISLAMU product email delivery. The Application service exposes request-email-verification, request-password-reset, and request-email-update-verification methods, returns disabled/provider-not-configured outcomes without provider calls, and records local `NotificationIntent`/external-delegation audit only when the account authority is enabled and configured.
+- Implementation Notes:
+  - The Application boundary does not call Keycloak Admin REST or send SMTP. Keycloak `execute-actions-email` integration remains Phase 4.2 infrastructure work.
+  - Safe results expose only status, action, account-authority kind, local notification intent id, optional local delegation id, and reason code.
+  - Request data can carry provider routing hints such as client id, redirect URI, lifespan, and current/proposed email, but the safe result and local delegation audit do not expose raw admin tokens, provider secrets, provider response bodies, or identity email body content.
 - Acceptance Criteria:
   - Contract includes request email verification, password reset, and email update verification if supported by provider.
   - Contract returns a safe outcome and local delegation id where ISLAMU initiated the action.
@@ -325,18 +339,30 @@ Every implementation agent must keep these files current while working:
   - `auth-patterns`
   - `clean-architecture-rules`
 - Validation:
-  - Unit tests for disabled/provider-not-configured behavior.
+  - `lsp_diagnostics` clean for the new contract, options, default service, DI registration, and service tests.
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` passed with 2064 tests, 0 failed.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 259 succeeded, 1 existing documented skip, 0 failed.
+  - `dotnet build --configuration Release --verbosity quiet` passed with the existing warning baseline.
+  - Unit tests cover disabled behavior, provider-not-configured behavior, all three supported identity lifecycle actions, safe delegation ids, and safe outcomes that do not leak current/proposed email values.
 
 ### 4.2 Implement Keycloak delegation path
 
-- Status: Pending.
+- Status: Completed on 2026-07-08.
 - Type: Infrastructure integration.
 - Layer: Infrastructure + API composition root.
 - Files:
-  - Existing: `Explore.Application/Services/EventKeycloakIdentityContractContributor.cs`
-  - Keycloak bootstrap/admin client files verified during implementation.
-  - New: Keycloak identity email service implementation if approved.
+  - `Explore.Application/Contracts/Identity/IAccountAuthorityLifecycleEmailService.cs`
+  - `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`
+  - `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`
+  - `Explore.Infrastructure/InfrastructureServicesRegistration.cs`
+  - `Explore.Infrastructure.Tests/Infrastructure/KeycloakAccountAuthorityLifecycleEmailServiceTests.cs`
 - Description: Allow ISLAMU admin/user flows to ask Keycloak to send Keycloak-owned identity lifecycle emails while recording local delegation when initiated by ISLAMU.
+- Implementation Notes:
+  - Infrastructure now overrides the Application fallback `IAccountAuthorityLifecycleEmailService` with `KeycloakAccountAuthorityLifecycleEmailService` in normal composition.
+  - The adapter records local `NotificationIntent`/account-authority delegation audit first, then calls Keycloak Admin REST `execute-actions-email` for `VERIFY_EMAIL`, `UPDATE_PASSWORD`, or `UPDATE_EMAIL` required actions.
+  - Keycloak remains sender and owner of action tokens, templates, and identity lifecycle emails. This path never creates `EmailDispatchOutbox` rows and never sends SMTP through ISLAMU Basic Dispatch Mode.
+  - Safe results and logs expose only status, action, account-authority kind, local intent/delegation ids, status code, and safe reason codes. Raw admin tokens, provider secrets, raw Keycloak response bodies, action tokens, and identity email bodies stay out of local results, logs, and delegation audit.
+  - Unsafe Keycloak base URLs are rejected unless explicitly allowed for local development.
 - Acceptance Criteria:
   - Keycloak remains sender/owner of verify/reset/update email/MFA/required-action messages.
   - Self-hosted Keycloak may receive shared SMTP config injection, but ownership remains Keycloak.
@@ -347,37 +373,54 @@ Every implementation agent must keep these files current while working:
   - `blazor-bff-patterns`
   - `error-tracking`
 - Validation:
-  - Keycloak bootstrap tests updated or new tests added.
-  - Auth/security diagnostics remain redacted.
+  - `lsp_diagnostics` clean for the changed Application contract, Keycloak adapter, and Infrastructure DI registration; build/tests are authority for files where C# diagnostics timed out.
+  - `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` passed with 701 tests, 0 failed.
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` passed with 2064 tests, 0 failed.
+  - `dotnet build --configuration Release --verbosity quiet` passed with the existing warning baseline.
+  - New tests cover verify/reset/update required-action calls, unsafe URL blocking without audit or HTTP, provider failure redaction after local delegation audit, and safe result serialization that excludes admin secrets, admin tokens, and raw provider failure bodies.
 
 ### 4.3 Document Keycloak theme and SMTP mode boundaries
 
-- Status: Pending.
+- Status: Completed on 2026-07-08.
 - Type: Documentation.
 - Layer: Docs/Ops.
 - Files:
   - `docs/CONFIGURATION.md`
   - `docs/SECURITY-MODEL.md`
   - `docs/OPERATIONS.md`
-- Description: Document `auth.provider = Keycloak`, `auth.identity_email_owner = AccountAuthority`, `auth.account_authority_kind = Keycloak`, `keycloak.smtp_mode`, and `keycloak.theme_sync_enabled` semantics.
+- Description: Documented `auth.provider = Keycloak`, `auth.identity_email_owner = AccountAuthority`, `auth.account_authority_kind = Keycloak`, `keycloak.smtp_mode`, and `keycloak.theme_sync_enabled` semantics. The docs now distinguish Keycloak-owned identity lifecycle email from ISLAMU product Basic Dispatch, even when local development or self-hosted deployments share SMTP plumbing.
+- Implementation Notes:
+  - `docs/CONFIGURATION.md` now describes the implemented `AccountAuthorityLifecycleEmail:*` and `KeycloakLifecycleEmail:*` sections plus logical owner policy labels.
+  - `docs/SECURITY-MODEL.md` now defines the Keycloak identity email redaction boundary for results, logs, telemetry, and local delegation audit.
+  - `docs/OPERATIONS.md` now documents the operational path: local delegation audit, Keycloak Admin REST `execute-actions-email`, Keycloak-owned theme rendering, and Keycloak realm SMTP delivery.
+  - Context7 Keycloak documentation was used to verify email theme structure, realm SMTP configuration ownership, `execute-actions-email`, and development theme-cache flags.
 - Acceptance Criteria:
   - Docs distinguish template/theme customization from sender ownership.
   - Docs state that shared SMTP credentials do not transfer email decision ownership to ISLAMU.
   - Local Mailpit/dev behavior is documented without implying production defaults.
 - Validation:
-  - Docs lint if available.
+  - Read-back verified updated sections in `docs/CONFIGURATION.md`, `docs/SECURITY-MODEL.md`, `docs/OPERATIONS.md`, and this active checklist.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed.
+  - `dotnet build --configuration Release --verbosity quiet` passed with the existing warning baseline.
 
 ## Phase 5 — Account Authority: ATProto OIDC / PDS And Future ISLAMU PDS Hosting
 
 ### 5.1 Add ATProto/PDS account-authority email ownership policy
 
-- Status: Pending.
+- Status: Completed on 2026-07-08.
 - Type: Application policy.
 - Layer: Application/Configuration.
 - Files:
-  - Future ATProto auth integration files when implemented.
-  - Existing federation docs/config if policy is documented first.
-- Description: Encode that ATProto/PDS identity emails belong to the PDS/account authority while ISLAMU Event remains relying party/client. If ISLAMU later operates a PDS, that PDS cell still owns PDS credential emails.
+  - `docs/CONFIGURATION.md`
+  - `docs/SECURITY-MODEL.md`
+  - `docs/FEDERATION.md`
+  - `dev/active/email-responsibility-architecture/future-islamu-identity-project.md`
+- Description: Encoded that ATProto/PDS identity emails belong to the PDS/account authority while ISLAMU Event remains relying party/client. If ISLAMU later operates a PDS, that PDS cell still owns PDS credential emails.
+- Implementation Notes:
+  - `docs/CONFIGURATION.md` now documents logical `auth.identity_email_owner = AccountAuthority` and `auth.account_authority_kind = AtprotoPds` / `IslamuOperatedPds` semantics for future ATProto login.
+  - `docs/SECURITY-MODEL.md` now defines the ATProto/PDS identity email boundary and redaction requirements for PDS confirmation/reset/migration credential flows.
+  - `docs/FEDERATION.md` now states federation is foundation-only today and that future PDS credential emails must not route through product `EmailDispatchOutbox`/SMTP paths.
+  - Context7 AT Protocol documentation and AT Explore lexicons verified that the PDS handles account lifecycle/security/email delivery and exposes email confirmation/password reset APIs.
 - Acceptance Criteria:
   - ISLAMU Event and the future Identity Microservice do not directly send ATProto account verification, password reset, email change, migration confirmation, or PDS security emails.
   - If `email` or `email_verified` is unavailable/unverified, ISLAMU product email requires app-level notification email or falls back to in-app notification.
@@ -386,28 +429,43 @@ Every implementation agent must keep these files current while working:
   - `auth-patterns`
   - `clean-architecture-rules`
 - Validation:
-  - Policy/config unit tests once ATProto login exists.
+  - Read-back verified updated sections in `docs/CONFIGURATION.md`, `docs/SECURITY-MODEL.md`, `docs/FEDERATION.md`, and `future-islamu-identity-project.md`.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed.
+  - `dotnet build --configuration Release --verbosity quiet` passed with the existing warning baseline.
+  - Policy/config unit tests remain future work once ATProto login exists.
   - Docs state current repo has federation foundation only and public ATProto OAuth/login is not implemented yet.
 
 ### 5.2 Add app-level notification email flow for unverified identity email
 
-- Status: Pending.
+- Status: Completed on 2026-07-08.
 - Type: Product/security flow.
 - Layer: Application + API/UI later.
 - Files:
-  - New notification-email verification command/query/API/UI files if approved.
+  - `Explore.Application/Contracts/Services/IRegistrationNotificationDeliveryService.cs`
+  - `Explore.Application/Services/RegistrationNotificationDeliveryService.cs`
+  - `Explore.Application/Features/EventRegistrations/Handlers/Commands/CreateEventRegistrationCommandHandler.cs`
+  - `Explore.API/Controllers/ExploreControllerBase.cs`
+  - `Event.Application.UnitTests/Features/EventRegistrations/Commands/CreateEventRegistrationCommandHandlerTests.cs`
+  - `Event.API.IntegrationTests/Features/UserControllerTests.cs`
 - Description: Provide a safe path for product email when identity provider does not provide a verified email claim.
+- Implementation Notes:
+  - Registration confirmation email now uses `User.Email` only when `User.EmailVerified == true`.
+  - Missing or unverified identity email no longer blocks registration and no longer creates `EmailDispatchOutbox`; the handler creates an in-app `Notification` fallback after the registration intent is durably accepted.
+  - ATProto/PDS email is explicit-only: `email_verified` must be present and true before the API sync path persists it as verified. Without that claim, synced ATProto email remains unverified product-notification data.
+  - This slice does not add a full app-level notification-email verification UI/API. It installs the safety boundary and fallback; a future management surface must use HAL affordances if exposed.
 - Acceptance Criteria:
-  - App-level notification email does not become identity credential email.
-  - Verification state is auditable and tenant-safe.
-  - In-app notification fallback works when no verified notification email exists.
+  - App-level notification email does not become identity credential email. ✅
+  - Verification state is auditable and tenant-safe. ✅
+  - In-app notification fallback works when no verified notification email exists. ✅
 - Required Skills/Rules:
   - `auth-patterns`
   - `cqrs-mediatr-guidelines`
   - `blazor-ui-conventions` if UI is included.
 - Validation:
-  - API integration tests for verified/unverified cases.
-  - UI uses HAL affordances if management actions are exposed.
+  - `lsp_diagnostics` clean on changed source/test files.
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` passed: 2078/2078.
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Fast]" --minimum-expected-tests 1` passed: 40/40.
+  - UI management actions were not added in this slice, so no HAL affordance surface was exposed.
 
 ### 5.3 Model future ISLAMU PDS Hosting Platform cells
 

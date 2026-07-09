@@ -3,7 +3,7 @@
 
 # Future ISLAMU Identity Project — Boundary Decisions
 
-Last Updated: 2026-07-06 Europe/Brussels
+Last Updated: 2026-07-08 Europe/Brussels
 
 ## 1. Purpose
 
@@ -236,8 +236,11 @@ Required operational safeguards for future implementation:
 | --- | --- |
 | Official Bluesky PDS README | PDS hosts Personal Data Server, can federate, documents multi-user sizing guidance, and requires SMTP configuration for email verification and other PDS emails. |
 | AT Protocol Account specification | Active accounts live on a PDS; PDS provides repository hosting, authorization/authentication, blob storage, and accounts can migrate between PDS hosting providers/instances. |
+| AT Protocol stack documentation | PDS handles account lifecycle management, account security including email verification and password reset, identity resolution, email delivery, and related account-hosting operations. |
+| AT Protocol account permission documentation | `account:email` is private account-hosting data for the PDS account email and verification status; client access is explicit permission, not a product-email guarantee. |
 | `com.atproto.server.requestEmailConfirmation` lexicon | PDS/account API requests an email code to confirm ownership of email. |
 | `com.atproto.server.requestPasswordReset` lexicon | PDS/account API initiates password reset via email. |
+| `com.atproto.server.confirmEmail` lexicon | PDS/account API confirms email using the email and token produced by the PDS email-confirmation flow. |
 | `dev/active/email-responsibility-architecture/email-responsibility-architecture-plan.md` | Email responsibility plan defines AccountAuthority ownership and keeps ISLAMU product notification ownership separate. |
 
 ## 12. Open Questions
