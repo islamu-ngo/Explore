@@ -79,6 +79,22 @@ Mode behavior affects:
 
 Deployment mode is intentionally operator-governed after onboarding. Do not treat `deployment.mode` as a casual runtime toggle; use an explicit migration/runbook if an installed instance must change modes.
 
+## Localization Bundle Storage In Deployment Modes
+
+Localization static bundles are deployment-local files unless an operator mounts
+the API content-root bundle directory on shared storage:
+
+```text
+{ContentRoot}/App_Data/Localization/Bundles/{code}.json
+```
+
+Single-tenant and multi-tenant modes both use the same provider/resolver stack.
+In `tms_provider=None` or live-provider fallback, embedded bundles are loaded
+first and valid writable files override individual keys. For multi-replica
+deployments, mount the bundle directory on a shared persistent volume so all API
+replicas read the same operator-imported bundles. Otherwise static bundle writes
+are only visible to the replica that received the admin request.
+
 ## Related
 
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)

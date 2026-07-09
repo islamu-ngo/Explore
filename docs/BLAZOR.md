@@ -175,6 +175,18 @@ The browser authentication state is intentionally display-only:
 
 Generated DTOs preserve HAL `_links` through extension data. Per-resource UI affordances must be gated by HAL links from the API, not by duplicating role checks in Razor components. Admin authorization-provider setup/sync UI surfaces server-confirmed status, sync, and manual-package download affordances; the browser never owns Cerbos Admin API credentials or access tokens.
 
+### Localization Admin Service Boundary
+
+Localization administration in `Explore.Blazor.Client` goes through
+`ILocalizationAdminService` and the BFF/API proxy path. The client can request
+configuration, test provider connectivity, rotate/write-only TMS secrets through
+server endpoints, export from TMS, and import/export static bundles. It never
+calls Tolgee/Weblate directly and never receives plaintext TMS API keys.
+
+Static bundle import/export service methods are client hooks over
+`/api/admin/localization/bundle`; UI components should keep raw bundle JSON out
+of logs/snackbars and rely on the service result message for safe feedback.
+
 ### Webhook Management UI
 
 Webhook management uses generated API clients plus client service wrappers. Components must preserve API HAL resources and render create/update/delete/test/retry/rotate/open-portal actions only when the matching `_links` relation is present.
@@ -217,6 +229,16 @@ The product assistant follows the same BFF and service-layer boundary:
 5. Reference event affordances are rendered only when the reference HAL resource has an `event` link.
 6. AI run progress uses polling through the run-status endpoint; no Blazor streaming transport is active for assistant runs.
 7. Browser code must not display or log raw provider payloads, full prompt content, API keys, endpoint URLs, model secrets, or local authorization claims.
+
+### Notification Preference Matrix
+
+Notification preference UI consumes the generated API client through `INotificationService` and renders the reusable `Components/Notifications/NotificationPreferenceMatrix` component.
+
+1. `/settings?section=notifications` renders the current-user matrix.
+2. Organization and group profile pages render scoped notification-preference tabs using the same component with organization or group scope ids.
+3. Save and global-mute controls render only when the HAL resource includes `save` and `set-mute` links. Components must not inspect roles or claims to decide whether preference cells are editable.
+4. The matrix sends only generated DTOs through the service layer; Razor components do not call `EventApiClient` directly.
+5. The component announces load, save, mute, and error states through the accessibility announcer service and uses scoped CSS with logical properties.
 
 ## Render And Public Experience
 

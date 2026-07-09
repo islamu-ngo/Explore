@@ -50,9 +50,21 @@ Provider  Provider   Provider
 | `TolgeeTranslationProvider` | `Explore.Infrastructure/Localization/` | Scoped |
 | `WeblateTranslationProvider` | `Explore.Infrastructure/Localization/` | Scoped |
 | `OfflineTranslationProvider` | `Explore.Infrastructure/Localization/` | Singleton |
+| `BundleSchema` | `Explore.Infrastructure/Localization/` | Internal helper |
 | `NullTranslationProvider` | `Explore.Infrastructure/Localization/` | Singleton |
 | `TranslationResolver` | `Explore.Infrastructure/Localization/` | Scoped |
 | `TranslationConfigResolver` | `Explore.Infrastructure/Localization/` | Scoped |
+
+Tolgee and Weblate provider calls use NSwag-generated clients generated from
+provider-normalized schema slices:
+
+- `schemas/openapi-tolgee-provider.yaml` → `Explore.Infrastructure/Localization/Generated/Tolgee/TolgeeApiClient.g.cs`
+- `schemas/openapi-weblate-provider.yaml` → `Explore.Infrastructure/Localization/Generated/Weblate/WeblateApiClient.g.cs`
+
+The raw upstream schemas remain checked in at `schemas/openapi-tolgee.json` and
+`schemas/openapi-weblate.yaml`. The provider slices only correct schema metadata
+that blocks usable generated clients, such as Tolgee's missing `projectId` path
+parameters and Weblate's multipart file upload type.
 
 ### Provider Resolution
 
@@ -69,6 +81,12 @@ On error, `RuntimeTranslationProvider` falls back to `OfflineTranslationProvider
 ```
 lookup.{entity_type}.{master_code}.{field}
 ```
+
+Application code builds lookup translation keys through
+`Explore.Application.Localization.TranslationKeys.Lookup(entityType, masterCode, field)`.
+The `masterCode` argument is the lookup row's stable `MasterCode` value. Never build lookup
+translation keys from database IDs, localized labels, or display names.
+
 Examples:
 - `lookup.tag.FIQH.full_name` → "Jurisprudence" (French)
 - `lookup.category.EDUCATION.description` → "Programmes éducatifs"
@@ -106,7 +124,11 @@ Extended governance keys (seed IDs 565–568):
 | `localization.client_picker_enabled` | string | `"true"` | Kill-switch: hide language picker if false |
 | `localization.force_offline_mode` | string | `"false"` | Emergency toggle: route through OfflineTranslationProvider |
 
-**API key/token** for TMS authentication is stored via `SecretProvider`, not in governance settings.
+**API key/token** for TMS authentication is stored through the shared
+`SecretProvider` binding key `localization.tms_api_key`, not in governance
+settings. The admin API exposes only `TmsApiKeyConfigured`; plaintext keys never
+go to Blazor, generated API clients, OpenAPI examples, logs, metrics, or
+ProblemDetails.
 
 ## Language Governance Model
 
@@ -145,6 +167,15 @@ Format: flat key-value JSON:
 
 Starter bundles shipped: `en.json`, `fr.json`, `ar.json`.
 
+Bundle schema rules are enforced by `BundleSchema` before local writes and while
+loading embedded/writable bundles:
+
+- the root must be a JSON object;
+- every value must be a string;
+- keys must be nonblank, contain no whitespace, have no empty dot segments, and
+  start with `ui.` or `lookup.`;
+- output is sorted deterministically before writing.
+
 ### Bundle Persistence & HA Constraint
 
 The admin UI "Export from TMS" feature writes bundles to a **writable directory** on the local filesystem:
@@ -153,7 +184,10 @@ The admin UI "Export from TMS" feature writes bundles to a **writable directory*
 {ContentRoot}/App_Data/Localization/Bundles/{code}.json
 ```
 
-**`OfflineTranslationProvider`** checks this directory first, then falls back to embedded resources.
+**`OfflineTranslationProvider`** loads embedded defaults first, then merges a
+valid writable bundle over those defaults key-by-key. Writable keys override
+embedded keys, writable-only keys are included, and malformed writable bundles
+are ignored safely so embedded defaults remain available.
 
 **HA constraint**: `App_Data/Localization/Bundles/` is a **local filesystem path**. It is correct for:
 1. **Single-instance deployments** — the export writes locally and the same instance reads it.
@@ -161,7 +195,15 @@ The admin UI "Export from TMS" feature writes bundles to a **writable directory*
 
 It is **not** HA-safe behind a load balancer without shared storage. `IBundleFileWriter` (`Explore.Application/Contracts/Infrastructure/IBundleFileWriter.cs`) is the seam where a `DistributedBundleFileWriter` (S3/blob/shared-cache) can ship post-v1 without touching call sites.
 
-The admin UI surfaces a health banner when the writable path is not available, and gates the export buttons on `WritablePathHealth.Writable`.
+The admin UI surfaces a health banner when the writable path is not available,
+and gates TMS export buttons on `WritablePathHealth.Writable`. The admin API also
+offers direct static bundle import/export for no-TMS operators:
+
+- `GET /api/admin/localization/bundle?languageCode={code}` returns the merged static bundle without calling live Tolgee/Weblate.
+- `POST /api/admin/localization/bundle` validates and writes a flat bundle JSON payload, then invalidates the translation resolver cache for that language.
+
+Static bundle import/export is authorized admin-only. Import failures return safe
+command errors and logs never include raw bundle content.
 
 **Backlog ticket**: `dev/backlog/distributed-bundle-file-writer.md`
 
@@ -176,20 +218,25 @@ The admin UI surfaces a health banner when the writable path is not available, a
 - `GET /api/admin/localization/configuration` — Get current localization config (includes governance fields)
 - `PUT /api/admin/localization/governance` — Update localization governance settings (9 keys)
 - `POST /api/admin/localization/export-from-tms?languageCode={code}` — Pull translations from TMS and persist bundle
+- `GET /api/admin/localization/bundle?languageCode={code}` — Export merged static bundle
+- `POST /api/admin/localization/bundle` — Import flat static bundle JSON
 - `GET /api/admin/localization/bundle-health` — Probe writable bundle path health
 
 ## TMS Provider API Details
 
 ### Tolgee
 - Auth: `X-API-Key` header
-- Export: `GET /v2/projects/{projectId}/translations/{lang}`
+- Export: `GET /v2/projects/{projectId}/translations/{lang}?structureDelimiter=.`
 - Import: `POST /v2/projects/{projectId}/keys/import-resolvable`
 - Languages: `GET /v2/projects/{projectId}/languages`
+
+Tolgee project IDs are numeric in the generated client; configure
+`localization.tms_project_id` with the numeric project id from Tolgee.
 
 ### Weblate
 - Auth: `Authorization: Token {apiKey}` header
 - Export: `GET /api/translations/{project}/{component}/{lang}/file/`
-- Import: `POST /api/translations/{project}/{component}/{lang}/units/`
+- Import: `POST /api/translations/{project}/{component}/{lang}/file/` as multipart JSON file upload with method `translate`, fuzzy handling `process`, and conflicts `replace`
 - Languages: `GET /api/projects/{project}/languages/`
 
 ## Cache Behavior

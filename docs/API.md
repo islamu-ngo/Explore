@@ -122,6 +122,44 @@ EmailDispatch admin routes live under `/api/admin/email-dispatch` and are authen
 - HAL item links for `replay` and `park` use the same resource/action metadata; clients must render these controls only when the server includes the link.
 - `Skipped` is a terminal dispatch status for preference/compliance skips. Sent and skipped rows are not replayable or parkable; replay links are limited to `DeadLettered`, `Parked`, `Unknown`, and `RetryScheduled`.
 
+### Notification Preference Endpoints
+
+Notification preference routes are authenticated private preference endpoints. They return a HAL `NotificationPreferenceMatrixDto` and expose mutation affordances only through `_links`.
+
+- `GET /api/notification/preferences/me`, `PUT /api/notification/preferences/me`, and `PUT /api/notification/preferences/me/mute` manage the current user's matrix.
+- `GET|PUT /api/organization/{id}/notification-preferences` and `PUT /api/organization/{id}/notification-preferences/mute` manage organization-scoped defaults/overrides through organization resource authorization.
+- `GET|PUT /api/group/{id}/notification-preferences` and `PUT /api/group/{id}/notification-preferences/mute` manage group-scoped defaults/overrides through group resource authorization.
+- Response `_links.self`, `_links.save`, and `_links.set-mute` are the only UI authority for rendering save and mute controls. Clients must not infer preference editability from roles or claims.
+- Command handlers reject attempts to disable required categories or write through broader locks; validation failures return ProblemDetails through the standard command-response mapping.
+
+### Localization Admin Endpoints
+
+Localization admin routes live under `/api/admin/localization` and require
+authentication. They expose provider configuration, secret status, static bundle
+health, and no-TMS bundle operations without exposing TMS secret values or raw
+provider errors.
+
+- `GET /api/admin/localization/configuration` returns localization governance
+  and metadata such as `TmsApiKeyConfigured`; it never returns the plaintext API
+  key.
+- `POST /api/admin/localization/test-connection` tests the configured provider
+  from the server side.
+- `POST /api/admin/localization/tms-api-key/rotate` stores the write-only TMS
+  API key through the shared secret-binding flow.
+- `PUT /api/admin/localization/governance` updates non-secret localization
+  governance settings.
+- `POST /api/admin/localization/export-from-tms?languageCode={code}` pulls the
+  configured Tolgee/Weblate language into the writable static bundle cache.
+- `GET /api/admin/localization/bundle?languageCode={code}` returns the merged
+  static bundle for offline/no-TMS operators without calling live providers.
+- `POST /api/admin/localization/bundle` validates and writes a flat static bundle
+  JSON payload, then invalidates translation caches for that language.
+- `GET /api/admin/localization/bundle-health` reports whether the writable bundle
+  path is usable.
+
+Static bundle imports accept only flat `ui.*` and `lookup.*` string dictionaries.
+ProblemDetails and logs must not include raw bundle content or TMS credentials.
+
 ---
 
 ## Rate Limiting (7 Tiers)
@@ -520,6 +558,8 @@ Every client DTO consumed for affordance gating must:
 3. Have a matching `HasHalLink(this TDto, string linkRel)` extension or wrapper method.
 4. **Never** have a corresponding standalone permission flag (e.g. `CanEdit: bool`) on the DTO — permission state must flow exclusively through `_links`.
 
+Notification preference matrices follow this contract: `NotificationPreferenceMatrixDto` is served as a HAL resource, and Blazor gates `save` and `set-mute` exclusively from `_links`.
+
 #### Testing
 HAL link consumption is protected by three test layers:
 - `Event.API.IntegrationTests/Features/Hateoas/HateoasLinkDeserializationTests.cs` — wire-level regression guard that `_links` survive NSwag round-trip.
@@ -843,13 +883,18 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `/api/atproto/*` — AT Protocol record management
    - `/api/indexeddid/*` — DID indexing
 7. Notifications (all `[Authorize]`):
-      - `GET /api/notification` — paginated list with `?isRead=` and `?notificationTypeId=` filters
-     - `GET /api/notification/{id}` — detail
-     - `GET /api/notification/unread-count` — unread count (partial index optimized)
-     - `GET /api/notification/stream` — SSE unread-count refresh hints (`text/event-stream`)
-     - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
-    - `POST /api/notification/read-all` — bulk mark all as read (YouTube-style, timestamp cutoff)
-    - `DELETE /api/notification/{id}` — soft delete
+       - `GET /api/notification` — paginated list with `?isRead=` and `?notificationTypeId=` filters
+      - `GET /api/notification/{id}` — detail
+      - `GET /api/notification/unread-count` — unread count (partial index optimized)
+      - `GET /api/notification/stream` — SSE unread-count refresh hints (`text/event-stream`)
+      - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
+     - `POST /api/notification/read-all` — bulk mark all as read (YouTube-style, timestamp cutoff)
+     - `DELETE /api/notification/{id}` — soft delete
+     - `GET /api/notification/preferences/me` — current user's HAL notification preference matrix
+     - `PUT /api/notification/preferences/me` — save editable current-user preference cells
+     - `PUT /api/notification/preferences/me/mute` — set current-user non-essential notification mute state
+     - `GET|PUT /api/organization/{id}/notification-preferences` and `/mute` — organization-scoped notification preferences
+     - `GET|PUT /api/group/{id}/notification-preferences` and `/mute` — group-scoped notification preferences
 8. Actor subscriptions (all `[Authorize]`):
    - `GET /api/actor-subscriptions` — current user's paged actor subscriptions
    - `GET /api/actor-subscriptions/actors/{targetActorId}` — current user's subscription state for a target actor

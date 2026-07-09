@@ -209,6 +209,8 @@ Authorization is triggered in the MediatR pipeline based on one of three pattern
     -   **Use When**: The resource kind and action are static, but the resource ID or other attributes needed for the policy are determined at runtime.
     -   **Implementation**: A combination of the attribute and the interface. The behavior prefers the dynamic values from `ISecureRequest` at runtime.
 
+Notification preference organization and group queries/commands use this pattern with `ResourceKinds.Organization` or `ResourceKinds.Group` and `AuthorizationActions.View`/`AuthorizationActions.Update`. Current-user preference endpoints are authenticated user-self endpoints; organization/group preference endpoints still pass through the resource authorization pipeline before handlers run.
+
 ### 6.2. Claim-Based Authorization
 
 -   **User ID Extraction**: The standard fallback chain for user identity extraction is `sub` -> `nameidentifier` -> `sid`.

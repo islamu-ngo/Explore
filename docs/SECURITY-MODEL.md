@@ -58,6 +58,26 @@ OIDC and BFF challenge failures must expose only safe diagnostic handles:
 
 Use `ISafeAuthDiagnosticsPolicy` for BFF auth challenge and OIDC remote-failure redirects so user-facing errors stay generic while operators can correlate failures through logs and traces.
 
+## Keycloak Identity Email Boundary
+
+Keycloak-backed identity lifecycle email is account-authority owned. ISLAMU Event may request a Keycloak required-action email and record a local delegation audit, but Keycloak owns the action token, email template rendering, SMTP handoff, and delivery attempt.
+
+- Email verification, password reset, email update verification, MFA, and other Keycloak required-action emails must not be routed through `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, TickerQ, or product unsubscribe flows.
+- Local results, logs, telemetry, and delegation audit rows may include only safe status, action, account-authority kind, local intent/delegation ids, HTTP status code, and normalized reason codes.
+- They must not include Keycloak admin tokens, provider secrets, raw Keycloak response bodies, action tokens, rendered email subjects or bodies, theme output, SMTP passwords, or secret-derived metadata.
+- Keycloak email theme customization changes Keycloak-owned templates only. It does not make ISLAMU Event the sender or decision owner for identity lifecycle messages.
+- Sharing SMTP infrastructure with a self-hosted Keycloak realm is delivery plumbing only. The credential email decision and provider-side delivery state remain with Keycloak.
+
+## ATProto/PDS Identity Email Boundary
+
+ATProto/PDS identity lifecycle email is also account-authority owned. The PDS that hosts the account owns account email confirmation, password reset, email update, account migration/security messages, and any SMTP/provider delivery state for those credential flows.
+
+- ISLAMU Event and a future ISLAMU Identity Microservice may request or audit account-authority actions, but they must not mint PDS confirmation codes, reset links, migration confirmation codes, or PDS credential email bodies.
+- External PDS hosts and future ISLAMU-operated PDS cells are still account authorities for their hosted accounts. Operating the infrastructure does not make ISLAMU Event the product-email sender for PDS credential lifecycle messages.
+- PDS account email is private account-hosting data. Local logs, support views, product notification flows, and delegation audit must not expose raw PDS email confirmation tokens, reset links, migration codes, SMTP credentials, or rendered PDS credential email content.
+- Product notification email addresses are separate from PDS identity email. If ATProto login does not provide a verified notification-safe email, ISLAMU Event must use a separately verified app-level notification email or in-app notifications.
+- Product email dispatch may use the current user email only when the synced identity claim explicitly marked it verified. Unverified or missing identity email must fall back to in-app notification rather than creating `EmailDispatchOutbox` rows.
+
 ## Header and Secret Hardening
 
 Browser-facing BFF hosts emit security headers before HTML, error, static asset, and proxied responses are written:

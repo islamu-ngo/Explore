@@ -7,7 +7,7 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Status:** Implemented
 > **Owner:** Platform/Ops
 > **Last Verified:** 2026-07-04
-> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.ControlPlane.Blazor/Extensions/ConfigurationExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
+> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.ControlPlane.Blazor/Extensions/ConfigurationExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
 
@@ -55,6 +55,8 @@ Keep the existing secret names until the deploy workflows are consolidated. If n
 Commonly consumed sections in code:
 
 - `Keycloak:*` (authority, metadata, client IDs/secrets)
+- `AccountAuthorityLifecycleEmail:*` (Application-level identity-email delegation switch)
+- `KeycloakLifecycleEmail:*` (Keycloak Admin REST required-action email adapter)
 - `Bff:Authentication:*` (separate control-plane BFF authority, metadata, client ID/secret, callback paths, cookie policy)
 - `ConnectionStrings:DefaultConnection`
 - `Cors:AllowedOrigins`
@@ -86,11 +88,83 @@ Commonly consumed sections in code:
 |---|---:|---|
 | `Persistence:EnableRlsTenantSession` | `false` | Registers the PostgreSQL tenant-session interceptor that sets `app.current_tenant_id` when EF Core opens a connection. This does not enable RLS policies by itself; keep disabled outside prototype environments until runtime app-role, migration-role, admin/system-path, and table-policy rollout work is complete. |
 
+### Localization Configuration
+
+Localization runtime settings are governance-backed, not static appsettings. The
+important keys are documented in [LOCALIZATION.md](LOCALIZATION.md):
+
+- `localization.default_language`
+- `localization.enabled_languages`
+- `localization.fallback_language`
+- `localization.client_picker_enabled`
+- `localization.force_offline_mode`
+- `localization.tms_provider`
+- `localization.tms_api_url`
+- `localization.tms_project_id`
+- `localization.tms_component`
+
+The TMS credential is the shared secret-binding key `localization.tms_api_key`.
+Set or rotate it through the authorized localization admin API so the value is
+stored as a server-side secret binding. Do not put Tolgee/Weblate API keys in
+governance settings, Blazor payloads, generated clients, logs, metrics, or
+OpenAPI examples.
+
+Static no-TMS/fallback bundles are written to
+`{ContentRoot}/App_Data/Localization/Bundles/{code}.json`. That path is local
+filesystem storage unless the deployment mounts it to a shared persistent
+volume.
+
 ### Public URL Configuration
 
 `PublicBaseUrl` is the preferred static key for the instance's externally reachable HTTPS origin. The fallback lookup order is `PublicBaseUrl`, then `App:PublicBaseUrl`, then `Application:PublicBaseUrl`.
 
 The value must be an absolute `http` or `https` URL. Public deployments should use `https`. It is used by public URL builders and by the email dispatch drain when creating absolute unsubscribe URLs for `List-Unsubscribe` headers and visible unsubscribe footers. If no valid public base URL is configured, categorized email can still send when preferences allow it, but the dispatch path omits unsubscribe URLs because relative links are not valid in email headers.
+
+### Keycloak Identity Lifecycle Email Configuration
+
+Identity lifecycle email for Keycloak-backed accounts is account-authority owned. The logical ownership settings are:
+
+| Logical setting | Expected value | Meaning |
+|---|---|---|
+| `auth.provider` | `Keycloak` | The account authority for Keycloak-backed credentials is Keycloak. |
+| `auth.identity_email_owner` | `AccountAuthority` | Verification, password reset, email update, MFA, and required-action messages are not ISLAMU product emails. |
+| `auth.account_authority_kind` | `Keycloak` | ISLAMU may request a Keycloak action and record local delegation audit, but Keycloak owns action tokens, templates, SMTP handoff, and message delivery. |
+
+Runtime configuration currently uses the .NET sections below:
+
+| Key | Default | Description |
+|---|---:|---|
+| `AccountAuthorityLifecycleEmail:Enabled` | `false` | Enables ISLAMU-initiated identity lifecycle delegation requests. Disabled paths return safe local outcomes and make no provider call. |
+| `AccountAuthorityLifecycleEmail:ProviderConfigured` | `false` | Declares that the selected account authority is configured. `false` returns a safe provider-not-configured outcome. |
+| `AccountAuthorityLifecycleEmail:AccountAuthorityKind` | `Keycloak` | Account-authority kind used for local delegation decisions. |
+| `KeycloakLifecycleEmail:Enabled` | `false` | Enables the Infrastructure Keycloak Admin REST adapter for required-action email requests. |
+| `KeycloakLifecycleEmail:BaseUrl` | unset | Keycloak base URL. Public deployments should use HTTPS. Loopback/private URLs are rejected unless explicitly allowed for local development. |
+| `KeycloakLifecycleEmail:Realm` | unset | Realm whose users receive required-action emails. |
+| `KeycloakLifecycleEmail:AdminUsername` / `AdminPassword` | unset | Server-side admin credential used only by Infrastructure to obtain an admin token. Never expose in browser payloads, health data, logs, traces, or support bundles. |
+| `KeycloakLifecycleEmail:AdminClientId` | `admin-cli` | Client id used for the admin password grant. |
+| `KeycloakLifecycleEmail:DefaultClientId` | unset | Optional client id passed to Keycloak `execute-actions-email` when a request does not provide one. |
+| `KeycloakLifecycleEmail:DefaultLifespanSeconds` | unset | Optional default required-action link lifetime passed to Keycloak. |
+| `KeycloakLifecycleEmail:AllowLocalUrls` | `false` | Local-development escape hatch for loopback/private Keycloak URLs. Keep `false` in shared and public deployments. |
+
+`keycloak.smtp_mode` is an operational policy label, not an ISLAMU SMTP provider switch. Use `managed` when Keycloak/provider SMTP is managed outside this deployment. Use a self-hosted/shared-SMTP mode only to configure the Keycloak realm SMTP server with deployment-owned credentials. In both modes, Keycloak remains the sender and owner of identity lifecycle emails; shared SMTP credentials do not transfer email decision ownership to ISLAMU Event.
+
+`keycloak.theme_sync_enabled` is a future automation policy for applying ISLAMU-managed Keycloak theme assets. Keycloak email themes live under the Keycloak theme `email` type and customize templates such as password-reset or execute-actions messages. Theme sync changes Keycloak-owned templates only; it does not route identity lifecycle mail through `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, or TickerQ.
+
+Local development may point a self-hosted Keycloak realm SMTP configuration at Mailpit for inspection. That is still Keycloak realm SMTP plumbing. Product Basic Dispatch Mailpit settings under `email.*` remain separate and should not be treated as production defaults for Keycloak.
+
+### ATProto/PDS Identity Lifecycle Email Configuration
+
+ATProto/PDS account lifecycle email follows the same account-authority rule, but the authority is the PDS that hosts the account. ISLAMU Event is currently a relying party/federation foundation, not a public ATProto OAuth login provider or PDS server.
+
+| Logical setting | Expected value | Meaning |
+|---|---|---|
+| `auth.provider` | `ATProto` only when ATProto login is actually implemented | Current source exposes federation foundations and governance settings; it does not ship public ATProto OAuth/login yet. |
+| `auth.identity_email_owner` | `AccountAuthority` | PDS email confirmation, password reset, email change, migration, and security messages are not ISLAMU product emails. |
+| `auth.account_authority_kind` | `AtprotoPds` or `IslamuOperatedPds` | External PDS hosts own their hosted-account lifecycle email. A future ISLAMU-operated PDS cell also owns its own PDS credential lifecycle email because the PDS owns and verifies the credential token. |
+
+Do not add a global `emails.provider = PDS` switch. PDS SMTP is account-authority transport, not a product email provider for `EmailDispatchOutbox` or `IEmailService`. If a future ISLAMU-operated PDS cell uses shared SMTP or local Mailpit, that only configures the PDS cell's account-email delivery path; it does not transfer product notification ownership away from ISLAMU Event.
+
+AT Protocol account email access is private account-hosting data. Product email flows must not assume a verified email claim is available from ATProto login. When `email` or `email_verified` is unavailable or unverified, use a separately verified app-level notification email or in-app notifications instead of reusing PDS credential email semantics.
 
 ### Dedicated Admin Host Configuration
 

@@ -29,6 +29,15 @@ Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **
 - **Related auth setting**: `auth.atproto_login_enabled` is a separate governance setting for ATProto login support. Do not document public ATProto OAuth login as implemented until source adds that flow.
 - **Authorization fallback**: local fallback authorization treats actor records as read-only for authenticated users and denies ATProto record/indexed DID writes except for instance-admin bypass.
 
+### ATProto/PDS Account Email Ownership
+
+Current federation code is foundation-only and does not implement public ATProto OAuth login or PDS account hosting. When those features arrive, identity lifecycle email remains PDS/account-authority owned:
+
+- External PDS hosts own email confirmation, password reset, email update, account migration, and PDS security email for their accounts.
+- Future ISLAMU-operated PDS cells also own those PDS credential emails for the accounts they host, even when ISLAMU operates the infrastructure or shares SMTP plumbing.
+- ISLAMU Event must not send PDS credential-token emails through product `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, TickerQ, or product unsubscribe flows.
+- If ATProto account email is unavailable or unverified for product notification purposes, collect a separately verified app-level notification email or use in-app notifications.
+
 ### ⏳ Not Yet Implemented (Protocol Roadmap)
 - **Public protocol endpoints** are still not implemented:
   - WebFinger (`/.well-known/webfinger`)
@@ -246,6 +255,7 @@ The key insight is that DID creation is **async**. Here's how to handle it:
 
 - Treat decentralization settings as governance controls for foundation behavior, not a promise that external federation is live.
 - Keep public-facing release notes explicit: federation protocol interoperability is roadmap work until protocol endpoints, conformance tests, and operator runbooks exist.
+- Keep ATProto/PDS account email separate from ISLAMU product notification email. PDS SMTP is account-authority transport, not a general product-email provider.
 - If implementing public protocol support later, update this document with exact routes, auth/trust boundaries, conformance tests, and rollback guidance.
 
 ## Related

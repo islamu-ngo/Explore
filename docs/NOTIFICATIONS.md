@@ -46,10 +46,17 @@ All notification endpoints require an authenticated user. Handler and repository
 | Archive or unarchive | `PATCH /api/notification/{id}/archive?archive=true|false` |
 | Snooze or unsnooze | `PATCH /api/notification/{id}/snooze?snoozedUntil=...` |
 | Soft delete | `DELETE /api/notification/{id}` |
+| Current-user preference matrix | `GET /api/notification/preferences/me` |
+| Save current-user preferences | `PUT /api/notification/preferences/me` |
+| Set current-user mute | `PUT /api/notification/preferences/me/mute` |
+| Organization preference matrix | `GET|PUT /api/organization/{id}/notification-preferences` and `PUT /api/organization/{id}/notification-preferences/mute` |
+| Group preference matrix | `GET|PUT /api/group/{id}/notification-preferences` and `PUT /api/group/{id}/notification-preferences/mute` |
 
 When documenting filters, use the source API names. For notification type filtering, use `notificationTypeId`; do not copy stale shorthand such as `type` unless the controller changes.
 
 Actor-subscription state and mutations are separate authenticated endpoints under `/api/actor-subscriptions`. The API exposes current-user subscription state, subscribe, unsubscribe, and notification-level update flows. UI affordances for subscription actions must be gated from HAL `_links` on actor, event organizer, and actor-subscription resources; clients must not infer those actions from local roles or claims.
+
+Notification preference responses are HAL resources. The Blazor matrix renders `save` and `set-mute` actions only when the server emits those links.
 
 ## UI Behavior
 
@@ -59,6 +66,7 @@ Actor-subscription state and mutations are separate authenticated endpoints unde
 | Notification panel | Shows scope tabs, loads more items, supports item actions, and links to the full inbox. |
 | Full inbox page | Supports filters for reason, unread-only, archived-only, and snoozed-only; includes mark-all-read. |
 | Notification item | Displays scope/type/reason presentation and navigates to known entity URLs when mappable. |
+| Preference matrix | Lets authorized users choose Email and In-App channels by category for current-user, organization, and group scopes. Required categories remain locked by server metadata; global mute suppresses non-essential delivery without deleting saved choices. |
 
 Clicking a notification item navigates only when the item can be mapped to a supported route: events use `/events/{id}`, organizations use `/organization/profile/{id}`, and groups use `/group/profile/{id}`. Unsupported entity types, including event sessions without a dedicated route, should not be routed to guessed URLs. The item click itself is not the read-state operation; read state is handled by explicit user actions and read endpoints.
 
@@ -75,7 +83,7 @@ Heavy fanout resolves the event id internally from the safe `EventModerationReco
 
 Event-report intake, triage, assignment, decision capture, provider sync, and provider callbacks do not create user notifications by themselves. Notifications are created only when an `EventReportDecision` is executed through the existing light moderation or heavy redaction command path. Report-driven enforcement links `EventModerationRecord.SourceReportId` and `SourceReportDecisionId` for auditability, but notification payloads still follow the same light/heavy contracts above and must not include reporter text, report IDs, provider payloads, provider case IDs, or reviewer notes.
 
-Moderation fanout is in-app only. It does not call SMTP, push providers, or external brokers for attendee delivery.
+Moderation fanout is in-app only. It does not call SMTP, push providers, or external brokers for attendee delivery. It resolves notification preferences through the required trust-safety category before creating attendee inbox rows, so category requiredness stays centralized in the preference resolver.
 
 ## SSE Refresh Hints
 
@@ -90,8 +98,9 @@ In-app notifications are separate from SMTP email delivery:
 - The notification feature does not call `IEmailService` or the SMTP implementation.
 - Actor-subscription fanout creates in-app `Notification` rows only; it does not send email digests or SMTP messages.
 - Light and heavy moderation attendee fanout create in-app `Notification` rows only; they do not send SMTP messages.
+- Actor-subscription and registration fallback fanout consult the in-app preference matrix before creating non-required `Notification` rows. Disabled non-required categories skip row creation after dedupe checks and before persistence.
 - Event-report intake, report workflow actions, provider sync, and provider callbacks do not send SMTP messages and do not create in-app notifications unless they execute an existing moderation command.
-- `docs/EMAIL_NOTIFICATIONS.md` documents direct SMTP delivery and explicitly states notification-to-email fanout is not implemented.
+- `docs/EMAIL_NOTIFICATIONS.md` documents direct SMTP delivery, including preference-based skip behavior for direct `EmailDispatchOutbox` rows, and explicitly states notification-to-email fanout is not implemented.
 - Do not claim push notifications, email digests, SMTP delivery, external delivery tracking, or email unsubscribe behavior for in-app notifications.
 
 ## Unsupported Claims To Avoid

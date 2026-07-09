@@ -41,6 +41,8 @@ Several previously enum-shaped persistence fields are now modeled as lookup/refe
 | `ExternalApiKey.Status` | `ExternalApiKeyStatusId` | `ExternalApiKeyStatus` / `external_api_key_statuses` |
 | `ExternalApiKey.CreditPeriod` | `ExternalApiKeyCreditPeriodId` | `ExternalApiKeyCreditPeriod` / `external_api_key_credit_periods` |
 | `Notification.Scope` | `NotificationScopeId` | `NotificationScopeType` / `notification_scope_types` |
+| `NotificationChannelPreference.Category` | `CategoryId` | `NotificationPreferenceCategory` / `notification_preference_categories` |
+| `NotificationChannelPreference.Channel` | `ChannelId` | `NotificationPreferenceChannel` / `notification_preference_channels` |
 | `ActorSubscription.Status` | `StatusId` | `ActorSubscriptionStatus` / `actor_subscription_statuses` |
 | `ActorSubscription.NotificationLevel` | `NotificationLevelId` | `ActorSubscriptionNotificationLevel` / `actor_subscription_notification_levels` |
 | `Event.SessionStatus` | `EventSessionStatusId` | `EventSessionStatus` / `event_session_statuses` |
@@ -198,6 +200,10 @@ Unsubscribe is modeled as a status transition to `UNSUBSCRIBED`, not as deletion
 
 `NotificationFanoutRun` records resumable worker state for a fanout source: tenant, fanout kind, entity type, entity ID, source actor, status, subscriber cursor, aggregate processed/created counts, failure text, and timestamps. It intentionally stores no PII.
 
+Notification preference matrix state is normalized separately from the in-app `Notification` rows. `NotificationPreferenceCategory` and `NotificationPreferenceChannel` are stable lookup rows; `NotificationChannelPreference` stores scoped category/channel choices; `NotificationPreferenceProfile` stores scoped global mute state. Preference rows are tenant-scoped, soft-deletable, audited, concurrency-aware, and constrained so user, organization, and group scopes carry exactly the matching target id.
+
+Delivery services call the effective notification preference resolver before creating non-required in-app fanout rows. Required categories, such as trust-safety, remain enabled through category metadata and resolver output rather than by client-side checks.
+
 ## Messaging and Reliability
 
 ### OutboxMessage
@@ -230,6 +236,8 @@ Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (govern
 - `Actor`: Unique nullable owner FKs (exactly one of UserId, OrganizationId, or GroupId).
 - `ActorSubscription`: Unique non-deleted subscription row per `(TenantId, SubscriberTenantUserId, TargetActorId)`; target actor type is limited to organization/group in v1.
 - `Notification`: Fanout rows require deterministic `DeduplicationKey` for duplicate prevention.
+- `NotificationChannelPreference`: Unique non-deleted row per tenant/scope/target/category/channel; scope-target check constraints enforce no target for system/instance/tenant scopes and exactly one matching target for organization, group, or user scopes.
+- `NotificationPreferenceProfile`: Unique non-deleted row per tenant/scope/target for global mute state with the same scope-target constraints.
 - `NotificationFanoutRun`: Unique source tuple per `(TenantId, FanoutKind, NotificationEntityTypeId, EntityId, SourceActorId)`.
 - `EventReport`: Composite tenant/event alternate keys enforce same-tenant event ownership; status/priority/reporter/source enum ranges are DB constrained; terminal statuses require `ClosedAt`.
 - `EventReportCase`: Composite tenant/report/case keys enforce queue ownership; queue code is required; status/priority ranges are constrained; concurrency stamp is the optimistic write guard.

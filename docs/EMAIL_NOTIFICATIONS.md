@@ -21,8 +21,9 @@ Email delivery is implemented as direct SMTP sending. In-app notifications are a
 | Admin settings | Instance admins can read, update, and test SMTP settings in the instance admin settings surface. |
 | Health check | `SmtpHealthCheck` participates in readiness as the `smtp` health check. |
 | In-app notifications | Notification controller/client paths handle inbox actions such as read, archive, snooze, and delete separately from SMTP. Actor-subscription fanout and moderation attendee fanout create in-app rows only. |
+| Notification preference matrix | Current-user, organization, and group preference matrices gate non-required in-app fanout and direct email dispatch before provider handoff. |
 
-User-facing email notification preferences are not implemented as an active delivery feature. The implemented actor-subscription and moderation fanout paths write durable in-app notifications and do not call `IEmailService.SendAsync`; do not claim notification-to-email fanout until source code wires notifications or another workflow to `IEmailService`.
+User-facing notification preferences are implemented for the direct dispatch and in-app fanout paths described here. They do not create general notification-to-email fanout: actor-subscription and moderation fanout still write durable in-app notifications only, and direct SMTP delivery still comes from explicit `EmailDispatchOutbox` workflows.
 
 ## SMTP Settings
 
@@ -77,7 +78,7 @@ Basic Dispatch uses `EmailDispatchDrainService` as the scheduler-neutral boundar
 | SMTP settings resolution | `SmtpConfigResolverTests` verifies tenant `SettingContext` propagation, per-tenant cache separation, missing required settings, defaults, and cache invalidation. |
 | Pending outbox drain | `EmailDispatchDrainMailpitTests` starts with a pending `EmailDispatchOutbox`, runs `ProcessBatchAsync`, sends through real SMTP to Mailpit, and records `Sent` outbox state plus succeeded attempt and completed receipt state. |
 | Duplicate claim protection | `EmailDispatchDrainMailpitTests` races two `ProcessSingleAsync` consumers for one outbox row and verifies exactly one Mailpit message, one attempt, and one completed receipt. |
-| Failure outcomes | `EmailDispatchDrainServiceTests` covers retry-scheduled SMTP failures, exhausted dead-letter outcomes, timeout-like unknown outcomes, recipient preference skips, tenant pause before SMTP handoff, and stale-processing recovery. |
+| Failure outcomes | `EmailDispatchDrainServiceTests` covers retry-scheduled SMTP failures, exhausted dead-letter outcomes, timeout-like unknown outcomes, legacy recipient preference skips, matrix preference skips, tenant pause before SMTP handoff, and stale-processing recovery. |
 | Tenant pause/resume and operator actions | `EmailDispatchTenantControlRepositoryTests`, `EmailDispatchAdminControllerTests`, and `EmailDispatchAdminHateoasTests` cover PostgreSQL pause/resume state, API problem mapping, write-route policies, and HAL replay/park affordance rules. |
 | Scheduler triggers | `EmailDispatchTickerQJobsTests` and `EmailDispatchProcessorTests` prove TickerQ and hosted-service fallback paths call the same scheduler-neutral drain service instead of owning SMTP, RabbitMQ, or payload logic. |
 | Readiness states | `EmailDispatchHealthCheckTests` covers Basic Dispatch enabled, intentionally disabled, `Mode=Disabled`, TickerQ scheduler disabled, and HostedService states. `EmailDispatchRabbitMqHealthCheckTests` covers RabbitMQ disabled, healthy-enabled, and unhealthy transport states independently from Basic Dispatch. |
@@ -124,10 +125,12 @@ In-app notifications are implemented through notification controller/client/repo
 |---|---|
 | Read/archive/snooze/delete notification inbox items | In-app notification feature. |
 | SMTP send | `IEmailService` / `SmtpEmailService`. |
-| User email preferences | Not implemented as active email delivery behavior in the inspected source. |
-| Actor-subscription fanout | Implemented only as durable in-app `Notification` row creation through the outbox fanout path. |
-| Event moderation attendee fanout | Implemented only as durable in-app `Notification` row creation through the outbox fanout path. Heavy moderation uses generic, linkless in-app copy and still does not send email. |
+| User, organization, and group notification preferences | Implemented as matrix category/channel choices resolved before non-required in-app fanout rows and before direct SMTP provider handoff. |
+| Actor-subscription fanout | Implemented only as durable in-app `Notification` row creation through the outbox fanout path, gated by the in-app preference channel before row creation. |
+| Event moderation attendee fanout | Implemented only as durable in-app `Notification` row creation through the outbox fanout path. Heavy moderation uses generic, linkless in-app copy and still does not send email. Trust-safety requiredness is resolved through the preference matrix. |
 | Notification-to-email fanout | Not implemented in the inspected notification path; no SMTP call is made by actor-subscription or moderation fanout. |
+
+`EmailDispatchDrainService` preserves tenant pause, processing claims, receipt claims, legacy unsubscribe checks, retry/dead-letter handling, and operator park/replay behavior. When the matrix disables a non-required email category, the drain marks the durable row and receipt as `Skipped` with failure category `recipient_notification_preference_disabled` before SMTP handoff.
 
 Keep the future notifications doc focused on in-app notification behavior when that doc is created, and link back here only for SMTP delivery boundaries.
 

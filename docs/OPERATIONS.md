@@ -20,6 +20,31 @@ This page is the operational reference for implemented runtime behavior. Task pr
 | Diagnose repeated symptoms | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | You have a concrete failure such as `401`, `429`, `504`, unhealthy readiness, setup-secret errors, or secret-provider failures. |
 | Validate release readiness | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | A change affects migrations, configuration, secrets, security, upgrade paths, or operator docs. |
 
+## Localization Static Bundle Operations
+
+No-TMS and provider-fallback localization bundles are stored under the API
+content root:
+
+```text
+{ContentRoot}/App_Data/Localization/Bundles/{code}.json
+```
+
+The API writes this path through `IBundleFileWriter` using a temp-file then
+rename flow. The bundle health endpoint (`GET /api/admin/localization/bundle-health`)
+checks whether the directory can be created and written. Admin import/export
+endpoints are authenticated and invalidate the translation resolver cache after
+successful writes.
+
+For single-instance deployments, the local path is sufficient. For multi-replica
+deployments, mount `App_Data/Localization/Bundles` on a shared persistent volume
+or replace `IBundleFileWriter` with a distributed implementation. Without shared
+storage, one replica can import a bundle while another keeps serving only its
+local embedded/writable state.
+
+Back up writable bundles together with other deployment-owned persistent data.
+Embedded bundles still provide defaults after restore, but local operator edits
+live only in the writable bundle path.
+
 ## Read-Only Doctor Diagnostics
 
 `Explore.Diagnostic` includes a read-only doctor CLI for self-hosting and local-environment preflight checks:
@@ -115,6 +140,7 @@ Secret and connection priority:
 - `local-full` forces `SecretProvider__Provider=None` for child projects, clears Infisical bootstrap identifiers, and supplies local Keycloak, Cerbos, MinIO, Svix, Coop, Mailpit SMTP, storage, database, and control-plane BFF settings. Contributors should not need Infisical credentials.
 - `ConnectionStrings:DefaultConnection` has first priority for EF Core; Aspire `WithReference` supplies it in `local-full` and `local-core`.
 - Mailpit SMTP is local in every Aspire profile. Non-isolated runs use the configured development Mailpit ports; isolated runs use Aspire-assigned dynamic ports. Development database seeding uses `MAIL_SMTP_*` values, then `SMTP_*` aliases, then local defaults when `email.smtp_host` is empty or still set to the retired `mailpit.openislamu.org` default. In `ISLAMU_ASPIRE_MODE=FullLocal`, seeding refreshes those Development SMTP rows on each run so persistent local database volumes follow the current isolated Mailpit port.
+- Self-hosted local Keycloak may also be configured to use Mailpit or shared SMTP for Keycloak realm email. That is Keycloak realm SMTP plumbing, not product Basic Dispatch configuration: identity lifecycle emails still come from Keycloak and do not create `EmailDispatchOutbox` rows.
 - When no connection string is supplied, `BootstrapSecretLoader` resolves PostgreSQL fields from Infisical `/postgresql`, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration.
 - `local-core` and `local-lite` are maintainer modes. If Infisical bootstrap credentials are present in user secrets or environment variables, raw Infisical bootstrap values can outrank local `POSTGRESQL_*` fallback values. Blank the Infisical bootstrap keys for env-only local debugging.
 
@@ -606,6 +632,29 @@ dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.cspr
 ```
 
 Use the first command for SMTP/Mailpit/Basic Dispatch runtime evidence, the second for optional RabbitMQ topology/publish/consumer/DLQ evidence, and the third for API health, scheduler wrapper, and HAL-gated operator contract evidence.
+
+### Keycloak Identity Lifecycle Email Operations
+
+Keycloak account emails are not part of Basic Email Dispatch. The runtime path for ISLAMU-initiated Keycloak lifecycle messages is:
+
+1. Application code calls `IAccountAuthorityLifecycleEmailService` for email verification, password reset, email update verification, or a future required-action workflow.
+2. The Infrastructure Keycloak adapter records a local `NotificationIntent` plus account-authority delegation audit when enabled and configured.
+3. The adapter asks Keycloak Admin REST to run `execute-actions-email` for the required action (`VERIFY_EMAIL`, `UPDATE_PASSWORD`, or `UPDATE_EMAIL`).
+4. Keycloak generates the action token/link, renders the Keycloak email theme, and sends through the Keycloak realm SMTP provider.
+
+Operational boundaries:
+
+| Concern | Guidance |
+|---|---|
+| Source of truth | Keycloak is the source of truth for required-action tokens, rendered templates, and provider-side delivery. Local delegation audit proves ISLAMU requested the action; it is not delivery state. |
+| Product dispatch separation | Do not inspect `email-dispatch` health, `EmailDispatchOutbox`, RabbitMQ dispatch queues, or TickerQ jobs for Keycloak identity email delivery. Use Keycloak realm SMTP/theme settings and Keycloak logs. |
+| `keycloak.smtp_mode` | Operational policy label only. `managed` means SMTP is provider-managed outside this deployment. Self-hosted/shared-SMTP modes may configure Keycloak realm SMTP from deployment credentials, but ownership remains Keycloak. |
+| Local Mailpit | Local Keycloak can point its realm SMTP at Mailpit for developer inspection. This is separate from product Basic Dispatch Mailpit settings and must not be documented as a production default. |
+| Theme sync | Keycloak email templates live in the Keycloak `email` theme type. A future `keycloak.theme_sync_enabled` automation may apply theme assets, but rendered content and sending stay Keycloak-owned. |
+| Development theme cache | During theme work, disable Keycloak theme/template caches with the documented Keycloak flags such as `--spi-theme--static-max-age=-1`, `--spi-theme--cache-themes=false`, and `--spi-theme--cache-templates=false`. Do not carry those settings into production guidance without an explicit operator decision. |
+| Redaction | Logs, metrics, local results, and delegation audit must not include admin tokens, provider secrets, raw Keycloak response bodies, action tokens, rendered subjects/bodies, SMTP passwords, or theme output. |
+
+If a Keycloak identity email fails, diagnose in this order: Keycloak lifecycle email options and safe URL policy, admin-token acquisition, Keycloak Admin REST status code, realm SMTP configuration, email theme/template availability, then Keycloak server logs. Do not replay through product `EmailDispatchOutbox`.
 
 ## Cerbos PDP Operations
 
