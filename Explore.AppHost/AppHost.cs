@@ -22,6 +22,9 @@ const string LocalSvixAuthToken =
 const string LocalSvixOperationalWebhookSecret = "whsec_bG9jYWwtZGV2LXN2aXgtb3BlcmF0aW9uYWwtc2VjcmV0";
 const string LocalCoopApiKey = "local-dev-coop-api-key";
 const string LocalCoopWebhookSecret = "local-dev-coop-webhook-secret";
+const string LocalWeblateImage = "weblate/weblate";
+const string LocalWeblateTag = "latest";
+const string LocalWeblateAdminPassword = "admin";
 
 var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
@@ -63,20 +66,17 @@ if (runMode.UsesLocalData())
     database = builder.AddPostgres("postgres")
         .WithImageTag("18-alpine")
         .WithDataVolume("islamu-event-postgres-data")
-        .WithLifetime(ContainerLifetime.Persistent)
         .AddDatabase("islamu-event-db", "islamu_event_db");
 
     cache = builder.AddRedis("cache")
-        .WithDataVolume("islamu-event-redis-data")
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithDataVolume("islamu-event-redis-data");
 }
 
 if (runMode == AspireRunMode.FullLocal)
 {
     messaging = builder.AddRabbitMQ("messaging")
         .WithManagementPlugin()
-        .WithDataVolume("islamu-event-rabbitmq-data")
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithDataVolume("islamu-event-rabbitmq-data");
 
     fullLocalResources = AddFullLocalPlatform(
         builder,
@@ -260,8 +260,7 @@ static FullLocalResources AddFullLocalPlatform(
             port: 26257,
             name: "sql",
             protocol: ProtocolType.Tcp)
-        .WithHttpEndpoint(targetPort: 8080, port: 8081, name: "ui")
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithHttpEndpoint(targetPort: 8080, port: 8081, name: "ui");
 
     var keycloak = builder.AddContainer("keycloak", "quay.io/phasetwo/phasetwo-keycloak", "26")
         .WithArgs(
@@ -297,7 +296,6 @@ static FullLocalResources AddFullLocalPlatform(
         .WithHttpEndpoint(targetPort: 8080, port: 8080, name: "http")
         .WithHttpEndpoint(targetPort: 9000, port: 9000, name: "mgmt")
         .WithHttpHealthCheck("/auth/health/ready", endpointName: "mgmt")
-        .WithLifetime(ContainerLifetime.Persistent)
         .WaitFor(crdb);
 
     var keycloakInit = builder.AddContainer("keycloak-init", "quay.io/phasetwo/phasetwo-keycloak", "26")
@@ -329,8 +327,7 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEnvironment("POSTGRES_PASSWORD", "cerbos_password")
         .WithEnvironment("POSTGRES_DB", "cerbos")
         .WithVolume("islamu-event-cerbos-data", "/var/lib/postgresql")
-        .WithBindMount(cerbosSchemaPath, "/docker-entrypoint-initdb.d/cerbos-schema.sql", isReadOnly: true)
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithBindMount(cerbosSchemaPath, "/docker-entrypoint-initdb.d/cerbos-schema.sql", isReadOnly: true);
 
     var cerbos = builder.AddContainer("cerbos", "ghcr.io/cerbos/cerbos", "0.53.0")
         .WithArgs("server", "--config=/config/.cerbos.yaml")
@@ -348,7 +345,6 @@ static FullLocalResources AddFullLocalPlatform(
             name: "grpc",
             protocol: ProtocolType.Tcp)
         .WithHttpHealthCheck("/_cerbos/health", endpointName: "http")
-        .WithLifetime(ContainerLifetime.Persistent)
         .WaitFor(cerbosDb);
 
     var minio = builder.AddContainer("minio", "minio/minio", "latest")
@@ -358,8 +354,7 @@ static FullLocalResources AddFullLocalPlatform(
         .WithVolume("islamu-event-minio-data", "/data")
         .WithHttpEndpoint(targetPort: 9000, port: 9005, name: "api")
         .WithHttpEndpoint(targetPort: 9001, port: 9006, name: "console")
-        .WithHttpHealthCheck("/minio/health/live", endpointName: "api")
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithHttpHealthCheck("/minio/health/live", endpointName: "api");
     var minioBootstrap = builder.AddContainer("minio-bootstrap", "minio/mc", "latest")
         .WithEntrypoint("sh")
         .WithArgs(
@@ -371,8 +366,7 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEnvironment("POSTGRES_PASSWORD", "postgres")
         .WithEnvironment("POSTGRES_USER", "postgres")
         .WithEnvironment("POSTGRES_DB", "postgres")
-        .WithVolume("islamu-event-svix-postgres-data", "/var/lib/postgresql/data")
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithVolume("islamu-event-svix-postgres-data", "/var/lib/postgresql/data");
 
     var svix = builder.AddContainer("svix", "svix/svix-server", "latest")
         .WithEnvironment("WAIT_FOR", "true")
@@ -395,14 +389,50 @@ static FullLocalResources AddFullLocalPlatform(
         svix = svix.WithEnvironment("SVIX_REDIS_DSN", "redis://cache:6379");
     }
 
+    var weblateDb = builder.AddContainer("weblate-postgres", "postgres", "18-alpine")
+        .WithEnvironment("POSTGRES_USER", "weblate")
+        .WithEnvironment("POSTGRES_PASSWORD", "weblate_password")
+        .WithEnvironment("POSTGRES_DB", "weblate")
+        .WithVolume("islamu-event-weblate-postgres-data", "/var/lib/postgresql");
+
+    var (weblateImage, weblateTag) = ResolveImageAndTag(
+        builder.Configuration["WEBLATE_IMAGE"] ?? LocalWeblateImage,
+        builder.Configuration["WEBLATE_TAG"] ?? LocalWeblateTag);
+    var weblate = builder.AddContainer("weblate", weblateImage, weblateTag)
+        .WithEnvironment("WEBLATE_SITE_DOMAIN", "localhost:8083")
+        .WithEnvironment("WEBLATE_ADMIN_NAME", "Admin")
+        .WithEnvironment("WEBLATE_ADMIN_EMAIL", "admin@openislamu.org")
+        .WithEnvironment("WEBLATE_ADMIN_PASSWORD", LocalWeblateAdminPassword)
+        .WithEnvironment("POSTGRES_HOST", "weblate-postgres")
+        .WithEnvironment("POSTGRES_PORT", "5432")
+        .WithEnvironment("POSTGRES_USER", "weblate")
+        .WithEnvironment("POSTGRES_PASSWORD", "weblate_password")
+        .WithEnvironment("POSTGRES_DB", "weblate")
+        .WithHttpEndpoint(targetPort: 8080, port: 8083, name: "http")
+        .WithVolume("islamu-event-weblate-data", "/app/data")
+        .WaitFor(weblateDb);
+
+    if (cache is not null)
+    {
+        weblate = weblate
+            .WithEnvironment("VALKEY_HOST", "cache")
+            .WithEnvironment("VALKEY_PORT", "6380")
+            .WithEnvironment("REDIS_HOST", "cache")
+            .WithEnvironment("REDIS_PORT", "6380")
+            .WithEnvironment("REDIS_PASSWORD", cache.Resource.PasswordParameter!)
+            .WaitFor(cache);
+    }
+
     var coopDb = builder.AddContainer("coop-postgres", "postgres", "18-alpine")
         .WithEnvironment("POSTGRES_USER", "coop")
         .WithEnvironment("POSTGRES_PASSWORD", "coop_password")
         .WithEnvironment("POSTGRES_DB", "coop")
-        .WithVolume("islamu-event-coop-postgres-data", "/var/lib/postgresql")
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithVolume("islamu-event-coop-postgres-data", "/var/lib/postgresql");
 
-    var coopMigrations = builder.AddContainer("coop-migrations", "ghcr.io/roostorg/coop-migrations", "latest")
+    var (coopMigrationsImage, coopMigrationsTag) = ResolveImageAndTag(
+        builder.Configuration["COOP_MIGRATIONS_IMAGE"] ?? "ghcr.io/roostorg/coop-migrations",
+        "latest");
+    var coopMigrations = builder.AddContainer("coop-migrations", coopMigrationsImage, coopMigrationsTag)
         .WithEntrypoint("sh")
         .WithArgs(
             "-c",
@@ -410,37 +440,44 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEnvironment("DATABASE_HOST", "coop-postgres")
         .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
         .WithEnvironment("DATABASE_PORT", "5432")
-        .WithEnvironment("DATABASE_USER", "coop")
-        .WithEnvironment("DATABASE_PASSWORD", "coop_password")
-        .WithEnvironment("DATABASE_NAME", "coop")
+        .WithEnvironment("DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
+        .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+        .WithEnvironment("DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
         .WithEnvironment("API_SERVER_DATABASE_HOST", "coop-postgres")
         .WithEnvironment("API_SERVER_DATABASE_PORT", "5432")
-        .WithEnvironment("API_SERVER_DATABASE_USER", "coop")
-        .WithEnvironment("API_SERVER_DATABASE_PASSWORD", "coop_password")
-        .WithEnvironment("API_SERVER_DATABASE_NAME", "coop")
+        .WithEnvironment("API_SERVER_DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
+        .WithEnvironment("API_SERVER_DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+        .WithEnvironment("API_SERVER_DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
+        .WithEnvironment("SCYLLA_HOSTS", builder.Configuration["COOP_SCYLLA_HOSTS"] ?? "coop-scylla")
+        .WithEnvironment("SCYLLA_USERNAME", builder.Configuration["COOP_SCYLLA_USERNAME"] ?? "cassandra")
+        .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? "cassandra")
+        .WithEnvironment("SCYLLA_LOCAL_DATACENTER", builder.Configuration["COOP_SCYLLA_LOCAL_DATACENTER"] ?? "datacenter1")
+        .WithEnvironment("SCYLLA_SSL", builder.Configuration["COOP_SCYLLA_SSL"] ?? "false")
         .WaitFor(coopDb);
 
-    var coop = builder.AddContainer("coop", "ghcr.io/roostorg/coop-server", "latest")
-        .WithEnvironment("NODE_ENV", "development")
-        .WithEnvironment("OTEL_SERVICE_NAME", "coop")
+    var (coopImage, coopTag) = ResolveImageAndTag(
+        builder.Configuration["COOP_IMAGE"] ?? "ghcr.io/roostorg/coop-server",
+        "latest");
+    var coop = builder.AddContainer("coop", coopImage, coopTag)
+        .WithEnvironment("NODE_ENV", builder.Configuration["COOP_NODE_ENV"] ?? "development")
+        .WithEnvironment("OTEL_SERVICE_NAME", builder.Configuration["COOP_OTEL_SERVICE_NAME"] ?? "coop")
         .WithEnvironment("PORT", "8080")
-        .WithEnvironment("UI_URL", "http://localhost:3001")
-        .WithEnvironment("SESSION_SECRET", "local-dev-coop-session-secret")
+        .WithEnvironment("UI_URL", builder.Configuration["COOP_UI_URL"] ?? "http://localhost:3001")
+        .WithEnvironment("SESSION_SECRET", builder.Configuration["COOP_SESSION_SECRET"] ?? "local-dev-coop-session-secret")
         .WithEnvironment("DATABASE_HOST", "coop-postgres")
         .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
         .WithEnvironment("DATABASE_PORT", "5432")
-        .WithEnvironment("DATABASE_USER", "coop")
-        .WithEnvironment("DATABASE_PASSWORD", "coop_password")
-        .WithEnvironment("DATABASE_NAME", "coop")
-        .WithEnvironment("WAREHOUSE_ADAPTER", "noop")
-        .WithEnvironment("ANALYTICS_ADAPTER", "noop")
-        .WithEnvironment("SCYLLA_HOSTS", "coop-scylla")
-        .WithEnvironment("SCYLLA_USERNAME", "cassandra")
-        .WithEnvironment("SCYLLA_PASSWORD", "cassandra")
-        .WithEnvironment("SCYLLA_LOCAL_DATACENTER", "datacenter1")
-        .WithEnvironment("SCYLLA_SSL", "false")
+        .WithEnvironment("DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
+        .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+        .WithEnvironment("DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
+        .WithEnvironment("WAREHOUSE_ADAPTER", builder.Configuration["COOP_WAREHOUSE_ADAPTER"] ?? "noop")
+        .WithEnvironment("ANALYTICS_ADAPTER", builder.Configuration["COOP_ANALYTICS_ADAPTER"] ?? "noop")
+        .WithEnvironment("SCYLLA_HOSTS", builder.Configuration["COOP_SCYLLA_HOSTS"] ?? "coop-scylla")
+        .WithEnvironment("SCYLLA_USERNAME", builder.Configuration["COOP_SCYLLA_USERNAME"] ?? "cassandra")
+        .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? "cassandra")
+        .WithEnvironment("SCYLLA_LOCAL_DATACENTER", builder.Configuration["COOP_SCYLLA_LOCAL_DATACENTER"] ?? "datacenter1")
+        .WithEnvironment("SCYLLA_SSL", builder.Configuration["COOP_SCYLLA_SSL"] ?? "false")
         .WithHttpEndpoint(targetPort: 8080, port: 8082, name: "http")
-        .WithLifetime(ContainerLifetime.Persistent)
         .WaitFor(coopDb)
         .WaitForCompletion(coopMigrations);
 
@@ -454,10 +491,12 @@ static FullLocalResources AddFullLocalPlatform(
             .WaitFor(cache);
     }
 
-    var coopClient = builder.AddContainer("coop-client", "ghcr.io/roostorg/coop-client", "latest")
+    var (coopClientImage, coopClientTag) = ResolveImageAndTag(
+        builder.Configuration["COOP_CLIENT_IMAGE"] ?? "ghcr.io/roostorg/coop-client",
+        "latest");
+    var coopClient = builder.AddContainer("coop-client", coopClientImage, coopClientTag)
         .WithBindMount(coopNginxConfigPath, "/etc/nginx/conf.d/default.conf", isReadOnly: true)
         .WithHttpEndpoint(targetPort: 80, port: 3001, name: "http")
-        .WithLifetime(ContainerLifetime.Persistent)
         .WaitFor(coop);
 
     var pgAdmin = builder.AddContainer("pgadmin", "dpage/pgadmin4", "latest")
@@ -471,9 +510,9 @@ static FullLocalResources AddFullLocalPlatform(
         .WithBindMount(pgAdminPassFilePath, "/pgadmin4/pgpass", isReadOnly: true)
         .WithVolume("islamu-event-pgadmin-data", "/var/lib/pgadmin")
         .WithHttpEndpoint(targetPort: 80, port: 5050, name: "http")
-        .WithLifetime(ContainerLifetime.Persistent)
         .WaitFor(cerbosDb)
         .WaitFor(svixDb)
+        .WaitFor(weblateDb)
         .WaitFor(coopDb);
 
     if (appDatabase is not null)
@@ -490,20 +529,19 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEnvironment("OSPREY_COORDINATOR_SYNC_ACTION_PORT", "19951")
         .WithEnvironment("POD_IP", "osprey")
         .WithEndpoint(targetPort: 19950, port: 19950, name: "bidi-stream", protocol: ProtocolType.Tcp)
-        .WithEndpoint(targetPort: 19951, port: 19951, name: "sync-action", protocol: ProtocolType.Tcp)
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithEndpoint(targetPort: 19951, port: 19951, name: "sync-action", protocol: ProtocolType.Tcp);
 
     var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.2.1")
         .WithBindMount(prometheusConfigPath, "/etc/prometheus/prometheus.yaml", isReadOnly: true)
         .WithArgs("--web.enable-otlp-receiver", "--config.file=/etc/prometheus/prometheus.yaml")
         .WithHttpEndpoint(targetPort: 9090, port: 9090, name: "http")
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithVolume("islamu-event-prometheus-data", "/prometheus");
 
     var grafana = builder.AddContainer("grafana", "grafana/grafana", "latest")
         .WithBindMount(grafanaDashboardPath, "/var/lib/grafana/dashboards", isReadOnly: true)
         .WithEnvironment("PROMETHEUS_ENDPOINT", "http://prometheus:9090")
         .WithHttpEndpoint(targetPort: 3000, port: 3000, name: "http")
-        .WithLifetime(ContainerLifetime.Persistent)
+        .WithVolume("islamu-event-grafana-data", "/var/lib/grafana")
         .WaitFor(prometheus);
 
     return new FullLocalResources(
@@ -513,6 +551,8 @@ static FullLocalResources AddFullLocalPlatform(
         Minio: minio,
         MinioBootstrap: minioBootstrap,
         Svix: svix,
+        WeblateDb: weblateDb,
+        Weblate: weblate,
         Coop: coop,
         CoopMigrations: coopMigrations,
         CoopClient: coopClient,
@@ -536,8 +576,7 @@ static IResourceBuilder<ContainerResource> AddMailpit(IDistributedApplicationBui
             port: 1025,
             name: "smtp",
             protocol: ProtocolType.Tcp)
-        .WithHttpEndpoint(targetPort: 8025, port: 8025, name: "http")
-        .WithLifetime(ContainerLifetime.Persistent);
+        .WithHttpEndpoint(targetPort: 8025, port: 8025, name: "http");
 }
 
 static void ExcludeProjectLaunchProfile(ProjectResourceOptions options)
@@ -639,6 +678,7 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
 
     api = api
         .WaitFor(resources.Svix)
+        .WaitFor(resources.Weblate)
         .WaitFor(resources.Coop)
         .WaitForCompletion(resources.KeycloakInit)
         .WaitForCompletion(resources.MinioBootstrap);
@@ -875,6 +915,8 @@ internal sealed record FullLocalResources(
     IResourceBuilder<ContainerResource> Minio,
     IResourceBuilder<ContainerResource> MinioBootstrap,
     IResourceBuilder<ContainerResource> Svix,
+    IResourceBuilder<ContainerResource> WeblateDb,
+    IResourceBuilder<ContainerResource> Weblate,
     IResourceBuilder<ContainerResource> Coop,
     IResourceBuilder<ContainerResource> CoopMigrations,
     IResourceBuilder<ContainerResource> CoopClient,

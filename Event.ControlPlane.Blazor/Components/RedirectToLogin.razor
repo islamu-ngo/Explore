@@ -1,12 +1,36 @@
-@* ABOUTME: Redirects unauthorized Blazor route access through the BFF-hosted login endpoint.
-   ABOUTME: Preserves only a same-origin relative return URL and avoids browser token handling. *@
+@* ABOUTME: Redirects anonymous Blazor route access through the BFF-hosted login endpoint.
+   ABOUTME: Shows an in-shell 403 state for authenticated users denied by the control-plane policy. *@
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<p class="cp-muted">Redirecting to sign in...</p>
+@if (_forbidden)
+{
+    <div class="cp-page">
+        <section class="cp-panel cp-panel--warning" role="alert" aria-labelledby="control-plane-forbidden-title">
+            <span class="cp-kicker">Access denied</span>
+            <h1 id="control-plane-forbidden-title">Forbidden</h1>
+            <p>Your account is signed in, but it is not authorized for the Event Control Plane.</p>
+            <a class="cp-link" href="@ControlPlaneRoutes.Overview">Return to the control plane</a>
+        </section>
+    </div>
+}
+else
+{
+    <p class="cp-muted" role="status">Redirecting to sign in...</p>
+}
 
 @code {
-    protected override void OnInitialized()
+    private bool _forbidden;
+
+    protected override async Task OnInitializedAsync()
     {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+        {
+            _forbidden = true;
+            return;
+        }
+
         var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
         var returnUrl = "/" + relative;
         Navigation.NavigateTo($"/auth/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);

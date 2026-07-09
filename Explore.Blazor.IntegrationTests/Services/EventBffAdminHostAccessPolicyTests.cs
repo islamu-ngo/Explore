@@ -1,11 +1,11 @@
 // ABOUTME: Tests optional network allowlists for configured browser-BFF admin hosts.
 // ABOUTME: Protects dedicated admin hosts from accidental public-network exposure.
 
+using System.Net;
 using Event.Web.BffHosting.Options;
 using Event.Web.BffHosting.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
-using System.Net;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 

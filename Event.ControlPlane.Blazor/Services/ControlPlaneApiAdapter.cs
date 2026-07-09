@@ -14,7 +14,12 @@ namespace Event.ControlPlane.Blazor.Services;
 public sealed class ControlPlaneApiAdapter(
     IEventApiClient apiClient,
     ILogger<ControlPlaneApiAdapter> logger)
-    : IControlPlaneOverviewService, IControlPlaneTenantService, IControlPlaneDomainService, IControlPlaneOperationsService
+    : IControlPlaneOverviewService,
+      IControlPlaneTenantService,
+      IControlPlaneDomainService,
+      IControlPlaneOperationsService,
+      IControlPlanePlanService,
+      IControlPlaneTenantConfigurationService
 {
     public async Task<ControlPlaneResult<ControlPlaneOverview>> GetOverviewAsync(CancellationToken cancellationToken = default)
     {
@@ -149,6 +154,211 @@ public sealed class ControlPlaneApiAdapter(
         }
     }
 
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanList>> GetPlansAsync(
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanQueryAsync(
+            token => apiClient.GetControlPlaneTenantPlansAsync(cancellationToken: token),
+            MapTenantPlanList,
+            cancellationToken);
+
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanDetail>> GetPlanAsync(
+        string key,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanQueryAsync(
+            token => apiClient.GetControlPlaneTenantPlanByKeyAsync(key, cancellationToken: token),
+            MapTenantPlanDetail,
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> CreatePlanDraftAsync(
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.CreateControlPlaneTenantPlanDraftAsync(
+                ToTenantPlanDraft(draft),
+                cancellationToken: token),
+            "Tenant plan draft created.",
+            "The tenant plan draft could not be created.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> CreatePlanVersionDraftAsync(
+        string key,
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.CreateControlPlaneTenantPlanVersionDraftAsync(
+                key,
+                ToTenantPlanDraft(draft),
+                cancellationToken: token),
+            "Tenant plan version draft created.",
+            "The tenant plan version draft could not be created.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> UpdatePlanVersionDraftAsync(
+        Guid versionId,
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.UpdateControlPlaneTenantPlanVersionDraftAsync(
+                versionId,
+                ToTenantPlanDraft(draft),
+                cancellationToken: token),
+            "Tenant plan version draft updated.",
+            "The tenant plan version draft could not be updated.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> PublishPlanVersionAsync(
+        Guid versionId,
+        ControlPlaneTenantPlanExistingAssignmentPolicy existingTenantPolicy,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.PublishControlPlaneTenantPlanVersionAsync(
+                versionId,
+                new PublishTenantPlanVersionRequest { ExistingTenantPolicy = (int)existingTenantPolicy },
+                cancellationToken: token),
+            "Tenant plan version published.",
+            "The tenant plan version could not be published.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> ArchivePlanVersionAsync(
+        Guid versionId,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.ArchiveControlPlaneTenantPlanVersionAsync(
+                versionId,
+                cancellationToken: token),
+            "Tenant plan version archived.",
+            "The tenant plan version could not be archived.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> ClonePlanAsync(
+        Guid sourceVersionId,
+        string key,
+        string name,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.CloneControlPlaneTenantPlanAsync(
+                sourceVersionId,
+                new CloneTenantPlanRequest { Key = key, Name = name },
+                cancellationToken: token),
+            "Tenant plan cloned.",
+            "The tenant plan could not be cloned.",
+            cancellationToken);
+
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanValidationResult>> ValidatePlanDraftAsync(
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanQueryAsync(
+            token => apiClient.ValidateControlPlaneTenantPlanDraftAsync(
+                ToTenantPlanDraft(draft),
+                cancellationToken: token),
+            MapTenantPlanValidationResult,
+            cancellationToken);
+
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanDiffResult>> PreviewPlanDiffAsync(
+        ControlPlaneTenantPlanEffectiveConfiguration current,
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanQueryAsync(
+            token => apiClient.PreviewControlPlaneTenantPlanDiffAsync(
+                new PreviewTenantPlanDiffRequest
+                {
+                    Current = ToTenantPlanEffectiveConfiguration(current),
+                    Draft = ToTenantPlanDraft(draft)
+                },
+                cancellationToken: token),
+            MapTenantPlanDiffResult,
+            cancellationToken);
+
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanAssignment>> GetTenantPlanAssignmentAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanQueryAsync(
+            token => apiClient.GetControlPlaneTenantPlanAssignmentAsync(tenantId, cancellationToken: token),
+            MapTenantPlanAssignment,
+            cancellationToken);
+
+    public Task<ControlPlaneResult<ControlPlaneTenantEffectiveConfiguration>> GetEffectiveConfigurationAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanQueryAsync(
+            token => apiClient.GetControlPlaneTenantEffectiveConfigurationAsync(tenantId, cancellationToken: token),
+            MapTenantEffectiveConfiguration,
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> SetSettingAsync(
+        Guid tenantId,
+        string key,
+        string value,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.SetControlPlaneTenantSettingAsync(
+                tenantId,
+                key,
+                new SetControlPlaneTenantSettingRequest { Value = value },
+                cancellationToken: token),
+            "Tenant setting updated.",
+            "The tenant setting could not be updated.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> LockSettingAsync(
+        Guid tenantId,
+        string key,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.LockControlPlaneTenantSettingAsync(tenantId, key, cancellationToken: token),
+            "Tenant setting locked.",
+            "The tenant setting could not be locked.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> UnlockSettingAsync(
+        Guid tenantId,
+        string key,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.UnlockControlPlaneTenantSettingAsync(tenantId, key, cancellationToken: token),
+            "Tenant setting unlocked.",
+            "The tenant setting could not be unlocked.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> SwitchTenantPlanAssignmentAsync(
+        Guid tenantId,
+        Guid tenantPlanVersionId,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.SwitchControlPlaneTenantPlanAssignmentAsync(
+                tenantId,
+                new SwitchTenantPlanAssignmentRequest { TenantPlanVersionId = tenantPlanVersionId },
+                cancellationToken: token),
+            "Tenant plan assignment updated.",
+            "The tenant plan assignment could not be updated.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> ApplyTenantPlanAssignmentAsync(
+        Guid tenantId,
+        Guid assignmentId,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.ApplyControlPlaneTenantPlanAssignmentAsync(
+                tenantId,
+                assignmentId,
+                cancellationToken: token),
+            "Tenant plan assignment applied.",
+            "The tenant plan assignment could not be applied.",
+            cancellationToken);
+
+    public Task<ControlPlaneCommandResult> RollbackTenantPlanAssignmentAsync(
+        Guid tenantId,
+        Guid assignmentId,
+        CancellationToken cancellationToken = default) =>
+        SendTenantPlanCommandAsync(
+            token => apiClient.RollbackControlPlaneTenantPlanAssignmentAsync(
+                tenantId,
+                assignmentId,
+                cancellationToken: token),
+            "Tenant plan assignment rolled back.",
+            "The tenant plan assignment could not be rolled back.",
+            cancellationToken);
+
     public Task<ControlPlaneCommandResult> TransitionDeploymentModeAsync(
         string targetMode,
         string confirmationText,
@@ -239,6 +449,193 @@ public sealed class ControlPlaneApiAdapter(
             null,
             MapLinks(tenant._links));
     }
+
+    private static ControlPlaneTenantPlanList MapTenantPlanList(
+        HalCollectionResourceOfControlPlaneTenantPlanListItemDto plans)
+    {
+        var items = plans._embedded?.Items?.Select(MapTenantPlanSummary).ToArray() ?? [];
+
+        return new ControlPlaneTenantPlanList(
+            items,
+            plans.TotalCount ?? items.Length,
+            MapLinks(plans._links));
+    }
+
+    private static ControlPlaneTenantPlanSummary MapTenantPlanSummary(HalResourceOfControlPlaneTenantPlanListItemDto plan)
+    {
+        var key = string.IsNullOrWhiteSpace(plan.Key) ? "unknown" : plan.Key;
+
+        return new ControlPlaneTenantPlanSummary(
+            plan.Id ?? Guid.Empty,
+            key,
+            string.IsNullOrWhiteSpace(plan.DisplayName) ? key : plan.DisplayName,
+            plan.Description,
+            plan.LatestVersionNumber ?? 0,
+            plan.PublishedVersionNumber,
+            (decimal)(plan.PriceAmount ?? 0),
+            plan.CurrencyCode ?? string.Empty,
+            plan.BillingPeriod ?? string.Empty,
+            plan.IsActiveForProvisioning == true,
+            MapLinks(plan._links));
+    }
+
+    private static ControlPlaneTenantPlanDetail MapTenantPlanDetail(HalResourceOfControlPlaneTenantPlanDetailDto plan)
+    {
+        var key = string.IsNullOrWhiteSpace(plan.Key) ? "unknown" : plan.Key;
+
+        return new ControlPlaneTenantPlanDetail(
+            plan.Id ?? Guid.Empty,
+            key,
+            string.IsNullOrWhiteSpace(plan.DisplayName) ? key : plan.DisplayName,
+            plan.Description,
+            plan.Versions?.Select(MapTenantPlanVersion).ToArray() ?? [],
+            MapLinks(plan._links));
+    }
+
+    private static ControlPlaneTenantPlanVersion MapTenantPlanVersion(ControlPlaneTenantPlanVersionDto version) =>
+        new(
+            version.Id ?? Guid.Empty,
+            version.VersionNumber ?? 0,
+            version.StatusId ?? 0,
+            version.StatusCode ?? "UNKNOWN",
+            (decimal)(version.PriceAmount ?? 0),
+            version.CurrencyCode ?? string.Empty,
+            version.BillingPeriod ?? string.Empty,
+            version.IsActiveForProvisioning == true,
+            version.Settings?.Select(MapTenantPlanSetting).ToArray() ?? [],
+            version.Quotas?.Select(MapTenantPlanQuota).ToArray() ?? []);
+
+    private static ControlPlaneTenantPlanSetting MapTenantPlanSetting(ControlPlaneTenantPlanSettingDto setting) =>
+        new(
+            setting.Key ?? "unknown",
+            setting.JsonValue ?? string.Empty,
+            setting.IsLocked == true);
+
+    private static ControlPlaneTenantPlanQuota MapTenantPlanQuota(ControlPlaneTenantPlanQuotaDto quota) =>
+        new(
+            quota.Key ?? "unknown",
+            quota.Limit ?? 0);
+
+    private static ControlPlaneTenantPlanValidationResult MapTenantPlanValidationResult(
+        TenantPlanValidationResult result) =>
+        new(result.Errors?.Select(MapTenantPlanValidationError).ToArray() ?? []);
+
+    private static ControlPlaneTenantPlanValidationError MapTenantPlanValidationError(
+        TenantPlanValidationError error) =>
+        new(
+            error.Code ?? "unknown",
+            error.Target ?? string.Empty,
+            error.Message ?? string.Empty);
+
+    private static ControlPlaneTenantPlanDiffResult MapTenantPlanDiffResult(TenantPlanDiffResult result) =>
+        new(result.SettingChanges?.Select(MapTenantPlanSettingChange).ToArray() ?? []);
+
+    private static ControlPlaneTenantPlanSettingChange MapTenantPlanSettingChange(TenantPlanSettingChange change) =>
+        new(
+            change.Key ?? "unknown",
+            (ControlPlaneTenantPlanChangeType)change.ChangeType,
+            change.BeforeValue,
+            change.AfterValue,
+            change.LockChanged);
+
+    private static ControlPlaneTenantPlanAssignment MapTenantPlanAssignment(ControlPlaneTenantPlanAssignmentDto assignment) =>
+        new(
+            assignment.Id ?? Guid.Empty,
+            assignment.TenantId ?? Guid.Empty,
+            assignment.PlanId ?? Guid.Empty,
+            assignment.PlanKey ?? "unknown",
+            assignment.PlanVersionId ?? Guid.Empty,
+            assignment.VersionNumber ?? 0,
+            assignment.StatusId ?? 0,
+            assignment.StatusCode ?? "UNKNOWN",
+            assignment.AssignedAt ?? DateTimeOffset.MinValue,
+            assignment.AssignedByUserId);
+
+    private static ControlPlaneTenantEffectiveConfiguration MapTenantEffectiveConfiguration(
+        HalResourceOfControlPlaneTenantEffectiveConfigurationDto configuration) =>
+        new(
+            configuration.TenantId ?? Guid.Empty,
+            configuration.PlanAssignment is null ? null : MapTenantPlanAssignment(configuration.PlanAssignment),
+            configuration.Settings?.Select(MapTenantEffectiveSetting).ToArray() ?? [],
+            configuration.Quotas?.Select(MapTenantQuotaUsage).ToArray() ?? [],
+            MapLinks(configuration._links));
+
+    private static ControlPlaneTenantEffectiveSetting MapTenantEffectiveSetting(
+        ControlPlaneTenantEffectiveSettingDto setting) =>
+        new(
+            setting.Key ?? "unknown",
+            setting.Category ?? string.Empty,
+            setting.Value ?? string.Empty,
+            setting.SettingValueTypeId ?? 0,
+            setting.SettingValueTypeCode ?? "UNKNOWN",
+            setting.SettingValueTypeName ?? "Unknown",
+            setting.ValueSource ?? "unknown",
+            setting.IsLocked == true,
+            setting.LockSource,
+            setting.Description,
+            setting.IsSensitive == true,
+            setting.AllowedValues?.ToArray() ?? []);
+
+    private static ControlPlaneTenantQuotaUsage MapTenantQuotaUsage(ControlPlaneTenantQuotaUsageDto quota) =>
+        new(
+            quota.Key ?? "unknown",
+            quota.Limit ?? 0,
+            quota.Used ?? 0,
+            quota.Reserved ?? 0,
+            quota.Quarantined ?? 0,
+            quota.Available ?? 0,
+            quota.ObjectCount ?? 0,
+            quota.Provider,
+            quota.Source ?? "unknown",
+            quota.LastRecalculatedAt);
+
+    private static TenantPlanDraft ToTenantPlanDraft(ControlPlaneTenantPlanDraft draft) =>
+        new()
+        {
+            Key = draft.Key,
+            Name = draft.Name,
+            Pricing = new TenantPlanPricing
+            {
+                Amount = (double)draft.Pricing.Amount,
+                CurrencyCode = draft.Pricing.CurrencyCode,
+                BillingPeriod = draft.Pricing.BillingPeriod
+            },
+            IsActiveForProvisioning = draft.IsActiveForProvisioning,
+            SettingOverrides = draft.SettingOverrides.Select(ToTenantPlanSettingOverride).ToArray(),
+            QuotaLimits = draft.QuotaLimits.Select(ToTenantPlanQuotaLimit).ToArray()
+        };
+
+    private static TenantPlanSettingOverride ToTenantPlanSettingOverride(
+        ControlPlaneTenantPlanSettingOverride setting) =>
+        new()
+        {
+            Key = setting.Key,
+            JsonValue = setting.JsonValue,
+            IsLocked = setting.IsLocked
+        };
+
+    private static TenantPlanQuotaLimit ToTenantPlanQuotaLimit(ControlPlaneTenantPlanQuotaLimit quota) =>
+        new()
+        {
+            Key = quota.Key,
+            Limit = quota.Limit
+        };
+
+    private static TenantPlanEffectiveConfiguration ToTenantPlanEffectiveConfiguration(
+        ControlPlaneTenantPlanEffectiveConfiguration current) =>
+        new()
+        {
+            Settings = current.Settings.Select(ToTenantPlanEffectiveSetting).ToArray()
+        };
+
+    private static TenantPlanEffectiveSetting ToTenantPlanEffectiveSetting(
+        ControlPlaneTenantPlanEffectiveSetting setting) =>
+        new()
+        {
+            Key = setting.Key,
+            JsonValue = setting.JsonValue,
+            IsLocked = setting.IsLocked
+        };
 
     private static ControlPlaneDomainSummary MapDomain(ControlPlaneDnsRecordDto record) =>
         new(
@@ -406,6 +803,64 @@ public sealed class ControlPlaneApiAdapter(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Control-plane command adapter failed before receiving a response.");
+            return ControlPlaneCommandResult.Failed(
+                "The control-plane API adapter could not reach the API.",
+                "control_plane_api_unavailable");
+        }
+    }
+
+    private async Task<ControlPlaneResult<T>> SendTenantPlanQueryAsync<TResponse, T>(
+        Func<CancellationToken, Task<TResponse>> send,
+        Func<TResponse, T> map,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await send(cancellationToken);
+            return ControlPlaneResult.Success(map(response));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ApiException ex)
+        {
+            return ApiFailure<T>(ex);
+        }
+        catch (Exception ex)
+        {
+            return UnexpectedFailure<T>(ex);
+        }
+    }
+
+    private async Task<ControlPlaneCommandResult> SendTenantPlanCommandAsync(
+        Func<CancellationToken, Task<BaseCommandResponseOfGuid>> send,
+        string successMessage,
+        string failureMessage,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await send(cancellationToken);
+
+            return response.Success == true
+                ? ControlPlaneCommandResult.Succeeded(response.Message ?? successMessage)
+                : ControlPlaneCommandResult.Failed(
+                    response.Message ?? failureMessage,
+                    response.FailureCode,
+                    errors: response.Errors?.ToArray());
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ApiException ex)
+        {
+            return CommandFailure(ex);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Control-plane tenant-plan command adapter failed before receiving a response.");
             return ControlPlaneCommandResult.Failed(
                 "The control-plane API adapter could not reach the API.",
                 "control_plane_api_unavailable");

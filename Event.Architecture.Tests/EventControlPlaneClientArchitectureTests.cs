@@ -80,7 +80,7 @@ public sealed class EventControlPlaneClientArchitectureTests
     }
 
     [Test]
-    public async Task ControlPlaneRoutes_MustStayUnderInstanceAdminRoot()
+    public async Task ControlPlaneRoutes_MustStayUnderAdminPortalRoots()
     {
         var routesPath = Path.Combine(ControlPlaneClientRoot, "Routing", "ControlPlaneRoutes.cs");
         await Assert.That(File.Exists(routesPath)).IsTrue()
@@ -89,17 +89,20 @@ public sealed class EventControlPlaneClientArchitectureTests
         var source = await File.ReadAllTextAsync(routesPath);
         await Assert.That(source.Contains("public const string Root = \"/admin/instance\";", StringComparison.Ordinal)).IsTrue()
             .Because("Control-plane routes must live under the instance administration root.");
+        await Assert.That(source.Contains("public const string TenantRoot = \"/tenant/{TenantSlug}\";", StringComparison.Ordinal)).IsTrue()
+            .Because("Tenant-console routes must live under the dedicated tenant administration root.");
 
         var directRouteLiterals = Regex.Matches(source, "public const string (?<name>\\w+) = \"(?<path>/[^\"]+)\";")
             .Select(match => match.Groups["path"].Value)
             .ToArray();
 
         var directRouteViolations = directRouteLiterals
-            .Where(route => !route.StartsWith("/admin/instance", StringComparison.Ordinal))
+            .Where(route => !route.StartsWith("/admin/instance", StringComparison.Ordinal)
+                && !route.StartsWith("/tenant/{TenantSlug}", StringComparison.Ordinal))
             .ToArray();
 
         await Assert.That(directRouteViolations).IsEmpty()
-            .Because($"Control-plane routes must not introduce public or tenant-shell paths. Violations: {string.Join(", ", directRouteViolations)}");
+            .Because($"AdminPortal routes must not introduce public paths outside the instance or tenant administration roots. Violations: {string.Join(", ", directRouteViolations)}");
 
         var nonRootConstants = Regex.Matches(source, "public const string (?<name>\\w+) = (?<expression>[^;]+);")
             .Select(match => new
@@ -107,16 +110,19 @@ public sealed class EventControlPlaneClientArchitectureTests
                 Name = match.Groups["name"].Value,
                 Expression = match.Groups["expression"].Value.Trim()
             })
-            .Where(route => route.Name is not "Root")
+            .Where(route => route.Name is not "Root" and not "TenantRoot")
             .ToArray();
 
         var compositionViolations = nonRootConstants
-            .Where(route => route.Expression != "Root" && !route.Expression.StartsWith("Root +", StringComparison.Ordinal))
+            .Where(route => route.Expression != "Root"
+                && route.Expression != "TenantRoot"
+                && !route.Expression.StartsWith("Root +", StringComparison.Ordinal)
+                && !route.Expression.StartsWith("TenantRoot +", StringComparison.Ordinal))
             .Select(route => $"{route.Name} = {route.Expression}")
             .ToArray();
 
         await Assert.That(compositionViolations).IsEmpty()
-            .Because($"Control-plane child routes must compose from Root. Violations: {string.Join(", ", compositionViolations)}");
+            .Because($"AdminPortal child routes must compose from Root or TenantRoot. Violations: {string.Join(", ", compositionViolations)}");
     }
 
     [Test]

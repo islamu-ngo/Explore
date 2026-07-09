@@ -6,6 +6,12 @@ using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.Application.DTOs.User;
+using Explore.Application.Responses;
+using Explore.Domain;
+using Explore.Domain.Constants;
+using Explore.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -75,6 +81,64 @@ public class UserControllerTests
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    [Category(TestCategories.Fast)]
+    public async Task SyncUser_WithAtprotoEmailWithoutExplicitVerification_ShouldPersistEmailAsUnverified()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var authUserId = Guid.NewGuid();
+        var did = $"did:plc:{Guid.NewGuid():N}";
+        await SeedLinkedAtprotoUserAsync(factory, authUserId, did);
+
+        using var syncRequest = CreateAtprotoSyncRequest(authUserId, did, "atproto-user@example.test");
+        var syncResponse = await client.SendAsync(syncRequest);
+        var syncBody = await syncResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+
+        await Assert.That(syncResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(syncBody).IsNotNull();
+        await Assert.That(syncBody!.Success).IsTrue();
+
+        using var currentUserRequest = CreateAtprotoRequest(HttpMethod.Get, BaseUrl, authUserId, did, "atproto-user@example.test");
+        var currentUserResponse = await client.SendAsync(currentUserRequest);
+        var currentUser = await currentUserResponse.Content.ReadFromJsonAsync<UserDto>();
+
+        await Assert.That(currentUserResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(currentUser).IsNotNull();
+        await Assert.That(currentUser!.AuthProvider).IsEqualTo("atproto");
+        await Assert.That(currentUser.AuthProviderId).IsEqualTo(did);
+        await Assert.That(currentUser.EmailVerified).IsFalse();
+    }
+
+    [Test]
+    [Category(TestCategories.Fast)]
+    public async Task SyncUser_WithAtprotoEmailAndExplicitVerification_ShouldPersistEmailAsVerified()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var authUserId = Guid.NewGuid();
+        var did = $"did:plc:{Guid.NewGuid():N}";
+        await SeedLinkedAtprotoUserAsync(factory, authUserId, did);
+
+        using var syncRequest = CreateAtprotoSyncRequest(authUserId, did, "verified-atproto-user@example.test", emailVerified: true);
+        var syncResponse = await client.SendAsync(syncRequest);
+        var syncBody = await syncResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+
+        await Assert.That(syncResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(syncBody).IsNotNull();
+        await Assert.That(syncBody!.Success).IsTrue();
+
+        using var currentUserRequest = CreateAtprotoRequest(HttpMethod.Get, BaseUrl, authUserId, did, "verified-atproto-user@example.test", emailVerified: true);
+        var currentUserResponse = await client.SendAsync(currentUserRequest);
+        var currentUser = await currentUserResponse.Content.ReadFromJsonAsync<UserDto>();
+
+        await Assert.That(currentUserResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(currentUser).IsNotNull();
+        await Assert.That(currentUser!.AuthProvider).IsEqualTo("atproto");
+        await Assert.That(currentUser.AuthProviderId).IsEqualTo(did);
+        await Assert.That(currentUser.EmailVerified).IsTrue();
     }
 
     #endregion
@@ -166,4 +230,93 @@ public class UserControllerTests
     }
 
     #endregion
+
+    private static async Task SeedLinkedAtprotoUserAsync(
+        AuthenticatedWebApplicationFactory factory,
+        Guid userId,
+        string did)
+    {
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+
+        var exists = await dbContext.Users.AnyAsync(x => x.Id == userId);
+        if (!exists)
+        {
+            dbContext.Users.Add(new User
+            {
+                Id = userId,
+                AuthProvider = "keycloak",
+                AuthProviderId = userId.ToString(),
+                EmailVerified = true,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = userId,
+                Pii = new UserPii
+                {
+                    UserId = userId,
+                    Email = $"{userId:N}@integration.test",
+                    FirstName = "Integration",
+                    LastName = "User"
+                }
+            });
+        }
+
+        var linked = await dbContext.UserExternalLogins.AnyAsync(x =>
+            x.UserId == userId && x.Provider == "atproto" && x.ProviderKey == did);
+        if (!linked)
+        {
+            dbContext.UserExternalLogins.Add(new UserExternalLogin
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                User = null!,
+                TenantId = PlatformDefaults.DefaultTenantId,
+                Tenant = null!,
+                Provider = "atproto",
+                ProviderKey = did,
+                ProviderDisplayName = "AT Protocol",
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = userId
+            });
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static HttpRequestMessage CreateAtprotoSyncRequest(
+        Guid authUserId,
+        string did,
+        string email,
+        bool? emailVerified = null)
+    {
+        return CreateAtprotoRequest(HttpMethod.Post, $"{BaseUrl}/sync", authUserId, did, email, emailVerified);
+    }
+
+    private static HttpRequestMessage CreateAtprotoRequest(
+        HttpMethod method,
+        string url,
+        Guid authUserId,
+        string did,
+        string email,
+        bool? emailVerified = null)
+    {
+        var additionalClaims = new List<(string Type, string Value)>
+        {
+            ("idp", "atproto"),
+            ("did", did),
+            ("email", email),
+            ("given_name", "ATProto"),
+            ("family_name", "User")
+        };
+
+        if (emailVerified.HasValue)
+        {
+            additionalClaims.Add(("email_verified", emailVerified.Value.ToString().ToLowerInvariant()));
+        }
+
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Add(
+            TestAuthHandler.AuthHeaderName,
+            TestAuthHandler.CreateAuthHeaderValue(authUserId, "ATProto User", additionalClaims.ToArray()));
+        return request;
+    }
 }

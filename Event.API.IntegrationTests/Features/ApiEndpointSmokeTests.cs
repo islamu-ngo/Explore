@@ -274,6 +274,12 @@ public class ApiEndpointSmokeTests
             return "did:plc:test";
         }
 
+        if (description.RelativePath?.StartsWith("api/translation/{languageCode}", StringComparison.OrdinalIgnoreCase) == true &&
+            string.Equals(parameter.Name, "languageCode", StringComparison.OrdinalIgnoreCase))
+        {
+            return "en";
+        }
+
         return "test";
     }
 

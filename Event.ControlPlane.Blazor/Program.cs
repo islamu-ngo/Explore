@@ -1,8 +1,8 @@
 // ABOUTME: Composition root for the self-hostable Event control-plane Blazor BFF host.
 // ABOUTME: Wires Infisical/env configuration, Keycloak OIDC, server-side BFF proxying, and Razor components.
 
-using Event.ControlPlane.Blazor.Components;
 using Event.ControlPlane.Blazor.Clients;
+using Event.ControlPlane.Blazor.Components;
 using Event.ControlPlane.Blazor.Extensions;
 using Event.ControlPlane.Blazor.Services;
 using Event.ControlPlane.Client;
@@ -83,6 +83,10 @@ builder.Services.AddScoped<IControlPlaneTenantService>(provider =>
 builder.Services.AddScoped<IControlPlaneDomainService>(provider =>
     provider.GetRequiredService<ControlPlaneApiAdapter>());
 builder.Services.AddScoped<IControlPlaneOperationsService>(provider =>
+    provider.GetRequiredService<ControlPlaneApiAdapter>());
+builder.Services.AddScoped<IControlPlanePlanService>(provider =>
+    provider.GetRequiredService<ControlPlaneApiAdapter>());
+builder.Services.AddScoped<IControlPlaneTenantConfigurationService>(provider =>
     provider.GetRequiredService<ControlPlaneApiAdapter>());
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddRazorComponents()

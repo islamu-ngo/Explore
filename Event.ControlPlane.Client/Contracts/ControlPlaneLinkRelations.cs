@@ -19,4 +19,18 @@ public static class ControlPlaneLinkRelations
     public const string DeploymentModeRunbook = "deployment-mode-runbook";
     public const string TransitionToMultiTenant = "transition-to-multi-tenant";
     public const string TransitionToSingleTenant = "transition-to-single-tenant";
+    public const string Collection = "collection";
+    public const string Publish = "publish";
+    public const string CreateVersionDraft = "create-version-draft";
+    public const string UpdateVersionDraft = "update-version-draft";
+    public const string Validate = "validate";
+    public const string PreviewDiff = "preview-diff";
+    public const string Clone = "clone";
+    public const string PlanAssignment = "plan-assignment";
+    public const string SwitchPlan = "switch-plan";
+    public const string Apply = "apply";
+    public const string Rollback = "rollback";
+    public const string Override = "override";
+    public const string Lock = "lock";
+    public const string Unlock = "unlock";
 }

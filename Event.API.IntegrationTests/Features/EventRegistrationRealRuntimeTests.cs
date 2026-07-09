@@ -242,6 +242,8 @@ public sealed class EventRegistrationRealRuntimeTests(RealRuntimeApiFixture fixt
         int currentAudienceAttendees = 0)
     {
         var tenant = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(context);
+        var user = await context.Users.FindAsync([tenant.UserId], CancellationToken.None);
+        user!.EmailVerified = true;
         var startsAt = DateTimeOffset.UtcNow.AddDays(14);
         var localDate = DateOnly.FromDateTime(startsAt.UtcDateTime);
 

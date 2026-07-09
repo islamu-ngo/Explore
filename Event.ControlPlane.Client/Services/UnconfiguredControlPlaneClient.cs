@@ -9,7 +9,9 @@ internal sealed class UnconfiguredControlPlaneClient :
     IControlPlaneOverviewService,
     IControlPlaneTenantService,
     IControlPlaneDomainService,
-    IControlPlaneOperationsService
+    IControlPlaneOperationsService,
+    IControlPlanePlanService,
+    IControlPlaneTenantConfigurationService
 {
     private static readonly ControlPlaneProblem Problem = new(
         "control_plane_adapter_not_configured",
@@ -58,6 +60,108 @@ internal sealed class UnconfiguredControlPlaneClient :
         CancellationToken cancellationToken = default) =>
         CommandNotConfiguredAsync();
 
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanList>> GetPlansAsync(
+        CancellationToken cancellationToken = default) =>
+        ReadNotConfiguredAsync<ControlPlaneTenantPlanList>();
+
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanDetail>> GetPlanAsync(
+        string key,
+        CancellationToken cancellationToken = default) =>
+        ReadNotConfiguredAsync<ControlPlaneTenantPlanDetail>();
+
+    public Task<ControlPlaneCommandResult> CreatePlanDraftAsync(
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> CreatePlanVersionDraftAsync(
+        string key,
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> UpdatePlanVersionDraftAsync(
+        Guid versionId,
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> PublishPlanVersionAsync(
+        Guid versionId,
+        ControlPlaneTenantPlanExistingAssignmentPolicy existingTenantPolicy,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> ArchivePlanVersionAsync(
+        Guid versionId,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> ClonePlanAsync(
+        Guid sourceVersionId,
+        string key,
+        string name,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanValidationResult>> ValidatePlanDraftAsync(
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        ReadNotConfiguredAsync<ControlPlaneTenantPlanValidationResult>();
+
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanDiffResult>> PreviewPlanDiffAsync(
+        ControlPlaneTenantPlanEffectiveConfiguration current,
+        ControlPlaneTenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        ReadNotConfiguredAsync<ControlPlaneTenantPlanDiffResult>();
+
+    public Task<ControlPlaneResult<ControlPlaneTenantPlanAssignment>> GetTenantPlanAssignmentAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken = default) =>
+        ReadNotConfiguredAsync<ControlPlaneTenantPlanAssignment>();
+
+    public Task<ControlPlaneResult<ControlPlaneTenantEffectiveConfiguration>> GetEffectiveConfigurationAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken = default) =>
+        ReadNotConfiguredAsync<ControlPlaneTenantEffectiveConfiguration>();
+
+    public Task<ControlPlaneCommandResult> SetSettingAsync(
+        Guid tenantId,
+        string key,
+        string value,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> LockSettingAsync(
+        Guid tenantId,
+        string key,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> UnlockSettingAsync(
+        Guid tenantId,
+        string key,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> SwitchTenantPlanAssignmentAsync(
+        Guid tenantId,
+        Guid tenantPlanVersionId,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> ApplyTenantPlanAssignmentAsync(
+        Guid tenantId,
+        Guid assignmentId,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
+    public Task<ControlPlaneCommandResult> RollbackTenantPlanAssignmentAsync(
+        Guid tenantId,
+        Guid assignmentId,
+        CancellationToken cancellationToken = default) =>
+        CommandNotConfiguredAsync();
+
     public Task<ControlPlaneResult<ControlPlaneDomainList>> GetDomainsAsync(
         CancellationToken cancellationToken = default) =>
         Task.FromResult(ControlPlaneResult.Failure<ControlPlaneDomainList>(
@@ -82,6 +186,11 @@ internal sealed class UnconfiguredControlPlaneClient :
         string? reason = null,
         CancellationToken cancellationToken = default) =>
         CommandNotConfiguredAsync();
+
+    private static Task<ControlPlaneResult<T>> ReadNotConfiguredAsync<T>() =>
+        Task.FromResult(ControlPlaneResult.Failure<T>(
+            ControlPlaneResultKind.NotConfigured,
+            Problem));
 
     private static Task<ControlPlaneCommandResult> CommandNotConfiguredAsync() =>
         Task.FromResult(ControlPlaneCommandResult.Failed(

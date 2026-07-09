@@ -2,9 +2,14 @@
 // ABOUTME: Verifies notification write failures use RFC7807 ProblemDetails instead of anonymous JSON.
 
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
+using Explore.Application.DTOs.Notification;
 using Explore.Application.Features.Notifications.Requests.Commands;
+using Explore.Application.Features.Notifications.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -63,6 +68,101 @@ public sealed class NotificationControllerTests
         await Assert.That(command.SnoozedUntil).IsNotNull();
     }
 
+    [Test]
+    public async Task GetCurrentUserPreferences_ReturnsHalAffordances()
+    {
+        using var mediator = new NotificationMediatorStub(_ => new NotificationPreferenceMatrixDto
+        {
+            TenantId = Guid.Parse("018f0000-0000-7000-8000-000000000010"),
+            UserId = Guid.Parse("018f0000-0000-7000-8000-000000000011"),
+            Categories =
+            [
+                new NotificationPreferenceCategoryDto
+                {
+                    Code = "marketing",
+                    Name = "Marketing",
+                    IsRequired = false,
+                    SortOrder = 90
+                }
+            ],
+            Channels =
+            [
+                new NotificationPreferenceChannelDto
+                {
+                    Code = "email",
+                    Name = "Email",
+                    SortOrder = 10
+                }
+            ],
+            Cells =
+            [
+                new NotificationPreferenceCellDto
+                {
+                    CategoryCode = "marketing",
+                    ChannelCode = "email",
+                    IsEnabled = false,
+                    IsEditable = true,
+                    EffectiveSourceScope = "Default"
+                }
+            ]
+        });
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Get, "/api/notification/preferences/me");
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/hal+json"));
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync();
+        await Assert.That(content).IsNotEmpty();
+        using var document = JsonDocument.Parse(content);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("categories").GetArrayLength()).IsEqualTo(1);
+        var links = root.GetProperty("_links");
+        await Assert.That(links.TryGetProperty("self", out _)).IsTrue();
+        await Assert.That(links.TryGetProperty("save", out _)).IsTrue();
+        await Assert.That(links.TryGetProperty("set-mute", out _)).IsTrue();
+
+        await Assert.That(mediator.LastRequest).IsTypeOf<GetCurrentUserNotificationPreferenceMatrixQuery>();
+    }
+
+    [Test]
+    public async Task UpdateCurrentUserPreferences_WhenCommandFails_ReturnsValidationProblemDetails()
+    {
+        using var mediator = new NotificationMediatorStub(_ => new BaseCommandResponse<Guid>
+        {
+            Success = false,
+            Message = "Notification preference update failed.",
+            Errors = ["Category 'account-security' is required and cannot be disabled."]
+        });
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Put, "/api/notification/preferences/me");
+        request.Content = JsonContent.Create(new UpdateNotificationPreferenceMatrixDto
+        {
+            Cells =
+            [
+                new UpdateNotificationPreferenceCellDto
+                {
+                    CategoryCode = "account-security",
+                    ChannelCode = "email",
+                    IsEnabled = false
+                }
+            ]
+        });
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Notification preference validation failed");
+        var command = mediator.LastRequest as UpdateCurrentUserNotificationPreferenceMatrixCommand;
+        await Assert.That(command).IsNotNull();
+        await Assert.That(command!.Cells.Count).IsEqualTo(1);
+    }
+
     private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
     {
         var factory = new AuthenticatedWebApplicationFactory();
@@ -104,7 +204,7 @@ public sealed class NotificationControllerTests
         Errors = [message]
     };
 
-    private sealed class NotificationMediatorStub(Func<object, BaseCommandResponse<Guid>> responseFactory) : IMediator, IDisposable
+    private sealed class NotificationMediatorStub(Func<object, object> responseFactory) : IMediator, IDisposable
     {
         public object? LastRequest { get; private set; }
 

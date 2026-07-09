@@ -2,9 +2,7 @@
 // ABOUTME: Prevents the shared RCL fail-closed fallback client from leaking into the dedicated host.
 
 extern alias ControlPlaneBlazor;
-
 using ControlPlaneBlazor::Event.ControlPlane.Blazor.Services;
-using ControlPlaneProgram = ControlPlaneBlazor::Program;
 using Event.ControlPlane.Client.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.DataProtection;
@@ -13,6 +11,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using ControlPlaneProgram = ControlPlaneBlazor::Program;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 

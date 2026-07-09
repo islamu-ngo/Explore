@@ -7,15 +7,29 @@
 <MudDialogProvider DefaultFocus="DefaultFocus.FirstChild" />
 <MudSnackbarProvider />
 
+<a class="cp-skip-link" href="#main-content">Skip to content</a>
+
 <div class="cp-shell">
     <aside class="cp-sidebar" aria-label="Control-plane navigation">
         <a class="cp-brand" href="@ControlPlaneRoutes.Overview">Event Control Plane</a>
-        <nav class="cp-nav">
-            @foreach (var route in RouteCatalog.All)
+        <nav class="cp-nav" aria-label="Instance console navigation">
+            <span class="cp-nav__section">Instance console</span>
+            @foreach (var route in RouteCatalog.Navigation)
             {
-                <NavLink class="cp-nav__link" href="@route.Path" Match="@NavLinkMatch.Prefix">
+                <NavLink class="cp-nav__link" href="@route.Path" Match="@MatchFor(route)">
                     @LabelFor(route.Key)
                 </NavLink>
+            }
+
+            @if (CurrentTenantSlug is { Length: > 0 } tenantSlug)
+            {
+                <span class="cp-nav__section">Tenant console</span>
+                @foreach (var route in RouteCatalog.TenantNavigation)
+                {
+                    <NavLink class="cp-nav__link" href="@TenantPath(route, tenantSlug)" Match="@MatchFor(route)">
+                        @LabelFor(route.Key)
+                    </NavLink>
+                }
             }
         </nav>
     </aside>
@@ -25,7 +39,11 @@
             <span>Instance administration</span>
             <a class="cp-link" href="/auth/signout">Sign out</a>
         </header>
-        @Body
+        <main id="main-content" class="cp-content" tabindex="-1">
+            @Body
+        </main>
+        <div class="cp-sr-only" aria-live="polite" aria-atomic="true"></div>
+        <div class="cp-sr-only" aria-live="assertive" aria-atomic="true"></div>
     </div>
 </div>
 
@@ -33,18 +51,48 @@
     [Inject]
     private IControlPlaneRouteCatalog RouteCatalog { get; set; } = null!;
 
+    [Inject]
+    private NavigationManager Navigation { get; set; } = null!;
+
+    private string? CurrentTenantSlug
+    {
+        get
+        {
+            var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+            var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            return segments is ["tenant", var slug, ..] ? Uri.UnescapeDataString(slug) : null;
+        }
+    }
+
     private static string LabelFor(string key) =>
         key switch
         {
             ControlPlaneRouteKeys.Overview => "Overview",
             ControlPlaneRouteKeys.Tenants => "Tenants",
             ControlPlaneRouteKeys.Domains => "Domains",
+            ControlPlaneRouteKeys.Operations => "Operations",
+            ControlPlaneRouteKeys.Plans => "Plan Studio",
             ControlPlaneRouteKeys.Onboarding => "Onboarding",
             ControlPlaneRouteKeys.Health => "Health",
             ControlPlaneRouteKeys.Storage => "Storage",
             ControlPlaneRouteKeys.Jobs => "Jobs",
             ControlPlaneRouteKeys.Security => "Security",
             ControlPlaneRouteKeys.Policies => "Policies",
+            ControlPlaneRouteKeys.TenantOverview => "Overview",
+            ControlPlaneRouteKeys.TenantSettings => "Settings",
+            ControlPlaneRouteKeys.TenantBranding => "Branding",
+            ControlPlaneRouteKeys.TenantModeration => "Moderation",
+            ControlPlaneRouteKeys.TenantUsers => "Users",
+            ControlPlaneRouteKeys.TenantFooterNavigation => "Footer & navigation",
+            ControlPlaneRouteKeys.TenantReports => "Reports",
+            ControlPlaneRouteKeys.TenantEvents => "Events",
+            ControlPlaneRouteKeys.TenantPolicies => "Policies",
             _ => key
         };
+
+    private static NavLinkMatch MatchFor(ControlPlaneRouteDescriptor route) =>
+        route.Key == ControlPlaneRouteKeys.Overview ? NavLinkMatch.All : NavLinkMatch.Prefix;
+
+    private static string TenantPath(ControlPlaneRouteDescriptor route, string tenantSlug) =>
+        route.Path.Replace("{TenantSlug}", Uri.EscapeDataString(tenantSlug), StringComparison.Ordinal);
 }

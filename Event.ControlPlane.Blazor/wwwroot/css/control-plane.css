@@ -35,16 +35,37 @@ a {
     min-height: 100vh;
 }
 
+.cp-skip-link {
+    background: var(--cp-panel);
+    border: 1px solid var(--cp-border);
+    border-radius: 6px;
+    color: var(--cp-accent);
+    font-weight: 700;
+    inset-block-start: 8px;
+    inset-inline-start: 8px;
+    padding-block: 8px;
+    padding-inline: 12px;
+    position: fixed;
+    transform: translateY(-150%);
+    transition: transform 120ms ease;
+    z-index: 1000;
+}
+
+.cp-skip-link:focus {
+    transform: translateY(0);
+}
+
 .cp-sidebar {
-    border-right: 1px solid var(--cp-border);
+    border-inline-end: 1px solid var(--cp-border);
     background: #111827;
     color: #f9fafb;
-    padding: 24px 16px;
+    padding-block: 24px;
+    padding-inline: 16px;
 }
 
 .cp-brand {
     display: block;
-    margin-bottom: 28px;
+    margin-block-end: 28px;
     font-size: 18px;
     font-weight: 700;
     text-decoration: none;
@@ -55,10 +76,21 @@ a {
     gap: 4px;
 }
 
+.cp-nav__section {
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding-block: 0 4px;
+    padding-inline: 12px;
+    text-transform: uppercase;
+}
+
 .cp-nav__link {
     border-radius: 6px;
     color: #d1d5db;
-    padding: 10px 12px;
+    padding-block: 10px;
+    padding-inline: 12px;
     text-decoration: none;
 }
 
@@ -72,14 +104,34 @@ a {
     min-width: 0;
 }
 
+.cp-content {
+    min-width: 0;
+}
+
+.cp-content:focus {
+    outline: 3px solid var(--cp-accent);
+    outline-offset: -3px;
+}
+
+.cp-sr-only {
+    block-size: 1px;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    inline-size: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+}
+
 .cp-topbar {
     align-items: center;
     background: var(--cp-panel);
-    border-bottom: 1px solid var(--cp-border);
+    border-block-end: 1px solid var(--cp-border);
     display: flex;
     justify-content: space-between;
     min-height: 56px;
-    padding: 0 24px;
+    padding-block: 0;
+    padding-inline: 24px;
 }
 
 .cp-link {
@@ -91,11 +143,12 @@ a {
 .cp-page {
     margin: 0 auto;
     max-width: 1120px;
-    padding: 32px 24px;
+    padding-block: 32px;
+    padding-inline: 24px;
 }
 
 .cp-page__header {
-    margin-bottom: 24px;
+    margin-block-end: 24px;
 }
 
 .cp-page__header h1,
@@ -107,7 +160,7 @@ a {
 .cp-page__header h1 {
     font-size: 32px;
     line-height: 1.2;
-    margin: 0 0 8px;
+    margin-block: 0 8px;
 }
 
 .cp-page__header p,
@@ -140,7 +193,7 @@ a {
     display: block;
     font-size: 12px;
     font-weight: 700;
-    margin-bottom: 8px;
+    margin-block-end: 8px;
     text-transform: uppercase;
 }
 
@@ -150,8 +203,9 @@ a {
     }
 
     .cp-sidebar {
-        border-right: 0;
-        padding: 18px 16px;
+        border-inline-end: 0;
+        padding-block: 18px;
+        padding-inline: 16px;
     }
 
     .cp-nav {
@@ -159,10 +213,12 @@ a {
     }
 
     .cp-topbar {
-        padding: 0 16px;
+        padding-block: 0;
+        padding-inline: 16px;
     }
 
     .cp-page {
-        padding: 24px 16px;
+        padding-block: 24px;
+        padding-inline: 16px;
     }
 }
