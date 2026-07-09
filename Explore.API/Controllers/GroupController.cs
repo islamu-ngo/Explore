@@ -6,7 +6,10 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Group;
+using Explore.Application.Features.Notifications.Requests.Commands;
+using Explore.Application.Features.Notifications.Requests.Queries;
 using Explore.Application.Features.Groups.Requests.Commands;
 using Explore.Application.Features.Groups.Requests.Queries;
 using Explore.Application.Hateoas;
@@ -39,6 +42,11 @@ public class GroupController : ExploreControllerBase
         "Group validation failed",
         "Group update failed.");
 
+    private static readonly ApiValidationProblemDescriptor PreferenceValidationProblem = new(
+        "groupNotificationPreferences",
+        "Group notification preference validation failed",
+        "Group notification preference update failed.");
+
     private static readonly ApiValidationProblemDescriptor ApprovalValidationProblem = new(
         "group",
         "Group validation failed",
@@ -55,13 +63,16 @@ public class GroupController : ExploreControllerBase
 
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<GroupDto, GroupListDto> _resourceAssembler;
+    private readonly IResourceAssembler<NotificationPreferenceMatrixDto> _preferenceAssembler;
 
     public GroupController(
         IMediator mediator,
-        IResourceAssembler<GroupDto, GroupListDto> resourceAssembler)
+        IResourceAssembler<GroupDto, GroupListDto> resourceAssembler,
+        IResourceAssembler<NotificationPreferenceMatrixDto> preferenceAssembler)
     {
         _mediator = mediator;
         _resourceAssembler = resourceAssembler;
+        _preferenceAssembler = preferenceAssembler;
     }
 
     [AllowAnonymous]
@@ -144,6 +155,85 @@ public class GroupController : ExploreControllerBase
 
         var halResource = await _resourceAssembler.ToResource(group, HttpContext);
         return Ok(halResource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("{id:guid}/notification-preferences", Name = RouteNames.GetGroupNotificationPreferences)]
+    [EndpointSummary("Get Group Notification Preferences")]
+    [EndpointDescription("Get the effective notification preference matrix for a group scope.")]
+    [ProducesResponseType(typeof(HalResource<NotificationPreferenceMatrixDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalResource<NotificationPreferenceMatrixDto>>> GetNotificationPreferences(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var matrix = await _mediator.Send(new GetGroupNotificationPreferenceMatrixQuery
+        {
+            GroupId = id
+        }, cancellationToken);
+
+        var halResource = await _preferenceAssembler.ToResource(matrix, HttpContext);
+        return Ok(halResource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("{id:guid}/notification-preferences", Name = RouteNames.UpdateGroupNotificationPreferences)]
+    [EndpointSummary("Update Group Notification Preferences")]
+    [EndpointDescription("Save editable group-scoped notification preference cells.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateNotificationPreferences(
+        Guid id,
+        [FromBody] UpdateNotificationPreferenceMatrixDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new UpdateGroupNotificationPreferenceMatrixCommand
+        {
+            GroupId = id,
+            Cells = request.Cells
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("{id:guid}/notification-preferences/mute", Name = RouteNames.SetGroupNotificationPreferenceMute)]
+    [EndpointSummary("Set Group Notification Preference Mute")]
+    [EndpointDescription("Set group-scoped global mute for non-essential notification preferences.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SetNotificationPreferenceMute(
+        Guid id,
+        [FromBody] SetNotificationPreferenceMuteDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new SetGroupNotificationPreferenceMuteCommand
+        {
+            GroupId = id,
+            IsMuted = request.IsMuted
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
+        }
+
+        return Ok(response);
     }
 
     [Authorize]

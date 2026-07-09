@@ -23,6 +23,9 @@ public static class RouteNames
     public const string CreateOrganization = "CreateOrganization";
     public const string UpdateOrganization = "UpdateOrganization";
     public const string UpdateOrganizationApprovalStatus = "UpdateOrganizationApprovalStatus";
+    public const string GetOrganizationNotificationPreferences = "GetOrganizationNotificationPreferences";
+    public const string UpdateOrganizationNotificationPreferences = "UpdateOrganizationNotificationPreferences";
+    public const string SetOrganizationNotificationPreferenceMute = "SetOrganizationNotificationPreferenceMute";
     public const string DeleteOrganization = "DeleteOrganization";
     #endregion
 
@@ -257,6 +260,8 @@ public static class RouteNames
     public const string GetCurrentUserAdminAuthority = "GetCurrentUserAdminAuthority";
     public const string UpdateCurrentUser = "UpdateCurrentUser";
     public const string DeleteCurrentUser = "DeleteCurrentUser";
+    public const string ResolveUserTenantRedirection = "ResolveUserTenantRedirection";
+    public const string UpdateUserLastActiveTenant = "UpdateUserLastActiveTenant";
 
     #endregion
 
@@ -377,6 +382,9 @@ public static class RouteNames
     public const string CreateGroup = "CreateGroup";
     public const string UpdateGroup = "UpdateGroup";
     public const string UpdateGroupApprovalStatus = "UpdateGroupApprovalStatus";
+    public const string GetGroupNotificationPreferences = "GetGroupNotificationPreferences";
+    public const string UpdateGroupNotificationPreferences = "UpdateGroupNotificationPreferences";
+    public const string SetGroupNotificationPreferenceMute = "SetGroupNotificationPreferenceMute";
     public const string DeleteGroup = "DeleteGroup";
     public const string GetGroupMembers = "GetGroupMembers";
     public const string GetGroupMemberById = "GetGroupMemberById";
@@ -433,6 +441,9 @@ public static class RouteNames
     public const string ArchiveNotification = "ArchiveNotification";
     public const string SnoozeNotification = "SnoozeNotification";
     public const string DeleteNotification = "DeleteNotification";
+    public const string GetCurrentUserNotificationPreferences = "GetCurrentUserNotificationPreferences";
+    public const string UpdateCurrentUserNotificationPreferences = "UpdateCurrentUserNotificationPreferences";
+    public const string SetCurrentUserNotificationPreferenceMute = "SetCurrentUserNotificationPreferenceMute";
 
     #endregion
 
@@ -493,8 +504,11 @@ public static class RouteNames
 
     public const string CheckLocalizationBundleHealth = "CheckLocalizationBundleHealth";
     public const string GetLocalizationConfiguration = "GetLocalizationConfiguration";
+    public const string ExportLocalizationBundle = "ExportLocalizationBundle";
+    public const string ImportLocalizationBundle = "ImportLocalizationBundle";
     public const string ExportLocalizationFromTms = "ExportLocalizationFromTms";
     public const string UpdateLocalizationGovernance = "UpdateLocalizationGovernance";
+    public const string RotateLocalizationTmsApiKey = "RotateLocalizationTmsApiKey";
     public const string TestLocalizationTmsConnection = "TestLocalizationTmsConnection";
 
     #endregion
@@ -741,6 +755,10 @@ public static class RouteNames
     public const string CloneControlPlaneTenantPlan = "CloneControlPlaneTenantPlan";
     public const string ValidateControlPlaneTenantPlanDraft = "ValidateControlPlaneTenantPlanDraft";
     public const string PreviewControlPlaneTenantPlanDiff = "PreviewControlPlaneTenantPlanDiff";
+    public const string GetControlPlaneTenantEffectiveConfiguration = "GetControlPlaneTenantEffectiveConfiguration";
+    public const string LockControlPlaneTenantSetting = "LockControlPlaneTenantSetting";
+    public const string UnlockControlPlaneTenantSetting = "UnlockControlPlaneTenantSetting";
+    public const string SetControlPlaneTenantSetting = "SetControlPlaneTenantSetting";
     public const string GetControlPlaneTenantPlanAssignment = "GetControlPlaneTenantPlanAssignment";
     public const string SwitchControlPlaneTenantPlanAssignment = "SwitchControlPlaneTenantPlanAssignment";
     public const string ApplyControlPlaneTenantPlanAssignment = "ApplyControlPlaneTenantPlanAssignment";
@@ -757,6 +775,8 @@ public static class RouteNames
     public const string UpdateInstanceDomainSettings = "UpdateInstanceDomainSettings";
     public const string GetInstanceTenantDelegationSettings = "GetInstanceTenantDelegationSettings";
     public const string UpdateInstanceTenantDelegationSettings = "UpdateInstanceTenantDelegationSettings";
+    public const string GetInstanceAdminPortalSettings = "GetInstanceAdminPortalSettings";
+    public const string UpdateInstanceAdminPortalSettings = "UpdateInstanceAdminPortalSettings";
     public const string UpdateInstanceModerationReportingProviderLocks = "UpdateInstanceModerationReportingProviderLocks";
     public const string GetInstanceAiAssistantGovernanceSettings = "GetInstanceAiAssistantGovernanceSettings";
     public const string UpdateInstanceAiAssistantGovernanceSettings = "UpdateInstanceAiAssistantGovernanceSettings";

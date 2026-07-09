@@ -235,6 +235,9 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<ControlPlaneTenantPlanDetailDto>, ControlPlaneTenantPlanDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<ControlPlaneTenantPlanListItemDto>, ControlPlaneTenantPlanCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<ControlPlaneTenantPlanDetailDto, ControlPlaneTenantPlanListItemDto>, ControlPlaneTenantPlanResourceAssembler>();
+        services.AddScoped<ILinkPolicy<ControlPlaneTenantEffectiveConfigurationDto>, ControlPlaneTenantEffectiveConfigurationLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ControlPlaneTenantEffectiveConfigurationDto>, ControlPlaneTenantEffectiveConfigurationCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ControlPlaneTenantEffectiveConfigurationDto, ControlPlaneTenantEffectiveConfigurationDto>, ControlPlaneTenantEffectiveConfigurationResourceAssembler>();
 
         // Storage administration
         services.AddScoped<ILinkPolicy<InstanceStorageSettingsDto>, InstanceStorageSettingsLinkPolicy>();
@@ -263,6 +266,9 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<NotificationDto>, NotificationDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<NotificationListDto>, NotificationCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<NotificationDto, NotificationListDto>, NotificationResourceAssembler>();
+        services.AddScoped<ILinkPolicy<NotificationPreferenceMatrixDto>, NotificationPreferenceMatrixLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<NotificationPreferenceMatrixDto>, NotificationPreferenceMatrixLinkPolicy>();
+        services.AddScoped<IResourceAssembler<NotificationPreferenceMatrixDto>, NotificationPreferenceMatrixResourceAssembler>();
 
         // Custom Property Projection Admin (D2 Operability)
         services.AddScoped<ILinkPolicy<ProjectionStatusDto>, ProjectionStatusDetailLinkPolicy>();

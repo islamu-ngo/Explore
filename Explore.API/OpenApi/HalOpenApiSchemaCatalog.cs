@@ -144,7 +144,12 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantPlanVersionDto),
         typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantPlanSettingDto),
         typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantPlanQuotaDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantPlanAssignmentDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantEffectiveConfigurationDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantEffectiveSettingDto),
+        typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantQuotaUsageDto),
         typeof(Explore.Application.DTOs.Onboarding.InstanceStorageSettingsDto),
+        typeof(Explore.Application.DTOs.Notification.NotificationPreferenceMatrixDto),
         typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
     ];
 
@@ -210,6 +215,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfProjectionStatusDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),
         ["HalResourceOfProjectionDirtyScopeDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionDirtyScopeDto),
         ["HalResourceOfTenantBrandingSettingsDocumentDto"] = typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
+        ["HalResourceOfNotificationPreferenceMatrixDto"] = typeof(Explore.Application.DTOs.Notification.NotificationPreferenceMatrixDto),
         ["HalResourceOfAiAssistantBootstrapDto"] = typeof(Explore.Application.DTOs.Ai.AiAssistantBootstrapDto),
         ["HalResourceOfAiConversationSummaryDto"] = typeof(Explore.Application.DTOs.Ai.AiConversationSummaryDto),
         ["HalResourceOfAiConversationDto"] = typeof(Explore.Application.DTOs.Ai.AiConversationDto),
@@ -225,6 +231,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfControlPlaneTenantListItemDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantListItemDto),
         ["HalResourceOfControlPlaneTenantPlanDetailDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantPlanDetailDto),
         ["HalResourceOfControlPlaneTenantPlanListItemDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantPlanListItemDto),
+        ["HalResourceOfControlPlaneTenantEffectiveConfigurationDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantEffectiveConfigurationDto),
         ["HalResourceOfInstanceStorageSettingsDto"] = typeof(Explore.Application.DTOs.Onboarding.InstanceStorageSettingsDto),
         ["HalResourceOfTenantStorageSettingsDto"] = typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
         ["HalResourceOfEventSessionSpeakerDto"] = typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerDto),

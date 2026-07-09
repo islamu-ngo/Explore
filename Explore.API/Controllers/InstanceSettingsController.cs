@@ -242,6 +242,34 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
+    [HttpGet("admin-portal", Name = RouteNames.GetInstanceAdminPortalSettings)]
+    [EndpointSummary("Get Admin Portal Settings")]
+    [EndpointDescription("Returns dedicated Control Plane Admin Portal enablement and tenant access settings.")]
+    [ProducesResponseType(typeof(AdminPortalSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<AdminPortalSettingsDto>> GetAdminPortalSettings(CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return this.ToForbiddenProblem(detail: "Instance administrator or active setup secret authority is required for this operation.");
+        var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
+        return Ok(settings.AdminPortal);
+    }
+
+    [HttpPut("admin-portal", Name = RouteNames.UpdateInstanceAdminPortalSettings)]
+    [EndpointSummary("Update Admin Portal Settings")]
+    [EndpointDescription("Updates dedicated Control Plane Admin Portal settings. Requires instance administrator.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAdminPortalSettings(
+        [FromBody] AdminPortalSettingsDto settings, CancellationToken cancellationToken = default)
+    {
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
+
+        var response = await _mediator.Send(new UpdateAdminPortalSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        return HandleCommandResponse(response);
+    }
+
     [HttpGet("ai-assistant", Name = RouteNames.GetInstanceAiAssistantGovernanceSettings)]
     [EndpointSummary("Get AI Assistant Governance Settings")]
     [EndpointDescription("Returns instance AI assistant defaults and tenant override lock settings.")]

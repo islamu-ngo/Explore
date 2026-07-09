@@ -6,7 +6,10 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Organization;
+using Explore.Application.Features.Notifications.Requests.Commands;
+using Explore.Application.Features.Notifications.Requests.Queries;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.Organizations.Requests.Queries;
 using Explore.Application.Hateoas;
@@ -39,6 +42,11 @@ public class OrganizationController : ExploreControllerBase
         "Organization validation failed",
         "Organization update failed.");
 
+    private static readonly ApiValidationProblemDescriptor PreferenceValidationProblem = new(
+        "organizationNotificationPreferences",
+        "Organization notification preference validation failed",
+        "Organization notification preference update failed.");
+
     private static readonly ApiNotFoundProblemDescriptor DeleteNotFoundProblem = new(
         "Organization not found",
         "Organization not found.");
@@ -49,13 +57,16 @@ public class OrganizationController : ExploreControllerBase
 
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<OrganizationDto, OrganizationListDto> _resourceAssembler;
+    private readonly IResourceAssembler<NotificationPreferenceMatrixDto> _preferenceAssembler;
 
     public OrganizationController(
         IMediator mediator,
-        IResourceAssembler<OrganizationDto, OrganizationListDto> resourceAssembler)
+        IResourceAssembler<OrganizationDto, OrganizationListDto> resourceAssembler,
+        IResourceAssembler<NotificationPreferenceMatrixDto> preferenceAssembler)
     {
         _mediator = mediator;
         _resourceAssembler = resourceAssembler;
+        _preferenceAssembler = preferenceAssembler;
     }
 
     /// <summary>
@@ -150,6 +161,85 @@ public class OrganizationController : ExploreControllerBase
 
         var halResource = await _resourceAssembler.ToResource(organization, HttpContext);
         return Ok(halResource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("{id:guid}/notification-preferences", Name = RouteNames.GetOrganizationNotificationPreferences)]
+    [EndpointSummary("Get Organization Notification Preferences")]
+    [EndpointDescription("Get the effective notification preference matrix for an organization scope.")]
+    [ProducesResponseType(typeof(HalResource<NotificationPreferenceMatrixDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalResource<NotificationPreferenceMatrixDto>>> GetNotificationPreferences(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var matrix = await _mediator.Send(new GetOrganizationNotificationPreferenceMatrixQuery
+        {
+            OrganizationId = id
+        }, cancellationToken);
+
+        var halResource = await _preferenceAssembler.ToResource(matrix, HttpContext);
+        return Ok(halResource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("{id:guid}/notification-preferences", Name = RouteNames.UpdateOrganizationNotificationPreferences)]
+    [EndpointSummary("Update Organization Notification Preferences")]
+    [EndpointDescription("Save editable organization-scoped notification preference cells.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateNotificationPreferences(
+        Guid id,
+        [FromBody] UpdateNotificationPreferenceMatrixDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new UpdateOrganizationNotificationPreferenceMatrixCommand
+        {
+            OrganizationId = id,
+            Cells = request.Cells
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("{id:guid}/notification-preferences/mute", Name = RouteNames.SetOrganizationNotificationPreferenceMute)]
+    [EndpointSummary("Set Organization Notification Preference Mute")]
+    [EndpointDescription("Set organization-scoped global mute for non-essential notification preferences.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SetNotificationPreferenceMute(
+        Guid id,
+        [FromBody] SetNotificationPreferenceMuteDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new SetOrganizationNotificationPreferenceMuteCommand
+        {
+            OrganizationId = id,
+            IsMuted = request.IsMuted
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
+        }
+
+        return Ok(response);
     }
 
     /// <summary>

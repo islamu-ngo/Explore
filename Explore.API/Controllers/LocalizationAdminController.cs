@@ -8,6 +8,7 @@ using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Localization;
 using Explore.Application.Features.Localization.Requests.Commands;
+using Explore.Application.Features.Localization.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -37,6 +38,16 @@ public class LocalizationAdminController : ControllerBase
         "localizationExport",
         "Localization export validation failed",
         "Localization export from TMS failed.");
+
+    private static readonly ApiValidationProblemDescriptor BundleImportValidationProblem = new(
+        "localizationBundleImport",
+        "Localization bundle import validation failed",
+        "Localization bundle import failed.");
+
+    private static readonly ApiValidationProblemDescriptor TmsApiKeyRotationValidationProblem = new(
+        "localizationTmsApiKey",
+        "Localization TMS API key validation failed",
+        "Localization TMS API key rotation failed.");
 
     private readonly IMediator _mediator;
     private readonly ITranslationConfigResolver _configResolver;
@@ -94,9 +105,32 @@ public class LocalizationAdminController : ControllerBase
             FallbackLanguage = config.FallbackLanguage,
             ClientPickerEnabled = config.ClientPickerEnabled,
             ForceOfflineMode = config.ForceOfflineMode,
+            TmsApiKeyConfigured = await _mediator.Send(
+                new GetLocalizationTmsApiKeyConfiguredQuery(),
+                cancellationToken),
         };
 
         return Ok(dto);
+    }
+
+    [HttpPost("tms-api-key/rotate", Name = RouteNames.RotateLocalizationTmsApiKey)]
+    [EndpointSummary("Rotate Localization TMS API Key")]
+    [EndpointDescription("Stores a backend-only Tolgee/Weblate API token through the secret binding resolver path.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> RotateTmsApiKey(
+        [FromBody] RotateLocalizationTmsApiKeyDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(
+            new RotateLocalizationTmsApiKeyCommand { Dto = dto },
+            cancellationToken);
+
+        if (result.Success)
+            return Ok(result);
+
+        return this.ToCommandValidationProblem(result, TmsApiKeyRotationValidationProblem);
     }
 
     /// <summary>
@@ -136,6 +170,42 @@ public class LocalizationAdminController : ControllerBase
         return this.ToCommandValidationProblem(result, GovernanceValidationProblem);
     }
 
+    [HttpGet("bundle", Name = RouteNames.ExportLocalizationBundle)]
+    [EndpointSummary("Export Static Localization Bundle")]
+    [EndpointDescription("Returns the merged static bundle for the requested language without calling a live TMS provider.")]
+    [ProducesResponseType(typeof(IReadOnlyDictionary<string, string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyDictionary<string, string>>> ExportBundle(
+        [FromQuery] string languageCode,
+        CancellationToken cancellationToken = default)
+    {
+        var translations = await _mediator.Send(
+            new ExportLocalizationBundleQuery { LanguageCode = languageCode },
+            cancellationToken);
+
+        return Ok(translations);
+    }
+
+    [HttpPost("bundle", Name = RouteNames.ImportLocalizationBundle)]
+    [EndpointSummary("Import Static Localization Bundle")]
+    [EndpointDescription("Validates and writes a flat static localization bundle, then invalidates translation caches.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ImportBundle(
+        [FromBody] ImportLocalizationBundleDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(
+            new ImportLocalizationBundleCommand { Dto = dto },
+            cancellationToken);
+
+        if (result.Success)
+            return Ok(result);
+
+        return this.ToCommandValidationProblem(result, BundleImportValidationProblem);
+    }
+
     /// <summary>
     /// Export translations from TMS for a specific language.
     /// </summary>
@@ -158,4 +228,5 @@ public class LocalizationAdminController : ControllerBase
 
         return this.ToCommandValidationProblem(result, ExportValidationProblem);
     }
+
 }

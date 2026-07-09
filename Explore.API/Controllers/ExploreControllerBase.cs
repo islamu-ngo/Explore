@@ -90,6 +90,7 @@ public abstract class ExploreControllerBase : ControllerBase
         {
             "keycloak" => true,
             "google" => true,
+            "atproto" => false,
             _ => !string.IsNullOrWhiteSpace(email)
         };
     }

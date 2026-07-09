@@ -80,7 +80,7 @@ var forwardedHeadersTrust = builder.Configuration
     .GetSection(ForwardedHeadersTrustOptions.SectionName)
     .Get<ForwardedHeadersTrustOptions>() ?? new ForwardedHeadersTrustOptions();
 
-if (builder.Environment.IsEnvironment("Testing") &&
+if ((builder.Environment.IsEnvironment("Testing") || builder.Environment.IsDevelopment()) &&
     builder.Configuration[$"{ForwardedHeadersTrustOptions.SectionName}:TrustLoopbackProxy"] is null &&
     !forwardedHeadersTrust.TrustLoopbackProxy &&
     forwardedHeadersTrust.KnownProxies.Count == 0 &&
@@ -153,9 +153,13 @@ var webhookDeliveryProcessorSettings = builder.Configuration
 var emailDispatchRabbitMqSettings = builder.Configuration
     .GetSection(EmailDispatchRabbitMqSettings.SectionName)
     .Get<EmailDispatchRabbitMqSettings>() ?? new EmailDispatchRabbitMqSettings();
+var integrationSyncProcessorSettings = builder.Configuration
+    .GetSection(IntegrationSyncProcessorSettings.SectionName)
+    .Get<IntegrationSyncProcessorSettings>() ?? new IntegrationSyncProcessorSettings();
 var useTickerQEmailDispatch = emailDispatchProcessorSettings.Enabled
     && emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.TickerQ;
 builder.Services.AddSingleton<EmailDispatchHostedDrainRunner>();
+builder.Services.AddSingleton<IntegrationSyncHostedDrainRunner>();
 builder.Services.AddApiTickerQScheduler(
     builder.Configuration,
     builder.Environment,
@@ -278,6 +282,11 @@ if (!isOpenApiGeneration)
         emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.HostedService)
     {
         builder.Services.AddHostedService<EmailDispatchProcessor>();
+    }
+
+    if (!builder.Environment.IsEnvironment("Testing") && integrationSyncProcessorSettings.Enabled)
+    {
+        builder.Services.AddHostedService<IntegrationSyncProcessor>();
     }
 
     if (!builder.Environment.IsEnvironment("Testing") && webhookDeliveryProcessorSettings.Enabled)

@@ -7,11 +7,13 @@ using System.Runtime.CompilerServices;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.Features.Notifications.Requests.Commands;
 using Explore.Application.Features.Notifications.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -34,15 +36,23 @@ public class NotificationController : ControllerBase
         "Notification was not found.",
         "notification_not_found");
 
+    private static readonly ApiValidationProblemDescriptor PreferenceValidationProblem = new(
+        "notificationPreferences",
+        "Notification preference validation failed",
+        "Notification preference update failed.");
+
     private readonly IMediator _mediator;
     private readonly INotificationRefreshStreamService _notificationRefreshStreamService;
+    private readonly IResourceAssembler<NotificationPreferenceMatrixDto> _preferenceAssembler;
 
     public NotificationController(
         IMediator mediator,
-        INotificationRefreshStreamService notificationRefreshStreamService)
+        INotificationRefreshStreamService notificationRefreshStreamService,
+        IResourceAssembler<NotificationPreferenceMatrixDto> preferenceAssembler)
     {
         _mediator = mediator;
         _notificationRefreshStreamService = notificationRefreshStreamService;
+        _preferenceAssembler = preferenceAssembler;
     }
 
     // GET: api/notification
@@ -97,6 +107,65 @@ public class NotificationController : ControllerBase
     {
         var result = await _mediator.Send(new GetUnreadCountRequest { NotificationScopeId = notificationScopeId }, cancellationToken);
         return Ok(result);
+    }
+
+    [HttpGet("preferences/me", Name = Hateoas.RouteNames.GetCurrentUserNotificationPreferences)]
+    [EndpointSummary("Get Current User Notification Preferences")]
+    [EndpointDescription("Returns the authenticated user's effective notification preference matrix with HAL links for allowed actions.")]
+    [ProducesResponseType(typeof(HalResource<NotificationPreferenceMatrixDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<HalResource<NotificationPreferenceMatrixDto>>> GetCurrentUserPreferences(
+        CancellationToken cancellationToken = default)
+    {
+        var matrix = await _mediator.Send(new GetCurrentUserNotificationPreferenceMatrixQuery(), cancellationToken);
+        var resource = await _preferenceAssembler.ToResource(matrix, HttpContext);
+        return Ok(resource);
+    }
+
+    [HttpPut("preferences/me", Name = Hateoas.RouteNames.UpdateCurrentUserNotificationPreferences)]
+    [EndpointSummary("Update Current User Notification Preferences")]
+    [EndpointDescription("Saves editable notification preference cells for the authenticated user. Required or locked cells are rejected.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateCurrentUserPreferences(
+        [FromBody] UpdateNotificationPreferenceMatrixDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new UpdateCurrentUserNotificationPreferenceMatrixCommand
+        {
+            Cells = request.Cells
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPut("preferences/me/mute", Name = Hateoas.RouteNames.SetCurrentUserNotificationPreferenceMute)]
+    [EndpointSummary("Set Current User Notification Preference Mute")]
+    [EndpointDescription("Sets the authenticated user's non-essential notification mute state without deleting channel choices.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SetCurrentUserPreferenceMute(
+        [FromBody] SetNotificationPreferenceMuteDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new SetCurrentUserNotificationPreferenceMuteCommand
+        {
+            IsMuted = request.IsMuted
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
+        }
+
+        return Ok(response);
     }
 
     // GET: api/notification/stream

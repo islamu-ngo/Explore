@@ -10,9 +10,9 @@ using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.Tenant;
+using Explore.Application.Features.ControlPlane.Plans;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
-using Explore.Application.Features.ControlPlane.Plans;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
@@ -38,6 +38,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
     private readonly IResourceAssembler<ControlPlaneOperationsDto, ControlPlaneOperationsDto> _operationsAssembler;
     private readonly IResourceAssembler<ControlPlaneTenantDetailDto, ControlPlaneTenantListItemDto> _tenantAssembler;
     private readonly IResourceAssembler<ControlPlaneTenantPlanDetailDto, ControlPlaneTenantPlanListItemDto> _tenantPlanAssembler;
+    private readonly IResourceAssembler<ControlPlaneTenantEffectiveConfigurationDto, ControlPlaneTenantEffectiveConfigurationDto> _tenantEffectiveConfigurationAssembler;
 
     public ControlPlaneController(
         IMediator mediator,
@@ -45,7 +46,8 @@ public sealed class ControlPlaneController : ExploreControllerBase
         IResourceAssembler<ControlPlaneDomainOverviewDto, ControlPlaneDomainOverviewDto> domainAssembler,
         IResourceAssembler<ControlPlaneOperationsDto, ControlPlaneOperationsDto> operationsAssembler,
         IResourceAssembler<ControlPlaneTenantDetailDto, ControlPlaneTenantListItemDto> tenantAssembler,
-        IResourceAssembler<ControlPlaneTenantPlanDetailDto, ControlPlaneTenantPlanListItemDto> tenantPlanAssembler)
+        IResourceAssembler<ControlPlaneTenantPlanDetailDto, ControlPlaneTenantPlanListItemDto> tenantPlanAssembler,
+        IResourceAssembler<ControlPlaneTenantEffectiveConfigurationDto, ControlPlaneTenantEffectiveConfigurationDto> tenantEffectiveConfigurationAssembler)
     {
         _mediator = mediator;
         _overviewAssembler = overviewAssembler;
@@ -53,6 +55,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
         _operationsAssembler = operationsAssembler;
         _tenantAssembler = tenantAssembler;
         _tenantPlanAssembler = tenantPlanAssembler;
+        _tenantEffectiveConfigurationAssembler = tenantEffectiveConfigurationAssembler;
     }
 
     [HttpGet("overview", Name = RouteNames.GetControlPlaneOverview)]
@@ -337,6 +340,95 @@ public sealed class ControlPlaneController : ExploreControllerBase
         return assignment is null ? NotFound() : Ok(assignment);
     }
 
+    [HttpGet("tenants/{tenantId:guid}/effective-configuration", Name = RouteNames.GetControlPlaneTenantEffectiveConfiguration)]
+    [RequireMultiTenant]
+    [EnableRateLimiting(RateLimitingExtensions.ControlPlanePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ControlPlanePolicy)]
+    [EndpointSummary("Get Control Plane Tenant Effective Configuration")]
+    [EndpointDescription("Returns resolved settings, active plan assignment, and quota usage for one tenant.")]
+    [ProducesResponseType(typeof(HalResource<ControlPlaneTenantEffectiveConfigurationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalResource<ControlPlaneTenantEffectiveConfigurationDto>>> GetTenantEffectiveConfiguration(
+        Guid tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        var configuration = await _mediator.Send(
+            new GetControlPlaneTenantEffectiveConfigurationQuery(tenantId),
+            cancellationToken);
+        var resource = await _tenantEffectiveConfigurationAssembler.ToResource(configuration, HttpContext);
+
+        return Ok(resource);
+    }
+
+    [HttpPut("tenants/{tenantId:guid}/settings/{key}", Name = RouteNames.SetControlPlaneTenantSetting)]
+    [RequireMultiTenant]
+    [EnableRateLimiting(RateLimitingExtensions.ControlPlanePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ControlPlanePolicy)]
+    [EndpointSummary("Set Control Plane Tenant Setting")]
+    [EndpointDescription("Writes or updates a tenant-scoped setting override for one tenant.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SetTenantSetting(
+        Guid tenantId,
+        string key,
+        [FromBody] SetControlPlaneTenantSettingRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(
+            new SetControlPlaneTenantSettingCommand(tenantId, key, request.Value),
+            cancellationToken);
+
+        return response.Success ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPost("tenants/{tenantId:guid}/settings/{key}/lock", Name = RouteNames.LockControlPlaneTenantSetting)]
+    [RequireMultiTenant]
+    [EnableRateLimiting(RateLimitingExtensions.ControlPlanePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ControlPlanePolicy)]
+    [EndpointSummary("Lock Control Plane Tenant Setting")]
+    [EndpointDescription("Locks a tenant setting override so the tenant cannot edit or unlock it.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> LockTenantSetting(
+        Guid tenantId,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(
+            new LockControlPlaneTenantSettingCommand(tenantId, key),
+            cancellationToken);
+
+        return response.Success ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpDelete("tenants/{tenantId:guid}/settings/{key}/lock", Name = RouteNames.UnlockControlPlaneTenantSetting)]
+    [RequireMultiTenant]
+    [EnableRateLimiting(RateLimitingExtensions.ControlPlanePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ControlPlanePolicy)]
+    [EndpointSummary("Unlock Control Plane Tenant Setting")]
+    [EndpointDescription("Unlocks a previously locked tenant setting override so the tenant can edit it again.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UnlockTenantSetting(
+        Guid tenantId,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(
+            new UnlockControlPlaneTenantSettingCommand(tenantId, key),
+            cancellationToken);
+
+        return response.Success ? Ok(response) : BadRequest(response);
+    }
+
     [HttpPost("tenants/{tenantId:guid}/plan-assignment", Name = RouteNames.SwitchControlPlaneTenantPlanAssignment)]
     [RequireMultiTenant]
     [EnableRateLimiting(RateLimitingExtensions.ControlPlanePolicy)]
@@ -570,3 +662,4 @@ public sealed record CloneTenantPlanRequest(string Key, string Name);
 public sealed record PreviewTenantPlanDiffRequest(TenantPlanEffectiveConfiguration Current, TenantPlanDraft Draft);
 
 public sealed record SwitchTenantPlanAssignmentRequest(Guid TenantPlanVersionId);
+public sealed record SetControlPlaneTenantSettingRequest(string Value);

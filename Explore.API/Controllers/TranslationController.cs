@@ -33,6 +33,7 @@ public class TranslationController : ControllerBase
     [EndpointSummary("Get Translations")]
     [EndpointDescription("Returns all translation key-value pairs for the specified language code.")]
     [ProducesResponseType(typeof(Dictionary<string, string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Dictionary<string, string>>> GetTranslations(
         string languageCode,
         CancellationToken cancellationToken = default)

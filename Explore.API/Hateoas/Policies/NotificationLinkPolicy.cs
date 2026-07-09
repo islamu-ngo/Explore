@@ -120,3 +120,67 @@ public sealed class NotificationCollectionLinkPolicy : ICollectionLinkPolicy<Not
             RequiresAuth: true);
     }
 }
+
+public sealed class NotificationPreferenceMatrixLinkPolicy :
+    ILinkPolicy<NotificationPreferenceMatrixDto>,
+    ICollectionLinkPolicy<NotificationPreferenceMatrixDto>
+{
+    public IEnumerable<LinkDefinition> GetLinks(NotificationPreferenceMatrixDto dto, ClaimsPrincipal? user)
+    {
+        var (selfRoute, saveRoute, muteRoute, routeValues, titlePrefix) = dto.Scope switch
+        {
+            "organization" => (
+                RouteNames.GetOrganizationNotificationPreferences,
+                RouteNames.UpdateOrganizationNotificationPreferences,
+                RouteNames.SetOrganizationNotificationPreferenceMute,
+                (object?)new { id = dto.OrganizationId },
+                "Organization"),
+            "group" => (
+                RouteNames.GetGroupNotificationPreferences,
+                RouteNames.UpdateGroupNotificationPreferences,
+                RouteNames.SetGroupNotificationPreferenceMute,
+                (object?)new { id = dto.GroupId },
+                "Group"),
+            _ => (
+                RouteNames.GetCurrentUserNotificationPreferences,
+                RouteNames.UpdateCurrentUserNotificationPreferences,
+                RouteNames.SetCurrentUserNotificationPreferenceMute,
+                null,
+                "Current user")
+        };
+
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            selfRoute,
+            routeValues,
+            "GET",
+            $"{titlePrefix} notification preferences",
+            RequiresAuth: true);
+
+        yield return new LinkDefinition(
+            "save",
+            saveRoute,
+            routeValues,
+            "PUT",
+            "Save notification preference choices",
+            RequiresAuth: true);
+
+        yield return new LinkDefinition(
+            "set-mute",
+            muteRoute,
+            routeValues,
+            "PUT",
+            "Set notification preference mute state",
+            RequiresAuth: true);
+    }
+
+    public IEnumerable<LinkDefinition> GetItemLinks(NotificationPreferenceMatrixDto dto, ClaimsPrincipal? user)
+    {
+        return GetLinks(dto, user);
+    }
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
+    {
+        return [];
+    }
+}

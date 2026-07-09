@@ -2,9 +2,9 @@
 // NOTE: This is for Swashbuckle (AddSwaggerGen). Native ASP.NET Core OpenAPI (AddOpenApi)
 // uses HalDtoSchemaTransformer with the same catalog and mutation helpers.
 
+using Explore.Application.Hateoas;
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using Explore.Application.Hateoas;
 
 namespace Explore.API.OpenApi;
 

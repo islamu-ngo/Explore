@@ -143,6 +143,54 @@ public class UserController : ExploreControllerBase
     }
 
     /// <summary>
+    /// Resolves the appropriate tenant redirection target for the authenticated user.
+    /// </summary>
+    [HttpGet("tenants/redirection", Name = RouteNames.ResolveUserTenantRedirection)]
+    [Authorize]
+    [EndpointSummary("Resolve user tenant redirection")]
+    [EndpointDescription("Resolves the tenant (slug and ID) to redirect the user to from the root platform domain based on active memberships and active history.")]
+    [ProducesResponseType(typeof(UserTenantRedirectionDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<UserTenantRedirectionDto>> ResolveTenantRedirection(CancellationToken cancellationToken = default)
+    {
+        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
+        {
+            return this.ToAuthenticationRequiredProblem();
+        }
+
+        var query = new ResolveUserTenantRedirectionRequest { UserId = currentUserId.Value };
+        var redirection = await _mediator.Send(query, cancellationToken);
+
+        return Ok(redirection);
+    }
+
+    /// <summary>
+    /// Updates the authenticated user's last active tenant setting.
+    /// </summary>
+    [HttpPost("active-tenant/{tenantId:guid}", Name = RouteNames.UpdateUserLastActiveTenant)]
+    [Authorize]
+    [EndpointSummary("Update user's last active tenant")]
+    [EndpointDescription("Updates the user's last active tenant tracking value in the database, verifying membership first.")]
+    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> UpdateLastActiveTenant(Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
+        {
+            return this.ToAuthenticationRequiredProblem();
+        }
+
+        var command = new UpdateUserLastActiveTenantCommand
+        {
+            UserId = currentUserId.Value,
+            TenantId = tenantId
+        };
+        var success = await _mediator.Send(command, cancellationToken);
+
+        return Ok(success);
+    }
+
+    /// <summary>
     /// Gets all organizations the specified user is a member of.
     /// Returns the user's role in each organization.
     /// </summary>
