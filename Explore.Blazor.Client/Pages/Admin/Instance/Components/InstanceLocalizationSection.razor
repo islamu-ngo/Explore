@@ -256,10 +256,10 @@
         @* ── Export Bundles ──────────────────────────── *@
         <MudDivider />
         <div class="instance-localization__bundle-card">
-            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Offline Bundle Export</MudText>
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">TMS to Static Bundle Export</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
-                Pulls translations from the configured TMS for each language and writes them to
-                <code>App_Data/Localization/Bundles/{lang}.json</code>. Offline provider picks these up automatically.
+                Pulls translations from the configured live provider for each language and writes them to
+                <code>App_Data/Localization/Bundles/{lang}.json</code>. Force-offline mode disables this live-only action.
             </MudText>
 
             @* ── Health Banner ────────────────────────── *@
@@ -300,7 +300,7 @@
                     <MudTooltip Text="@(!_state.BundlePathWritable && _state.BundleHealthLoaded ? "Bundle path is not writable — see health banner above" : "")">
                         <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                                    StartIcon="@Icons.Material.Filled.CloudDownload"
-                                   OnClick="@(() => ExportBundleAsync(language))"
+                                   OnClick="@(() => ExportFromTmsToBundleAsync(language))"
                                    Disabled="@exportDisabled"
                                    aria-label="@($"Export {language.ToUpperInvariant()} translations to offline bundle")">
                             @if (isExporting)
@@ -493,7 +493,7 @@
         }
     }
 
-    private async Task ExportBundleAsync(string languageCode)
+    private async Task ExportFromTmsToBundleAsync(string languageCode)
     {
         _state.ExportingLanguages[languageCode] = true;
         StateHasChanged();
