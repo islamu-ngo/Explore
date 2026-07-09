@@ -1,0 +1,46 @@
+@* ABOUTME: Provides temporary tenant-console routed placeholders inside the shared AdminPortal shell.
+   ABOUTME: Keeps Phase 5b tenant routes routable without duplicating the control-plane layout or BFF. *@
+@page "/tenant/{TenantSlug}"
+@page "/tenant/{TenantSlug}/settings"
+@page "/tenant/{TenantSlug}/branding"
+@page "/tenant/{TenantSlug}/moderation"
+@page "/tenant/{TenantSlug}/users"
+@page "/tenant/{TenantSlug}/footer-navigation"
+@page "/tenant/{TenantSlug}/reports"
+@page "/tenant/{TenantSlug}/events"
+@page "/tenant/{TenantSlug}/policies"
+@attribute [Authorize]
+@inject NavigationManager Navigation
+
+<PageTitle>@Title - Tenant Console - Event AdminPortal</PageTitle>
+
+<div class="cp-page">
+    <header class="cp-page__header">
+        <span class="cp-kicker">Tenant Console</span>
+        <h1>@Title</h1>
+        <p>Tenant <strong>@TenantSlug</strong> is routed through the shared AdminPortal shell.</p>
+    </header>
+
+    <section class="cp-panel" aria-labelledby="tenant-console-placeholder-title">
+        <h2 id="tenant-console-placeholder-title">Tenant section placeholder</h2>
+        <p>This route is reserved for the Phase 5b tenant-scoped implementation. Service-backed controls will be added behind tenant authority and HAL affordances.</p>
+    </section>
+</div>
+
+@code {
+    [Parameter]
+    public string TenantSlug { get; set; } = string.Empty;
+
+    private string Title => Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/').Split('/').LastOrDefault() switch
+    {
+        "settings" => "Tenant settings",
+        "branding" => "Branding",
+        "moderation" => "Moderation queue",
+        "users" => "Users and members",
+        "footer-navigation" => "Footer and navigation",
+        "reports" => "Reports",
+        "events" => "Events and policies",
+        "policies" => "Policies",
+        _ => "Tenant overview"
+    };
+}

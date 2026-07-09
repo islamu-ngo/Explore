@@ -1,0 +1,248 @@
+/* ABOUTME: Scoped CSS for the shared control-plane tenant configuration page. */
+/* ABOUTME: Uses BEM namespace and CSS logical properties for RTL-safe layout. */
+
+.control-plane-tenant-config {
+    display: flex;
+    flex-direction: column;
+    gap: var(--control-plane-space-lg, 1.5rem);
+}
+
+.control-plane-tenant-config__message {
+    margin: 0;
+    color: var(--control-plane-color-text-muted, #666);
+    font-size: var(--control-plane-font-size-sm, 0.875rem);
+}
+
+.control-plane-tenant-config__assignment-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--control-plane-space-sm, 0.5rem);
+    margin: 0;
+}
+
+.control-plane-tenant-config__assignment-facts dt {
+    font-size: var(--control-plane-font-size-xs, 0.75rem);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--control-plane-color-text-muted, #888);
+}
+
+.control-plane-tenant-config__assignment-facts dd {
+    margin: 0;
+    font-weight: 500;
+}
+
+.control-plane-tenant-config__assignment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--control-plane-space-xs, 0.25rem);
+    margin-block-start: var(--control-plane-space-md, 1rem);
+}
+
+.control-plane-tenant-config__assignment-confirmation {
+    display: grid;
+    gap: var(--control-plane-space-sm, 0.5rem);
+    margin-block-start: var(--control-plane-space-md, 1rem);
+    padding: var(--control-plane-space-md, 1rem);
+    border: 1px solid var(--control-plane-color-border-active, #1976d2);
+    border-radius: var(--control-plane-radius, 8px);
+    background-color: var(--control-plane-color-surface-muted, #f8fafc);
+}
+
+.control-plane-tenant-config__assignment-title {
+    margin: 0;
+    font-size: var(--control-plane-font-size-base, 1rem);
+    font-weight: 700;
+}
+
+.control-plane-tenant-config__assignment-description {
+    margin: 0;
+    color: var(--control-plane-color-text-muted, #666);
+    font-size: var(--control-plane-font-size-sm, 0.875rem);
+}
+
+.control-plane-tenant-config__assignment-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--control-plane-space-sm, 0.5rem);
+    margin: 0;
+}
+
+.control-plane-tenant-config__assignment-preview dt {
+    font-size: var(--control-plane-font-size-xs, 0.75rem);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--control-plane-color-text-muted, #888);
+}
+
+.control-plane-tenant-config__assignment-preview dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+.control-plane-tenant-config__confirmation-label {
+    color: var(--control-plane-color-text-muted, #666);
+    font-size: var(--control-plane-font-size-sm, 0.875rem);
+}
+
+.control-plane-tenant-config__confirmation-input {
+    inline-size: min(100%, 28rem);
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--control-plane-color-border-active, #1976d2);
+    border-radius: var(--control-plane-radius-sm, 4px);
+    font-family: var(--control-plane-font-mono, monospace);
+    font-size: var(--control-plane-font-size-sm, 0.875rem);
+}
+
+.control-plane-tenant-config__settings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--control-plane-space-sm, 0.5rem);
+}
+
+.control-plane-tenant-config__setting {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--control-plane-space-sm, 0.5rem);
+    padding: var(--control-plane-space-sm, 0.5rem) var(--control-plane-space-md, 1rem);
+    border: 1px solid var(--control-plane-color-border, #e0e0e0);
+    border-radius: var(--control-plane-radius, 8px);
+    background-color: var(--control-plane-color-surface, #fff);
+}
+
+.control-plane-tenant-config__setting--sensitive {
+    border-color: var(--control-plane-color-border-sensitive, #ffd54f);
+    background-color: var(--control-plane-color-surface-sensitive, #fffde7);
+}
+
+.control-plane-tenant-config__setting-main {
+    flex: 1 1 280px;
+    min-width: 0;
+}
+
+.control-plane-tenant-config__setting-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--control-plane-space-sm, 0.5rem);
+    flex-wrap: wrap;
+}
+
+.control-plane-tenant-config__setting-key {
+    margin: 0;
+    font-size: var(--control-plane-font-size-base, 1rem);
+    font-weight: 600;
+}
+
+.control-plane-tenant-config__setting-key code {
+    font-family: var(--control-plane-font-mono, monospace);
+    font-size: var(--control-plane-font-size-sm, 0.875rem);
+}
+
+.control-plane-tenant-config__badge {
+    display: inline-block;
+    padding: 0.0625rem 0.5rem;
+    border-radius: 9999px;
+    font-size: var(--control-plane-font-size-xs, 0.75rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.control-plane-tenant-config__badge--locked {
+    background-color: var(--control-plane-color-warning-bg, #fff3e0);
+    color: var(--control-plane-color-warning, #e65100);
+}
+
+.control-plane-tenant-config__badge--unlocked {
+    background-color: var(--control-plane-color-success-bg, #e8f5e9);
+    color: var(--control-plane-color-success, #2e7d32);
+}
+
+.control-plane-tenant-config__setting-description {
+    margin: 0.25rem 0 0 0;
+    font-size: var(--control-plane-font-size-sm, 0.875rem);
+    color: var(--control-plane-color-text-muted, #666);
+}
+
+.control-plane-tenant-config__setting-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--control-plane-space-md, 1rem);
+    margin: 0.25rem 0 0 0;
+}
+
+.control-plane-tenant-config__setting-facts dt {
+    font-size: var(--control-plane-font-size-xs, 0.75rem);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--control-plane-color-text-muted, #888);
+}
+
+.control-plane-tenant-config__setting-facts dd {
+    margin: 0;
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.control-plane-tenant-config__edit-input {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--control-plane-color-border-active, #1976d2);
+    border-radius: var(--control-plane-radius-sm, 4px);
+    font-size: var(--control-plane-font-size-sm, 0.875rem);
+    min-width: 200px;
+}
+
+.control-plane-tenant-config__setting-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--control-plane-space-xs, 0.25rem);
+}
+
+.control-plane-tenant-config__quota-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--control-plane-font-size-sm, 0.875rem);
+}
+
+.control-plane-tenant-config__quota-table th {
+    text-align: start;
+    padding: 0.5rem;
+    border-bottom: 2px solid var(--control-plane-color-border, #e0e0e0);
+    font-weight: 600;
+}
+
+.control-plane-tenant-config__quota-table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--control-plane-color-border-light, #f0f0f0);
+}
+
+.control-plane-tenant-config__usage-bar {
+    position: relative;
+    width: 120px;
+    height: 8px;
+    background-color: var(--control-plane-color-border-light, #e0e0e0);
+    border-radius: 9999px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.control-plane-tenant-config__usage-fill {
+    height: 100%;
+    background-color: var(--control-plane-color-primary, #1976d2);
+    border-radius: 9999px;
+    transition: width 0.2s ease;
+}
+
+.control-plane-tenant-config__usage-fill--critical {
+    background-color: var(--control-plane-color-error, #d32f2f);
+}
+
+.control-plane-tenant-config__usage-label {
+    margin-inline-start: var(--control-plane-space-xs, 0.25rem);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}

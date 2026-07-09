@@ -1,0 +1,113 @@
+/* ABOUTME: Scoped BEM styles for the shared control-plane plan list page. */
+/* ABOUTME: Keeps plan inventory responsive with design tokens and logical CSS. */
+
+.control-plane-plans {
+    display: grid;
+    gap: var(--isl-space-6);
+}
+
+.control-plane-plans__message {
+    margin-block: 0;
+    color: var(--mud-palette-text-secondary);
+}
+
+.control-plane-plans__list {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.control-plane-plans__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--isl-space-4);
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-lg);
+    background: var(--isl-color-surface-elevated);
+}
+
+.control-plane-plans__item-main {
+    min-inline-size: 0;
+}
+
+.control-plane-plans__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--isl-space-3);
+    margin-block-end: var(--isl-space-3);
+}
+
+.control-plane-plans__name {
+    margin: 0;
+    color: var(--isl-color-text);
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+.control-plane-plans__badge {
+    padding: 0.1rem 0.5rem;
+    border-radius: var(--isl-radius-pill);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.control-plane-plans__badge--active {
+    background: var(--isl-color-success-soft);
+    color: var(--isl-color-success-strong);
+}
+
+.control-plane-plans__badge--inactive {
+    background: var(--isl-color-neutral-soft);
+    color: var(--mud-palette-text-secondary);
+}
+
+.control-plane-plans__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: var(--isl-space-3);
+    margin-block: 0;
+}
+
+.control-plane-plans__facts div {
+    min-inline-size: 0;
+}
+
+.control-plane-plans__facts dt {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.control-plane-plans__facts dd {
+    margin-inline-start: 0;
+    overflow-wrap: anywhere;
+    color: var(--isl-color-text);
+}
+
+.control-plane-plans__description {
+    margin-block: var(--isl-space-3) 0;
+    color: var(--mud-palette-text-secondary);
+}
+
+.control-plane-plans__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-content: start;
+    gap: var(--isl-space-2);
+}
+
+@container (max-width: 42rem) {
+    .control-plane-plans__item {
+        grid-template-columns: 1fr;
+    }
+
+    .control-plane-plans__actions {
+        justify-content: flex-start;
+    }
+}

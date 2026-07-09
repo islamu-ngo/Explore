@@ -1,0 +1,497 @@
+@* ABOUTME: Shared host-neutral tenant effective configuration page for the embedded Event control plane. *@
+@* ABOUTME: Shows resolved settings, lock sources, quota usage, and HAL-gated override/lock/unlock controls. *@
+
+@page "/admin/instance/tenants/{TenantId:guid}/configuration"
+@inject IControlPlaneTenantConfigurationService ConfigService
+@inject IControlPlanePlanService PlanService
+@inject NavigationManager Navigation
+
+<PageTitle>Tenant configuration</PageTitle>
+
+<div class="control-plane-tenant-config">
+    <ControlPlanePageHeader Title="Tenant configuration"
+                            Eyebrow="Instance console › Tenants"
+                            Description="@DescriptionLabel">
+        <ActionsContent>
+            <ControlPlaneActionButton Variant="Variant.Outlined"
+                                      AriaLabel="Back to tenants list"
+                                      OnClick="BackToTenants">Back to tenants</ControlPlaneActionButton>
+        </ActionsContent>
+    </ControlPlanePageHeader>
+
+    @if (_result is null)
+    {
+        <ControlPlanePanel Title="Loading configuration">
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        </ControlPlanePanel>
+    }
+    else if (!_result.IsSuccess)
+    {
+        <ControlPlanePanel Title="Control-plane API unavailable" Description="Tenant configuration is hidden until the host registers a control-plane API adapter.">
+            <p class="control-plane-tenant-config__message" role="alert">@ProblemMessage</p>
+        </ControlPlanePanel>
+    }
+    else if (_result.Value is { } config)
+    {
+        @if (config.PlanAssignment is { } assignment)
+        {
+            <ControlPlanePanel Title="Plan assignment" Description="The active tenant plan assignment applied by an instance admin.">
+                <dl class="control-plane-tenant-config__assignment-facts">
+                    <div>
+                        <dt>Plan</dt>
+                        <dd><code>@assignment.PlanKey</code></dd>
+                    </div>
+                    <div>
+                        <dt>Version</dt>
+                        <dd>v@assignment.VersionNumber</dd>
+                    </div>
+                    <div>
+                        <dt>Status</dt>
+                        <dd>@assignment.StatusCode</dd>
+                    </div>
+                    <div>
+                        <dt>Assigned</dt>
+                        <dd>@assignment.AssignedAt.ToString("yyyy-MM-dd HH:mm UTC")</dd>
+                    </div>
+                </dl>
+
+                @if (CanActOnAssignment)
+                {
+                    <div class="control-plane-tenant-config__assignment-actions" aria-label="Plan assignment actions">
+                        @if (CanApplyAssignment)
+                        {
+                            <ControlPlaneActionButton Size="Size.Small"
+                                                      Color="Color.Primary"
+                                                      Disabled="@IsBusy"
+                                                      AriaLabel="Apply tenant plan assignment"
+                                                      OnClick="@(() => StartAssignmentAction(AssignmentOperation.Apply, assignment))">Apply assignment</ControlPlaneActionButton>
+                        }
+                        @if (CanRollbackAssignment)
+                        {
+                            <ControlPlaneActionButton Size="Size.Small"
+                                                      Color="Color.Warning"
+                                                      Disabled="@IsBusy"
+                                                      AriaLabel="Rollback tenant plan assignment"
+                                                      OnClick="@(() => StartAssignmentAction(AssignmentOperation.Rollback, assignment))">Rollback assignment</ControlPlaneActionButton>
+                        }
+                    </div>
+                }
+
+                @if (_assignmentConfirmation is { } confirmation && confirmation.AssignmentId == assignment.Id)
+                {
+                    <form class="control-plane-tenant-config__assignment-confirmation"
+                          @onsubmit="ConfirmAssignmentAsync"
+                          @onsubmit:preventDefault="true">
+                        <h3 class="control-plane-tenant-config__assignment-title">Assignment preview</h3>
+                        <p class="control-plane-tenant-config__assignment-description">@confirmation.Description</p>
+                        <dl class="control-plane-tenant-config__assignment-preview">
+                            <div>
+                                <dt>Action</dt>
+                                <dd>@confirmation.ActionLabel</dd>
+                            </div>
+                            <div>
+                                <dt>Plan</dt>
+                                <dd><code>@confirmation.PlanKey</code></dd>
+                            </div>
+                            <div>
+                                <dt>Version</dt>
+                                <dd>v@confirmation.VersionNumber</dd>
+                            </div>
+                        </dl>
+                        <label class="control-plane-tenant-config__confirmation-label" for="assignment-confirmation">
+                            Type <code>@confirmation.RequiredConfirmation</code> to confirm.
+                        </label>
+                        <input id="assignment-confirmation"
+                               class="control-plane-tenant-config__confirmation-input"
+                               aria-label="Assignment confirmation"
+                               autocomplete="off"
+                               @bind="_assignmentConfirmationText" />
+                        <div class="control-plane-tenant-config__assignment-actions">
+                            <ControlPlaneActionButton ButtonType="ButtonType.Submit"
+                                                      Size="Size.Small"
+                                                      Color="@confirmation.ButtonColor"
+                                                      Disabled="@(!CanConfirmAssignment || IsBusy)"
+                                                      AriaLabel="Confirm tenant plan assignment action">@confirmation.ActionLabel</ControlPlaneActionButton>
+                            <ControlPlaneActionButton Size="Size.Small"
+                                                      Disabled="@IsBusy"
+                                                      AriaLabel="Cancel assignment action"
+                                                      OnClick="CancelAssignmentAction">Cancel</ControlPlaneActionButton>
+                        </div>
+                    </form>
+                }
+            </ControlPlanePanel>
+        }
+
+        @if (GroupedSettings.Any())
+        {
+            @foreach (var group in GroupedSettings)
+            {
+                <ControlPlanePanel Title="@group.Key" Description="@(group.Count() + " settings in this category.")">
+                    <div class="control-plane-tenant-config__settings" role="list">
+                        @foreach (var setting in group)
+                        {
+                            <article class="control-plane-tenant-config__setting@(setting.IsSensitive ? " control-plane-tenant-config__setting--sensitive" : "")"
+                                     role="listitem"
+                                     @key="setting.Key">
+                                <div class="control-plane-tenant-config__setting-main">
+                                    <div class="control-plane-tenant-config__setting-heading">
+                                        <h3 class="control-plane-tenant-config__setting-key"><code>@setting.Key</code></h3>
+                                        @if (setting.IsLocked)
+                                        {
+                                            <span class="control-plane-tenant-config__badge control-plane-tenant-config__badge--locked" aria-label="@($"Locked via {setting.LockSource ?? "instance"}")">Locked</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="control-plane-tenant-config__badge control-plane-tenant-config__badge--unlocked" aria-label="Unlocked">Unlocked</span>
+                                        }
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(setting.Description))
+                                    {
+                                        <p class="control-plane-tenant-config__setting-description">@setting.Description</p>
+                                    }
+
+                                    <dl class="control-plane-tenant-config__setting-facts">
+                                        <div>
+                                            <dt>Value</dt>
+                                            <dd>
+                                                @if (setting.IsSensitive)
+                                                {
+                                                    <span aria-label="Sensitive value hidden">••••••••</span>
+                                                }
+                                                else if (EditingKey == setting.Key)
+                                                {
+                                                    <input class="control-plane-tenant-config__edit-input"
+                                                           aria-label="@($"Edit value for {setting.Key}")"
+                                                           @bind="_editingValue" />
+                                                }
+                                                else
+                                                {
+                                                    @(string.IsNullOrWhiteSpace(setting.Value) ? "(empty)" : setting.Value)
+                                                }
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Source</dt>
+                                            <dd>@setting.ValueSource@(setting.LockSource is { } lockSource ? $" · lock: {lockSource}" : null)</dd>
+                                        </div>
+                                    </dl>
+                                </div>
+
+                                @if (CanActOnSetting(setting))
+                                {
+                                    <div class="control-plane-tenant-config__setting-actions" aria-label="@($"Actions for {setting.Key}")">
+                                        @if (EditingKey == setting.Key)
+                                        {
+                                            <ControlPlaneActionButton Size="Size.Small"
+                                                                      Color="Color.Primary"
+                                                                      Disabled="@IsBusy"
+                                                                      AriaLabel="@($"Save override for {setting.Key}")"
+                                                                      OnClick="@(() => SaveOverrideAsync(setting.Key))">Save</ControlPlaneActionButton>
+                                            <ControlPlaneActionButton Size="Size.Small"
+                                                                      Disabled="@IsBusy"
+                                                                      AriaLabel="Cancel edit"
+                                                                      OnClick="CancelEdit">Cancel</ControlPlaneActionButton>
+                                        }
+                                        else
+                                        {
+                                            @if (CanOverride && !setting.IsSensitive)
+                                            {
+                                                <ControlPlaneActionButton Size="Size.Small"
+                                                                          Disabled="@IsBusy"
+                                                                          AriaLabel="@($"Override {setting.Key}")"
+                                                                          OnClick="@(() => StartEdit(setting))">Override</ControlPlaneActionButton>
+                                            }
+                                            @if (CanLock && !setting.IsLocked && !setting.IsSensitive)
+                                            {
+                                                <ControlPlaneActionButton Size="Size.Small"
+                                                                          Color="Color.Warning"
+                                                                          Disabled="@IsBusy"
+                                                                          AriaLabel="@($"Lock {setting.Key}")"
+                                                                          OnClick="@(() => LockSettingAsync(setting.Key))">Lock</ControlPlaneActionButton>
+                                            }
+                                            @if (CanUnlock && setting.IsLocked)
+                                            {
+                                                <ControlPlaneActionButton Size="Size.Small"
+                                                                          Disabled="@IsBusy"
+                                                                          AriaLabel="@($"Unlock {setting.Key}")"
+                                                                          OnClick="@(() => UnlockSettingAsync(setting.Key))">Unlock</ControlPlaneActionButton>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </article>
+                        }
+                    </div>
+                </ControlPlanePanel>
+            }
+        }
+        else
+        {
+            <ControlPlanePanel Title="No settings" Description="The control-plane API did not return any effective settings for this tenant.">
+                <p class="control-plane-tenant-config__message">Settings will appear here once the tenant has configured or inherited values.</p>
+            </ControlPlanePanel>
+        }
+
+        @if (config.Quotas.Count > 0)
+        {
+            <ControlPlanePanel Title="Quota usage" Description="Current quota limits and consumption for this tenant.">
+                <table class="control-plane-tenant-config__quota-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Quota</th>
+                            <th scope="col">Used</th>
+                            <th scope="col">Limit</th>
+                            <th scope="col">Available</th>
+                            <th scope="col">Usage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var quota in config.Quotas)
+                        {
+                            <tr @key="quota.Key">
+                                <td><code>@quota.Key</code></td>
+                                <td>@FormatBytes(quota.Used)</td>
+                                <td>@FormatBytes(quota.Limit)</td>
+                                <td>@FormatBytes(quota.Available)</td>
+                                <td>
+                                    <div class="control-plane-tenant-config__usage-bar" role="meter" aria-valuenow="@UsagePercent(quota)" aria-valuemin="0" aria-valuemax="100" aria-label="@($"{quota.Key} usage")">
+                                        <div class="control-plane-tenant-config__usage-fill@(UsagePercent(quota) >= 90 ? " control-plane-tenant-config__usage-fill--critical" : "")" style="width:@(UsagePercent(quota))%"></div>
+                                    </div>
+                                    <span class="control-plane-tenant-config__usage-label">@UsagePercent(quota)%</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </ControlPlanePanel>
+        }
+    }
+</div>
+
+@if (_commandMessage is not null)
+{
+    <ControlPlanePanel Title="Configuration action result">
+        <p class="control-plane-tenant-config__message" role="@CommandMessageRole">@_commandMessage</p>
+    </ControlPlanePanel>
+}
+
+@code {
+    [Parameter] public Guid TenantId { get; set; }
+
+    private ControlPlaneResult<ControlPlaneTenantEffectiveConfiguration>? _result;
+    private bool _busy;
+    private string? _commandMessage;
+    private bool? _commandSucceeded;
+    private string? _editingKey;
+    private string _editingValue = string.Empty;
+    private AssignmentConfirmation? _assignmentConfirmation;
+    private string _assignmentConfirmationText = string.Empty;
+
+    private bool IsBusy => _busy;
+
+    private string? EditingKey => _editingKey;
+
+    private string DescriptionLabel => $"Tenant {TenantId}";
+
+    private string ProblemMessage => _result?.Problem?.Message ?? "The control-plane API adapter is not configured for this host.";
+
+    private string CommandMessageRole => _commandSucceeded == false ? "alert" : "status";
+
+    private bool CanOverride => ControlPlaneHal.HasLink(_result?.Value, ControlPlaneLinkRelations.Override);
+    private bool CanLock => ControlPlaneHal.HasLink(_result?.Value, ControlPlaneLinkRelations.Lock);
+    private bool CanUnlock => ControlPlaneHal.HasLink(_result?.Value, ControlPlaneLinkRelations.Unlock);
+    private bool CanApplyAssignment => ControlPlaneHal.HasLink(_result?.Value, ControlPlaneLinkRelations.Apply);
+    private bool CanRollbackAssignment => ControlPlaneHal.HasLink(_result?.Value, ControlPlaneLinkRelations.Rollback);
+    private bool CanActOnAssignment => CanApplyAssignment || CanRollbackAssignment;
+
+    private bool CanConfirmAssignment =>
+        _assignmentConfirmation is { } confirmation
+        && string.Equals(_assignmentConfirmationText.Trim(), confirmation.RequiredConfirmation, StringComparison.Ordinal);
+
+    private IEnumerable<IGrouping<string, ControlPlaneTenantEffectiveSetting>> GroupedSettings =>
+        (_result?.Value?.Settings ?? [])
+            .OrderBy(s => s.Category, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(s => s.Key, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(s => string.IsNullOrWhiteSpace(s.Category) ? "General" : s.Category);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _result = await ConfigService.GetEffectiveConfigurationAsync(TenantId);
+    }
+
+    private void StartEdit(ControlPlaneTenantEffectiveSetting setting)
+    {
+        CancelAssignmentAction();
+        _editingKey = setting.Key;
+        _editingValue = setting.Value ?? string.Empty;
+        _commandMessage = null;
+        _commandSucceeded = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editingKey = null;
+        _editingValue = string.Empty;
+    }
+
+    private void StartAssignmentAction(AssignmentOperation operation, ControlPlaneTenantPlanAssignment assignment)
+    {
+        CancelEdit();
+        _assignmentConfirmation = new AssignmentConfirmation(
+            operation,
+            assignment.Id,
+            assignment.PlanKey,
+            assignment.VersionNumber);
+        _assignmentConfirmationText = string.Empty;
+        _commandMessage = null;
+        _commandSucceeded = null;
+    }
+
+    private void CancelAssignmentAction()
+    {
+        _assignmentConfirmation = null;
+        _assignmentConfirmationText = string.Empty;
+    }
+
+    private async Task ConfirmAssignmentAsync()
+    {
+        if (_assignmentConfirmation is not { } confirmation || !CanConfirmAssignment)
+        {
+            return;
+        }
+
+        _busy = true;
+        _commandMessage = null;
+        _commandSucceeded = null;
+
+        var result = confirmation.Operation == AssignmentOperation.Apply
+            ? await PlanService.ApplyTenantPlanAssignmentAsync(TenantId, confirmation.AssignmentId)
+            : await PlanService.RollbackTenantPlanAssignmentAsync(TenantId, confirmation.AssignmentId);
+
+        _commandMessage = result.Message;
+        _commandSucceeded = result.Success;
+
+        if (result.Success)
+        {
+            CancelAssignmentAction();
+            _result = await ConfigService.GetEffectiveConfigurationAsync(TenantId);
+        }
+
+        _busy = false;
+    }
+
+    private async Task SaveOverrideAsync(string key)
+    {
+        _busy = true;
+        _commandMessage = null;
+        _commandSucceeded = null;
+
+        var result = await ConfigService.SetSettingAsync(TenantId, key, _editingValue);
+
+        _commandMessage = result.Message;
+        _commandSucceeded = result.Success;
+
+        if (result.Success)
+        {
+            CancelEdit();
+            _result = await ConfigService.GetEffectiveConfigurationAsync(TenantId);
+        }
+
+        _busy = false;
+    }
+
+    private async Task LockSettingAsync(string key)
+    {
+        _busy = true;
+        _commandMessage = null;
+        _commandSucceeded = null;
+
+        var result = await ConfigService.LockSettingAsync(TenantId, key);
+        _commandMessage = result.Message;
+        _commandSucceeded = result.Success;
+
+        if (result.Success)
+        {
+            _result = await ConfigService.GetEffectiveConfigurationAsync(TenantId);
+        }
+
+        _busy = false;
+    }
+
+    private async Task UnlockSettingAsync(string key)
+    {
+        _busy = true;
+        _commandMessage = null;
+        _commandSucceeded = null;
+
+        var result = await ConfigService.UnlockSettingAsync(TenantId, key);
+        _commandMessage = result.Message;
+        _commandSucceeded = result.Success;
+
+        if (result.Success)
+        {
+            _result = await ConfigService.GetEffectiveConfigurationAsync(TenantId);
+        }
+
+        _busy = false;
+    }
+
+    private void BackToTenants()
+    {
+        Navigation.NavigateTo(ControlPlaneRoutes.Tenants);
+    }
+
+    private static bool CanActOnSetting(ControlPlaneTenantEffectiveSetting setting) => !setting.IsSensitive;
+
+    private static int UsagePercent(ControlPlaneTenantQuotaUsage quota) =>
+        quota.Limit <= 0 ? 0 : Math.Min(100, (int)(quota.Used * 100 / quota.Limit));
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes <= 0)
+        {
+            return "0 B";
+        }
+
+        if (bytes >= 1024L * 1024 * 1024)
+        {
+            return $"{bytes / (1024.0 * 1024 * 1024):0.##} GiB";
+        }
+
+        if (bytes >= 1024 * 1024)
+        {
+            return $"{bytes / (1024.0 * 1024):0.##} MiB";
+        }
+
+        if (bytes >= 1024)
+        {
+            return $"{bytes / 1024.0:0.##} KiB";
+        }
+
+        return $"{bytes} B";
+    }
+
+    private enum AssignmentOperation
+    {
+        Apply,
+        Rollback
+    }
+
+    private sealed record AssignmentConfirmation(
+        AssignmentOperation Operation,
+        Guid AssignmentId,
+        string PlanKey,
+        int VersionNumber)
+    {
+        public string ActionLabel => Operation == AssignmentOperation.Apply ? "Apply" : "Rollback";
+
+        public string RequiredConfirmation => $"{ActionLabel.ToUpperInvariant()} {PlanKey}";
+
+        public Color ButtonColor => Operation == AssignmentOperation.Apply ? Color.Primary : Color.Warning;
+
+        public string Description => Operation == AssignmentOperation.Apply
+            ? "Applying copies this assigned plan version into the tenant setting store while preserving server-side lock and quota checks."
+            : "Rollback asks the API to restore the previous tenant plan assignment and then reloads the effective configuration.";
+    }
+}
