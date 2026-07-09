@@ -1,84 +1,10 @@
-@* ABOUTME: Explains notification preferences that are currently governed by instance policy. *@
-@* ABOUTME: Keeps disabled notification controls from implying client-only preference changes. *@
+@* ABOUTME: Hosts the current user's notification preference matrix inside account settings. *@
+@* ABOUTME: Delegates all save and mute affordance checks to the HAL-aware matrix component. *@
 
-@using MudBlazor
+@using Explore.Blazor.Client.Components.Notifications
 
-<div class="settings-section">
-    <!-- Section Header -->
-    <div class="settings-section-header mb-6">
-        <MudText Typo="Typo.h5" Style="font-weight: 700;">Notifications</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage how and when you receive notifications</MudText>
-    </div>
-
-    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Construction" Class="mb-6">
-        Notification preferences are governed by the current instance policy. The disabled controls below show planned notification areas without implying client-only preference changes.
-    </MudAlert>
-
-    <!-- Email Notifications Section -->
-    <div class="settings-form-section mb-8" style="opacity: 0.5; pointer-events: none;">
-        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Email Notifications</MudText>
-        <MudStack Spacing="3">
-            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                <div class="d-flex justify-space-between align-center">
-                    <div>
-                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Event Reminders</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Get reminders before events you're registered for</MudText>
-                    </div>
-                    <MudSwitch T="bool" Checked="true" Color="Color.Primary" Disabled="true" />
-                </div>
-            </MudPaper>
-
-            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                <div class="d-flex justify-space-between align-center">
-                    <div>
-                        <MudText Typo="Typo.body1" Style="font-weight: 500;">New Event Recommendations</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Receive suggestions for events based on your interests</MudText>
-                    </div>
-                    <MudSwitch T="bool" Checked="true" Color="Color.Primary" Disabled="true" />
-                </div>
-            </MudPaper>
-
-            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                <div class="d-flex justify-space-between align-center">
-                    <div>
-                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Organization Updates</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Get updates from organizations you follow</MudText>
-                    </div>
-                    <MudSwitch T="bool" Checked="true" Color="Color.Primary" Disabled="true" />
-                </div>
-            </MudPaper>
-        </MudStack>
-    </div>
-
-    <!-- Divider -->
-    <MudDivider Class="my-6" />
-
-    <!-- Push Notifications Section -->
-    <div class="settings-form-section" style="opacity: 0.5; pointer-events: none;">
-        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Push Notifications</MudText>
-        <MudStack Spacing="3">
-            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                <div class="d-flex justify-space-between align-center">
-                    <div>
-                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Browser Notifications</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Receive notifications in your browser</MudText>
-                    </div>
-                    <MudSwitch T="bool" Checked="true" Color="Color.Primary" Disabled="true" />
-                </div>
-            </MudPaper>
-
-            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                <div class="d-flex justify-space-between align-center">
-                    <div>
-                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Mobile App Notifications</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Receive notifications on your mobile device</MudText>
-                    </div>
-                    <MudSwitch T="bool" Checked="false" Color="Color.Primary" Disabled="true" />
-                </div>
-            </MudPaper>
-        </MudStack>
-    </div>
+<div class="settings-notifications">
+    <NotificationPreferenceMatrix Title="Notifications"
+                                  Description="Choose which notification categories can reach you by channel."
+                                  UnavailableMessage="Notification preference metadata is not available yet." />
 </div>
-
-@code {
-}

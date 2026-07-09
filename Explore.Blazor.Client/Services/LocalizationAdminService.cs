@@ -3,7 +3,6 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
-using Explore.Blazor.Client.Models.Admin;
 using Refit;
 
 namespace Explore.Blazor.Client.Services;
@@ -54,6 +53,24 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
         }
     }
 
+    public async Task<LocalizationAdminCommandResult> RotateTmsApiKeyAsync(string apiKey, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _api.RotateTmsApiKeyAsync(new RotateLocalizationTmsApiKeyDto
+            {
+                TmsApiKey = apiKey
+            }, ct);
+
+            return MapCommandResult(response, "TMS API key updated.", "TMS API key update failed.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[LOCALIZATION ADMIN] TMS API key rotation failed");
+            return new LocalizationAdminCommandResult(false, "TMS API key update failed: " + ex.Message);
+        }
+    }
+
     public async Task<LocalizationAdminCommandResult> ExportFromTmsAsync(string languageCode, CancellationToken ct = default)
     {
         try
@@ -68,7 +85,50 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
         }
     }
 
-    public async Task<LocalizationAdminCommandResult> UpdateGovernanceAsync(LocalizationGovernancePayload payload, CancellationToken ct = default)
+    public async Task<IReadOnlyDictionary<string, string>?> ExportBundleAsync(string languageCode, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _api.ExportBundleAsync(languageCode, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("[LOCALIZATION ADMIN] Static bundle export returned {Status} for {Language}", (int)response.StatusCode, languageCode);
+                return null;
+            }
+
+            return response.Content;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[LOCALIZATION ADMIN] Static bundle export failed for {Language}", languageCode);
+            return null;
+        }
+    }
+
+    public async Task<LocalizationAdminCommandResult> ImportBundleAsync(
+        string languageCode,
+        IReadOnlyDictionary<string, string> translations,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var request = new ImportLocalizationBundleDto
+            {
+                LanguageCode = languageCode,
+                Translations = translations.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+            };
+
+            var response = await _api.ImportBundleAsync(request, ct);
+            return MapCommandResult(response, $"Imported static bundle for '{languageCode}'.", $"Static bundle import failed for '{languageCode}'.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[LOCALIZATION ADMIN] Static bundle import failed for {Language}", languageCode);
+            return new LocalizationAdminCommandResult(false, "Static bundle import failed: " + ex.Message);
+        }
+    }
+
+    public async Task<LocalizationAdminCommandResult> UpdateGovernanceAsync(UpdateLocalizationGovernanceDto payload, CancellationToken ct = default)
     {
         try
         {

@@ -29,4 +29,22 @@ public interface INotificationService
     Task<bool> ArchiveAsync(Guid notificationId, bool archive = true);
 
     Task<bool> SnoozeAsync(Guid notificationId, DateTimeOffset snoozedUntil);
+
+    Task<Clients.HalResourceOfNotificationPreferenceMatrixDto?> GetCurrentUserPreferenceMatrixAsync();
+
+    Task<bool> SaveCurrentUserPreferenceMatrixAsync(IReadOnlyCollection<Clients.UpdateNotificationPreferenceCellDto> cells);
+
+    Task<bool> SetCurrentUserPreferenceMuteAsync(bool isMuted);
+
+    Task<Clients.HalResourceOfNotificationPreferenceMatrixDto?> GetOrganizationPreferenceMatrixAsync(Guid organizationId);
+
+    Task<bool> SaveOrganizationPreferenceMatrixAsync(Guid organizationId, IReadOnlyCollection<Clients.UpdateNotificationPreferenceCellDto> cells);
+
+    Task<bool> SetOrganizationPreferenceMuteAsync(Guid organizationId, bool isMuted);
+
+    Task<Clients.HalResourceOfNotificationPreferenceMatrixDto?> GetGroupPreferenceMatrixAsync(Guid groupId);
+
+    Task<bool> SaveGroupPreferenceMatrixAsync(Guid groupId, IReadOnlyCollection<Clients.UpdateNotificationPreferenceCellDto> cells);
+
+    Task<bool> SetGroupPreferenceMuteAsync(Guid groupId, bool isMuted);
 }

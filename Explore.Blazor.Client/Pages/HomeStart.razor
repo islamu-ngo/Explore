@@ -2,7 +2,12 @@
 @using Explore.Blazor.Client.Pages.Events.Components
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Pages.Landing
+@using Explore.Blazor.Client.Models
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
 @inject IStartupRoutingService StartupRoutingService
+@inject IInstanceOnboardingService InstanceOnboardingService
+@inject IUserService UserService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -32,6 +37,62 @@
     case RootState.ShowEvents:
         <EventList />
         break;
+    case RootState.ShowMultiTenantLogin:
+        <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center" Style="min-height: 75vh;">
+            <MudPaper Elevation="0" Class="pa-8 rounded-xl border-solid border-1 mud-border-lines-default text-center w-100" Style="background: var(--mud-palette-surface);">
+                @if (IsAuthenticatedButNoTenant)
+                {
+                    <div class="mb-6">
+                        <MudAvatar Color="Color.Error" Size="Size.Large" Variant="Variant.Outlined" Style="width: 80px; height: 80px; margin: 0 auto;">
+                            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" />
+                        </MudAvatar>
+                    </div>
+                    <MudText Typo="Typo.h5" Class="mb-2" Style="font-weight: 700; color: var(--mud-palette-error);">Access Denied</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+                        You have successfully signed in, but you are not registered as a member of any organization on this platform. Please contact your workspace administrator to get access.
+                    </MudText>
+                    
+                    <MudButton Elevation="0" Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Logout"
+                               OnClick="SignOut"
+                               Class="rounded-pill py-3">
+                        Sign Out
+                    </MudButton>
+                }
+                else
+                {
+                    <div class="mb-6">
+                        <MudAvatar Color="Color.Primary" Size="Size.Large" Variant="Variant.Outlined" Style="width: 80px; height: 80px; margin: 0 auto;">
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" />
+                        </MudAvatar>
+                    </div>
+                    <MudText Typo="Typo.h5" Class="mb-2" Style="font-weight: 700;">Sign in Required</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+                        Please sign in to access your community organization workspace.
+                    </MudText>
+                    
+                    <MudButton Elevation="0" Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Login"
+                               OnClick="RedirectToLogin"
+                               Class="rounded-pill py-3 mb-4">
+                        Continue to Login
+                    </MudButton>
+
+                    <MudDivider Class="my-4" />
+                    
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 500;">
+                        No sign up, only Sign in
+                    </MudText>
+                }
+            </MudPaper>
+        </MudContainer>
+        break;
     default:
         <MudContainer Class="pb-8">
             <MudSkeleton Width="200px" Height="20px" Class="mt-4 mb-4" />
@@ -51,8 +112,13 @@
     private RootState _state = RootState.Loading;
     private bool _isInitialized;
 
+    [CascadingParameter(Name = "TenantContext")]
+    private TenantContext? TenantContext { get; set; }
+
     [PersistentState]
     public RootState? PersistedRootState { get; set; }
+
+    public bool IsAuthenticatedButNoTenant { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,6 +140,57 @@
 
     private async Task ResolveRootAsync()
     {
+        var instanceStatus = await InstanceOnboardingService.GetStatusAsync();
+        if (instanceStatus == null)
+        {
+            _state = RootState.ShowEvents;
+            PersistedRootState = _state;
+            return;
+        }
+
+        if (!instanceStatus.IsCompleted)
+        {
+            Navigation.NavigateTo("/setup");
+            return;
+        }
+
+        if (instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var resolvedTenantId = TenantContext?.TenantId;
+            if (resolvedTenantId == null || resolvedTenantId == Guid.Empty)
+            {
+                if (instanceStatus.IsAuthenticated)
+                {
+                    var redirection = await UserService.ResolveUserTenantRedirectionAsync();
+                    if (redirection != null && !string.IsNullOrWhiteSpace(redirection.TenantSlug))
+                    {
+                        var tenantUrl = $"/t/{redirection.TenantSlug}/";
+                        Navigation.NavigateTo(tenantUrl, forceLoad: true);
+                        return;
+                    }
+                    else
+                    {
+                        if (instanceStatus.IsCurrentUserInstanceAdmin)
+                        {
+                            Navigation.NavigateTo("/admin/instance/settings");
+                            return;
+                        }
+
+                        IsAuthenticatedButNoTenant = true;
+                        _state = RootState.ShowMultiTenantLogin;
+                        PersistedRootState = _state;
+                        return;
+                    }
+                }
+                else
+                {
+                    _state = RootState.ShowMultiTenantLogin;
+                    PersistedRootState = _state;
+                    return;
+                }
+            }
+        }
+
         var decision = await StartupRoutingService.GetRootDecisionAsync();
         switch (decision)
         {
@@ -94,10 +211,21 @@
         }
     }
 
+    private void RedirectToLogin()
+    {
+        Navigation.NavigateTo("/auth/login?returnUrl=/", forceLoad: true);
+    }
+
+    private void SignOut()
+    {
+        Navigation.NavigateTo("/auth/signout", forceLoad: true);
+    }
+
     public enum RootState
     {
         Loading,
         ShowLanding,
-        ShowEvents
+        ShowEvents,
+        ShowMultiTenantLogin
     }
 }

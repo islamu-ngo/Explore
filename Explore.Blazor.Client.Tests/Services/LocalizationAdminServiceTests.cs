@@ -4,7 +4,6 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using Explore.Blazor.Client.Models.Admin;
 using Microsoft.Extensions.Logging.Abstractions;
 using Refit;
 
@@ -103,6 +102,39 @@ public sealed class LocalizationAdminServiceTests
     }
 
     [Test]
+    public async Task RotateTmsApiKeyAsync_WhenApiSucceeds_SendsGeneratedSecretPayload()
+    {
+        using var handler = new RecordingHandler(_ => CreateJsonResponse(new LocalizationAdminCommandResponse
+        {
+            Success = true,
+            Message = "Rotated."
+        }));
+        var service = CreateService(handler);
+
+        var result = await service.RotateTmsApiKeyAsync("secret-key");
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("Rotated.");
+        var request = handler.Requests.Single();
+        await Assert.That(request.Method).IsEqualTo(HttpMethod.Post);
+        await Assert.That(request.RequestUri!.PathAndQuery).IsEqualTo("/api/admin/localization/tms-api-key/rotate");
+        var body = handler.RequestBodies.Single();
+        await Assert.That(body).Contains("\"tmsApiKey\":\"secret-key\"");
+    }
+
+    [Test]
+    public async Task RotateTmsApiKeyAsync_WhenNetworkFails_ReturnsFailureWithoutThrowing()
+    {
+        using var handler = new RecordingHandler(_ => throw new HttpRequestException("network failed"));
+        var service = CreateService(handler);
+
+        var result = await service.RotateTmsApiKeyAsync("secret-key");
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("network failed");
+    }
+
+    [Test]
     public async Task ExportFromTmsAsync_WhenApiSucceeds_SendsLanguageQueryAndMapsResult()
     {
         using var handler = new RecordingHandler(_ => CreateJsonResponse(new LocalizationAdminCommandResponse
@@ -138,6 +170,49 @@ public sealed class LocalizationAdminServiceTests
     }
 
     [Test]
+    public async Task ExportBundleAsync_WhenApiSucceeds_ReturnsStaticBundle()
+    {
+        using var handler = new RecordingHandler(_ => CreateJsonResponse(new Dictionary<string, string>
+        {
+            ["ui.common.appName"] = "ISLAMU Event"
+        }));
+        var service = CreateService(handler);
+
+        var result = await service.ExportBundleAsync("en");
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!["ui.common.appName"]).IsEqualTo("ISLAMU Event");
+        await Assert.That(handler.Requests.Single().Method).IsEqualTo(HttpMethod.Get);
+        await Assert.That(handler.Requests.Single().RequestUri!.PathAndQuery)
+            .IsEqualTo("/api/admin/localization/bundle?languageCode=en");
+    }
+
+    [Test]
+    public async Task ImportBundleAsync_WhenApiSucceeds_SendsGeneratedBundlePayload()
+    {
+        using var handler = new RecordingHandler(_ => CreateJsonResponse(new LocalizationAdminCommandResponse
+        {
+            Success = true,
+            Message = "Imported."
+        }));
+        var service = CreateService(handler);
+
+        var result = await service.ImportBundleAsync("en", new Dictionary<string, string>
+        {
+            ["ui.common.appName"] = "ISLAMU Event"
+        });
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("Imported.");
+        var request = handler.Requests.Single();
+        await Assert.That(request.Method).IsEqualTo(HttpMethod.Post);
+        await Assert.That(request.RequestUri!.PathAndQuery).IsEqualTo("/api/admin/localization/bundle");
+        var body = handler.RequestBodies.Single();
+        await Assert.That(body).Contains("\"languageCode\":\"en\"");
+        await Assert.That(body).Contains("\"ui.common.appName\":\"ISLAMU Event\"");
+    }
+
+    [Test]
     public async Task UpdateGovernanceAsync_WhenApiSucceeds_SendsPutBodyAndMapsResult()
     {
         using var handler = new RecordingHandler(_ => CreateJsonResponse(new LocalizationAdminCommandResponse
@@ -146,7 +221,7 @@ public sealed class LocalizationAdminServiceTests
             Message = "Saved."
         }));
         var service = CreateService(handler);
-        var payload = new LocalizationGovernancePayload
+        var payload = new UpdateLocalizationGovernanceDto
         {
             DefaultLanguage = "fr",
             TmsProvider = "weblate",
@@ -177,7 +252,7 @@ public sealed class LocalizationAdminServiceTests
         using var handler = new RecordingHandler(_ => throw new HttpRequestException("network failed"));
         var service = CreateService(handler);
 
-        var result = await service.UpdateGovernanceAsync(new LocalizationGovernancePayload());
+        var result = await service.UpdateGovernanceAsync(new UpdateLocalizationGovernanceDto());
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("network failed");

@@ -48,6 +48,16 @@ public sealed class TranslationServiceTests : IDisposable
     }
 
     [Test]
+    public async Task T_WhenCacheIsEmpty_DoesNotFetchFromApi()
+    {
+        var result = _service.T("ui.nav.events", "Events");
+
+        await Assert.That(result).IsEqualTo("Events");
+        await _apiClient.DidNotReceiveWithAnyArgs()
+            .GetTranslationByLanguageAsync(default!, default, default, default);
+    }
+
+    [Test]
     public async Task GetTranslationsAsync_WhenLanguageIsAllowed_FetchesAndCachesCurrentLanguage()
     {
         var translations = new Dictionary<string, string>
@@ -64,6 +74,23 @@ public sealed class TranslationServiceTests : IDisposable
         await Assert.That(second).IsSameReferenceAs(first);
         await _apiClient.Received(1)
             .GetTranslationByLanguageAsync("en", null, null, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetTranslationsAsync_WhenLanguageHasCaseOrWhitespace_FetchesCanonicalApiLanguage()
+    {
+        var translations = new Dictionary<string, string>
+        {
+            ["ui.home.title"] = "Accueil"
+        };
+        _apiClient.GetTranslationByLanguageAsync("fr", null, null, Arg.Any<CancellationToken>())
+            .Returns(translations);
+
+        var result = await _service.GetTranslationsAsync(" FR ");
+
+        await Assert.That(result["ui.home.title"]).IsEqualTo("Accueil");
+        await _apiClient.Received(1)
+            .GetTranslationByLanguageAsync("fr", null, null, Arg.Any<CancellationToken>());
     }
 
     [Test]

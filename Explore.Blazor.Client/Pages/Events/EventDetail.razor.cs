@@ -1,6 +1,8 @@
 // ABOUTME: Event detail page logic for loading event data, sessions, and registration status.
 // ABOUTME: Manages dialogs and persistent state for SEO-friendly prerender hydration.
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.EventReporting;
@@ -18,8 +20,6 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using MudBlazor;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Explore.Blazor.Client.Pages.Events;
 

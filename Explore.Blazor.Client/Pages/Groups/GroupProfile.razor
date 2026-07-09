@@ -3,6 +3,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Notifications
 @using Explore.Blazor.Client.Components.Events
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Shared
@@ -99,6 +100,14 @@ else
                                           PastAriaLabelPrefix="Past group registration events on"
                                           EmptyTitle="No registered events"
                                           EmptyCopy="Events this group attends will appear here." />
+                </MudTabPanel>
+
+                <MudTabPanel Text="Notifications">
+                    <NotificationPreferenceMatrix Scope="group"
+                                                  GroupId="@Id"
+                                                  Title="Notification preferences"
+                                                  Description="Choose which group notifications can reach members by channel."
+                                                  UnavailableMessage="Notification preferences are available to authorized group managers." />
                 </MudTabPanel>
             </MudTabs>
         </MudContainer>

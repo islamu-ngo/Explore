@@ -97,18 +97,6 @@
                                    aria-label="Rotate TMS API key">
                             Rotate
                         </MudButton>
-                        @if (_state.TmsApiKeyConfigured)
-                        {
-                            <MudButton Elevation="0" Variant="Variant.Text"
-                                       Size="Size.Small"
-                                       Color="Color.Error"
-                                       StartIcon="@Icons.Material.Filled.DeleteForever"
-                                       OnClick="ClearApiKeyAsync"
-                                       Disabled="_state.IsSaving"
-                                       aria-label="Clear TMS API key">
-                                Clear
-                            </MudButton>
-                        }
                     </MudStack>
                     <MudTextField T="string"
                                   @bind-Value="_state.TmsApiKey"
@@ -458,7 +446,28 @@
         try
         {
             var result = await LocalizationAdminService.UpdateGovernanceAsync(_state.ToPayload());
-            Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+            if (!result.Success)
+            {
+                Snackbar.Add(result.Message, Severity.Error);
+                return;
+            }
+
+            if (!_state.IsOffline && !string.IsNullOrWhiteSpace(_state.TmsApiKey))
+            {
+                var rotationResult = await LocalizationAdminService.RotateTmsApiKeyAsync(_state.TmsApiKey);
+                if (!rotationResult.Success)
+                {
+                    Snackbar.Add(rotationResult.Message, Severity.Error);
+                    return;
+                }
+
+                _state.TmsApiKey = null;
+                _state.TmsApiKeyConfigured = true;
+                Snackbar.Add(rotationResult.Message, Severity.Success);
+                return;
+            }
+
+            Snackbar.Add(result.Message, Severity.Success);
         }
         finally
         {
@@ -502,28 +511,11 @@
 
     private async Task RotateApiKeyAsync()
     {
-        var result = await DialogService.ShowMessageBoxAsync(
+        await DialogService.ShowMessageBoxAsync(
             "Rotate API Key",
-            "Enter the new API key in the field below, then click Save to persist the change. Only the key will be updated.",
+            "Paste the new API key in the write-only field, then click Save. The key is sent once to the backend secret store and is never returned to the browser.",
             yesText: "OK",
             cancelText: "Cancel");
-        // Focus goes to the API key field; the admin types the new key, then hits Save.
-    }
-
-    private async Task ClearApiKeyAsync()
-    {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Clear API Key",
-            "This will remove the configured API key. The TMS provider will fall back to offline mode until a new key is set. Continue?",
-            yesText: "Clear Key",
-            cancelText: "Cancel");
-
-        if (confirmed == true)
-        {
-            _state.TmsApiKey = null;
-            _state.TmsApiKeyConfigured = false;
-            Snackbar.Add("API key cleared. Save to persist.", Severity.Info);
-        }
     }
 
     private async Task ResetToOfflineAsync()

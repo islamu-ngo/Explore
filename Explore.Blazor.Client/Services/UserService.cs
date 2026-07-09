@@ -36,6 +36,16 @@ public interface IUserService
     /// Deletes the current user's account.
     /// </summary>
     Task<bool> DeleteUserAsync();
+
+    /// <summary>
+    /// Resolves the appropriate tenant redirection target for the current authenticated user.
+    /// </summary>
+    Task<UserTenantRedirectionDto?> ResolveUserTenantRedirectionAsync();
+
+    /// <summary>
+    /// Updates the user's last active tenant setting in the database.
+    /// </summary>
+    Task<bool> UpdateUserLastActiveTenantAsync(Guid tenantId);
 }
 
 /// <summary>
@@ -209,6 +219,36 @@ public class UserService : IUserService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting user");
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<UserTenantRedirectionDto?> ResolveUserTenantRedirectionAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Resolving user tenant redirection");
+            return await _apiClient.ResolveUserTenantRedirectionAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resolving user tenant redirection");
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> UpdateUserLastActiveTenantAsync(Guid tenantId)
+    {
+        try
+        {
+            _logger.LogInformation("Updating user last active tenant to {TenantId}", tenantId);
+            return await _apiClient.UpdateUserLastActiveTenantAsync(tenantId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating user last active tenant");
             return false;
         }
     }

@@ -1,6 +1,7 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Models
 @inject IAuthStateService AuthStateService
+@inject IUserService UserService
 @inject ILogger<TenantContextProvider> Logger
 
 <CascadingValue Value="@_tenantContext" Name="TenantContext">
@@ -29,6 +30,11 @@
 
                 Logger.LogInformation("Tenant context initialized: TenantId={TenantId}, UserId={UserId}",
                     _tenantContext.TenantId, _tenantContext.UserId);
+
+                if (_tenantContext.TenantId.HasValue && _tenantContext.TenantId.Value != Guid.Empty)
+                {
+                    await UserService.UpdateUserLastActiveTenantAsync(_tenantContext.TenantId.Value);
+                }
             }
             else
             {

@@ -1,5 +1,5 @@
 // ABOUTME: View-model for the InstanceLocalizationSection — binds to form fields, tracks dirty/loading state.
-// ABOUTME: Maps to/from client-side LocalizationGovernancePayload + NSwag-generated LocalizationConfigDto.
+// ABOUTME: Maps to/from NSwag-generated localization configuration and governance DTOs.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Domain.Common.Localization;
@@ -46,62 +46,28 @@ public sealed class LocalizationAdminState
         TmsProjectId = config.TmsProjectId;
         TmsComponent = config.TmsComponent;
 
-        // Governance fields — read from AdditionalProperties until NSwag regeneration adds typed properties.
-        var extras = config.AdditionalProperties;
+        if (config.EnabledLanguages is { Count: > 0 })
+        {
+            EnabledLanguages = config.EnabledLanguages
+                .Where(CultureRegistry.Contains)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
 
-        if (TryGetJsonList(extras, "enabledLanguages") is { Count: > 0 } langs)
+        if (EnabledLanguages.Count == 0)
         {
-            EnabledLanguages = langs;
+            EnabledLanguages = [DefaultLanguage];
         }
-        if (TryGetJsonString(extras, "fallbackLanguage") is { Length: > 0 } fb && CultureRegistry.Contains(fb))
-        {
-            FallbackLanguage = fb;
-        }
-        ClientPickerEnabled = TryGetJsonBool(extras, "clientPickerEnabled") ?? true;
-        ForceOfflineMode = TryGetJsonBool(extras, "forceOfflineMode") ?? false;
-        TmsApiKeyConfigured = TryGetJsonBool(extras, "tmsApiKeyConfigured") ?? false;
+
+        FallbackLanguage = CultureRegistry.Contains(config.FallbackLanguage)
+            ? config.FallbackLanguage!
+            : DefaultLanguage;
+        ClientPickerEnabled = config.ClientPickerEnabled ?? true;
+        ForceOfflineMode = config.ForceOfflineMode ?? false;
+        TmsApiKeyConfigured = config.TmsApiKeyConfigured ?? false;
     }
 
-    private static string? TryGetJsonString(IDictionary<string, object>? dict, string key)
-    {
-        if (dict is null || !dict.TryGetValue(key, out var val)) return null;
-        if (val is System.Text.Json.JsonElement je && je.ValueKind == System.Text.Json.JsonValueKind.String)
-            return je.GetString();
-        return val?.ToString();
-    }
-
-    private static bool? TryGetJsonBool(IDictionary<string, object>? dict, string key)
-    {
-        if (dict is null || !dict.TryGetValue(key, out var val)) return null;
-        if (val is System.Text.Json.JsonElement je)
-        {
-            return je.ValueKind switch
-            {
-                System.Text.Json.JsonValueKind.True => true,
-                System.Text.Json.JsonValueKind.False => false,
-                _ => null
-            };
-        }
-        return val is bool b ? b : null;
-    }
-
-    private static List<string>? TryGetJsonList(IDictionary<string, object>? dict, string key)
-    {
-        if (dict is null || !dict.TryGetValue(key, out var val)) return null;
-        if (val is System.Text.Json.JsonElement je && je.ValueKind == System.Text.Json.JsonValueKind.Array)
-        {
-            var result = new List<string>();
-            foreach (var item in je.EnumerateArray())
-            {
-                if (item.ValueKind == System.Text.Json.JsonValueKind.String && item.GetString() is { } s)
-                    result.Add(s);
-            }
-            return result;
-        }
-        return null;
-    }
-
-    public LocalizationGovernancePayload ToPayload() => new()
+    public UpdateLocalizationGovernanceDto ToPayload() => new()
     {
         DefaultLanguage = DefaultLanguage,
         TmsProvider = TmsProvider,

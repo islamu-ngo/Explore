@@ -197,4 +197,205 @@ public class NotificationService : INotificationService
             return false;
         }
     }
+
+    public async Task<HalResourceOfNotificationPreferenceMatrixDto?> GetCurrentUserPreferenceMatrixAsync()
+    {
+        try
+        {
+            return await _apiClient.GetCurrentUserNotificationPreferencesAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error fetching notification preference matrix: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error fetching notification preference matrix");
+            return null;
+        }
+    }
+
+    public async Task<bool> SaveCurrentUserPreferenceMatrixAsync(IReadOnlyCollection<UpdateNotificationPreferenceCellDto> cells)
+    {
+        if (cells.Count == 0)
+            return true;
+
+        try
+        {
+            var response = await _apiClient.UpdateCurrentUserNotificationPreferencesAsync(new UpdateNotificationPreferenceMatrixDto
+            {
+                Cells = cells.ToList()
+            });
+
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error saving notification preference matrix: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error saving notification preference matrix");
+            return false;
+        }
+    }
+
+    public async Task<bool> SetCurrentUserPreferenceMuteAsync(bool isMuted)
+    {
+        try
+        {
+            var response = await _apiClient.SetCurrentUserNotificationPreferenceMuteAsync(new SetNotificationPreferenceMuteDto
+            {
+                IsMuted = isMuted
+            });
+
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error setting notification mute state: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error setting notification mute state");
+            return false;
+        }
+    }
+
+    public async Task<HalResourceOfNotificationPreferenceMatrixDto?> GetOrganizationPreferenceMatrixAsync(Guid organizationId)
+    {
+        try
+        {
+            return await _apiClient.GetOrganizationNotificationPreferencesAsync(organizationId);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error fetching organization notification preferences: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error fetching organization notification preferences");
+            return null;
+        }
+    }
+
+    public async Task<bool> SaveOrganizationPreferenceMatrixAsync(Guid organizationId, IReadOnlyCollection<UpdateNotificationPreferenceCellDto> cells)
+    {
+        if (cells.Count == 0)
+            return true;
+
+        try
+        {
+            var response = await _apiClient.UpdateOrganizationNotificationPreferencesAsync(organizationId, new UpdateNotificationPreferenceMatrixDto
+            {
+                Cells = cells.ToList()
+            });
+
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error saving organization notification preferences: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error saving organization notification preferences");
+            return false;
+        }
+    }
+
+    public async Task<bool> SetOrganizationPreferenceMuteAsync(Guid organizationId, bool isMuted)
+    {
+        try
+        {
+            var response = await _apiClient.SetOrganizationNotificationPreferenceMuteAsync(organizationId, new SetNotificationPreferenceMuteDto
+            {
+                IsMuted = isMuted
+            });
+
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error setting organization notification mute state: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error setting organization notification mute state");
+            return false;
+        }
+    }
+
+    public async Task<HalResourceOfNotificationPreferenceMatrixDto?> GetGroupPreferenceMatrixAsync(Guid groupId)
+    {
+        try
+        {
+            return await _apiClient.GetGroupNotificationPreferencesAsync(groupId);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error fetching group notification preferences: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error fetching group notification preferences");
+            return null;
+        }
+    }
+
+    public async Task<bool> SaveGroupPreferenceMatrixAsync(Guid groupId, IReadOnlyCollection<UpdateNotificationPreferenceCellDto> cells)
+    {
+        if (cells.Count == 0)
+            return true;
+
+        try
+        {
+            var response = await _apiClient.UpdateGroupNotificationPreferencesAsync(groupId, new UpdateNotificationPreferenceMatrixDto
+            {
+                Cells = cells.ToList()
+            });
+
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error saving group notification preferences: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error saving group notification preferences");
+            return false;
+        }
+    }
+
+    public async Task<bool> SetGroupPreferenceMuteAsync(Guid groupId, bool isMuted)
+    {
+        try
+        {
+            var response = await _apiClient.SetGroupNotificationPreferenceMuteAsync(groupId, new SetNotificationPreferenceMuteDto
+            {
+                IsMuted = isMuted
+            });
+
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error setting group notification mute state: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error setting group notification mute state");
+            return false;
+        }
+    }
 }

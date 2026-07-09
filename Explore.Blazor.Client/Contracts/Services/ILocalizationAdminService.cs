@@ -2,7 +2,6 @@
 // ABOUTME: Used by InstanceLocalizationSection; wraps the LocalizationAdminController endpoints.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Models.Admin;
 
 namespace Explore.Blazor.Client.Contracts.Services;
 
@@ -19,16 +18,25 @@ public interface ILocalizationAdminService
     /// <summary>Tests connectivity to the currently configured TMS provider.</summary>
     Task<LocalizationAdminCommandResult> TestConnectionAsync(CancellationToken ct = default);
 
+    Task<LocalizationAdminCommandResult> RotateTmsApiKeyAsync(string apiKey, CancellationToken ct = default);
+
     /// <summary>
     /// Pulls translations from the currently configured TMS for <paramref name="languageCode"/>,
     /// persists them as an on-disk bundle, and invalidates the resolver cache.
     /// </summary>
     Task<LocalizationAdminCommandResult> ExportFromTmsAsync(string languageCode, CancellationToken ct = default);
 
+    Task<IReadOnlyDictionary<string, string>?> ExportBundleAsync(string languageCode, CancellationToken ct = default);
+
+    Task<LocalizationAdminCommandResult> ImportBundleAsync(
+        string languageCode,
+        IReadOnlyDictionary<string, string> translations,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Writes the provided governance snapshot to SystemSettings and invalidates the config cache.
     /// </summary>
-    Task<LocalizationAdminCommandResult> UpdateGovernanceAsync(LocalizationGovernancePayload payload, CancellationToken ct = default);
+    Task<LocalizationAdminCommandResult> UpdateGovernanceAsync(UpdateLocalizationGovernanceDto payload, CancellationToken ct = default);
 
     /// <summary>
     /// Reports whether the offline bundle target directory is writable.

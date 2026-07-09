@@ -1,0 +1,338 @@
+@* ABOUTME: Reusable HAL-gated notification preference matrix for user, organization, and group scopes. *@
+@* ABOUTME: Loads scoped notification preferences and gates save/mute controls by server-provided links. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Notifications
+@using Explore.Blazor.Client.Helpers
+@using MudBlazor
+@inject INotificationService NotificationService
+@inject IAccessibilityAnnouncerService Announcer
+@inject ISnackbar Snackbar
+@inject ILogger<NotificationPreferenceMatrix> Logger
+
+<div class="notification-preference-matrix">
+    <div class="notification-preference-matrix__header">
+        <MudText Typo="Typo.h5" HtmlTag="h2" Class="notification-preference-matrix__title">@Title</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@Description</MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="notification-preference-matrix__state" role="status">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Loading notification preferences...</MudText>
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">
+            @_error
+        </MudAlert>
+    }
+    else if (_matrix is null || OrderedCategories.Count == 0 || OrderedChannels.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            @UnavailableMessage
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="4">
+            <AppCard Outlined="true" Class="notification-preference-matrix__mute-card">
+                <MudCardContent>
+                    <div class="notification-preference-matrix__mute-row">
+                        <div>
+                            <MudText Typo="Typo.subtitle1" HtmlTag="h3">Mute non-essential notifications</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Required account, billing, and trust-safety notifications still stay enabled.
+                            </MudText>
+                            @if (!string.IsNullOrWhiteSpace(_matrix.Mute?.LockReason))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Warning">@_matrix.Mute.LockReason</MudText>
+                            }
+                        </div>
+                        <MudSwitch T="bool"
+                                   Checked="@_mute"
+                                   CheckedChanged="OnMuteChangedAsync"
+                                   Color="Color.Primary"
+                                   Disabled="@(!CanSetMute)"
+                                   aria-label="Mute non-essential notifications" />
+                    </div>
+                </MudCardContent>
+            </AppCard>
+
+            <div class="notification-preference-matrix__table-wrap" role="region" aria-label="Notification preference matrix">
+                <table class="notification-preference-matrix__table">
+                    <caption class="sr-only">Notification preferences by category and channel</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Category</th>
+                            @foreach (var channel in OrderedChannels)
+                            {
+                                <th scope="col">@channel.Name</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var category in OrderedCategories)
+                        {
+                            <tr>
+                                <th scope="row">
+                                    <div class="notification-preference-matrix__category">
+                                        <span class="notification-preference-matrix__category-name">@category.Name</span>
+                                        @if (!string.IsNullOrWhiteSpace(category.Description))
+                                        {
+                                            <span class="notification-preference-matrix__category-description">@category.Description</span>
+                                        }
+                                        @if (category.IsRequired == true)
+                                        {
+                                            <span class="notification-preference-matrix__badge">Required</span>
+                                        }
+                                    </div>
+                                </th>
+                                @foreach (var channel in OrderedChannels)
+                                {
+                                    var cell = FindCell(category.Code, channel.Code);
+                                    <td>
+                                        @if (cell is null)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Unavailable</MudText>
+                                        }
+                                        else
+                                        {
+                                            <div class="notification-preference-matrix__cell">
+                                                <MudCheckBox T="bool"
+                                                             Checked="@GetValue(cell)"
+                                                             CheckedChanged="@((bool value) => SetValue(cell, value))"
+                                                             Color="Color.Primary"
+                                                             Disabled="@(!CanEdit(cell))"
+                                                             aria-label="@CellLabel(category, channel)" />
+                                                <span class="notification-preference-matrix__cell-source">@cell.EffectiveSourceScope</span>
+                                                @if (!string.IsNullOrWhiteSpace(cell.LockReason))
+                                                {
+                                                    <span class="notification-preference-matrix__cell-lock">@cell.LockReason</span>
+                                                }
+                                            </div>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="notification-preference-matrix__actions">
+                <AppButton OnClick="SaveAsync" Disabled="@(!CanSave)" StartIcon="@Icons.Material.Filled.Save">
+                    @if (_saving)
+                    {
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="notification-preference-matrix__button-progress" />
+                    }
+                    Save preferences
+                </AppButton>
+            </div>
+        </MudStack>
+    }
+</div>
+
+@code {
+    [Parameter] public string Scope { get; set; } = "user";
+    [Parameter] public Guid? OrganizationId { get; set; }
+    [Parameter] public Guid? GroupId { get; set; }
+    [Parameter] public string Title { get; set; } = "Notifications";
+    [Parameter] public string Description { get; set; } = "Choose which notification categories can reach this scope by channel.";
+    [Parameter] public string UnavailableMessage { get; set; } = "Notification preference metadata is not available yet.";
+
+    private HalResourceOfNotificationPreferenceMatrixDto? _matrix;
+    private readonly Dictionary<string, bool> _values = new(StringComparer.OrdinalIgnoreCase);
+    private bool _loading = true;
+    private bool _saving;
+    private bool _muting;
+    private bool _mute;
+    private string? _error;
+
+    private IReadOnlyList<Categories> OrderedCategories => _matrix?.Categories?
+        .OrderBy(category => category.SortOrder ?? 0)
+        .ThenBy(category => category.Name, StringComparer.OrdinalIgnoreCase)
+        .ToArray() ?? [];
+
+    private IReadOnlyList<Channels> OrderedChannels => _matrix?.Channels?
+        .OrderBy(channel => channel.SortOrder ?? 0)
+        .ThenBy(channel => channel.Name, StringComparer.OrdinalIgnoreCase)
+        .ToArray() ?? [];
+
+    private IReadOnlyList<Cells> Cells => _matrix?.Cells?.ToArray() ?? [];
+
+    private bool CanSave => _matrix?.HasLink("save") == true && !_saving && !_loading && Cells.Any(CanEdit);
+
+    private bool CanSetMute => _matrix?.HasLink("set-mute") == true &&
+                               _matrix.Mute?.IsEditable != false &&
+                               _matrix.Mute?.IsLocked != true &&
+                               !_muting;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _matrix = await LoadMatrixAsync();
+            _mute = _matrix?.Mute?.IsMuted ?? false;
+            RebuildValues();
+            await Announcer.AnnouncePoliteAsync("Notification preferences loaded.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading notification preference matrix");
+            _error = "Notification preferences could not be loaded.";
+            await Announcer.AnnounceAssertiveAsync(_error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task<HalResourceOfNotificationPreferenceMatrixDto?> LoadMatrixAsync()
+    {
+        return Scope.ToLowerInvariant() switch
+        {
+            "organization" when OrganizationId is { } organizationId => NotificationService.GetOrganizationPreferenceMatrixAsync(organizationId),
+            "group" when GroupId is { } groupId => NotificationService.GetGroupPreferenceMatrixAsync(groupId),
+            "user" => NotificationService.GetCurrentUserPreferenceMatrixAsync(),
+            _ => Task.FromResult<HalResourceOfNotificationPreferenceMatrixDto?>(null)
+        };
+    }
+
+    private void RebuildValues()
+    {
+        _values.Clear();
+        foreach (var cell in Cells)
+        {
+            _values[Key(cell)] = cell.IsEnabled ?? false;
+        }
+    }
+
+    private Cells? FindCell(string categoryCode, string channelCode)
+    {
+        return Cells.FirstOrDefault(cell =>
+            string.Equals(cell.CategoryCode, categoryCode, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(cell.ChannelCode, channelCode, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool CanEdit(Cells cell)
+    {
+        return _matrix?.HasLink("save") == true && cell.IsEditable == true;
+    }
+
+    private bool GetValue(Cells cell)
+    {
+        return _values.TryGetValue(Key(cell), out var value) ? value : cell.IsEnabled ?? false;
+    }
+
+    private void SetValue(Cells cell, bool value)
+    {
+        if (!CanEdit(cell))
+            return;
+
+        _values[Key(cell)] = value;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!CanSave)
+            return;
+
+        _saving = true;
+        try
+        {
+            var updates = Cells
+                .Where(CanEdit)
+                .Select(cell => new UpdateNotificationPreferenceCellDto
+                {
+                    CategoryCode = cell.CategoryCode,
+                    ChannelCode = cell.ChannelCode,
+                    IsEnabled = GetValue(cell)
+                })
+                .ToArray();
+
+            var saved = await SaveMatrixAsync(updates);
+            if (saved)
+            {
+                Snackbar.Add("Notification preferences saved.", Severity.Success);
+                await Announcer.AnnouncePoliteAsync("Notification preferences saved.");
+                await LoadAsync();
+            }
+            else
+            {
+                Snackbar.Add("Notification preferences could not be saved.", Severity.Error);
+                await Announcer.AnnounceAssertiveAsync("Notification preferences could not be saved.");
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private Task<bool> SaveMatrixAsync(IReadOnlyCollection<UpdateNotificationPreferenceCellDto> updates)
+    {
+        return Scope.ToLowerInvariant() switch
+        {
+            "organization" when OrganizationId is { } organizationId => NotificationService.SaveOrganizationPreferenceMatrixAsync(organizationId, updates),
+            "group" when GroupId is { } groupId => NotificationService.SaveGroupPreferenceMatrixAsync(groupId, updates),
+            "user" => NotificationService.SaveCurrentUserPreferenceMatrixAsync(updates),
+            _ => Task.FromResult(false)
+        };
+    }
+
+    private async Task OnMuteChangedAsync(bool isMuted)
+    {
+        if (!CanSetMute)
+            return;
+
+        _muting = true;
+        try
+        {
+            var saved = await SetMuteAsync(isMuted);
+            if (saved)
+            {
+                _mute = isMuted;
+                Snackbar.Add(isMuted ? "Non-essential notifications muted." : "Non-essential notifications unmuted.", Severity.Success);
+                await Announcer.AnnouncePoliteAsync(isMuted ? "Non-essential notifications muted." : "Non-essential notifications unmuted.");
+                await LoadAsync();
+            }
+            else
+            {
+                Snackbar.Add("Mute setting could not be saved.", Severity.Error);
+                await Announcer.AnnounceAssertiveAsync("Mute setting could not be saved.");
+            }
+        }
+        finally
+        {
+            _muting = false;
+        }
+    }
+
+    private Task<bool> SetMuteAsync(bool isMuted)
+    {
+        return Scope.ToLowerInvariant() switch
+        {
+            "organization" when OrganizationId is { } organizationId => NotificationService.SetOrganizationPreferenceMuteAsync(organizationId, isMuted),
+            "group" when GroupId is { } groupId => NotificationService.SetGroupPreferenceMuteAsync(groupId, isMuted),
+            "user" => NotificationService.SetCurrentUserPreferenceMuteAsync(isMuted),
+            _ => Task.FromResult(false)
+        };
+    }
+
+    private static string Key(Cells cell) => $"{cell.CategoryCode}::{cell.ChannelCode}";
+
+    private static string CellLabel(Categories category, Channels channel) => $"{category.Name} {channel.Name}";
+}
