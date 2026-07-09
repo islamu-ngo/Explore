@@ -34,10 +34,10 @@ public sealed class GetControlPlaneDeploymentModeRunbookQueryHandler(
     private static List<ControlPlaneDeploymentModeTargetOptionDto> BuildTargetOptions(
         DeploymentMode currentMode,
         int activeTenantCount) => currentMode switch
-    {
-        DeploymentMode.SingleTenant =>
-        [
-            new ControlPlaneDeploymentModeTargetOptionDto
+        {
+            DeploymentMode.SingleTenant =>
+            [
+                new ControlPlaneDeploymentModeTargetOptionDto
             {
                 TargetMode = DeploymentMode.MultiTenant.ToString(),
                 Label = "Switch to multi-tenant mode",
@@ -45,10 +45,10 @@ public sealed class GetControlPlaneDeploymentModeRunbookQueryHandler(
                 Allowed = true,
                 ConfirmationText = DeploymentMode.MultiTenant.ToString()
             }
-        ],
-        DeploymentMode.MultiTenant =>
-        [
-            new ControlPlaneDeploymentModeTargetOptionDto
+            ],
+            DeploymentMode.MultiTenant =>
+            [
+                new ControlPlaneDeploymentModeTargetOptionDto
             {
                 TargetMode = DeploymentMode.SingleTenant.ToString(),
                 Label = "Switch to single-tenant mode",
@@ -62,9 +62,9 @@ public sealed class GetControlPlaneDeploymentModeRunbookQueryHandler(
                     ? null
                     : "Suspend or archive extra active tenants before reverting to single-tenant mode."
             }
-        ],
-        _ => []
-    };
+            ],
+            _ => []
+        };
 
     private static List<ControlPlaneDeploymentModeRunbookStepDto> BuildSteps(
         DeploymentMode currentMode,

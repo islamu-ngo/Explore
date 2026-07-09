@@ -1,8 +1,8 @@
 // ABOUTME: Builds the Control Plane operations snapshot from existing operational services.
 // ABOUTME: Uses bounded counts and redacted provider status so instance operators see health without tenant payloads.
 
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.Onboarding;
@@ -363,10 +363,10 @@ public sealed class GetControlPlaneOperationsQueryHandler(
         string severity,
         string message,
         string remediation) => new()
-    {
-        Code = code,
-        Severity = severity,
-        Message = message,
-        Remediation = remediation
-    };
+        {
+            Code = code,
+            Severity = severity,
+            Message = message,
+            Remediation = remediation
+        };
 }

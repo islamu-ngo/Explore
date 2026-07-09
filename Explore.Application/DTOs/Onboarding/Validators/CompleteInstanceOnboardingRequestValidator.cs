@@ -1,8 +1,8 @@
 // ABOUTME: FluentValidation validator for the minimal onboarding request payload.
 // ABOUTME: Validates deployment mode and the Application-owned self-hosted site profile.
 
-using FluentValidation;
 using Explore.Domain.Enums;
+using FluentValidation;
 
 namespace Explore.Application.DTOs.Onboarding.Validators;
 

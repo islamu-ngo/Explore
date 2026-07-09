@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
@@ -19,6 +20,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
     private readonly IEventModerationRecordRepository _moderationRecordRepository = Substitute.For<IEventModerationRecordRepository>();
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationFanoutRunRepository _fanoutRunRepository = Substitute.For<INotificationFanoutRunRepository>();
+    private readonly INotificationPreferenceResolver _preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
     private readonly EventModerationNotificationFanoutService _service;
 
     public EventModerationNotificationFanoutServiceTests()
@@ -28,8 +30,12 @@ public sealed class EventModerationNotificationFanoutServiceTests
             _moderationRecordRepository,
             _notificationRepository,
             _fanoutRunRepository,
+            _preferenceResolver,
             CreateMetrics(),
             Substitute.For<ILogger<EventModerationNotificationFanoutService>>());
+
+        _preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => EnabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
     }
 
     [Test]
@@ -333,5 +339,18 @@ public sealed class EventModerationNotificationFanoutServiceTests
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
         return new BusinessMetrics(meterFactory);
+    }
+
+    private static NotificationPreferenceDecision EnabledDecision(NotificationPreferenceResolveRequest request)
+    {
+        return new NotificationPreferenceDecision(
+            request.CategoryCode,
+            request.ChannelCode,
+            true,
+            true,
+            true,
+            false,
+            "RequiredCategory",
+            "Required notification category");
     }
 }

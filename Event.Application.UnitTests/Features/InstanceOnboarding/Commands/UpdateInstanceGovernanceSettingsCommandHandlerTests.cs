@@ -242,6 +242,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             {
                 DefaultPublicHomePage = "EventList"
             },
+            AdminPortal = new AdminPortalSettingsDto(),
             RenderPolicy = new RenderPolicySettingsDto
             {
                 RenderPolicyVersion = 1,
@@ -282,6 +283,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             {
                 DefaultPublicHomePage = "EventList"
             },
+            AdminPortal = new AdminPortalSettingsDto(),
             RenderPolicy = new RenderPolicySettingsDto
             {
                 RenderPolicyVersion = 1,

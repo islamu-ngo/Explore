@@ -1,5 +1,5 @@
 // ABOUTME: Application contract for fixed Event lifecycle email automation intents.
-// ABOUTME: Produces EmailDispatchOutbox rows only; SMTP/RabbitMQ delivery stays in background infrastructure.
+// ABOUTME: Produces EmailDispatchOutbox rows and matching NotificationIntent audit drafts without transport dependencies.
 
 using Explore.Domain;
 
@@ -64,4 +64,8 @@ public interface IEventLifecycleEmailOutboxFactory
         string eventTitle,
         string notificationSubject,
         string notificationBody);
+
+    Task EnqueueNotificationIntentAsync(
+        EmailDispatchOutbox outbox,
+        CancellationToken cancellationToken);
 }

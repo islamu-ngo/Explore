@@ -1,13 +1,18 @@
 // ABOUTME: Creates fixed Event lifecycle email automation outbox rows.
-// ABOUTME: Centralizes source/kind/dedup fields so lifecycle handlers persist durable intent only.
+// ABOUTME: Centralizes source/kind/dedup fields and matching NotificationIntent audit ownership.
 
 using System.Net;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Notifications;
 using Explore.Domain;
+
+using ApplicationNotificationCategory = Explore.Application.Notifications.NotificationCategory;
 
 namespace Explore.Application.Services;
 
-public sealed class EventLifecycleEmailOutboxFactory : IEventLifecycleEmailOutboxFactory
+public sealed class EventLifecycleEmailOutboxFactory(INotificationOrchestrator notificationOrchestrator)
+    : IEventLifecycleEmailOutboxFactory
 {
     public const string RegistrationIntentSourceType = "event_registration_intent";
     public const string EventSourceType = "event";
@@ -170,6 +175,73 @@ public sealed class EventLifecycleEmailOutboxFactory : IEventLifecycleEmailOutbo
             PlainTextBody = ComposePlainText(body),
             HtmlBody = ComposeHtmlFromText(body),
             CorrelationId = $"{eventId}:organizer:{organizerUserId}"
+        };
+    }
+
+    public async Task EnqueueNotificationIntentAsync(
+        EmailDispatchOutbox outbox,
+        CancellationToken cancellationToken)
+    {
+        await notificationOrchestrator.EnqueueAsync(CreateNotificationIntentDraft(outbox), cancellationToken);
+    }
+
+    private static NotificationIntentDraft CreateNotificationIntentDraft(EmailDispatchOutbox outbox)
+    {
+        var templateKey = GetTemplateKey(outbox.Kind);
+        var sourceReference = GetSourceReference(outbox);
+
+        return new NotificationIntentDraft(
+            GetCategory(outbox),
+            TenantId: outbox.TenantId,
+            RecipientKind: GetRecipientKind(outbox),
+            TemplateKey: templateKey,
+            SafePayloadReference: sourceReference,
+            IsUserFacing: true,
+            IsIslamuInitiated: true,
+            DeduplicationKey: $"{sourceReference}:{templateKey.Replace('.', '-')}",
+            CorrelationId: string.IsNullOrWhiteSpace(outbox.CorrelationId)
+                ? outbox.PublishEventId.ToString()
+                : outbox.CorrelationId,
+            UserId: outbox.UserId,
+            EventId: outbox.EventId);
+    }
+
+    private static ApplicationNotificationCategory GetCategory(EmailDispatchOutbox outbox)
+    {
+        return outbox.Kind == EmailDispatchKind.OrganizerNotification
+            ? ApplicationNotificationCategory.EventLifecycle
+            : ApplicationNotificationCategory.RegistrationLifecycle;
+    }
+
+    private static string GetRecipientKind(EmailDispatchOutbox outbox)
+    {
+        return outbox.Kind == EmailDispatchKind.OrganizerNotification ? "Organizer" : "User";
+    }
+
+    private static string GetSourceReference(EmailDispatchOutbox outbox)
+    {
+        var sourceType = outbox.SourceType switch
+        {
+            RegistrationIntentSourceType => "event-registration-intent",
+            EventSourceType => "event",
+            _ => outbox.SourceType
+        };
+
+        return $"{sourceType}:{outbox.SourceId}";
+    }
+
+    private static string GetTemplateKey(EmailDispatchKind kind)
+    {
+        return kind switch
+        {
+            EmailDispatchKind.RegistrationConfirmation => "registration.confirmation",
+            EmailDispatchKind.RegistrationApproved => "registration.approved",
+            EmailDispatchKind.RegistrationRejected => "registration.rejected",
+            EmailDispatchKind.WaitlistPromoted => "registration.waitlist.promoted",
+            EmailDispatchKind.EventReminder => "event.reminder",
+            EmailDispatchKind.EventCancelled => "event.cancelled",
+            EmailDispatchKind.OrganizerNotification => "event.organizer.notification",
+            _ => throw new InvalidOperationException($"Unsupported event lifecycle email kind '{kind}'.")
         };
     }
 

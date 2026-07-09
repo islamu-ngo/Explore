@@ -43,6 +43,12 @@ public class UpdateTenantDelegationSettingsCommand : IRequest<BaseCommandRespons
     public required TenantDelegationSettingsDto Settings { get; set; }
 }
 
+public class UpdateAdminPortalSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+{
+    public Guid UserId { get; set; }
+    public required AdminPortalSettingsDto Settings { get; set; }
+}
+
 public class UpdateMcpGovernanceSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public Guid UserId { get; set; }

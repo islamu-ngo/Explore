@@ -4,6 +4,7 @@ using System.Reflection;
 using Explore.Application.Analytics;
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Scheduling;
@@ -65,6 +66,7 @@ public static class ApplicationServicesRegistration
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
         services.Configure<EventReportSubmissionOptions>(configuration.GetSection(EventReportSubmissionOptions.SectionName));
         services.Configure<NotificationRoutingOptions>(configuration.GetSection(NotificationRoutingOptions.SectionName));
+        services.Configure<AccountAuthorityLifecycleEmailOptions>(configuration.GetSection(AccountAuthorityLifecycleEmailOptions.SectionName));
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());
         services.AddScoped<IAiAssistantActorContextService, AiAssistantActorContextService>();
         services.AddScoped<IAiContextGateway, AiContextGateway>();
@@ -83,6 +85,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IInstanceBootstrapAuditLogger, InstanceBootstrapAuditLogger>();
         services.AddScoped<IAuthProviderConfigurationService, AuthProviderConfigurationService>();
         services.AddScoped<IKeycloakIdentityContractContributor, EventKeycloakIdentityContractContributor>();
+        services.AddScoped<IAccountAuthorityLifecycleEmailService, DefaultAccountAuthorityLifecycleEmailService>();
         services.AddScoped<IKeycloakRealmDesiredStateBuilder, KeycloakRealmDesiredStateBuilder>();
         services.AddScoped<IAnalyticsGovernanceService, AnalyticsGovernanceService>();
         services.AddScoped<IModuleCapabilityService, ModuleCapabilityService>();
@@ -110,6 +113,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<INotificationOwnershipResolver, DefaultNotificationOwnershipResolver>();
         services.AddScoped<INotificationOrchestrator, DefaultNotificationOrchestrator>();
         services.AddScoped<IEventLifecycleEmailOutboxFactory, EventLifecycleEmailOutboxFactory>();
+        services.AddScoped<IListmonkRegistrationSyncOutboxFactory, ListmonkRegistrationSyncOutboxFactory>();
+        services.AddScoped<IRegistrationNotificationDeliveryService, RegistrationNotificationDeliveryService>();
         services.AddScoped<IEventPublishedNotificationFanoutService, EventPublishedNotificationFanoutService>();
         services.AddScoped<IEventModerationNotificationFanoutService, EventModerationNotificationFanoutService>();
         services.AddScoped<IEventDetailsProjectionService, EventDetailsProjectionService>();

@@ -91,21 +91,22 @@ public sealed class GetControlPlaneDomainsQueryHandlerTests
         string instanceBaseDomain,
         bool allowCustomDomains,
         string adminHost = "") => new()
-    {
-        DeploymentMode = new DeploymentModeDto { Mode = DeploymentMode.MultiTenant },
-        Modules = new ModuleSettingsDto(),
-        EventPolicy = new EventPolicyDto(),
-        OrganizationPolicy = new OrganizationPolicyDto(),
-        Branding = new BrandingSettingsDto(),
-        Domains = new DomainSettingsDto
         {
-            InstanceBaseDomain = instanceBaseDomain,
-            AdminHost = adminHost,
-            AllowTenantCustomDomains = allowCustomDomains
-        },
-        TenantDelegation = new TenantDelegationSettingsDto(),
-        AiAssistant = new AiAssistantGovernanceSettingsDto(),
-        Mcp = new McpGovernanceSettingsDto(),
-        RenderPolicy = new RenderPolicySettingsDto()
-    };
+            DeploymentMode = new DeploymentModeDto { Mode = DeploymentMode.MultiTenant },
+            Modules = new ModuleSettingsDto(),
+            EventPolicy = new EventPolicyDto(),
+            OrganizationPolicy = new OrganizationPolicyDto(),
+            Branding = new BrandingSettingsDto(),
+            Domains = new DomainSettingsDto
+            {
+                InstanceBaseDomain = instanceBaseDomain,
+                AdminHost = adminHost,
+                AllowTenantCustomDomains = allowCustomDomains
+            },
+            TenantDelegation = new TenantDelegationSettingsDto(),
+            AdminPortal = new AdminPortalSettingsDto(),
+            AiAssistant = new AiAssistantGovernanceSettingsDto(),
+            Mcp = new McpGovernanceSettingsDto(),
+            RenderPolicy = new RenderPolicySettingsDto()
+        };
 }

@@ -32,7 +32,9 @@ public sealed class CreateEventRegistrationCommandHandlerTests
     private readonly IApprovalStatusRepository _approvalStatusRepository = Substitute.For<IApprovalStatusRepository>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly IContactShareConsentService _consentService = Substitute.For<IContactShareConsentService>();
+    private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationOrchestrator _notificationOrchestrator = Substitute.For<INotificationOrchestrator>();
+    private readonly IListmonkRegistrationSyncOutboxFactory _listmonkFactory = Substitute.For<IListmonkRegistrationSyncOutboxFactory>();
     private readonly CreateEventRegistrationCommandHandler _handler;
 
     public CreateEventRegistrationCommandHandlerTests()
@@ -63,6 +65,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                         draft.Category,
                         NotificationOwnership.IslamuEvent));
             });
+        _listmonkFactory.CreateForRegistrationAsync(
+                Arg.Any<Explore.Domain.Event>(),
+                Arg.Any<User>(),
+                Arg.Any<CreateEventRegistrationDto>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns((IntegrationSyncOutbox?)null);
 
         _handler = new CreateEventRegistrationCommandHandler(
             _intentRepository,
@@ -74,9 +83,28 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             _tenantContext,
             CreateBusinessMetrics(),
             _consentService,
-            new EventLifecycleEmailOutboxFactory(),
-            _notificationOrchestrator,
+            new EventLifecycleEmailOutboxFactory(_notificationOrchestrator),
+            _listmonkFactory,
+            new RegistrationNotificationDeliveryService(
+                _notificationRepository,
+                CreateNotificationPreferenceResolver()),
             Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>());
+    }
+
+    private static INotificationPreferenceResolver CreateNotificationPreferenceResolver()
+    {
+        var resolver = Substitute.For<INotificationPreferenceResolver>();
+        resolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => new NotificationPreferenceDecision(
+                call.Arg<NotificationPreferenceResolveRequest>().CategoryCode,
+                call.Arg<NotificationPreferenceResolveRequest>().ChannelCode,
+                true,
+                false,
+                false,
+                false,
+                "Default",
+                null));
+        return resolver;
     }
 
     [Test]
@@ -95,7 +123,8 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>())
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
             .Returns(callInfo =>
             {
                 var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
@@ -141,7 +170,161 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 && outbox.EventId == eventId
                 && outbox.UserId == userId
                 && outbox.RecipientEmail == "registrant@example.test"
-                && outbox.Status == EmailDispatchStatus.Pending));
+                && outbox.Status == EmailDispatchStatus.Pending),
+            Arg.Is<IntegrationSyncOutbox?>(outbox => outbox == null));
+        await _notificationRepository.DidNotReceive().Create(Arg.Any<Notification>());
+    }
+
+    [Test]
+    public async Task HandleWhenListmonkSyncOutboxFactoryReturnsRowPersistsItWithRegistration()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
+        command.EventRegistrationDto.ShareEmailWithOrganizer = true;
+        command.EventRegistrationDto.ConsentTextAcknowledged = "Share my email with the organizer.";
+        command.EventRegistrationDto.ConsentUiVersion = "v1";
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+
+        IntegrationSyncOutbox? capturedOutbox = null;
+        _listmonkFactory.CreateForRegistrationAsync(
+                Arg.Any<Explore.Domain.Event>(),
+                Arg.Any<User>(),
+                Arg.Any<CreateEventRegistrationDto>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo => new IntegrationSyncOutbox
+            {
+                TenantId = tenantId,
+                Tenant = null!,
+                Kind = IntegrationKind.Listmonk,
+                SourceType = "event_registration_intent",
+                SourceId = callInfo.ArgAt<Guid>(3),
+                EventId = eventId,
+                UserId = userId,
+                SubscriberEmail = "registrant@example.test",
+                SubscriberPayloadJson = "{}",
+                ListmonkListId = 42
+            });
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Do<IntegrationSyncOutbox?>(outbox => capturedOutbox = outbox))
+            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(capturedOutbox).IsNotNull();
+        await Assert.That(capturedOutbox!.TenantId).IsEqualTo(tenantId);
+        await Assert.That(capturedOutbox.Kind).IsEqualTo(IntegrationKind.Listmonk);
+        await Assert.That(capturedOutbox.SourceType).IsEqualTo("event_registration_intent");
+        await Assert.That(capturedOutbox.SourceId).IsEqualTo(result.Id);
+        await Assert.That(capturedOutbox.EventId).IsEqualTo(eventId);
+        await Assert.That(capturedOutbox.UserId).IsEqualTo(userId);
+        await Assert.That(capturedOutbox.SubscriberEmail).IsEqualTo("registrant@example.test");
+        await Assert.That(capturedOutbox.ListmonkListId).IsEqualTo(42);
+        await Assert.That(capturedOutbox.Status).IsEqualTo(IntegrationSyncStatus.Pending);
+    }
+
+    [Test]
+    public async Task HandleWhenEmailIsUnverifiedCreatesInAppFallbackWithoutEmailOutbox()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
+        SetupValidRegistration(tenantId, eventId, userId, sessionId, CreateUser(userId, emailVerified: false));
+        _notificationRepository.ExistsByDeduplicationKeyAsync(
+                tenantId,
+                userId,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        _notificationRepository.Create(Arg.Any<Notification>())
+            .Returns(callInfo => callInfo.ArgAt<Notification>(0));
+
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
+            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _intentRepository.Received(1).CreateWithChildrenAndCapacityAsync(
+            Arg.Any<EventRegistrationIntent>(),
+            Arg.Any<IReadOnlyList<EventRegistration>>(),
+            (int)ApprovalStatusEnum.Approved,
+            (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<CancellationToken>(),
+            Arg.Is<EmailDispatchOutbox?>(outbox => outbox == null),
+            Arg.Is<IntegrationSyncOutbox?>(outbox => outbox == null));
+        await _notificationOrchestrator.DidNotReceive().EnqueueAsync(
+            Arg.Any<NotificationIntentDraft>(),
+            Arg.Any<CancellationToken>());
+        await _notificationRepository.Received(1).Create(Arg.Is<Notification>(notification =>
+            notification.TenantId == tenantId
+            && notification.UserId == userId
+            && notification.NotificationTypeId == (int)NotificationTypeEnum.RegistrationConfirmed
+            && notification.NotificationEntityTypeId == (int)NotificationEntityTypeEnum.EventRegistration
+            && notification.EntityId == result.Id.ToString()
+            && notification.NotificationReasonId == (int)NotificationReasonEnum.System
+            && notification.DeduplicationKey == $"event-registration-intent:{result.Id:N}:registration-confirmation:fallback"));
+    }
+
+    [Test]
+    public async Task HandleWhenEmailIsMissingCreatesInAppFallbackWithoutFailingRegistration()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
+        SetupValidRegistration(tenantId, eventId, userId, sessionId, CreateUser(userId, email: string.Empty, emailVerified: null));
+        _notificationRepository.ExistsByDeduplicationKeyAsync(
+                tenantId,
+                userId,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        _notificationRepository.Create(Arg.Any<Notification>())
+            .Returns(callInfo => callInfo.ArgAt<Notification>(0));
+
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
+            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _intentRepository.Received(1).CreateWithChildrenAndCapacityAsync(
+            Arg.Any<EventRegistrationIntent>(),
+            Arg.Any<IReadOnlyList<EventRegistration>>(),
+            (int)ApprovalStatusEnum.Approved,
+            (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<CancellationToken>(),
+            Arg.Is<EmailDispatchOutbox?>(outbox => outbox == null),
+            Arg.Is<IntegrationSyncOutbox?>(outbox => outbox == null));
+        await _notificationRepository.Received(1).Create(Arg.Any<Notification>());
     }
 
     [Test]
@@ -160,7 +343,8 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>())
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
             .Returns(callInfo =>
             {
                 var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
@@ -194,7 +378,8 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>())
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
             .Returns(new EventRegistrationIntentCreationResult(
                 new EventRegistrationIntent
                 {
@@ -219,6 +404,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         await _notificationOrchestrator.DidNotReceive().EnqueueAsync(
             Arg.Any<NotificationIntentDraft>(),
             Arg.Any<CancellationToken>());
+        await _notificationRepository.DidNotReceive().Create(Arg.Any<Notification>());
         await _consentService.DidNotReceive().ProcessRegistrationConsent(
             Arg.Any<Guid>(),
             Arg.Any<Guid>(),
@@ -270,7 +456,8 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>())
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
             .Returns(callInfo =>
             {
                 var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
@@ -289,15 +476,16 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             (int)ApprovalStatusEnum.Approved,
             (int)ApprovalStatusEnum.Waitlisted,
             Arg.Any<CancellationToken>(),
-            Arg.Any<EmailDispatchOutbox?>());
+            Arg.Any<EmailDispatchOutbox?>(),
+            Arg.Any<IntegrationSyncOutbox?>());
     }
 
-    private void SetupValidRegistration(Guid tenantId, Guid eventId, Guid userId, Guid sessionId)
+    private void SetupValidRegistration(Guid tenantId, Guid eventId, Guid userId, Guid sessionId, User? user = null)
     {
         _tenantContext.TenantId.Returns(tenantId);
         _eventRepository.Exists(eventId).Returns(true);
         _userRepository.Exists(userId).Returns(true);
-        _userRepository.GetById(userId).Returns(CreateUser(userId));
+        _userRepository.GetById(userId).Returns(user ?? CreateUser(userId));
         _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId));
         _eventSessionRepository.GetSessionsByEvent(eventId).Returns([CreateEventSession(eventId, tenantId, sessionId)]);
         _intentRepository.FindExistingAsync(
@@ -359,15 +547,16 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         };
     }
 
-    private static User CreateUser(Guid userId)
+    private static User CreateUser(Guid userId, string email = "registrant@example.test", bool? emailVerified = true)
     {
         var user = new User
         {
             Id = userId,
+            EmailVerified = emailVerified,
             Pii = new UserPii
             {
                 UserId = userId,
-                Email = "registrant@example.test",
+                Email = email,
                 FirstName = "Test",
                 LastName = "Registrant"
             }

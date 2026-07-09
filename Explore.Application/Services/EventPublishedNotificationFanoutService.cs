@@ -15,6 +15,7 @@ public sealed class EventPublishedNotificationFanoutService(
     IActorSubscriptionRepository actorSubscriptionRepository,
     INotificationRepository notificationRepository,
     INotificationFanoutRunRepository fanoutRunRepository,
+    INotificationPreferenceResolver notificationPreferenceResolver,
     BusinessMetrics metrics,
     ILogger<EventPublishedNotificationFanoutService> logger) : IEventPublishedNotificationFanoutService
 {
@@ -93,6 +94,20 @@ public sealed class EventPublishedNotificationFanoutService(
                     if (alreadyCreated)
                     {
                         duplicateSkippedThisAttempt++;
+                        continue;
+                    }
+
+                    var preference = await notificationPreferenceResolver.ResolveAsync(
+                        new NotificationPreferenceResolveRequest(
+                            request.TenantId,
+                            subscription.SubscriberUserId,
+                            null,
+                            null,
+                            NotificationPreferenceCategoryCodes.EventUpdates,
+                            NotificationPreferenceChannelCodes.InApp),
+                        cancellationToken);
+                    if (!preference.IsEnabled)
+                    {
                         continue;
                     }
 

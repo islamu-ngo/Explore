@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
@@ -18,6 +19,7 @@ public sealed class EventPublishedNotificationFanoutServiceTests
     private readonly IActorSubscriptionRepository _actorSubscriptionRepository = Substitute.For<IActorSubscriptionRepository>();
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationFanoutRunRepository _fanoutRunRepository = Substitute.For<INotificationFanoutRunRepository>();
+    private readonly INotificationPreferenceResolver _preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
     private readonly EventPublishedNotificationFanoutService _service;
 
     public EventPublishedNotificationFanoutServiceTests()
@@ -26,8 +28,12 @@ public sealed class EventPublishedNotificationFanoutServiceTests
             _actorSubscriptionRepository,
             _notificationRepository,
             _fanoutRunRepository,
+            _preferenceResolver,
             CreateMetrics(),
             Substitute.For<ILogger<EventPublishedNotificationFanoutService>>());
+
+        _preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => EnabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
     }
 
     [Test]
@@ -128,6 +134,48 @@ public sealed class EventPublishedNotificationFanoutServiceTests
     }
 
     [Test]
+    public async Task FanoutAsync_WhenMatrixDisablesInAppEventUpdates_SkipsNotificationCreation()
+    {
+        var request = CreateRequest();
+        var subscription = CreateSubscription(request.TenantId, request.SourceActorId);
+
+        _fanoutRunRepository.GetBySourceAsync(
+                request.TenantId,
+                EventPublishedNotificationFanoutService.FanoutKind,
+                (int)NotificationEntityTypeEnum.Event,
+                request.EventId,
+                request.SourceActorId,
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns((NotificationFanoutRun?)null);
+        _fanoutRunRepository.Create(Arg.Any<NotificationFanoutRun>())
+            .Returns(call => call.Arg<NotificationFanoutRun>());
+        _actorSubscriptionRepository.GetActiveFanoutBatchAsync(
+                request.TenantId,
+                request.SourceActorId,
+                null,
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns([subscription]);
+        _notificationRepository.ExistsByDeduplicationKeyAsync(
+                request.TenantId,
+                subscription.SubscriberUserId,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        _preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => DisabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
+
+        await _service.FanoutAsync(request);
+
+        await _notificationRepository.DidNotReceive().Create(Arg.Any<Notification>());
+        await _fanoutRunRepository.Received().Update(Arg.Is<NotificationFanoutRun>(run =>
+            run.Status == EventPublishedNotificationFanoutService.StatusCompleted
+            && run.ProcessedCount == 1
+            && run.CreatedNotificationCount == 0));
+    }
+
+    [Test]
     public async Task FanoutAsync_WithCompletedRun_DoesNothing()
     {
         var request = CreateRequest();
@@ -216,5 +264,31 @@ public sealed class EventPublishedNotificationFanoutServiceTests
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
         return new BusinessMetrics(meterFactory);
+    }
+
+    private static NotificationPreferenceDecision EnabledDecision(NotificationPreferenceResolveRequest request)
+    {
+        return new NotificationPreferenceDecision(
+            request.CategoryCode,
+            request.ChannelCode,
+            true,
+            false,
+            false,
+            false,
+            "Default",
+            null);
+    }
+
+    private static NotificationPreferenceDecision DisabledDecision(NotificationPreferenceResolveRequest request)
+    {
+        return new NotificationPreferenceDecision(
+            request.CategoryCode,
+            request.ChannelCode,
+            false,
+            false,
+            false,
+            false,
+            "User",
+            null);
     }
 }

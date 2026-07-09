@@ -16,6 +16,7 @@ public sealed class EventModerationNotificationFanoutService(
     IEventModerationRecordRepository moderationRecordRepository,
     INotificationRepository notificationRepository,
     INotificationFanoutRunRepository fanoutRunRepository,
+    INotificationPreferenceResolver notificationPreferenceResolver,
     BusinessMetrics metrics,
     ILogger<EventModerationNotificationFanoutService> logger) : IEventModerationNotificationFanoutService
 {
@@ -90,13 +91,27 @@ public sealed class EventModerationNotificationFanoutService(
                         deduplicationKey,
                         cancellationToken);
 
-                    if (alreadyCreated)
-                    {
-                        duplicateSkippedThisAttempt++;
-                        continue;
-                    }
+                if (alreadyCreated)
+                {
+                    duplicateSkippedThisAttempt++;
+                    continue;
+                }
 
-                    await notificationRepository.Create(CreateLightModerationNotification(request, userId, deduplicationKey));
+                var preference = await notificationPreferenceResolver.ResolveAsync(
+                    new NotificationPreferenceResolveRequest(
+                        request.TenantId,
+                        userId,
+                        null,
+                        null,
+                        NotificationPreferenceCategoryCodes.TrustSafety,
+                        NotificationPreferenceChannelCodes.InApp),
+                    cancellationToken);
+                if (!preference.IsEnabled)
+                {
+                    continue;
+                }
+
+                await notificationRepository.Create(CreateLightModerationNotification(request, userId, deduplicationKey));
                     run.CreatedNotificationCount++;
                     createdThisAttempt++;
                 }
@@ -207,13 +222,27 @@ public sealed class EventModerationNotificationFanoutService(
                         deduplicationKey,
                         cancellationToken);
 
-                    if (alreadyCreated)
-                    {
-                        duplicateSkippedThisAttempt++;
-                        continue;
-                    }
+                if (alreadyCreated)
+                {
+                    duplicateSkippedThisAttempt++;
+                    continue;
+                }
 
-                    await notificationRepository.Create(CreateHeavyRedactionNotification(request, userId, deduplicationKey));
+                var preference = await notificationPreferenceResolver.ResolveAsync(
+                    new NotificationPreferenceResolveRequest(
+                        request.TenantId,
+                        userId,
+                        null,
+                        null,
+                        NotificationPreferenceCategoryCodes.TrustSafety,
+                        NotificationPreferenceChannelCodes.InApp),
+                    cancellationToken);
+                if (!preference.IsEnabled)
+                {
+                    continue;
+                }
+
+                await notificationRepository.Create(CreateHeavyRedactionNotification(request, userId, deduplicationKey));
                     run.CreatedNotificationCount++;
                     createdThisAttempt++;
                 }

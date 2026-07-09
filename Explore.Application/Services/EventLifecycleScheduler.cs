@@ -33,6 +33,8 @@ public sealed class EventLifecycleScheduler(
         outbox.NextAttemptAt = request.DispatchAt.UtcDateTime;
 
         var persisted = await emailDispatchOutboxRepository.Create(outbox, cancellationToken);
+        await emailOutboxFactory.EnqueueNotificationIntentAsync(persisted, cancellationToken);
+
         var pointer = new ScheduledEmailDispatchPointer(
             persisted.TenantId,
             persisted.PublishEventId,

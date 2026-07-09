@@ -381,6 +381,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             Branding = new BrandingSettingsDto(),
             Domains = new DomainSettingsDto(),
             TenantDelegation = new TenantDelegationSettingsDto(),
+            AdminPortal = new AdminPortalSettingsDto(),
             AiAssistant = new AiAssistantGovernanceSettingsDto(),
             Mcp = new McpGovernanceSettingsDto(),
             RenderPolicy = new RenderPolicySettingsDto
@@ -505,6 +506,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             Branding = new BrandingSettingsDto(),
             Domains = new DomainSettingsDto(),
             TenantDelegation = new TenantDelegationSettingsDto(),
+            AdminPortal = new AdminPortalSettingsDto(),
             AiAssistant = new AiAssistantGovernanceSettingsDto(),
             Mcp = new McpGovernanceSettingsDto(),
             RenderPolicy = new RenderPolicySettingsDto()
