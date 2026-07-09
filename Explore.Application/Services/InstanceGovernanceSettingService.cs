@@ -47,6 +47,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var branding = PopulateGroup<BrandingSettingGroup>(resolved);
         var domains = PopulateGroup<DomainSettingGroup>(resolved);
         var delegation = PopulateGroup<TenantDelegationSettingGroup>(resolved);
+        var adminPortal = PopulateGroup<AdminPortalSettingGroup>(resolved);
         var aiAssistant = PopulateGroup<AiAssistantSettingGroup>(resolved);
         var mcp = PopulateGroup<McpSettingGroup>(resolved);
         var renderPolicy = PopulateGroup<RenderPolicySettingGroup>(resolved);
@@ -104,6 +105,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
                 LockTenantCustomDomain = IsLocked(resolved, GovernanceSettingKeys.Domains.TenantCustomDomain)
             },
             TenantDelegation = MapTenantDelegationDto(delegation, routing, resolved, isMultiTenant),
+            AdminPortal = MapAdminPortalDto(adminPortal),
             AiAssistant = MapAiAssistantDto(aiAssistant, delegation),
             Mcp = MapMcpDto(mcp, delegation),
             RenderPolicy = rpDto
@@ -166,6 +168,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         settings.TenantDelegation.LockTenantAiAssistant = settings.AiAssistant.LockTenantAiAssistant;
 
         await ApplyTenantDelegationSettingsInternalAsync(settings.TenantDelegation, isMultiTenant, actorUserId);
+        await ApplyAdminPortalSettingsAsync(settings.AdminPortal, actorUserId);
         await ApplyAiAssistantGovernanceSettingsAsync(settings.AiAssistant, actorUserId);
         await ApplyMcpGovernanceSettingsAsync(settings.Mcp, actorUserId);
         await ApplyRenderPolicySettingsInternalAsync(settings.RenderPolicy, actorUserId);
@@ -289,6 +292,23 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     public async Task ApplyTenantDelegationSettingsAsync(TenantDelegationSettingsDto delegation, Guid? actorUserId)
         => await ApplyTenantDelegationSettingsInternalAsync(delegation, false, actorUserId);
 
+    public async Task ApplyAdminPortalSettingsAsync(AdminPortalSettingsDto adminPortal, Guid? actorUserId)
+    {
+        adminPortal.PublicUrl = NormalizeOptionalUrl(adminPortal.PublicUrl);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AdminPortal.Enabled,
+            SettingValueSerializer.Serialize(adminPortal.Enabled), actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AdminPortal.PublicUrl,
+            SettingValueSerializer.Serialize(adminPortal.PublicUrl), actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AdminPortal.AllowTenantAdminAccess,
+            SettingValueSerializer.Serialize(adminPortal.AllowTenantAdminAccess), actorUserId);
+    }
+
     public async Task ApplyAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto aiAssistant, Guid? actorUserId)
     {
         var provider = NormalizeAiAssistantProvider(aiAssistant.Provider, aiAssistant.Enabled);
@@ -394,6 +414,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             .Concat(BrandingSettingGroup.SettingKeys)
             .Concat(DomainSettingGroup.SettingKeys)
             .Concat(TenantDelegationSettingGroup.SettingKeys)
+            .Concat(AdminPortalSettingGroup.SettingKeys)
             .Concat(AiAssistantSettingGroup.SettingKeys)
             .Concat(McpSettingGroup.SettingKeys)
             .Concat(RenderPolicySettingGroup.SettingKeys)
@@ -451,6 +472,16 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             DecentralizationEnabled = decentralization,
             LockDecentralizationEnabled = IsLocked(resolved, GovernanceSettingKeys.Federation.DecentralizationEnabled),
             AuthorizationProvider = authProvider
+        };
+    }
+
+    private static AdminPortalSettingsDto MapAdminPortalDto(AdminPortalSettingGroup adminPortal)
+    {
+        return new AdminPortalSettingsDto
+        {
+            Enabled = adminPortal.Enabled,
+            PublicUrl = adminPortal.PublicUrl ?? string.Empty,
+            AllowTenantAdminAccess = adminPortal.AllowTenantAdminAccess
         };
     }
 

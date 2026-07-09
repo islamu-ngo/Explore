@@ -216,6 +216,49 @@ public class InstanceGovernanceSettingServiceTests
         await Assert.That(result.RenderPolicy.LockTenantAdminRenderPolicy).IsFalse();
     }
 
+    [Test]
+    public async Task ReadSettingsAsync_ReadsAdminPortalSettings()
+    {
+        var resolved = new List<ResolvedSetting>
+        {
+            CreateResolvedSetting(GovernanceSettingKeys.AdminPortal.Enabled, "false"),
+            CreateResolvedSetting(GovernanceSettingKeys.AdminPortal.PublicUrl, "\"https://admin.example.org\""),
+            CreateResolvedSetting(GovernanceSettingKeys.AdminPortal.AllowTenantAdminAccess, "true")
+        };
+        _resolver.ResolveBatchAsync(
+            Arg.Any<IEnumerable<string>>(),
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>())
+            .Returns(resolved);
+
+        var result = await _service.ReadSettingsAsync();
+
+        await Assert.That(result.AdminPortal.Enabled).IsFalse();
+        await Assert.That(result.AdminPortal.PublicUrl).IsEqualTo("https://admin.example.org");
+        await Assert.That(result.AdminPortal.AllowTenantAdminAccess).IsTrue();
+    }
+
+    [Test]
+    public async Task ApplyAdminPortalSettingsAsync_UpsertsNormalizedAdminPortalKeys()
+    {
+        _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
+        var actorId = Guid.NewGuid();
+
+        await _service.ApplyAdminPortalSettingsAsync(new AdminPortalSettingsDto
+        {
+            Enabled = false,
+            PublicUrl = "  https://admin.example.org  ",
+            AllowTenantAdminAccess = true
+        }, actorId);
+
+        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.AdminPortal.Enabled && s.Value == "false"));
+        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.AdminPortal.PublicUrl && s.Value == "\"https://admin.example.org\""));
+        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.AdminPortal.AllowTenantAdminAccess && s.Value == "true"));
+    }
+
 
     [Test]
     public async Task ReadSettingsAsync_ReadsMcpGovernanceSettings()
@@ -332,6 +375,7 @@ public class InstanceGovernanceSettingServiceTests
             {
                 DefaultPublicHomePage = "EventList"
             },
+            AdminPortal = new AdminPortalSettingsDto(),
             RenderPolicy = new RenderPolicySettingsDto
             {
                 RenderPolicyVersion = 1,

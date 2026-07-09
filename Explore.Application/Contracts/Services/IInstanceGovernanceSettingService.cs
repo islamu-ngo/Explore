@@ -22,9 +22,8 @@ public interface IInstanceGovernanceSettingService
     Task ApplyBrandingSettingsAsync(BrandingSettingsDto branding, Guid? actorUserId);
 
     Task ApplyDomainSettingsAsync(DomainSettingsDto domains, Guid? actorUserId);
-
     Task ApplyTenantDelegationSettingsAsync(TenantDelegationSettingsDto delegation, Guid? actorUserId);
-
+    Task ApplyAdminPortalSettingsAsync(AdminPortalSettingsDto adminPortal, Guid? actorUserId);
     Task ApplyAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto aiAssistant, Guid? actorUserId);
 
     Task ApplyMcpGovernanceSettingsAsync(McpGovernanceSettingsDto mcp, Guid? actorUserId);
