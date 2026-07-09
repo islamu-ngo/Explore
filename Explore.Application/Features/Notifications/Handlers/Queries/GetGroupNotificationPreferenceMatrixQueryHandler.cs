@@ -1,0 +1,61 @@
+// ABOUTME: Handles group-scoped notification preference matrix projection.
+// ABOUTME: Includes the group's organization context so inherited organization rules resolve correctly.
+
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Notification;
+using Explore.Application.Features.Notifications.Requests.Queries;
+using MediatR;
+
+namespace Explore.Application.Features.Notifications.Handlers.Queries;
+
+public sealed class GetGroupNotificationPreferenceMatrixQueryHandler(
+    INotificationChannelPreferenceRepository preferenceRepository,
+    INotificationPreferenceResolver resolver,
+    IGroupRepository groupRepository,
+    ITenantContext tenantContext,
+    ICurrentUserService currentUserService)
+    : IRequestHandler<GetGroupNotificationPreferenceMatrixQuery, NotificationPreferenceMatrixDto>
+{
+    public async Task<NotificationPreferenceMatrixDto> Handle(
+        GetGroupNotificationPreferenceMatrixQuery request,
+        CancellationToken cancellationToken)
+    {
+        var userId = currentUserService.UserId;
+        if (!userId.HasValue)
+        {
+            return new NotificationPreferenceMatrixDto
+            {
+                TenantId = tenantContext.TenantId,
+                GroupId = request.GroupId,
+                Scope = "group"
+            };
+        }
+
+        var group = await groupRepository.GetById(request.GroupId);
+        var organizationId = group?.ParentOrganizationId;
+        var categories = await preferenceRepository.ListCategoriesAsync(cancellationToken);
+        var channels = await preferenceRepository.ListChannelsAsync(cancellationToken);
+        var resolveRequests = categories
+            .SelectMany(category => channels.Select(channel => new NotificationPreferenceResolveRequest(
+                tenantContext.TenantId,
+                userId.Value,
+                organizationId,
+                request.GroupId,
+                category.MasterCode,
+                channel.MasterCode)))
+            .ToArray();
+
+        var decisions = await resolver.ResolveBatchAsync(resolveRequests, cancellationToken);
+        return NotificationPreferenceMatrixMapper.Map(
+            tenantContext.TenantId,
+            userId.Value,
+            "group",
+            organizationId,
+            request.GroupId,
+            categories,
+            channels,
+            decisions);
+    }
+}
