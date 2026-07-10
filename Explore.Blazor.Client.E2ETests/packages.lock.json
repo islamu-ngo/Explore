@@ -931,6 +931,11 @@
           "Newtonsoft.Json": "13.0.3"
         }
       },
+      "Superpower": {
+        "type": "Transitive",
+        "resolved": "3.0.0",
+        "contentHash": "bjKbAYWePooCAvPxQq+3KnmcLfRggMyRoXmtBMlmCG71bdwBHrO6rmRJ2DRIodg5aztNcxeZXBUVWT+H+MZUhw=="
+      },
       "System.CodeDom": {
         "type": "Transitive",
         "resolved": "6.0.0",
@@ -1047,6 +1052,7 @@
           "Aspire.Hosting.PostgreSQL": "[13.4.6, )",
           "Aspire.Hosting.RabbitMQ": "[13.4.6, )",
           "Aspire.Hosting.Redis": "[13.4.6, )",
+          "DotNetEnv": "[3.2.0, )",
           "Infisical.Sdk": "[3.0.3, )",
           "MessagePack": "[2.5.302, )"
         }
@@ -1256,6 +1262,17 @@
         "contentHash": "OC+1neAPM4oCCqQj3g2GJ2shziNNhOkxmNB9cVS8jtx4JbgmRzLcUOxB9Tsz6cVPHugdkHgCaCrTjjSI0Z5sCQ==",
         "dependencies": {
           "Microsoft.Extensions.Options": "8.0.0"
+        }
+      },
+      "DotNetEnv": {
+        "type": "CentralTransitive",
+        "requested": "[3.2.0, )",
+        "resolved": "3.2.0",
+        "contentHash": "2q+PD+aJcRW9QuRcIv4F8WbvEDxI6cwxzZJec2i45cBY4cAKCAoW4ZPkApJ7H82wr6Yfmxx/0kb1nLnRmZrGZA==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration": "1.1.2",
+          "Microsoft.Extensions.Configuration.Abstractions": "1.1.2",
+          "Superpower": "3.0.0"
         }
       },
       "EFCore.NamingConventions": {

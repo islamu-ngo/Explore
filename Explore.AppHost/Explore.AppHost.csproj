@@ -14,6 +14,7 @@
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Aspire.Hosting.RabbitMQ" />
     <PackageReference Include="Aspire.Hosting.Redis" />
+    <PackageReference Include="DotNetEnv" />
     <PackageReference Include="Infisical.Sdk" />
     <PackageReference Include="MessagePack" />
     <PackageReference Include="SonarAnalyzer.CSharp">

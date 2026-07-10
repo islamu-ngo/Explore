@@ -4,31 +4,20 @@
 using System.Net.Sockets;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using DotNetEnv;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-const string LocalCerbosAdminUsername = "cerbos";
-const string LocalCerbosAdminPassword = "cerbos";
 const string LocalCerbosAdminPasswordHash =
     "JDJiJDEwJGxUWWVjblZpTlRseTZvUkhQS3Y5U2VKZGpwZzdqWkFRcGV2S2Ezbkxpbk55bDF5U1dEZVkyCg==";
-const string LocalOspreyImage = "ghcr.io/roostorg/osprey/osprey-coordinator";
-const string LocalOspreyTag = "latest";
-const string LocalMailpitImage = "axllent/mailpit";
-const string LocalMailpitTag = "latest";
-const string LocalSvixJwtSecret = "local-dev-svix-jwt-secret-change-me";
-const string LocalSvixAuthToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJvcmdfMjNyYjhZZEdxTVQwcUl6cGdHd2RYZkhpck11In0.8DdxojyqoHnAeZBEL6M1Tcf5i5hnbAmezaRlPxuBXp8";
-const string LocalSvixOperationalWebhookSecret = "whsec_bG9jYWwtZGV2LXN2aXgtb3BlcmF0aW9uYWwtc2VjcmV0";
-const string LocalCoopApiKey = "local-dev-coop-api-key";
-const string LocalCoopWebhookSecret = "local-dev-coop-webhook-secret";
-const string LocalWeblateImage = "weblate/weblate";
-const string LocalWeblateTag = "latest";
-const string LocalWeblateAdminPassword = "admin";
 
+var repositoryRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+var dotenvPath = Path.Combine(repositoryRoot, ".env");
+if (File.Exists(dotenvPath))
+    Env.NoClobber().Load(dotenvPath);
 var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
-var repositoryRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
 var appHostConfigRoot = Path.Combine(repositoryRoot, "Explore.AppHost", "Config");
 var cerbosPolicyPackagePath = Path.Combine(repositoryRoot, "cerbos", "policies");
 var cerbosConfigPath = Path.Combine(repositoryRoot, "cerbos", "config", ".cerbos.yaml");
@@ -83,8 +72,6 @@ if (runMode == AspireRunMode.FullLocal)
         cerbosConfigPath,
         cerbosPolicyPackagePath,
         cerbosSchemaPath,
-        LocalCerbosAdminUsername,
-        LocalCerbosAdminPasswordHash,
         keycloakRealmExportPath,
         keycloakInitScriptPath,
         mailpit,
@@ -110,7 +97,7 @@ if (database is not null)
         .WithReference(database, connectionName: "DefaultConnection")
         .WaitFor(database);
 
-    migrations = ConfigureLocalMailpitSmtp(migrations, mailpit);
+    migrations = ConfigureLocalMailpitSmtp(migrations, mailpit, builder.Configuration);
 }
 
 var exploreAPI = WithProfileSecretMode(
@@ -128,7 +115,23 @@ var exploreAPI = WithProfileSecretMode(
     .WithEnvironment("StorageReconciliation__DryRun", "true")
     .WaitFor(mailpit);
 
-exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI, mailpit);
+exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI, mailpit, builder.Configuration);
+
+var vapidPublicKey = builder.Configuration["VAPID_PUBLIC_KEY"];
+var vapidPrivateKey = builder.Configuration["VAPID_PRIVATE_KEY"];
+var vapidSubject = builder.Configuration["VAPID_SUBJECT"];
+if (!string.IsNullOrWhiteSpace(vapidPublicKey))
+    exploreAPI = exploreAPI.WithEnvironment("VAPID_PUBLIC_KEY", vapidPublicKey);
+if (!string.IsNullOrWhiteSpace(vapidSubject))
+    exploreAPI = exploreAPI.WithEnvironment("VAPID_SUBJECT", vapidSubject);
+if (!string.IsNullOrWhiteSpace(vapidPrivateKey))
+{
+    var vapidPrivateKeyParameter = builder.AddParameterFromConfiguration(
+        "vapid-private-key",
+        "VAPID_PRIVATE_KEY",
+        secret: true);
+    exploreAPI = exploreAPI.WithEnvironment("VAPID_PRIVATE_KEY", vapidPrivateKeyParameter);
+}
 
 if (migrations is not null)
 {
@@ -168,9 +171,7 @@ if (fullLocalResources is not null)
     exploreAPI = ConfigureFullLocalApi(
             exploreAPI,
             fullLocalResources,
-            LocalCerbosAdminUsername,
-            LocalCerbosAdminPassword,
-            LocalCerbosAdminPasswordHash)
+            builder.Configuration)
         .WaitFor(fullLocalResources.Keycloak)
         .WaitFor(fullLocalResources.Cerbos)
         .WaitFor(fullLocalResources.Minio);
@@ -212,7 +213,7 @@ if (cache is not null)
 
 if (fullLocalResources is not null)
 {
-    exploreBlazor = ConfigureFullLocalBlazor(exploreBlazor, fullLocalResources)
+    exploreBlazor = ConfigureFullLocalBlazor(exploreBlazor, fullLocalResources, builder.Configuration)
         .WaitFor(fullLocalResources.Keycloak);
 }
 
@@ -228,7 +229,7 @@ var controlPlaneBlazor = WithProfileSecretMode(
 
 if (fullLocalResources is not null)
 {
-    controlPlaneBlazor = ConfigureFullLocalControlPlane(controlPlaneBlazor, fullLocalResources)
+    controlPlaneBlazor = ConfigureFullLocalControlPlane(controlPlaneBlazor, fullLocalResources, builder.Configuration)
         .WaitFor(fullLocalResources.Keycloak);
 }
 
@@ -239,8 +240,6 @@ static FullLocalResources AddFullLocalPlatform(
     string cerbosConfigPath,
     string cerbosPolicyPackagePath,
     string cerbosSchemaPath,
-    string localCerbosAdminUsername,
-    string localCerbosAdminPasswordHash,
     string keycloakRealmExportPath,
     string keycloakInitScriptPath,
     IResourceBuilder<ContainerResource> mailpit,
@@ -252,6 +251,15 @@ static FullLocalResources AddFullLocalPlatform(
     IResourceBuilder<PostgresDatabaseResource>? appDatabase,
     IResourceBuilder<RedisResource>? cache)
 {
+    var configuration = builder.Configuration;
+    var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
+    var cerbosAdminPasswordHash = ConfiguredValue(
+        configuration,
+        "CERBOS_ADMIN_PASSWORD_HASH",
+        LocalCerbosAdminPasswordHash);
+    var cerbosPostgresUser = configuration["CERBOS_POSTGRES_USER"] ?? "cerbos_user";
+    var cerbosPostgresPassword = configuration["CERBOS_POSTGRES_PASSWORD"] ?? "cerbos_password";
+    var cerbosPostgresDatabase = configuration["CERBOS_POSTGRES_DB"] ?? "cerbos";
     var crdb = builder.AddContainer("crdb", "cockroachdb/cockroach", "v24.1.1")
         .WithArgs("start-single-node", "--insecure")
         .WithVolume("islamu-event-crdb-data", "/cockroach/cockroach-data")
@@ -270,8 +278,8 @@ static FullLocalResources AddFullLocalPlatform(
             "--spi-email-template-provider=freemarker-plus-mustache",
             "--spi-email-template-freemarker-plus-mustache-enabled=true",
             "--spi-theme-cache-themes=false")
-        .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
-        .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+        .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", configuration["KEYCLOAK_ADMIN"] ?? "admin")
+        .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", configuration["KEYCLOAK_ADMIN_PASSWORD"] ?? "admin")
         .WithEnvironment("KC_DB", "cockroach")
         .WithEnvironment("KC_DB_URL_HOST", "crdb")
         .WithEnvironment("KC_DB_URL_PORT", "26257")
@@ -302,40 +310,40 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEntrypoint("/bin/bash")
         .WithArgs("/opt/keycloak/bin/keycloak-init.sh")
         .WithEnvironment("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080/auth")
-        .WithEnvironment("KEYCLOAK_REALM", "ISLAMU")
-        .WithEnvironment("KEYCLOAK_ADMIN", "admin")
-        .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", "admin")
-        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_ID", "islamu-event-blazor")
-        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", "islamu-event-blazor-secret")
-        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", "islamu-event-control-plane")
-        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", "islamu-event-control-plane-secret")
-        .WithEnvironment("KEYCLOAK_API_CLIENT_ID", "islamu-event-api")
-        .WithEnvironment("KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET", "true")
+        .WithEnvironment("KEYCLOAK_REALM", configuration["KEYCLOAK_REALM"] ?? "ISLAMU")
+        .WithEnvironment("KEYCLOAK_ADMIN", configuration["KEYCLOAK_ADMIN"] ?? "admin")
+        .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", configuration["KEYCLOAK_ADMIN_PASSWORD"] ?? "admin")
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_ID", configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor")
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? "islamu-event-blazor-secret")
+        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", configuration["KEYCLOAK_CONTROL_PLANE_CLIENT_ID"] ?? "islamu-event-control-plane")
+        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", configuration["KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET"] ?? "islamu-event-control-plane-secret")
+        .WithEnvironment("KEYCLOAK_API_CLIENT_ID", configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api")
+        .WithEnvironment("KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET", configuration["KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET"] ?? "true")
         .WithEnvironment("KEYCLOAK_SMTP_HOST", "mailpit")
         .WithEnvironment("KEYCLOAK_SMTP_PORT", "1025")
-        .WithEnvironment("KEYCLOAK_SMTP_FROM", "noreply@openislamu.org")
-        .WithEnvironment("KEYCLOAK_SMTP_FROM_DISPLAY_NAME", "ISLAMU Event Dev")
-        .WithEnvironment("KEYCLOAK_SMTP_AUTH", "false")
-        .WithEnvironment("KEYCLOAK_SMTP_SSL", "false")
-        .WithEnvironment("KEYCLOAK_SMTP_STARTTLS", "false")
+        .WithEnvironment("KEYCLOAK_SMTP_FROM", configuration["KEYCLOAK_SMTP_FROM"] ?? "noreply@openislamu.org")
+        .WithEnvironment("KEYCLOAK_SMTP_FROM_DISPLAY_NAME", configuration["KEYCLOAK_SMTP_FROM_DISPLAY_NAME"] ?? "ISLAMU Event Dev")
+        .WithEnvironment("KEYCLOAK_SMTP_AUTH", configuration["KEYCLOAK_SMTP_AUTH"] ?? "false")
+        .WithEnvironment("KEYCLOAK_SMTP_SSL", configuration["KEYCLOAK_SMTP_SSL"] ?? "false")
+        .WithEnvironment("KEYCLOAK_SMTP_STARTTLS", configuration["KEYCLOAK_SMTP_STARTTLS"] ?? "false")
         .WithBindMount(keycloakInitScriptPath, "/opt/keycloak/bin/keycloak-init.sh", isReadOnly: true)
         .WaitFor(keycloak)
         .WaitFor(mailpit);
 
     var cerbosDb = builder.AddContainer("cerbos-db", "postgres", "18-alpine")
-        .WithEnvironment("POSTGRES_USER", "cerbos_user")
-        .WithEnvironment("POSTGRES_PASSWORD", "cerbos_password")
-        .WithEnvironment("POSTGRES_DB", "cerbos")
+        .WithEnvironment("POSTGRES_USER", cerbosPostgresUser)
+        .WithEnvironment("POSTGRES_PASSWORD", cerbosPostgresPassword)
+        .WithEnvironment("POSTGRES_DB", cerbosPostgresDatabase)
         .WithVolume("islamu-event-cerbos-data", "/var/lib/postgresql")
         .WithBindMount(cerbosSchemaPath, "/docker-entrypoint-initdb.d/cerbos-schema.sql", isReadOnly: true);
 
     var cerbos = builder.AddContainer("cerbos", "ghcr.io/cerbos/cerbos", "0.53.0")
         .WithArgs("server", "--config=/config/.cerbos.yaml")
-        .WithEnvironment("CERBOS_ADMIN_USER", localCerbosAdminUsername)
-        .WithEnvironment("CERBOS_ADMIN_PASSWORD_HASH", localCerbosAdminPasswordHash)
+        .WithEnvironment("CERBOS_ADMIN_USER", cerbosAdminUsername)
+        .WithEnvironment("CERBOS_ADMIN_PASSWORD_HASH", cerbosAdminPasswordHash)
         .WithEnvironment(
             "CERBOS_PG_URL",
-            "postgres://cerbos_user:cerbos_password@cerbos-db:5432/cerbos?search_path=cerbos&sslmode=disable")
+            $"postgres://{cerbosPostgresUser}:{cerbosPostgresPassword}@cerbos-db:5432/{cerbosPostgresDatabase}?search_path=cerbos&sslmode=disable")
         .WithBindMount(cerbosConfigPath, "/config/.cerbos.yaml", isReadOnly: true)
         .WithBindMount(cerbosPolicyPackagePath, "/policies", isReadOnly: true)
         .WithHttpEndpoint(targetPort: 3592, port: 3592, name: "http")
@@ -349,8 +357,8 @@ static FullLocalResources AddFullLocalPlatform(
 
     var minio = builder.AddContainer("minio", "minio/minio", "latest")
         .WithArgs("server", "/data", "--console-address", ":9001")
-        .WithEnvironment("MINIO_ROOT_USER", "minioadmin")
-        .WithEnvironment("MINIO_ROOT_PASSWORD", "minioadmin")
+        .WithEnvironment("MINIO_ROOT_USER", configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin")
+        .WithEnvironment("MINIO_ROOT_PASSWORD", configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin")
         .WithVolume("islamu-event-minio-data", "/data")
         .WithHttpEndpoint(targetPort: 9000, port: 9005, name: "api")
         .WithHttpEndpoint(targetPort: 9001, port: 9006, name: "console")
@@ -359,20 +367,22 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEntrypoint("sh")
         .WithArgs(
             "-c",
-            "mc alias set local http://minio:9000 minioadmin minioadmin && (mc mb -p local/explore || mc ls local/explore >/dev/null)")
+            $"mc alias set local http://minio:9000 {configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin"} {configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin"} && (mc mb -p local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} || mc ls local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} >/dev/null)")
         .WaitFor(minio);
 
     var svixDb = builder.AddContainer("svix-postgres", "postgres", "13.4")
-        .WithEnvironment("POSTGRES_PASSWORD", "postgres")
-        .WithEnvironment("POSTGRES_USER", "postgres")
-        .WithEnvironment("POSTGRES_DB", "postgres")
+        .WithEnvironment("POSTGRES_PASSWORD", configuration["SVIX_DB_PASSWORD"] ?? "postgres")
+        .WithEnvironment("POSTGRES_USER", configuration["SVIX_DB_USER"] ?? "postgres")
+        .WithEnvironment("POSTGRES_DB", configuration["SVIX_DB_NAME"] ?? "postgres")
         .WithVolume("islamu-event-svix-postgres-data", "/var/lib/postgresql/data");
 
     var svix = builder.AddContainer("svix", "svix/svix-server", "latest")
         .WithEnvironment("WAIT_FOR", "true")
-        .WithEnvironment("SVIX_DB_DSN", "postgresql://postgres:postgres@svix-postgres:5432/postgres")
-        .WithEnvironment("SVIX_QUEUE_TYPE", "redis")
-        .WithEnvironment("SVIX_JWT_SECRET", LocalSvixJwtSecret)
+        .WithEnvironment(
+            "SVIX_DB_DSN",
+            $"postgresql://{configuration["SVIX_DB_USER"] ?? "postgres"}:{configuration["SVIX_DB_PASSWORD"] ?? "postgres"}@svix-postgres:5432/{configuration["SVIX_DB_NAME"] ?? "postgres"}")
+        .WithEnvironment("SVIX_QUEUE_TYPE", configuration["SVIX_QUEUE_TYPE"] ?? "redis")
+        .WithEnvironment("SVIX_JWT_SECRET", configuration["SVIX_JWT_SECRET"] ?? "local-dev-svix-jwt-secret-change-me")
         .WithHttpEndpoint(targetPort: 8071, port: 8071, name: "http")
         .WaitFor(svixDb);
 
@@ -390,24 +400,24 @@ static FullLocalResources AddFullLocalPlatform(
     }
 
     var weblateDb = builder.AddContainer("weblate-postgres", "postgres", "18-alpine")
-        .WithEnvironment("POSTGRES_USER", "weblate")
-        .WithEnvironment("POSTGRES_PASSWORD", "weblate_password")
-        .WithEnvironment("POSTGRES_DB", "weblate")
+        .WithEnvironment("POSTGRES_USER", configuration["WEBLATE_POSTGRES_USER"] ?? "weblate")
+        .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? "weblate_password")
+        .WithEnvironment("POSTGRES_DB", configuration["WEBLATE_POSTGRES_DB"] ?? "weblate")
         .WithVolume("islamu-event-weblate-postgres-data", "/var/lib/postgresql");
 
     var (weblateImage, weblateTag) = ResolveImageAndTag(
-        builder.Configuration["WEBLATE_IMAGE"] ?? LocalWeblateImage,
-        builder.Configuration["WEBLATE_TAG"] ?? LocalWeblateTag);
+        configuration["WEBLATE_IMAGE"] ?? "weblate/weblate:latest",
+        configuration["WEBLATE_TAG"] ?? "latest");
     var weblate = builder.AddContainer("weblate", weblateImage, weblateTag)
-        .WithEnvironment("WEBLATE_SITE_DOMAIN", "localhost:8083")
-        .WithEnvironment("WEBLATE_ADMIN_NAME", "Admin")
-        .WithEnvironment("WEBLATE_ADMIN_EMAIL", "admin@openislamu.org")
-        .WithEnvironment("WEBLATE_ADMIN_PASSWORD", LocalWeblateAdminPassword)
+        .WithEnvironment("WEBLATE_SITE_DOMAIN", configuration["WEBLATE_SITE_DOMAIN"] ?? "localhost:8083")
+        .WithEnvironment("WEBLATE_ADMIN_NAME", configuration["WEBLATE_ADMIN_NAME"] ?? "Admin")
+        .WithEnvironment("WEBLATE_ADMIN_EMAIL", configuration["WEBLATE_ADMIN_EMAIL"] ?? "admin@openislamu.org")
+        .WithEnvironment("WEBLATE_ADMIN_PASSWORD", configuration["WEBLATE_ADMIN_PASSWORD"] ?? "admin")
         .WithEnvironment("POSTGRES_HOST", "weblate-postgres")
         .WithEnvironment("POSTGRES_PORT", "5432")
-        .WithEnvironment("POSTGRES_USER", "weblate")
-        .WithEnvironment("POSTGRES_PASSWORD", "weblate_password")
-        .WithEnvironment("POSTGRES_DB", "weblate")
+        .WithEnvironment("POSTGRES_USER", configuration["WEBLATE_POSTGRES_USER"] ?? "weblate")
+        .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? "weblate_password")
+        .WithEnvironment("POSTGRES_DB", configuration["WEBLATE_POSTGRES_DB"] ?? "weblate")
         .WithHttpEndpoint(targetPort: 8080, port: 8083, name: "http")
         .WithVolume("islamu-event-weblate-data", "/app/data")
         .WaitFor(weblateDb);
@@ -424,9 +434,9 @@ static FullLocalResources AddFullLocalPlatform(
     }
 
     var coopDb = builder.AddContainer("coop-postgres", "postgres", "18-alpine")
-        .WithEnvironment("POSTGRES_USER", "coop")
-        .WithEnvironment("POSTGRES_PASSWORD", "coop_password")
-        .WithEnvironment("POSTGRES_DB", "coop")
+        .WithEnvironment("POSTGRES_USER", configuration["COOP_DATABASE_USER"] ?? "coop")
+        .WithEnvironment("POSTGRES_PASSWORD", configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+        .WithEnvironment("POSTGRES_DB", configuration["COOP_DATABASE_NAME"] ?? "coop")
         .WithVolume("islamu-event-coop-postgres-data", "/var/lib/postgresql");
 
     var (coopMigrationsImage, coopMigrationsTag) = ResolveImageAndTag(
@@ -521,10 +531,10 @@ static FullLocalResources AddFullLocalPlatform(
     }
 
     var (ospreyImage, ospreyTag) = ResolveImageAndTag(
-        builder.Configuration["OSPREY_IMAGE"] ?? LocalOspreyImage,
-        builder.Configuration["OSPREY_TAG"] ?? LocalOspreyTag);
+        configuration["OSPREY_IMAGE"] ?? "ghcr.io/roostorg/osprey/osprey-coordinator:latest",
+        configuration["OSPREY_TAG"] ?? "latest");
     var osprey = builder.AddContainer("osprey", ospreyImage, ospreyTag)
-        .WithEnvironment("RUST_LOG", "info")
+        .WithEnvironment("RUST_LOG", configuration["OSPREY_RUST_LOG"] ?? "info")
         .WithEnvironment("OSPREY_COORDINATOR_BIDI_STREAM_PORT", "19950")
         .WithEnvironment("OSPREY_COORDINATOR_SYNC_ACTION_PORT", "19951")
         .WithEnvironment("POD_IP", "osprey")
@@ -564,8 +574,8 @@ static FullLocalResources AddFullLocalPlatform(
 
 static IResourceBuilder<ContainerResource> AddMailpit(IDistributedApplicationBuilder builder)
 {
-    return builder.AddContainer("mailpit", LocalMailpitImage, LocalMailpitTag)
-        .WithEnvironment("MP_MAX_MESSAGES", "5000")
+    return builder.AddContainer("mailpit", "axllent/mailpit", builder.Configuration["MAILPIT_TAG"] ?? "latest")
+        .WithEnvironment("MP_MAX_MESSAGES", builder.Configuration["MAILPIT_MAX_MESSAGES"] ?? "5000")
         .WithEnvironment("MP_DATABASE", "/data/mailpit.db")
         .WithEnvironment("MP_SMTP_AUTH_ACCEPT_ANY", "1")
         .WithEnvironment("MP_SMTP_AUTH_ALLOW_INSECURE", "1")
@@ -586,7 +596,8 @@ static void ExcludeProjectLaunchProfile(ProjectResourceOptions options)
 
 static IResourceBuilder<ProjectResource> ConfigureLocalMailpitSmtp(
     IResourceBuilder<ProjectResource> project,
-    IResourceBuilder<ContainerResource> mailpit)
+    IResourceBuilder<ContainerResource> mailpit,
+    IConfiguration configuration)
 {
     var smtpHost = EndpointHost(mailpit, "smtp");
     var smtpPort = EndpointPort(mailpit, "smtp");
@@ -594,33 +605,37 @@ static IResourceBuilder<ProjectResource> ConfigureLocalMailpitSmtp(
     return project
         .WithEnvironment("MAIL_SMTP_HOST", smtpHost)
         .WithEnvironment("MAIL_SMTP_PORT", smtpPort)
-        .WithEnvironment("MAIL_SMTP_USERNAME", "")
-        .WithEnvironment("MAIL_SMTP_PASSWORD", "")
-        .WithEnvironment("MAIL_SMTP_ENCRYPTION", "None")
-        .WithEnvironment("MAIL_SMTP_FROM_ADDRESS", "noreply@localhost")
-        .WithEnvironment("MAIL_SMTP_FROM_NAME", "ISLAMU Event Dev")
+        .WithEnvironment("MAIL_SMTP_USERNAME", configuration["MAIL_SMTP_USERNAME"] ?? string.Empty)
+        .WithEnvironment("MAIL_SMTP_PASSWORD", configuration["MAIL_SMTP_PASSWORD"] ?? string.Empty)
+        .WithEnvironment("MAIL_SMTP_ENCRYPTION", configuration["MAIL_SMTP_ENCRYPTION"] ?? "None")
+        .WithEnvironment("MAIL_SMTP_FROM_ADDRESS", configuration["MAIL_SMTP_FROM_ADDRESS"] ?? "noreply@localhost")
+        .WithEnvironment("MAIL_SMTP_FROM_NAME", configuration["MAIL_SMTP_FROM_NAME"] ?? "ISLAMU Event Dev")
         .WithEnvironment("SMTP_HOST", smtpHost)
         .WithEnvironment("SMTP_PORT", smtpPort)
-        .WithEnvironment("SMTP_USERNAME", "")
-        .WithEnvironment("SMTP_PASSWORD", "")
-        .WithEnvironment("SMTP_SECURITY", "None")
-        .WithEnvironment("SMTP_FROM_ADDRESS", "noreply@localhost")
-        .WithEnvironment("SMTP_FROM_NAME", "ISLAMU Event Dev");
+        .WithEnvironment("SMTP_USERNAME", configuration["MAIL_SMTP_USERNAME"] ?? string.Empty)
+        .WithEnvironment("SMTP_PASSWORD", configuration["MAIL_SMTP_PASSWORD"] ?? string.Empty)
+        .WithEnvironment("SMTP_SECURITY", configuration["MAIL_SMTP_ENCRYPTION"] ?? "None")
+        .WithEnvironment("SMTP_FROM_ADDRESS", configuration["MAIL_SMTP_FROM_ADDRESS"] ?? "noreply@localhost")
+        .WithEnvironment("SMTP_FROM_NAME", configuration["MAIL_SMTP_FROM_NAME"] ?? "ISLAMU Event Dev");
 }
 
 static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
     IResourceBuilder<ProjectResource> api,
     FullLocalResources resources,
-    string localCerbosAdminUsername,
-    string localCerbosAdminPassword,
-    string localCerbosAdminPasswordHash)
+    IConfiguration configuration)
 {
+    var keycloakRealm = configuration["KEYCLOAK_REALM"] ?? "ISLAMU";
+    var keycloakApiClientId = configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api";
+    var keycloakBlazorClientId = configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor";
+    var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
+    var cerbosAdminPassword = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD", "cerbos");
+    var cerbosAdminPasswordHash = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD_HASH", LocalCerbosAdminPasswordHash);
     var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
-    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", "/auth/realms/ISLAMU");
+    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", $"/auth/realms/{keycloakRealm}");
     var keycloakMetadataAddress = EndpointUrl(
         resources.Keycloak,
         "http",
-        "/auth/realms/ISLAMU/.well-known/openid-configuration");
+        $"/auth/realms/{keycloakRealm}/.well-known/openid-configuration");
     var cerbosGrpcEndpoint = HttpEndpointFromHostAndPort(resources.Cerbos, "grpc");
     var cerbosHttpEndpoint = EndpointUrl(resources.Cerbos, "http");
     var minioApiEndpoint = EndpointUrl(resources.Minio, "api");
@@ -628,53 +643,53 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
     var svixEndpoint = EndpointUrl(resources.Svix, "http");
 
     api = api
-        .WithEnvironment("KEYCLOAK_REALM", "ISLAMU")
+        .WithEnvironment("KEYCLOAK_REALM", keycloakRealm)
         .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
-        .WithEnvironment("Keycloak__Realm", "ISLAMU")
+        .WithEnvironment("Keycloak__Realm", keycloakRealm)
         .WithEnvironment("Keycloak__Authority", keycloakAuthority)
         .WithEnvironment("Keycloak__MetadataAddress", keycloakMetadataAddress)
         .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
-        .WithEnvironment("Keycloak__Audience", "islamu-event-api")
-        .WithEnvironment("Keycloak__ValidAudiences__0", "islamu-event-api")
-        .WithEnvironment("Keycloak__ValidAudiences__1", "islamu-event-blazor")
+        .WithEnvironment("Keycloak__Audience", keycloakApiClientId)
+        .WithEnvironment("Keycloak__ValidAudiences__0", keycloakApiClientId)
+        .WithEnvironment("Keycloak__ValidAudiences__1", keycloakBlazorClientId)
         .WithEnvironment("KeycloakBootstrap__AllowLocalUrls", "true")
         .WithEnvironment("Cerbos__GrpcEndpoint", cerbosGrpcEndpoint)
         .WithEnvironment("Cerbos__HttpEndpoint", cerbosHttpEndpoint)
         .WithEnvironment("Cerbos__UseTls", "false")
         .WithEnvironment("Cerbos__PlaintextMode", "true")
         .WithEnvironment("Cerbos__AdminApi__Endpoints__0", cerbosHttpEndpoint)
-        .WithEnvironment("Cerbos__AdminApi__AdminUsername", localCerbosAdminUsername)
-        .WithEnvironment("Cerbos__AdminApi__AdminPassword", localCerbosAdminPassword)
-        .WithEnvironment("Cerbos__AdminUsername", localCerbosAdminUsername)
-        .WithEnvironment("Cerbos__AdminPasswordHash", localCerbosAdminPasswordHash)
-        .WithEnvironment("CERBOS_ADMIN_USERNAME", localCerbosAdminUsername)
-        .WithEnvironment("CERBOS_ADMIN_PASSWORD", localCerbosAdminPassword)
+        .WithEnvironment("Cerbos__AdminApi__AdminUsername", cerbosAdminUsername)
+        .WithEnvironment("Cerbos__AdminApi__AdminPassword", cerbosAdminPassword)
+        .WithEnvironment("Cerbos__AdminUsername", cerbosAdminUsername)
+        .WithEnvironment("Cerbos__AdminPasswordHash", cerbosAdminPasswordHash)
+        .WithEnvironment("CERBOS_ADMIN_USERNAME", cerbosAdminUsername)
+        .WithEnvironment("CERBOS_ADMIN_PASSWORD", cerbosAdminPassword)
         .WithEnvironment("S3Settings__Endpoint", minioApiEndpoint)
         .WithEnvironment("S3Settings__PublicEndpoint", minioApiEndpoint)
-        .WithEnvironment("S3Settings__Region", "us-east-1")
-        .WithEnvironment("S3Settings__BucketName", "explore")
-        .WithEnvironment("S3Settings__AccessKeyId", "minioadmin")
-        .WithEnvironment("S3Settings__SecretAccessKey", "minioadmin")
-        .WithEnvironment("Reporting__Enabled", "true")
-        .WithEnvironment("Reporting__Mode", "Coop")
-        .WithEnvironment("Reporting__SyncReports", "true")
-        .WithEnvironment("Reporting__EvaluateSignals", "false")
-        .WithEnvironment("Reporting__MirrorReviewQueue", "true")
-        .WithEnvironment("Reporting__ExecuteDecisions", "true")
-        .WithEnvironment("Reporting__Osprey__Enabled", "false")
-        .WithEnvironment("Reporting__Osprey__AllowLocalProviderEndpoints", "true")
-        .WithEnvironment("Reporting__Coop__Enabled", "true")
+        .WithEnvironment("S3Settings__Region", configuration["STORAGE_S3_REGION"] ?? "us-east-1")
+        .WithEnvironment("S3Settings__BucketName", configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore")
+        .WithEnvironment("S3Settings__AccessKeyId", configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin")
+        .WithEnvironment("S3Settings__SecretAccessKey", configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin")
+        .WithEnvironment("Reporting__Enabled", configuration["REPORTING_ENABLED"] ?? "true")
+        .WithEnvironment("Reporting__Mode", configuration["REPORTING_MODE"] ?? "Coop")
+        .WithEnvironment("Reporting__SyncReports", configuration["REPORTING_SYNC_REPORTS"] ?? "true")
+        .WithEnvironment("Reporting__EvaluateSignals", configuration["REPORTING_EVALUATE_SIGNALS"] ?? "false")
+        .WithEnvironment("Reporting__MirrorReviewQueue", configuration["REPORTING_MIRROR_REVIEW_QUEUE"] ?? "true")
+        .WithEnvironment("Reporting__ExecuteDecisions", configuration["REPORTING_EXECUTE_DECISIONS"] ?? "true")
+        .WithEnvironment("Reporting__Osprey__Enabled", configuration["REPORTING_OSPREY_ENABLED"] ?? "false")
+        .WithEnvironment("Reporting__Osprey__AllowLocalProviderEndpoints", configuration["REPORTING_OSPREY_ALLOW_LOCAL_PROVIDER_ENDPOINTS"] ?? "true")
+        .WithEnvironment("Reporting__Coop__Enabled", configuration["REPORTING_COOP_ENABLED"] ?? "true")
         .WithEnvironment("Reporting__Coop__EndpointUrl", coopEndpoint)
-        .WithEnvironment("Reporting__Coop__ApiKey", LocalCoopApiKey)
-        .WithEnvironment("Reporting__Coop__AllowLocalProviderEndpoints", "true")
-        .WithEnvironment("Reporting__Coop__WebhookSecret", LocalCoopWebhookSecret)
-        .WithEnvironment("Webhooks__Enabled", "true")
-        .WithEnvironment("Webhooks__Provider", "Svix")
+        .WithEnvironment("Reporting__Coop__ApiKey", configuration["REPORTING_COOP_API_KEY"] ?? "local-dev-coop-api-key")
+        .WithEnvironment("Reporting__Coop__AllowLocalProviderEndpoints", configuration["REPORTING_COOP_ALLOW_LOCAL_PROVIDER_ENDPOINTS"] ?? "true")
+        .WithEnvironment("Reporting__Coop__WebhookSecret", configuration["REPORTING_COOP_WEBHOOK_SECRET"] ?? "local-dev-coop-webhook-secret")
+        .WithEnvironment("Webhooks__Enabled", configuration["WEBHOOKS_ENABLED"] ?? "true")
+        .WithEnvironment("Webhooks__Provider", configuration["WEBHOOKS_PROVIDER"] ?? "Svix")
         .WithEnvironment("Webhooks__Svix__BaseUrl", svixEndpoint)
         .WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", "webhooks.svix.auth_token")
         .WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", "webhooks.svix.operational_webhook_secret")
-        .WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", LocalSvixAuthToken)
-        .WithEnvironment("WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET", LocalSvixOperationalWebhookSecret);
+        .WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", configuration["WEBHOOKS_SVIX_AUTH_TOKEN"] ?? string.Empty)
+        .WithEnvironment("WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET", configuration["WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET"] ?? string.Empty);
 
     api = api
         .WaitFor(resources.Svix)
@@ -688,25 +703,29 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
 
 static IResourceBuilder<ProjectResource> ConfigureFullLocalBlazor(
     IResourceBuilder<ProjectResource> blazor,
-    FullLocalResources resources)
+    FullLocalResources resources,
+    IConfiguration configuration)
 {
+    var keycloakRealm = configuration["KEYCLOAK_REALM"] ?? "ISLAMU";
+    var keycloakClientId = configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor";
+    var keycloakClientSecret = configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? "islamu-event-blazor-secret";
     var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
-    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", "/auth/realms/ISLAMU");
+    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", $"/auth/realms/{keycloakRealm}");
     var keycloakMetadataAddress = EndpointUrl(
         resources.Keycloak,
         "http",
-        "/auth/realms/ISLAMU/.well-known/openid-configuration");
+        $"/auth/realms/{keycloakRealm}/.well-known/openid-configuration");
 
     return blazor
-        .WithEnvironment("KEYCLOAK_REALM", "ISLAMU")
+        .WithEnvironment("KEYCLOAK_REALM", keycloakRealm)
         .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
-        .WithEnvironment("KEYCLOAK_CLIENT_ID", "islamu-event-blazor")
-        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", "islamu-event-blazor-secret")
-        .WithEnvironment("Keycloak__Realm", "ISLAMU")
+        .WithEnvironment("KEYCLOAK_CLIENT_ID", keycloakClientId)
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", keycloakClientSecret)
+        .WithEnvironment("Keycloak__Realm", keycloakRealm)
         .WithEnvironment("Keycloak__Authority", keycloakAuthority)
         .WithEnvironment("Keycloak__MetadataAddress", keycloakMetadataAddress)
-        .WithEnvironment("Keycloak__ClientId", "islamu-event-blazor")
-        .WithEnvironment("Keycloak__ClientSecret", "islamu-event-blazor-secret")
+        .WithEnvironment("Keycloak__ClientId", keycloakClientId)
+        .WithEnvironment("Keycloak__ClientSecret", keycloakClientSecret)
         .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
         .WaitFor(resources.Keycloak)
         .WaitForCompletion(resources.KeycloakInit);
@@ -714,24 +733,28 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalBlazor(
 
 static IResourceBuilder<ProjectResource> ConfigureFullLocalControlPlane(
     IResourceBuilder<ProjectResource> controlPlane,
-    FullLocalResources resources)
+    FullLocalResources resources,
+    IConfiguration configuration)
 {
+    var keycloakRealm = configuration["KEYCLOAK_REALM"] ?? "ISLAMU";
+    var keycloakClientId = configuration["KEYCLOAK_CONTROL_PLANE_CLIENT_ID"] ?? "islamu-event-control-plane";
+    var keycloakClientSecret = configuration["KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET"] ?? "islamu-event-control-plane-secret";
     var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
-    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", "/auth/realms/ISLAMU");
+    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", $"/auth/realms/{keycloakRealm}");
     var keycloakMetadataAddress = EndpointUrl(
         resources.Keycloak,
         "http",
-        "/auth/realms/ISLAMU/.well-known/openid-configuration");
+        $"/auth/realms/{keycloakRealm}/.well-known/openid-configuration");
 
     return controlPlane
-        .WithEnvironment("KEYCLOAK_REALM", "ISLAMU")
+        .WithEnvironment("KEYCLOAK_REALM", keycloakRealm)
         .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
-        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", "islamu-event-control-plane")
-        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", "islamu-event-control-plane-secret")
+        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", keycloakClientId)
+        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", keycloakClientSecret)
         .WithEnvironment("Bff__Authentication__Authority", keycloakAuthority)
         .WithEnvironment("Bff__Authentication__MetadataAddress", keycloakMetadataAddress)
-        .WithEnvironment("Bff__Authentication__ClientId", "islamu-event-control-plane")
-        .WithEnvironment("Bff__Authentication__ClientSecret", "islamu-event-control-plane-secret")
+        .WithEnvironment("Bff__Authentication__ClientId", keycloakClientId)
+        .WithEnvironment("Bff__Authentication__ClientSecret", keycloakClientSecret)
         .WithEnvironment("Bff__Authentication__RequireHttpsMetadata", "false")
         .WaitFor(resources.Keycloak)
         .WaitForCompletion(resources.KeycloakInit);
@@ -857,6 +880,9 @@ static (string Image, string Tag) ResolveImageAndTag(string image, string defaul
 
     return (trimmed, defaultTag);
 }
+
+static string ConfiguredValue(IConfiguration configuration, string key, string fallback) =>
+    string.IsNullOrWhiteSpace(configuration[key]) ? fallback : configuration[key]!;
 
 internal enum AspireRunMode
 {
