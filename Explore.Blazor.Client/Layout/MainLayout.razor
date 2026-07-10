@@ -30,7 +30,7 @@
             @* Floating switchers for onboarding/setup pages where navbar is hidden *@
             <div style="position:fixed;top:20px;inset-inline-end:20px;z-index:9999;pointer-events:all;">
                 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="pa-1 px-4 rounded-pill mud-elevation-6 mud-surface" Style="border:1px solid var(--mud-palette-lines-default); color: var(--mud-palette-text-primary);">
-                    <LanguagePicker />
+                    <LanguagePicker Enabled="@_languagePickerEnabled" />
                     <MudDivider Vertical="true" FlexItem="true" Style="height:24px;margin:0 4px; border-color: var(--mud-palette-divider);" />
                     <MudIconButton Icon="@DarkLightModeButtonIcon"
                                    Color="Color.Inherit"

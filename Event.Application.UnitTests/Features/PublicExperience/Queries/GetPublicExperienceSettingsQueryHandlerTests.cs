@@ -16,6 +16,7 @@ using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Domain.Settings.Documents;
 using Explore.Domain.Settings.Documents.Payloads;
 using NSubstitute;
@@ -27,6 +28,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
     private readonly ITenantContext _tenantContext;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly IAnalyticsConfigResolver _analyticsConfigResolver;
+    private readonly ITranslationConfigResolver _translationConfigResolver;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IModuleService _moduleService;
     private readonly IInstanceGovernanceSettingService _instanceGovernanceSettingService;
@@ -43,6 +45,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _tenantContext = Substitute.For<ITenantContext>();
         _systemSettingRepository = Substitute.For<ISystemSettingRepository>();
         _analyticsConfigResolver = Substitute.For<IAnalyticsConfigResolver>();
+        _translationConfigResolver = Substitute.For<ITranslationConfigResolver>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
         _moduleService = Substitute.For<IModuleService>();
         _instanceGovernanceSettingService = Substitute.For<IInstanceGovernanceSettingService>();
@@ -57,6 +60,8 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             .Returns(new AnalyticsSettingGroup());
         _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(Arg.Any<Guid>()).Returns(CreateDefaultGovernanceSettings());
         _analyticsConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new AnalyticsConfiguration());
+        _translationConfigResolver.ResolveAsync(Arg.Any<CancellationToken>())
+            .Returns(new TranslationConfiguration(TranslationManagementProviderEnum.None, null, null, null, "en"));
         _footerLinkGroupRepository = Substitute.For<IFooterLinkGroupRepository>();
         _footerLinkGroupRepository.GetResolvedGroupsForTenantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -77,6 +82,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             _tenantContext,
             _systemSettingRepository,
             _analyticsConfigResolver,
+            _translationConfigResolver,
             _policySettingService,
             _moduleService,
             _instanceGovernanceSettingService,
@@ -152,6 +158,27 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         await Assert.That(result.IsIslamicModuleEnabled).IsFalse();
         await Assert.That(result.IsTechModuleEnabled).IsFalse();
         await Assert.That(result.EnabledModules.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Handle_WhenClientPickerDisabled_ExposesPickerKillSwitch()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+        _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode).Returns((SystemSetting?)null);
+        _translationConfigResolver.ResolveAsync(Arg.Any<CancellationToken>())
+            .Returns(new TranslationConfiguration(TranslationManagementProviderEnum.None, null, null, null, "en")
+            {
+                ClientPickerEnabled = false
+            });
+
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        await Assert.That(result.ClientPickerEnabled).IsFalse();
     }
 
     [Test]

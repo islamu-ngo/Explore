@@ -25,6 +25,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
     private readonly ITenantContext _tenantContext;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly IAnalyticsConfigResolver _analyticsConfigResolver;
+    private readonly ITranslationConfigResolver _translationConfigResolver;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IModuleService _moduleService;
     private readonly IInstanceGovernanceSettingService _instanceGovernanceSettingService;
@@ -39,6 +40,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         ITenantContext tenantContext,
         ISystemSettingRepository systemSettingRepository,
         IAnalyticsConfigResolver analyticsConfigResolver,
+        ITranslationConfigResolver translationConfigResolver,
         ITenantPolicySettingService policySettingService,
         IModuleService moduleService,
         IInstanceGovernanceSettingService instanceGovernanceSettingService,
@@ -52,6 +54,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         _tenantContext = tenantContext;
         _systemSettingRepository = systemSettingRepository;
         _analyticsConfigResolver = analyticsConfigResolver;
+        _translationConfigResolver = translationConfigResolver;
         _policySettingService = policySettingService;
         _moduleService = moduleService;
         _instanceGovernanceSettingService = instanceGovernanceSettingService;
@@ -72,6 +75,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var enabledModuleKeys = enabledModulesInfo.Select(m => m.ModuleKey).ToList();
         var governanceSettings = await _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId);
         var analyticsConfiguration = await _analyticsConfigResolver.ResolveAsync(cancellationToken);
+        var translationConfiguration = await _translationConfigResolver.ResolveAsync(cancellationToken);
 
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
         var deploymentMode = DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
@@ -180,6 +184,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             ThemeMode = appearanceSettingGroup.ThemeMode,
             Direction = appearanceSettingGroup.Direction,
             Language = appearanceSettingGroup.Language,
+            ClientPickerEnabled = translationConfiguration.ClientPickerEnabled,
         };
     }
 

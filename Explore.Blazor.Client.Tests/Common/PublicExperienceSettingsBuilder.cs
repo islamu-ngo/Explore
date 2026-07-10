@@ -160,6 +160,12 @@ public sealed class PublicExperienceSettingsBuilder
         return this;
     }
 
+    public PublicExperienceSettingsBuilder WithClientPickerEnabled(bool enabled)
+    {
+        _model.ClientPickerEnabled = enabled;
+        return this;
+    }
+
     /// <summary>Sets community guidelines content.</summary>
     public PublicExperienceSettingsBuilder WithCommunityGuidelines(string content)
     {

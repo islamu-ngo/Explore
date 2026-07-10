@@ -90,6 +90,7 @@ public partial class NavMenu : IDisposable
     private bool _isCurrentUserInstanceAdmin;
     private bool _isCurrentUserTenantAdmin;
     private bool _showAddEventForAnonymous;
+    private bool _languagePickerEnabled = true;
     private ICollection<OrganizationListDto> _userOrganizations = new List<OrganizationListDto>();
     private ICollection<GroupPublisherListDto> _userGroups = new List<GroupPublisherListDto>();
     private bool _orgSubmenuOpen;
@@ -167,6 +168,7 @@ public partial class NavMenu : IDisposable
             settings.IsAiAssistantAvailable,
             settings.AiAssistantAllowAnonymousAccess,
             isAuthenticated);
+        _languagePickerEnabled = settings.ClientPickerEnabled;
 
         if (isAuthenticated)
         {

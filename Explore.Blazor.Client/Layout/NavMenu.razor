@@ -92,7 +92,7 @@
             <AuthorizeView>
                 <Authorized>
                     <div class="navbar__desktop-preference-actions">
-                        <LanguagePicker />
+                        <LanguagePicker Enabled="@_languagePickerEnabled" />
                         <ThemeQuickSwitcher />
                     </div>
 
@@ -179,7 +179,7 @@
                                             <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" />
                                             <span>Language</span>
                                         </div>
-                                        <LanguagePicker />
+                                        <LanguagePicker Enabled="@_languagePickerEnabled" />
                                     </div>
                                     <div class="navbar__dropdown-control-item">
                                         <div class="navbar__dropdown-control-label">
@@ -316,7 +316,7 @@
                 </Authorized>
                 <NotAuthorized>
                     <div class="navbar__desktop-preference-actions navbar__desktop-preference-actions--always-visible">
-                        <LanguagePicker />
+                        <LanguagePicker Enabled="@_languagePickerEnabled" />
                         <ThemeQuickSwitcher />
                     </div>
 

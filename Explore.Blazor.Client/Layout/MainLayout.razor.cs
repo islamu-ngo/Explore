@@ -28,6 +28,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private MudTheme? _theme;
     private MudThemeProvider _mudThemeProvider = null!;
     private bool _hideChrome;
+    private bool _languagePickerEnabled = true;
     private bool _showCommunityGuidelinesLink = true;
     private string _brandDisplayName = string.Empty;
     private string _brandLogoUrl = string.Empty;
@@ -156,6 +157,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                         || settings.AllowGroupSubmittedEvents;
                     _brandDisplayName = settings.BrandDisplayName;
                     _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
+                    _languagePickerEnabled = settings.ClientPickerEnabled;
                     AiAssistantState.SetPolicy(
                         settings.IsAiAssistantEnabled,
                         settings.IsAiAssistantAvailable,

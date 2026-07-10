@@ -106,6 +106,21 @@ public class NavMenuAdminTests : IDisposable
     }
 
     [Test]
+    public async Task NavMenu_WhenClientPickerDisabled_DoesNotRenderLanguagePicker()
+    {
+        _ctx.SetAnonymousUser();
+        var settings = new PublicExperienceSettingsBuilder()
+            .WithClientPickerEnabled(false)
+            .Build();
+        SetupNavMenuServices(publicExperienceSettings: settings);
+
+        var cut = RenderNavMenu();
+
+        await Assert.That(cut.Markup).DoesNotContain("language-picker");
+        await Assert.That(cut.Markup).DoesNotContain("Change language");
+    }
+
+    [Test]
     public async Task NavMenu_InstanceAdminClaimOnly_DoesNotShowAdminLinks()
     {
         // Arrange

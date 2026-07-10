@@ -290,6 +290,7 @@ public class PublicExperienceSettingsModel
     public bool IsAiAssistantEnabled { get; set; }
     public bool IsAiAssistantAvailable { get; set; }
     public bool AiAssistantAllowAnonymousAccess { get; set; }
+    public bool ClientPickerEnabled { get; set; } = true;
     public FooterConfigModel FooterConfig { get; set; } = new();
 }
 

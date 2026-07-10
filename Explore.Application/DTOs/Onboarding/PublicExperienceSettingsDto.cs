@@ -63,4 +63,5 @@ public class PublicExperienceSettingsDto
     public string ThemeMode { get; set; } = "system";
     public string Direction { get; set; } = "auto";
     public string Language { get; set; } = "en";
+    public bool ClientPickerEnabled { get; set; } = true;
 }
