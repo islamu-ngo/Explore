@@ -3,6 +3,8 @@
 
 namespace Explore.API.Extensions;
 
+using Explore.Domain.Constants;
+using Explore.Domain.Secrets;
 using Explore.Secrets.Extensions;
 
 public static class ConfigurationExtensions
@@ -17,7 +19,7 @@ public static class ConfigurationExtensions
         configBuilder.AddInfisical(bootstrapConfig, source =>
         {
             source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/postgresql", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp"]);
+            source.Paths.AddRange(["/keycloak", "/postgresql", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk"]);
             source.ThrowOnFirstLoadFailure = false;
         });
 
@@ -37,6 +39,7 @@ public static class ConfigurationExtensions
     ///   /ai:       AI_ENDPOINT, AI_MODEL_ID, AI_API_KEY, AI_PROVIDER
     ///   /storage:  STORAGE_S3_ENDPOINT, STORAGE_S3_BUCKET_NAME, STORAGE_S3_ACCESS_KEY_ID, etc.
     ///   /smtp:     MAIL_SMTP_HOST, MAIL_SMTP_PORT, MAIL_SMTP_USERNAME, MAIL_SMTP_PASSWORD, etc.
+    ///   /api:      VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
     ///   /api:      USE_COMMERCIAL_LUCKYPENNY, LUCKYPENNY_LICENSE_KEY (Lucky Penny dual-versioning)
     ///   S3 legacy: ISLAMU_EVENT_S3_ENDPOINT, ISLAMU_EVENT_REGION, etc.
     /// Postgres is handled by BootstrapSecretLoader from discrete POSTGRESQL_* secrets.
@@ -128,6 +131,22 @@ public static class ConfigurationExtensions
         var smtpEncryption = ReadFirst(config, "MAIL_SMTP_ENCRYPTION", "SMTP_SECURITY", "Smtp:Encryption");
         var smtpFromAddress = ReadFirst(config, "MAIL_SMTP_FROM_ADDRESS", "SMTP_FROM_ADDRESS", "Smtp:FromAddress");
         var smtpFromName = ReadFirst(config, "MAIL_SMTP_FROM_NAME", "SMTP_FROM_NAME", "Smtp:FromName");
+        var listmonkEnabled = NormalizeBoolean(ReadFirst(config, "LISTMONK_ENABLED", GovernanceSettingKeys.Integrations.Listmonk.Enabled));
+        var listmonkInstanceUrl = ReadFirst(config, "LISTMONK_INSTANCE_URL", GovernanceSettingKeys.Integrations.Listmonk.InstanceUrl);
+        var listmonkDefaultListId = ReadFirst(config, "LISTMONK_DEFAULT_LIST_ID", GovernanceSettingKeys.Integrations.Listmonk.DefaultListId);
+        var listmonkPreconfirmSubscriptions = NormalizeBoolean(ReadFirst(config, "LISTMONK_PRECONFIRM_SUBSCRIPTIONS", GovernanceSettingKeys.Integrations.Listmonk.PreconfirmSubscriptions));
+        var listmonkSyncOnRegistration = NormalizeBoolean(ReadFirst(config, "LISTMONK_SYNC_ON_REGISTRATION", GovernanceSettingKeys.Integrations.Listmonk.SyncOnRegistration));
+        var listmonkApiUsername = ReadFirst(config, "LISTMONK_API_USERNAME", SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiUsername);
+        var listmonkApiKey = ReadFirst(config, "LISTMONK_API_KEY", SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiKey);
+        var vapidPublicKey = ReadFirst(config, "VAPID_PUBLIC_KEY", "WebPush:VapidPublicKey");
+        var vapidPrivateKey = ReadFirst(config, "VAPID_PRIVATE_KEY", "WebPush:VapidPrivateKey");
+        var vapidSubject = ReadFirst(config, "VAPID_SUBJECT", "WebPush:VapidSubject");
+        var webPushEnabled = NormalizeBoolean(ReadFirst(config, "WEB_PUSH_ENABLED", "WebPush:Enabled"))
+            ?? (!string.IsNullOrWhiteSpace(vapidPublicKey)
+                && !string.IsNullOrWhiteSpace(vapidPrivateKey)
+                && !string.IsNullOrWhiteSpace(vapidSubject)
+                    ? "true"
+                    : null);
 
         var mappedConfig = new Dictionary<string, string?>();
 
@@ -160,6 +179,19 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Smtp:Encryption", smtpEncryption);
         TrySet(mappedConfig, config, "Smtp:FromAddress", smtpFromAddress);
         TrySet(mappedConfig, config, "Smtp:FromName", smtpFromName);
+
+        TrySet(mappedConfig, config, GovernanceSettingKeys.Integrations.Listmonk.Enabled, listmonkEnabled);
+        TrySet(mappedConfig, config, GovernanceSettingKeys.Integrations.Listmonk.InstanceUrl, listmonkInstanceUrl);
+        TrySet(mappedConfig, config, GovernanceSettingKeys.Integrations.Listmonk.DefaultListId, listmonkDefaultListId);
+        TrySet(mappedConfig, config, GovernanceSettingKeys.Integrations.Listmonk.PreconfirmSubscriptions, listmonkPreconfirmSubscriptions);
+        TrySet(mappedConfig, config, GovernanceSettingKeys.Integrations.Listmonk.SyncOnRegistration, listmonkSyncOnRegistration);
+        TrySet(mappedConfig, config, SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiUsername, listmonkApiUsername);
+        TrySet(mappedConfig, config, SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiKey, listmonkApiKey);
+
+        TrySet(mappedConfig, config, "WebPush:Enabled", webPushEnabled);
+        TrySet(mappedConfig, config, "WebPush:VapidPublicKey", vapidPublicKey);
+        TrySet(mappedConfig, config, "WebPush:VapidPrivateKey", vapidPrivateKey);
+        TrySet(mappedConfig, config, "WebPush:VapidSubject", vapidSubject);
 
         // Cerbos
         if (!string.IsNullOrWhiteSpace(cerbosGrpcEndpoint))

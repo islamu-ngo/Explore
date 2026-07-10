@@ -115,6 +115,12 @@ x-email-dispatch-rabbitmq-env: &email-dispatch-rabbitmq-env
   EmailDispatchRabbitMq__PublisherBatchSize: ${EMAIL_DISPATCH_RABBITMQ_PUBLISHER_BATCH_SIZE:-100}
   EmailDispatchRabbitMq__PublisherRetryDelaySeconds: ${EMAIL_DISPATCH_RABBITMQ_PUBLISHER_RETRY_DELAY_SECONDS:-30}
 
+x-web-push-env: &web-push-env
+  WebPush__Enabled: ${WEB_PUSH_ENABLED:-false}
+  VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+  VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+  VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+
 x-reporting-env: &reporting-env
   Reporting__Enabled: ${REPORTING_ENABLED:-true}
   Reporting__Mode: ${REPORTING_MODE:-Coop}
@@ -140,6 +146,15 @@ x-webhooks-env: &webhooks-env
   Webhooks__Svix__OperationalWebhookSecretRef: ${WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET_REF:-webhooks.svix.operational_webhook_secret}
   WEBHOOKS_SVIX_AUTH_TOKEN: ${WEBHOOKS_SVIX_AUTH_TOKEN:-}
   WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET: ${WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET:-}
+
+x-listmonk-env: &listmonk-env
+  LISTMONK_ENABLED: ${LISTMONK_ENABLED:-false}
+  LISTMONK_INSTANCE_URL: ${LISTMONK_INSTANCE_URL:-}
+  LISTMONK_DEFAULT_LIST_ID: ${LISTMONK_DEFAULT_LIST_ID:-0}
+  LISTMONK_PRECONFIRM_SUBSCRIPTIONS: ${LISTMONK_PRECONFIRM_SUBSCRIPTIONS:-true}
+  LISTMONK_SYNC_ON_REGISTRATION: ${LISTMONK_SYNC_ON_REGISTRATION:-false}
+  LISTMONK_API_USERNAME: ${LISTMONK_API_USERNAME:-}
+  LISTMONK_API_KEY: ${LISTMONK_API_KEY:-}
 
 x-local-storage-env: &local-storage-env
   Storage__Local__RootPath: ${LOCAL_STORAGE_ROOT_PATH:-/app/storage-data/local}
@@ -281,7 +296,7 @@ services:
       context: .
       dockerfile: Explore.API/Dockerfile
     environment:
-      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *postgres-bootstrap-env, *api-runtime-env, *ai-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *reporting-env, *webhooks-env]
+      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *postgres-bootstrap-env, *api-runtime-env, *ai-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration

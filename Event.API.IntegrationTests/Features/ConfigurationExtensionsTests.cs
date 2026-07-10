@@ -83,6 +83,22 @@ public sealed class ConfigurationExtensionsTests
         await Assert.That(configuration["Smtp:FromName"]).IsEqualTo("ISLAMU Event Dev");
     }
 
+    [Test]
+    public async Task AddInfisicalCompatibility_MapsApiFolderVapidKeys()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["VAPID_PUBLIC_KEY"] = "public-key",
+            ["VAPID_PRIVATE_KEY"] = "private-key",
+            ["VAPID_SUBJECT"] = "mailto:admin@example.com"
+        });
+
+        await Assert.That(configuration["WebPush:Enabled"]).IsEqualTo("true");
+        await Assert.That(configuration["WebPush:VapidPublicKey"]).IsEqualTo("public-key");
+        await Assert.That(configuration["WebPush:VapidPrivateKey"]).IsEqualTo("private-key");
+        await Assert.That(configuration["WebPush:VapidSubject"]).IsEqualTo("mailto:admin@example.com");
+    }
+
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values)
     {
         var builder = new ConfigurationBuilder()
