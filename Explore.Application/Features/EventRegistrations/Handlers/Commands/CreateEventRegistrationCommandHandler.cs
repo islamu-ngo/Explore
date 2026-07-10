@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventRegistration.Validators;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
@@ -30,6 +31,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     private readonly IEventLifecycleEmailOutboxFactory _emailOutboxFactory;
     private readonly IListmonkRegistrationSyncOutboxFactory _listmonkOutboxFactory;
     private readonly IRegistrationNotificationDeliveryService _notificationDeliveryService;
+    private readonly IWebhookEventPublisher _webhookPublisher;
     private readonly ILogger<CreateEventRegistrationCommandHandler> _logger;
 
     public CreateEventRegistrationCommandHandler(
@@ -45,6 +47,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         IEventLifecycleEmailOutboxFactory emailOutboxFactory,
         IListmonkRegistrationSyncOutboxFactory listmonkOutboxFactory,
         IRegistrationNotificationDeliveryService notificationDeliveryService,
+        IWebhookEventPublisher webhookPublisher,
         ILogger<CreateEventRegistrationCommandHandler> logger)
     {
         _intentRepository = intentRepository;
@@ -59,6 +62,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _emailOutboxFactory = emailOutboxFactory;
         _listmonkOutboxFactory = listmonkOutboxFactory;
         _notificationDeliveryService = notificationDeliveryService;
+        _webhookPublisher = webhookPublisher;
         _logger = logger;
     }
 
@@ -233,6 +237,14 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             }
         }
 
+        await PublishRegistrationCreatedWebhookAsync(
+            tenantId,
+            dto,
+            user,
+            created.Id,
+            creationResult.HasWaitlistedSessions,
+            cancellationToken);
+
         response.Success = true;
         response.Id = created.Id;
         response.Message = creationResult.HasWaitlistedSessions
@@ -241,6 +253,83 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _metrics.RecordRegistrationCreated(tenantId.ToString());
 
         return response;
+    }
+
+    private async Task PublishRegistrationCreatedWebhookAsync(
+        Guid tenantId,
+        CreateEventRegistrationDto dto,
+        User user,
+        Guid registrationIntentId,
+        bool hasWaitlistedSessions,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _webhookPublisher.PublishAsync(
+                new WebhookEventBuildContext(
+                    Guid.CreateVersion7(),
+                    tenantId,
+                    WebhookEventNames.RegistrationCreated,
+                    registrationIntentId.ToString(),
+                    nameof(EventRegistrationIntent),
+                    registrationIntentId,
+                    DateTimeOffset.UtcNow,
+                    BuildRegistrationCreatedWebhookData(dto, user, registrationIntentId, hasWaitlistedSessions)),
+                cancellationToken);
+
+            if (!result.Succeeded && !result.Skipped)
+            {
+                _logger.LogWarning(
+                    "Failed to publish registration.created webhook for registration {RegistrationId}: {FailureCategory} {SafeDetail}",
+                    registrationIntentId,
+                    result.FailureCategory,
+                    result.SafeDetail);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                ex,
+                "Failed to publish registration.created webhook for registration {RegistrationId}; registration itself succeeded.",
+                registrationIntentId);
+        }
+    }
+
+    private static IReadOnlyDictionary<string, object?> BuildRegistrationCreatedWebhookData(
+        CreateEventRegistrationDto dto,
+        User user,
+        Guid registrationIntentId,
+        bool hasWaitlistedSessions)
+    {
+        var data = new Dictionary<string, object?>
+        {
+            ["registrationId"] = registrationIntentId.ToString(),
+            ["eventId"] = dto.EventId.ToString(),
+            ["status"] = hasWaitlistedSessions ? "Waitlisted" : "Approved",
+            ["consentToEmailShare"] = dto.ShareEmailWithOrganizer
+        };
+
+        if (!dto.ShareEmailWithOrganizer)
+        {
+            return data;
+        }
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            data["attendeeEmail"] = user.Email;
+        }
+
+        if (!string.IsNullOrWhiteSpace(user.FirstName))
+        {
+            data["attendeeFirstName"] = user.FirstName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(user.LastName))
+        {
+            data["attendeeLastName"] = user.LastName;
+        }
+
+        return data;
     }
 
     private async Task<List<Guid>> ResolveChildSessionsAsync(CreateEventRegistrationDto dto, CancellationToken cancellationToken)

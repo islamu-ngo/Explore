@@ -42,11 +42,25 @@ public sealed class WebhookEventTypeRegistryTests
         foreach (var descriptor in _registry.GetAll())
         {
             await Assert.That(WebhookEventTypeRegistry.IsValidEventTypeName(descriptor.Name)).IsTrue();
-            await Assert.That(descriptor.SchemaVersion).IsEqualTo(1);
+            var expectedVersion = descriptor.Name == WebhookEventNames.RegistrationCreated ? 2 : 1;
+            await Assert.That(descriptor.SchemaVersion).IsEqualTo(expectedVersion);
             await Assert.That(descriptor.IsEnabled).IsTrue();
             await Assert.That(descriptor.IsPublic).IsTrue();
             await Assert.That(descriptor.DataFields).IsNotEmpty();
         }
+    }
+
+    [Test]
+    public async Task RegistrationCreated_DeclaresConsentAndOptionalAttendeeFields()
+    {
+        var descriptor = _registry.FindByName(WebhookEventNames.RegistrationCreated)!;
+
+        await Assert.That(descriptor.SchemaVersion).IsEqualTo(2);
+        await Assert.That(descriptor.DataFields.Single(field => field.Name == "consentToEmailShare").Required).IsTrue();
+        await Assert.That(descriptor.DataFields.Single(field => field.Name == "consentToEmailShare").JsonType).IsEqualTo(WebhookJsonSchemaTypes.Flag);
+        await Assert.That(descriptor.DataFields.Single(field => field.Name == "attendeeEmail").Required).IsFalse();
+        await Assert.That(descriptor.DataFields.Single(field => field.Name == "attendeeFirstName").Required).IsFalse();
+        await Assert.That(descriptor.DataFields.Single(field => field.Name == "attendeeLastName").Required).IsFalse();
     }
 
     [Test]

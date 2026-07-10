@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Features.EventRegistrations.Handlers.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
@@ -35,6 +36,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationOrchestrator _notificationOrchestrator = Substitute.For<INotificationOrchestrator>();
     private readonly IListmonkRegistrationSyncOutboxFactory _listmonkFactory = Substitute.For<IListmonkRegistrationSyncOutboxFactory>();
+    private readonly IWebhookEventPublisher _webhookPublisher = Substitute.For<IWebhookEventPublisher>();
     private readonly CreateEventRegistrationCommandHandler _handler;
 
     public CreateEventRegistrationCommandHandlerTests()
@@ -72,6 +74,10 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<Guid>(),
                 Arg.Any<CancellationToken>())
             .Returns((IntegrationSyncOutbox?)null);
+        _webhookPublisher.PublishAsync(
+                Arg.Any<WebhookEventBuildContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(WebhookEventPublishResult.SkippedResult("webhooks_disabled"));
 
         _handler = new CreateEventRegistrationCommandHandler(
             _intentRepository,
@@ -88,6 +94,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             new RegistrationNotificationDeliveryService(
                 _notificationRepository,
                 CreateNotificationPreferenceResolver()),
+            _webhookPublisher,
             Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>());
     }
 
@@ -231,6 +238,84 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         await Assert.That(capturedOutbox.SubscriberEmail).IsEqualTo("registrant@example.test");
         await Assert.That(capturedOutbox.ListmonkListId).IsEqualTo(42);
         await Assert.That(capturedOutbox.Status).IsEqualTo(IntegrationSyncStatus.Pending);
+    }
+
+    [Test]
+    public async Task HandleWhenContactShareConsentIsFalsePublishesWebhookWithoutAttendeePii()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+        WebhookEventBuildContext? capturedContext = null;
+
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
+            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+        _webhookPublisher.PublishAsync(
+                Arg.Do<WebhookEventBuildContext>(context => capturedContext = context),
+                Arg.Any<CancellationToken>())
+            .Returns(WebhookEventPublishResult.Success(Guid.CreateVersion7()));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(capturedContext).IsNotNull();
+        await Assert.That(capturedContext!.EventType).IsEqualTo(WebhookEventNames.RegistrationCreated);
+        await Assert.That(capturedContext.TenantId).IsEqualTo(tenantId);
+        await Assert.That(capturedContext.Data["registrationId"]).IsEqualTo(result.Id.ToString());
+        await Assert.That(capturedContext.Data["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(capturedContext.Data["status"]).IsEqualTo("Approved");
+        await Assert.That(capturedContext.Data["consentToEmailShare"]).IsEqualTo(false);
+        await Assert.That(capturedContext.Data.ContainsKey("attendeeEmail")).IsFalse();
+        await Assert.That(capturedContext.Data.ContainsKey("attendeeFirstName")).IsFalse();
+        await Assert.That(capturedContext.Data.ContainsKey("attendeeLastName")).IsFalse();
+    }
+
+    [Test]
+    public async Task HandleWhenContactShareConsentIsTruePublishesWebhookWithAttendeePii()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
+        command.EventRegistrationDto.ShareEmailWithOrganizer = true;
+        command.EventRegistrationDto.ConsentTextAcknowledged = "Share my email with the organizer.";
+        command.EventRegistrationDto.ConsentUiVersion = "v1";
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+        WebhookEventBuildContext? capturedContext = null;
+
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
+            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+        _webhookPublisher.PublishAsync(
+                Arg.Do<WebhookEventBuildContext>(context => capturedContext = context),
+                Arg.Any<CancellationToken>())
+            .Returns(WebhookEventPublishResult.Success(Guid.CreateVersion7()));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(capturedContext).IsNotNull();
+        await Assert.That(capturedContext!.Data["consentToEmailShare"]).IsEqualTo(true);
+        await Assert.That(capturedContext.Data["attendeeEmail"]).IsEqualTo("registrant@example.test");
+        await Assert.That(capturedContext.Data["attendeeFirstName"]).IsEqualTo("Test");
+        await Assert.That(capturedContext.Data["attendeeLastName"]).IsEqualTo("Registrant");
     }
 
     [Test]

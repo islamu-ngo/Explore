@@ -70,8 +70,17 @@ public sealed class WebhookEventTypeRegistry : IWebhookEventTypeRegistry
             [
                 Field("registrationId", "Registration identifier.", "018f0000-0000-7000-8000-000000000101"),
                 Field("eventId", "Registered event identifier.", "018f0000-0000-7000-8000-000000000001"),
-                Field("status", "Registration status.", "Pending")
-            ]),
+                Field("status", "Registration status.", "Pending"),
+                Field(
+                    "consentToEmailShare",
+                    "Whether the attendee explicitly consented to share contact details with the organizer.",
+                    false,
+                    WebhookJsonSchemaTypes.Flag),
+                Field("attendeeEmail", "Attendee email address when contact sharing consent was granted.", "attendee@example.test", required: false),
+                Field("attendeeFirstName", "Attendee first name when contact sharing consent was granted.", "Amina", required: false),
+                Field("attendeeLastName", "Attendee last name when contact sharing consent was granted.", "Rahman", required: false)
+            ],
+            schemaVersion: 2),
         CreateEventDescriptor(
             WebhookEventNames.RegistrationApproved,
             "registration",
@@ -155,12 +164,13 @@ public sealed class WebhookEventTypeRegistry : IWebhookEventTypeRegistry
         string groupName,
         string description,
         IReadOnlyList<WebhookEventDataFieldDescriptor> dataFields,
-        int payloadRetentionDays = 14) =>
+        int payloadRetentionDays = 14,
+        int schemaVersion = 1) =>
         new(
             name,
             groupName,
             description,
-            SchemaVersion: 1,
+            schemaVersion,
             IsPublic: true,
             IsEnabled: true,
             payloadRetentionDays,

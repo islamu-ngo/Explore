@@ -101,6 +101,75 @@ public sealed class DefaultWebhookPayloadBuilderTests
     }
 
     [Test]
+    public async Task BuildAsync_ForRegistrationCreatedWithoutShareConsent_OmitsAttendeePii()
+    {
+        var context = CreateContext(
+            WebhookEventNames.RegistrationCreated,
+            new Dictionary<string, object?>
+            {
+                ["registrationId"] = AggregateId.ToString(),
+                ["eventId"] = AggregateId.ToString(),
+                ["status"] = "Approved",
+                ["consentToEmailShare"] = false
+            });
+
+        var result = await _builder.BuildAsync(context, CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Envelope!.Version).IsEqualTo(2);
+        using var parsed = JsonDocument.Parse(result.RawPayloadJson!);
+        var data = parsed.RootElement.GetProperty("data");
+        await Assert.That(data.GetProperty("consentToEmailShare").GetBoolean()).IsFalse();
+        await Assert.That(data.TryGetProperty("attendeeEmail", out _)).IsFalse();
+    }
+
+    [Test]
+    public async Task BuildAsync_ForRegistrationCreatedWithShareConsent_IncludesAttendeePii()
+    {
+        var context = CreateContext(
+            WebhookEventNames.RegistrationCreated,
+            new Dictionary<string, object?>
+            {
+                ["registrationId"] = AggregateId.ToString(),
+                ["eventId"] = AggregateId.ToString(),
+                ["status"] = "Approved",
+                ["consentToEmailShare"] = true,
+                ["attendeeEmail"] = "attendee@example.test",
+                ["attendeeFirstName"] = "Amina",
+                ["attendeeLastName"] = "Rahman"
+            });
+
+        var result = await _builder.BuildAsync(context, CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Envelope!.Version).IsEqualTo(2);
+        using var parsed = JsonDocument.Parse(result.RawPayloadJson!);
+        var data = parsed.RootElement.GetProperty("data");
+        await Assert.That(data.GetProperty("consentToEmailShare").GetBoolean()).IsTrue();
+        await Assert.That(data.GetProperty("attendeeEmail").GetString()).IsEqualTo("attendee@example.test");
+        await Assert.That(data.GetProperty("attendeeFirstName").GetString()).IsEqualTo("Amina");
+        await Assert.That(data.GetProperty("attendeeLastName").GetString()).IsEqualTo("Rahman");
+    }
+
+    [Test]
+    public async Task BuildAsync_ForRegistrationCreatedWithoutConsentField_FailsClosed()
+    {
+        var context = CreateContext(
+            WebhookEventNames.RegistrationCreated,
+            new Dictionary<string, object?>
+            {
+                ["registrationId"] = AggregateId.ToString(),
+                ["eventId"] = AggregateId.ToString(),
+                ["status"] = "Approved"
+            });
+
+        var result = await _builder.BuildAsync(context, CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureCategory).IsEqualTo("missing_required_payload_field");
+    }
+
+    [Test]
     public async Task BuildAsync_WhenEventTypeUnknown_FailsClosed()
     {
         var context = CreateContext(
