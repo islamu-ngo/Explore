@@ -2,7 +2,7 @@
 <!-- ABOUTME: Summarizes MasterCode translation evidence, fallback bundle role, next actions, decisions, and handoff notes. -->
 # Internationalization Translation — Context
 
-Last Updated: 2026-07-09 Europe/Brussels
+Last Updated: 2026-07-10 Europe/Brussels
 
 ## SESSION PROGRESS (2026-07-09 Europe/Brussels)
 
@@ -29,22 +29,27 @@ Last Updated: 2026-07-09 Europe/Brussels
 - Completed Phase 4 Task 4.2 by verifying the API OpenAPI generation and Blazor NSwag client generation workflow after adding static bundle routes.
 - Completed Phase 4 Task 4.3 by removing stale Blazor localization DTO shims and aligning admin state/service payloads with generated DTOs.
 - Completed Phase 5 Task 5.1 by verifying BFF language/direction endpoint ownership, allowlist validation, cookie persistence, API forwarding, and antiforgery posture through existing source and integration tests.
+- Completed Phase 5 Task 5.2 by wiring the admin UI write-only TMS API-key field to backend rotation, removing the misleading clear action, and clarifying live TMS-to-static bundle export affordances.
+- Completed Phase 5 Task 5.3 by exposing localization picker governance through public experience settings and wiring shell language pickers to that flag.
+- Completed Phase 6 Tasks 6.1 through 6.3 by documenting safe translation metrics, confirming static bundle storage docs, and deferring local Aspire/Docker Tolgee/Weblate resources to operator-provided TMS smoke.
 
-### 🟡 IN PROGRESS
-- Phase 5 Task 5.2 is next: verify admin localization UI accessibility and live/fallback mode affordances.
+### ✅ FINAL VERIFICATION STATE
+- Anonymous/local Aspire smoke completed for public translation fetch, language validation, Blazor shell/language picker rendering, Weblate root reachability, and admin endpoint authorization boundaries.
+- Authenticated admin static bundle/provider smoke remains unrun because no local admin token/credentials or operator-provided live TMS endpoint were available.
+- Full `Event.API.IntegrationTests` is not green for unrelated reasons: notification intent inserts violate `fk_notification_intents_notification_categories_category_id`, and a later run also hit Keycloak Testcontainers exiting with code 137.
 
 ### ⏭️ NEXT
-1. Continue with Phase 5 Task 5.2: verify admin localization UI accessibility and live/fallback mode affordances.
-2. Keep this context and the task checklist updated after each implementation slice.
+1. Fix or isolate the unrelated notification category seed/test-data failure before relying on full API integration results.
+2. Run authenticated admin smoke for static bundle import/export and live provider test/export when an admin token and operator TMS endpoint are available.
 
 ### ⚠️ BLOCKERS
-- None blocking planning.
-- Implementation-time verification needed for exact secret-provider path, generated admin API interface path, admin localization Razor component path, actual provider test project location, and OpenAPI/NSwag generation command.
+- None blocking the localization implementation.
+- Full-repo API integration is blocked by unrelated notification/Keycloak test-environment failures, not by localization code.
 
 ## Quick Resume
 1. Read `internationalization-translation-plan.md`.
 2. Read `internationalization-translation-tasks.md`.
-3. Start from Phase 5.2 admin localization UI accessibility/live-fallback affordance verification unless user instruction overrides it; provider generated clients, fallback metrics, static bundle schema/merge, static bundle admin hooks, OpenAPI generation evidence, generated admin DTO alignment, and BFF preference endpoints are complete.
+3. Start from resolving unrelated API integration failures or authenticated admin smoke if credentials/TMS endpoint are available; provider generated clients, fallback metrics, static bundle schema/merge, static bundle admin hooks, OpenAPI generation evidence, generated admin DTO alignment, BFF preference endpoints, admin UI secret/live-export affordances, language-picker governance alignment, and metric docs are complete.
 4. Keep all three dev docs updated after each meaningful implementation slice.
 5. Do not treat this as greenfield: most localization layers already exist.
 6. Do not make static bundles the primary hosted design; they are fallback/offline support.
@@ -136,12 +141,13 @@ Last Updated: 2026-07-09 Europe/Brussels
 - For provider/static fallback/Application tests: verify actual test project names before adding/running.
 
 ## Current Known Risks / Unknowns
-- Admin OpenAPI/NSwag generation and generated Blazor client DTO drift are verified through Phase 4.3; remaining admin UI work is visual/interaction affordance and direct file-import UX.
+- Admin OpenAPI/NSwag generation and generated Blazor client DTO drift are verified through Phase 4.3; remaining admin UI work is direct file-import UX and any visual polish found during browser smoke.
 - TMS API-key secret-provider path is implemented for tenant-scoped inline-encrypted rotation and provider resolution; instance/env/Infisical binding behavior remains inherited from the shared secret resolver.
-- Tolgee/Weblate auth headers and endpoint/payload shapes are implemented through generated provider clients and fake HTTP tests; live Aspire/Weblate smoke is still pending.
+- Tolgee/Weblate auth headers and endpoint/payload shapes are implemented through generated provider clients and fake HTTP tests; authenticated live-provider smoke is still pending against an operator-provided TMS endpoint.
 - API/TMS failures must remain visible through logs/metrics; successful empty connected-provider responses now stay empty instead of silently using static fallback.
 - `TranslationConfigResolver.InvalidateCache(null)` does not clear all tenant cache entries.
 - Admin UI direct file-import UX is not implemented yet; service/API hooks exist.
+- Language picker visibility now consumes `localization.client_picker_enabled` through anonymous-safe public experience settings.
 - HA-safe bundle writer is not implemented; current local writer is single-replica/shared-volume safe only.
 
 ## Implementation Progress
@@ -219,13 +225,31 @@ Last Updated: 2026-07-09 Europe/Brussels
 - **Behavior:** `/bff/language` and `/bff/direction` are owned by `BffPreferenceEndpoints` and mapped through `MapBffEndpoints()`. Both mutation endpoints require antiforgery validation, normalize input through `BffPreferenceValidationService`, reject unsupported language/direction values before cookies or API forwarding, persist anonymous language/direction cookies through `BffPreferenceCookieService`, and forward authenticated preference changes through the named BFF client without exposing tokens to the browser. The client `LanguagePreferenceService` also validates language codes through `CultureRegistry` before calling `/bff/language`.
 - **Validation:** Existing integration/unit coverage verifies invalid language/direction returns 400 without cookies, valid language persists `lang` and `.AspNetCore.Culture`, `dir=auto` deletes the direction cookie, preference validation normalizes allowlisted values only, authenticated forwarding maps language/direction to the API preference DTO, and the browser antiforgery handler adds `X-CSRF-TOKEN` for mutating BFF requests.
 
+### Phase 5 Task 5.2 — Admin Localization UI Secret And Live/Fallback Affordances
+- **Status:** Completed.
+- **Changed files:** `Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceLocalizationSection.razor`, `Explore.Blazor.Client/Contracts/Services/ILocalizationAdminService.cs`, `Explore.Blazor.Client/Services/ILocalizationAdminApi.cs`, `Explore.Blazor.Client/Services/LocalizationAdminService.cs`, `Explore.Blazor.Client.Tests/Services/LocalizationAdminServiceTests.cs`, this context file, and `internationalization-translation-tasks.md`.
+- **Behavior:** The admin write-only TMS API-key field now persists through the backend rotation endpoint during Save, clears the typed key only after successful rotation, and keeps it available for retry on failure. The misleading local-only clear action was removed because no backend delete endpoint exists. The live provider export card now names the action as TMS-to-static-bundle export and explicitly states force-offline mode disables that live-only mirror path.
+- **Validation:** `aft_inspect` reported no diagnostics for the changed admin UI/service/test scope. Razor LSP is unavailable in this environment, so project compile/test is authoritative. `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed (1568 succeeded, 1 skipped) after adding rotate-key service tests and the UI copy/method rename.
+
+### Phase 5 Task 5.3 — Language Picker Governance Alignment
+- **Status:** Completed.
+- **Changed files:** `Explore.Application/Features/PublicExperience/Handlers/Queries/GetPublicExperienceSettingsQueryHandler.cs`, `Explore.Application/DTOs/Onboarding/PublicExperienceSettingsDto.cs`, `Explore.Blazor.Client/Services/PublicExperienceService.cs`, `Explore.Blazor.Client/Layout/MainLayout.razor`, `Explore.Blazor.Client/Layout/MainLayout.razor.cs`, `Explore.Blazor.Client/Layout/NavMenu.razor`, `Explore.Blazor.Client/Layout/NavMenu.razor.cs`, `Explore.Blazor.Client.Tests/Common/PublicExperienceSettingsBuilder.cs`, `Explore.Blazor.Client.Tests/Layout/NavMenuAdminTests.cs`, `Event.Application.UnitTests/Features/PublicExperience/Queries/GetPublicExperienceSettingsQueryHandlerTests.cs`, this context file, and `internationalization-translation-tasks.md`.
+- **Behavior:** `localization.client_picker_enabled` now flows through `ITranslationConfigResolver` into the anonymous-safe public experience settings payload. `MainLayout` and `NavMenu` default the picker visible, then pass the public `ClientPickerEnabled` flag into `LanguagePicker.Enabled` after settings load. The picker still uses the compile-time `CultureRegistry` allowlist; TMS-discovered languages remain reporting/configuration data, not runtime picker authority.
+- **Validation:** `lsp_diagnostics`/`aft_inspect` reported no diagnostics on the changed public settings/test scope. `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed (1569 succeeded, 1 skipped). `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` passed (2092/2092) after adding the public settings handler test and translation config resolver substitute.
+
+### Phase 6 Tasks 6.1–6.3 — Observability, Operations, And TMS Resource Decision
+- **Status:** Completed; final verification exceptions documented.
+- **Changed files:** `Explore.Application/Features/Localization/Handlers/Queries/ExportLocalizationBundleQueryHandler.cs`, `Explore.Application/Telemetry/TranslationMetrics.cs`, `docs/LOCALIZATION.md`, `docs/OPERATIONS.md`, this context file, and `internationalization-translation-tasks.md`.
+- **Behavior:** Translation observability now covers runtime fetch count/duration, language changes, TMS connection tests, fallback activation, and static bundle import/export boundaries through the `Explore.Translation` meter. Metrics use safe low-cardinality tags only and explicitly avoid translation keys, bundle contents, raw provider payloads, and TMS secrets. The Blazor `TranslationService.T(key)` hot path remains synchronous/cache-only and uninstrumented. Local Aspire/Docker Tolgee/Weblate resources are deferred; connected-provider behavior is verified by generated-client/fake-HTTP tests and live smoke should use an operator-provided endpoint.
+- **Validation:** `Event.Application.UnitTests` passed (2098/2098), `Explore.Infrastructure.Tests` passed (711/711), `Explore.Blazor.Client.Tests` passed on rerun (1570 total, 1569 succeeded, 1 skipped), `Event.Architecture.Tests` passed (263 total, 262 succeeded, 1 skipped), and `dotnet build --configuration Release --verbosity quiet` passed with known warnings only. `Event.API.IntegrationTests` failed outside localization: notification intent inserts violate `fk_notification_intents_notification_categories_category_id`, and a later run also hit Keycloak Testcontainers exiting with code 137. Manual Aspire smoke passed for public translation endpoints, language validation, Blazor shell/language picker rendering, Weblate root, and unauthenticated admin 401s; authenticated admin static/provider operations were not smoked because no local admin token/credentials were available.
+
 ## Handoff Notes
 
-- **Current state:** Phase 1 Tasks 1.1 through 1.4, Phase 2 Tasks 2.1 through 2.5, Phase 3 Tasks 3.1 through 3.5, Phase 4 Tasks 4.1 through 4.3, and Phase 5 Task 5.1 are completed. Localization now has server-side TMS secret rotation, NSwag-generated Tolgee/Weblate provider clients, fallback metrics, static bundle schema/merge/write support, authorized static bundle import/export API plus Blazor service hooks, generated admin DTO alignment, and verified BFF language/direction preference endpoints.
-- **Next action:** Continue Phase 5 Task 5.2: verify admin localization UI accessibility and live/fallback mode affordances, then Phase 5 Task 5.3 picker governance alignment.
-- **Blockers:** Manual Aspire/live Weblate smoke and full repo verification are still pending. An unrelated untracked notification handler caused a compile blocker once; the user explicitly instructed to leave it alone and focus only localization tasks.
+- **Current state:** All 24 implementation tasks are complete. Localization now has server-side TMS secret rotation, NSwag-generated Tolgee/Weblate provider clients, fallback/static-bundle metrics, static bundle schema/merge/write support, authorized static bundle import/export API plus Blazor service hooks, generated admin DTO alignment, verified BFF language/direction preference endpoints, admin UI secret/live-export affordance fixes, language-picker governance alignment, operator-facing observability docs, and a recorded decision not to add a dedicated localization/TMS intent in this slice.
+- **Next action:** Resolve unrelated API integration notification/Keycloak failures, then run authenticated admin static bundle/provider smoke with credentials and an operator TMS endpoint.
+- **Blockers:** Authenticated admin/live-provider smoke needs credentials/TMS endpoint. Full repo API integration is blocked by unrelated notification category FK failures and Keycloak container exits. Unrelated notification/listmonk worktree changes must remain untouched unless user approves.
 - **Modified files:** Many localization files are modified across Application, Infrastructure, API, Blazor client services, docs, schemas, generated provider clients, and tests. Use `git status --short` and scope carefully; do not revert unrelated worktree changes.
-- **Validation:** Recent focused verification: `Explore.Infrastructure.Tests` passed (709/709) after provider-generated-client, fallback metrics, static bundle, and admin bundle hook updates; `Explore.Blazor.Client.Tests` passed (1566 succeeded, 1 skipped) after generated admin DTO alignment. Earlier `Event.Application.UnitTests`, `Event.Architecture.Tests`, and Release build passed in their respective slices. Final Release build, API integration, BFF/manual UI verification, and manual Aspire smoke remain pending.
-- **Documentation impact:** `docs/LOCALIZATION.md`, `docs/CONFIGURATION.md`, `docs/API.md`, `docs/BLAZOR.md`, `docs/OPERATIONS.md`, `docs/DEPLOYMENT_MODES.md`, and the active task checklist have been refreshed through Phase 4.3.
-- **Risks:** Missing UI file-picker affordance for static imports, live Aspire/Weblate behavior, admin UI affordance/accessibility gaps, language picker governance alignment, and multi-replica writable bundle storage remain the likely hard parts.
+- **Validation:** Final focused verification: Release build passed; `Event.Application.UnitTests` passed (2098/2098); `Explore.Infrastructure.Tests` passed (711/711); `Explore.Blazor.Client.Tests` passed on rerun (1569 succeeded, 1 skipped; one prior AI assistant rail failure was flaky/unrelated); `Event.Architecture.Tests` passed (262 succeeded, 1 skipped). Manual Aspire smoke passed for the public/localized surface listed above. `Event.API.IntegrationTests` failed for unrelated notification/Keycloak issues, not localization.
+- **Documentation impact:** `docs/LOCALIZATION.md`, `docs/CONFIGURATION.md`, `docs/API.md`, `docs/BLAZOR.md`, `docs/OPERATIONS.md`, `docs/DEPLOYMENT_MODES.md`, and the active task checklist have been refreshed through Phase 6.3.
+- **Risks:** Missing UI file-picker affordance for static imports, authenticated live-provider smoke, API integration suite health, and multi-replica writable bundle storage remain the likely hard parts.
 - **Notes for next contributor/agent:** Reuse existing seams: provider clients stay generated from schema slices, static writes go through `IBundleFileWriter`, static reads go through `IStaticTranslationBundleReader`, translation cache invalidation goes through `ITranslationResolver`. Do not make static bundles the hosted primary path; they are no-TMS/fallback support.

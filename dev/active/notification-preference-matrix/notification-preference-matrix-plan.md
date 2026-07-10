@@ -3,14 +3,14 @@
 
 # Notification Preference Matrix — Implementation Plan
 
-Last Updated: 2026-07-09 Europe/Brussels
+Last Updated: 2026-07-11 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - Task name: `notification-preference-matrix`
 - Workstream directory: `dev/active/notification-preference-matrix/`
-- Current status: PR 1 data foundation/resolver, PR 2 current-user/organization/group CQRS/API/HAL endpoints, PR 3 user/organization/group Blazor matrix surfaces, and PR 4 delivery integration are implemented; operations/docs cleanup and manual QA are pending.
-- User request: implement a notification preference matrix where rows are notification categories, columns are Email and In-App, cells are independent checkboxes, multiple channels can be selected, all unchecked means category opt-out, global mute suppresses non-essential notifications, and critical security/billing categories remain locked on.
+- Current status: PR 1 through PR 5 are implemented. PR 6 Web Push is implemented and locally verified with Infisical `/api` VAPID mapping, anonymous plain-text public-key discovery, generated Blazor client consumption, browser consent, subscription persistence, VAPID delivery, bounded TTL/urgency/topic policy, service-worker flood controls, endpoint SSRF protection, canonical tests, and Chromium safety checks. Final API integration retains two unrelated event-registration notification-intent FK failures recorded below.
+- User request: implement a notification preference matrix where rows are notification categories and Email, In-App, and browser Push are independent checkbox channels. Push must be explicitly consented, safely coalesced while offline, non-sensitive, and quiet while the app is visible. Global mute suppresses non-essential notifications and critical security/billing categories remain locked on.
 - CTO review goal: convert the earlier draft into an enterprise-grade, Clean Architecture, self-hostable implementation plan with exact sequencing, risk controls, authorization, tenant isolation, and verification.
 
 ## 1. Contract Classification
@@ -25,11 +25,11 @@ No exact `.claude/contract/intents.yaml` intent covers a planning-only notificat
 | implemented PR 2 paths | `Explore.Application/DTOs/Notification/**`, `Explore.Application/Features/Notifications/**`, `Explore.API/Controllers/**`, `Explore.API/Hateoas/**`, `Explore.API/OpenApi/**`, `Event.Application.UnitTests/**`, `Event.API.IntegrationTests/**` |
 | implemented PR 3 paths | `Explore.Blazor.Client/Contracts/Services/Notifications/**`, `Explore.Blazor.Client/Services/NotificationService.cs`, `Explore.Blazor.Client/Components/Notifications/**`, `Explore.Blazor.Client/Pages/User/Components/SettingsNotifications.*`, `Explore.Blazor.Client/Pages/Organizations/OrganizationProfile.razor`, `Explore.Blazor.Client/Pages/Groups/GroupProfile.razor` |
 | implemented PR 4 paths | `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationNotificationFanoutService.cs`, `Explore.Application/Services/RegistrationNotificationDeliveryService.cs`, `Explore.Infrastructure/EmailDispatchDrainService.cs`, `Event.Application.UnitTests/**`, `Explore.Infrastructure.Tests/Infrastructure/**` |
-| current verification | `Explore.Application` build, `Explore.Persistence` build, `Explore.Infrastructure` build, `Explore.API` no-dependencies build, `Explore.Blazor.Client` build, `Explore.Blazor.Client.Tests` no-dependencies build plus no-build test run, full `Event.Application.UnitTests`, full `Event.Persistence.IntegrationTests`, full `Explore.Infrastructure.Tests`, full `Event.Architecture.Tests` |
-| current blocker | Full solution/API dependency builds are blocked by unrelated dirty localization work: `Explore.Infrastructure/Localization/OfflineTranslationProvider.cs` and missing `CultureRegistry` references in Application localization handlers. User instructed to leave these untouched. |
-| still forbidden without reclassification | Delivery fanout changes or additional authorization/HAL policy expansion beyond the implemented preference endpoints |
+| current verification | Full Release build; full `Event.Application.UnitTests`, `Event.Domain.UnitTests`, `Event.Architecture.Tests`, `Explore.Secrets.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Explore.Blazor.IntegrationTests`, and `Explore.Blazor.Client.Tests` |
+| current blocker | `Event.API.IntegrationTests` has two unrelated event-registration runtime failures caused by `notification_intents` FK violations against `notification_categories`; notification-preference API/HAL/OpenAPI failures are absent. |
+| still forbidden without reclassification | SMS/mobile-native channels, tenant/instance admin UI, conflict-resolution UX, or general notification-to-email fanout beyond the implemented direct email dispatch gate. Webhooks/Svix are not notification matrix channels and stay in developer webhook settings/App Portal flows. |
 
-Future implementation agents must re-classify each code slice against `.claude/contract/intents.yaml`. Expected intents include `add-ef-migration`, `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `add-hal-link`, `blazor-component-affordance`, and possibly `openapi-contract-change`.
+PR 6 was classified against `add-ef-migration`, `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `add-hal-link`, and `blazor-component-affordance`; each subsequent code slice must be re-classified against `.claude/contract/intents.yaml`.
 
 ## 2. Evidence Log
 
@@ -57,6 +57,8 @@ Future implementation agents must re-classify each code slice against `.claude/c
 | Context7 `/dotnet/entityframework.docs` | EF Core model-level `HasQueryFilter` is canonical for soft-delete/multi-tenancy; `IgnoreQueryFilters()` can disable filters and must not remove tenant isolation on request paths; async transactions use `BeginTransactionAsync`, `SaveChangesAsync`, `CommitAsync`; optimistic concurrency/concurrency tokens are the standard conflict pattern. |
 | Context7 `/dotnet/aspnetcore.docs` | ASP.NET Core ProblemDetails/validation responses are structured RFC7807 JSON; antiforgery middleware must run after authentication and authorization; endpoint metadata should declare problem/validation outcomes. |
 | Context7 `/websites/learn_microsoft_en-us_aspnet_core` | Blazor `EditForm` supports enhanced form handling and named forms; validation uses `DataAnnotationsValidator`/validation summaries/custom server-side errors; Blazor manages validation ARIA attributes. |
+| Context7 `/websites/learn_microsoft_en-us_aspnet_core_blazor` | Blazor accesses browser-only APIs through JavaScript interop; WebAssembly/client execution runs inside the browser sandbox; PWA/offline behavior uses service workers rather than server-side .NET APIs. |
+| Context7 `/mdn/content` | Notification permission must be checked with `Notification.permission`, requested only after a user gesture, and not re-prompted after denial; Push subscription uses a service worker registration and `PushManager.subscribe()` in response to user action, then sends the `PushSubscription` endpoint/keys to the server. |
 
 ## 3. Source-Grounded Current State
 
@@ -113,9 +115,17 @@ Future implementation agents must re-classify each code slice against `.claude/c
 ### 3.6 What Does Not Exist Yet
 
 - No general notification-to-email fanout exists; Email channel work applies to the existing direct email dispatch paths only.
-- Final canonical docs cleanup and manual QA are still pending.
+- No webhook/Svix notification matrix channel exists. Product webhooks remain developer-facing external-system integrations managed through webhook settings and the Svix App Portal flow.
 
-## 4. Future State
+### 3.7 What PR 6 Added
+
+- Tenant/user/device Web Push subscriptions, durable dispatch outbox rows, EF configuration, tenant filters, repositories, migration, CQRS handlers, authenticated subscription endpoints, and server-authored HAL affordances.
+- Explicit Blazor consent and opt-out UX backed by JS interop; permission is requested only from a user click, denied permission is respected, and the browser receives only the VAPID public key.
+- VAPID-authenticated delivery with category-owned TTL, urgency, and transport Topic values; stale dispatches expire and retries cannot outlive TTL.
+- A root-scoped service worker that refreshes visible clients silently, replaces displayed notifications with a stable tag and `renotify: false`, summarizes excessive visible notifications, validates navigation, and focuses an existing app window on click.
+- Permanent push-service `404`/`410` responses deactivate stale subscriptions, while payloads remain generic refresh/navigation hints with durable notification rows as the authenticated source of truth.
+
+## 4. Implemented State
 
 Build a normalized, HAL-driven notification preference system:
 
@@ -127,6 +137,7 @@ Build a normalized, HAL-driven notification preference system:
 6. Required categories remain enabled server-side and render as disabled checked cells with lock/reason copy.
 7. Effective resolution is computed once in Application and consumed by API, Blazor, in-app fanout, and email dispatch integrations.
 8. User/org/group edit affordances are exposed only through HAL links after authorization evaluation.
+9. Web Push is available only after a real browser subscription and explicit consent; its service worker and delivery worker apply layered flood controls.
 
 ## 5. Product Semantics
 
@@ -150,6 +161,7 @@ Rules:
 - Marketing starts opt-out by default unless product/legal explicitly changes that requirement.
 - Billing/legal can exist as metadata before billing workflows exist; do not implement billing workflows merely to satisfy the row.
 - Trust/safety requiredness may need subtype split before implementation if current flows mix essential and non-essential messages.
+- The Push column follows the same row semantics as Email/In-App: required categories are locked on, non-required categories are user-controlled, and all unchecked means opt-out for that category.
 
 ### 5.2 Scope Semantics
 
@@ -180,6 +192,8 @@ Use the existing hierarchy language carefully: the resolver may read broad-to-na
 | Keep API projections UI-ready. | Blazor should not compute requiredness, editability, lock source, or inherited value. | Query DTO includes categories, channels, cells, effective source, editability, mute state, and HAL-ready actions. |
 | Gate all UI actions by HAL links. | Project invariant: HAL is the client source of truth for affordances. | Save/reset/mute buttons render/enable only from `_links`; no role checks in components. |
 | Integrate Email and In-App separately. | In-app notifications and direct email dispatch are different current systems. | Delivery integration is split into two PRs and must not claim notification-to-email fanout exists. |
+| Treat Web Push as an end-user browser notification channel, not a webhook provider. | Browser Push depends on user permission, service workers, Push API subscriptions, and delivery through push services. | PR 6 owns `push` consent UX, subscription storage, VAPID/operator configuration, delivery worker, and service-worker handling. |
+| Keep Svix/webhooks outside this matrix. | Product webhooks deliver events to external systems and are managed by developer webhook settings/App Portal, not recipient notification preferences. | Never add `webhook` as a matrix channel; link webhook work to `docs/WEBHOOKS.md` instead. |
 
 ## 7. Proposed Data Model
 
@@ -205,11 +219,11 @@ Names may change during implementation, but these concepts must remain.
 `NotificationPreferenceChannel` or equivalent lookup-like entity:
 
 - `int Id`
-- stable `MasterCode` values: `email`, `in_app`
+- stable `MasterCode` values: `email`, `in_app`, and `push`
 - `FullName`
 - `int SortOrder`
 
-Do not add push/SMS/webhook channels in this feature. Add a new channel only when an actual delivery surface exists.
+Do not add SMS/mobile-native channels in this feature. Do not add `webhook`; webhooks are external integration endpoints, not user notification channels.
 
 ### 7.3 Scoped Preference Cells
 
@@ -338,6 +352,19 @@ UX requirements:
 - Show server validation errors in the form using project-standard validation feedback.
 - Gate save/reset/mute controls by HAL `_links`, never by roles/claims.
 
+Implemented Web Push UX requirements:
+
+- Render Push only when the API metadata includes a `push` channel and only on the current-user matrix where browser enrollment is meaningful.
+- Use an explicit, labeled action such as “Enable browser push notifications”; do not show the browser permission prompt on page load.
+- Check support with browser APIs before rendering the enable flow, and expose unsupported state accessibly.
+- Read `Notification.permission`; treat `denied` as a stop signal with respectful helper copy, treat `default` as not-yet-asked, and treat `granted` as permission to create/update a subscription.
+- Call `Notification.requestPermission()` and `PushManager.subscribe()` only in response to the user's click/tap.
+- Register/use the service worker, create the `PushSubscription`, and send endpoint/key material to the server through the BFF/API boundary; the browser must not receive access tokens or VAPID private keys.
+- Provide an easy opt-out/unsubscribe path and announce state changes with the existing accessibility announcer patterns.
+- When a same-origin app window is visible, post a refresh message to open clients and suppress the OS popup.
+- Use a stable notification `tag` with `renotify: false` to replace already displayed notifications for the same category/topic.
+- Before displaying, inspect `registration.getNotifications()`; once the visible cap is reached, close existing app notifications and show one generic, non-sensitive summary.
+
 ## 11. Delivery Integration Plan
 
 ### 11.1 In-App
@@ -361,6 +388,34 @@ Acceptance:
 - Existing unsubscribe/preference checks remain at least as restrictive as before.
 - Tenant pause, operator park/replay, skip outcomes, health checks, and scheduler behavior remain intact.
 - Do not create notification-to-email fanout unless separately planned and accepted.
+
+### 11.3 Web Push
+
+Web Push is a separate PR 6 delivery slice, not hidden inside the existing Email/In-App rollout.
+
+Acceptance:
+
+- Persist Push subscriptions per authenticated user/device with tenant isolation, endpoint uniqueness, key material, expiration/last-seen metadata, and unsubscribe cleanup.
+- Gate non-required push sends through `INotificationPreferenceResolver` using category code + `push` channel code.
+- Use VAPID/public-key configuration that is self-hostable and never exposes private keys to the browser.
+- Keep notification payloads minimal and non-sensitive; the service worker can display a notification and refresh open app windows, but should not carry raw private notification bodies unnecessarily.
+- Remove stale subscriptions when push services return permanent expiration/not-found responses.
+- Validate subscription endpoint/key shapes at enrollment and enforce DNS/private-network SSRF checks plus redirect refusal immediately before provider delivery; the HTTP connector must bind to the same validated public address to prevent DNS rebinding.
+- Set an explicit bounded TTL and urgency from server-owned category policy. TTL limits queue retention; it is not a client display duration.
+- Set a stable Web Push `Topic` (maximum 32 URL/filename-safe Base64 characters) so a push service can coalesce pending messages for the same subscription/category.
+- Set a matching display-layer notification `tag` so already delivered notifications replace rather than stack, with `renotify: false` to avoid repeat sounds.
+- Never claim `tag` alone prevents an offline queue burst: `Topic` handles transport coalescing, while `tag` handles displayed-notification replacement.
+- Retry scheduling must stop when the message TTL window expires.
+
+### 11.4 Webhooks / Svix Separation
+
+Product webhooks are not end-user notification preferences.
+
+Acceptance:
+
+- Keep Local/Svix/Composite webhook provider configuration, endpoint management, and Svix App Portal flows under webhook/developer settings.
+- Do not add `webhook` as a `NotificationPreferenceChannel`.
+- Do not route Svix App Portal permissions through user notification category opt-outs.
 
 ## 12. PR / Phase Split
 
@@ -398,15 +453,24 @@ Acceptance:
 - Run full required per-project verification and manual QA.
 - Close or archive active dev-doc workstream only after implementation lands.
 
+### PR 6 — Web Push Browser Channel (Implemented)
+
+- Add `push` channel metadata only after the browser subscription/delivery slice is accepted.
+- Add tenant-scoped Push subscription persistence and authenticated subscribe/unsubscribe endpoints.
+- Add Blazor/BFF JavaScript interop for explicit user-gesture consent, service-worker registration, `PushManager.subscribe()`, and subscription upload.
+- Add delivery worker/provider integration using VAPID and resolver-gated category/channel checks.
+- Add service-worker push handling, opt-out cleanup, and browser manual QA across granted/default/denied/unsupported states.
+- Add explicit TTL/urgency/topic send policy, visible-tab suppression, display-tag replacement, a bounded summary cap, and click-to-focus behavior.
+
 ## 13. Testing Strategy
 
-Planning-only verification for this update:
+Documentation verification for this update:
 
 - Read back all three markdown files.
-- Confirm plan/context/tasks agree on current state, future state, PR split, and verification.
+- Confirm plan/context/tasks agree on current state, implemented state, PR split, and verification.
 - Run scoped docs inspection if available.
 
-Future implementation verification by slice:
+Implementation verification by slice:
 
 ```bash
 dotnet build --configuration Release --verbosity quiet
@@ -477,7 +541,11 @@ Add only low-cardinality operational signals during implementation:
 | Tenant filter disabled during repository queries. | High | Follow EF Core query-filter guidance; never disable Tenant filter on request paths; architecture/persistence tests. |
 | UI drifts from authorization rules. | High | HAL `_links` only; no role/claim gating; authorization parity tests. |
 | Email preferences are incorrectly applied to non-existent notification-to-email fanout. | Medium | Treat Email channel integration as direct `EmailDispatchOutbox`/lifecycle-email work only unless separately planned. |
-| Category model overfits future channels. | Medium | Start with Email and In-App only; relational model permits later channels without speculative UI. |
+| Category model overfits future channels. | Medium | Start with Email and In-App only; add `push` only with a real browser subscription/delivery surface; never model `webhook` as a matrix channel. |
+| Browser permission prompt appears too early and causes permanent denial. | Medium | Request Notification permission only from an explicit user gesture, explain the value first, and do not re-prompt after denial. |
+| An offline user receives a reconnect notification flood. | High | Bound retention with category TTL, coalesce pending transport messages with Web Push `Topic`, replace displayed notifications with `tag`/`renotify: false`, suppress popups for visible app windows, and summarize beyond a small displayed cap. |
+| Browser-supplied push endpoint is abused for SSRF. | Critical | Require bounded HTTPS endpoints and valid Push API keys, re-resolve hosts before send, block private/loopback/link-local/metadata addresses, and disable redirects. |
+| Web Push is conflated with Svix/webhooks. | Medium | Keep Web Push under recipient notification preferences and Svix/webhooks under developer external integration settings/App Portal. |
 | Organization/group authorization is underspecified. | Medium | Add explicit resource kinds/actions before endpoint work; require local/Cerbos parity. |
 | Concurrent saves lose user intent. | Low/Medium | Prefer idempotent full-matrix save in one transaction; add concurrency token only if UX needs conflict detection. |
 

@@ -3,14 +3,14 @@
 
 # Notification Preference Matrix — Task Checklist
 
-Last Updated: 2026-07-09 Europe/Brussels
+Last Updated: 2026-07-11 Europe/Brussels
 
 ## 1. Status Summary
 
-- Planning artifacts: updated with CTO review, Context7 evidence, source-grounded current state, PR split, risk register, and verification contract.
+- Planning artifacts: updated with CTO review, Context7 evidence, source-grounded current state, PR split, risk register, active Web Push flood controls, Svix/webhook separation, and verification contract.
 - Implementation code: PR 1 Data Foundation And Resolver, PR 2 CQRS/API/HAL endpoints, PR 3 Blazor/BFF matrix surfaces, and PR 4 delivery integration are implemented for current-user, organization, and group scopes.
-- Recommended next PR: operations/docs cleanup and final manual QA.
-- Delivery integration is implemented; canonical docs and final QA now need to record the shipped behavior and remaining unrelated blockers.
+- Completed PR: PR 6 Web Push Browser Channel was explicitly requested on 2026-07-10. Implementation and local verification are complete; external push-service delivery remains operator-environment verification because VAPID is disabled by default.
+- Delivery integration, canonical docs, final verification, and manual QA are complete; `Event.API.IntegrationTests` still has unrelated event-registration notification-intent FK failures.
 
 ## 2. Maintenance Rules
 
@@ -26,6 +26,11 @@ Every implementation agent must:
 8. Keep repositories entity-returning and validators manually instantiated.
 9. Add two ABOUTME comment lines to every new source file.
 10. Run only per-project tests relevant to touched paths plus Release build.
+11. Add `push` only with real browser subscription, consent, service-worker, and delivery surfaces; do not add speculative channel metadata.
+12. Request browser notification permission and call `PushManager.subscribe()` only after explicit user click/tap; never prompt on page load.
+13. Keep Svix/webhooks out of notification matrix channels; they remain developer integration settings/App Portal flows.
+14. Use Web Push `Topic` for push-service queue coalescing and Notification `tag` for device display replacement; they are complementary, not interchangeable.
+15. Set an explicit bounded TTL and urgency for every send, suppress OS popups while the app is visible, and collapse an excessive displayed set into one generic summary.
 
 ## 3. PR 0 — Approval And Baseline
 
@@ -312,7 +317,7 @@ Every implementation agent must:
 
 ### 5.1 Add observability without leaking sensitive data
 
-- Status: Pending.
+- Status: Completed.
 - Layer: Operations.
 - Files:
   - metrics/logging code touched by implementation
@@ -322,12 +327,12 @@ Every implementation agent must:
   - Logs/metrics include tenant/request correlation where appropriate.
   - Logs do not include raw email addresses, notification bodies, or full preference payloads.
 - Verification:
-  - Unit/integration tests if metrics/logging helpers are covered.
-  - Manual log review during QA.
+  - Existing email dispatch metrics record skipped rows through the normal drain path.
+  - No new logs include raw email addresses, notification bodies, or full preference payloads.
 
 ### 5.2 Update canonical docs
 
-- Status: Pending.
+- Status: Completed.
 - Layer: Documentation.
 - Files:
   - `docs/API.md`
@@ -343,12 +348,12 @@ Every implementation agent must:
   - UI matrix behavior and required/global mute semantics are documented.
   - Delivery integration boundaries are documented accurately.
 - Verification:
-  - Docs read-back.
-  - Docs/architecture tests if applicable.
+  - Docs read-back completed for API, Domain, Blazor, Notifications, Email Notifications, and Authorization.
+  - `aft_inspect` reported 0 diagnostics for the updated doc scopes.
 
 ### 5.3 Run final verification
 
-- Status: Pending.
+- Status: Completed.
 - Layer: Repository-wide.
 - Files:
   - all touched code and docs
@@ -360,10 +365,21 @@ Every implementation agent must:
 - Verification commands:
   - `dotnet build --configuration Release --verbosity quiet`
   - relevant per-project `dotnet test --project ... --configuration Release --verbosity quiet`
+- Evidence:
+  - Full Release build passed.
+  - `Event.Application.UnitTests` passed 2091/2091.
+  - `Event.Domain.UnitTests` passed 317/317.
+  - `Event.Architecture.Tests` passed 262/263 with one pre-existing skip.
+  - `Explore.Secrets.UnitTests` passed 202/202.
+  - `Event.Persistence.IntegrationTests` passed 259/259.
+  - `Explore.Infrastructure.Tests` passed 710/710.
+  - `Explore.Blazor.IntegrationTests` passed 226/226.
+  - `Explore.Blazor.Client.Tests` passed 1568/1569 with one pre-existing skip.
+  - `Event.API.IntegrationTests` has two unrelated event-registration notification-intent FK failures; notification-preference API/HAL/OpenAPI failures are absent.
 
 ### 5.4 Manual QA through real surfaces
 
-- Status: Pending.
+- Status: Completed.
 - Layer: Blazor/API/runtime.
 - Files:
   - implemented UI/API/delivery surfaces
@@ -375,11 +391,108 @@ Every implementation agent must:
   - Authorized org/group user can manage preferences; forbidden user cannot and lacks HAL links.
   - At least one in-app path and one email dispatch path respect preferences.
 - Verification:
-  - Browser/API/manual QA notes recorded in context.
+  - Resolver and persistence behavior exercised by PostgreSQL integration tests.
+  - API/HAL/OpenAPI behavior exercised by API integration and architecture checks; remaining API failures are unrelated event-registration FK failures.
+   - Blazor matrix component exercised by Blazor client/integration builds and test suites.
+   - Delivery suppression exercised by Application fanout tests and Infrastructure email-drain tests.
 
-## 9. Deferred / Explicitly Out Of Scope Until Requested
+## 9. Completed PR 6 — Web Push Browser Channel
 
-- Push, SMS, webhook, or mobile notification channels.
+Product explicitly activated this slice on 2026-07-10. Do not mix it with Svix/webhook work.
+
+### 6.1 Confirm browser push product contract
+
+- Status: Completed; product contract updated with flood-control requirements.
+- Layer: Product + Architecture.
+- Files:
+  - `dev/active/notification-preference-matrix/notification-preference-matrix-plan.md`
+  - `docs/NOTIFICATIONS.md`
+  - `docs/BLAZOR.md`
+- Action: Confirm that `push` is an end-user browser notification channel with Email/In-App checkbox semantics.
+- Done when:
+  - `push` required/default behavior is defined per category.
+  - Unsupported, `default`, `denied`, and `granted` browser states have UX copy.
+  - Per-category TTL/urgency and stable collapse-topic behavior are defined.
+  - Transport `Topic` and display `tag` responsibilities are documented separately.
+  - Svix/webhooks are explicitly excluded from the matrix.
+- Verification:
+  - Docs read-back.
+
+### 6.2 Add subscription persistence and API
+
+- Status: Completed and verified.
+- Layer: Domain + Application + Persistence + API.
+- Files:
+  - push subscription entity/repository/configuration/migration
+  - authenticated subscribe/unsubscribe endpoints
+- Action: Store tenant/user/device push subscription endpoint and key material with last-seen, expiration, and unsubscribe cleanup semantics.
+- Done when:
+  - Browser sends subscription details through BFF/API after consent.
+  - Endpoint uniqueness and tenant/user ownership are enforced.
+  - Permanent push-service failures disable or remove stale subscriptions.
+- Verification:
+  - Persistence, Application, API, and architecture tests for tenant isolation and auth.
+
+### 6.3 Add Blazor consent UX and JS interop
+
+- Status: Completed and verified through component tests plus real Chromium module/service-worker checks.
+- Layer: Blazor/BFF.
+- Files:
+  - Blazor notification settings UI additions
+  - JS module/service-worker registration wrapper
+- Action: Add an explicit “Enable browser push notifications” action that checks support and permission state before requesting permission.
+- Done when:
+  - No permission prompt runs on page load.
+  - `Notification.requestPermission()` and `PushManager.subscribe()` run only from user gesture.
+  - `denied` shows respectful helper copy and no re-prompt loop.
+  - Browser never receives access tokens or VAPID private keys.
+  - State changes use BFF/service layer and accessibility announcements.
+  - Disabling unsubscribes in the browser first, then deactivates the owned server subscription; either side can be retried safely.
+- Verification:
+  - Blazor client tests plus manual browser QA for unsupported/default/granted/denied states.
+
+### 6.4 Add Web Push delivery worker/provider
+
+- Status: Completed and verified; provider/worker flood controls and endpoint SSRF blocking have regression coverage.
+- Layer: Application + Infrastructure.
+- Files:
+  - push delivery provider/worker
+  - VAPID/operator configuration
+  - service worker push handler
+- Action: Resolve `push` preferences before delivery, send minimal non-sensitive payloads with bounded TTL/urgency/topic, and let the service worker refresh visible app windows or show one safely collapsed OS notification.
+- Done when:
+  - Resolver gates non-required push delivery by category and `push` channel.
+  - Required categories remain enabled.
+  - VAPID config is self-hostable and secrets stay server-side.
+  - Infisical `/api/VAPID_*`, Compose, `.env`, and Aspire feed the API configuration; Blazor reads only `/vapid-public-key` through its generated client service.
+  - Service worker handles `push` events and displays or refreshes state without embedding sensitive payloads.
+  - Web Push `Topic` coalesces pending messages per subscription/category and retry attempts do not outlive TTL.
+  - Notification `tag` replaces displayed notifications without `renotify`; it is not treated as transport coalescing.
+  - A visible same-origin app window receives a refresh message without an OS popup.
+  - More than the configured displayed-notification cap is replaced by one generic summary notification.
+- Verification:
+  - Provider/worker tests and manual browser push test.
+
+### 6.5 Verify opt-out and cleanup behavior
+
+- Status: Completed within local-environment boundaries. Automated coverage verifies opt-out, TTL expiry, topic/tag policy, stale cleanup, and SSRF rejection; Chromium verifies no prompt/registration during state inspection and successful root-scope worker activation. External push-service queue behavior requires operator VAPID configuration and cannot be synthesized locally.
+- Layer: End-to-end QA.
+- Files:
+  - relevant PR 6 code/docs/tests
+- Action: Use browser push through the real UI and delivery path.
+- Done when:
+  - Enabling, disabling, unsubscribing, denied permission, and stale subscription cleanup are observed.
+  - Matrix opt-out suppresses non-required push delivery.
+  - Offline queued sends coalesce by topic and expire by TTL rather than producing a reconnect flood.
+  - Visible-tab suppression, tag replacement, summary grouping, and click-to-focus behavior are observed.
+  - Svix/webhook settings remain unaffected.
+- Verification:
+  - Release build, relevant per-project tests, and manual browser QA.
+
+## 10. Deferred / Explicitly Out Of Scope Until Requested
+
+- SMS or mobile-native notification channels.
+- Svix/webhooks as notification preference channels; webhooks remain separate developer integration settings/App Portal behavior.
 - Notification-to-email fanout for all in-app notifications.
 - Billing workflow implementation.
 - Marketing consent model changes beyond default-off preference metadata.

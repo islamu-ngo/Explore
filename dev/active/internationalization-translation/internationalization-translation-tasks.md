@@ -2,13 +2,13 @@
 <!-- ABOUTME: Tracks MasterCode API contract, Tolgee/Weblate integration, static fallback, UI, ops, and validation slices. -->
 # Internationalization Translation — Task Checklist
 
-Last Updated: 2026-07-09 Europe/Brussels
+Last Updated: 2026-07-10 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** In implementation
-- **Completed:** 18/24 implementation tasks
-- **Current priority:** Complete Phase 5 admin UI accessibility/live-fallback affordances and picker alignment.
-- **Next recommended slice:** Phase 5 Task 5.2, verify admin localization UI affordances and accessibility.
+- **Overall status:** Implementation complete; verification has documented environment/pre-existing exceptions.
+- **Completed:** 24/24 implementation tasks
+- **Current priority:** Resolve unrelated API integration notification/Keycloak failures before treating the whole repo as green.
+- **Next recommended slice:** Authenticated admin smoke for static bundle import/export and live provider test/export with operator-provided admin credentials/TMS endpoint.
 
 ## Implementation Maintenance Rules
 - [ ] Before starting work, read plan/context/tasks.
@@ -17,7 +17,7 @@ Last Updated: 2026-07-09 Europe/Brussels
 - [ ] If discoveries affect future work, update the context file.
 - [ ] Final implementation summary must include Implemented / Verified / Remaining / Next / Docs updated.
 
-## Phase 0: Plan Review And Baseline 🟡 IN PROGRESS
+## Phase 0: Plan Review And Baseline ✅ COMPLETED
 - [x] **0.1 User reviews the corrected plan and approves or corrects scope.**
   - **Files:** `dev/active/internationalization-translation/internationalization-translation-plan.md`
   - **Acceptance:** Planning status changes from corrected draft to User-reviewed/Approved or plan is corrected.
@@ -30,10 +30,10 @@ Last Updated: 2026-07-09 Europe/Brussels
   - **Validation:** Context updated with branch/current-state note.
   - **Effort:** S
   - **Dependencies:** 0.1
-- [ ] **0.3 Decide whether to add a localization/TMS intent.**
+- [x] **0.3 Decide whether to add a localization/TMS intent.**
   - **Files:** `.claude/contract/intents.yaml` (existing, optional), `Event.Architecture.Tests` context tests if changed
   - **Acceptance:** Decision recorded; if intent is added, schema/context tests pass.
-  - **Validation:** `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+  - **Validation:** No new intent was added for this slice; localization remained under the existing cross-layer contract. `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed (263 total, 262 succeeded, 1 skipped).
   - **Effort:** S
   - **Dependencies:** 0.1
 
@@ -147,43 +147,43 @@ Last Updated: 2026-07-09 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 2.2, 4.2
 
-## Phase 5: Admin UI, BFF Preference, And Accessibility Completion 🟡 IN PROGRESS
+## Phase 5: Admin UI, BFF Preference, And Accessibility Completion ✅ COMPLETED
 - [x] **5.1 Locate and verify BFF language/direction endpoints.**
   - **Files:** BFF preference endpoint extension file to locate; `Explore.Blazor.Client/Services/LanguagePreferenceService.cs`; `Explore.Blazor.Client/wwwroot/js/localization.js`
   - **Acceptance:** `/bff/language` and `/bff/direction` endpoint ownership, allowlist validation, cookie settings, and antiforgery posture are verified.
   - **Validation:** Existing BFF flow verified in `BffPreferenceEndpoints`, `BffPreferenceValidationService`, `BffPreferenceAntiforgeryTests`, `BffPreferenceValidationEndpointsTests`, `BffPreferenceValidationServiceTests`, and `BffPreferenceCookieServiceTests`; language/direction mutations are allowlisted, antiforgery-protected, and cookie-persisted safely.
   - **Effort:** S
   - **Dependencies:** 0.2
-- [ ] **5.2 Complete admin UI accessibility and live/fallback mode behavior.**
+- [x] **5.2 Complete admin UI accessibility and live/fallback mode behavior.**
   - **Files:** admin localization Razor component path to verify; `LocalizationAdminState.cs`; `LocalizationAdminService.cs`
   - **Acceptance:** Fields have labels; dynamic errors/status use alert/status patterns; secret field is write-only; live Tolgee/Weblate and static fallback modes are clear; force-offline disables live-only actions; CSS uses logical properties.
-  - **Validation:** bUnit tests; manual browser smoke during implementation.
+  - **Validation:** Write-only TMS key saves now call backend rotation; the misleading clear action was removed because there is no delete endpoint; force-offline disables the live-only TMS-to-static export; the export card copy names the live provider mirror path explicitly; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed (1568 succeeded, 1 skipped).
   - **Effort:** M
   - **Dependencies:** 2.2, 4.3
-- [ ] **5.3 Keep language picker aligned with governance state.**
+- [x] **5.3 Keep language picker aligned with governance state.**
   - **Files:** `Explore.Blazor.Client/Shared/LanguagePicker.razor`, caller/layout file supplying `Enabled`, related state/bootstrap file
   - **Acceptance:** Picker visibility reflects `localization.client_picker_enabled`; available languages reflect the chosen v1 policy; tests cover disabled/enabled behavior.
-  - **Validation:** `Explore.Blazor.Client.Tests`.
+  - **Validation:** Public experience settings now expose `ClientPickerEnabled`; `MainLayout` and `NavMenu` pass it to `LanguagePicker.Enabled`; `NavMenuAdminTests` covers picker suppression when public settings disable it; `Explore.Blazor.Client.Tests` passed (1569 succeeded, 1 skipped); `Event.Application.UnitTests` passed (2092/2092) after adding public settings handler coverage.
   - **Effort:** S
   - **Dependencies:** 5.1
 
-## Phase 6: Observability, Operations, And Deployment Docs ⏳ NOT STARTED
-- [ ] **6.1 Close translation metric recording gaps.**
+## Phase 6: Observability, Operations, And Deployment Docs ✅ COMPLETED
+- [x] **6.1 Close translation metric recording gaps.**
   - **Files:** `Explore.Application/Telemetry/TranslationMetrics.cs`, `TestTmsConnectionCommandHandler.cs`, provider/runtime files as needed
   - **Acceptance:** Connection test, live/fallback mode, fallback activation, static import/export validation, and provider parse failures record safe metrics; hot path stays uninstrumented.
-  - **Validation:** Focused tests or metrics assertions if available.
+  - **Validation:** `TranslationMetrics` now covers runtime fetches/durations, language changes, connection tests, fallback activation, and static bundle import/export boundaries; `ExportLocalizationBundleQueryHandler` was made async-compatible for the static export metric and `Event.Application.UnitTests` passed (2092/2092).
   - **Effort:** S
   - **Dependencies:** 2.5
-- [ ] **6.2 Update hosting/localization/config/API/Blazor/operations docs.**
+- [x] **6.2 Update hosting/localization/config/API/Blazor/operations docs.**
   - **Files:** `docs/LOCALIZATION.md`, `docs/CONFIGURATION.md`, `docs/API.md`, `docs/BLAZOR.md`, `docs/OPERATIONS.md`, `docs/DEPLOYMENT_MODES.md` as applicable
   - **Acceptance:** A self-hoster can configure Tolgee, Weblate, or no-TMS static fallback from docs without source reading; docs match final provider auth/endpoints, MasterCode key rules, cache invalidation, HA limitation, config keys, metrics, and validation commands.
-  - **Validation:** Docs/context tests if available; build if architecture tests include docs checks.
+  - **Validation:** `docs/LOCALIZATION.md` now documents safe metric names/tags and the no-hot-path-instrumentation rule; `docs/OPERATIONS.md` documents operator telemetry for fallback and static bundle operations.
   - **Effort:** M
   - **Dependencies:** 1-6 implementation tasks
-- [ ] **6.3 Decide whether to add Aspire/Docker Tolgee/Weblate local resources.**
+- [x] **6.3 Decide whether to add Aspire/Docker Tolgee/Weblate local resources.**
   - **Files:** `Explore.AppHost`/compose files/docs to verify
   - **Acceptance:** Decision recorded; if resources added, local setup docs and health checks are updated.
-  - **Validation:** Aspire app starts or documented reason for deferral.
+  - **Validation:** Deferred: no new Aspire/Docker Tolgee/Weblate resources in this slice. Existing connected-provider behavior is covered by generated-client/fake-HTTP tests; live-provider validation remains a manual smoke step against an operator-provided Tolgee/Weblate endpoint.
   - **Effort:** M
   - **Dependencies:** 6.2
 
@@ -191,18 +191,19 @@ Last Updated: 2026-07-09 Europe/Brussels
 - [x] LSP diagnostics clean for modified files.
 - [x] `dotnet build --configuration Release --verbosity quiet` passes.
 - [x] `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passes.
-- [ ] Intent/path minimum test projects pass individually with `dotnet test --project ...`.
-- [ ] MasterCode/API tests cover lookup translation keys and provider-first connected mode.
+- [x] Intent/path minimum test projects pass individually with `dotnet test --project ...` for Application, Infrastructure, Blazor client, and architecture slices.
+- [x] MasterCode/API tests cover lookup translation keys and provider-first connected mode.
 - [x] Tolgee provider tests cover current export/import/read endpoints, payload parsing, and auth header behavior.
 - [x] Weblate provider tests cover file download/upload endpoints, conflict/fuzzy/method form behavior, and auth header behavior.
 - [x] Static fallback tests cover schema, deterministic writing, embedded+writable merge, direct static export seam, and cache invalidation call sites.
-- [ ] API integration tests cover translation/admin endpoint changes and no-secret responses. Translation public GET smoke is fixed; unrelated notification handler worktree changes must remain untouched unless user approves.
-- [x] Blazor client tests cover Phase 1.4 translation consumption boundary and Phase 4.3 generated admin DTO alignment. Future admin UI live/fallback affordance changes still need tests in Phase 5.
-- [ ] Manual smoke covers language switch, API translation fetch, one MasterCode lookup translation, provider configured path, provider failure fallback, static bundle import/export, and admin config/test/export failure path.
-- [x] Dev docs refreshed through Phase 4.3 with generated provider clients, fallback metrics, static bundle merge/schema, admin static bundle contracts, and generated admin DTO alignment.
+- [ ] API integration tests cover translation/admin endpoint changes and no-secret responses. Public translation smoke passed manually; full `Event.API.IntegrationTests` currently fails outside localization: notification intent FK violations on `notification_intents.category_id` and Keycloak Testcontainers exits with code 137.
+- [x] Blazor client tests cover Phase 1.4 translation consumption boundary, Phase 4.3 generated admin DTO alignment, Phase 5.2 TMS API-key rotation/admin UI service affordances, and Phase 5.3 language-picker governance suppression.
+- [ ] Manual smoke covers language switch, API translation fetch, one MasterCode lookup translation, provider configured path, provider failure fallback, static bundle import/export, and admin config/test/export failure path. Completed anonymous/local Aspire smoke for API translation fetch, language validation, Blazor shell/language picker, Weblate root, and unauthenticated admin 401s; authenticated admin/static/provider smoke needs admin credentials and an operator-provided TMS endpoint.
+- [x] Dev docs refreshed through Phase 6.3 with generated provider clients, fallback metrics, static bundle merge/schema, admin static bundle contracts, generated admin DTO alignment, BFF preference verification, admin UI secret/live-export affordances, language-picker governance alignment, translation metric documentation, and Aspire/Docker TMS resource deferral.
 
 ## Remaining / Deferred Work
 - HA-safe object-store `IBundleFileWriter` implementation is deferred unless deployment requires multi-replica writes beyond shared-volume support.
+- Local Aspire/Docker Tolgee/Weblate resources are deferred; use operator-provided TMS endpoints for live-provider manual smoke.
 - Additional TMS providers beyond Tolgee/Weblate are deferred.
 - Protocol/federation-level translation records are deferred until public federation endpoints require them.
 - Regional cultures such as `en-US`/`fr-BE` are deferred; `CultureRegistry` intentionally accepts only two-letter codes for v1.
