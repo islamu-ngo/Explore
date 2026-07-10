@@ -78,6 +78,7 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
     client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
 })
 .AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
+.AddHttpMessageHandler<BffAntiforgeryMessageHandler>()
 .AddHttpMessageHandler<BffUnauthorizedHandler>();
 
 // Register TenantConfiguration for single-tenant mode (default)

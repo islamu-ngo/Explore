@@ -121,6 +121,22 @@ public sealed class NotificationRefreshStreamClient : INotificationRefreshStream
         return Task.CompletedTask;
     }
 
+    [JSInvokable]
+    public async Task HandleWebPushRefresh()
+    {
+        var handler = RefreshReceived;
+        if (handler is null)
+        {
+            return;
+        }
+
+        await handler(new NotificationRefreshHintReceivedEventArgs(
+            -1,
+            true,
+            "web-push",
+            DateTimeOffset.UtcNow));
+    }
+
     public async ValueTask DisposeAsync()
     {
         await StopAsync();

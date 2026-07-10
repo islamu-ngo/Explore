@@ -52,6 +52,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IControlPlaneOperationsService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IWebhookManagementService, WebhookManagementService>();
+        services.AddScoped<IListmonkIntegrationSettingsService, ListmonkIntegrationSettingsService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddBffRefitClient<IGroupApi>(configureBffRefitClient)
@@ -130,6 +131,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IActorSubscriptionService, ActorSubscriptionService>();
         services.AddScoped<INotificationRefreshStreamClient, NotificationRefreshStreamClient>();
+        services.AddScoped<IWebPushBrowserInterop, WebPushBrowserInterop>();
 
         // BFF / onboarding services (use named HttpClient "BffClient")
         services.AddBffRefitClient<IBffAuthApi>(configureBffRefitClient)

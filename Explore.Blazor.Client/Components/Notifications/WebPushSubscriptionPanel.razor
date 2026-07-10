@@ -1,0 +1,214 @@
+@* ABOUTME: User-facing browser Web Push consent and current-device subscription controls. *@
+@* ABOUTME: Requests permission only from explicit actions and gates server mutations through HAL affordances. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Interop
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Notifications
+@using Explore.Blazor.Client.Helpers
+@using MudBlazor
+@inject IWebPushBrowserInterop BrowserInterop
+@inject INotificationService NotificationService
+@inject IAccessibilityAnnouncerService Announcer
+@inject ISnackbar Snackbar
+
+<AppCard Outlined="true" Class="web-push-subscription-panel">
+    <MudCardContent>
+        <div class="web-push-subscription-panel__content">
+            <div class="web-push-subscription-panel__copy">
+                <div class="web-push-subscription-panel__heading">
+                    <MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Size="Size.Small" aria-hidden="true" />
+                    <MudText Typo="Typo.subtitle1" HtmlTag="h3">Browser push notifications</MudText>
+                </div>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Receive a private refresh alert on this browser. Notification details stay inside your signed-in inbox.
+                </MudText>
+
+                @if (_loading)
+                {
+                    <div class="web-push-subscription-panel__status" role="status">
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                        <span>Checking this browser...</span>
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" role="alert">@_error</MudAlert>
+                }
+                else if (_configuration?.Enabled != true)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Browser push is not enabled by this site operator.</MudText>
+                }
+                else if (_browserState?.IsSupported != true)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Browser push is not available in this browser or connection.</MudText>
+                }
+                else if (PermissionDenied)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                        Notifications are blocked in your browser settings. The site will not ask again.
+                    </MudAlert>
+                }
+                else if (IsEnabled)
+                {
+                    <div class="web-push-subscription-panel__status" role="status">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" aria-hidden="true" />
+                        <span>Enabled for this browser</span>
+                    </div>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Your browser will ask for permission only after you choose Enable.
+                    </MudText>
+                }
+            </div>
+
+            @if (!_loading && _configuration?.Enabled == true && _browserState?.IsSupported == true && !PermissionDenied)
+            {
+                <div class="web-push-subscription-panel__action">
+                    @if (IsEnabled)
+                    {
+                        <AppButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.NotificationsOff"
+                                   Disabled="@(!CanUnsubscribe || _busy)"
+                                   OnClick="DisableAsync">
+                            Disable
+                        </AppButton>
+                    }
+                    else
+                    {
+                        <AppButton StartIcon="@Icons.Material.Filled.NotificationsActive"
+                                   Disabled="@(!CanSubscribe || _busy)"
+                                   OnClick="EnableAsync">
+                            @(_browserState.HasSubscription ? "Finish setup" : "Enable")
+                        </AppButton>
+                    }
+                </div>
+            }
+        </div>
+    </MudCardContent>
+</AppCard>
+
+@code {
+    [Parameter] public bool CanSubscribe { get; set; }
+
+    private WebPushPublicConfiguration? _configuration;
+    private string? _vapidPublicKey;
+    private WebPushBrowserState? _browserState;
+    private HalResourceOfWebPushSubscriptionDto? _serverSubscription;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _error;
+
+    private bool PermissionDenied => string.Equals(_browserState?.Permission, "denied", StringComparison.Ordinal);
+    private bool IsEnabled => _browserState?.HasSubscription == true && _serverSubscription is not null;
+    private bool CanUnsubscribe => _serverSubscription?.HasLink("unsubscribe") == true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        _configuration = await NotificationService.GetWebPushConfigurationAsync();
+
+        if (_configuration?.Enabled == true)
+        {
+            _vapidPublicKey = await NotificationService.GetVapidPublicKeyAsync();
+            _browserState = await BrowserInterop.GetStateAsync();
+            if (_browserState.IsSupported && !string.IsNullOrWhiteSpace(_browserState.DeviceIdentifier))
+            {
+                _serverSubscription = await NotificationService.GetCurrentWebPushSubscriptionAsync(_browserState.DeviceIdentifier);
+            }
+        }
+
+        _loading = false;
+    }
+
+    private async Task EnableAsync()
+    {
+        if (!CanSubscribe || _configuration?.Enabled != true || string.IsNullOrWhiteSpace(_vapidPublicKey))
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        var subscription = await BrowserInterop.SubscribeAsync(_vapidPublicKey);
+        if (subscription is null)
+        {
+            _browserState = await BrowserInterop.GetStateAsync();
+            _error = PermissionDenied
+                ? null
+                : "Browser push could not be enabled. Check this browser's notification settings and try again.";
+            _busy = false;
+            return;
+        }
+
+        var saved = await NotificationService.SubscribeWebPushAsync(
+            subscription.DeviceIdentifier,
+            subscription.Endpoint,
+            subscription.P256Dh,
+            subscription.Auth,
+            subscription.ExpirationTime);
+
+        if (!saved)
+        {
+            var rolledBack = await BrowserInterop.UnsubscribeAsync();
+            _error = rolledBack
+                ? "The browser subscribed, but the server could not save it. No push subscription was kept."
+                : "The server could not save this browser subscription and browser cleanup also failed. Disable notifications in browser settings before trying again.";
+            _busy = false;
+            return;
+        }
+
+        await LoadAsync();
+        _busy = false;
+        Snackbar.Add("Browser push notifications enabled.", Severity.Success);
+        await Announcer.AnnouncePoliteAsync("Browser push notifications enabled.");
+    }
+
+    private async Task DisableAsync()
+    {
+        if (!CanUnsubscribe || _serverSubscription?.Id is not Guid subscriptionId)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        var browserUnsubscribed = await BrowserInterop.UnsubscribeAsync();
+        if (!browserUnsubscribed)
+        {
+            _error = "The browser could not remove its push subscription. Nothing changed on the server; try again.";
+            _busy = false;
+            return;
+        }
+
+        var serverUnsubscribed = await NotificationService.UnsubscribeWebPushAsync(subscriptionId);
+
+        if (!serverUnsubscribed)
+        {
+            _error = "The browser subscription was removed, but the server could not record the opt-out. Try again; no browser push can be delivered in the meantime.";
+            _busy = false;
+            return;
+        }
+
+        await LoadAsync();
+        _busy = false;
+        Snackbar.Add("Browser push notifications disabled.", Severity.Success);
+        await Announcer.AnnouncePoliteAsync("Browser push notifications disabled.");
+    }
+
+}

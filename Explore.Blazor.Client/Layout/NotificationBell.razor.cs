@@ -86,7 +86,14 @@ public partial class NotificationBell : IAsyncDisposable
     {
         await InvokeAsync(async () =>
         {
-            _unreadCount = Math.Max(0, hint.UnreadCount);
+            if (hint.UnreadCount < 0)
+            {
+                await RefreshUnreadCountAsync();
+            }
+            else
+            {
+                _unreadCount = Math.Max(0, hint.UnreadCount);
+            }
 
             if (_panelOpen)
             {

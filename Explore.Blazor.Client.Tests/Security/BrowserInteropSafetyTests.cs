@@ -85,6 +85,24 @@ public sealed class BrowserInteropSafetyTests
         await Assert.That(offenders).IsEmpty();
     }
 
+    [Test]
+    public async Task WebPushServiceWorker_ContainsRequiredFloodAndNavigationGuards()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var source = await File.ReadAllTextAsync(Path.Combine(
+            repositoryRoot,
+            "Explore.Blazor.Client",
+            "wwwroot",
+            "push-service-worker.js"));
+
+        await Assert.That(source).Contains("clients.matchAll({ type: 'window', includeUncontrolled: true })");
+        await Assert.That(source).Contains("client.visibilityState === 'visible'");
+        await Assert.That(source).Contains("self.registration.getNotifications()");
+        await Assert.That(source).Contains("renotify: false");
+        await Assert.That(source).Contains("!value.startsWith('//')");
+        await Assert.That(source).Contains("new URL(openPath, self.location.origin)");
+    }
+
     private static IEnumerable<string> EnumerateBlazorSourceFiles(string repositoryRoot)
     {
         foreach (var projectName in new[] { "Explore.Blazor.Client", "Explore.Blazor" })

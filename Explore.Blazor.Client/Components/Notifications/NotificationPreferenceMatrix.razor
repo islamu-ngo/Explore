@@ -62,6 +62,11 @@
                 </MudCardContent>
             </AppCard>
 
+            @if (IsCurrentUserScope && OrderedChannels.Any(channel => channel.Code == "push"))
+            {
+                <WebPushSubscriptionPanel CanSubscribe="@(_matrix.HasLink("subscribe-web-push"))" />
+            }
+
             <div class="notification-preference-matrix__table-wrap" role="region" aria-label="Notification preference matrix">
                 <table class="notification-preference-matrix__table">
                     <caption class="sr-only">Notification preferences by category and channel</caption>
@@ -165,6 +170,7 @@
     private IReadOnlyList<Cells> Cells => _matrix?.Cells?.ToArray() ?? [];
 
     private bool CanSave => _matrix?.HasLink("save") == true && !_saving && !_loading && Cells.Any(CanEdit);
+    private bool IsCurrentUserScope => string.Equals(Scope, "user", StringComparison.OrdinalIgnoreCase);
 
     private bool CanSetMute => _matrix?.HasLink("set-mute") == true &&
                                _matrix.Mute?.IsEditable != false &&

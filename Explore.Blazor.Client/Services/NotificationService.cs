@@ -265,6 +265,115 @@ public class NotificationService : INotificationService
         }
     }
 
+    public async Task<WebPushPublicConfiguration?> GetWebPushConfigurationAsync()
+    {
+        try
+        {
+            return await _apiClient.GetWebPushConfigurationAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error fetching Web Push configuration: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error fetching Web Push configuration");
+            return null;
+        }
+    }
+
+    public async Task<string?> GetVapidPublicKeyAsync()
+    {
+        try
+        {
+            return (await _apiClient.GetVapidPublicKeyAsync()).Trim();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error fetching VAPID public key: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error fetching VAPID public key");
+            return null;
+        }
+    }
+
+    public async Task<HalResourceOfWebPushSubscriptionDto?> GetCurrentWebPushSubscriptionAsync(string deviceIdentifier)
+    {
+        try
+        {
+            return await _apiClient.GetCurrentUserWebPushSubscriptionAsync(deviceIdentifier);
+        }
+        catch (ApiException ex) when (ex.StatusCode == 404)
+        {
+            return null;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error fetching Web Push subscription: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error fetching Web Push subscription");
+            return null;
+        }
+    }
+
+    public async Task<bool> SubscribeWebPushAsync(
+        string deviceIdentifier,
+        string endpoint,
+        string p256Dh,
+        string auth,
+        DateTimeOffset? expirationTime)
+    {
+        try
+        {
+            var response = await _apiClient.SubscribeCurrentUserWebPushSubscriptionAsync(new SubscribeCurrentUserWebPushSubscriptionCommand
+            {
+                DeviceIdentifier = deviceIdentifier,
+                Endpoint = endpoint,
+                P256Dh = p256Dh,
+                Auth = auth,
+                ExpirationTime = expirationTime
+            });
+
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error subscribing Web Push device: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error subscribing Web Push device");
+            return false;
+        }
+    }
+
+    public async Task<bool> UnsubscribeWebPushAsync(Guid subscriptionId)
+    {
+        try
+        {
+            var response = await _apiClient.UnsubscribeCurrentUserWebPushSubscriptionAsync(subscriptionId);
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error unsubscribing Web Push device: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error unsubscribing Web Push device");
+            return false;
+        }
+    }
+
     public async Task<HalResourceOfNotificationPreferenceMatrixDto?> GetOrganizationPreferenceMatrixAsync(Guid organizationId)
     {
         try

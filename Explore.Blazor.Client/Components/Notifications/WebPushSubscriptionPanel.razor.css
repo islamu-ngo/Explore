@@ -1,0 +1,45 @@
+/* ABOUTME: Scoped layout for the browser Web Push consent and subscription panel. */
+/* ABOUTME: Uses existing design tokens for responsive, accessible status and action alignment. */
+
+.web-push-subscription-panel {
+    display: block;
+}
+
+.web-push-subscription-panel__content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-4, 1rem);
+}
+
+.web-push-subscription-panel__copy {
+    display: grid;
+    gap: var(--isl-space-2, 0.5rem);
+}
+
+.web-push-subscription-panel__heading,
+.web-push-subscription-panel__status {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2, 0.5rem);
+}
+
+.web-push-subscription-panel__status {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
+}
+
+.web-push-subscription-panel__action {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 48em) {
+    .web-push-subscription-panel__content {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .web-push-subscription-panel__action ::deep .mud-button-root {
+        width: 100%;
+    }
+}

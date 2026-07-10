@@ -36,6 +36,21 @@ public interface INotificationService
 
     Task<bool> SetCurrentUserPreferenceMuteAsync(bool isMuted);
 
+    Task<Clients.WebPushPublicConfiguration?> GetWebPushConfigurationAsync();
+
+    Task<string?> GetVapidPublicKeyAsync();
+
+    Task<Clients.HalResourceOfWebPushSubscriptionDto?> GetCurrentWebPushSubscriptionAsync(string deviceIdentifier);
+
+    Task<bool> SubscribeWebPushAsync(
+        string deviceIdentifier,
+        string endpoint,
+        string p256Dh,
+        string auth,
+        DateTimeOffset? expirationTime);
+
+    Task<bool> UnsubscribeWebPushAsync(Guid subscriptionId);
+
     Task<Clients.HalResourceOfNotificationPreferenceMatrixDto?> GetOrganizationPreferenceMatrixAsync(Guid organizationId);
 
     Task<bool> SaveOrganizationPreferenceMatrixAsync(Guid organizationId, IReadOnlyCollection<Clients.UpdateNotificationPreferenceCellDto> cells);

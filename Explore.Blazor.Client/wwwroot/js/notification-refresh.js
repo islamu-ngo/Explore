@@ -2,6 +2,7 @@
 // ABOUTME: Keeps payloads minimal and lets the browser reconnect while polling stays as fallback.
 
 let notificationRefreshSource = null;
+let serviceWorkerMessageHandler = null;
 
 export function startNotificationRefresh(url, dotNetRef) {
     stopNotificationRefresh();
@@ -25,11 +26,25 @@ export function startNotificationRefresh(url, dotNetRef) {
     notificationRefreshSource.onerror = () => {
         dotNetRef.invokeMethodAsync('HandleNotificationRefreshError');
     };
+
+    if ('serviceWorker' in navigator) {
+        serviceWorkerMessageHandler = event => {
+            if (event.data?.type === 'islamu-notification-refresh') {
+                dotNetRef.invokeMethodAsync('HandleWebPushRefresh');
+            }
+        };
+        navigator.serviceWorker.addEventListener('message', serviceWorkerMessageHandler);
+    }
 }
 
 export function stopNotificationRefresh() {
     if (notificationRefreshSource !== null) {
         notificationRefreshSource.close();
         notificationRefreshSource = null;
+    }
+
+    if (serviceWorkerMessageHandler !== null && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', serviceWorkerMessageHandler);
+        serviceWorkerMessageHandler = null;
     }
 }

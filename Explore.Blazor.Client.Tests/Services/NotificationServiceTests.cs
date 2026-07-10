@@ -268,6 +268,56 @@ public class NotificationServiceTests
 
     #endregion
 
+    [Test]
+    public async Task GetWebPushConfigurationAsync_ReturnsPublicConfiguration_WhenApiSucceeds()
+    {
+        _apiClient.GetWebPushConfigurationAsync(cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new WebPushPublicConfiguration { Enabled = true, PublicKey = "public-key" });
+
+        var result = await _service.GetWebPushConfigurationAsync();
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Enabled).IsTrue();
+        await Assert.That(result.PublicKey).IsEqualTo("public-key");
+    }
+
+    [Test]
+    public async Task GetVapidPublicKeyAsync_UsesGeneratedApiClient()
+    {
+        _apiClient.GetVapidPublicKeyAsync(cancellationToken: Arg.Any<CancellationToken>())
+            .Returns("public-key");
+
+        var result = await _service.GetVapidPublicKeyAsync();
+
+        await Assert.That(result).IsEqualTo("public-key");
+        await _apiClient.Received(1).GetVapidPublicKeyAsync(cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SubscribeWebPushAsync_UsesGeneratedClientAndReturnsSuccess()
+    {
+        _apiClient.SubscribeCurrentUserWebPushSubscriptionAsync(Arg.Any<SubscribeCurrentUserWebPushSubscriptionCommand>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+
+        var result = await _service.SubscribeWebPushAsync("device-a", "https://push.example/sub", "p256dh", "auth", null);
+
+        await Assert.That(result).IsTrue();
+        await _apiClient.Received(1).SubscribeCurrentUserWebPushSubscriptionAsync(
+            Arg.Is<SubscribeCurrentUserWebPushSubscriptionCommand>(request => request.DeviceIdentifier == "device-a" && request.Endpoint == "https://push.example/sub"),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UnsubscribeWebPushAsync_ReturnsFalse_WhenApiThrows()
+    {
+        _apiClient.UnsubscribeCurrentUserWebPushSubscriptionAsync(Arg.Any<Guid>(), cancellationToken: Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Forbidden", 403));
+
+        var result = await _service.UnsubscribeWebPushAsync(Guid.NewGuid());
+
+        await Assert.That(result).IsFalse();
+    }
+
     // ========== GetNotificationByIdAsync ==========
 
     #region GetNotificationByIdAsync Tests

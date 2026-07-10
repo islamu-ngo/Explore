@@ -694,6 +694,9 @@ public static class HalResourceExtensions
     public static bool HasLink(this HalResourceOfNotificationPreferenceMatrixDto dto, string linkRel)
         => dto._links?.ContainsKey(linkRel) == true;
 
+    public static bool HasLink(this HalResourceOfWebPushSubscriptionDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
     public static bool HasHalLink(this EventDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
