@@ -33,6 +33,7 @@
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Refit.HttpClientFactory" />
     <PackageReference Include="Svix" />
+    <PackageReference Include="WebPush" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 

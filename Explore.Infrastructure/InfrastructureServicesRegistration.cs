@@ -37,6 +37,7 @@ using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
 using Explore.Infrastructure.SupportAccess;
 using Explore.Infrastructure.Webhooks;
+using Explore.Infrastructure.WebPush;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -384,6 +385,30 @@ public static class InfrastructureServicesRegistration
 
         services.AddSingleton<IEmailDispatchTransport, RabbitMqEmailDispatchTransport>();
         services.AddScoped<EmailDispatchRabbitMqPointerPublisher>();
+
+        services.AddOptions<WebPushSettings>()
+            .Bind(configuration.GetSection(WebPushSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<WebPushSettings>, WebPushSettingsValidator>();
+        services.AddSingleton<IWebPushConfigurationProvider, WebPushConfigurationProvider>();
+        services.AddSingleton<WebPushEndpointSafetyPolicy>();
+        services.AddSingleton<WebPushDispatchDrainService>();
+        services.AddHostedService<WebPushDispatchProcessor>();
+        services.AddHttpClient<IWebPushNotificationSender, WebPushNotificationSender>((sp, client) =>
+        {
+            var webPushSettings = sp.GetRequiredService<IOptions<WebPushSettings>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(webPushSettings.RequestTimeoutSeconds);
+        })
+        .ConfigurePrimaryHttpMessageHandler(sp =>
+        {
+            var safetyPolicy = sp.GetRequiredService<WebPushEndpointSafetyPolicy>();
+            return new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                ConnectCallback = (context, cancellationToken) =>
+                    WebPushSafeConnector.ConnectAsync(safetyPolicy, context.DnsEndPoint, cancellationToken)
+            };
+        });
 
         // Generic Outbox Processor settings and dispatcher
         services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));

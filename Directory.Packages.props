@@ -154,6 +154,7 @@
     <PackageVersion Include="TickerQ.Instrumentation.OpenTelemetry" Version="10.2.0" />
     <PackageVersion Include="TUnit" Version="1.33.0" />
     <PackageVersion Include="Verify.TUnit" Version="31.9.4" />
+    <PackageVersion Include="WebPush" Version="1.0.13" />
     <PackageVersion Include="YamlDotNet" Version="17.1.0" />
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
