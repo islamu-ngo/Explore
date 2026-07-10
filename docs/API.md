@@ -132,6 +132,15 @@ Notification preference routes are authenticated private preference endpoints. T
 - Response `_links.self`, `_links.save`, and `_links.set-mute` are the only UI authority for rendering save and mute controls. Clients must not infer preference editability from roles or claims.
 - Command handlers reject attempts to disable required categories or write through broader locks; validation failures return ProblemDetails through the standard command-response mapping.
 
+### Browser Web Push Endpoints
+
+- `GET /api/notification/web-push/config` is anonymous and returns only `{ enabled, publicKey }`; the VAPID private key is never part of the API contract.
+- `GET /vapid-public-key` is anonymous and returns only the VAPID public key as `text/plain`; Blazor consumes it through the generated API client and notification service.
+- `GET /api/notification/web-push/subscription?deviceIdentifier=...` returns the authenticated current user's safe current-device status without endpoint, `p256dh`, or auth material.
+- `POST /api/notification/web-push/subscriptions` creates or refreshes the authenticated user's tenant-scoped device subscription.
+- `DELETE /api/notification/web-push/subscriptions/{subscriptionId}` deactivates only a subscription owned by the authenticated tenant/user.
+- Current-user preference resources advertise `subscribe-web-push`; active subscription resources advertise `unsubscribe`. Blazor must gate both actions from those HAL links.
+
 ### Localization Admin Endpoints
 
 Localization admin routes live under `/api/admin/localization` and require
@@ -159,6 +168,24 @@ provider errors.
 
 Static bundle imports accept only flat `ui.*` and `lookup.*` string dictionaries.
 ProblemDetails and logs must not include raw bundle content or TMS credentials.
+
+### Listmonk Integration Settings Endpoints
+
+Listmonk settings are exposed under `/api/integrations/listmonk`:
+
+| Route | Route name | Auth | Purpose |
+|---|---|---|---|
+| `GET /api/integrations/listmonk/settings` | `GetListmonkIntegrationSettings` | `[AllowAnonymous]`, public classification | Returns sanitized `ListmonkIntegrationSettingsDto` for admin UI state. |
+| `PUT /api/integrations/listmonk/settings` | `UpdateListmonkIntegrationSettings` | `[Authorize]` | Updates non-secret Listmonk settings. |
+| `POST /api/integrations/listmonk/credentials/rotate` | `RotateListmonkIntegrationCredentials` | `[Authorize]` | Rotates the write-only API username/key secret bindings. |
+| `POST /api/integrations/listmonk/test-connection` | `TestListmonkIntegrationConnection` | `[Authorize]` | Runs a server-side connectivity check with resolved settings and credentials. |
+
+`ListmonkIntegrationSettingsDto` includes `Enabled`, `InstanceUrl`,
+`DefaultListId`, `PreconfirmSubscriptions`, `SyncOnRegistration`,
+`ApiUsernameConfigured`, `ApiKeyConfigured`, and `CanEdit`. It never returns raw
+credentials. This singleton settings surface currently returns a plain DTO
+rather than a HAL resource, so Blazor gates edit controls from server-provided
+`CanEdit`.
 
 ---
 
@@ -895,6 +922,10 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
      - `PUT /api/notification/preferences/me/mute` — set current-user non-essential notification mute state
      - `GET|PUT /api/organization/{id}/notification-preferences` and `/mute` — organization-scoped notification preferences
      - `GET|PUT /api/group/{id}/notification-preferences` and `/mute` — group-scoped notification preferences
+     - `GET /api/notification/web-push/config` — public enabled flag and VAPID public key only
+     - `GET /api/notification/web-push/subscription?deviceIdentifier=...` — safe current-device subscription status
+     - `POST /api/notification/web-push/subscriptions` — enroll or refresh the current browser
+     - `DELETE /api/notification/web-push/subscriptions/{subscriptionId}` — deactivate an owned browser subscription
 8. Actor subscriptions (all `[Authorize]`):
    - `GET /api/actor-subscriptions` — current user's paged actor subscriptions
    - `GET /api/actor-subscriptions/actors/{targetActorId}` — current user's subscription state for a target actor
