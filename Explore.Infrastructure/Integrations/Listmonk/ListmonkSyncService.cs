@@ -66,11 +66,10 @@ public sealed class ListmonkSyncService(
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         client.DefaultRequestHeaders.Authorization = BuildBasicAuthHeader(username.Value, apiKey.Value);
 
-        var apiClient = new ListmonkApiClient(client);
-        var subscriber = BuildSubscriber(outbox);
-
         try
         {
+            var apiClient = new ListmonkApiClient(client);
+            var subscriber = BuildSubscriber(outbox);
             await apiClient.CreateSubscriberAsync(subscriber, cancellationToken);
             return ListmonkSyncResult.Success();
         }

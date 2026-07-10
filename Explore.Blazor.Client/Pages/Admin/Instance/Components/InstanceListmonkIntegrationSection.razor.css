@@ -1,0 +1,22 @@
+/* ABOUTME: Scoped styles for InstanceListmonkIntegrationSection using BEM and logical properties. */
+/* ABOUTME: Covers subscriber sync settings, write-only credentials, status chips, and action feedback. */
+
+.instance-listmonk {
+    inline-size: 100%;
+}
+
+.instance-listmonk__body {
+    padding-block-start: var(--isl-space-2, 8px);
+}
+
+.instance-listmonk__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-2, 8px);
+}
+
+.instance-listmonk__secret {
+    border: 1px solid var(--mud-palette-lines-default, #e0e0e0);
+    border-radius: var(--mud-default-borderradius, 4px);
+    padding: var(--isl-space-3, 12px);
+}

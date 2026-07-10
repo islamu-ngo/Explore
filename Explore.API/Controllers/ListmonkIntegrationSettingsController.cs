@@ -1,0 +1,107 @@
+// ABOUTME: API controller for tenant Listmonk integration settings and connection testing.
+// ABOUTME: Exposes sanitized reads and authenticated writes without returning secret values.
+
+using Asp.Versioning;
+using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
+using Explore.API.Hateoas;
+using Explore.Application.DTOs.Integrations;
+using Explore.Application.Features.Integrations.Listmonk.Requests.Commands;
+using Explore.Application.Features.Integrations.Listmonk.Requests.Queries;
+using Explore.Application.Responses;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Explore.API.Controllers;
+
+[ApiVersion("0.1")]
+[Route("api/integrations/listmonk")]
+[ApiController]
+public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : ControllerBase
+{
+    private static readonly ApiValidationProblemDescriptor SettingsValidationProblem = new(
+        "listmonkIntegrationSettings",
+        "Listmonk integration settings validation failed",
+        "Listmonk integration settings update failed.");
+
+    private static readonly ApiValidationProblemDescriptor CredentialsValidationProblem = new(
+        "listmonkIntegrationCredentials",
+        "Listmonk integration credential validation failed",
+        "Listmonk integration credential rotation failed.");
+
+    private static readonly ApiValidationProblemDescriptor TestConnectionValidationProblem = new(
+        "listmonkIntegrationConnection",
+        "Listmonk integration connection validation failed",
+        "Listmonk integration connection test failed.");
+
+    [HttpGet("settings", Name = RouteNames.GetListmonkIntegrationSettings)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [EndpointSummary("Get Listmonk Integration Settings")]
+    [EndpointDescription("Returns tenant Listmonk integration settings without exposing API credentials.")]
+    [ProducesResponseType(typeof(ListmonkIntegrationSettingsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ListmonkIntegrationSettingsDto>> GetSettings(
+        CancellationToken cancellationToken = default)
+    {
+        var result = await mediator.Send(new GetListmonkIntegrationSettingsQuery(), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPut("settings", Name = RouteNames.UpdateListmonkIntegrationSettings)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EndpointSummary("Update Listmonk Integration Settings")]
+    [EndpointDescription("Updates tenant-scoped non-secret Listmonk integration settings.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings(
+        [FromBody] UpdateListmonkIntegrationSettingsDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await mediator.Send(new UpdateListmonkIntegrationSettingsCommand { Dto = dto }, cancellationToken);
+        if (result.Success)
+            return Ok(result);
+
+        return this.ToCommandValidationProblem(result, SettingsValidationProblem);
+    }
+
+    [HttpPost("credentials/rotate", Name = RouteNames.RotateListmonkIntegrationCredentials)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EndpointSummary("Rotate Listmonk Integration Credentials")]
+    [EndpointDescription("Stores Listmonk API username and/or API key through tenant secret bindings.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> RotateCredentials(
+        [FromBody] RotateListmonkIntegrationCredentialsDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await mediator.Send(new RotateListmonkIntegrationCredentialsCommand { Dto = dto }, cancellationToken);
+        if (result.Success)
+            return Ok(result);
+
+        return this.ToCommandValidationProblem(result, CredentialsValidationProblem);
+    }
+
+    [HttpPost("test-connection", Name = RouteNames.TestListmonkIntegrationConnection)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EndpointSummary("Test Listmonk Integration Connection")]
+    [EndpointDescription("Verifies that the configured tenant Listmonk API endpoint and credentials are usable.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> TestConnection(
+        CancellationToken cancellationToken = default)
+    {
+        var result = await mediator.Send(new TestListmonkConnectionCommand(), cancellationToken);
+        if (result.Success)
+            return Ok(result);
+
+        return this.ToCommandValidationProblem(result, TestConnectionValidationProblem);
+    }
+}

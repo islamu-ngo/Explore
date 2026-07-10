@@ -430,6 +430,7 @@ public static class InfrastructureServicesRegistration
             client.Timeout = TimeSpan.FromSeconds(30);
         });
         services.AddScoped<ListmonkSyncService>();
+        services.AddScoped<IListmonkConnectionTester, ListmonkConnectionTester>();
         services.AddOptions<IdempotencyCleanupSettings>()
             .Bind(configuration.GetSection(IdempotencyCleanupSettings.SectionName))
             .ValidateOnStart();

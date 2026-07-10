@@ -79,6 +79,11 @@ public static class RouteNames
     public const string ModerationIntegrationCoopCallback = "ModerationIntegrationCoopCallback";
     public const string IntegrationSvixOperationalCallback = "IntegrationSvixOperationalCallback";
 
+    public const string GetListmonkIntegrationSettings = "GetListmonkIntegrationSettings";
+    public const string UpdateListmonkIntegrationSettings = "UpdateListmonkIntegrationSettings";
+    public const string RotateListmonkIntegrationCredentials = "RotateListmonkIntegrationCredentials";
+    public const string TestListmonkIntegrationConnection = "TestListmonkIntegrationConnection";
+
     #endregion
 
     #region Event Session Routes

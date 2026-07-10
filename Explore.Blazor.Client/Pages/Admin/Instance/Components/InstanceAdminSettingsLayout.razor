@@ -149,6 +149,10 @@
                         {
                             <InstanceLocalizationSection />
                         }
+                        else if (_currentSection == "listmonk")
+                        {
+                            <InstanceListmonkIntegrationSection />
+                        }
                         else if (_currentSection == "members" && IsSingleTenantMode)
                         {
                             <TenantMembersSection />
@@ -615,6 +619,7 @@
                 new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
                 new("footer",           Icons.Material.Filled.ViewAgenda,      "Footer"),
                 new("localization",     Icons.Material.Filled.Translate,       "Localization"),
+                new("listmonk",         Icons.Material.Filled.MarkEmailRead,   "Listmonk"),
             new("advanced",                 Icons.Material.Filled.DisplaySettings, "Advanced"),
             new("support-access",           Icons.Material.Filled.SupportAgent,    "Support Access",   Group: "Operations"),
             new("support-access-evidence",  Icons.Material.Filled.ReceiptLong,     "Support Evidence", Group: "Operations"),
@@ -636,6 +641,7 @@
             new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
             new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
             new("localization",     Icons.Material.Filled.Translate,       "Localization"),
+            new("listmonk",         Icons.Material.Filled.MarkEmailRead,   "Listmonk"),
             new("ai",               Icons.Material.Filled.SmartToy,        "AI"),
             new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
             new("support-access",   Icons.Material.Filled.SupportAgent,    "Support Access", Group: "Operations"),

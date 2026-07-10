@@ -1,0 +1,345 @@
+@* ABOUTME: Instance admin section for native Listmonk integration settings and credential rotation. *@
+@* ABOUTME: Uses generated-client service calls while keeping API username and key write-only. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using MudBlazor
+
+@inject IListmonkIntegrationSettingsService ListmonkSettingsService
+@inject ISnackbar Snackbar
+@inject ILogger<InstanceListmonkIntegrationSection> Logger
+@inject ILogger<InstanceListmonkIntegrationSection> Logger
+
+<div class="settings-section instance-listmonk">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Listmonk</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Sync opted-in attendee emails to a Listmonk list through the native generated API client.
+            Credentials are write-only and never returned to the browser.
+        </MudText>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" role="status" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Loading Listmonk settings…</MudText>
+        </MudStack>
+        return;
+    }
+
+    <MudStack Spacing="4" Class="instance-listmonk__body">
+        @if (!string.IsNullOrWhiteSpace(_loadError))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">@_loadError</MudAlert>
+        }
+
+        <div class="instance-listmonk__form" aria-live="polite">
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Subscriber Sync</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                When enabled, event registration creates a durable sync intent only for attendees who consent to share their email with the organizer.
+            </MudText>
+
+            <MudStack Spacing="2">
+                <MudSwitch T="bool"
+                           @bind-Value="_enabled"
+                           Color="Color.Primary"
+                           Disabled="@(!CanEdit || _isSaving)"
+                           Label="Enable Listmonk integration"
+                           aria-label="Enable Listmonk integration" />
+                <MudSwitch T="bool"
+                           @bind-Value="_syncOnRegistration"
+                           Color="Color.Primary"
+                           Disabled="@(!CanEdit || _isSaving || !_enabled)"
+                           Label="Sync opted-in registrations immediately"
+                           aria-label="Sync opted-in registrations to Listmonk" />
+                <MudSwitch T="bool"
+                           @bind-Value="_preconfirmSubscriptions"
+                           Color="Color.Primary"
+                           Disabled="@(!CanEdit || _isSaving)"
+                           Label="Preconfirm Listmonk subscriptions"
+                           aria-label="Preconfirm Listmonk subscriptions" />
+            </MudStack>
+
+            <MudGrid Class="mt-2">
+                <MudItem xs="12" md="8">
+                    <MudTextField Variant="Variant.Outlined"
+                                  T="string"
+                                  Label="Listmonk URL"
+                                  @bind-Value="_instanceUrl"
+                                  Disabled="@(!CanEdit || _isSaving)"
+                                  Placeholder="https://listmonk.example.com"
+                                  HelperText="Listmonk root or /api URL. The backend normalizes it to the API root."
+                                  aria-label="Listmonk URL" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField Variant="Variant.Outlined"
+                                     T="int"
+                                     Label="Default list ID"
+                                     @bind-Value="_defaultListId"
+                                     Min="0"
+                                     Disabled="@(!CanEdit || _isSaving)"
+                                     HelperText="Numeric Listmonk list ID for registration sync."
+                                     aria-label="Default Listmonk list ID" />
+                </MudItem>
+            </MudGrid>
+
+            <MudStack Row="true" Spacing="2" Class="mt-3" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                <MudButton Elevation="0"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           Disabled="@(!CanEdit || _isSaving)"
+                           OnClick="SaveSettingsAsync"
+                           aria-label="Save Listmonk settings">
+                    @(_isSaving ? "Saving…" : "Save Listmonk Settings")
+                </MudButton>
+                <MudButton Elevation="0"
+                           Color="Color.Primary"
+                           Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.NetworkCheck"
+                           Disabled="@(_isTesting || !_enabled)"
+                           OnClick="TestConnectionAsync"
+                           aria-label="Test Listmonk connection">
+                    @(_isTesting ? "Testing…" : "Test Connection")
+                </MudButton>
+            </MudStack>
+        </div>
+
+        <MudDivider />
+
+        <div class="instance-listmonk__secret">
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">API Credentials</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                Credentials are stored in the backend secret system. Leave fields empty to keep existing values.
+            </MudText>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Class="mb-3">
+                <MudChip T="string"
+                         Color="@(_apiUsernameConfigured ? Color.Success : Color.Default)"
+                         Variant="@(_apiUsernameConfigured ? Variant.Filled : Variant.Outlined)"
+                         Size="Size.Small">
+                    @(_apiUsernameConfigured ? "Username configured" : "Username missing")
+                </MudChip>
+                <MudChip T="string"
+                         Color="@(_apiKeyConfigured ? Color.Success : Color.Default)"
+                         Variant="@(_apiKeyConfigured ? Variant.Filled : Variant.Outlined)"
+                         Size="Size.Small">
+                    @(_apiKeyConfigured ? "API key configured" : "API key missing")
+                </MudChip>
+            </MudStack>
+
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  T="string"
+                                  Label="API username"
+                                  @bind-Value="_apiUsername"
+                                  Disabled="@(!CanEdit || _isRotatingCredentials)"
+                                  HelperText="Write-only. Existing username is never returned."
+                                  Placeholder="Paste Listmonk API username…"
+                                  aria-label="Listmonk API username" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  T="string"
+                                  Label="API key"
+                                  InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
+                                  @bind-Value="_apiKey"
+                                  Disabled="@(!CanEdit || _isRotatingCredentials)"
+                                  HelperText="Write-only. Existing API key is never returned."
+                                  Placeholder="Paste Listmonk API key…"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="() => _showApiKey = !_showApiKey"
+                                  aria-label="Listmonk API key" />
+                </MudItem>
+            </MudGrid>
+
+            <MudButton Elevation="0"
+                       Class="mt-3"
+                       Color="Color.Primary"
+                       Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Disabled="@(!CanEdit || _isRotatingCredentials || CredentialsBlank)"
+                       OnClick="RotateCredentialsAsync"
+                       aria-label="Rotate Listmonk credentials">
+                @(_isRotatingCredentials ? "Updating…" : "Update Credentials")
+            </MudButton>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_lastResult))
+        {
+            <MudAlert Severity="@(_lastResultSucceeded ? Severity.Success : Severity.Error)"
+                      Variant="Variant.Outlined"
+                      Dense="true">
+                @_lastResult
+            </MudAlert>
+        }
+    </MudStack>
+</div>
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isTesting;
+    private bool _isRotatingCredentials;
+    private bool _showApiKey;
+    private bool _enabled;
+    private bool _syncOnRegistration;
+    private bool _preconfirmSubscriptions = true;
+    private bool _apiUsernameConfigured;
+    private bool _apiKeyConfigured;
+    private bool _lastResultSucceeded;
+    private int _defaultListId;
+    private string? _instanceUrl;
+    private string? _apiUsername;
+    private string? _apiKey;
+    private string? _lastResult;
+    private string? _loadError;
+    private bool _canEdit;
+
+    private bool CanEdit => _canEdit;
+
+    private bool CredentialsBlank => string.IsNullOrWhiteSpace(_apiUsername) && string.IsNullOrWhiteSpace(_apiKey);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            var settings = await ListmonkSettingsService.GetSettingsAsync();
+            if (settings is null)
+            {
+                _loadError = "Unable to load Listmonk settings.";
+                return;
+            }
+
+            _enabled = settings.Enabled ?? false;
+            _syncOnRegistration = settings.SyncOnRegistration ?? false;
+            _preconfirmSubscriptions = settings.PreconfirmSubscriptions ?? true;
+            _defaultListId = settings.DefaultListId ?? 0;
+            _instanceUrl = settings.InstanceUrl;
+            _apiUsernameConfigured = settings.ApiUsernameConfigured ?? false;
+            _apiKeyConfigured = settings.ApiKeyConfigured ?? false;
+            _canEdit = settings.CanEdit ?? false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load Listmonk settings.");
+            _loadError = "Unable to load Listmonk settings.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        var validationError = ValidateSettings();
+        if (validationError is not null)
+        {
+            Snackbar.Add(validationError, Severity.Warning);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var result = await ListmonkSettingsService.UpdateSettingsAsync(new UpdateListmonkIntegrationSettingsDto
+            {
+                Enabled = _enabled,
+                InstanceUrl = _instanceUrl,
+                DefaultListId = _defaultListId,
+                PreconfirmSubscriptions = _preconfirmSubscriptions,
+                SyncOnRegistration = _syncOnRegistration
+            });
+
+            ShowResult(result);
+            if (result.Success)
+            {
+                await LoadAsync();
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task RotateCredentialsAsync()
+    {
+        _isRotatingCredentials = true;
+        try
+        {
+            var result = await ListmonkSettingsService.RotateCredentialsAsync(new RotateListmonkIntegrationCredentialsDto
+            {
+                ApiUsername = string.IsNullOrWhiteSpace(_apiUsername) ? null : _apiUsername,
+                ApiKey = string.IsNullOrWhiteSpace(_apiKey) ? null : _apiKey
+            });
+
+            ShowResult(result);
+            if (result.Success)
+            {
+                _apiUsername = null;
+                _apiKey = null;
+                await LoadAsync();
+            }
+        }
+        finally
+        {
+            _isRotatingCredentials = false;
+        }
+    }
+
+    private async Task TestConnectionAsync()
+    {
+        _isTesting = true;
+        try
+        {
+            ShowResult(await ListmonkSettingsService.TestConnectionAsync());
+        }
+        finally
+        {
+            _isTesting = false;
+        }
+    }
+
+    private void ShowResult(Explore.Blazor.Client.Contracts.Services.Webhooks.WebhookActionResult result)
+    {
+        _lastResult = result.Message;
+        _lastResultSucceeded = result.Success;
+        Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+    }
+
+    private string? ValidateSettings()
+    {
+        if (_syncOnRegistration && !_enabled)
+        {
+            return "Enable Listmonk before syncing registrations.";
+        }
+
+        if (_defaultListId < 0)
+        {
+            return "Default list ID cannot be negative.";
+        }
+
+        if ((_enabled || _syncOnRegistration) && string.IsNullOrWhiteSpace(_instanceUrl))
+        {
+            return "Listmonk URL is required when the integration is enabled.";
+        }
+
+        if ((_enabled || _syncOnRegistration) && _defaultListId <= 0)
+        {
+            return "Default list ID is required when the integration is enabled.";
+        }
+
+        return null;
+    }
+}

@@ -412,6 +412,11 @@ builder.Services.AddHealthChecks()
         "webhook-svix-provider",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "webhooks", "svix", "infrastructure"])
+    .AddCheck<ListmonkIntegrationHealthCheck>(
+        "listmonk-integration",
+        failureStatus: HealthStatus.Degraded,
+        tags: ["ready", "integrations", "listmonk", "infrastructure"],
+        timeout: TimeSpan.FromSeconds(5))
     .AddCheck<CerbosReadinessHealthCheck>(
         "cerbos",
         failureStatus: HealthStatus.Unhealthy,
