@@ -20,6 +20,8 @@ public sealed class EventPublishedNotificationFanoutServiceTests
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationFanoutRunRepository _fanoutRunRepository = Substitute.For<INotificationFanoutRunRepository>();
     private readonly INotificationPreferenceResolver _preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
+    private readonly IWebPushSubscriptionRepository _webPushSubscriptionRepository = Substitute.For<IWebPushSubscriptionRepository>();
+    private readonly IWebPushDispatchOutboxRepository _webPushDispatchOutboxRepository = Substitute.For<IWebPushDispatchOutboxRepository>();
     private readonly EventPublishedNotificationFanoutService _service;
 
     public EventPublishedNotificationFanoutServiceTests()
@@ -29,11 +31,18 @@ public sealed class EventPublishedNotificationFanoutServiceTests
             _notificationRepository,
             _fanoutRunRepository,
             _preferenceResolver,
+            _webPushSubscriptionRepository,
+            _webPushDispatchOutboxRepository,
             CreateMetrics(),
             Substitute.For<ILogger<EventPublishedNotificationFanoutService>>());
 
         _preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
             .Returns(call => EnabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
+        _webPushSubscriptionRepository.ListActiveForUserAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<WebPushSubscription>());
     }
 
     [Test]
@@ -70,6 +79,12 @@ public sealed class EventPublishedNotificationFanoutServiceTests
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(false);
+        _notificationRepository.GetByDeduplicationKeyAsync(
+                request.TenantId,
+                subscription.SubscriberUserId,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns((Notification?)null);
         _notificationRepository.Create(Arg.Do<Notification>(notification => createdNotifications.Add(notification)))
             .Returns(call => call.Arg<Notification>());
 
@@ -117,12 +132,26 @@ public sealed class EventPublishedNotificationFanoutServiceTests
                 Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
             .Returns([subscription]);
-        _notificationRepository.ExistsByDeduplicationKeyAsync(
+        _notificationRepository.GetByDeduplicationKeyAsync(
                 request.TenantId,
                 subscription.SubscriberUserId,
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(new Notification
+            {
+                Id = Guid.NewGuid(),
+                TenantId = request.TenantId,
+                Tenant = null!,
+                UserId = subscription.SubscriberUserId,
+                User = null!,
+                NotificationTypeId = (int)NotificationTypeEnum.EventCreated,
+                NotificationType = null!,
+                NotificationScope = null!,
+                Title = "Existing notification",
+                Body = "Existing body",
+                DeduplicationKey = "existing",
+                CreatedAt = DateTime.UtcNow
+            });
 
         await _service.FanoutAsync(request);
 
@@ -163,6 +192,12 @@ public sealed class EventPublishedNotificationFanoutServiceTests
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(false);
+        _notificationRepository.GetByDeduplicationKeyAsync(
+                request.TenantId,
+                subscription.SubscriberUserId,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns((Notification?)null);
         _preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
             .Returns(call => DisabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
 

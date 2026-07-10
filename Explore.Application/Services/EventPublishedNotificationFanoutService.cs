@@ -11,13 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Explore.Application.Services;
 
-public sealed class EventPublishedNotificationFanoutService(
-    IActorSubscriptionRepository actorSubscriptionRepository,
-    INotificationRepository notificationRepository,
-    INotificationFanoutRunRepository fanoutRunRepository,
-    INotificationPreferenceResolver notificationPreferenceResolver,
-    BusinessMetrics metrics,
-    ILogger<EventPublishedNotificationFanoutService> logger) : IEventPublishedNotificationFanoutService
+public sealed class EventPublishedNotificationFanoutService : IEventPublishedNotificationFanoutService
 {
     public const string FanoutKind = "event-published";
     public const string StatusProcessing = "processing";
@@ -32,6 +26,35 @@ public sealed class EventPublishedNotificationFanoutService(
     public const string OutcomeSkippedCompleted = "skipped_completed";
 
     private const int BatchSize = 250;
+
+    private readonly IActorSubscriptionRepository actorSubscriptionRepository;
+    private readonly INotificationRepository notificationRepository;
+    private readonly INotificationFanoutRunRepository fanoutRunRepository;
+    private readonly INotificationPreferenceResolver notificationPreferenceResolver;
+    private readonly IWebPushSubscriptionRepository webPushSubscriptionRepository;
+    private readonly IWebPushDispatchOutboxRepository webPushDispatchOutboxRepository;
+    private readonly BusinessMetrics metrics;
+    private readonly ILogger<EventPublishedNotificationFanoutService> logger;
+
+    public EventPublishedNotificationFanoutService(
+        IActorSubscriptionRepository actorSubscriptionRepository,
+        INotificationRepository notificationRepository,
+        INotificationFanoutRunRepository fanoutRunRepository,
+        INotificationPreferenceResolver notificationPreferenceResolver,
+        IWebPushSubscriptionRepository webPushSubscriptionRepository,
+        IWebPushDispatchOutboxRepository webPushDispatchOutboxRepository,
+        BusinessMetrics metrics,
+        ILogger<EventPublishedNotificationFanoutService> logger)
+    {
+        this.actorSubscriptionRepository = actorSubscriptionRepository;
+        this.notificationRepository = notificationRepository;
+        this.fanoutRunRepository = fanoutRunRepository;
+        this.notificationPreferenceResolver = notificationPreferenceResolver;
+        this.webPushSubscriptionRepository = webPushSubscriptionRepository;
+        this.webPushDispatchOutboxRepository = webPushDispatchOutboxRepository;
+        this.metrics = metrics;
+        this.logger = logger;
+    }
 
     public async Task FanoutAsync(EventPublishedNotificationFanoutRequested request, CancellationToken cancellationToken = default)
     {
@@ -85,15 +108,16 @@ public sealed class EventPublishedNotificationFanoutService(
                     run.CursorSubscriberTenantUserId = subscription.SubscriberTenantUserId;
 
                     var deduplicationKey = BuildDeduplicationKey(request, subscription);
-                    var alreadyCreated = await notificationRepository.ExistsByDeduplicationKeyAsync(
+                    var notification = await notificationRepository.GetByDeduplicationKeyAsync(
                         request.TenantId,
                         subscription.SubscriberUserId,
                         deduplicationKey,
                         cancellationToken);
 
-                    if (alreadyCreated)
+                    if (notification is not null)
                     {
                         duplicateSkippedThisAttempt++;
+                        await EnqueueWebPushDispatchesAsync(request, subscription, notification.Id, cancellationToken);
                         continue;
                     }
 
@@ -111,9 +135,11 @@ public sealed class EventPublishedNotificationFanoutService(
                         continue;
                     }
 
-                    await notificationRepository.Create(CreateNotification(request, subscription, deduplicationKey));
+                    notification = await notificationRepository.Create(CreateNotification(request, subscription, deduplicationKey));
                     run.CreatedNotificationCount++;
                     createdThisAttempt++;
+
+                    await EnqueueWebPushDispatchesAsync(request, subscription, notification.Id, cancellationToken);
                 }
 
                 await fanoutRunRepository.Update(run);
@@ -230,5 +256,52 @@ public sealed class EventPublishedNotificationFanoutService(
     private static string BuildDeduplicationKey(EventPublishedNotificationFanoutRequested request, ActorSubscription subscription)
     {
         return $"event-published:{request.TenantId:N}:{request.EventId:N}:{subscription.SubscriberTenantUserId:N}";
+    }
+
+    private async Task EnqueueWebPushDispatchesAsync(
+        EventPublishedNotificationFanoutRequested request,
+        ActorSubscription subscription,
+        Guid notificationId,
+        CancellationToken cancellationToken)
+    {
+        var pushPreference = await notificationPreferenceResolver.ResolveAsync(
+            new NotificationPreferenceResolveRequest(
+                request.TenantId,
+                subscription.SubscriberUserId,
+                null,
+                null,
+                NotificationPreferenceCategoryCodes.EventUpdates,
+                NotificationPreferenceChannelCodes.Push),
+            cancellationToken);
+
+        if (!pushPreference.IsEnabled)
+        {
+            return;
+        }
+
+        var pushSubscriptions = await webPushSubscriptionRepository.ListActiveForUserAsync(
+            request.TenantId,
+            subscription.SubscriberUserId,
+            cancellationToken);
+
+        foreach (var pushSubscription in pushSubscriptions)
+        {
+            await webPushDispatchOutboxRepository.CreateIfNotExistsAsync(new WebPushDispatchOutbox
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = request.TenantId,
+                Tenant = null,
+                NotificationId = notificationId,
+                CategoryId = (int)NotificationPreferenceCategoryEnum.EventUpdates,
+                Category = null,
+                SubscriptionId = pushSubscription.Id,
+                Subscription = null,
+                UserId = subscription.SubscriberUserId,
+                User = null,
+                PayloadJson = "{\"kind\":\"event-published\"}",
+                Status = WebPushDispatchStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            }, cancellationToken);
+        }
     }
 }

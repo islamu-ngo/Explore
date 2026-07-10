@@ -30,6 +30,17 @@ public class NotificationRepository : GenericRepository<Notification, Guid>, INo
                 cancellationToken);
     }
 
+    public async Task<Notification?> GetByDeduplicationKeyAsync(Guid tenantId, Guid userId, string deduplicationKey, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Notifications
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(notification => notification.TenantId == tenantId
+                && notification.UserId == userId
+                && notification.DeduplicationKey == deduplicationKey,
+                cancellationToken);
+    }
+
     public override async Task<Notification> Create(Notification entity)
     {
         EnsureRegisteredReference(entity);
