@@ -1,16 +1,24 @@
 // ABOUTME: Component tests for InstanceGovernanceSection render-policy preset UX behavior and single-tenant visibility rules.
 // ABOUTME: Verifies recommended default preselection, highlighted styling, advanced preset selection, and self-service toggle visibility.
 
+using Event.ControlPlane.Client.Contracts;
+using Event.ControlPlane.Client.Services;
+
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
 public class InstanceGovernanceSectionTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
+    private readonly IControlPlaneOperationsService _operationsService;
 
     public InstanceGovernanceSectionTests()
     {
         _ctx = new BlazorTestContext();
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Instance Admin", "admin@example.com");
+        _operationsService = Substitute.For<IControlPlaneOperationsService>();
+        _operationsService.GetDeploymentModeRunbookAsync(Arg.Any<CancellationToken>())
+            .Returns(ControlPlaneResult.Success(ControlPlaneDeploymentModeRunbook.Empty()));
+        _ctx.Services.AddSingleton(_operationsService);
     }
 
     public void Dispose()
@@ -102,6 +110,75 @@ public class InstanceGovernanceSectionTests : IDisposable
         await Assert.That(cut.Markup).DoesNotContain("Revert to Single-Tenant", StringComparison.OrdinalIgnoreCase);
     }
 
+    [Test]
+    public async Task GovernanceSection_DeploymentModeRunbook_RendersHalGatedTransitionAndSubmitsTypedConfirmation()
+    {
+        _operationsService.GetDeploymentModeRunbookAsync(Arg.Any<CancellationToken>())
+            .Returns(ControlPlaneResult.Success(CreateRunbook(Links(ControlPlaneLinkRelations.TransitionToMultiTenant))));
+        _operationsService.TransitionDeploymentModeAsync(
+                "MultiTenant",
+                "ENABLE MULTI_TENANT",
+                "tenant launch",
+                Arg.Any<CancellationToken>())
+            .Returns(ControlPlaneCommandResult.Succeeded("Deployment mode transition accepted."));
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Deployment mode runbook", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected deployment-mode runbook to render.");
+            }
+        });
+
+        await Assert.That(cut.Markup).Contains("Current mode", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("SingleTenant", StringComparison.Ordinal);
+        await Assert.That(cut.Markup).Contains("Active tenants", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("Multi-Tenant", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Find("button[aria-label='Run deployment mode transition to MultiTenant']").HasAttribute("disabled")).IsTrue();
+
+        cut.Find("input[aria-label='Deployment mode confirmation']").Change("wrong");
+        await Assert.That(cut.Find("button[aria-label='Run deployment mode transition to MultiTenant']").HasAttribute("disabled")).IsTrue();
+
+        cut.Find("input[aria-label='Deployment mode confirmation']").Change("ENABLE MULTI_TENANT");
+        cut.Find("textarea[aria-label='Deployment mode transition reason']").Change("tenant launch");
+        await Assert.That(cut.Find("button[aria-label='Run deployment mode transition to MultiTenant']").HasAttribute("disabled")).IsFalse();
+
+        cut.Find("button[aria-label='Run deployment mode transition to MultiTenant']").Click();
+
+        await _operationsService.Received(1).TransitionDeploymentModeAsync(
+            "MultiTenant",
+            "ENABLE MULTI_TENANT",
+            "tenant launch",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GovernanceSection_DeploymentModeRunbook_WithoutTransitionLink_HidesTransitionControl()
+    {
+        _operationsService.GetDeploymentModeRunbookAsync(Arg.Any<CancellationToken>())
+            .Returns(ControlPlaneResult.Success(CreateRunbook(ControlPlaneHal.EmptyLinks)));
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Multi-Tenant", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected deployment-mode target to render.");
+            }
+        });
+
+        await Assert.That(cut.Markup).Contains("Transition requires a server-provided HAL affordance.", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("Run deployment-mode runbook", StringComparison.OrdinalIgnoreCase);
+        await _operationsService.DidNotReceive().TransitionDeploymentModeAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     private IRenderedComponent<DynamicComponent> RenderGovernanceSection(
         TenantDelegationModel? delegation = null,
         EventPolicyModel? eventPolicy = null,
@@ -125,4 +202,32 @@ public class InstanceGovernanceSectionTests : IDisposable
                  ["DisplayMode"] = displayMode
              }));
     }
+
+    private static ControlPlaneDeploymentModeRunbook CreateRunbook(
+        IReadOnlyDictionary<string, ControlPlaneHalLink> links) => new(
+            "SingleTenant",
+            1,
+            new DateTimeOffset(2026, 7, 10, 12, 0, 0, TimeSpan.Zero),
+            [
+                new ControlPlaneDeploymentModeTargetOption(
+                    "MultiTenant",
+                    "Multi-Tenant",
+                    "Allow tenant routing and tenant self-service administration.",
+                    true,
+                    "ENABLE MULTI_TENANT")
+            ],
+            [
+                new ControlPlaneDeploymentModeRunbookStep(
+                    "backup",
+                    "Back up instance data",
+                    "Create a fresh backup before changing tenant routing.",
+                    ControlPlaneSeverity.Warning)
+            ],
+            links);
+
+    private static IReadOnlyDictionary<string, ControlPlaneHalLink> Links(params string[] relations) =>
+        relations.ToDictionary(
+            relation => relation,
+            relation => new ControlPlaneHalLink($"/api/control-plane/deployment-mode/{relation}", "POST"),
+            StringComparer.OrdinalIgnoreCase);
 }
