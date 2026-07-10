@@ -1,6 +1,7 @@
 // ABOUTME: Smoke tests for RuntimeTranslationProvider — force_offline_mode short-circuit + exception fallback.
 // ABOUTME: Verifies that a failing live provider never bubbles errors out of the runtime wrapper.
 
+using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Secrets;
 using Explore.Application.Telemetry;
@@ -9,7 +10,6 @@ using Explore.Domain.Secrets;
 using Explore.Infrastructure.Localization;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using System.Diagnostics.Metrics;
 
 namespace Explore.Infrastructure.Tests.Infrastructure.Localization;
 
@@ -20,6 +20,7 @@ public class RuntimeTranslationProviderFallbackTests
     [Test]
     public async Task ExportTranslations_WhenForceOfflineMode_ShortCircuitsToOfflineProvider()
     {
+        using var metricsCapture = new MetricsCapture();
         var resolver = new MutableConfigResolver
         {
             Current = new TranslationConfiguration(
@@ -36,11 +37,20 @@ public class RuntimeTranslationProviderFallbackTests
         // Offline bundles ship empty in v1 — the important invariant is "no exception and no Tolgee call".
         await Assert.That(result).IsNotNull();
         await Assert.That(resolver.ResolveCallCount).IsGreaterThanOrEqualTo(1);
+
+        var measurement = await metricsCapture.SingleAsync(
+            "islamu.translation.fetch_total",
+            ("provider", nameof(OfflineTranslationProvider)),
+            ("language", "en"),
+            ("result", "hit_offline"));
+
+        await Assert.That(measurement.Value).IsEqualTo(1);
     }
 
     [Test]
     public async Task ExportTranslations_WhenLiveProviderThrows_FallsBackToOfflineAndSwallowsException()
     {
+        using var metricsCapture = new MetricsCapture();
         var resolver = new MutableConfigResolver
         {
             Current = new TranslationConfiguration(
@@ -53,6 +63,44 @@ public class RuntimeTranslationProviderFallbackTests
         var result = await provider.ExportTranslationsAsync("en");
 
         await Assert.That(result).IsNotNull();
+
+        var errorMeasurement = await metricsCapture.SingleAsync(
+            "islamu.translation.fetch_total",
+            ("provider", nameof(TolgeeTranslationProvider)),
+            ("language", "en"),
+            ("result", "error"));
+        var fallbackMeasurement = await metricsCapture.SingleAsync(
+            "islamu.translation.fetch_total",
+            ("provider", nameof(OfflineTranslationProvider)),
+            ("language", "en"),
+            ("result", "hit_offline"));
+
+        await Assert.That(errorMeasurement.Value).IsEqualTo(1);
+        await Assert.That(fallbackMeasurement.Value).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task TestConnection_WhenOfflineProviderConfigured_RecordsConnectionMetric()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var resolver = new MutableConfigResolver
+        {
+            Current = new TranslationConfiguration(
+                TranslationManagementProviderEnum.None, null, null, null, "en")
+        };
+
+        var provider = BuildProvider(resolver);
+
+        var result = await provider.TestConnectionAsync();
+
+        await Assert.That(result).IsTrue();
+
+        var measurement = await metricsCapture.SingleAsync(
+            "islamu.tms.connection_test_total",
+            ("provider", nameof(OfflineTranslationProvider)),
+            ("result", "success"));
+
+        await Assert.That(measurement.Value).IsEqualTo(1);
     }
 
     [Test]
@@ -191,6 +239,9 @@ public class RuntimeTranslationProviderFallbackTests
         }
 
         public async Task<Measurement> SingleAsync(string instrumentName)
+            => await SingleAsync(instrumentName, []);
+
+        public async Task<Measurement> SingleAsync(string instrumentName, params (string Key, string Value)[] requiredTags)
         {
             for (var attempt = 0; attempt < 20; attempt++)
             {
@@ -202,6 +253,7 @@ public class RuntimeTranslationProviderFallbackTests
 
                 var matches = snapshot
                     .Where(measurement => measurement.InstrumentName == instrumentName)
+                    .Where(measurement => HasTags(measurement, requiredTags))
                     .ToList();
 
                 if (matches.Count > 0)
@@ -216,8 +268,20 @@ public class RuntimeTranslationProviderFallbackTests
             {
                 return _measurements
                     .Where(measurement => measurement.InstrumentName == instrumentName)
+                    .Where(measurement => HasTags(measurement, requiredTags))
                     .Last();
             }
+        }
+
+        private static bool HasTags(Measurement measurement, (string Key, string Value)[] requiredTags)
+        {
+            foreach (var (key, value) in requiredTags)
+            {
+                if (!measurement.Tags.TryGetValue(key, out var actual) || actual?.ToString() != value)
+                    return false;
+            }
+
+            return true;
         }
 
         public void Dispose()

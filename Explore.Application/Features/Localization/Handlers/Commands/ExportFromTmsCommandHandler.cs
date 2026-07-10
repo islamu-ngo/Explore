@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Localization.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -14,17 +15,20 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
     private readonly ITranslationManagementProvider _translationProvider;
     private readonly ITranslationResolver _translationResolver;
     private readonly IBundleFileWriter _bundleFileWriter;
+    private readonly TranslationMetrics _metrics;
     private readonly ILogger<ExportFromTmsCommandHandler> _logger;
 
     public ExportFromTmsCommandHandler(
         ITranslationManagementProvider translationProvider,
         ITranslationResolver translationResolver,
         IBundleFileWriter bundleFileWriter,
+        TranslationMetrics metrics,
         ILogger<ExportFromTmsCommandHandler> logger)
     {
         _translationProvider = translationProvider;
         _translationResolver = translationResolver;
         _bundleFileWriter = bundleFileWriter;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -40,6 +44,7 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
         catch (Exception ex)
         {
             _logger.LogError(ex, "[LOCALIZATION] Export from TMS failed for {Language}", request.LanguageCode);
+            _metrics.RecordStaticBundleOperation("export_from_tms", request.LanguageCode, "provider_error");
             response.Success = false;
             response.Message = $"Export from TMS failed for language '{request.LanguageCode}': {ex.Message}";
             return response;
@@ -55,6 +60,7 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
             response.Success = false;
             response.Message =
                 $"No translations found for language '{request.LanguageCode}'. Verify the TMS has translations for this language.";
+            _metrics.RecordStaticBundleOperation("export_from_tms", request.LanguageCode, "empty");
             return response;
         }
 
@@ -67,11 +73,13 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
             response.Id = Guid.NewGuid();
             response.Message =
                 $"Exported {translations.Count} translations for language '{request.LanguageCode}' → {path}";
+            _metrics.RecordStaticBundleOperation("export_from_tms", request.LanguageCode, "success");
             return response;
         }
         catch (BundleWriteException ex)
         {
             _logger.LogError(ex, "[LOCALIZATION] Bundle persistence failed for {Language}", request.LanguageCode);
+            _metrics.RecordStaticBundleOperation("export_from_tms", request.LanguageCode, "write_error");
             response.Success = false;
             response.Message = $"Failed to persist bundle for '{request.LanguageCode}': {ex.Message}";
             return response;

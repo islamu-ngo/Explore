@@ -1,9 +1,11 @@
 // ABOUTME: Unit tests for ExportFromTmsCommandHandler — bundle persistence, invalidation, error handling.
 // ABOUTME: Verifies IBundleFileWriter is called with correct dict, resolver invalidation fires, BundleWriteException handled.
 
+using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Localization.Handlers.Commands;
 using Explore.Application.Features.Localization.Requests.Commands;
+using Explore.Application.Telemetry;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -15,6 +17,7 @@ public class ExportFromTmsCommandHandlerTests
     private readonly ITranslationManagementProvider _tmsProvider;
     private readonly ITranslationResolver _translationResolver;
     private readonly IBundleFileWriter _bundleFileWriter;
+    private readonly TranslationMetrics _metrics;
     private readonly ExportFromTmsCommandHandler _handler;
 
     public ExportFromTmsCommandHandlerTests()
@@ -22,11 +25,13 @@ public class ExportFromTmsCommandHandlerTests
         _tmsProvider = Substitute.For<ITranslationManagementProvider>();
         _translationResolver = Substitute.For<ITranslationResolver>();
         _bundleFileWriter = Substitute.For<IBundleFileWriter>();
+        _metrics = CreateTestMetrics();
 
         _handler = new ExportFromTmsCommandHandler(
             _tmsProvider,
             _translationResolver,
             _bundleFileWriter,
+            _metrics,
             Substitute.For<ILogger<ExportFromTmsCommandHandler>>());
     }
 
@@ -126,5 +131,13 @@ public class ExportFromTmsCommandHandlerTests
             "en",
             Arg.Is<IReadOnlyDictionary<string, string>>(d => d.Count == 1 && d["ui.button.save"] == "Save"),
             Arg.Any<CancellationToken>());
+    }
+
+    private static TranslationMetrics CreateTestMetrics()
+    {
+        var meter = new Meter(TranslationMetrics.MeterName);
+        var factory = Substitute.For<IMeterFactory>();
+        factory.Create(Arg.Any<MeterOptions>()).Returns(meter);
+        return new TranslationMetrics(factory);
     }
 }

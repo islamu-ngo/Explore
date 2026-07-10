@@ -1,6 +1,7 @@
 // ABOUTME: Runtime TMS provider wrapper that resolves active provider from tenant settings at runtime.
 // ABOUTME: None → OfflineTranslationProvider, Tolgee → TolgeeTranslationProvider, Weblate → WeblateTranslationProvider.
 
+using System.Diagnostics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Telemetry;
 using Explore.Domain.Enums;
@@ -43,14 +44,18 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
     public async Task<bool> TestConnectionAsync(CancellationToken ct = default)
     {
         var provider = await ResolveProviderAsync(ct);
+        var providerName = provider.GetType().Name;
         try
         {
-            return await provider.TestConnectionAsync(ct);
+            var isConnected = await provider.TestConnectionAsync(ct);
+            _metrics.RecordConnectionTest(providerName, isConnected ? "success" : "failure");
+            return isConnected;
         }
         catch (Exception ex)
         {
-            _metrics.RecordFallbackActivated(provider.GetType().Name, ClassifyException(ex));
-            _logger.LogError(ex, "[LOCALIZATION] TMS TestConnection failed on {Provider}; falling back to OfflineProvider", provider.GetType().Name);
+            _metrics.RecordConnectionTest(providerName, "error");
+            _metrics.RecordFallbackActivated(providerName, ClassifyException(ex));
+            _logger.LogError(ex, "[LOCALIZATION] TMS TestConnection failed on {Provider}; falling back to OfflineProvider", providerName);
             return await _offlineProvider.TestConnectionAsync(ct);
         }
     }
@@ -72,18 +77,33 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
     public async Task<IEnumerable<TranslationExport>> ExportTranslationsAsync(string languageCode, CancellationToken ct = default)
     {
         var provider = await ResolveProviderAsync(ct);
+        var providerName = provider.GetType().Name;
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             var results = await provider.ExportTranslationsAsync(languageCode, ct);
             var list = results.ToList();
+            stopwatch.Stop();
+            _metrics.RecordFetch(providerName, languageCode, provider == _offlineProvider ? "hit_offline" : "hit_tms");
+            _metrics.RecordFetchDuration(providerName, languageCode, stopwatch.Elapsed.TotalSeconds);
             return list;
         }
         catch (Exception ex)
         {
-            _metrics.RecordFallbackActivated(provider.GetType().Name, ClassifyException(ex));
+            stopwatch.Stop();
+            _metrics.RecordFetch(providerName, languageCode, "error");
+            _metrics.RecordFetchDuration(providerName, languageCode, stopwatch.Elapsed.TotalSeconds);
+            _metrics.RecordFallbackActivated(providerName, ClassifyException(ex));
             _logger.LogError(ex, "[LOCALIZATION] TMS ExportTranslations failed on {Provider} for {Language}; falling back to OfflineProvider",
-                provider.GetType().Name, languageCode);
-            return await _offlineProvider.ExportTranslationsAsync(languageCode, ct);
+                providerName, languageCode);
+
+            var fallbackStopwatch = Stopwatch.StartNew();
+            var fallbackResults = await _offlineProvider.ExportTranslationsAsync(languageCode, ct);
+            var fallbackList = fallbackResults.ToList();
+            fallbackStopwatch.Stop();
+            _metrics.RecordFetch(nameof(OfflineTranslationProvider), languageCode, "hit_offline");
+            _metrics.RecordFetchDuration(nameof(OfflineTranslationProvider), languageCode, fallbackStopwatch.Elapsed.TotalSeconds);
+            return fallbackList;
         }
     }
 

@@ -23,6 +23,7 @@ public sealed class TranslationMetrics
     private readonly Counter<long> _changeLanguageTotal;
     private readonly Counter<long> _connectionTestTotal;
     private readonly Counter<long> _fallbackActivatedTotal;
+    private readonly Counter<long> _staticBundleOperationTotal;
 
     public TranslationMetrics(IMeterFactory meterFactory)
     {
@@ -52,13 +53,18 @@ public sealed class TranslationMetrics
             "islamu.tms.fallback_activated_total",
             unit: "{fallback}",
             description: "Total TMS fallback activations — alertable if > 0 in 5m window");
+
+        _staticBundleOperationTotal = meter.CreateCounter<long>(
+            "islamu.localization.static_bundle_operation_total",
+            unit: "{operation}",
+            description: "Total static localization bundle import/export operations by language and result");
     }
 
     /// <summary>
     /// Records a translation fetch at the provider boundary.
-    /// Called in TolgeeTranslationProvider, WeblateTranslationProvider, and OfflineTranslationProvider.
+    /// Called by RuntimeTranslationProvider after provider-boundary fetches.
     /// </summary>
-    /// <param name="provider">Provider name: "tolgee", "weblate", "offline".</param>
+    /// <param name="provider">Provider class name.</param>
     /// <param name="language">Language code being fetched.</param>
     /// <param name="result">Outcome: "hit_cache", "hit_tms", "hit_offline", "error".</param>
     public void RecordFetch(string provider, string language, string result)
@@ -90,7 +96,7 @@ public sealed class TranslationMetrics
     }
 
     /// <summary>
-    /// Records a TMS connection test in TestTmsConnectionCommandHandler.
+    /// Records a TMS connection test at the runtime provider boundary.
     /// </summary>
     public void RecordConnectionTest(string provider, string result)
     {
@@ -110,5 +116,13 @@ public sealed class TranslationMetrics
         _fallbackActivatedTotal.Add(1,
             new KeyValuePair<string, object?>("provider", provider),
             new KeyValuePair<string, object?>("reason", reason));
+    }
+
+    public void RecordStaticBundleOperation(string operation, string language, string result)
+    {
+        _staticBundleOperationTotal.Add(1,
+            new KeyValuePair<string, object?>("operation", operation),
+            new KeyValuePair<string, object?>("language", language),
+            new KeyValuePair<string, object?>("result", result));
     }
 }

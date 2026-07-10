@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Localization.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain.Common.Localization;
 using FluentValidation;
 using FluentValidation.Results;
@@ -16,15 +17,18 @@ public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLoca
 {
     private readonly IBundleFileWriter _bundleFileWriter;
     private readonly ITranslationResolver _translationResolver;
+    private readonly TranslationMetrics _metrics;
     private readonly ILogger<ImportLocalizationBundleCommandHandler> _logger;
 
     public ImportLocalizationBundleCommandHandler(
         IBundleFileWriter bundleFileWriter,
         ITranslationResolver translationResolver,
+        TranslationMetrics metrics,
         ILogger<ImportLocalizationBundleCommandHandler> logger)
     {
         _bundleFileWriter = bundleFileWriter;
         _translationResolver = translationResolver;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -44,6 +48,7 @@ public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLoca
             response.Success = false;
             response.Message = "Bundle import requires at least one translation.";
             response.Errors = [response.Message];
+            _metrics.RecordStaticBundleOperation("import_static_bundle", culture.Code, "validation_failure");
             return response;
         }
 
@@ -59,6 +64,7 @@ public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLoca
             response.Success = true;
             response.Id = Guid.NewGuid();
             response.Message = $"Imported {request.Dto.Translations.Count} translations for language '{culture.Code}' → {path}";
+            _metrics.RecordStaticBundleOperation("import_static_bundle", culture.Code, "success");
             return response;
         }
         catch (BundleWriteException ex)
@@ -67,6 +73,7 @@ public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLoca
             response.Success = false;
             response.Message = $"Failed to import bundle for '{culture.Code}': {ex.Message}";
             response.Errors = [response.Message];
+            _metrics.RecordStaticBundleOperation("import_static_bundle", culture.Code, "write_error");
             return response;
         }
     }

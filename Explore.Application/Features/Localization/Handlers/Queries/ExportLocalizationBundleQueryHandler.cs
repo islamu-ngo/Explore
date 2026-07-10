@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Localization.Requests.Queries;
+using Explore.Application.Telemetry;
 using Explore.Domain.Common.Localization;
 using FluentValidation;
 using FluentValidation.Results;
@@ -13,13 +14,17 @@ namespace Explore.Application.Features.Localization.Handlers.Queries;
 public class ExportLocalizationBundleQueryHandler : IRequestHandler<ExportLocalizationBundleQuery, IReadOnlyDictionary<string, string>>
 {
     private readonly IStaticTranslationBundleReader _bundleReader;
+    private readonly TranslationMetrics _metrics;
 
-    public ExportLocalizationBundleQueryHandler(IStaticTranslationBundleReader bundleReader)
+    public ExportLocalizationBundleQueryHandler(
+        IStaticTranslationBundleReader bundleReader,
+        TranslationMetrics metrics)
     {
         _bundleReader = bundleReader;
+        _metrics = metrics;
     }
 
-    public Task<IReadOnlyDictionary<string, string>> Handle(
+    public async Task<IReadOnlyDictionary<string, string>> Handle(
         ExportLocalizationBundleQuery request,
         CancellationToken cancellationToken)
     {
@@ -28,6 +33,8 @@ public class ExportLocalizationBundleQueryHandler : IRequestHandler<ExportLocali
                 new ValidationFailure(nameof(request.LanguageCode), "Language code is not supported."),
             ]);
 
-        return _bundleReader.ReadBundleAsync(culture.Code, cancellationToken);
+        var bundle = await _bundleReader.ReadBundleAsync(culture.Code, cancellationToken);
+        _metrics.RecordStaticBundleOperation("export_static_bundle", culture.Code, "success");
+        return bundle;
     }
 }
