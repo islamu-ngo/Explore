@@ -47,8 +47,8 @@ url = "https://mcp.tavily.com/mcp/?tavilyApiKey=tvly-dev-loWUEIZVfwPqKlK546aubY4
 # because enabling it fails every turn with HTTP 400 (openai/codex#26753).
 # Opt out: LAZYCODEX_CONFIG_MIGRATION_DISABLED=1 (or OMO_CODEX_CONFIG_MIGRATION_DISABLED=1).
 [features.multi_agent_v2]
-max_concurrent_threads_per_session = 1000
 enabled = false
+max_concurrent_threads_per_session = 1000
 
 [agents]
 max_threads = 1000
