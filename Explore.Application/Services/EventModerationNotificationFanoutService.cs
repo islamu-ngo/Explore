@@ -91,27 +91,27 @@ public sealed class EventModerationNotificationFanoutService(
                         deduplicationKey,
                         cancellationToken);
 
-                if (alreadyCreated)
-                {
-                    duplicateSkippedThisAttempt++;
-                    continue;
-                }
+                    if (alreadyCreated)
+                    {
+                        duplicateSkippedThisAttempt++;
+                        continue;
+                    }
 
-                var preference = await notificationPreferenceResolver.ResolveAsync(
-                    new NotificationPreferenceResolveRequest(
-                        request.TenantId,
-                        userId,
-                        null,
-                        null,
-                        NotificationPreferenceCategoryCodes.TrustSafety,
-                        NotificationPreferenceChannelCodes.InApp),
-                    cancellationToken);
-                if (!preference.IsEnabled)
-                {
-                    continue;
-                }
+                    var preference = await notificationPreferenceResolver.ResolveAsync(
+                        new NotificationPreferenceResolveRequest(
+                            request.TenantId,
+                            userId,
+                            null,
+                            null,
+                            NotificationPreferenceCategoryCodes.TrustSafety,
+                            NotificationPreferenceChannelCodes.InApp),
+                        cancellationToken);
+                    if (!preference.IsEnabled)
+                    {
+                        continue;
+                    }
 
-                await notificationRepository.Create(CreateLightModerationNotification(request, userId, deduplicationKey));
+                    await notificationRepository.Create(CreateLightModerationNotification(request, userId, deduplicationKey));
                     run.CreatedNotificationCount++;
                     createdThisAttempt++;
                 }
@@ -222,27 +222,27 @@ public sealed class EventModerationNotificationFanoutService(
                         deduplicationKey,
                         cancellationToken);
 
-                if (alreadyCreated)
-                {
-                    duplicateSkippedThisAttempt++;
-                    continue;
-                }
+                    if (alreadyCreated)
+                    {
+                        duplicateSkippedThisAttempt++;
+                        continue;
+                    }
 
-                var preference = await notificationPreferenceResolver.ResolveAsync(
-                    new NotificationPreferenceResolveRequest(
-                        request.TenantId,
-                        userId,
-                        null,
-                        null,
-                        NotificationPreferenceCategoryCodes.TrustSafety,
-                        NotificationPreferenceChannelCodes.InApp),
-                    cancellationToken);
-                if (!preference.IsEnabled)
-                {
-                    continue;
-                }
+                    var preference = await notificationPreferenceResolver.ResolveAsync(
+                        new NotificationPreferenceResolveRequest(
+                            request.TenantId,
+                            userId,
+                            null,
+                            null,
+                            NotificationPreferenceCategoryCodes.TrustSafety,
+                            NotificationPreferenceChannelCodes.InApp),
+                        cancellationToken);
+                    if (!preference.IsEnabled)
+                    {
+                        continue;
+                    }
 
-                await notificationRepository.Create(CreateHeavyRedactionNotification(request, userId, deduplicationKey));
+                    await notificationRepository.Create(CreateHeavyRedactionNotification(request, userId, deduplicationKey));
                     run.CreatedNotificationCount++;
                     createdThisAttempt++;
                 }
