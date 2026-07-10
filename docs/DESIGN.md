@@ -95,6 +95,13 @@ Layout rules:
 - Accessibility: cards are not interactive unless rendered with real button/link semantics.
 - Motion: no decorative movement.
 
+### WebPushSubscriptionPanel
+- Structure: one outlined settings panel with a compact heading, privacy copy, browser state, and one explicit command.
+- Variants: unavailable, unsupported, denied, ready, enabled, and error.
+- States: permission is requested only from the Enable command; denied state has no repeated prompt affordance.
+- Accessibility: state changes use visible text plus polite live-region announcements; icons are supplementary.
+- Motion: none beyond the parent settings surface transition.
+
 ### AppTextField
 - Structure: wrapper over `MudTextField`.
 - Variants: outlined default.

@@ -141,6 +141,11 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/reporting/OSPREY_WEBHOOK_SECRET` | `reporting.osprey_webhook_secret` tenant Osprey callback/signing secret when a deployment uses one |
 | `/reporting/COOP_API_KEY` | `reporting.coop_api_key` tenant Coop provider credential |
 | `/reporting/COOP_WEBHOOK_SECRET` | `reporting.coop_webhook_secret` tenant Coop callback HMAC secret |
+| `/integrations/listmonk/LISTMONK_API_USERNAME` | `integrations.listmonk.api_username` |
+| `/integrations/listmonk/LISTMONK_API_KEY` | `integrations.listmonk.api_key` |
+| `/api/VAPID_SUBJECT` | `WebPush:VapidSubject` |
+| `/api/VAPID_PUBLIC_KEY` | `WebPush:VapidPublicKey` |
+| `/api/VAPID_PRIVATE_KEY` | `WebPush:VapidPrivateKey` |
 | raw process environment + `STORAGE_S3_*` | consumed directly by the S3 resolver as a compatibility fallback |
 
 Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding.
@@ -164,7 +169,9 @@ Do not merge application-managed and deployment-managed values for the same fiel
 
 Reporting provider secrets are server-side tenant settings. API keys and webhook secrets for Osprey and Coop must never be returned in browser DTOs, HAL links, health checks, logs, metrics, traces, screenshots, issue templates, or support bundles; browser/control-plane surfaces may expose only configured/source/editability metadata. Routing update actions are write-only for secret values: supplying a new Osprey/Coop API key or webhook secret rotates that tenant value, while omitting the field or sending it blank preserves the currently stored secret. There is no implicit clear-secret endpoint and no readback path; confirm rotation through configured flags, provider readiness checks, and secret-provider audit trails.
 
-Current migrated surface: Cerbos authorization settings expose endpoint and Admin API credential ownership metadata. Cerbos Admin API credentials are now registered in `SecretDefinitionRegistry`; the browser sees only configured flags and ownership badges. Reporting provider secret keys are registered as sensitive hierarchical settings for the moderation routing foundation. SMTP, S3, OAuth, localization/TMS, and AI keys still have area-specific storage/UI paths and must not be documented as fully migrated until their resolvers use the shared ownership metadata consistently.
+Current migrated surface: Cerbos authorization settings expose endpoint and Admin API credential ownership metadata. Cerbos Admin API credentials are now registered in `SecretDefinitionRegistry`; the browser sees only configured flags and ownership badges. Reporting provider secret keys are registered as sensitive hierarchical settings for the moderation routing foundation. Listmonk API username/key values are registered server-side secret bindings; admin updates are write-only and browser DTOs expose configured flags only. SMTP, S3, OAuth, localization/TMS, and AI keys still have area-specific storage/UI paths and must not be documented as fully migrated until their resolvers use the shared ownership metadata consistently.
+
+Web Push VAPID keys are deployment configuration. Infisical `/api/VAPID_PRIVATE_KEY` maps to `WebPush:VapidPrivateKey`; it is a server-only secret and must never appear in browser configuration, API responses, HAL links, logs, traces, health data, screenshots, or support artifacts. `VAPID_PUBLIC_KEY` is intentionally public and is returned by `GET /vapid-public-key` as plain text and by `GET /api/notification/web-push/config`. Browser subscription endpoints and `p256dh`/`auth` material are stored tenant-scoped and are never echoed by subscription status DTOs.
 
 ## ISecretProvider Interface
 

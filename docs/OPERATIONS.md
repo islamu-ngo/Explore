@@ -45,6 +45,13 @@ Back up writable bundles together with other deployment-owned persistent data.
 Embedded bundles still provide defaults after restore, but local operator edits
 live only in the writable bundle path.
 
+Operational telemetry for this area is exported by the `Explore.Translation`
+meter. Watch `islamu.tms.fallback_activated_total` for connected-provider
+degradation and `islamu.localization.static_bundle_operation_total` for static
+bundle import/export success or validation failures. Metrics use provider,
+language, operation, result, and fallback-reason tags only; translation keys,
+bundle contents, and TMS secrets must never be emitted as metric tags.
+
 ## Read-Only Doctor Diagnostics
 
 `Explore.Diagnostic` includes a read-only doctor CLI for self-hosting and local-environment preflight checks:
@@ -245,6 +252,7 @@ Readiness interpretation:
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
 | `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`TickerQ` scheduler or hosted-service fallback) and outbox counts are below warning thresholds | Dispatch is intentionally disabled, due dispatch backlog crosses threshold, stale `Processing` rows cross threshold, or `DeadLettered` rows cross threshold | TickerQ mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
 | `email-dispatch-rabbitmq` | API | RabbitMQ Dispatch Mode is disabled, or enabled and topology can be declared | Not used | RabbitMQ mode is enabled but the broker/topology is unreachable or invalid |
+| `web-push-dispatch` | API | Web Push is disabled, or enabled with bounded backlog/retry/lease/failure counts | Due, stale-processing, or terminal-failure counts crossed configured warning thresholds | Invalid VAPID/worker settings fail startup |
 | `idempotency-cleanup` | API | Expired idempotency cleanup is enabled in delete or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
 | `ai-retention-cleanup` | API | AI retention cleanup is enabled in redaction or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
 | `storage` | API | Selected storage provider is available. Local mode verifies the API-owned data root is writable; S3-compatible mode verifies bucket reachability only when selected. | Not used | Selected provider cannot be resolved, selected local root is not writable, or selected S3-compatible storage is missing/unreachable |
@@ -264,6 +272,7 @@ Operational rules:
 - Instance Cerbos readiness follows authorization fail-closed semantics: if the operator selected `authorization.provider=cerbos`, an unreachable PDP makes `/health` unhealthy rather than silently falling back to local RBAC.
 - Local authorization mode skips Cerbos readiness, so self-hosted/local deployments do not need a Cerbos PDP unless explicitly selected.
 - Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only. The default trigger is TickerQ `email-dispatch-drain`; the hosted service mode is a fallback over the same drain service. The `email-dispatch` readiness payload also reports safe aggregate outbox counts for due dispatch backlog, retry-scheduled rows, stale processing leases, and dead-letter rows.
+- Web Push readiness is healthy while `WebPush:Enabled=false`. When enabled, `web-push-dispatch` exposes only bounded aggregate dispatch counts and thresholds; it never exposes subscription endpoints, browser keys, VAPID material, tenant IDs, payloads, or provider bodies. Push-service `404`/`410` outcomes deactivate stale subscriptions transactionally, while retryable `429`/`5xx` outcomes remain bounded by the dispatch TTL and maximum attempts.
 - The control-plane operations endpoint includes a `moderation-reporting` status card for managed reporting routing. It reports aggregate-only provider sync metrics (`pending-sync`, `stuck-pending-sync`, `failed-sync`, `disabled-sync`, `ignored-sync`) and active-tenant lock impact metrics (`reporting-locked-tenants`, `reporting-unlocked-tenants`, `osprey-locked-tenants`, `coop-locked-tenants`). `Reporting:Health:StuckProviderSyncMinutes` defaults to `120`; `Reporting:Health:FailedProviderSyncWarningThreshold` defaults to `1`. These metrics are safe for operators and must not include tenant identifiers, report identifiers, provider URLs, API keys, webhook secrets, correlation IDs, provider payloads, or raw provider errors.
 - RabbitMQ Dispatch Mode is optional transport infrastructure. When `EmailDispatchRabbitMq:Enabled=false`, the `email-dispatch-rabbitmq` check is healthy without opening a broker connection. When enabled, missing broker connectivity or failed topology declaration is unhealthy because the operator explicitly selected RabbitMQ transport.
 - Idempotency cleanup is an optional operational worker over the PostgreSQL replay cache. `Degraded` means cleanup is intentionally disabled; stale rows remain ignored for replay but are not physically deleted until cleanup is re-enabled.

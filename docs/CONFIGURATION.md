@@ -7,7 +7,7 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Status:** Implemented
 > **Owner:** Platform/Ops
 > **Last Verified:** 2026-07-04
-> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.ControlPlane.Blazor/Extensions/ConfigurationExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
+> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.API/Controllers/ListmonkIntegrationSettingsController.cs`, `Explore.Application/DTOs/Integrations/ListmonkIntegrationSettingsDto.cs`, `Explore.Infrastructure/Integrations/Listmonk/ListmonkSyncService.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.ControlPlane.Blazor/Extensions/ConfigurationExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
 
@@ -78,6 +78,7 @@ Commonly consumed sections in code:
 - `AiRetentionCleanup:*` (scheduled tenant-scoped AI conversation retention cleanup)
 - `AiProvider:*` (AI provider readiness/egress validation foundation)
 - `Reporting:*` (local event-report submission limits, evidence retention, and provider runtime mode)
+- `Listmonk:*` (deployment bootstrap for subscriber synchronization defaults and credentials)
 - `Webhooks:*` (outgoing webhook provider mode, LocalProvider delivery limits, and Svix server-side integration)
 - `Mcp:*` (optional Model Context Protocol adapter posture)
 - `Persistence:*` (database runtime options)
@@ -108,6 +109,28 @@ Set or rotate it through the authorized localization admin API so the value is
 stored as a server-side secret binding. Do not put Tolgee/Weblate API keys in
 governance settings, Blazor payloads, generated clients, logs, metrics, or
 OpenAPI examples.
+
+### Listmonk Integration Configuration
+
+Listmonk runtime settings are governance-backed. Static configuration and local
+environment variables are deployment bootstrap values only; once an operator
+saves settings through the admin API, saved application settings are the runtime
+authority.
+
+Bootstrap keys accepted by local env/Compose/Infisical compatibility mapping:
+
+- `LISTMONK_ENABLED`
+- `LISTMONK_INSTANCE_URL`
+- `LISTMONK_DEFAULT_LIST_ID`
+- `LISTMONK_PRECONFIRM_SUBSCRIPTIONS`
+- `LISTMONK_SYNC_ON_REGISTRATION`
+- `LISTMONK_API_USERNAME`
+- `LISTMONK_API_KEY`
+
+`LISTMONK_API_USERNAME` and `LISTMONK_API_KEY` are server-side secret bindings.
+Browser/admin DTOs expose only `ApiUsernameConfigured` and `ApiKeyConfigured`
+flags, never raw credential values. Rotate credentials through the authorized
+Listmonk integration API.
 
 Static no-TMS/fallback bundles are written to
 `{ContentRoot}/App_Data/Localization/Bundles/{code}.json`. That path is local
@@ -892,6 +915,23 @@ Validators (`CreateExternalApiKeyDtoValidator`, `UpdateExternalApiKeyPolicyDtoVa
 External API keys are often presented by callers behind reverse proxies. The `ForwardedHeadersTrust` settings (see above) determine which proxies are trusted to forward `X-Forwarded-For`/`X-Forwarded-Host`. When an API-key caller comes through a trusted proxy, the rate-limit partition key remains `api-key:{keyId}` only after the key authenticates successfully. Empty, malformed, invalid, revoked, or inactive API-key attempts use the anonymous/IP partition; the forwarded IP is also used for `LastUsedIp` telemetry and logging when trusted.
 
 When `TrustLoopbackProxy=true` (Aspire-style local development), loopback proxies are trusted for forwarded headers but untrusted proxies still have their `X-Forwarded-*` headers dropped before middleware sees them.
+
+## Browser Web Push
+
+Web Push is configured under `WebPush`. The API compatibility loader maps `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` from Infisical `/api` or process environment. When all three are present, Web Push is enabled unless `WEB_PUSH_ENABLED=false` explicitly disables it.
+
+Aspire forwards the same optional variable names to the API. When configured, `VAPID_PRIVATE_KEY` is modeled as a secret parameter so its value is not rendered as ordinary resource configuration; absent VAPID values do not create unresolved parameter prompts.
+
+| Environment variable | .NET key | Required when enabled | Exposure |
+|---|---|---|---|
+| `WEB_PUSH_ENABLED` | `WebPush:Enabled` | optional kill switch | server only |
+| `VAPID_SUBJECT` | `WebPush:VapidSubject` | yes | server only; `mailto:` or HTTPS URI |
+| `VAPID_PUBLIC_KEY` | `WebPush:VapidPublicKey` | yes | intentionally returned by `/vapid-public-key` and the public configuration endpoint |
+| `VAPID_PRIVATE_KEY` | `WebPush:VapidPrivateKey` | yes | secret; never returned to browsers |
+
+Generate one P-256 VAPID key pair with a trusted Web Push tool, store it in deployment secrets, and reuse it across restarts. Changing the pair invalidates the application-server identity expected by existing browser subscriptions; rotate deliberately and expect users to resubscribe. Startup validation rejects malformed subjects and key lengths before the dispatch worker starts.
+
+Delivery policy is server-owned. Account-security refreshes retain for 5 minutes at high urgency; trust-safety for 1 hour at high urgency; registration/event updates for 6 hours at normal urgency; billing/legal and organization/group/product updates for 24 hours at normal or low urgency; marketing for 6 hours at very-low urgency. Every message sets a category `Topic` so the push service can coalesce pending refreshes, and retries stop at the TTL boundary.
 
 ## Related
 

@@ -119,6 +119,8 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [EXTENSIBILITY.md](EXTENSIBILITY.md) - modular extension strategy.
 - [WEBHOOKS.md](WEBHOOKS.md) - outgoing webhook provider extension point and self-hosted Svix integration.
 - [INTEGRATIONS.md](INTEGRATIONS.md) - incoming integration callback boundary.
+- [COOP_INTEGRATION.md](COOP_INTEGRATION.md) - multi-tenant human review dashboard integration and escalation flow.
+- [OSPREY_INTEGRATION.md](OSPREY_INTEGRATION.md) - single-tenant machine moderation challenges and hybrid policy engine.
 - [MODULAR_EVENTS.md](MODULAR_EVENTS.md) - event aspect composition model.
 - [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md) - governed custom fields on existing resources; see ADR-006 for the runtime-schema boundary.
 - [LEXICONS.md](LEXICONS.md) - ATProto-compatible NSID lexicon hierarchy and evolution.

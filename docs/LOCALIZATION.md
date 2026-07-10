@@ -248,6 +248,25 @@ Tolgee project IDs are numeric in the generated client; configure
 | Offline translations | 24 hours | Per language (singleton) |
 | Offline bundle loading | Forever | Singleton (ConcurrentDictionary) |
 
+## Observability
+
+Localization metrics use the `Explore.Translation` meter and record only
+boundary outcomes. Do not tag metrics with translation keys, bundle values,
+API keys, bearer tokens, or raw provider payloads.
+
+| Metric | Recorded When | Tags |
+|---|---|---|
+| `islamu.translation.fetch_total` | Runtime translation fetch completes. | `provider`, `language`, `result` (`hit_cache`, `hit_tms`, `hit_offline`, `error`) |
+| `islamu.translation.fetch_duration_seconds` | Runtime translation fetch duration is observed. | `provider`, `language` |
+| `islamu.translation.change_language_total` | UI/BFF language preference changes. | `from`, `to` |
+| `islamu.tms.connection_test_total` | Admin TMS connection test completes. | `provider`, `result` |
+| `islamu.tms.fallback_activated_total` | Live provider failure activates offline fallback. | `provider`, `reason` (`timeout`, `auth_error`, `not_found`, `rate_limited`, `network_error`, `other`) |
+| `islamu.localization.static_bundle_operation_total` | Static bundle import/export or TMS-to-static mirror operation completes. | `operation`, `language`, `result` |
+
+`TranslationService.T(key)` remains a synchronous in-memory lookup and is not
+instrumented. Instrument fetch, fallback, connection-test, language-change, and
+admin bundle boundaries instead.
+
 ## Related
 
 - [CONFIGURATION.md](CONFIGURATION.md) — `localization.*` governance keys

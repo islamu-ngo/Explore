@@ -239,6 +239,10 @@ Notification preference UI consumes the generated API client through `INotificat
 3. Save and global-mute controls render only when the HAL resource includes `save` and `set-mute` links. Components must not inspect roles or claims to decide whether preference cells are editable.
 4. The matrix sends only generated DTOs through the service layer; Razor components do not call `EventApiClient` directly.
 5. The component announces load, save, mute, and error states through the accessibility announcer service and uses scoped CSS with logical properties.
+6. Current-user settings render `WebPushSubscriptionPanel` only when the matrix includes the `push` channel. Enrollment is gated by the `subscribe-web-push` HAL relation; unsubscribe is gated by the subscription resource's `unsubscribe` relation.
+7. `IWebPushBrowserInterop` loads `/js/web-push.js`. `Notification.requestPermission()` and `PushManager.subscribe()` run only from the explicit Enable action, never during page load or component initialization.
+8. `/push-service-worker.js` suppresses OS popups while an app window is visible, posts a refresh message to the notification bell, replaces displayed notifications by tag, summarizes excessive visible entries, and focuses an existing same-origin window on click.
+9. `INotificationService.GetVapidPublicKeyAsync()` calls the NSwag-generated `GetVapidPublicKeyAsync()` operation through the BFF's exact `/vapid-public-key` proxy route. Browser code receives only the plain-text public key; access tokens and the VAPID private key remain behind the BFF/API boundary.
 
 ## Render And Public Experience
 

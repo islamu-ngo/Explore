@@ -1,5 +1,5 @@
 ABOUTME: Documents implemented in-app notification lifecycle, inbox UI, and API boundaries.
-ABOUTME: Separates in-app notifications from SMTP email delivery and unsupported push/fanout claims.
+ABOUTME: Separates durable in-app notifications, browser Web Push refresh delivery, and SMTP email boundaries.
 
 # Notifications
 
@@ -24,6 +24,7 @@ Notifications are authenticated, user-owned, tenant-scoped in-app records. They 
 | Detail | Detail retrieval is ownership-checked for the current user. |
 | Unread count | API and bell use unread count for the badge. |
 | Real-time refresh hint | Authenticated SSE at `GET /api/notification/stream` emits minimal unread-count refresh hints; it does not carry notification bodies or replace list/detail APIs. |
+| Browser Web Push | Authenticated users explicitly enroll one browser device. A durable dispatch outbox sends VAPID-authenticated, encrypted, generic refresh payloads and removes stale subscriptions on push-service `404`/`410` responses. |
 | Mark read | Single notification read and bulk mark-all-read are implemented. |
 | Archive | Archive and unarchive are implemented. |
 | Snooze | Snooze and unsnooze are implemented with a `snoozedUntil` value. |
@@ -49,6 +50,10 @@ All notification endpoints require an authenticated user. Handler and repository
 | Current-user preference matrix | `GET /api/notification/preferences/me` |
 | Save current-user preferences | `PUT /api/notification/preferences/me` |
 | Set current-user mute | `PUT /api/notification/preferences/me/mute` |
+| Get public Web Push configuration | `GET /api/notification/web-push/config` |
+| Get current browser subscription status | `GET /api/notification/web-push/subscription?deviceIdentifier=...` |
+| Subscribe current browser | `POST /api/notification/web-push/subscriptions` |
+| Unsubscribe current browser | `DELETE /api/notification/web-push/subscriptions/{subscriptionId}` |
 | Organization preference matrix | `GET|PUT /api/organization/{id}/notification-preferences` and `PUT /api/organization/{id}/notification-preferences/mute` |
 | Group preference matrix | `GET|PUT /api/group/{id}/notification-preferences` and `PUT /api/group/{id}/notification-preferences/mute` |
 
@@ -66,7 +71,8 @@ Notification preference responses are HAL resources. The Blazor matrix renders `
 | Notification panel | Shows scope tabs, loads more items, supports item actions, and links to the full inbox. |
 | Full inbox page | Supports filters for reason, unread-only, archived-only, and snoozed-only; includes mark-all-read. |
 | Notification item | Displays scope/type/reason presentation and navigates to known entity URLs when mappable. |
-| Preference matrix | Lets authorized users choose Email and In-App channels by category for current-user, organization, and group scopes. Required categories remain locked by server metadata; global mute suppresses non-essential delivery without deleting saved choices. |
+| Preference matrix | Lets authorized users choose Email and In-App channels by category for current-user, organization, and group scopes; the current-user matrix also exposes Push enrollment when the browser and server support it. Required categories remain locked by server metadata; global mute suppresses non-essential delivery without deleting saved choices. |
+| Browser Web Push | Current-user settings show an explicit Enable action only when the server emits the HAL affordance. Denied permission is terminal until the user changes browser settings; Disable unsubscribes the browser and deactivates the owned server row. |
 
 Clicking a notification item navigates only when the item can be mapped to a supported route: events use `/events/{id}`, organizations use `/organization/profile/{id}`, and groups use `/group/profile/{id}`. Unsupported entity types, including event sessions without a dedicated route, should not be routed to guessed URLs. The item click itself is not the read-state operation; read state is handled by explicit user actions and read endpoints.
 
@@ -91,6 +97,21 @@ Moderation fanout is in-app only. It does not call SMTP, push providers, or exte
 
 The browser client uses same-origin cookies through `EventSource`. The API response disables request timeout, sends `Cache-Control: no-store`, and sets `X-Accel-Buffering: no` so reverse proxies do not buffer the stream. The existing 60-second bell polling remains the fallback. Treat SSE as a refresh hint only; notification content and read/archive/snooze state still come from the authenticated notification APIs.
 
+## Browser Web Push Safety
+
+Web Push carries generic refresh/navigation hints only. Durable authenticated `Notification` rows remain the content and state source of truth; payloads do not contain notification titles, bodies, email addresses, tenant data, or access tokens.
+
+Flood prevention is layered:
+
+- The server sets a bounded `TTL` for every send and stops retries when the dispatch expires.
+- The Web Push `Topic` header coalesces pending refresh messages for the same subscription/category at the push service.
+- The service worker uses one stable notification `tag` with `renotify: false` so already displayed app notifications replace instead of repeatedly alerting.
+- A visible same-origin window receives a refresh message and no OS popup.
+- If three app notifications are already displayed, the service worker closes them and shows one generic summary.
+- Subscription writes accept only bounded HTTPS endpoints and correctly sized Push API key material. The delivery adapter re-resolves endpoint hosts, blocks private/loopback/link-local/metadata destinations, and refuses redirects before sending, so browser-supplied endpoints cannot become an SSRF path.
+
+`Topic` and `tag` are deliberately separate: `Topic` controls queued transport delivery; `tag` controls displayed OS notification replacement. The service worker validates navigation as a same-origin relative path and focuses an existing app window before opening a new one.
+
 ## Email Boundary
 
 In-app notifications are separate from SMTP email delivery:
@@ -101,13 +122,12 @@ In-app notifications are separate from SMTP email delivery:
 - Actor-subscription and registration fallback fanout consult the in-app preference matrix before creating non-required `Notification` rows. Disabled non-required categories skip row creation after dedupe checks and before persistence.
 - Event-report intake, report workflow actions, provider sync, and provider callbacks do not send SMTP messages and do not create in-app notifications unless they execute an existing moderation command.
 - `docs/EMAIL_NOTIFICATIONS.md` documents direct SMTP delivery, including preference-based skip behavior for direct `EmailDispatchOutbox` rows, and explicitly states notification-to-email fanout is not implemented.
-- Do not claim push notifications, email digests, SMTP delivery, external delivery tracking, or email unsubscribe behavior for in-app notifications.
+- Do not claim email digests, SMTP delivery, external delivery tracking, or email unsubscribe behavior for in-app notifications.
 
 ## Unsupported Claims To Avoid
 
 - Permanent deletion.
 - Mark-as-unread.
-- Push notification delivery.
 - Email fanout from notification records.
 - Public user-to-user actor subscriptions.
 - SSE as delivery truth or as a replacement for notification list/detail APIs.
