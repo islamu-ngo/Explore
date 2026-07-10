@@ -444,6 +444,11 @@ public static class RouteNames
     public const string GetCurrentUserNotificationPreferences = "GetCurrentUserNotificationPreferences";
     public const string UpdateCurrentUserNotificationPreferences = "UpdateCurrentUserNotificationPreferences";
     public const string SetCurrentUserNotificationPreferenceMute = "SetCurrentUserNotificationPreferenceMute";
+    public const string GetWebPushConfiguration = "GetWebPushConfiguration";
+    public const string GetVapidPublicKey = "GetVapidPublicKey";
+    public const string GetCurrentUserWebPushSubscription = "GetCurrentUserWebPushSubscription";
+    public const string SubscribeCurrentUserWebPushSubscription = "SubscribeCurrentUserWebPushSubscription";
+    public const string UnsubscribeCurrentUserWebPushSubscription = "UnsubscribeCurrentUserWebPushSubscription";
 
     #endregion
 

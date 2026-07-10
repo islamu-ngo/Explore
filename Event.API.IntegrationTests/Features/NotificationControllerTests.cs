@@ -4,14 +4,22 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
+using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.Features.Notifications.Requests.Commands;
 using Explore.Application.Features.Notifications.Requests.Queries;
+using Explore.Application.Models;
 using Explore.Application.Responses;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -123,6 +131,7 @@ public sealed class NotificationControllerTests
         await Assert.That(links.TryGetProperty("self", out _)).IsTrue();
         await Assert.That(links.TryGetProperty("save", out _)).IsTrue();
         await Assert.That(links.TryGetProperty("set-mute", out _)).IsTrue();
+        await Assert.That(links.TryGetProperty("subscribe-web-push", out _)).IsTrue();
 
         await Assert.That(mediator.LastRequest).IsTypeOf<GetCurrentUserNotificationPreferenceMatrixQuery>();
     }
@@ -163,6 +172,102 @@ public sealed class NotificationControllerTests
         await Assert.That(command!.Cells.Count).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task WebPushActions_PreserveAuthClassificationRouteNamesAndProblemMetadata()
+    {
+        var controller = typeof(Explore.API.Controllers.NotificationController);
+
+        AssertWebPushAction(controller, nameof(Explore.API.Controllers.NotificationController.GetWebPushConfiguration), RouteNames.GetWebPushConfiguration, allowAnonymous: true, EndpointClass.Public, StatusCodes.Status200OK);
+        AssertWebPushAction(controller, nameof(Explore.API.Controllers.NotificationController.GetVapidPublicKey), RouteNames.GetVapidPublicKey, allowAnonymous: true, EndpointClass.Public, StatusCodes.Status200OK);
+        AssertWebPushAction(controller, nameof(Explore.API.Controllers.NotificationController.GetCurrentUserWebPushSubscription), RouteNames.GetCurrentUserWebPushSubscription, allowAnonymous: false, EndpointClass.Authenticated, StatusCodes.Status200OK);
+        AssertWebPushAction(controller, nameof(Explore.API.Controllers.NotificationController.SubscribeCurrentUserWebPushSubscription), RouteNames.SubscribeCurrentUserWebPushSubscription, allowAnonymous: false, EndpointClass.Authenticated, StatusCodes.Status200OK);
+        AssertWebPushAction(controller, nameof(Explore.API.Controllers.NotificationController.UnsubscribeCurrentUserWebPushSubscription), RouteNames.UnsubscribeCurrentUserWebPushSubscription, allowAnonymous: false, EndpointClass.Authenticated, StatusCodes.Status200OK);
+    }
+
+    [Test]
+    public async Task GetWebPushConfiguration_ReturnsOnlyPublicConfigurationFields()
+    {
+        using var mediator = new NotificationMediatorStub(_ => new WebPushPublicConfiguration(true, "public-key-only"));
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/notification/web-push/config");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        await Assert.That(document.RootElement.GetProperty("enabled").GetBoolean()).IsTrue();
+        await Assert.That(document.RootElement.GetProperty("publicKey").GetString()).IsEqualTo("public-key-only");
+        await Assert.That(document.RootElement.TryGetProperty("privateKey", out _)).IsFalse();
+        await Assert.That(mediator.LastRequest).IsTypeOf<GetWebPushPublicConfigurationQuery>();
+    }
+
+    [Test]
+    public async Task GetVapidPublicKey_ReturnsAnonymousPlainTextPublicKey()
+    {
+        using var mediator = new NotificationMediatorStub(_ => new WebPushPublicConfiguration(true, "public-key-only"));
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/vapid-public-key");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("text/plain");
+        await Assert.That(await response.Content.ReadAsStringAsync()).IsEqualTo("public-key-only");
+        await Assert.That(mediator.LastRequest).IsTypeOf<GetWebPushPublicConfigurationQuery>();
+    }
+
+    [Test]
+    public async Task GetCurrentUserWebPushSubscription_ReturnsHalResourceWithoutSecretFields()
+    {
+        var subscriptionId = Guid.NewGuid();
+        using var mediator = new NotificationMediatorStub(_ => new WebPushSubscriptionDto
+        {
+            Id = subscriptionId,
+            DeviceIdentifier = "device-a",
+            LastSeenAt = DateTime.UtcNow
+        });
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Get, "/api/notification/web-push/subscription?deviceIdentifier=device-a");
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/hal+json"));
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("id").GetGuid()).IsEqualTo(subscriptionId);
+        await Assert.That(root.TryGetProperty("endpoint", out _)).IsFalse();
+        await Assert.That(root.TryGetProperty("p256Dh", out _)).IsFalse();
+        await Assert.That(root.TryGetProperty("auth", out _)).IsFalse();
+        await Assert.That(root.GetProperty("_links").TryGetProperty("unsubscribe", out _)).IsTrue();
+    }
+
+    [Test]
+    public async Task SubscribeCurrentUserWebPushSubscription_WhenCommandFails_ReturnsValidationProblemDetails()
+    {
+        using var mediator = new NotificationMediatorStub(_ => new BaseCommandResponse<Guid>
+        {
+            Success = false,
+            Message = "Web Push subscription validation failed.",
+            Errors = ["Endpoint is required."]
+        });
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Post, "/api/notification/web-push/subscriptions");
+        request.Content = JsonContent.Create(new SubscribeCurrentUserWebPushSubscriptionCommand
+        {
+            DeviceIdentifier = "device-a",
+            Endpoint = " ",
+            P256Dh = "p256dh",
+            Auth = "auth"
+        });
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.BadRequest, "Web Push subscription validation failed");
+    }
+
     private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
     {
         var factory = new AuthenticatedWebApplicationFactory();
@@ -182,6 +287,29 @@ public sealed class NotificationControllerTests
         var request = new HttpRequestMessage(method, url);
         request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
         return request;
+    }
+
+    private static void AssertWebPushAction(Type controller, string methodName, string routeName, bool allowAnonymous, EndpointClass endpointClass, int successStatus)
+    {
+        var action = controller.GetMethods().Single(method => method.Name == methodName);
+        var httpAttribute = action.GetCustomAttributes().OfType<HttpMethodAttribute>().Single();
+        if (httpAttribute.Name != routeName)
+            throw new InvalidOperationException($"{methodName} route name mismatch.");
+
+        var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()?.Class
+            ?? controller.GetCustomAttribute<EndpointClassificationAttribute>()?.Class;
+        if (classification != endpointClass)
+            throw new InvalidOperationException($"{methodName} endpoint classification mismatch.");
+
+        if ((action.GetCustomAttribute<AllowAnonymousAttribute>() is not null) != allowAnonymous)
+            throw new InvalidOperationException($"{methodName} authentication metadata mismatch.");
+
+        var responseTypes = action.GetCustomAttributes<ProducesResponseTypeAttribute>().ToArray();
+        if (!responseTypes.Any(attribute => attribute.StatusCode == successStatus))
+            throw new InvalidOperationException($"{methodName} success response metadata missing.");
+
+        if (responseTypes.Any(attribute => attribute.StatusCode == StatusCodes.Status401Unauthorized) == allowAnonymous)
+            throw new InvalidOperationException($"{methodName} unauthorized response metadata mismatch.");
     }
 
     private static async Task<System.Text.Json.JsonDocument> AssertNotificationNotFoundProblemAsync(HttpResponseMessage response)

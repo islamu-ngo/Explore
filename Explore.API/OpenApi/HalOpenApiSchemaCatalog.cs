@@ -150,6 +150,7 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneTenantQuotaUsageDto),
         typeof(Explore.Application.DTOs.Onboarding.InstanceStorageSettingsDto),
         typeof(Explore.Application.DTOs.Notification.NotificationPreferenceMatrixDto),
+        typeof(Explore.Application.DTOs.Notification.WebPushSubscriptionDto),
         typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
     ];
 
@@ -216,6 +217,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfProjectionDirtyScopeDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionDirtyScopeDto),
         ["HalResourceOfTenantBrandingSettingsDocumentDto"] = typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
         ["HalResourceOfNotificationPreferenceMatrixDto"] = typeof(Explore.Application.DTOs.Notification.NotificationPreferenceMatrixDto),
+        ["HalResourceOfWebPushSubscriptionDto"] = typeof(Explore.Application.DTOs.Notification.WebPushSubscriptionDto),
         ["HalResourceOfAiAssistantBootstrapDto"] = typeof(Explore.Application.DTOs.Ai.AiAssistantBootstrapDto),
         ["HalResourceOfAiConversationSummaryDto"] = typeof(Explore.Application.DTOs.Ai.AiConversationSummaryDto),
         ["HalResourceOfAiConversationDto"] = typeof(Explore.Application.DTOs.Ai.AiConversationDto),

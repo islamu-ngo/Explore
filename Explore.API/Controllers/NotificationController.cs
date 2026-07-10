@@ -14,6 +14,7 @@ using Explore.Application.DTOs.Notification;
 using Explore.Application.Features.Notifications.Requests.Commands;
 using Explore.Application.Features.Notifications.Requests.Queries;
 using Explore.Application.Hateoas;
+using Explore.Application.Models;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -41,18 +42,31 @@ public class NotificationController : ControllerBase
         "Notification preference validation failed",
         "Notification preference update failed.");
 
+    private static readonly ApiValidationProblemDescriptor WebPushValidationProblem = new(
+        "webPushSubscription",
+        "Web Push subscription validation failed",
+        "Web Push subscription update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor WebPushSubscriptionNotFoundProblem = new(
+        "Web Push subscription not found",
+        "Web Push subscription was not found.",
+        "web_push_subscription_not_found");
+
     private readonly IMediator _mediator;
     private readonly INotificationRefreshStreamService _notificationRefreshStreamService;
     private readonly IResourceAssembler<NotificationPreferenceMatrixDto> _preferenceAssembler;
+    private readonly IResourceAssembler<WebPushSubscriptionDto> _webPushSubscriptionAssembler;
 
     public NotificationController(
         IMediator mediator,
         INotificationRefreshStreamService notificationRefreshStreamService,
-        IResourceAssembler<NotificationPreferenceMatrixDto> preferenceAssembler)
+        IResourceAssembler<NotificationPreferenceMatrixDto> preferenceAssembler,
+        IResourceAssembler<WebPushSubscriptionDto> webPushSubscriptionAssembler)
     {
         _mediator = mediator;
         _notificationRefreshStreamService = notificationRefreshStreamService;
         _preferenceAssembler = preferenceAssembler;
+        _webPushSubscriptionAssembler = webPushSubscriptionAssembler;
     }
 
     // GET: api/notification
@@ -163,6 +177,100 @@ public class NotificationController : ControllerBase
         if (!response.Success)
         {
             return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("web-push/config", Name = Hateoas.RouteNames.GetWebPushConfiguration)]
+    [EndpointSummary("Get Web Push public configuration")]
+    [EndpointDescription("Returns browser-safe Web Push configuration containing only the enabled flag and VAPID public key.")]
+    [ProducesResponseType(typeof(WebPushPublicConfiguration), StatusCodes.Status200OK)]
+    public async Task<ActionResult<WebPushPublicConfiguration>> GetWebPushConfiguration(
+        CancellationToken cancellationToken = default)
+    {
+        var configuration = await _mediator.Send(new GetWebPushPublicConfigurationQuery(), cancellationToken);
+        return Ok(configuration);
+    }
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("/vapid-public-key", Name = Hateoas.RouteNames.GetVapidPublicKey)]
+    [EndpointSummary("Get VAPID public key")]
+    [EndpointDescription("Returns only the browser-safe VAPID public key as plain text.")]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK, "text/plain")]
+    public async Task<ActionResult<string>> GetVapidPublicKey(
+        CancellationToken cancellationToken = default)
+    {
+        var configuration = await _mediator.Send(new GetWebPushPublicConfigurationQuery(), cancellationToken);
+        return Content(configuration.PublicKey, "text/plain");
+    }
+
+    [HttpGet("web-push/subscription", Name = Hateoas.RouteNames.GetCurrentUserWebPushSubscription)]
+    [EndpointSummary("Get current user's Web Push subscription")]
+    [EndpointDescription("Returns the authenticated user's active Web Push subscription status for one browser device without endpoint or key material.")]
+    [ProducesResponseType(typeof(HalResource<WebPushSubscriptionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<WebPushSubscriptionDto>>> GetCurrentUserWebPushSubscription(
+        [FromQuery] string deviceIdentifier,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = await _mediator.Send(new GetCurrentUserWebPushSubscriptionQuery
+        {
+            DeviceIdentifier = deviceIdentifier
+        }, cancellationToken);
+
+        if (subscription is null)
+        {
+            return this.ToNotFoundProblem(WebPushSubscriptionNotFoundProblem);
+        }
+
+        var resource = await _webPushSubscriptionAssembler.ToResource(subscription, HttpContext);
+        return Ok(resource);
+    }
+
+    [HttpPost("web-push/subscriptions", Name = Hateoas.RouteNames.SubscribeCurrentUserWebPushSubscription)]
+    [EndpointSummary("Subscribe current user to Web Push")]
+    [EndpointDescription("Registers or refreshes the authenticated user's browser Web Push subscription for one device.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SubscribeCurrentUserWebPushSubscription(
+        [FromBody] SubscribeCurrentUserWebPushSubscriptionCommand request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(request, cancellationToken);
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, WebPushValidationProblem);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpDelete("web-push/subscriptions/{subscriptionId:guid}", Name = Hateoas.RouteNames.UnsubscribeCurrentUserWebPushSubscription)]
+    [EndpointSummary("Unsubscribe current user's Web Push subscription")]
+    [EndpointDescription("Deactivates one Web Push subscription only when it belongs to the authenticated tenant/user.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UnsubscribeCurrentUserWebPushSubscription(
+        Guid subscriptionId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new UnsubscribeCurrentUserWebPushSubscriptionCommand
+        {
+            SubscriptionId = subscriptionId
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToCommandValidationProblem(response, WebPushValidationProblem);
         }
 
         return Ok(response);

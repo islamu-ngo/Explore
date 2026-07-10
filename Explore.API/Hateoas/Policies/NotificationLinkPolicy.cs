@@ -172,6 +172,17 @@ public sealed class NotificationPreferenceMatrixLinkPolicy :
             "PUT",
             "Set notification preference mute state",
             RequiresAuth: true);
+
+        if (dto.Scope == "user")
+        {
+            yield return new LinkDefinition(
+                "subscribe-web-push",
+                RouteNames.SubscribeCurrentUserWebPushSubscription,
+                null,
+                "POST",
+                "Subscribe current browser to Web Push",
+                RequiresAuth: true);
+        }
     }
 
     public IEnumerable<LinkDefinition> GetItemLinks(NotificationPreferenceMatrixDto dto, ClaimsPrincipal? user)
@@ -182,5 +193,45 @@ public sealed class NotificationPreferenceMatrixLinkPolicy :
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
         return [];
+    }
+}
+
+public sealed class WebPushSubscriptionLinkPolicy :
+    ILinkPolicy<WebPushSubscriptionDto>,
+    ICollectionLinkPolicy<WebPushSubscriptionDto>
+{
+    public IEnumerable<LinkDefinition> GetLinks(WebPushSubscriptionDto dto, ClaimsPrincipal? user)
+    {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetCurrentUserWebPushSubscription,
+            new { deviceIdentifier = dto.DeviceIdentifier },
+            "GET",
+            "Current Web Push subscription",
+            RequiresAuth: true);
+
+        yield return new LinkDefinition(
+            "unsubscribe",
+            RouteNames.UnsubscribeCurrentUserWebPushSubscription,
+            new { subscriptionId = dto.Id },
+            "DELETE",
+            "Unsubscribe this Web Push subscription",
+            RequiresAuth: true);
+    }
+
+    public IEnumerable<LinkDefinition> GetItemLinks(WebPushSubscriptionDto dto, ClaimsPrincipal? user)
+    {
+        return GetLinks(dto, user);
+    }
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
+    {
+        yield return new LinkDefinition(
+            "subscribe",
+            RouteNames.SubscribeCurrentUserWebPushSubscription,
+            null,
+            "POST",
+            "Subscribe current browser to Web Push",
+            RequiresAuth: true);
     }
 }

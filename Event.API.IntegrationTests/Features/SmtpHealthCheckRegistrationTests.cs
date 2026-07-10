@@ -29,4 +29,19 @@ public sealed class SmtpHealthCheckRegistrationTests
         registration.Tags.Should().Contain("smtp");
         registration.Tags.Should().Contain("infrastructure");
     }
+
+    [Test]
+    public async Task WebPushReadinessRegistrationUsesReadyDispatchInfrastructureTags()
+    {
+        await using var factory = new CustomWebApplicationFactory();
+
+        var options = factory.Services.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value;
+        var registration = options.Registrations.Single(registration => registration.Name == "web-push-dispatch");
+
+        registration.FailureStatus.Should().Be(HealthStatus.Unhealthy);
+        registration.Tags.Should().Contain("ready");
+        registration.Tags.Should().Contain("web-push");
+        registration.Tags.Should().Contain("dispatch");
+        registration.Tags.Should().Contain("infrastructure");
+    }
 }

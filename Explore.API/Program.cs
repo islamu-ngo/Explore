@@ -380,6 +380,10 @@ builder.Services.AddHealthChecks()
         "email-dispatch-rabbitmq",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "email", "dispatch", "rabbitmq", "infrastructure"])
+    .AddCheck<WebPushDispatchHealthCheck>(
+        "web-push-dispatch",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "web-push", "dispatch", "infrastructure"])
     .AddCheck<IdempotencyCleanupHealthCheck>(
         "idempotency-cleanup",
         failureStatus: HealthStatus.Unhealthy,
