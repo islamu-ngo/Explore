@@ -113,17 +113,18 @@ app.UseEventBffAntiforgeryToken();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseEventApiProxyAntiforgery();
 app.UseAntiforgery();
 
 app.MapEventBffAuthEndpoints();
 app.MapStaticAssets();
 
+app.MapReverseProxy()
+    .RequireAuthorization(EventBffAuthorizationPolicies.ControlPlaneAccess);
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(ControlPlaneClientAssembly.Value)
-    .RequireAuthorization(EventBffAuthorizationPolicies.ControlPlaneAccess);
-
-app.MapReverseProxy()
     .RequireAuthorization(EventBffAuthorizationPolicies.ControlPlaneAccess);
 
 await app.RunAsync();

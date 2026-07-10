@@ -3,11 +3,17 @@
 
 using System.Net.Http.Headers;
 using Event.Web.BffHosting.Abstractions;
+using Event.Web.BffHosting.Authentication;
 using Event.Web.BffHosting.Security;
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
@@ -16,6 +22,13 @@ namespace Event.Web.BffHosting.Proxy;
 
 public static class EventApiProxyExtensions
 {
+    public static IApplicationBuilder UseEventApiProxyAntiforgery(this IApplicationBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        return app.Use(ValidateApiProxyAntiforgeryAsync);
+    }
+
     public static IServiceCollection AddEventApiProxy(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -34,6 +47,12 @@ public static class EventApiProxyExtensions
 
         var routes = new[]
         {
+            new RouteConfig
+            {
+                RouteId = "event-api-vapid-public-key",
+                ClusterId = "event-api",
+                Match = new RouteMatch { Path = "/vapid-public-key" }
+            },
             new RouteConfig
             {
                 RouteId = "event-api",
@@ -78,6 +97,63 @@ public static class EventApiProxyExtensions
             });
 
         return services;
+    }
+
+    private static async Task ValidateApiProxyAntiforgeryAsync(HttpContext context, Func<Task> next)
+    {
+        if (!RequiresAntiforgeryValidation(context))
+        {
+            await next();
+            return;
+        }
+
+        var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
+        try
+        {
+            await antiforgery.ValidateRequestAsync(context);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsync("Antiforgery validation failed", context.RequestAborted);
+            return;
+        }
+
+        await next();
+    }
+
+    private static bool RequiresAntiforgeryValidation(HttpContext context)
+    {
+        var request = context.Request;
+        return request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
+            && IsUnsafeMethod(request.Method)
+            && HasBffAuthCookie(context);
+    }
+
+    private static bool HasBffAuthCookie(HttpContext context)
+    {
+        var configuredCookieName = context.RequestServices
+            .GetService<EventBffKeycloakAuthenticationOptions>()
+            ?.CookieName;
+        if (!string.IsNullOrWhiteSpace(configuredCookieName) && context.Request.Cookies.ContainsKey(configuredCookieName))
+        {
+            return true;
+        }
+
+        var cookieOptions = context.RequestServices
+            .GetService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            ?.Get(CookieAuthenticationDefaults.AuthenticationScheme);
+        var cookieName = cookieOptions?.Cookie.Name ?? CookieAuthenticationDefaults.CookiePrefix + CookieAuthenticationDefaults.AuthenticationScheme;
+
+        return context.Request.Cookies.ContainsKey(cookieName);
+    }
+
+    private static bool IsUnsafeMethod(string method)
+    {
+        return HttpMethods.IsPost(method)
+            || HttpMethods.IsPut(method)
+            || HttpMethods.IsPatch(method)
+            || HttpMethods.IsDelete(method);
     }
 
     private static async Task ForwardBearerTokenAsync(RequestTransformContext context)

@@ -6,6 +6,7 @@ using Blazouter.Server.Extensions;
 using Event.ControlPlane.Client.Extensions;
 using Event.Web.BffHosting.Authentication;
 using Event.Web.BffHosting.Extensions;
+using Event.Web.BffHosting.Proxy;
 using Event.Web.BffHosting.Security;
 using Explore.Blazor;
 using Explore.Blazor.Components;
@@ -169,16 +170,17 @@ app.UseWhen(
     context => !context.Request.Path.StartsWithSegments("/bff", StringComparison.OrdinalIgnoreCase),
     branch => branch.UseStatusCodePagesWithReExecute("/errors/{0}", createScopeForStatusCodePages: true));
 app.UseHttpsRedirection();
-app.UseAntiforgeryTokenMiddleware();
 app.UseStartupRedirectMiddleware();
 app.UsePathTenantResolverMiddleware();
 app.UseRouting();
 app.UseAuthentication();
+app.UseAntiforgeryTokenMiddleware();
 app.UseRequestLocalization();
 app.UseAccessTokenCaptureMiddleware();
 app.UseBffDiagnosticsMiddleware();
 app.UseOnboardingAuthGateMiddleware();
 app.UseAuthorization();
+app.UseEventApiProxyAntiforgery();
 app.UseRateLimiter();
 app.UseAntiforgery();
 
@@ -199,12 +201,12 @@ BffAuthEndpoints.MapAuthEndpoints(app);
 BffEndpointExtensions.MapBffEndpoints(app);
 app.MapStaticAssets();
 
+app.MapReverseProxy();
+
 app.MapRazorComponents<App>()
     .AddBlazouterSupport()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(Explore.Blazor.Client._Imports).Assembly);
-
-app.MapReverseProxy();
 
 await app.RunAsync();
