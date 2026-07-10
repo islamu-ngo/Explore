@@ -1,4 +1,4 @@
-﻿// ABOUTME: EF Core migration creating the native integration sync outbox table.
+// ABOUTME: EF Core migration creating the native integration sync outbox table.
 // ABOUTME: Adds durable Listmonk subscriber sync storage with retry and tenant indexes.
 using System;
 using Microsoft.EntityFrameworkCore.Migrations;

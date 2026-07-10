@@ -19,7 +19,8 @@ public enum NotificationPreferenceCategoryEnum
 public enum NotificationPreferenceChannelEnum
 {
     Email = 1,
-    InApp = 2
+    InApp = 2,
+    Push = 3
 }
 
 public static class NotificationPreferenceCategoryCodes
@@ -39,4 +40,5 @@ public static class NotificationPreferenceChannelCodes
 {
     public const string Email = "email";
     public const string InApp = "in_app";
+    public const string Push = "push";
 }

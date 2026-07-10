@@ -12,5 +12,6 @@ public class NotificationPreferenceCategory
     public bool IsRequired { get; set; }
     public bool DefaultEmailEnabled { get; set; }
     public bool DefaultInAppEnabled { get; set; }
+    public bool DefaultPushEnabled { get; set; }
     public int SortOrder { get; set; }
 }

@@ -61,4 +61,13 @@ public static class TenantFilterBypassReasons
 
     public const string NotificationFanoutWorkerCrossTenantQueue =
         "Notification fanout worker polls durable fanout runs across tenants using explicit status and batch-size predicates.";
+
+    public const string WebPushWorkerCrossTenantQueue =
+        "Web Push worker polls and updates durable dispatch rows across tenants using explicit id/status predicates.";
+
+    public const string WebPushTenantOperation =
+        "Web Push tenant operation bypasses ambient context only after applying an explicit tenant predicate.";
+
+    public const string WebPushSubscriptionEndpointOwnership =
+        "Web Push subscription endpoint ownership lookup uses the globally unique endpoint as a bounded predicate.";
 }

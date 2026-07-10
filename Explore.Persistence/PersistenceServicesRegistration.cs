@@ -263,6 +263,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
         services.AddScoped<INotificationChannelPreferenceRepository, NotificationChannelPreferenceRepository>();
         services.AddScoped<INotificationPreferenceProfileRepository, NotificationPreferenceProfileRepository>();
+        services.AddScoped<IWebPushSubscriptionRepository, WebPushSubscriptionRepository>();
         services.AddScoped<IAppSettingRepository, AppSettingRepository>();
         services.AddScoped<ISecretBindingRepository, SecretBindingRepository>();
         services.AddScoped<IUiThemeRepository, UiThemeRepository>();
@@ -280,6 +281,7 @@ public static class PersistenceServicesRegistration
         // Generic Outbox Repositories
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IEmailDispatchOutboxRepository, EmailDispatchOutboxRepository>();
+        services.AddScoped<IWebPushDispatchOutboxRepository, WebPushDispatchOutboxRepository>();
         services.AddScoped<IIntegrationSyncOutboxRepository, IntegrationSyncOutboxRepository>();
 
         // Webhook Repositories

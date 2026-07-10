@@ -216,6 +216,8 @@ public partial class ExploreDbContext
     public DbSet<NotificationFanoutRun> NotificationFanoutRuns { get; set; }
     public DbSet<NotificationPreferenceCategory> NotificationPreferenceCategories { get; set; }
     public DbSet<NotificationPreferenceChannel> NotificationPreferenceChannels { get; set; }
+    public DbSet<WebPushSubscription> WebPushSubscriptions { get; set; }
+    public DbSet<WebPushDispatchOutbox> WebPushDispatchOutbox { get; set; }
     public DbSet<NotificationIntent> NotificationIntents { get; set; }
     public DbSet<NotificationCategory> NotificationCategories { get; set; }
     public DbSet<NotificationOwnershipType> NotificationOwnershipTypes { get; set; }

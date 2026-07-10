@@ -39,10 +39,10 @@ public sealed class NotificationPreferenceResolver : INotificationPreferenceReso
             {
                 Original = request,
                 Normalized = request with
-            {
-                CategoryCode = NormalizeCode(request.CategoryCode),
-                ChannelCode = NormalizeCode(request.ChannelCode)
-            }
+                {
+                    CategoryCode = NormalizeCode(request.CategoryCode),
+                    ChannelCode = NormalizeCode(request.ChannelCode)
+                }
             })
             .ToArray();
 
@@ -307,6 +307,7 @@ public sealed class NotificationPreferenceResolver : INotificationPreferenceReso
         {
             (int)NotificationPreferenceChannelEnum.Email => category.DefaultEmailEnabled,
             (int)NotificationPreferenceChannelEnum.InApp => category.DefaultInAppEnabled,
+            (int)NotificationPreferenceChannelEnum.Push => category.DefaultPushEnabled,
             _ => false
         };
     }

@@ -17,6 +17,7 @@ public sealed class NotificationPreferenceCategoryConfiguration : IEntityTypeCon
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
+        builder.Property(e => e.DefaultPushEnabled).HasDefaultValue(false).IsRequired();
         builder.Property(e => e.SortOrder).IsRequired();
         builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_notification_preference_categories_master_code");
     }
