@@ -10,7 +10,7 @@ namespace Explore.Blazor.Client.Models.CustomProperties;
 /// </summary>
 /// <remarks>
 /// The backend endpoint is a full PUT of the definition. The admin service merges this snapshot
-/// into the fetched <see cref="CustomPropertyDefinitionDetailModel"/> before sending, so only the
+/// into the fetched <see cref="CustomPropertyDefinitionDto"/> before sending, so only the
 /// governance-relevant fields change.
 /// </remarks>
 public sealed class DefinitionFlagUpdateModel

@@ -2,6 +2,7 @@
 @* ABOUTME: Reusable across definitions and options for the sync UI. *@
 @using DiffPlex.DiffBuilder
 @using DiffPlex.DiffBuilder.Model
+@using Explore.Blazor.Client.Clients
 @using MudBlazor
 
 <MudExpansionPanel Class="template-sync-row" Text="@Heading" @bind-IsExpanded="_isExpanded">
@@ -31,7 +32,7 @@
     [Parameter, EditorRequired] public string Heading { get; set; } = string.Empty;
     [Parameter] public bool IsSelected { get; set; }
     [Parameter] public EventCallback<bool> IsSelectedChanged { get; set; }
-    [Parameter, EditorRequired] public IEnumerable<Explore.Blazor.Client.Models.EventTemplateSync.FieldChangeDto> Changes { get; set; } = Array.Empty<Explore.Blazor.Client.Models.EventTemplateSync.FieldChangeDto>();
+    [Parameter, EditorRequired] public IEnumerable<FieldChangeDto> Changes { get; set; } = Array.Empty<FieldChangeDto>();
 
     private bool _isExpanded;
 

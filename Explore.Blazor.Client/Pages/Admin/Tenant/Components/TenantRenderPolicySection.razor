@@ -12,7 +12,7 @@
         </MudText>
     </div>
 
-    @if (!Model.CanOverrideRenderPolicy)
+    @if (Model.CanOverrideRenderPolicy != true)
     {
         <MudAlert Severity="Severity.Info" Dense="true" Class="my-2">
             Render policy overrides are not enabled by the instance administrator. All tenants use the instance-level render policy.
@@ -37,7 +37,7 @@
             <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
                 <MudStack Spacing="2">
                     <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Public / SEO Routes</MudText>
-                    @if (!Model.CanOverridePublicSeoRenderPolicy)
+                    @if (Model.CanOverridePublicSeoRenderPolicy != true)
                     {
                         <MudAlert Severity="Severity.Warning" Dense="true">
                             Public/SEO render policy is locked by instance administrator.
@@ -58,7 +58,7 @@
                                 </MudSelect>
                             </MudItem>
                             <MudItem xs="12" md="6">
-                                <MudSwitch T="bool" @bind-Value="Model.PublicSeoPrerenderEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool?" @bind-Value="Model.PublicSeoPrerenderEnabled" Color="Color.Primary">
                                     Prerender Enabled
                                 </MudSwitch>
                             </MudItem>
@@ -71,7 +71,7 @@
             <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
                 <MudStack Spacing="2">
                     <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Operational Routes</MudText>
-                    @if (!Model.CanOverrideOperationalRenderPolicy)
+                    @if (Model.CanOverrideOperationalRenderPolicy != true)
                     {
                         <MudAlert Severity="Severity.Warning" Dense="true">
                             Operational render policy is locked by instance administrator.
@@ -92,7 +92,7 @@
                                 </MudSelect>
                             </MudItem>
                             <MudItem xs="12" md="6">
-                                <MudSwitch T="bool" @bind-Value="Model.OperationalPrerenderEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool?" @bind-Value="Model.OperationalPrerenderEnabled" Color="Color.Primary">
                                     Prerender Enabled
                                 </MudSwitch>
                             </MudItem>
@@ -105,7 +105,7 @@
             <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
                 <MudStack Spacing="2">
                     <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Admin Routes</MudText>
-                    @if (!Model.CanOverrideAdminRenderPolicy)
+                    @if (Model.CanOverrideAdminRenderPolicy != true)
                     {
                         <MudAlert Severity="Severity.Warning" Dense="true">
                             Admin render policy is locked by instance administrator.
@@ -126,7 +126,7 @@
                                 </MudSelect>
                             </MudItem>
                             <MudItem xs="12" md="6">
-                                <MudSwitch T="bool" @bind-Value="Model.AdminPrerenderEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool?" @bind-Value="Model.AdminPrerenderEnabled" Color="Color.Primary">
                                     Prerender Enabled
                                 </MudSwitch>
                             </MudItem>
@@ -160,5 +160,5 @@
     ];
 
     [Parameter, EditorRequired]
-    public TenantPolicySettingsModel Model { get; set; } = null!;
+    public TenantPolicySettingsDto Model { get; set; } = null!;
 }

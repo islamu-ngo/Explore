@@ -42,13 +42,8 @@ public interface ILocalizationAdminService
     /// Reports whether the offline bundle target directory is writable.
     /// The admin UI surfaces this as a health banner and gates the "Export" buttons.
     /// </summary>
-    Task<BundlePathHealthResult?> GetBundlePathHealthAsync(CancellationToken ct = default);
+    Task<WritablePathHealth?> GetBundlePathHealthAsync(CancellationToken ct = default);
 }
-
-/// <summary>
-/// Client-side representation of the writable-path health probe.
-/// </summary>
-public sealed record BundlePathHealthResult(bool Exists, bool Writable, string? Reason, string? TargetPath);
 
 /// <summary>
 /// Result wrapper — success bool + human-readable message from the server.

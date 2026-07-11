@@ -72,7 +72,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private bool _virtualizeRefreshed = false;
     private bool _useInitialBatch = false;
     private PaginatedResult<EventListDto>? _initialBatch;
-    private PublicExperienceShellModel? _publicExperienceShell;
+    private PublicExperienceShellDto? _publicExperienceShell;
 
     // Pagination / Browse mode state
     private BrowseMode _browseMode = BrowseMode.InfiniteScroll;
@@ -117,13 +117,13 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> eventFormatMap = new();
 
-    private IReadOnlyList<PublicExperienceEventSectionModel> CuratedEventSections => _publicExperienceShell?.EventSections
+    private IReadOnlyList<PublicExperienceEventSectionDto> CuratedEventSections => _publicExperienceShell?.EventSections?
         .Where(section => !string.IsNullOrWhiteSpace(section.Label) && !string.IsNullOrWhiteSpace(section.Url))
         .OrderBy(section => section.SortOrder)
         .ThenBy(section => section.Label, StringComparer.OrdinalIgnoreCase)
         .ToList() ?? [];
 
-    private string EventCatalogLabel => string.IsNullOrWhiteSpace(_publicExperienceShell?.EventCatalog.Label)
+    private string EventCatalogLabel => string.IsNullOrWhiteSpace(_publicExperienceShell?.EventCatalog?.Label)
         ? "Events"
         : _publicExperienceShell.EventCatalog.Label.Trim();
 
@@ -155,21 +155,21 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         };
     }
 
-    private string GetPresetChipClass(PublicExperienceEventSectionModel section)
+    private string GetPresetChipClass(PublicExperienceEventSectionDto section)
     {
         return IsCurrentPreset(section)
             ? "event-list__preset-chip event-list__preset-chip--active"
             : "event-list__preset-chip";
     }
 
-    private string GetPresetAriaLabel(PublicExperienceEventSectionModel section)
+    private string GetPresetAriaLabel(PublicExperienceEventSectionDto section)
     {
         return IsCurrentPreset(section)
             ? $"Showing {section.Label}"
             : $"Show {section.Label}";
     }
 
-    private bool IsCurrentPreset(PublicExperienceEventSectionModel section)
+    private bool IsCurrentPreset(PublicExperienceEventSectionDto section)
     {
         if (string.IsNullOrWhiteSpace(section.Url))
         {
@@ -282,9 +282,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         var settings = await PublicExperienceService.GetSettingsAsync();
         if (settings != null)
         {
-            _isIslamicModuleEnabled = settings.IsIslamicModuleEnabled;
-            _isTechModuleEnabled = settings.IsTechModuleEnabled;
-            _eventCardClickOpensDetailPage = settings.EventCardClickOpensDetailPage;
+            _isIslamicModuleEnabled = settings.IsIslamicModuleEnabled == true;
+            _isTechModuleEnabled = settings.IsTechModuleEnabled == true;
+            _eventCardClickOpensDetailPage = settings.EventCardClickOpensDetailPage == true;
         }
 
         // Always load customization settings (feature flag gating removed during development)

@@ -1,11 +1,11 @@
-// ABOUTME: Client-side mirror of RegistrationPolicyRules (Domain cannot be referenced from WASM).
+// ABOUTME: Client-side mirror of the server-owned registration policy wire contract.
 // ABOUTME: Determines which registration scopes are allowed by a given event registration policy.
 
 namespace Explore.Blazor.Client.Helpers;
 
 /// <summary>
-/// Client-side registration policy logic mirroring Domain RegistrationPolicyRules.
-/// Keep in sync with Explore.Domain/Services/Registration/RegistrationPolicyRules.cs.
+/// Client-side registration policy logic mirroring the server-owned registration policy rules.
+/// Keep these numeric policy and scope identifiers aligned with the generated API contract.
 /// </summary>
 public static class RegistrationPolicyHelper
 {

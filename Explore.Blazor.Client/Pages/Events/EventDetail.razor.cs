@@ -196,7 +196,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         try
         {
             var shell = await PublicExperienceService.GetCachedShellAsync();
-            _brandDisplayName = NormalizeBrandDisplayName(shell?.Home.BrandDisplayName);
+            _brandDisplayName = NormalizeBrandDisplayName(shell?.Home?.BrandDisplayName);
         }
         catch (Exception ex)
         {

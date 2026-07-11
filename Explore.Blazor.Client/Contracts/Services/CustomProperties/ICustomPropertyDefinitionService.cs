@@ -2,38 +2,36 @@
 // ABOUTME: Wraps IEventApiClient with HAL unwrap + error handling.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
-using Explore.Blazor.Client.Models.Responses;
 
 namespace Explore.Blazor.Client.Contracts.Services.CustomProperties;
 
 public interface ICustomPropertyDefinitionService
 {
-    Task<PaginatedResult<CustomPropertyDefinitionListModel>> GetDefinitionsAsync(
+    Task<PaginatedResult<CustomPropertyDefinitionListDto>> GetDefinitionsAsync(
         EntityTypeName entityTypeName,
         int pageNumber = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default);
 
-    Task<CustomPropertyDefinitionDetailModel?> GetDefinitionAsync(
+    Task<CustomPropertyDefinitionDto?> GetDefinitionAsync(
         Guid id,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<CustomPropertyDefinitionDetailModel>> GetEventDefinitionsAsync(
+    Task<IReadOnlyList<CustomPropertyDefinitionDto>> GetEventDefinitionsAsync(
         Guid eventId,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<CustomPropertyDefinitionDetailModel>> GetEventSessionDefinitionsAsync(
+    Task<IReadOnlyList<CustomPropertyDefinitionDto>> GetEventSessionDefinitionsAsync(
         Guid eventSessionId,
         CancellationToken cancellationToken = default);
 
-    Task<BaseCommandResponse<Guid>?> CreateDefinitionAsync(
+    Task<BaseCommandResponseOfGuid?> CreateDefinitionAsync(
         CreateCustomPropertyDefinitionDto body,
         CancellationToken cancellationToken = default);
 
-    Task<BaseCommandResponse<Guid>?> UpdateDefinitionAsync(
+    Task<BaseCommandResponseOfGuid?> UpdateDefinitionAsync(
         Guid id,
         UpdateCustomPropertyDefinitionDto body,
         CancellationToken cancellationToken = default);

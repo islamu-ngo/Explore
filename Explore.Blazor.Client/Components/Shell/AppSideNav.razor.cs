@@ -46,7 +46,7 @@ public partial class AppSideNav : ComponentBase, IDisposable
     private string? _brandDisplayName;
     private string? _brandLogoUrl;
     private bool _showCommunityGuidelinesLink = true;
-    private PublicExperienceShellModel? _shell;
+    private PublicExperienceShellDto? _shell;
     private string? _parameterBrandDisplayName;
     private string? _parameterBrandLogoUrl;
     private bool? _parameterShowCommunityGuidelinesLink;
@@ -56,18 +56,18 @@ public partial class AppSideNav : ComponentBase, IDisposable
     private string? ResolvedBrandLogoUrl => _parameterBrandLogoUrl ?? _brandLogoUrl;
     private bool ResolvedShowCommunityGuidelinesLink => _parameterShowCommunityGuidelinesLink ?? _showCommunityGuidelinesLink;
     private IReadOnlyList<TenantNavigationLinkDto> ResolvedTenantLinks => _parameterTenantLinks
-        ?? BuildTenantLinks(_shell?.Navigation.Links)
+        ?? BuildTenantLinks(_shell?.Navigation?.Links)
         ?? TenantNavLinksState.Links;
     private string ResolvedOverlayBrandAriaLabel => string.IsNullOrWhiteSpace(ResolvedBrandDisplayName)
         ? "Home"
         : ResolvedBrandDisplayName;
-    private string ResolvedEventCatalogLabel => string.IsNullOrWhiteSpace(_shell?.EventCatalog.Label)
+    private string ResolvedEventCatalogLabel => string.IsNullOrWhiteSpace(_shell?.EventCatalog?.Label)
         ? "Events"
         : _shell.EventCatalog.Label;
-    private string ResolvedEventCatalogUrl => string.IsNullOrWhiteSpace(_shell?.EventCatalog.Url)
+    private string ResolvedEventCatalogUrl => string.IsNullOrWhiteSpace(_shell?.EventCatalog?.Url)
         ? "/events"
         : _shell.EventCatalog.Url;
-    private bool IsOrganizationCentric => _shell?.Mode.Equals("OrganizationCentric", StringComparison.OrdinalIgnoreCase) == true;
+    private bool IsOrganizationCentric => _shell?.Mode == PublicExperienceMode.OrganizationCentric;
     private bool HasCloseAction => OnCloseRequested.HasDelegate;
     private bool ShouldRenderOverlayHeader => HasCloseAction
         && DockPanelEntry?.State.Mode is DockMode.Overlay or DockMode.Temporary or DockMode.Inspector;
@@ -80,12 +80,12 @@ public partial class AppSideNav : ComponentBase, IDisposable
         {
             var shellTask = PublicExperienceService.GetCachedShellAsync();
             _shell = shellTask is null ? null : await shellTask;
-            if (!string.IsNullOrWhiteSpace(_shell?.Home.BrandDisplayName))
+            if (!string.IsNullOrWhiteSpace(_shell?.Home?.BrandDisplayName))
             {
                 _brandDisplayName = _shell.Home.BrandDisplayName;
             }
 
-            if (!string.IsNullOrWhiteSpace(_shell?.Home.BrandLogoUrl))
+            if (!string.IsNullOrWhiteSpace(_shell?.Home?.BrandLogoUrl))
             {
                 _brandLogoUrl = _shell.Home.BrandLogoUrl;
             }
@@ -97,9 +97,9 @@ public partial class AppSideNav : ComponentBase, IDisposable
                 return;
             }
 
-            _showCommunityGuidelinesLink = settings.AllowUserSubmittedEvents
-                || settings.AllowOrganizationSubmittedEvents
-                || settings.AllowGroupSubmittedEvents;
+            _showCommunityGuidelinesLink = settings.AllowUserSubmittedEvents == true
+                || settings.AllowOrganizationSubmittedEvents == true
+                || settings.AllowGroupSubmittedEvents == true;
             _brandDisplayName = string.IsNullOrWhiteSpace(_brandDisplayName)
                 ? settings.BrandDisplayName
                 : _brandDisplayName;
@@ -113,26 +113,28 @@ public partial class AppSideNav : ComponentBase, IDisposable
         }
     }
 
-    private static IReadOnlyList<TenantNavigationLinkDto>? BuildTenantLinks(IReadOnlyList<PublicExperienceNavigationLinkModel>? links)
+    private static IReadOnlyList<TenantNavigationLinkDto>? BuildTenantLinks(IEnumerable<PublicExperienceNavigationLinkDto>? links)
     {
-        if (links is null || links.Count == 0)
+        if (links is null)
         {
             return null;
         }
 
-        return links
+        var result = links
             .Where(link => !string.IsNullOrWhiteSpace(link.Label) && !string.IsNullOrWhiteSpace(link.Url))
             .OrderBy(link => link.SortOrder)
             .ThenBy(link => link.Label, StringComparer.OrdinalIgnoreCase)
             .Select(link => new TenantNavigationLinkDto
             {
                 Id = Guid.NewGuid(),
-                Label = link.Label,
-                Url = link.Url,
-                Order = link.SortOrder,
+                Label = link.Label!,
+                Url = link.Url!,
+                Order = link.SortOrder ?? 0,
                 OpenInNewTab = false
             })
             .ToList();
+
+        return result.Count == 0 ? null : result;
     }
 
     public void Dispose()

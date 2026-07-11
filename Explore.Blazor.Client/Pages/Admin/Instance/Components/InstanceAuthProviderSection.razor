@@ -41,16 +41,16 @@
                                 <MudTooltip Text="Self-hosted OIDC provider for full identity management control.">
                                     <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
                                 </MudTooltip>
-                                @if (Model.KeycloakDetectedFromEnvironment)
+                                @if (Model.KeycloakDetectedFromEnvironment == true)
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Auto-detected</MudChip>
                                 }
-                                @ProviderStatusChip(Model.KeycloakEnabled)
+                                @ProviderStatusChip(Model.KeycloakEnabled == true)
                             </MudStack>
-                            @AuthenticationProviderButton("Keycloak", Model.KeycloakEnabled, () => SetAuthenticationProviderAsync("Keycloak", v => Model.KeycloakEnabled = v, Model.KeycloakEnabled))
+                            @AuthenticationProviderButton("Keycloak", Model.KeycloakEnabled == true, () => SetAuthenticationProviderAsync("Keycloak", v => Model.KeycloakEnabled = v, Model.KeycloakEnabled == true))
                         </MudStack>
 
-                        @if (Model.KeycloakEnabled)
+                        @if (Model.KeycloakEnabled == true)
                         {
                             <MudTextField Variant="Variant.Outlined" T="string" Label="Authority URL" @bind-Value="Model.KeycloakAuthority" />
                             <MudTextField Variant="Variant.Outlined" T="string" Label="Client ID" @bind-Value="Model.KeycloakClientId" />
@@ -63,15 +63,14 @@
                                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                                 <MudText Typo="Typo.subtitle2">Keycloak client-secret rotation</MudText>
                                                 <MudChip T="string" Size="Size.Small" Color="@OwnershipChipColor(Model.KeycloakClientSecretOwnership)" Variant="Variant.Outlined">
-                                                    @Model.KeycloakClientSecretOwnership.Badge
+                                                    @(Model.KeycloakClientSecretOwnership?.Badge ?? "Unknown")
                                                 </MudChip>
                                             </MudStack>
                                             <MudText Typo="Typo.body2" Color="Color.Secondary">
                                                 Rotates only the configured confidential Blazor client secret. Secret values and temporary admin credentials are cleared after submit and never returned.
                                             </MudText>
                                         </div>
-                                        <MudButton Elevation="0"
-                                                   Variant="Variant.Filled"
+                                        <MudButton Variant="Variant.Filled"
                                                    Color="Color.Warning"
                                                    StartIcon="@(_isRotatingKeycloakClientSecret ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.VpnKey)"
                                                    Disabled="@(!CanRotateKeycloakClientSecret)"
@@ -81,7 +80,7 @@
                                     </MudStack>
 
                                     <MudAlert Severity="@OwnershipAlertSeverity(Model.KeycloakClientSecretOwnership)" Dense="true">
-                                        @Model.KeycloakClientSecretOwnership.Description
+                                        @Model.KeycloakClientSecretOwnership?.Description
                                     </MudAlert>
 
                                     @if (IsKeycloakSecretApplicationManaged)
@@ -122,8 +121,7 @@
                                                 Runs read-only diagnostics against the configured realm. Temporary admin credentials are used only for this request and are cleared after the run.
                                             </MudText>
                                         </div>
-                                        <MudButton Elevation="0"
-                                                   Variant="Variant.Outlined"
+                                        <MudButton Variant="Variant.Outlined"
                                                    Color="Color.Primary"
                                                    StartIcon="@(_isRunningKeycloakDoctor ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.HealthAndSafety)"
                                                    Disabled="@(!CanRunKeycloakDoctor)"
@@ -149,7 +147,7 @@
                                         </MudAlert>
 
                                         <MudStack Spacing="1">
-                                            @foreach (var check in _keycloakDoctorResult.Checks)
+                                            @foreach (var check in _keycloakDoctorResult.Checks ?? [])
                                             {
                                                 <MudAlert Severity="@DoctorSeverity(check.Status)" Dense="true" NoIcon="true">
                                                     <MudStack Spacing="1">
@@ -176,8 +174,7 @@
                                                 Builds a read-only additive sync plan from the configured realm, then applies only backup-confirmed additive repairs.
                                             </MudText>
                                         </div>
-                                        <MudButton Elevation="0"
-                                                   Variant="Variant.Outlined"
+                                        <MudButton Variant="Variant.Outlined"
                                                    Color="Color.Primary"
                                                    StartIcon="@(_isPreviewingKeycloakSync ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Preview)"
                                                    Disabled="@(!CanPreviewKeycloakSync)"
@@ -194,8 +191,7 @@
                                           I have a current Keycloak backup and understand apply only adds or updates platform-owned realm settings.
                                      </MudCheckBox>
 
-                                     <MudButton Elevation="0"
-                                                Variant="Variant.Filled"
+                                     <MudButton Variant="Variant.Filled"
                                                 Color="Color.Warning"
                                                 StartIcon="@(_isApplyingKeycloakSync ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Build)"
                                                 Disabled="@(!CanApplyKeycloakSync)"
@@ -210,22 +206,22 @@
                                         </MudAlert>
 
                                         <MudStack Spacing="1">
-                                            @foreach (var operation in _keycloakSyncPlan.Operations)
+                                            @foreach (var operation in _keycloakSyncPlan.Operations ?? [])
                                             {
                                                 <MudAlert Severity="@PlanSeverity(operation.Status)" Dense="true" NoIcon="true">
                                                     <MudStack Spacing="1">
                                                         <MudText Typo="Typo.subtitle2">@operation.Summary</MudText>
                                                         <MudText Typo="Typo.body2">@operation.Reason</MudText>
-                                                        @if (operation.Changes.Count > 0)
+                                                        @if (operation.Changes?.Count > 0)
                                                         {
-                                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@string.Join("; ", operation.Changes)</MudText>
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@string.Join("; ", operation.Changes!)</MudText>
                                                         }
                                                     </MudStack>
                                                 </MudAlert>
                                             }
                                         </MudStack>
 
-                                        @if (_keycloakSyncPlan.DesiredState.Clients.Count > 0)
+                                        @if (_keycloakSyncPlan.DesiredState?.Clients?.Count > 0)
                                         {
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">
                                                 Desired clients: @string.Join(", ", _keycloakSyncPlan.DesiredState.Clients.Select(client => client.ClientId))
@@ -238,7 +234,7 @@
 
                         @if (!IsSingleTenant)
                         {
-                            <MudSwitch T="bool" @bind-Value="Model.LockKeycloakEnabled" Color="Color.Warning">
+                            <MudSwitch T="bool" Value="@(Model.LockKeycloakEnabled == true)" ValueChanged="@(value => Model.LockKeycloakEnabled = value)" Color="Color.Warning">
                                 Lock Keycloak setting for tenants
                             </MudSwitch>
                         }
@@ -253,19 +249,19 @@
                                 <MudTooltip Text="Users authenticate with AT Protocol identities; optionally link decentralization separately.">
                                     <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
                                 </MudTooltip>
-                                @ProviderStatusChip(Model.AtprotoLoginEnabled)
+                                @ProviderStatusChip(Model.AtprotoLoginEnabled == true)
                             </MudStack>
-                            @AuthenticationProviderButton("AT Protocol Login", Model.AtprotoLoginEnabled, () => SetAuthenticationProviderAsync("AT Protocol Login", v => Model.AtprotoLoginEnabled = v, Model.AtprotoLoginEnabled))
+                            @AuthenticationProviderButton("AT Protocol Login", Model.AtprotoLoginEnabled == true, () => SetAuthenticationProviderAsync("AT Protocol Login", v => Model.AtprotoLoginEnabled = v, Model.AtprotoLoginEnabled == true))
                         </MudStack>
 
-                        @if (Model.AtprotoLoginEnabled)
+                        @if (Model.AtprotoLoginEnabled == true)
                         {
                             <MudTextField Variant="Variant.Outlined" T="string" Label="Public URL" @bind-Value="Model.AtprotoPublicUrl" HelperText="Used to serve ATProto OAuth client metadata." />
                         }
 
                         @if (!IsSingleTenant)
                         {
-                            <MudSwitch T="bool" @bind-Value="Model.LockAtprotoLoginEnabled" Color="Color.Warning">
+                            <MudSwitch T="bool" Value="@(Model.LockAtprotoLoginEnabled == true)" ValueChanged="@(value => Model.LockAtprotoLoginEnabled = value)" Color="Color.Warning">
                                 Lock AT Protocol setting for tenants
                             </MudSwitch>
                         }
@@ -280,12 +276,12 @@
                                 <MudTooltip Text="OAuth sign-in using Google accounts.">
                                     <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
                                 </MudTooltip>
-                                @ProviderStatusChip(Model.GoogleSsoEnabled)
+                                @ProviderStatusChip(Model.GoogleSsoEnabled == true)
                             </MudStack>
-                            @AuthenticationProviderButton("Google SSO", Model.GoogleSsoEnabled, () => SetAuthenticationProviderAsync("Google SSO", v => Model.GoogleSsoEnabled = v, Model.GoogleSsoEnabled))
+                            @AuthenticationProviderButton("Google SSO", Model.GoogleSsoEnabled == true, () => SetAuthenticationProviderAsync("Google SSO", v => Model.GoogleSsoEnabled = v, Model.GoogleSsoEnabled == true))
                         </MudStack>
 
-                        @if (Model.GoogleSsoEnabled)
+                        @if (Model.GoogleSsoEnabled == true)
                         {
                             <MudTextField Variant="Variant.Outlined" T="string" Label="Client ID" @bind-Value="Model.GoogleClientId" />
                             <MudTextField Variant="Variant.Outlined" T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.GoogleClientSecret" />
@@ -293,7 +289,7 @@
 
                         @if (!IsSingleTenant)
                         {
-                            <MudSwitch T="bool" @bind-Value="Model.LockGoogleSsoEnabled" Color="Color.Warning">
+                            <MudSwitch T="bool" Value="@(Model.LockGoogleSsoEnabled == true)" ValueChanged="@(value => Model.LockGoogleSsoEnabled = value)" Color="Color.Warning">
                                 Lock Google setting for tenants
                             </MudSwitch>
                         }
@@ -321,7 +317,7 @@
                                 </MudTooltip>
                                 @ProviderStatusChip(IsAuthorizationProviderSelected(LocalProvider))
                             </MudStack>
-                            <MudButton Elevation="0" Variant="@(IsAuthorizationProviderSelected(LocalProvider) ? Variant.Outlined : Variant.Filled)"
+                            <MudButton Variant="@(IsAuthorizationProviderSelected(LocalProvider) ? Variant.Outlined : Variant.Filled)"
                                        Color="Color.Primary"
                                        Disabled="@IsAuthorizationProviderSelected(LocalProvider)"
                                        OnClick="@(() => SelectAuthorizationProviderAsync(LocalProvider))">
@@ -339,18 +335,18 @@
                                 <MudTooltip Text="Route protected authorization checks to Cerbos. When selected, authorized requests are denied if Cerbos is unavailable.">
                                     <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
                                 </MudTooltip>
-                                @if (AuthorizationModel.CerbosDetectedFromEnvironment)
+                                @if (AuthorizationModel.CerbosDetectedFromEnvironment == true)
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Auto-detected</MudChip>
                                 }
-                                <MudChip T="string" Size="Size.Small" Color="@OwnershipChipColor(AuthorizationModel.CerbosEndpointOwnership)" Variant="Variant.Outlined">@AuthorizationModel.CerbosEndpointOwnership.Badge</MudChip>
-                                @if (AuthorizationModel.CerbosEndpointVerified)
+                                <MudChip T="string" Size="Size.Small" Color="@OwnershipChipColor(AuthorizationModel.CerbosEndpointOwnership)" Variant="Variant.Outlined">@(AuthorizationModel.CerbosEndpointOwnership?.Badge ?? "Unknown")</MudChip>
+                                @if (AuthorizationModel.CerbosEndpointVerified == true)
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">Verified</MudChip>
                                 }
                                 @ProviderStatusChip(IsAuthorizationProviderSelected(CerbosProvider))
                             </MudStack>
-                            <MudButton Elevation="0" Variant="@(IsAuthorizationProviderSelected(CerbosProvider) ? Variant.Outlined : Variant.Filled)"
+                            <MudButton Variant="@(IsAuthorizationProviderSelected(CerbosProvider) ? Variant.Outlined : Variant.Filled)"
                                        Color="Color.Primary"
                                        Disabled="@IsAuthorizationProviderSelected(CerbosProvider)"
                                        OnClick="@(() => SelectAuthorizationProviderAsync(CerbosProvider))">
@@ -360,13 +356,13 @@
 
                         @if (IsAuthorizationProviderSelected(CerbosProvider))
                         {
-                            @if (AuthorizationModel.CerbosDetectedFromEnvironment && AuthorizationModel.CerbosEndpointVerified)
+                            @if (AuthorizationModel.CerbosDetectedFromEnvironment == true && AuthorizationModel.CerbosEndpointVerified == true)
                             {
                                 <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
                                     Cerbos was detected from environment and verified successfully during setup.
                                 </MudAlert>
                             }
-                            else if (AuthorizationModel.CerbosDetectedFromEnvironment)
+                            else if (AuthorizationModel.CerbosDetectedFromEnvironment == true)
                             {
                                 <MudAlert Severity="Severity.Warning" Dense="true">
                                     A Cerbos endpoint was detected from environment, but it is not currently marked verified. Saving Cerbos will verify the endpoint before applying it.
@@ -375,8 +371,8 @@
 
                             <MudAlert Severity="@OwnershipAlertSeverity(AuthorizationModel.CerbosEndpointOwnership)" Dense="true">
                                 <MudStack Spacing="1">
-                                    <MudText Typo="Typo.subtitle2">@AuthorizationModel.CerbosEndpointOwnership.Badge</MudText>
-                                    <MudText Typo="Typo.body2">@AuthorizationModel.CerbosEndpointOwnership.Description</MudText>
+                                    <MudText Typo="Typo.subtitle2">@(AuthorizationModel.CerbosEndpointOwnership?.Badge ?? "Unknown")</MudText>
+                                    <MudText Typo="Typo.body2">@AuthorizationModel.CerbosEndpointOwnership?.Description</MudText>
                                 </MudStack>
                             </MudAlert>
 
@@ -388,7 +384,7 @@
                                           Disabled="@IsCerbosEndpointReadOnly"
                                           HelperText="@CerbosEndpointHelperText" />
 
-                            @if (!AuthorizationModel.CerbosEndpointVerified)
+                            @if (AuthorizationModel.CerbosEndpointVerified != true)
                             {
                                 <MudAlert Severity="Severity.Warning" Dense="true">
                                     Saving with Cerbos enabled will test the endpoint before changing the active authorization provider.
@@ -401,20 +397,18 @@
                                         <div>
                                             <MudText Typo="Typo.subtitle2">Policy package sync</MudText>
                                             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                                Publish the latest embedded authorization policy bundle through the BFF using @(AuthorizationModel.CerbosAdminCredentialsOwnership.Badge.ToLowerInvariant()) server-side credentials, or download the same package for manual cerbosctl put installation. The browser never owns the Admin API password.
+                                                Publish the latest embedded authorization policy bundle through the BFF using @((AuthorizationModel.CerbosAdminCredentialsOwnership?.Badge ?? "configured").ToLowerInvariant()) server-side credentials, or download the same package for manual cerbosctl put installation. The browser never owns the Admin API password.
                                             </MudText>
                                         </div>
                                         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                            <MudButton Elevation="0"
-                                                       Variant="Variant.Outlined"
+                                            <MudButton Variant="Variant.Outlined"
                                                        Color="Color.Secondary"
                                                        StartIcon="@(_isDownloadingPackage ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Download)"
                                                        Disabled="@(!CanDownloadCerbosPackage)"
                                                        OnClick="DownloadCerbosPolicyPackageAsync">
                                                 @(_isDownloadingPackage ? "Preparing ZIP..." : "Download ZIP")
                                             </MudButton>
-                                            <MudButton Elevation="0"
-                                                       Variant="Variant.Outlined"
+                                            <MudButton Variant="Variant.Outlined"
                                                        Color="Color.Primary"
                                                        StartIcon="@(_isSyncing ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Sync)"
                                                        Disabled="@(!CanSyncCerbosPolicies)"
@@ -424,7 +418,7 @@
                                         </MudStack>
                                     </MudStack>
 
-                                    @if (!AuthorizationModel.CerbosEndpointVerified)
+                                    @if (AuthorizationModel.CerbosEndpointVerified != true)
                                     {
                                         <MudAlert Severity="Severity.Info" Dense="true">
                                             Save and verify the Cerbos endpoint before syncing authorization policies.
@@ -433,14 +427,14 @@
 
                                     @if (_syncResult is not null)
                                     {
-                                        <MudAlert Severity="@(_syncResult.Success ? Severity.Success : Severity.Error)" Dense="true">
+                                        <MudAlert Severity="@(_syncResult.Success == true ? Severity.Success : Severity.Error)" Dense="true">
                                             @_syncResult.Message
                                         </MudAlert>
                                     }
 
                                     @if (_downloadResult is not null)
                                     {
-                                        <MudAlert Severity="@(_downloadResult.Success ? Severity.Success : Severity.Error)" Dense="true">
+                                        <MudAlert Severity="@(_downloadResult.Success == true ? Severity.Success : Severity.Error)" Dense="true">
                                             @_downloadResult.Message
                                         </MudAlert>
                                     }
@@ -459,10 +453,10 @@
     private const string CerbosProvider = "cerbos";
 
     [Parameter, EditorRequired]
-    public AuthProviderConfigurationModel Model { get; set; } = null!;
+    public AuthProviderConfigurationDto Model { get; set; } = null!;
 
     [Parameter, EditorRequired]
-    public AuthorizationProviderConfigurationModel AuthorizationModel { get; set; } = null!;
+    public AuthorizationProviderConfigurationDto AuthorizationModel { get; set; } = null!;
 
     [Parameter]
     public bool IsSingleTenant { get; set; }
@@ -484,22 +478,21 @@
     private string _rotationKeycloakAdminUsername = string.Empty;
     private string _rotationKeycloakAdminPassword = string.Empty;
     private string _newKeycloakClientSecret = string.Empty;
-    private KeycloakRealmDoctorResultModel? _keycloakDoctorResult;
-    private KeycloakRealmSyncPlanModel? _keycloakSyncPlan;
-    private KeycloakClientSecretRotationResultModel? _keycloakSecretRotationResult;
-    private InstanceCommandResponseModel? _syncResult;
-    private InstanceCommandResponseModel? _downloadResult;
+    private KeycloakRealmDoctorResultDto? _keycloakDoctorResult;
+    private KeycloakRealmSyncPlanDto? _keycloakSyncPlan;
+    private KeycloakClientSecretRotationResultDto? _keycloakSecretRotationResult;
+    private BaseCommandResponseOfGuid? _syncResult;
+    private BaseCommandResponseOfGuid? _downloadResult;
 
     private bool HasAnyAuthenticationProviderEnabled =>
-        Model.KeycloakEnabled || Model.AtprotoLoginEnabled || Model.GoogleSsoEnabled;
+        Model.KeycloakEnabled == true || Model.AtprotoLoginEnabled == true || Model.GoogleSsoEnabled == true;
 
     private RenderFragment ProviderStatusChip(bool enabled) => @<MudChip T="string"
         Size="Size.Small"
         Color="@(enabled ? Color.Success : Color.Default)"
         Variant="Variant.Outlined">@(enabled ? "Enabled" : "Disabled")</MudChip>;
 
-    private RenderFragment AuthenticationProviderButton(string providerName, bool enabled, Func<Task> onClick) => @<MudButton Elevation="0"
-        Variant="@(enabled ? Variant.Outlined : Variant.Filled)"
+    private RenderFragment AuthenticationProviderButton(string providerName, bool enabled, Func<Task> onClick) => @<MudButton Variant="@(enabled ? Variant.Outlined : Variant.Filled)"
         Color="@(enabled ? Color.Error : Color.Primary)"
         OnClick="CreateAuthenticationClick(onClick)">@(enabled ? $"Disable {providerName}" : $"Enable {providerName}")</MudButton>;
 
@@ -539,9 +532,9 @@
     private int CountEnabledAuthenticationProviders()
     {
         var count = 0;
-        if (Model.KeycloakEnabled) count++;
-        if (Model.AtprotoLoginEnabled) count++;
-        if (Model.GoogleSsoEnabled) count++;
+        if (Model.KeycloakEnabled == true) count++;
+        if (Model.AtprotoLoginEnabled == true) count++;
+        if (Model.GoogleSsoEnabled == true) count++;
         return count;
     }
 
@@ -553,17 +546,17 @@
             ? "border: 2px solid var(--mud-palette-primary);"
             : string.Empty;
 
-    private static Color OwnershipChipColor(SecretOwnershipModel ownership) =>
-        ownership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+    private static Color OwnershipChipColor(SecretOwnershipDto? ownership) =>
+        string.Equals(ownership?.Mode, "deployment-managed", StringComparison.OrdinalIgnoreCase)
             ? Color.Warning
-            : ownership.BootstrapAvailable
+            : ownership?.BootstrapAvailable == true
                 ? Color.Info
                 : Color.Success;
 
-    private static Severity OwnershipAlertSeverity(SecretOwnershipModel ownership) =>
-        ownership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+    private static Severity OwnershipAlertSeverity(SecretOwnershipDto? ownership) =>
+        string.Equals(ownership?.Mode, "deployment-managed", StringComparison.OrdinalIgnoreCase)
             ? Severity.Warning
-            : ownership.BootstrapAvailable
+            : ownership?.BootstrapAvailable == true
                 ? Severity.Info
                 : Severity.Success;
 
@@ -572,11 +565,11 @@
         !_isSyncing
         && OnboardingService is not null
         && IsAuthorizationProviderSelected(CerbosProvider)
-        && AuthorizationModel.CerbosEndpointVerified
-        && AuthorizationModel.CerbosAdminUsernameConfigured
-        && AuthorizationModel.CerbosAdminPasswordConfigured;
+        && AuthorizationModel.CerbosEndpointVerified == true
+        && AuthorizationModel.CerbosAdminUsernameConfigured == true
+        && AuthorizationModel.CerbosAdminPasswordConfigured == true;
 
-    private bool IsCerbosEndpointReadOnly => !AuthorizationModel.CerbosEndpointOwnership.Editable;
+    private bool IsCerbosEndpointReadOnly => AuthorizationModel.CerbosEndpointOwnership?.Editable != true;
 
     private string CerbosEndpointHelperText => IsCerbosEndpointReadOnly
         ? "Deployment-managed endpoint. Change it in the environment, secret provider, or appsettings and redeploy/restart."
@@ -584,7 +577,6 @@
 
     private bool CanDownloadCerbosPackage =>
         !_isDownloadingPackage
-        && OnboardingService is not null
         && IsAuthorizationProviderSelected(CerbosProvider);
 
     private bool CanRunKeycloakDoctor =>
@@ -593,7 +585,7 @@
         && !_isApplyingKeycloakSync
         && !_isRotatingKeycloakClientSecret
         && OnboardingService is not null
-        && Model.KeycloakEnabled
+        && Model.KeycloakEnabled == true
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
         && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
         && (!_useTemporaryKeycloakAdmin
@@ -606,7 +598,7 @@
         && !_isApplyingKeycloakSync
         && !_isRotatingKeycloakClientSecret
         && OnboardingService is not null
-        && Model.KeycloakEnabled
+        && Model.KeycloakEnabled == true
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
         && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
         && (!_useTemporaryKeycloakAdmin
@@ -620,14 +612,14 @@
         && !_isRotatingKeycloakClientSecret
         && _keycloakBackupConfirmed
         && OnboardingService is not null
-        && Model.KeycloakEnabled
+        && Model.KeycloakEnabled == true
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
         && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
         && !string.IsNullOrWhiteSpace(_temporaryKeycloakAdminUsername)
         && !string.IsNullOrWhiteSpace(_temporaryKeycloakAdminPassword);
 
     private bool IsKeycloakSecretApplicationManaged =>
-        !Model.KeycloakClientSecretOwnership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase);
+        !string.Equals(Model.KeycloakClientSecretOwnership?.Mode, "deployment-managed", StringComparison.OrdinalIgnoreCase);
 
     private bool CanRotateKeycloakClientSecret =>
         !_isRotatingKeycloakClientSecret
@@ -635,7 +627,7 @@
         && !_isPreviewingKeycloakSync
         && !_isApplyingKeycloakSync
         && OnboardingService is not null
-        && Model.KeycloakEnabled
+        && Model.KeycloakEnabled == true
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
         && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
         && (!IsKeycloakSecretApplicationManaged
@@ -644,7 +636,7 @@
                 && !string.IsNullOrWhiteSpace(_rotationKeycloakAdminUsername)
                 && !string.IsNullOrWhiteSpace(_rotationKeycloakAdminPassword)));
 
-    private static Severity DoctorSeverity(string status) => status.ToLowerInvariant() switch
+    private static Severity DoctorSeverity(string? status) => status?.ToLowerInvariant() switch
     {
         "healthy" => Severity.Success,
         "warning" => Severity.Warning,
@@ -652,7 +644,7 @@
         _ => Severity.Error
     };
 
-    private static Severity PlanSeverity(string status) => status.ToLowerInvariant() switch
+    private static Severity PlanSeverity(string? status) => status?.ToLowerInvariant() switch
     {
         "healthy" => Severity.Success,
         "up-to-date" => Severity.Success,
@@ -708,7 +700,7 @@
 
     private async Task DownloadCerbosPolicyPackageAsync()
     {
-        if (!CanDownloadCerbosPackage || OnboardingService is null)
+        if (!CanDownloadCerbosPackage)
         {
             return;
         }
@@ -719,25 +711,12 @@
 
         try
         {
-            var package = await OnboardingService.DownloadAuthorizationPolicyPackageAsAdminAsync();
-            if (package is null || package.FileBytes.Length == 0)
-            {
-                _downloadResult = new InstanceCommandResponseModel
-                {
-                    Success = false,
-                    Message = "Authorization policy package download failed. Try again or check server logs."
-                };
-                return;
-            }
-
-            var downloaded = await BrowserActionInterop.DownloadBase64FileAsync(
-                Convert.ToBase64String(package.FileBytes),
-                package.FileName,
-                package.ContentType);
+            var downloaded = await BrowserActionInterop.DownloadFileFromUrlAsync(
+                "/api/instance/settings/authz-provider/package");
 
             if (!downloaded)
             {
-                _downloadResult = new InstanceCommandResponseModel
+                _downloadResult = new BaseCommandResponseOfGuid
                 {
                     Success = false,
                     Message = "Authorization policy package download failed. Try again or check server logs."
@@ -745,15 +724,15 @@
                 return;
             }
 
-            _downloadResult = new InstanceCommandResponseModel
+            _downloadResult = new BaseCommandResponseOfGuid
             {
                 Success = true,
-                Message = "Authorization policy package ZIP downloaded."
+                Message = "Authorization policy package download started."
             };
         }
         catch
         {
-            _downloadResult = new InstanceCommandResponseModel
+            _downloadResult = new BaseCommandResponseOfGuid
             {
                 Success = false,
                 Message = "Authorization policy package download failed. Try again or check server logs."
@@ -778,7 +757,7 @@
 
         try
         {
-            _keycloakDoctorResult = await OnboardingService.RunKeycloakRealmDoctorAsync(new KeycloakRealmDoctorRequestModel
+            _keycloakDoctorResult = await OnboardingService.RunKeycloakRealmDoctorAsync(new KeycloakRealmDoctorRequestDto
             {
                 UseTemporaryAdminCredentials = _useTemporaryKeycloakAdmin,
                 BootstrapAdminUsername = _useTemporaryKeycloakAdmin ? _temporaryKeycloakAdminUsername : null,
@@ -806,7 +785,7 @@
 
         try
         {
-            _keycloakSyncPlan = await OnboardingService.PreviewKeycloakRealmSyncAsync(new KeycloakRealmSyncPreviewRequestModel
+            _keycloakSyncPlan = await OnboardingService.PreviewKeycloakRealmSyncAsync(new KeycloakRealmSyncPreviewRequestDto
             {
                 UseTemporaryAdminCredentials = _useTemporaryKeycloakAdmin,
                 BootstrapAdminUsername = _useTemporaryKeycloakAdmin ? _temporaryKeycloakAdminUsername : null,
@@ -833,7 +812,7 @@
 
         try
         {
-            _keycloakSyncPlan = await OnboardingService.ApplyKeycloakRealmSyncAsync(new KeycloakRealmSyncApplyRequestModel
+            _keycloakSyncPlan = await OnboardingService.ApplyKeycloakRealmSyncAsync(new KeycloakRealmSyncApplyRequestDto
             {
                 BackupConfirmed = _keycloakBackupConfirmed,
                 BootstrapAdminUsername = _temporaryKeycloakAdminUsername,
@@ -862,10 +841,10 @@
 
         try
         {
-            _keycloakSecretRotationResult = await OnboardingService.RotateKeycloakClientSecretAsync(new KeycloakClientSecretRotationRequestModel
+            _keycloakSecretRotationResult = await OnboardingService.RotateKeycloakClientSecretAsync(new KeycloakClientSecretRotationRequestDto
             {
                 ClientId = Model.KeycloakClientId,
-                SecretOwnershipMode = Model.KeycloakClientSecretOwnership.Mode,
+                SecretOwnershipMode = Model.KeycloakClientSecretOwnership?.Mode,
                 ConfirmApplicationManagedSecret = _confirmApplicationManagedKeycloakSecret,
                 NewClientSecret = IsKeycloakSecretApplicationManaged ? _newKeycloakClientSecret : null,
                 BootstrapAdminUsername = IsKeycloakSecretApplicationManaged ? _rotationKeycloakAdminUsername : null,
@@ -895,15 +874,15 @@
         try
         {
             var response = await OnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync();
-            _syncResult = response.Success
-                ? new InstanceCommandResponseModel
+            _syncResult = response.Success == true
+                ? new BaseCommandResponseOfGuid
                 {
                     Success = true,
                     Message = string.IsNullOrWhiteSpace(response.Message)
                         ? "Authorization policy package synced."
                         : response.Message
                 }
-                : new InstanceCommandResponseModel
+                : new BaseCommandResponseOfGuid
                 {
                     Success = false,
                     Message = "Authorization policy package sync failed. Check Admin API settings and retry."
@@ -911,7 +890,7 @@
         }
         catch
         {
-            _syncResult = new InstanceCommandResponseModel
+            _syncResult = new BaseCommandResponseOfGuid
             {
                 Success = false,
                 Message = "Authorization policy package sync failed. Check Admin API settings and retry."

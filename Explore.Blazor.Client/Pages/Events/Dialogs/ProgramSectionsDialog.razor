@@ -4,7 +4,6 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using Explore.Blazor.Client.Helpers
-@using Explore.Blazor.Client.Models.EventSessionGroups
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components.Forms
 @using MudBlazor
@@ -245,9 +244,9 @@
     public Guid EventId { get; set; }
 
     [Parameter]
-    public ICollection<EventSessionGroupListModel>? InitialSections { get; set; }
+    public ICollection<HalResourceOfEventSessionGroupListDto>? InitialSections { get; set; }
 
-    private List<EventSessionGroupListModel> _sections = [];
+    private List<HalResourceOfEventSessionGroupListDto> _sections = [];
     private Guid? _editingSectionId;
     private string _name = string.Empty;
     private string? _description;
@@ -259,7 +258,7 @@
     private ICollection<LocationListDto> _locations = new List<LocationListDto>();
     private ICollection<LocationRoomListDto> _rooms = new List<LocationRoomListDto>();
     private List<EventSessionListDto> _sessions = [];
-    private EventSessionGroupListModel? _assignmentSection;
+    private HalResourceOfEventSessionGroupListDto? _assignmentSection;
     private bool _isAssignmentSaving;
     private FormSubmitState _submitState = new();
     private string? _errorMessage;
@@ -269,11 +268,11 @@
     protected override async Task OnInitializedAsync()
     {
         _sections = InitialSections?.OrderBy(section => section.SortOrder).ThenBy(section => section.Name).ToList() ?? [];
-        _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(section => section.SortOrder) + 10;
+        _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(section => section.SortOrder ?? 0) + 10;
         _locations = await LocationService.GetAllLocationsAsync();
     }
 
-    private async Task EditSectionAsync(EventSessionGroupListModel section)
+    private async Task EditSectionAsync(HalResourceOfEventSessionGroupListDto section)
     {
         if (!section.HasHalLink("edit"))
         {
@@ -288,7 +287,7 @@
         _locationId = section.LocationId;
         _roomId = section.RoomId;
         _sortOrder = section.SortOrder;
-        _isPublished = section.IsPublished;
+        _isPublished = section.IsPublished ?? true;
         _errorMessage = null;
         await LoadRoomsForLocationAsync(_locationId);
     }
@@ -386,7 +385,7 @@
         }
     }
 
-    private async Task DeleteSectionAsync(EventSessionGroupListModel section)
+    private async Task DeleteSectionAsync(HalResourceOfEventSessionGroupListDto section)
     {
         _errorMessage = null;
 
@@ -411,7 +410,7 @@
 
         try
         {
-            bool deleted = await EventService.DeleteSessionGroupAsync(EventId, section.Id);
+            bool deleted = await EventService.DeleteSessionGroupAsync(EventId, section.Id ?? Guid.Empty);
             if (!deleted)
             {
                 _errorMessage = "Program section could not be deleted.";
@@ -430,7 +429,7 @@
             }
             else
             {
-                _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(programSection => programSection.SortOrder) + 10;
+                _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(programSection => programSection.SortOrder ?? 0) + 10;
             }
         }
         catch (Exception ex)
@@ -444,7 +443,7 @@
         }
     }
 
-    private async Task SelectAssignmentSectionAsync(EventSessionGroupListModel section)
+    private async Task SelectAssignmentSectionAsync(HalResourceOfEventSessionGroupListDto section)
     {
         _errorMessage = null;
         _assignmentSection = section;
@@ -565,7 +564,7 @@
         return true;
     }
 
-    private bool CanManageAssignments(EventSessionGroupListModel section)
+    private bool CanManageAssignments(HalResourceOfEventSessionGroupListDto section)
     {
         return section.HasHalLink(AssignSessionLinkRel);
     }
@@ -597,14 +596,14 @@
         _locationId = null;
         _roomId = null;
         _rooms = new List<LocationRoomListDto>();
-        _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(section => section.SortOrder) + 10;
+        _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(section => section.SortOrder ?? 0) + 10;
         _isPublished = true;
         _errorMessage = null;
     }
 
     private void Close() => MudDialog.Close(DialogResult.Ok(_hasChanges));
 
-    private static string FormatSectionMeta(EventSessionGroupListModel section)
+    private static string FormatSectionMeta(HalResourceOfEventSessionGroupListDto section)
     {
         var details = new List<string>();
 
@@ -613,8 +612,8 @@
         else if (!string.IsNullOrWhiteSpace(section.LocationName))
             details.Add(section.LocationName);
 
-        details.Add(section.IsPublished ? "Visible" : "Hidden");
-        details.Add($"Sort {section.SortOrder}");
+        details.Add(section.IsPublished == true ? "Visible" : "Hidden");
+        details.Add($"Sort {section.SortOrder ?? 0}");
 
         return string.Join(" · ", details);
     }

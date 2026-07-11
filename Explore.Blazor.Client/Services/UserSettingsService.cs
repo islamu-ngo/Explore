@@ -1,7 +1,6 @@
 // ABOUTME: User settings service with auth-branching: authenticated users use BFF-proxied settings API,
 // ABOUTME: anonymous users fall back to browser localStorage. SSR-safe (returns null during prerender).
 
-using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
@@ -12,7 +11,6 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
 {
-    private readonly IUserSettingsApi _userSettingsApi;
     private readonly IEventApiClient _apiClient;
     private readonly IAuthStateService _authState;
     private readonly IJSRuntime _jsRuntime;
@@ -23,13 +21,11 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
     public UserSettingsService(
-        IUserSettingsApi userSettingsApi,
         IEventApiClient apiClient,
         IAuthStateService authState,
         IJSRuntime jsRuntime,
         ILogger<UserSettingsService> logger)
     {
-        _userSettingsApi = userSettingsApi;
         _apiClient = apiClient;
         _authState = authState;
         _jsRuntime = jsRuntime;
@@ -232,92 +228,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
 
     private async Task<SettingGroupResponseDto?> GetAuthenticatedSettingsAsync(string category, CancellationToken ct)
     {
-        var response = await _userSettingsApi.GetUserSettingsAsync(category, ct);
-        if (!response.IsSuccessful || response.Content is null)
-        {
-            _logger.LogWarning(
-                "Failed to load authenticated user settings for category '{Category}'. StatusCode: {StatusCode}",
-                category,
-                response.StatusCode);
-            return null;
-        }
-
-        return MapUserSettingsResponse(response.Content, category);
-    }
-
-    private static SettingGroupResponseDto MapUserSettingsResponse(
-        UserSettingGroupApiResponse response,
-        string requestedCategory)
-    {
-        return new SettingGroupResponseDto
-        {
-            Category = string.IsNullOrWhiteSpace(response.Category) ? requestedCategory : response.Category,
-            Settings = response.Settings.Select(MapUserSetting).ToList()
-        };
-    }
-
-    private static EffectiveSettingDto MapUserSetting(UserEffectiveSettingApiResponse setting)
-    {
-        return new EffectiveSettingDto
-        {
-            Key = setting.Key,
-            Value = setting.Value,
-            SettingValueTypeId = setting.SettingValueTypeId,
-            SettingValueTypeCode = setting.SettingValueTypeCode,
-            SettingValueTypeName = setting.SettingValueTypeName,
-            Source = (SettingSource?)ParseSettingSource(setting.Source),
-            IsLocked = setting.IsLocked,
-            CanEdit = setting.CanEdit,
-            Reason = setting.Reason,
-            Description = setting.Description,
-            AllowedValues = setting.AllowedValues
-        };
-    }
-
-    private static int? ParseSettingSource(JsonElement? source)
-    {
-        if (source is not { } element || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
-        {
-            return null;
-        }
-
-        if (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var numericSource))
-        {
-            return numericSource;
-        }
-
-        if (element.ValueKind != JsonValueKind.String)
-        {
-            return null;
-        }
-
-        var value = element.GetString();
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        if (int.TryParse(value, out var parsedNumericSource))
-        {
-            return parsedNumericSource;
-        }
-
-        var normalized = new string(value
-            .Where(char.IsLetterOrDigit)
-            .Select(char.ToLowerInvariant)
-            .ToArray());
-
-        return normalized switch
-        {
-            "systemdefault" => 0,
-            "tenantoverride" => 1,
-            "systemlocked" => 2,
-            "organizationoverride" => 3,
-            "groupoverride" => 4,
-            "userpreference" => 5,
-            "tenantlocked" => 6,
-            _ => null
-        };
+        return await _apiClient.GetUserSettingsAsync(category, cancellationToken: ct);
     }
 
     private async ValueTask<IJSObjectReference> GetJsModuleAsync()

@@ -2,11 +2,12 @@
 @* ABOUTME: Adds explicit AT Protocol DID linking flow required for non-email identity providers. *@
 
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components.Forms
 @using Explore.Blazor.Client.Pages.User.Components.Dialogs
 @using MudBlazor
 @inject IUserService UserService
-@inject IUserExternalLoginApi UserExternalLoginApi
+@inject IUserExternalLoginService UserExternalLoginService
 @inject IDialogService DialogService
 @inject ILogger<SettingsSecurity> Logger
 
@@ -123,7 +124,7 @@
     private string? _errorMessage;
     private string? _successMessage;
     private UserDto? _currentUser;
-    private List<UserExternalLoginListItem> _linkedLogins = [];
+    private List<UserExternalLoginListDto> _linkedLogins = [];
 
     private List<string> _linkedProviders => _linkedLogins
         .Where(x => !string.IsNullOrWhiteSpace(x.ProviderDisplayName))
@@ -158,15 +159,8 @@
                 return;
             }
 
-            var loginsResponse = await UserExternalLoginApi.GetAsync(CancellationToken.None);
-            if (!loginsResponse.IsSuccessStatusCode)
-            {
-                _errorMessage = $"Failed to load linked providers ({(int)loginsResponse.StatusCode}).";
-                return;
-            }
-
-            var allLogins = loginsResponse.Content;
-            _linkedLogins = allLogins?
+            var allLogins = await UserExternalLoginService.GetAsync();
+            _linkedLogins = allLogins
                 .Where(x => x.UserId == _currentUser.Id)
                 .ToList()
                 ?? [];
@@ -214,7 +208,7 @@
 
         try
         {
-            var payload = new CreateUserExternalLoginRequest
+            var payload = new CreateUserExternalLoginDto
             {
                 UserId = _currentUser.Id.Value,
                 TenantId = Guid.Empty,
@@ -223,20 +217,10 @@
                 ProviderDisplayName = "AT Protocol"
             };
 
-            var response = await UserExternalLoginApi.CreateAsync(payload, CancellationToken.None);
-            if (!response.IsSuccessStatusCode)
+            var response = await UserExternalLoginService.CreateAsync(payload);
+            if (response.Success != true)
             {
-                var body = response.Error?.Content;
-                _errorMessage = string.IsNullOrWhiteSpace(body)
-                    ? $"Failed to link DID ({(int)response.StatusCode})."
-                    : body;
-                return;
-            }
-
-            var commandResponse = response.Content;
-            if (commandResponse is null || !commandResponse.Success)
-            {
-                _errorMessage = commandResponse?.Message ?? "Failed to link AT Protocol DID.";
+                _errorMessage = response.Message ?? "Failed to link AT Protocol DID.";
                 return;
             }
 

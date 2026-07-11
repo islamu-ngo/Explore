@@ -2,8 +2,8 @@
 // ABOUTME: Demonstrates server-side pagination and HAL-gated actions.
 
 @page "/admin/tenant/event-templates"
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.EventTemplates
-@using Explore.Blazor.Client.Models.EventTemplates
 @using Explore.Blazor.Client.Pages.Admin.EventTemplates.Components
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Authorization
@@ -26,7 +26,7 @@
         }
     </div>
 
-    <MudDataGrid T="EventTemplateListModel" ServerData="ServerReloadAsync" @ref="_grid" Class="event-template-list__grid"
+    <MudDataGrid T="HalResourceOfEventTemplateListDto" ServerData="ServerReloadAsync" @ref="_grid" Class="event-template-list__grid"
                  Hover="true" Outlined="true" Dense="true" Striped="true" Elevation="1">
         <Columns>
             <PropertyColumn Property="x => x.DisplayName" Title="Name" />
@@ -41,31 +41,30 @@
             <PropertyColumn Property="x => x.Version" Title="Ver" />
             <TemplateColumn Title="Status" Sortable="false">
                 <CellTemplate>
-                    @if (context.Item.IsPublished)
+                    @if (context.Item.IsPublished == true)
                     {
                         <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
                     }
-                    @if (!context.Item.IsActive)
+                    @if (context.Item.IsActive == false)
                     {
                         <MudChip T="string" Size="Size.Small" Color="Color.Warning">Inactive</MudChip>
                     }
                 </CellTemplate>
             </TemplateColumn>
-            <PropertyColumn Property="x => x.DefinitionsCount" Title="Fields" />
-            <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
+            <PropertyColumn Property="x => x.DefinitionCount" Title="Fields" />
             <TemplateColumn Title="Actions" Sortable="false">
                 <CellTemplate>
                     <MudStack Row="true" Spacing="0">
                         <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Default" 
                                        OnClick="@(() => NavigateToDetails(context.Item.Id))" Title="View" AriaLabel="View template" />
                         
-                        @if (context.Item.HasHalLink("edit"))
+                        @if (context.Item.Id.HasValue && context.Item._links?.ContainsKey("edit") == true)
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" 
-                                           OnClick="@(() => OpenEditDialogAsync(context.Item.Id))" Title="Edit" AriaLabel="Edit template" />
+                                           OnClick="@(() => OpenEditDialogAsync(context.Item.Id.Value))" Title="Edit" AriaLabel="Edit template" />
                         }
                         
-                        @if (context.Item.HasHalLink("delete"))
+                        @if (context.Item.Id.HasValue && context.Item._links?.ContainsKey("delete") == true)
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" 
                                            OnClick="@(() => DeleteTemplateAsync(context.Item))" Title="Delete" AriaLabel="Delete template" />
@@ -75,32 +74,35 @@
             </TemplateColumn>
         </Columns>
         <PagerContent>
-            <MudDataGridPager T="EventTemplateListModel" />
+            <MudDataGridPager T="HalResourceOfEventTemplateListDto" />
         </PagerContent>
     </MudDataGrid>
 </div>
 
 @code {
-    private MudDataGrid<EventTemplateListModel>? _grid;
+    private MudDataGrid<HalResourceOfEventTemplateListDto>? _grid;
     private bool _canCreate;
 
-    private async Task<GridData<EventTemplateListModel>> ServerReloadAsync(GridState<EventTemplateListModel> state, System.Threading.CancellationToken cancellationToken)
+    private async Task<GridData<HalResourceOfEventTemplateListDto>> ServerReloadAsync(GridState<HalResourceOfEventTemplateListDto> state, System.Threading.CancellationToken cancellationToken)
     {
         var pageNumber = state.Page + 1;
         var result = await TemplateService.GetTemplatesAsync(null, pageNumber, state.PageSize, cancellationToken);
         
-        _canCreate = result.HasHalLink("create");
+        _canCreate = result._links?.ContainsKey("create") == true;
 
-        return new GridData<EventTemplateListModel>
+        return new GridData<HalResourceOfEventTemplateListDto>
         {
-            TotalItems = result.TotalCount,
-            Items = result.Items
+            TotalItems = result.TotalCount ?? 0,
+            Items = result._embedded?.Items ?? []
         };
     }
 
-    private void NavigateToDetails(Guid id)
+    private void NavigateToDetails(Guid? id)
     {
-        NavigationManager.NavigateTo($"/admin/tenant/event-templates/{id}");
+        if (id.HasValue)
+        {
+            NavigationManager.NavigateTo($"/admin/tenant/event-templates/{id.Value}");
+        }
     }
 
     private async Task OpenCreateDialogAsync()
@@ -144,8 +146,13 @@
         }
     }
 
-    private async Task DeleteTemplateAsync(EventTemplateListModel template)
+    private async Task DeleteTemplateAsync(HalResourceOfEventTemplateListDto template)
     {
+        if (!template.Id.HasValue)
+        {
+            return;
+        }
+
         var confirm = await DialogService.ShowMessageBoxAsync(
             "Delete Template", 
             $"Are you sure you want to delete the template '{template.DisplayName}'? This cannot be undone.", 
@@ -153,7 +160,7 @@
 
         if (confirm == true)
         {
-            var success = await TemplateService.DeleteTemplateAsync(template.Id);
+            var success = await TemplateService.DeleteTemplateAsync(template.Id.Value);
             if (success)
             {
                 Snackbar.Add("Template deleted successfully", Severity.Success);

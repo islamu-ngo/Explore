@@ -2,8 +2,8 @@
    ABOUTME: Shows fields and HAL-gated edit actions. *@
 
 @page "/admin/tenant/event-templates/{Id:guid}"
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.EventTemplates
-@using Explore.Blazor.Client.Models.EventTemplates
 @using Explore.Blazor.Client.Pages.Admin.EventTemplates.Components
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Authorization
@@ -31,7 +31,7 @@ else
             <div class="event-template-detail__title-section">
                 <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => NavigationManager.NavigateTo("/admin/tenant/event-templates"))" Class="event-template-detail__back-button" />
                 <MudText Typo="Typo.h4" HtmlTag="h1" Class="event-template-detail__title">@_template.DisplayName</MudText>
-                @if (_template.IsPublished)
+                @if (_template.IsPublished == true)
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
                 }
@@ -39,14 +39,14 @@ else
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Default">Draft</MudChip>
                 }
-                @if (!_template.IsActive)
+                @if (_template.IsActive == false)
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Warning">Inactive</MudChip>
                 }
             </div>
 
             <div class="event-template-detail__actions">
-                @if (_template.Links?.ContainsKey("edit") == true)
+                @if (_template._links?.ContainsKey("edit") == true)
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenEditDialogAsync" StartIcon="@Icons.Material.Filled.Edit">
                         Edit Template
@@ -86,11 +86,11 @@ else
         <MudCard Elevation="1" Class="event-template-detail__card mt-6">
             <MudCardHeader>
                 <CardHeaderContent>
-                    <MudText Typo="Typo.h6">Definitions (@_template.Definitions.Count)</MudText>
+                    <MudText Typo="Typo.h6">Definitions (@(_template.Definitions?.Count ?? 0))</MudText>
                 </CardHeaderContent>
             </MudCardHeader>
             <MudCardContent>
-                @if (_template.Definitions.Any())
+                @if (_template.Definitions?.Any() == true)
                 {
                     <MudTable Items="@_template.Definitions" Hover="true" Dense="true" Elevation="0" Class="event-template-detail__table">
                         <HeaderContent>
@@ -106,22 +106,22 @@ else
                             <MudTd DataLabel="Key">@def.Key</MudTd>
                             <MudTd DataLabel="Display Name">@def.DisplayName</MudTd>
                             <MudTd DataLabel="Type">
-                                <MudChip T="string" Size="Size.Small">@def.PropertyType</MudChip>
+                                <MudChip T="string" Size="Size.Small">@((PropertyType?)def.PropertyType)</MudChip>
                             </MudTd>
                             <MudTd DataLabel="Required">
-                                @if (def.IsRequired)
+                                @if (def.IsRequired == true)
                                 {
                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
                                 }
                             </MudTd>
                             <MudTd DataLabel="Multi">
-                                @if (def.IsMulti)
+                                @if (def.IsMulti == true)
                                 {
                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Info" Size="Size.Small" />
                                 }
                             </MudTd>
                             <MudTd DataLabel="Active">
-                                @if (def.IsActive)
+                                @if (def.IsActive == true)
                                 {
                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
                                 }
@@ -130,7 +130,7 @@ else
                                     <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
                                 }
                             </MudTd>
-                            <MudTd DataLabel="Exposure">@def.ExposureLevel</MudTd>
+                            <MudTd DataLabel="Exposure">@((ExposureLevel?)def.ExposureLevel)</MudTd>
                         </RowTemplate>
                     </MudTable>
                 }
@@ -148,7 +148,7 @@ else
     public Guid Id { get; set; }
 
     private bool _isLoading = true;
-    private EventTemplateDetailModel? _template;
+    private HalResourceOfEventTemplateDto? _template;
 
     protected override async Task OnInitializedAsync()
     {

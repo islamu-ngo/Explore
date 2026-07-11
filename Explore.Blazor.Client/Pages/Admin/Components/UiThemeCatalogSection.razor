@@ -104,7 +104,7 @@
 @code {
     [Parameter, EditorRequired] public bool IsPlatformCatalog { get; set; }
 
-    [Inject] private IEventApiClient ApiClient { get; set; } = null!;
+    [Inject] private IAppearanceThemeService AppearanceThemeService { get; set; } = null!;
     [Inject] private IDialogService DialogService { get; set; } = null!;
     [Inject] private ISnackbar Snackbar { get; set; } = null!;
     [Inject] private ILogger<UiThemeCatalogSection> Logger { get; set; } = null!;
@@ -123,7 +123,7 @@
         _loading = true;
         try
         {
-            var themes = await ApiClient.GetUiThemeCatalogAsync(IsPlatformCatalog, _activeOnly);
+            var themes = await AppearanceThemeService.GetThemeCatalogAsync(IsPlatformCatalog, _activeOnly);
             _themes = themes?.ToList() ?? new List<UiThemeListItemDto>();
         }
         catch (Exception ex)
@@ -164,7 +164,7 @@
         if (id == Guid.Empty) return;
         try
         {
-            var details = await ApiClient.GetUiThemeDetailsAsync(id);
+            var details = await AppearanceThemeService.GetThemeDetailsAsync(id);
             if (details is null)
             {
                 Snackbar.Add("Theme could not be loaded.", Severity.Warning);
@@ -211,7 +211,7 @@
 
         try
         {
-            await ApiClient.DeleteUiThemeAsync(id);
+            await AppearanceThemeService.DeleteThemeAsync(id);
             Snackbar.Add("Theme deleted.", Severity.Success);
             await ReloadAsync();
         }

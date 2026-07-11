@@ -1,5 +1,5 @@
 // ABOUTME: Service for group creation, membership administration, and settings management in Blazor.
-// ABOUTME: Uses Refit BFF reads and forwards If-Match headers for guarded Group PATCH updates.
+// ABOUTME: Uses the generated API client and forwards If-Match headers for guarded Group PATCH updates.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
@@ -8,9 +8,9 @@ namespace Explore.Blazor.Client.Services;
 
 public interface IGroupService
 {
-    Task<ICollection<GroupPublisherListDto>> GetMyGroupsAsync();
+    Task<ICollection<GroupListDto>> GetMyGroupsAsync();
     Task<bool> CreateGroupAsync(string fullName, string? description = null);
-    Task<GroupAdminDetailsModel?> GetGroupDetailsAsync(Guid groupId);
+    Task<HalResourceOfGroupDto?> GetGroupDetailsAsync(Guid groupId);
     Task<BaseCommandResponseOfGuid?> UpdateGroupAsync(Guid groupId, Guid expectedConcurrencyStamp, UpdateGroupDto group);
     Task<ICollection<GroupMemberDto>> GetGroupMembersAsync(Guid groupId);
     Task<GroupMembersResult> GetGroupMembersWithAffordancesAsync(Guid groupId);
@@ -26,13 +26,11 @@ public sealed record GroupMembersResult(ICollection<GroupMemberDto> Members, boo
 
 public class GroupService : IGroupService
 {
-    private readonly IGroupApi _groupApi;
     private readonly IEventApiClient _apiClient;
     private readonly ILogger<GroupService> _logger;
 
-    public GroupService(IGroupApi groupApi, IEventApiClient apiClient, ILogger<GroupService> logger)
+    public GroupService(IEventApiClient apiClient, ILogger<GroupService> logger)
     {
-        _groupApi = groupApi;
         _apiClient = apiClient;
         _logger = logger;
     }
@@ -67,61 +65,29 @@ public class GroupService : IGroupService
         }
     }
 
-    public async Task<ICollection<GroupPublisherListDto>> GetMyGroupsAsync()
+    public async Task<ICollection<GroupListDto>> GetMyGroupsAsync()
     {
         try
         {
-            var response = await _groupApi.GetMyGroupsAsync(1, 100, CancellationToken.None);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("[GroupService.GetMyGroupsAsync] API error fetching groups. StatusCode: {StatusCode}", response.StatusCode);
-                return new List<GroupPublisherListDto>();
-            }
-
-            return response.Content?._embedded?.Items?
+            var response = await _apiClient.GetMyGroupsAsync(1, 100);
+            return response._embedded?.Items?
                 .Select(MapGroupPublisher)
                 .Where(group => group is not null)
                 .Select(group => group!)
-                .ToList() ?? new List<GroupPublisherListDto>();
+                .ToList() ?? new List<GroupListDto>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[GroupService.GetMyGroupsAsync] Unexpected error fetching groups");
-            return new List<GroupPublisherListDto>();
+            return new List<GroupListDto>();
         }
     }
 
-    public async Task<GroupAdminDetailsModel?> GetGroupDetailsAsync(Guid groupId)
+    public async Task<HalResourceOfGroupDto?> GetGroupDetailsAsync(Guid groupId)
     {
         try
         {
-            var response = await _groupApi.GetGroupDetailsAsync(groupId, CancellationToken.None);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("[GroupService.GetGroupDetailsAsync] API error fetching group. GroupId: {GroupId}, StatusCode: {StatusCode}", groupId, response.StatusCode);
-                return null;
-            }
-
-            var group = response.Content;
-            if (group is null)
-            {
-                return null;
-            }
-
-            return new GroupAdminDetailsModel
-            {
-                Id = group.Id ?? groupId,
-                ConcurrencyStamp = group.ConcurrencyStamp ?? Guid.Empty,
-                FullName = group.FullName ?? string.Empty,
-                Description = group.Description,
-                ActorId = group.ActorId,
-                ActorBackgroundColor = group.ActorBackgroundColor,
-                ActorBackgroundEffect = group.ActorBackgroundEffect,
-                ActorBannerColor = group.ActorBannerColor,
-                ActorBannerPictureUri = group.ActorBannerPictureUri,
-                ActorProfilePictureUri = group.ActorProfilePictureUri,
-                LinkRelations = ReadLinkRelations(group)
-            };
+            return await _apiClient.GetGroupByIdAsync(groupId);
         }
         catch (Exception ex)
         {
@@ -223,53 +189,19 @@ public class GroupService : IGroupService
         }
     }
 
-    private static GroupPublisherListDto? MapGroupPublisher(HalResourceOfGroupListDto group)
+    private static GroupListDto? MapGroupPublisher(HalResourceOfGroupListDto group)
     {
         if (group.Id is null)
         {
             return null;
         }
 
-        return new GroupPublisherListDto
+        return new GroupListDto
         {
             Id = group.Id.Value,
             FullName = group.FullName ?? string.Empty,
-            CurrentUserRole = group.CurrentUserRole
+            CurrentUserRole = group.CurrentUserRole,
+            ApprovalStatusFullName = group.ApprovalStatusFullName ?? string.Empty
         };
     }
-
-    private static IReadOnlySet<string> ReadLinkRelations(HalResourceOfGroupDto group)
-    {
-        if (group._links is null || group._links.Count == 0)
-        {
-            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        }
-
-        return group._links.Keys
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    }
-}
-
-public class GroupPublisherListDto
-{
-    public Guid Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public int? CurrentUserRole { get; set; }
-}
-
-public class GroupAdminDetailsModel
-{
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public Guid? ActorId { get; set; }
-    public string? ActorBackgroundColor { get; set; }
-    public string? ActorBackgroundEffect { get; set; }
-    public string? ActorBannerColor { get; set; }
-    public string? ActorBannerPictureUri { get; set; }
-    public string? ActorProfilePictureUri { get; set; }
-    public IReadOnlySet<string> LinkRelations { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-    public bool HasHalLink(string relation) => LinkRelations.Contains(relation);
 }

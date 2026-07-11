@@ -3,7 +3,6 @@
 
 @using Explore.Blazor.Client.Contracts.Services.CustomProperties
 @using Explore.Blazor.Client.Models.CustomProperties
-@using Explore.Blazor.Client.Models.Responses
 @using MudBlazor
 
 @inject ICustomPropertyValueService CustomPropertyValueService
@@ -30,10 +29,10 @@
 
         @foreach (var def in Definitions.OrderBy(d => d.SortOrder))
         {
-            if (!_valueDictionary.TryGetValue(def.Id, out var values))
+            if (!_valueDictionary.TryGetValue(def.Id ?? Guid.Empty, out var values))
             {
                 values = new List<CustomPropertyValueModel>();
-                _valueDictionary[def.Id] = values;
+                _valueDictionary[def.Id ?? Guid.Empty] = values;
             }
 
             <CustomPropertyFieldEditor Definition="@def"
@@ -61,7 +60,7 @@
     public Guid EventId { get; set; }
 
     [Parameter, EditorRequired]
-    public IReadOnlyList<CustomPropertyDefinitionDetailModel> Definitions { get; set; } = Array.Empty<CustomPropertyDefinitionDetailModel>();
+    public IReadOnlyList<CustomPropertyDefinitionDto> Definitions { get; set; } = Array.Empty<CustomPropertyDefinitionDto>();
 
     [Parameter]
     public EventCallback OnSaved { get; set; }
@@ -96,7 +95,7 @@
             var values = await CustomPropertyValueService.GetEventValuesAsync(EventId);
             
             _valueDictionary = Definitions.ToDictionary(
-                d => d.Id,
+                d => d.Id ?? Guid.Empty,
                 d => values.Where(v => v.DefinitionId == d.Id).OrderBy(v => v.Ordinal).ToList()
             );
         }
@@ -132,7 +131,7 @@
         {
             foreach (var def in Definitions)
             {
-                if (_valueDictionary.TryGetValue(def.Id, out var values))
+                if (_valueDictionary.TryGetValue(def.Id ?? Guid.Empty, out var values))
                 {
                     if (!PrepareValuesForSave(def, values))
                     {
@@ -140,17 +139,17 @@
                         continue;
                     }
 
-                    BaseCommandResponse<Guid>? response;
-                    if (def.IsMulti)
+                    BaseCommandResponseOfGuid? response;
+                    if (def.IsMulti == true)
                     {
-                        response = await CustomPropertyValueService.SetEventMultiValuesAsync(def.Id, EventId, values);
+                        response = await CustomPropertyValueService.SetEventMultiValuesAsync(def.Id ?? Guid.Empty, EventId, values);
                     }
                     else
                     {
                         var model = values.FirstOrDefault();
                         if (model == null) continue; // Should not happen, CustomPropertyFieldEditor adds one
                         
-                        response = await CustomPropertyValueService.SetEventValueAsync(def.Id, EventId, model);
+                        response = await CustomPropertyValueService.SetEventValueAsync(def.Id ?? Guid.Empty, EventId, model);
                     }
 
                     if (response is null)
@@ -158,7 +157,7 @@
                         hasErrors = true;
                         Errors[$"Definition {def.DisplayName}"] = new[] { "Save did not return a result." };
                     }
-                    else if (!response.Success)
+                    else if (response.Success != true)
                     {
                         hasErrors = true;
                         if (response.Errors != null && response.Errors.Any())
@@ -196,17 +195,18 @@
 
     private string GetDefinitionSignature()
     {
-        return string.Join('|', Definitions.OrderBy(d => d.Id).Select(d => $"{d.Id:N}:{d.SortOrder}:{d.IsRequired}:{d.IsMulti}:{(int)d.PropertyType}"));
+        return string.Join('|', Definitions.OrderBy(d => d.Id).Select(d => $"{d.Id:N}:{d.SortOrder}:{d.IsRequired}:{d.IsMulti}:{d.PropertyType ?? 0}"));
     }
 
-    private bool PrepareValuesForSave(CustomPropertyDefinitionDetailModel definition, List<CustomPropertyValueModel> values)
+    private bool PrepareValuesForSave(CustomPropertyDefinitionDto definition, List<CustomPropertyValueModel> values)
     {
-        if (definition.IsMulti)
+        var propertyType = (PropertyType)(definition.PropertyType ?? 0);
+        if (definition.IsMulti == true)
         {
-            RemoveEmptyOptionalValues(values, definition.PropertyType);
+            RemoveEmptyOptionalValues(values, propertyType);
             Reorder(values);
 
-            if (definition.IsRequired && !values.Any(v => HasValue(v, definition.PropertyType)))
+            if (definition.IsRequired == true && !values.Any(v => HasValue(v, propertyType)))
             {
                 Errors[$"Definition {definition.DisplayName}"] = new[] { $"{definition.DisplayName} requires at least one value." };
                 return false;
@@ -216,7 +216,7 @@
         }
 
         var value = values.FirstOrDefault();
-        if (definition.IsRequired && (value is null || !HasValue(value, definition.PropertyType)))
+        if (definition.IsRequired == true && (value is null || !HasValue(value, propertyType)))
         {
             Errors[$"Definition {definition.DisplayName}"] = new[] { $"{definition.DisplayName} is required." };
             return false;

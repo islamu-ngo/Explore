@@ -152,16 +152,16 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                 var settings = await PublicExperienceService.GetCachedSettingsAsync();
                 if (settings is not null)
                 {
-                    _showCommunityGuidelinesLink = settings.AllowUserSubmittedEvents
-                        || settings.AllowOrganizationSubmittedEvents
-                        || settings.AllowGroupSubmittedEvents;
-                    _brandDisplayName = settings.BrandDisplayName;
+                    _showCommunityGuidelinesLink = settings.AllowUserSubmittedEvents == true
+                        || settings.AllowOrganizationSubmittedEvents == true
+                        || settings.AllowGroupSubmittedEvents == true;
+                    _brandDisplayName = settings.BrandDisplayName ?? string.Empty;
                     _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
-                    _languagePickerEnabled = settings.ClientPickerEnabled;
+                    _languagePickerEnabled = settings.ClientPickerEnabled ?? true;
                     AiAssistantState.SetPolicy(
-                        settings.IsAiAssistantEnabled,
-                        settings.IsAiAssistantAvailable,
-                        settings.AiAssistantAllowAnonymousAccess,
+                        settings.IsAiAssistantEnabled == true,
+                        settings.IsAiAssistantAvailable == true,
+                        settings.AiAssistantAllowAnonymousAccess == true,
                         isAuthenticated);
                     DockLayoutState.Refresh();
                     await InvokeAsync(StateHasChanged);

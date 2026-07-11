@@ -3,10 +3,6 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.EventSessionTemplates;
-using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models;
-using Explore.Blazor.Client.Models.EventSessionTemplates;
-using Explore.Blazor.Client.Models.Responses;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -22,7 +18,7 @@ public sealed class EventSessionTemplateService : IEventSessionTemplateService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<PaginatedResult<EventSessionTemplateListModel>> GetTemplatesAsync(
+    public async Task<HalCollectionResourceOfEventSessionTemplateListDto> GetTemplatesAsync(
         Guid? eventTemplateId = null,
         int pageNumber = 1,
         int pageSize = 20,
@@ -30,29 +26,33 @@ public sealed class EventSessionTemplateService : IEventSessionTemplateService
     {
         try
         {
-            var response = await _apiClient.GetEventSessionTemplatesAsync(
+            return await _apiClient.GetEventSessionTemplatesAsync(
                 eventTemplateId,
                 pageNumber,
                 pageSize,
                 cancellationToken: ct);
-
-            return response.ToEventSessionTemplatePaginatedResult();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[EVENT SESSION TEMPLATE] Failed to fetch templates for event template {EventTemplateId}", eventTemplateId);
-            return PaginatedResult<EventSessionTemplateListModel>.Empty(pageNumber, pageSize);
+            return new HalCollectionResourceOfEventSessionTemplateListDto
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = 0,
+                TotalPages = 0,
+                _embedded = new HalCollectionEmbeddedOfEventSessionTemplateListDto { Items = [] }
+            };
         }
     }
 
-    public async Task<EventSessionTemplateDetailModel?> GetTemplateByIdAsync(
+    public async Task<HalResourceOfEventSessionTemplateDto?> GetTemplateByIdAsync(
         Guid id,
         CancellationToken ct = default)
     {
         try
         {
-            var hal = await _apiClient.GetEventSessionTemplateByIdAsync(id, cancellationToken: ct);
-            return hal.ToEventSessionTemplateModel();
+            return await _apiClient.GetEventSessionTemplateByIdAsync(id, cancellationToken: ct);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -65,7 +65,7 @@ public sealed class EventSessionTemplateService : IEventSessionTemplateService
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>?> CreateTemplateAsync(
+    public async Task<BaseCommandResponseOfGuid?> CreateTemplateAsync(
         CreateEventSessionTemplateDto dto,
         CancellationToken ct = default)
     {
@@ -73,8 +73,7 @@ public sealed class EventSessionTemplateService : IEventSessionTemplateService
 
         try
         {
-            var response = await _apiClient.CreateEventSessionTemplateAsync(dto, cancellationToken: ct);
-            return ToClientResponse(response);
+            return await _apiClient.CreateEventSessionTemplateAsync(dto, cancellationToken: ct);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -88,7 +87,7 @@ public sealed class EventSessionTemplateService : IEventSessionTemplateService
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>?> UpdateTemplateAsync(
+    public async Task<BaseCommandResponseOfGuid?> UpdateTemplateAsync(
         Guid id,
         UpdateEventSessionTemplateDto dto,
         CancellationToken ct = default)
@@ -97,8 +96,7 @@ public sealed class EventSessionTemplateService : IEventSessionTemplateService
 
         try
         {
-            var response = await _apiClient.UpdateEventSessionTemplateAsync(id, dto, cancellationToken: ct);
-            return ToClientResponse(response);
+            return await _apiClient.UpdateEventSessionTemplateAsync(id, dto, cancellationToken: ct);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -130,16 +128,5 @@ public sealed class EventSessionTemplateService : IEventSessionTemplateService
             _logger.LogError(ex, "[EVENT SESSION TEMPLATE] Unexpected error deleting template {SessionTemplateId}", id);
             return false;
         }
-    }
-
-    private static BaseCommandResponse<Guid> ToClientResponse(BaseCommandResponseOfGuid response)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = response.Success ?? false,
-            Id = response.Id ?? Guid.Empty,
-            Message = response.Message,
-            Errors = response.Errors?.ToList()
-        };
     }
 }

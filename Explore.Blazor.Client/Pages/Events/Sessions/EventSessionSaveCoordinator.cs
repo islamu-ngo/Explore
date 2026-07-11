@@ -2,9 +2,7 @@
 // ABOUTME: Keeps session save orchestration testable while preserving page-level validation, navigation, and submit UX.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Services;
-using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Pages.Events.Sessions;
 
@@ -12,7 +10,7 @@ internal static class EventSessionSaveCoordinator
 {
     public static async Task<EventSessionSaveResult> SaveCreateSessionAsync(
         IEventService eventService,
-        ComposerCreateEventSessionRequest session,
+        CreateEventSessionDto session,
         Guid eventId,
         Guid? selectedSessionGroupId,
         Guid? savedSessionId)
@@ -43,16 +41,20 @@ internal static class EventSessionSaveCoordinator
 
     public static async Task<EventSessionSaveResult> SaveUpdateSessionAsync(
         IEventService eventService,
-        UpdateEventSessionRequest session,
+        UpdateEventSessionDto session,
         Guid eventId,
         Guid sessionId,
+        Guid expectedConcurrencyStamp,
         Guid? selectedSessionGroupId,
         Guid? initialSessionGroupId)
     {
         ArgumentNullException.ThrowIfNull(eventService);
         ArgumentNullException.ThrowIfNull(session);
 
-        var result = await eventService.UpdateSessionAsync(session);
+        var result = await eventService.UpdateSessionAsync(
+            sessionId,
+            expectedConcurrencyStamp,
+            session);
         if (result.Success != true)
         {
             return EventSessionSaveResult.Failed(

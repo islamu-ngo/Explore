@@ -10,11 +10,11 @@ namespace Explore.Blazor.Client.Services;
 public interface ITenantPublicExperienceAdminService
 {
     Task<TenantPublicExperienceAdminModel> GetSettingsAsync(CancellationToken cancellationToken = default);
-    Task ApplySingleTenantPolicySettingsAsync(TenantPolicySettingsModel model, CancellationToken cancellationToken = default);
-    Task ApplyAnnouncementBarSettingsAsync(TenantPolicySettingsModel model, CancellationToken cancellationToken = default);
+    Task ApplySingleTenantPolicySettingsAsync(TenantPolicySettingsDto model, CancellationToken cancellationToken = default);
+    Task ApplyAnnouncementBarSettingsAsync(TenantPolicySettingsDto model, CancellationToken cancellationToken = default);
     Task<PublicExperienceAdminSaveResult> SaveAsync(TenantPublicExperienceAdminModel model, CancellationToken cancellationToken = default);
-    Task<PublicExperienceAdminSaveResult> SaveSingleTenantPolicySettingsAsync(TenantPolicySettingsModel model, CancellationToken cancellationToken = default);
-    Task<PublicExperienceAdminSaveResult> SaveAnnouncementBarAsync(TenantPolicySettingsModel model, bool forceRedisplay, CancellationToken cancellationToken = default);
+    Task<PublicExperienceAdminSaveResult> SaveSingleTenantPolicySettingsAsync(TenantPolicySettingsDto model, CancellationToken cancellationToken = default);
+    Task<PublicExperienceAdminSaveResult> SaveAnnouncementBarAsync(TenantPolicySettingsDto model, bool forceRedisplay, CancellationToken cancellationToken = default);
 }
 
 public sealed class TenantPublicExperienceAdminService(
@@ -99,7 +99,7 @@ public sealed class TenantPublicExperienceAdminService(
     }
 
     public async Task ApplySingleTenantPolicySettingsAsync(
-        TenantPolicySettingsModel model,
+        TenantPolicySettingsDto model,
         CancellationToken cancellationToken = default)
     {
         model.CanTenantOmitVerification = true;
@@ -124,59 +124,59 @@ public sealed class TenantPublicExperienceAdminService(
             model.AllowUserSubmittedEvents = GetBoolean(
                 eventSettings,
                 EventsUserSubmissionEnabledKey,
-                model.AllowUserSubmittedEvents);
+                model.AllowUserSubmittedEvents ?? true);
             model.AllowOrganizationSubmittedEvents = GetBoolean(
                 eventSettings,
                 EventsOrganizationSubmissionEnabledKey,
-                model.AllowOrganizationSubmittedEvents);
+                model.AllowOrganizationSubmittedEvents ?? true);
             model.AllowGroupSubmittedEvents = GetBoolean(
                 eventSettings,
                 EventsGroupSubmissionEnabledKey,
-                model.AllowGroupSubmittedEvents);
+                model.AllowGroupSubmittedEvents ?? true);
             model.RequireEventApproval = GetBoolean(
                 eventSettings,
                 EventsRequireApprovalKey,
-                model.RequireEventApproval);
+                model.RequireEventApproval == true);
             model.EventCardClickOpensDetailPage = GetBoolean(
                 eventSettings,
                 EventsCardClickOpensDetailPageKey,
-                model.EventCardClickOpensDetailPage);
+                model.EventCardClickOpensDetailPage == true);
             model.RequireOrganizationVerification = GetBoolean(
                 organizationSettings,
                 OrganizationsVerificationRequiredKey,
-                model.RequireOrganizationVerification);
+                model.RequireOrganizationVerification ?? true);
             model.AllowOrganizationSelfRegistration = GetBoolean(
                 organizationSettings,
                 OrganizationsSelfRegistrationEnabledKey,
-                model.AllowOrganizationSelfRegistration);
+                model.AllowOrganizationSelfRegistration ?? true);
             model.AllowGroupSelfRegistration = GetBoolean(
                 groupSettings,
                 GroupsSelfRegistrationEnabledKey,
-                model.AllowGroupSelfRegistration);
+                model.AllowGroupSelfRegistration ?? true);
             model.AiAssistantEnabled = GetBoolean(
                 aiAssistantSettings,
                 AiAssistantEnabledKey,
-                model.AiAssistantEnabled);
+                model.AiAssistantEnabled == true);
             model.AiAssistantProvider = GetString(
                 aiAssistantSettings,
                 AiAssistantProviderKey,
-                model.AiAssistantProvider);
+                model.AiAssistantProvider ?? AiProviderNone);
             model.AiAssistantEndpointUrl = GetString(
                 aiAssistantSettings,
                 AiAssistantEndpointUrlKey,
-                model.AiAssistantEndpointUrl);
+                model.AiAssistantEndpointUrl ?? string.Empty);
             model.AiAssistantApiKey = GetString(
                 aiAssistantSettings,
                 AiAssistantApiKeyKey,
-                model.AiAssistantApiKey);
+                model.AiAssistantApiKey ?? string.Empty);
             model.AiAssistantModelId = GetString(
                 aiAssistantSettings,
                 AiAssistantModelIdKey,
-                model.AiAssistantModelId);
+                model.AiAssistantModelId ?? string.Empty);
             model.AiAssistantAllowAnonymousAccess = GetBoolean(
                 aiAssistantSettings,
                 AiAssistantAllowAnonymousAccessKey,
-                model.AiAssistantAllowAnonymousAccess);
+                model.AiAssistantAllowAnonymousAccess == true);
         }
         catch (Exception ex)
         {
@@ -185,7 +185,7 @@ public sealed class TenantPublicExperienceAdminService(
     }
 
     public async Task ApplyAnnouncementBarSettingsAsync(
-        TenantPolicySettingsModel model,
+        TenantPolicySettingsDto model,
         CancellationToken cancellationToken = default)
     {
         try
@@ -213,14 +213,14 @@ public sealed class TenantPublicExperienceAdminService(
         }
     }
 
-    private async Task ApplyPublicAnnouncementFallbackAsync(TenantPolicySettingsModel model)
+    private async Task ApplyPublicAnnouncementFallbackAsync(TenantPolicySettingsDto model)
     {
-        if (model.AnnouncementBarEnabled || !string.IsNullOrWhiteSpace(model.AnnouncementBarMessage))
+        if (model.AnnouncementBarEnabled == true || !string.IsNullOrWhiteSpace(model.AnnouncementBarMessage))
         {
             return;
         }
 
-        PublicExperienceSettingsModel? settings = await publicExperienceService.GetSettingsAsync();
+        PublicExperienceSettingsDto? settings = await publicExperienceService.GetSettingsAsync();
         if (settings?.AnnouncementBarEnabled != true
             || string.IsNullOrWhiteSpace(settings.AnnouncementBarMessage))
         {
@@ -231,7 +231,7 @@ public sealed class TenantPublicExperienceAdminService(
         model.AnnouncementBarMessage = settings.AnnouncementBarMessage.Trim();
         model.AnnouncementBarLinkText = settings.AnnouncementBarLinkText?.Trim() ?? string.Empty;
         model.AnnouncementBarLinkUrl = settings.AnnouncementBarLinkUrl?.Trim() ?? string.Empty;
-        model.AnnouncementBarRevision = settings.AnnouncementBarRevision;
+        model.AnnouncementBarRevision = settings.AnnouncementBarRevision ?? 0;
     }
 
     public async Task<PublicExperienceAdminSaveResult> SaveAsync(
@@ -268,7 +268,7 @@ public sealed class TenantPublicExperienceAdminService(
     }
 
     public async Task<PublicExperienceAdminSaveResult> SaveSingleTenantPolicySettingsAsync(
-        TenantPolicySettingsModel model,
+        TenantPolicySettingsDto model,
         CancellationToken cancellationToken = default)
     {
         PublicExperienceAdminSaveResult? validationResult = ValidateAiAssistantSettings(model);
@@ -283,11 +283,11 @@ public sealed class TenantPublicExperienceAdminService(
                 EventsCategory,
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    [EventsUserSubmissionEnabledKey] = FormatBoolean(model.AllowUserSubmittedEvents),
-                    [EventsOrganizationSubmissionEnabledKey] = FormatBoolean(model.AllowOrganizationSubmittedEvents),
-                    [EventsGroupSubmissionEnabledKey] = FormatBoolean(model.AllowGroupSubmittedEvents),
-                    [EventsRequireApprovalKey] = FormatBoolean(model.RequireEventApproval),
-                    [EventsCardClickOpensDetailPageKey] = FormatBoolean(model.EventCardClickOpensDetailPage)
+                    [EventsUserSubmissionEnabledKey] = FormatBoolean(model.AllowUserSubmittedEvents ?? true),
+                    [EventsOrganizationSubmissionEnabledKey] = FormatBoolean(model.AllowOrganizationSubmittedEvents ?? true),
+                    [EventsGroupSubmissionEnabledKey] = FormatBoolean(model.AllowGroupSubmittedEvents ?? true),
+                    [EventsRequireApprovalKey] = FormatBoolean(model.RequireEventApproval == true),
+                    [EventsCardClickOpensDetailPageKey] = FormatBoolean(model.EventCardClickOpensDetailPage == true)
                 },
                 cancellationToken);
             if (!eventsResult.Success)
@@ -299,8 +299,8 @@ public sealed class TenantPublicExperienceAdminService(
                 OrganizationsCategory,
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    [OrganizationsVerificationRequiredKey] = FormatBoolean(model.RequireOrganizationVerification),
-                    [OrganizationsSelfRegistrationEnabledKey] = FormatBoolean(model.AllowOrganizationSelfRegistration)
+                    [OrganizationsVerificationRequiredKey] = FormatBoolean(model.RequireOrganizationVerification ?? true),
+                    [OrganizationsSelfRegistrationEnabledKey] = FormatBoolean(model.AllowOrganizationSelfRegistration ?? true)
                 },
                 cancellationToken);
             if (!organizationsResult.Success)
@@ -312,7 +312,7 @@ public sealed class TenantPublicExperienceAdminService(
                 GroupsCategory,
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    [GroupsSelfRegistrationEnabledKey] = FormatBoolean(model.AllowGroupSelfRegistration)
+                    [GroupsSelfRegistrationEnabledKey] = FormatBoolean(model.AllowGroupSelfRegistration ?? true)
                 },
                 cancellationToken);
             if (!groupsResult.Success)
@@ -333,14 +333,18 @@ public sealed class TenantPublicExperienceAdminService(
     }
 
     public async Task<PublicExperienceAdminSaveResult> SaveAnnouncementBarAsync(
-        TenantPolicySettingsModel model,
+        TenantPolicySettingsDto model,
         bool forceRedisplay,
         CancellationToken cancellationToken = default)
     {
-        int revision = forceRedisplay ? model.AnnouncementBarRevision + 1 : model.AnnouncementBarRevision;
+        int revision = model.AnnouncementBarRevision ?? 0;
+        if (forceRedisplay)
+        {
+            revision++;
+        }
         Dictionary<string, string> values = new(StringComparer.OrdinalIgnoreCase)
         {
-            [AnnouncementBarEnabledKey] = FormatBoolean(model.AnnouncementBarEnabled),
+            [AnnouncementBarEnabledKey] = FormatBoolean(model.AnnouncementBarEnabled == true),
             [AnnouncementBarMessageKey] = model.AnnouncementBarMessage?.Trim() ?? string.Empty,
             [AnnouncementBarLinkTextKey] = model.AnnouncementBarLinkText?.Trim() ?? string.Empty,
             [AnnouncementBarLinkUrlKey] = model.AnnouncementBarLinkUrl?.Trim() ?? string.Empty,
@@ -437,14 +441,14 @@ public sealed class TenantPublicExperienceAdminService(
 
     private static string FormatBoolean(bool value) => value ? "true" : "false";
 
-    private static PublicExperienceAdminSaveResult? ValidateAiAssistantSettings(TenantPolicySettingsModel model)
+    private static PublicExperienceAdminSaveResult? ValidateAiAssistantSettings(TenantPolicySettingsDto model)
     {
-        if (!model.AiAssistantEnabled)
+        if (model.AiAssistantEnabled != true)
         {
             return null;
         }
 
-        var provider = NormalizeAiProvider(model.AiAssistantProvider, model.AiAssistantEnabled);
+        var provider = NormalizeAiProvider(model.AiAssistantProvider, model.AiAssistantEnabled == true);
         if (!IsSupportedAiProvider(provider))
         {
             return PublicExperienceAdminSaveResult.Failed("AI Assistant provider must be OpenAI-compatible.");
@@ -463,19 +467,19 @@ public sealed class TenantPublicExperienceAdminService(
         return null;
     }
 
-    private static Dictionary<string, string> BuildAiAssistantValues(TenantPolicySettingsModel model)
+    private static Dictionary<string, string> BuildAiAssistantValues(TenantPolicySettingsDto model)
     {
-        var provider = NormalizeAiProvider(model.AiAssistantProvider, model.AiAssistantEnabled);
+        var provider = NormalizeAiProvider(model.AiAssistantProvider, model.AiAssistantEnabled == true);
         var usesOpenAiCompatible = provider == AiProviderOpenAiCompatible || provider == AiProviderAnthropicCompatible;
 
         return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            [AiAssistantEnabledKey] = FormatBoolean(model.AiAssistantEnabled),
+            [AiAssistantEnabledKey] = FormatBoolean(model.AiAssistantEnabled == true),
             [AiAssistantProviderKey] = provider,
             [AiAssistantEndpointUrlKey] = usesOpenAiCompatible ? model.AiAssistantEndpointUrl?.Trim() ?? string.Empty : string.Empty,
             [AiAssistantApiKeyKey] = usesOpenAiCompatible ? model.AiAssistantApiKey?.Trim() ?? string.Empty : string.Empty,
             [AiAssistantModelIdKey] = usesOpenAiCompatible ? model.AiAssistantModelId?.Trim() ?? string.Empty : string.Empty,
-            [AiAssistantAllowAnonymousAccessKey] = FormatBoolean(model.AiAssistantAllowAnonymousAccess)
+            [AiAssistantAllowAnonymousAccessKey] = FormatBoolean(model.AiAssistantAllowAnonymousAccess == true)
         };
     }
 

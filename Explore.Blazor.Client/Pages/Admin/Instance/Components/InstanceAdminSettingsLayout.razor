@@ -6,7 +6,7 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components.Forms
-@using Explore.Domain.Constants
+@using Explore.Blazor.Client.Constants
 
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IUserService UserService
@@ -120,21 +120,21 @@
                         {
                             <InstanceStorageSection Model="_storageModel" OnboardingService="InstanceOnboardingService"
                                                    IsSingleTenant="IsSingleTenantMode"
-                                                   LockForTenants="_delegation.LockTenantStorage"
+                                                   LockForTenants="_delegation.LockTenantStorage == true"
                                                    LockForTenantsChanged="@(v => _delegation.LockTenantStorage = v)" />
                         }
                         else if (_currentSection == "smtp")
                         {
                             <InstanceSmtpSection Model="_smtpModel" OnboardingService="InstanceOnboardingService"
                                                IsSingleTenant="IsSingleTenantMode"
-                                               LockForTenants="_delegation.LockTenantSmtp"
+                                               LockForTenants="_delegation.LockTenantSmtp == true"
                                                LockForTenantsChanged="@(v => _delegation.LockTenantSmtp = v)" />
                         }
                         else if (_currentSection == "analytics-privacy")
                         {
                             <InstanceAnalyticsPrivacySection Model="_analyticsModel"
                                                            IsSingleTenant="IsSingleTenantMode"
-                                                           LockForTenants="_delegation.LockTenantAnalytics"
+                                                           LockForTenants="_delegation.LockTenantAnalytics == true"
                                                            LockForTenantsChanged="@(v => _delegation.LockTenantAnalytics = v)" />
                         }
                         else if (_currentSection == "footer-governance" && !IsSingleTenantMode)
@@ -195,7 +195,7 @@
                         }
                         else if (_currentSection == "support-access-evidence")
                         {
-                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantSupportAccessEvidenceSection TenantId="PlatformDefaults.DefaultTenantId" />
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantSupportAccessEvidenceSection TenantId="TenantConstants.DefaultTenantId" />
                         }
                         else if (_currentSection == "webhooks" && IsSingleTenantMode)
                         {
@@ -263,26 +263,26 @@
 
     // Sub-resource models
     private string _deploymentMode = "SingleTenant";
-    private ModuleSettingsModel _modules = new();
-    private EventPolicyModel _eventPolicy = new();
-    private OrganizationPolicyModel _orgPolicy = new();
-    private BrandingSettingsModel _branding = new();
-    private DomainSettingsModel _domain = new();
-    private TenantDelegationModel _delegation = new();
-    private RenderPolicyModel _renderPolicy = new();
-    private AiAssistantGovernanceModel _aiAssistant = new();
-    private McpGovernanceModel _mcp = new();
+    private ModuleSettingsDto _modules = new();
+    private EventPolicyDto _eventPolicy = new();
+    private OrganizationPolicyDto _orgPolicy = new();
+    private BrandingSettingsDto _branding = new();
+    private DomainSettingsDto _domain = new();
+    private TenantDelegationSettingsDto _delegation = new();
+    private RenderPolicySettingsDto _renderPolicy = new();
+    private AiAssistantGovernanceSettingsDto _aiAssistant = new();
+    private McpGovernanceSettingsDto _mcp = new();
 
     // Infrastructure models
-    private InstanceStorageSettingsModel _storageModel = new();
-    private InstanceSmtpSettingsModel _smtpModel = new();
-    private AuthProviderConfigurationModel _authProviderModel = new();
-    private AuthorizationProviderConfigurationModel _authorizationProviderModel = new();
-    private TenantPolicySettingsModel _tenantModel = new();
+    private HalResourceOfInstanceStorageSettingsDto _storageModel = new();
+    private InstanceSmtpSettingsDto _smtpModel = new();
+    private AuthProviderConfigurationDto _authProviderModel = new();
+    private AuthorizationProviderConfigurationDto _authorizationProviderModel = new();
+    private TenantPolicySettingsDto _tenantModel = new();
     private TenantPublicExperienceAdminModel _publicExperienceModel = new();
     private Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPublicExperienceSection? _publicExperienceSection;
-    private Explore.Blazor.Client.Models.Analytics.AnalyticsGovernanceSettingsModel _analyticsModel = new();
-    private FooterGovernanceSettingsModel _footerGovernance = new();
+    private AnalyticsGovernanceSettingsDto _analyticsModel = new();
+    private FooterGovernanceSettingsDto _footerGovernance = new();
     private int _tenantCount;
     private bool _isLoading = true;
     private FormSubmitState _submitState = new();
@@ -296,7 +296,7 @@
     private bool IsSingleTenantMode => string.Equals(_deploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
                                        || string.IsNullOrWhiteSpace(_deploymentMode);
 
-    private bool CanSaveCurrentSection => _currentSection != "storage" || _storageModel.CanUpdate;
+    private bool CanSaveCurrentSection => _currentSection != "storage" || _storageModel.HasLink("edit");
 
     private static bool IsSettingsSection(string section) =>
         section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "announcement-bar" or "public-experience" or "advanced" or "analytics-privacy" or "footer-governance" or "ai"
@@ -308,7 +308,7 @@
         var authority = await UserService.GetAdminAuthorityAsync();
         var status = await InstanceOnboardingService.GetStatusAsync();
         _canEdit = authority?.IsInstanceAdmin == true
-            || (status?.IsAuthenticated == true && status.IsCurrentUserInstanceAdmin);
+            || (status?.IsAuthenticated == true && status.IsCurrentUserInstanceAdmin == true);
 
         if (!_canEdit)
         {
@@ -339,7 +339,7 @@
             domainTask, delegationTask, renderTask, aiAssistantTask, mcpTask, storageTask, smtpTask, authTask,
             authorizationTask, analyticsTask, footerGovTask, tenantCountTask);
 
-        _deploymentMode = deploymentTask.Result.Mode;
+        _deploymentMode = deploymentTask.Result.Mode?.ToString() ?? _deploymentMode;
         _modules = modulesTask.Result;
         _eventPolicy = eventTask.Result;
         _orgPolicy = orgTask.Result;
@@ -359,7 +359,7 @@
 
         if (IsSingleTenantMode)
         {
-            _tenantModel = new TenantPolicySettingsModel();
+            _tenantModel = new TenantPolicySettingsDto();
             await TenantPublicExperienceAdminService.ApplySingleTenantPolicySettingsAsync(_tenantModel);
             await TenantPublicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(_tenantModel);
             _hasAnnouncementBar = HasUsableAnnouncementBar(_tenantModel);
@@ -397,7 +397,7 @@
         }
 
         // Save the currently visible section's data
-        var tasks = new List<Task<InstanceCommandResponseModel>>();
+        var tasks = new List<Task<BaseCommandResponseOfGuid>>();
 
         switch (_currentSection)
         {
@@ -438,13 +438,13 @@
                 tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
                 break;
             case "policies" when IsSingleTenantMode:
-                _eventPolicy.AllowUserSubmittedEvents = _tenantModel.AllowUserSubmittedEvents;
-                _eventPolicy.AllowOrganizationSubmittedEvents = _tenantModel.AllowOrganizationSubmittedEvents;
-                _eventPolicy.AllowGroupSubmittedEvents = _tenantModel.AllowGroupSubmittedEvents;
-                _eventPolicy.EventCardClickOpensDetailPage = _tenantModel.EventCardClickOpensDetailPage;
-                _orgPolicy.RequireOrganizationVerification = _tenantModel.RequireOrganizationVerification;
-                _orgPolicy.AllowOrganizationSelfRegistration = _tenantModel.AllowOrganizationSelfRegistration;
-                _orgPolicy.AllowGroupSelfRegistration = _tenantModel.AllowGroupSelfRegistration;
+                _eventPolicy.AllowUserSubmittedEvents = _tenantModel.AllowUserSubmittedEvents ?? _eventPolicy.AllowUserSubmittedEvents;
+                _eventPolicy.AllowOrganizationSubmittedEvents = _tenantModel.AllowOrganizationSubmittedEvents ?? _eventPolicy.AllowOrganizationSubmittedEvents;
+                _eventPolicy.AllowGroupSubmittedEvents = _tenantModel.AllowGroupSubmittedEvents ?? _eventPolicy.AllowGroupSubmittedEvents;
+                _eventPolicy.EventCardClickOpensDetailPage = _tenantModel.EventCardClickOpensDetailPage ?? _eventPolicy.EventCardClickOpensDetailPage;
+                _orgPolicy.RequireOrganizationVerification = _tenantModel.RequireOrganizationVerification ?? _orgPolicy.RequireOrganizationVerification;
+                _orgPolicy.AllowOrganizationSelfRegistration = _tenantModel.AllowOrganizationSelfRegistration ?? _orgPolicy.AllowOrganizationSelfRegistration;
+                _orgPolicy.AllowGroupSelfRegistration = _tenantModel.AllowGroupSelfRegistration ?? _orgPolicy.AllowGroupSelfRegistration;
 
                 PublicExperienceAdminSaveResult policyResponse = await TenantPublicExperienceAdminService.SaveSingleTenantPolicySettingsAsync(_tenantModel);
                 if (!policyResponse.Success)
@@ -491,7 +491,7 @@
         if (tasks.Count > 0)
         {
             var results = await Task.WhenAll(tasks);
-            var failed = results.FirstOrDefault(r => !r.Success);
+            var failed = results.FirstOrDefault(r => r.Success != true);
             if (failed is not null)
             {
                 _submitState.Complete();
@@ -521,8 +521,6 @@
         _tenantModel.AnnouncementBarMessage = string.Empty;
         _tenantModel.AnnouncementBarLinkText = string.Empty;
         _tenantModel.AnnouncementBarLinkUrl = string.Empty;
-        _tenantModel.ForceAnnouncementBarRedisplay = false;
-
         _submitState.Start();
         _errorMessage = null;
 
@@ -550,8 +548,8 @@
             : response.Message;
     }
 
-    private static bool HasUsableAnnouncementBar(TenantPolicySettingsModel model) =>
-        model.AnnouncementBarEnabled && !string.IsNullOrWhiteSpace(model.AnnouncementBarMessage);
+    private static bool HasUsableAnnouncementBar(TenantPolicySettingsDto model) =>
+        model.AnnouncementBarEnabled == true && !string.IsNullOrWhiteSpace(model.AnnouncementBarMessage);
 
     private static string GetAnnouncementSaveMessage(bool hadAnnouncementBarBeforeSave, bool forceAnnouncementBarRedisplay)
     {
@@ -722,7 +720,7 @@
 
     private bool ShouldOpenAiAssistantAfterSave() =>
         _currentSection == "ai"
-        && _aiAssistant.Enabled;
+        && _aiAssistant.Enabled == true;
 
     private async Task RefreshShellExperienceAsync(bool openAiAssistantIfAvailable = false)
     {
@@ -732,12 +730,12 @@
         if (settings is not null)
         {
             AiAssistantState.SetPolicy(
-                settings.IsAiAssistantEnabled,
-                settings.IsAiAssistantAvailable,
-                settings.AiAssistantAllowAnonymousAccess,
+                settings.IsAiAssistantEnabled == true,
+                settings.IsAiAssistantAvailable == true,
+                settings.AiAssistantAllowAnonymousAccess == true,
                 isAuthenticated: true);
 
-            if (openAiAssistantIfAvailable && settings.IsAiAssistantAvailable)
+            if (openAiAssistantIfAvailable && settings.IsAiAssistantAvailable == true)
             {
                 AiAssistantState.Open();
             }

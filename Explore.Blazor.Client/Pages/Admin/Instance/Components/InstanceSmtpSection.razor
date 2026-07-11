@@ -17,7 +17,7 @@
                       @bind-Value="Model.Host"
                       Placeholder="smtp.example.com" />
 
-        <MudNumericField T="int" Label="SMTP Port"
+        <MudNumericField T="int?" Label="SMTP Port"
                          Variant="Variant.Outlined"
                          @bind-Value="Model.Port"
                          Min="1"
@@ -52,13 +52,16 @@
                       @bind-Value="Model.FromName"
                       Placeholder="Community Events" />
 
-        <MudNumericField T="int" Label="Timeout (seconds)"
+        <MudNumericField T="int?" Label="Timeout (seconds)"
                          Variant="Variant.Outlined"
                          @bind-Value="Model.TimeoutSeconds"
                          Min="1"
                          Max="300" />
 
-        <MudSwitch T="bool" @bind-Value="Model.SkipCertificateValidation" Color="Color.Warning">
+        <MudSwitch T="bool"
+                   Value="Model.SkipCertificateValidation == true"
+                   ValueChanged="@(value => Model.SkipCertificateValidation = value)"
+                   Color="Color.Warning">
             Skip certificate validation (development only)
         </MudSwitch>
 
@@ -75,7 +78,7 @@
 
             @if (_testResult != null)
             {
-                <MudAlert Severity="@(_testResult.Success ? Severity.Success : Severity.Error)"
+                <MudAlert Severity="@(_testResult.Success == true ? Severity.Success : Severity.Error)"
                           Dense="true"
                           NoIcon="false"
                           Class="flex-grow-1">
@@ -98,7 +101,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public InstanceSmtpSettingsModel Model { get; set; } = null!;
+    public InstanceSmtpSettingsDto Model { get; set; } = null!;
 
     [Parameter]
     public IInstanceOnboardingService? OnboardingService { get; set; }
@@ -113,7 +116,7 @@
     public EventCallback<bool> LockForTenantsChanged { get; set; }
 
     private bool _isTesting;
-    private SmtpConnectionTestResult? _testResult;
+    private SmtpConnectionTestResultDto? _testResult;
 
     private async Task TestConnectionAsync()
     {

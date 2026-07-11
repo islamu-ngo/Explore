@@ -3,7 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
-using Explore.Domain.Common.Localization;
+using Explore.Blazor.Client.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;

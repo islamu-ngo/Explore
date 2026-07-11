@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.SupportAccess;
+using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Services.Http;
 using Microsoft.Extensions.Logging;
 
@@ -133,14 +134,15 @@ public sealed class SupportAccessClientService(
         }
     }
 
-    public async Task<SupportAccessSessionCollection> GetSessionsAsync(
+    public async Task<ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>> GetSessionsAsync(
         Guid targetTenantId,
         int limit = DefaultListLimit,
         CancellationToken cancellationToken = default)
     {
         if (targetTenantId == Guid.Empty)
         {
-            return SupportAccessSessionCollection.Failed("Select a tenant before loading support access sessions.");
+            return ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>.Failure(
+                "Select a tenant before loading support access sessions.");
         }
 
         LastError = null;
@@ -152,18 +154,19 @@ public sealed class SupportAccessClientService(
                 $"/bff/support-access/tenants/{targetTenantId:D}/sessions?limit={ClampLimit(limit)}",
                 cancellationToken);
 
-            return MapSessionCollection(collection);
+            return ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>.Success(
+                collection ?? new HalCollectionResourceOfSupportAccessSessionDto());
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Could not load support-access sessions.");
             LastError = "Support access sessions are unavailable.";
             Notify();
-            return SupportAccessSessionCollection.Failed(LastError);
+            return ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>.Failure(LastError);
         }
     }
 
-    public async Task<SupportAccessAuditEventCollection> GetAuditEventsAsync(
+    public async Task<ServiceResult<HalCollectionResourceOfSupportAccessAuditEventDto>> GetAuditEventsAsync(
         Guid targetTenantId,
         Guid sessionId,
         int limit = DefaultListLimit,
@@ -171,7 +174,8 @@ public sealed class SupportAccessClientService(
     {
         if (targetTenantId == Guid.Empty || sessionId == Guid.Empty)
         {
-            return SupportAccessAuditEventCollection.Failed("Select a support access session before loading audit events.");
+            return ServiceResult<HalCollectionResourceOfSupportAccessAuditEventDto>.Failure(
+                "Select a support access session before loading audit events.");
         }
 
         LastError = null;
@@ -183,14 +187,15 @@ public sealed class SupportAccessClientService(
                 $"/bff/support-access/tenants/{targetTenantId:D}/sessions/{sessionId:D}/audit-events?limit={ClampLimit(limit)}",
                 cancellationToken);
 
-            return MapAuditEventCollection(collection);
+            return ServiceResult<HalCollectionResourceOfSupportAccessAuditEventDto>.Success(
+                collection ?? new HalCollectionResourceOfSupportAccessAuditEventDto());
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Could not load support-access audit events.");
             LastError = "Support access audit events are unavailable.";
             Notify();
-            return SupportAccessAuditEventCollection.Failed(LastError);
+            return ServiceResult<HalCollectionResourceOfSupportAccessAuditEventDto>.Failure(LastError);
         }
     }
 
@@ -290,106 +295,6 @@ public sealed class SupportAccessClientService(
         };
         return IsIdentifiedSession(session) ? session : null;
     }
-
-    private static SupportAccessSessionCollection MapSessionCollection(
-        HalCollectionResourceOfSupportAccessSessionDto? collection)
-    {
-        if (collection is null)
-        {
-            return SupportAccessSessionCollection.Empty();
-        }
-
-        var items = collection._embedded?.Items?
-            .Select(MapSessionResource)
-            .OfType<SupportAccessSessionResource>()
-            .ToList() ?? [];
-
-        return new SupportAccessSessionCollection(
-            items,
-            MapLinks(collection._links),
-            collection.TotalCount ?? items.Count,
-            collection.PageSize ?? items.Count);
-    }
-
-    private static SupportAccessSessionResource? MapSessionResource(
-        HalResourceOfSupportAccessSessionDto? resource)
-    {
-        var session = MapSession(resource);
-        return session is null
-            ? null
-            : new SupportAccessSessionResource(session, MapLinks(resource?._links));
-    }
-
-    private static SupportAccessAuditEventCollection MapAuditEventCollection(
-        HalCollectionResourceOfSupportAccessAuditEventDto? collection)
-    {
-        if (collection is null)
-        {
-            return SupportAccessAuditEventCollection.Empty();
-        }
-
-        var items = collection._embedded?.Items?
-            .Select(MapAuditEventResource)
-            .OfType<SupportAccessAuditEventResource>()
-            .ToList() ?? [];
-
-        return new SupportAccessAuditEventCollection(
-            items,
-            MapLinks(collection._links),
-            collection.TotalCount ?? items.Count,
-            collection.PageSize ?? items.Count);
-    }
-
-    private static SupportAccessAuditEventResource? MapAuditEventResource(
-        HalResourceOfSupportAccessAuditEventDto? resource)
-    {
-        if (resource is null)
-        {
-            return null;
-        }
-
-        return new SupportAccessAuditEventResource(
-            new SupportAccessAuditEventDto
-            {
-                Id = resource.Id,
-                SupportAccessSessionId = resource.SupportAccessSessionId,
-                OccurredAtUtc = resource.OccurredAtUtc,
-                EventTypeId = resource.EventTypeId,
-                EventTypeName = resource.EventTypeName,
-                ActorUserId = resource.ActorUserId,
-                TargetTenantId = resource.TargetTenantId,
-                TargetTenantUserId = resource.TargetTenantUserId,
-                RouteName = resource.RouteName,
-                RequestName = resource.RequestName,
-                ResourceKind = resource.ResourceKind,
-                ResourceId = resource.ResourceId,
-                Action = resource.Action,
-                Outcome = resource.Outcome,
-                HttpStatusCode = resource.HttpStatusCode,
-                CorrelationId = resource.CorrelationId,
-                TraceId = resource.TraceId,
-                SanitizedMetadataJson = resource.SanitizedMetadataJson
-            },
-            MapLinks(resource._links));
-    }
-
-    private static IReadOnlyDictionary<string, SupportAccessLink> MapLinks<TLink>(
-        IDictionary<string, TLink>? links)
-    {
-        return links is null
-            ? SupportAccessLinkLookup.Empty
-            : links.ToDictionary(
-                pair => pair.Key,
-                pair => new SupportAccessLink(
-                    pair.Key,
-                    ReadLinkProperty(pair.Value, nameof(HalLink.Href)) ?? string.Empty,
-                    ReadLinkProperty(pair.Value, nameof(HalLink.Method)),
-                    ReadLinkProperty(pair.Value, nameof(HalLink.Title))),
-                StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static string? ReadLinkProperty<TLink>(TLink link, string propertyName)
-        => link?.GetType().GetProperty(propertyName)?.GetValue(link)?.ToString();
 
     private static SupportAccessSessionDto? MapSessionFromEnvelope(HalResourceOfSupportAccessSessionDto resource)
     {

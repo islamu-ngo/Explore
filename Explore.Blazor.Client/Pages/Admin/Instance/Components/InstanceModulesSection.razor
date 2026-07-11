@@ -12,40 +12,55 @@
         </MudText>
     </div>
     <MudStack Spacing="3">
-        <MudSwitch T="bool" @bind-Value="Model.EnableIslamicModule" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.EnableIslamicModule == true"
+                   ValueChanged="@(value => Model.EnableIslamicModule = value)"
+                   Color="Color.Primary">
             Enable Islamic module
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.EnableTechModule" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.EnableTechModule == true"
+                   ValueChanged="@(value => Model.EnableTechModule = value)"
+                   Color="Color.Primary">
             Enable Tech module
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="EventPolicy.AllowUserSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="EventPolicy.AllowUserSubmittedEvents == true"
+                   ValueChanged="@(value => EventPolicy.AllowUserSubmittedEvents = value)"
+                   Color="Color.Primary">
             Allow user-submitted events
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="OrganizationPolicy.RequireOrganizationVerification" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="OrganizationPolicy.RequireOrganizationVerification == true"
+                   ValueChanged="@(value => OrganizationPolicy.RequireOrganizationVerification = value)"
+                   Color="Color.Primary">
             Require organization verification
         </MudSwitch>
 
         @if (!IsSingleTenant)
         {
-        <MudSwitch T="bool" @bind-Value="OrganizationPolicy.AllowTenantToOmitVerification" Color="Color.Primary">
-            Allow tenant admins to omit organization verification
-        </MudSwitch>
+            <MudSwitch T="bool"
+                       Value="OrganizationPolicy.AllowTenantToOmitVerification == true"
+                       ValueChanged="@(value => OrganizationPolicy.AllowTenantToOmitVerification = value)"
+                       Color="Color.Primary">
+                Allow tenant admins to omit organization verification
+            </MudSwitch>
         }
     </MudStack>
 </div>
 
 @code {
     [Parameter, EditorRequired]
-    public ModuleSettingsModel Model { get; set; } = null!;
+    public ModuleSettingsDto Model { get; set; } = null!;
 
     [Parameter, EditorRequired]
-    public EventPolicyModel EventPolicy { get; set; } = null!;
+    public EventPolicyDto EventPolicy { get; set; } = null!;
 
     [Parameter, EditorRequired]
-    public OrganizationPolicyModel OrganizationPolicy { get; set; } = null!;
+    public OrganizationPolicyDto OrganizationPolicy { get; set; } = null!;
 
     [Parameter]
     public bool IsSingleTenant { get; set; }

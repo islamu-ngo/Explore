@@ -32,7 +32,7 @@
         try
         {
             var settings = await PublicExperienceService.GetCachedSettingsAsync();
-            _renderedContent = RenderContent(settings.CommunityGuidelinesContent);
+            _renderedContent = RenderContent(settings?.CommunityGuidelinesContent ?? string.Empty);
         }
         catch
         {

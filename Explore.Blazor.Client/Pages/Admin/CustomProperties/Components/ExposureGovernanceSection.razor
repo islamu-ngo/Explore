@@ -81,7 +81,7 @@
     }
     else
     {
-        <MudDataGrid T="CustomPropertyDefinitionListModel"
+        <MudDataGrid T="CustomPropertyDefinitionListDto"
                      Items="FilteredDefinitions"
                      Dense="true"
                      Hover="true"
@@ -93,7 +93,7 @@
                      QuickFilter="@(x => true)"
                      RowsPerPage="25">
             <Columns>
-                <SelectColumn T="CustomPropertyDefinitionListModel" />
+                <SelectColumn T="CustomPropertyDefinitionListDto" />
 
                 <PropertyColumn Property="x => x.Namespace" Title="Namespace" />
                 <PropertyColumn Property="x => x.Key" Title="Key" />
@@ -101,7 +101,7 @@
                 <PropertyColumn Property="x => x.PropertyType" Title="Type">
                     <CellTemplate>
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">
-                            @context.Item.PropertyType
+                            @((PropertyType)(context.Item.PropertyType ?? 0))
                         </MudChip>
                     </CellTemplate>
                 </PropertyColumn>
@@ -119,31 +119,31 @@
                         <MudChip T="string"
                                  Size="Size.Small"
                                  Variant="Variant.Filled"
-                                 Color="@GovernanceTooltips.ExposureColor(context.Item.ExposureLevel)">
-                            @context.Item.ExposureLevel
+                                 Color="@GovernanceTooltips.ExposureColor((ExposureLevel)(context.Item.ExposureLevel ?? 0))">
+                            @((ExposureLevel)(context.Item.ExposureLevel ?? 0))
                         </MudChip>
                     </CellTemplate>
                 </TemplateColumn>
 
                 <TemplateColumn Title="Searchable" Sortable="false">
                     <HeaderTemplate>@FlagHeader("Searchable", GovernanceTooltips.Searchable)</HeaderTemplate>
-                    <CellTemplate>@FlagCell(context.Item.IsSearchable)</CellTemplate>
+                    <CellTemplate>@FlagCell(context.Item.IsSearchable == true)</CellTemplate>
                 </TemplateColumn>
                 <TemplateColumn Title="Filterable" Sortable="false">
                     <HeaderTemplate>@FlagHeader("Filterable", GovernanceTooltips.Filterable)</HeaderTemplate>
-                    <CellTemplate>@FlagCell(context.Item.IsFilterable)</CellTemplate>
+                    <CellTemplate>@FlagCell(context.Item.IsFilterable == true)</CellTemplate>
                 </TemplateColumn>
                 <TemplateColumn Title="Exportable" Sortable="false">
                     <HeaderTemplate>@FlagHeader("Exportable", GovernanceTooltips.Exportable)</HeaderTemplate>
-                    <CellTemplate>@FlagCell(context.Item.IsExportable)</CellTemplate>
+                    <CellTemplate>@FlagCell(context.Item.IsExportable == true)</CellTemplate>
                 </TemplateColumn>
                 <TemplateColumn Title="Moderation" Sortable="false">
                     <HeaderTemplate>@FlagHeader("Moderation", GovernanceTooltips.Moderation)</HeaderTemplate>
-                    <CellTemplate>@FlagCell(context.Item.IsModerationRelevant)</CellTemplate>
+                    <CellTemplate>@FlagCell(context.Item.IsModerationRelevant == true)</CellTemplate>
                 </TemplateColumn>
                 <TemplateColumn Title="Analytics" Sortable="false">
                     <HeaderTemplate>@FlagHeader("Analytics", GovernanceTooltips.Analytics)</HeaderTemplate>
-                    <CellTemplate>@FlagCell(context.Item.IsAnalyticsRelevant)</CellTemplate>
+                    <CellTemplate>@FlagCell(context.Item.IsAnalyticsRelevant == true)</CellTemplate>
                 </TemplateColumn>
 
                 <TemplateColumn Title="Actions" Sortable="false">
@@ -151,14 +151,14 @@
                         <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                        Size="Size.Small"
                                        Color="Color.Primary"
-                                       Disabled="@(context.Item.IsSystemOwned || _submitState.IsSubmitting)"
+                                       Disabled="@(context.Item.IsSystemOwned == true || _submitState.IsSubmitting)"
                                        OnClick="@(() => OpenEditDialogAsync(context.Item))"
                                        aria-label="@($"Edit governance flags for {context.Item.DisplayName}")" />
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
             <PagerContent>
-                <MudDataGridPager T="CustomPropertyDefinitionListModel" />
+                <MudDataGridPager T="CustomPropertyDefinitionListDto" />
             </PagerContent>
         </MudDataGrid>
     }
@@ -170,10 +170,10 @@
     private string? _errorMessage;
     private string? _search;
     private EntityTypeName _entityType = EntityTypeName.Event;
-    private List<CustomPropertyDefinitionListModel> _definitions = new();
-    private HashSet<CustomPropertyDefinitionListModel> _selected = new();
+    private List<CustomPropertyDefinitionListDto> _definitions = new();
+    private HashSet<CustomPropertyDefinitionListDto> _selected = new();
 
-    private IEnumerable<CustomPropertyDefinitionListModel> FilteredDefinitions
+    private IEnumerable<CustomPropertyDefinitionListDto> FilteredDefinitions
     {
         get
         {
@@ -202,7 +202,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Failed to load definitions: {ex.Message}";
-            _definitions = new List<CustomPropertyDefinitionListModel>();
+            _definitions = new List<CustomPropertyDefinitionListDto>();
         }
         finally
         {
@@ -210,9 +210,9 @@
         }
     }
 
-    private async Task OpenEditDialogAsync(CustomPropertyDefinitionListModel definition)
+    private async Task OpenEditDialogAsync(CustomPropertyDefinitionListDto definition)
     {
-        if (definition.IsSystemOwned)
+        if (definition.IsSystemOwned == true)
         {
             Snackbar.Add("System-owned definitions cannot be edited here.", Severity.Warning);
             return;
@@ -220,7 +220,7 @@
 
         var parameters = new DialogParameters<EditDefinitionFlagsDialog>
         {
-            { x => x.Definitions, new List<CustomPropertyDefinitionListModel> { definition } }
+            { x => x.Definitions, new List<CustomPropertyDefinitionListDto> { definition } }
         };
 
         var result = await EditDefinitionFlagsDialog.ShowAsync(
@@ -272,7 +272,7 @@
         try
         {
             var response = await AdminService.UpdateDefinitionFlagsAsync(update);
-            if (response is null || !response.Success)
+            if (response?.Success is not true)
             {
                 _errorMessage = response?.Message ?? "Failed to update definition flags.";
                 Snackbar.Add(_errorMessage, Severity.Error);
@@ -299,7 +299,7 @@
         {
             var updates = _selected.Select(d => new DefinitionFlagUpdateModel
             {
-                DefinitionId = d.Id,
+                DefinitionId = d.Id ?? Guid.Empty,
                 ExposureLevel = template.ExposureLevel,
                 IsSearchable = template.IsSearchable,
                 IsFilterable = template.IsFilterable,
@@ -309,7 +309,7 @@
             }).ToList();
 
             var response = await AdminService.UpdateManyDefinitionFlagsAsync(updates);
-            if (!response.Success)
+            if (response.Success is not true)
             {
                 _errorMessage = response.Message ?? "Bulk update completed with failures.";
                 Snackbar.Add(_errorMessage, Severity.Warning);

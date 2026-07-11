@@ -6,7 +6,6 @@ using Explore.Blazor.Client.Components.Forms;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.EventTemplates;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models.EventTemplates;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Services;
@@ -50,7 +49,7 @@ public partial class CreateEvent : IDisposable
     private ICollection<OrganizationListDto>? _myOrganizations;
     private string _organizationRoleError = string.Empty;
     private Guid? _selectedGroupId;
-    private ICollection<GroupPublisherListDto>? _myGroups;
+    private ICollection<GroupListDto>? _myGroups;
     private string _groupRoleError = string.Empty;
     private EventCreationContextDto? _creationContext;
     private string _creationContextError = string.Empty;
@@ -76,8 +75,8 @@ public partial class CreateEvent : IDisposable
     private ICollection<RegistrationModeListDto>? registrationModes;
     private ICollection<LanguageListDto>? languages;
     private ICollection<EventRegistrationPolicyListDto>? registrationPolicies;
-    private IReadOnlyList<EventTemplateListModel> eventTemplates = Array.Empty<EventTemplateListModel>();
-    private EventTemplateDetailModel? _selectedEventTemplate;
+    private IReadOnlyList<HalResourceOfEventTemplateListDto> eventTemplates = Array.Empty<HalResourceOfEventTemplateListDto>();
+    private HalResourceOfEventTemplateDto? _selectedEventTemplate;
     private bool _isLoadingEventTemplates;
     private bool _isLoadingTemplatePreview;
     private string? _templateLoadError;
@@ -582,7 +581,7 @@ public partial class CreateEvent : IDisposable
         createDto.EventTypeId = eventTypeId;
         createDto.TemplateId = null;
         _selectedEventTemplate = null;
-        eventTemplates = Array.Empty<EventTemplateListModel>();
+        eventTemplates = Array.Empty<HalResourceOfEventTemplateListDto>();
         ClearSessionTemplateSelections();
         await LoadEventTemplatesAsync(eventTypeId);
     }
@@ -866,7 +865,7 @@ public partial class CreateEvent : IDisposable
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error loading user groups");
-                _myGroups = new List<GroupPublisherListDto>();
+                _myGroups = new List<GroupListDto>();
             }
 
             var eventTypesTask = AdminService.GetEventTypesAsync();
@@ -924,8 +923,8 @@ public partial class CreateEvent : IDisposable
                 return;
             }
 
-            eventTemplates = templates.Items
-                .Where(t => t.IsActive && t.IsPublished)
+            eventTemplates = (templates._embedded?.Items ?? [])
+                .Where(t => t.IsActive == true && t.IsPublished == true)
                 .OrderBy(t => t.SortOrder)
                 .ThenBy(t => t.DisplayName)
                 .ToList();
@@ -935,7 +934,7 @@ public partial class CreateEvent : IDisposable
             Logger.LogError(ex, "Failed to load event templates for event type {EventTypeId}", eventTypeId);
             if (IsCurrentTemplateListRequest(requestVersion, eventTypeId))
             {
-                eventTemplates = Array.Empty<EventTemplateListModel>();
+                eventTemplates = Array.Empty<HalResourceOfEventTemplateListDto>();
                 _templateLoadError = "Event templates could not be loaded. You can still create a vanilla event.";
             }
         }

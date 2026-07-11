@@ -1,7 +1,7 @@
 @* ABOUTME: Dialog for creating and editing individual footer links within a group. *@
 @* ABOUTME: Follows TenantNavigationDialog pattern with EditForm validation and DialogResult dispatch. *@
 
-@using Explore.Blazor.Client.Contracts.Services.Footer
+@using Explore.Blazor.Client.Clients
 @using MudBlazor
 
 <MudDialog>
@@ -51,12 +51,12 @@
     private IDialogReference? DialogReference { get; set; }
 
     [Parameter]
-    public FooterLinkDetailModel? ExistingLink { get; set; }
+    public FooterLinkItemDto? ExistingLink { get; set; }
 
     private EditContext _editContext = default!;
     private bool _isEdit;
     private bool _isActive = true;
-    private CreateFooterLinkModel _model = new();
+    private CreateFooterLinkRequest _model = new();
 
     protected override void OnInitialized()
     {
@@ -64,9 +64,9 @@
 
         if (_isEdit && ExistingLink != null)
         {
-            _model.Label = ExistingLink.Label;
-            _model.Url = ExistingLink.Url;
-            _model.OpenInNewTab = ExistingLink.OpenInNewTab;
+            _model.Label = ExistingLink.Label ?? string.Empty;
+            _model.Url = ExistingLink.Url ?? string.Empty;
+            _model.OpenInNewTab = ExistingLink.OpenInNewTab == true;
             _isActive = true;
         }
 
@@ -79,7 +79,7 @@
         {
             if (_isEdit && ExistingLink != null)
             {
-                var updateModel = new UpdateFooterLinkModel
+                var updateModel = new UpdateFooterLinkRequest
                 {
                     Label = _model.Label,
                     Url = _model.Url,

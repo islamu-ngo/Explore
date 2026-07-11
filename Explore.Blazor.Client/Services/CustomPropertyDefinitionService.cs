@@ -2,12 +2,10 @@
 // ABOUTME: Handles HAL unwrap, error catching, and logging for CRUD of layer 3 definitions.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
-using Explore.Blazor.Client.Models.Responses;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -23,7 +21,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<PaginatedResult<CustomPropertyDefinitionListModel>> GetDefinitionsAsync(
+    public async Task<PaginatedResult<CustomPropertyDefinitionListDto>> GetDefinitionsAsync(
         EntityTypeName entityTypeName,
         int pageNumber = 1,
         int pageSize = 20,
@@ -42,18 +40,18 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP DEF] Failed to fetch definitions for {EntityType}", entityTypeName);
-            return PaginatedResult<CustomPropertyDefinitionListModel>.Empty(pageNumber, pageSize);
+            return PaginatedResult<CustomPropertyDefinitionListDto>.Empty(pageNumber, pageSize);
         }
     }
 
-    public async Task<CustomPropertyDefinitionDetailModel?> GetDefinitionAsync(
+    public async Task<CustomPropertyDefinitionDto?> GetDefinitionAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var hal = await _apiClient.GetCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
-            return hal.ToModel();
+            return hal.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -66,7 +64,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         }
     }
 
-    public async Task<IReadOnlyList<CustomPropertyDefinitionDetailModel>> GetEventDefinitionsAsync(
+    public async Task<IReadOnlyList<CustomPropertyDefinitionDto>> GetEventDefinitionsAsync(
         Guid eventId,
         CancellationToken cancellationToken = default)
     {
@@ -79,11 +77,11 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
                 cancellationToken: cancellationToken);
 
             var listItems = response.GetItems()
-                .Where(d => d.IsActive)
+                .Where(d => d.IsActive == true)
                 .OrderBy(d => d.SortOrder)
                 .ToList();
 
-            var detailTasks = listItems.Select(d => GetEventDefinitionAsync(d.Id, cancellationToken));
+            var detailTasks = listItems.Select(d => GetEventDefinitionAsync(d.Id ?? Guid.Empty, cancellationToken));
             var details = await Task.WhenAll(detailTasks);
             return NonNull(details);
         }
@@ -94,7 +92,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         }
     }
 
-    public async Task<IReadOnlyList<CustomPropertyDefinitionDetailModel>> GetEventSessionDefinitionsAsync(
+    public async Task<IReadOnlyList<CustomPropertyDefinitionDto>> GetEventSessionDefinitionsAsync(
         Guid eventSessionId,
         CancellationToken cancellationToken = default)
     {
@@ -107,11 +105,11 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
                 cancellationToken: cancellationToken);
 
             var listItems = response.GetItems()
-                .Where(d => d.IsActive)
+                .Where(d => d.IsActive == true)
                 .OrderBy(d => d.SortOrder)
                 .ToList();
 
-            var detailTasks = listItems.Select(d => GetEventSessionDefinitionAsync(d.Id, cancellationToken));
+            var detailTasks = listItems.Select(d => GetEventSessionDefinitionAsync(d.Id ?? Guid.Empty, cancellationToken));
             var details = await Task.WhenAll(detailTasks);
             return NonNull(details);
         }
@@ -122,7 +120,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>?> CreateDefinitionAsync(
+    public async Task<BaseCommandResponseOfGuid?> CreateDefinitionAsync(
         CreateCustomPropertyDefinitionDto body,
         CancellationToken cancellationToken = default)
     {
@@ -131,7 +129,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         try
         {
             var response = await _apiClient.CreateCustomPropertyDefinitionAsync(body, cancellationToken: cancellationToken);
-            return ToClientResponse(response);
+            return response;
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -145,7 +143,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>?> UpdateDefinitionAsync(
+    public async Task<BaseCommandResponseOfGuid?> UpdateDefinitionAsync(
         Guid id,
         UpdateCustomPropertyDefinitionDto body,
         CancellationToken cancellationToken = default)
@@ -155,7 +153,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         try
         {
             var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(id, body, cancellationToken: cancellationToken);
-            return ToClientResponse(response);
+            return response;
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -189,25 +187,14 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         }
     }
 
-    private static BaseCommandResponse<Guid> ToClientResponse(BaseCommandResponseOfGuid response)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = response.Success ?? false,
-            Id = response.Id ?? Guid.Empty,
-            Message = response.Message,
-            Errors = response.Errors?.ToList()
-        };
-    }
-
-    private async Task<CustomPropertyDefinitionDetailModel?> GetEventDefinitionAsync(
+    private async Task<CustomPropertyDefinitionDto?> GetEventDefinitionAsync(
         Guid id,
         CancellationToken cancellationToken)
     {
         try
         {
             var hal = await _apiClient.GetEventCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
-            return hal.ToModel();
+            return hal.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -215,14 +202,14 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         }
     }
 
-    private async Task<CustomPropertyDefinitionDetailModel?> GetEventSessionDefinitionAsync(
+    private async Task<CustomPropertyDefinitionDto?> GetEventSessionDefinitionAsync(
         Guid id,
         CancellationToken cancellationToken)
     {
         try
         {
             var hal = await _apiClient.GetEventSessionCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
-            return hal.ToModel();
+            return hal.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -230,10 +217,10 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
         }
     }
 
-    private static IReadOnlyList<CustomPropertyDefinitionDetailModel> NonNull(
-        IEnumerable<CustomPropertyDefinitionDetailModel?> definitions)
+    private static IReadOnlyList<CustomPropertyDefinitionDto> NonNull(
+        IEnumerable<CustomPropertyDefinitionDto?> definitions)
     {
-        var result = new List<CustomPropertyDefinitionDetailModel>();
+        var result = new List<CustomPropertyDefinitionDto>();
         foreach (var definition in definitions)
         {
             if (definition is not null)

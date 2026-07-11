@@ -1,11 +1,13 @@
-// ABOUTME: Client-side pagination model that mirrors the API PaginatedResult<T>.
-// Maps from NSwag-generated HalCollectionResource types to provide clean pagination metadata to UI components.
+// ABOUTME: Presentation-only pagination state composed from generated collection resources.
+// ABOUTME: Keeps UI paging calculations without duplicating an API payload contract.
+
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Models;
 
 /// <summary>
 /// Represents a paginated result set for Blazor UI consumption.
-/// Mirrors the API <c>PaginatedResult&lt;T&gt;</c> from <c>Explore.Application.Responses</c>.
+/// Normalizes generated paginated and HAL responses for UI list state.
 /// </summary>
 /// <typeparam name="T">The type of items in the result set.</typeparam>
 public sealed class PaginatedResult<T>
@@ -30,7 +32,7 @@ public sealed class PaginatedResult<T>
     /// </summary>
     public required int TotalCount { get; init; }
 
-    public IReadOnlyDictionary<string, HalLinkDto>? Links { get; init; }
+    public IReadOnlyDictionary<string, HalLink>? Links { get; init; }
 
     /// <summary>
     /// Gets the total number of pages.

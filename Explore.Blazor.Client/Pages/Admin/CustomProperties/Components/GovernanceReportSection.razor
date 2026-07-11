@@ -77,7 +77,7 @@
                     <MudChip T="string"
                              Size="Size.Small"
                              Variant="Variant.Filled"
-                             Color="@GovernanceTooltips.ExposureColor(context.ExposureLevel)">
+                             Color="@GovernanceTooltips.ExposureColor(context.ExposureLevel ?? ExposureLevel.Internal)">
                         @context.ExposureLevel
                     </MudChip>
                 </MudTd>
@@ -104,7 +104,7 @@
     private bool _isLoading;
     private string? _errorMessage;
     private PromotionRecommendation? _recommendationFilter;
-    private List<CustomPropertyGovernanceRowModel> _rows = new();
+    private List<CustomPropertyGovernanceRowDto> _rows = new();
     private int _totalCount;
 
     protected override Task OnInitializedAsync() => ReloadAsync();
@@ -127,7 +127,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Failed to load governance report: {ex.Message}";
-            _rows = new List<CustomPropertyGovernanceRowModel>();
+            _rows = new List<CustomPropertyGovernanceRowDto>();
         }
         finally
         {
@@ -135,7 +135,7 @@
         }
     }
 
-    private static string RecommendationLabel(PromotionRecommendation r) => r switch
+    private static string RecommendationLabel(PromotionRecommendation? r) => r switch
     {
         PromotionRecommendation.ConsiderProjectionFirst => "Consider projection-first",
         PromotionRecommendation.ConsiderLayer2Promotion => "Consider Layer 2",
@@ -143,7 +143,7 @@
         _ => "No action"
     };
 
-    private static Color RecommendationColor(PromotionRecommendation r) => r switch
+    private static Color RecommendationColor(PromotionRecommendation? r) => r switch
     {
         PromotionRecommendation.ConsiderProjectionFirst => Color.Info,
         PromotionRecommendation.ConsiderLayer2Promotion => Color.Warning,

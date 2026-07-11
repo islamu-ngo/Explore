@@ -61,7 +61,7 @@
                             @foreach (var day in Days.OrderBy(d => d.SortOrder))
                             {
                                 <MudSelectItem T="Guid?" Value="@((Guid?)day.Id)">
-                                    @(!string.IsNullOrEmpty(day.Label) ? day.Label : day.LocalDate.ToString("MMM d"))
+                                    @(!string.IsNullOrEmpty(day.Label) ? day.Label : day.LocalDate?.ToString("MMM d"))
                                 </MudSelectItem>
                             }
                         </MudSelect>
@@ -203,12 +203,12 @@
             {
                 _title = item.Title;
                 _description = item.Description ?? string.Empty;
-                _startTime = TimeSpan.FromMinutes(item.LocalStartMinuteOfDay);
-                _endTime = TimeSpan.FromMinutes(item.LocalEndMinuteOfDay);
-                _selectedDayId = item.EventDayId != Guid.Empty ? item.EventDayId : null;
-                _selectedRoomId = item.RoomId != Guid.Empty ? item.RoomId : null;
+                _startTime = TimeSpan.FromMinutes(item.LocalStartMinuteOfDay ?? 0);
+                _endTime = TimeSpan.FromMinutes(item.LocalEndMinuteOfDay ?? 0);
+                _selectedDayId = item.EventDayId;
+                _selectedRoomId = item.RoomId;
                 _selectedKindId = item.KindId > 0 ? item.KindId : null;
-                _sortOrder = item.SortOrder;
+                _sortOrder = item.SortOrder ?? 0;
                 _concurrencyStamp = item.ConcurrencyStamp ?? Guid.Empty;
             }
             _isLoadingDetail = false;
@@ -235,7 +235,7 @@
 
         try
         {
-            DateOnly? dayDate = null;
+            DateTimeOffset? dayDate = null;
             if (_selectedDayId.HasValue)
             {
                 var selectedDay = Days.FirstOrDefault(d => d.Id == _selectedDayId.Value);
@@ -247,12 +247,12 @@
 
             if (_startTime.HasValue)
             {
-                var baseDate = dayDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.Today;
+                var baseDate = dayDate?.DateTime ?? DateTime.Today;
                 startTime = new DateTimeOffset(baseDate.Add(_startTime.Value), DateTimeOffset.Now.Offset);
             }
             if (_endTime.HasValue)
             {
-                var baseDate = dayDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.Today;
+                var baseDate = dayDate?.DateTime ?? DateTime.Today;
                 endTime = new DateTimeOffset(baseDate.Add(_endTime.Value), DateTimeOffset.Now.Offset);
             }
 

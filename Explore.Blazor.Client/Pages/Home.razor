@@ -93,7 +93,7 @@ else if (IsOrganizationHomeAvailable)
                         </MudButton>
                     </MudStack>
                 </MudItem>
-                @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.ProfilePictureUri))
+                @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization?.ProfilePictureUri))
                 {
                     <MudItem xs="12" md="4" Class="d-flex justify-center">
                         <MudAvatar Image="@_shell.PrimaryOrganization.ProfilePictureUri" Size="Size.Large" Class="organization-home__avatar" />
@@ -205,9 +205,9 @@ else if (IsOrganizationHomeAvailable)
                                     <MudItem @key="group.Id" xs="12" sm="6">
                                         <MudText Typo="Typo.subtitle2" Class="mb-2">@group.Title</MudText>
                                         <MudStack Spacing="1">
-                                            @foreach (var link in group.Links.OrderBy(link => link.Order).ThenBy(link => link.Label, StringComparer.OrdinalIgnoreCase))
+                                            @foreach (var link in (group.Links ?? []).OrderBy(link => link.Order).ThenBy(link => link.Label, StringComparer.OrdinalIgnoreCase))
                                             {
-                                                <MudLink @key="link.Id" Href="@link.Url" Target="@(link.OpenInNewTab ? "_blank" : null)">
+                                                <MudLink @key="link.Id" Href="@link.Url" Target="@(link.OpenInNewTab == true ? "_blank" : null)">
                                                     @link.Label
                                                 </MudLink>
                                             }
@@ -241,44 +241,42 @@ else
 @code {
     private bool isLoading = true;
     private bool isAuthenticated = false;
-    private PublicExperienceShellModel? _shell;
+    private PublicExperienceShellDto? _shell;
     private IReadOnlyList<EventListDto> _featuredEvents = [];
 
-    private string HomePageTitle => string.IsNullOrWhiteSpace(_shell?.Home.BrandDisplayName)
+    private string HomePageTitle => string.IsNullOrWhiteSpace(_shell?.Home?.BrandDisplayName)
         ? "Event Platform"
         : _shell.Home.BrandDisplayName;
 
-    private bool IsOrganizationCentricMode => _shell?.Mode.Equals("OrganizationCentric", StringComparison.OrdinalIgnoreCase) == true;
+    private bool IsOrganizationCentricMode => _shell?.Mode == PublicExperienceMode.OrganizationCentric;
 
     private bool IsOrganizationHomeAvailable => IsOrganizationCentricMode
-        && _shell.PrimaryOrganization.State.Equals("Available", StringComparison.OrdinalIgnoreCase);
+        && _shell?.PrimaryOrganization?.State == PublicExperiencePrimaryOrganizationState.Available;
 
-    private string PrimaryOrganizationStateLabel => string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.State)
-        ? "not configured"
-        : _shell.PrimaryOrganization.State switch
+    private string PrimaryOrganizationStateLabel => _shell?.PrimaryOrganization?.State switch
         {
-            "NotConfigured" => "not configured",
-            "HiddenOrInactive" => "hidden or inactive",
-            "CrossTenantInvalid" => "not available for this tenant",
-            "ActorUnavailable" => "missing its public profile",
-            _ => _shell.PrimaryOrganization.State.ToLowerInvariant()
+            null or PublicExperiencePrimaryOrganizationState.NotConfigured => "not configured",
+            PublicExperiencePrimaryOrganizationState.HiddenOrInactive => "hidden or inactive",
+            PublicExperiencePrimaryOrganizationState.CrossTenantInvalid => "not available for this tenant",
+            PublicExperiencePrimaryOrganizationState.ActorUnavailable => "missing its public profile",
+            var state => state.ToString().ToLowerInvariant()
         };
 
-    private string OrganizationName => string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.DisplayName)
-        ? _shell?.Home.BrandDisplayName ?? "This organization"
+    private string OrganizationName => string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization?.DisplayName)
+        ? _shell?.Home?.BrandDisplayName ?? "This organization"
         : _shell.PrimaryOrganization.DisplayName;
 
-    private string EventCatalogLabel => string.IsNullOrWhiteSpace(_shell?.EventCatalog.Label)
+    private string EventCatalogLabel => string.IsNullOrWhiteSpace(_shell?.EventCatalog?.Label)
         ? "Events"
         : _shell.EventCatalog.Label;
 
-    private string EventCatalogUrl => string.IsNullOrWhiteSpace(_shell?.EventCatalog.Url)
+    private string EventCatalogUrl => string.IsNullOrWhiteSpace(_shell?.EventCatalog?.Url)
         ? "/events"
         : _shell.EventCatalog.Url;
 
-    private PublicExperienceHomeBlockModel? HeroBlock => _shell?.Home.Blocks
-        .Where(block => block.Kind.Equals("Hero", StringComparison.OrdinalIgnoreCase)
-            || block.Kind.Equals("OrganizationSummary", StringComparison.OrdinalIgnoreCase))
+    private PublicExperienceHomeBlockDto? HeroBlock => _shell?.Home?.Blocks?
+        .Where(block => block.Kind is PublicExperienceHomeBlockKind.Hero
+            or PublicExperienceHomeBlockKind.OrganizationSummary)
         .OrderBy(block => block.SortOrder)
         .FirstOrDefault();
 
@@ -290,19 +288,19 @@ else
         ? $"Explore public {EventCatalogLabel.ToLowerInvariant()} and community updates from {OrganizationName}."
         : HeroBlock.Body;
 
-    private IReadOnlyList<PublicExperienceHomeBlockModel> ContentBlocks => _shell?.Home.Blocks
+    private IReadOnlyList<PublicExperienceHomeBlockDto> ContentBlocks => _shell?.Home?.Blocks?
         .Where(block => block != HeroBlock)
         .OrderBy(block => block.SortOrder)
         .ThenBy(block => block.Title, StringComparer.OrdinalIgnoreCase)
         .ToList() ?? [];
 
-    private IReadOnlyList<PublicExperienceEventSectionModel> EventSections => _shell?.EventSections
+    private IReadOnlyList<PublicExperienceEventSectionDto> EventSections => _shell?.EventSections?
         .Where(section => !string.IsNullOrWhiteSpace(section.Label) && !string.IsNullOrWhiteSpace(section.Url))
         .OrderBy(section => section.SortOrder)
         .ThenBy(section => section.Label, StringComparer.OrdinalIgnoreCase)
         .ToList() ?? [];
 
-    private IReadOnlyList<PublicExperienceCtaModel> HeroCtas => _shell?.Ctas
+    private IReadOnlyList<PublicExperienceCtaDto> HeroCtas => _shell?.Ctas?
         .Where(cta => !string.IsNullOrWhiteSpace(cta.Label) && !string.IsNullOrWhiteSpace(cta.Url))
         .OrderBy(cta => cta.SortOrder)
         .ThenBy(cta => cta.Label, StringComparer.OrdinalIgnoreCase)
@@ -311,15 +309,15 @@ else
 
     private bool HasShellContent => ContentBlocks.Count > 0 || EventSections.Count > 0 || HeroCtas.Count > 0;
 
-    private IReadOnlyList<FooterLinkGroupModel> FooterLinkGroups => _shell?.Footer.LinkGroups
+    private IReadOnlyList<FooterLinkGroupDto> FooterLinkGroups => _shell?.Footer?.LinkGroups?
         .Where(group => !string.IsNullOrWhiteSpace(group.Title)
-            && group.Links.Any(link => !string.IsNullOrWhiteSpace(link.Label) && !string.IsNullOrWhiteSpace(link.Url)))
+            && group.Links?.Any(link => !string.IsNullOrWhiteSpace(link.Label) && !string.IsNullOrWhiteSpace(link.Url)) == true)
         .OrderBy(group => group.Order)
         .ThenBy(group => group.Title, StringComparer.OrdinalIgnoreCase)
         .ToList() ?? [];
 
-    private bool HasContactOrFooterProjection => !string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.WebsiteUrl)
-        || !string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.Handle)
+    private bool HasContactOrFooterProjection => !string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization?.WebsiteUrl)
+        || !string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization?.Handle)
         || FooterLinkGroups.Count > 0;
 
     [PersistentState]
@@ -367,10 +365,9 @@ else
         public bool IsAuthenticated { get; init; }
     }
 
-    private static Variant MapButtonVariant(string? style)
+    private static Variant MapButtonVariant(PublicExperienceCtaStyle? style)
     {
-        return style?.Equals("Secondary", StringComparison.OrdinalIgnoreCase) == true
-            || style?.Equals("Text", StringComparison.OrdinalIgnoreCase) == true
+        return style is PublicExperienceCtaStyle.Secondary or PublicExperienceCtaStyle.Text
                 ? Variant.Outlined
                 : Variant.Filled;
     }
@@ -384,7 +381,7 @@ else
 
     private async Task LoadFeaturedEventsAsync()
     {
-        if (_shell?.PrimaryOrganization.ActorId is not { } actorId)
+        if (_shell?.PrimaryOrganization?.ActorId is not { } actorId)
         {
             return;
         }

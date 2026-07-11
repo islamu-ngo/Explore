@@ -5,6 +5,7 @@
 @using Microsoft.AspNetCore.Components
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components.Forms
+@using Explore.Blazor.Client.Clients
 
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IInstanceOnboardingService InstanceOnboardingService
@@ -112,28 +113,28 @@
                                          Text="Navigation Links"
                                          Class="@GetNavItemClass("nav-links")"
                                          OnClick="@(() => SelectSection("nav-links"))" />
-                            @if (_model.CanOverrideSmtp)
+                            @if (_model.CanOverrideSmtp == true)
                             {
                                 <MudListItem Icon="@Icons.Material.Filled.Email"
                                              Text="Email (SMTP)"
                                              Class="@GetNavItemClass("smtp")"
                                              OnClick="@(() => SelectSection("smtp"))" />
                             }
-                            @if (_model.CanOverrideStorage)
+                            @if (_model.CanOverrideStorage == true)
                             {
                                 <MudListItem Icon="@Icons.Material.Filled.Cloud"
                                              Text="Object Storage"
                                              Class="@GetNavItemClass("storage")"
                                              OnClick="@(() => SelectSection("storage"))" />
                             }
-                            @if (_model.CanOverrideAnalytics)
+                            @if (_model.CanOverrideAnalytics == true)
                             {
                                 <MudListItem Icon="@Icons.Material.Filled.Analytics"
                                              Text="Analytics & Privacy"
                                              Class="@GetNavItemClass("analytics")"
                                              OnClick="@(() => SelectSection("analytics"))" />
                             }
-                            @if (_model.CanOverrideMcp || _model.CanOverrideMcpLegacySse)
+                            @if (_model.CanOverrideMcp == true || _model.CanOverrideMcpLegacySse == true)
                             {
                                 <MudListItem Icon="@Icons.Material.Filled.Extension"
                                              Text="MCP Adapter"
@@ -211,7 +212,7 @@
                         {
                             <TenantNavigationLinksSection />
                         }
-                        else if (_currentSection == "smtp" && _model.CanOverrideSmtp)
+                        else if (_currentSection == "smtp" && _model.CanOverrideSmtp == true)
                         {
                             <div class="settings-section">
                                 <div class="settings-section-header">
@@ -226,11 +227,11 @@
                                 </MudAlert>
                             </div>
                         }
-                        else if (_currentSection == "storage" && _model.CanOverrideStorage)
+                        else if (_currentSection == "storage" && _model.CanOverrideStorage == true)
                         {
                             <TenantStorageSection Model="_storageModel" IsSaving="_submitState.IsSubmitting" />
                         }
-                        else if (_currentSection == "analytics" && _model.CanOverrideAnalytics)
+                        else if (_currentSection == "analytics" && _model.CanOverrideAnalytics == true)
                         {
                             <div class="settings-section">
                                 <div class="settings-section-header">
@@ -245,7 +246,7 @@
                                 </MudAlert>
                             </div>
                         }
-                        else if (_currentSection == "mcp" && (_model.CanOverrideMcp || _model.CanOverrideMcpLegacySse))
+                        else if (_currentSection == "mcp" && (_model.CanOverrideMcp == true || _model.CanOverrideMcpLegacySse == true))
                         {
                             <div class="settings-section">
                                 <div class="settings-section-header">
@@ -255,10 +256,10 @@
                                     </MudText>
                                 </div>
                                 <MudStack Spacing="2" Class="mt-4">
-                                    <MudSwitch T="bool" @bind-Value="_model.McpEnabled" Color="Color.Primary" Disabled="!_model.CanOverrideMcp">
+                                    <MudSwitch T="bool?" @bind-Value="_model.McpEnabled" Color="Color.Primary" Disabled="_model.CanOverrideMcp != true">
                                         Enable MCP adapter for this tenant
                                     </MudSwitch>
-                                    <MudSwitch T="bool" @bind-Value="_model.McpEnableLegacySse" Color="Color.Warning" Disabled="!_model.CanOverrideMcpLegacySse">
+                                    <MudSwitch T="bool?" @bind-Value="_model.McpEnableLegacySse" Color="Color.Warning" Disabled="_model.CanOverrideMcpLegacySse != true">
                                         Request legacy SSE transport for this tenant
                                     </MudSwitch>
                                     <MudAlert Severity="Severity.Info" Dense="true">
@@ -286,7 +287,7 @@
                                         page. Guidelines inform event organizers and attendees of the platform's expectations.
                                     </MudText>
                                 </div>
-                                @if (!_model.CanOverrideCommunityGuidelines)
+                                @if (_model.CanOverrideCommunityGuidelines != true)
                                 {
                                     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4 mb-4">
                                         The community guidelines content has been locked by the platform administrator and cannot be changed for this tenant.
@@ -298,7 +299,7 @@
                                                   Label="Guidelines Content"
                                                   Lines="20"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="!_model.CanOverrideCommunityGuidelines"
+                                                  ReadOnly="_model.CanOverrideCommunityGuidelines != true"
                                                   HelperText="Supports basic Markdown: # Heading, ## Section, - bullet, **bold**, *italic*."
                                                   FullWidth="true"
                                                   Style="font-family: monospace; font-size: 0.875rem;" />
@@ -380,9 +381,9 @@
 </div>
 
 @code {
-    private TenantPolicySettingsModel _model = new();
+    private TenantPolicySettingsDto _model = new();
     private TenantBrandingSettingsAdminModel _brandingModel = new();
-    private TenantStorageSettingsModel _storageModel = new();
+    private HalResourceOfTenantStorageSettingsDto _storageModel = new();
     private TenantPublicExperienceAdminModel _publicExperienceModel = new();
     private TenantPublicExperienceSection? _publicExperienceSection;
     private bool _isLoading = true;
@@ -418,7 +419,7 @@
         _hasAnnouncementBar = HasUsableAnnouncementBar(_model);
         _brandingModel = await TenantBrandingSettingsAdminService.GetAsync();
         _publicExperienceModel = await TenantPublicExperienceAdminService.GetSettingsAsync();
-        if (_model.CanOverrideStorage)
+        if (_model.CanOverrideStorage == true)
         {
             _storageModel = await TenantStorageSettingsAdminService.GetAsync();
         }
@@ -441,7 +442,7 @@
             return;
         }
 
-        if (_currentSection == "storage" && _model.CanOverrideStorage)
+        if (_currentSection == "storage" && _model.CanOverrideStorage == true)
         {
             await SaveStorageAsync();
             return;
@@ -449,13 +450,12 @@
 
         _submitState.Start();
         _errorMessage = null;
-        _model.ForceAnnouncementBarRedisplay = _currentSection == "announcement-bar" && forceAnnouncementBarRedisplay;
-
-        var response = await TenantOnboardingService.UpdateSettingsAsync(_model);
+        var response = await TenantOnboardingService.UpdateSettingsAsync(
+            _model,
+            _currentSection == "announcement-bar" && forceAnnouncementBarRedisplay);
         _submitState.Complete();
-        _model.ForceAnnouncementBarRedisplay = false;
 
-        if (response.Success)
+        if (response.Success == true)
         {
             var hadAnnouncementBarBeforeSave = _hasAnnouncementBar;
             _hasAnnouncementBar = HasUsableAnnouncementBar(_model);
@@ -479,15 +479,13 @@
         _model.AnnouncementBarMessage = string.Empty;
         _model.AnnouncementBarLinkText = string.Empty;
         _model.AnnouncementBarLinkUrl = string.Empty;
-        _model.ForceAnnouncementBarRedisplay = false;
-
         _submitState.Start();
         _errorMessage = null;
 
         var response = await TenantOnboardingService.UpdateSettingsAsync(_model);
         _submitState.Complete();
 
-        if (response.Success)
+        if (response.Success == true)
         {
             _hasAnnouncementBar = false;
             await RefreshShellExperienceAsync();
@@ -500,8 +498,8 @@
             : response.Message;
     }
 
-    private static bool HasUsableAnnouncementBar(TenantPolicySettingsModel model) =>
-        model.AnnouncementBarEnabled && !string.IsNullOrWhiteSpace(model.AnnouncementBarMessage);
+    private static bool HasUsableAnnouncementBar(TenantPolicySettingsDto model) =>
+        model.AnnouncementBarEnabled == true && !string.IsNullOrWhiteSpace(model.AnnouncementBarMessage);
 
     private static string GetAnnouncementSaveMessage(bool hadAnnouncementBarBeforeSave, bool forceAnnouncementBarRedisplay)
     {
@@ -529,7 +527,7 @@
         var response = await TenantPublicExperienceAdminService.SaveAsync(_publicExperienceModel);
         _submitState.Complete();
 
-        if (response.Success)
+        if (response.Success == true)
         {
             await RefreshShellExperienceAsync();
             Snackbar.Add("Public experience settings saved.", Severity.Success);
@@ -570,7 +568,7 @@
         var response = await TenantStorageSettingsAdminService.SaveAsync(_storageModel);
         _submitState.Complete();
 
-        if (response.Success)
+        if (response.Success == true)
         {
             _storageModel = await TenantStorageSettingsAdminService.GetAsync();
             Snackbar.Add("Tenant storage settings saved.", Severity.Success);
@@ -598,7 +596,7 @@
         {
             "support-access-evidence" => false,
             "branding" => _brandingModel.Exists && _brandingModel.CanReplace,
-            "storage" => _storageModel.IsEditable,
+            "storage" => _storageModel.IsEditable(),
             _ => true
         };
 
@@ -613,9 +611,9 @@
         if (settings is not null)
         {
             AiAssistantState.SetPolicy(
-                settings.IsAiAssistantEnabled,
-                settings.IsAiAssistantAvailable,
-                settings.AiAssistantAllowAnonymousAccess,
+                settings.IsAiAssistantEnabled == true,
+                settings.IsAiAssistantAvailable == true,
+                settings.AiAssistantAllowAnonymousAccess == true,
                 isAuthenticated: true);
         }
     }

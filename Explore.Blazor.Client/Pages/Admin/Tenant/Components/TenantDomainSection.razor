@@ -16,7 +16,7 @@
                    Label="Preferred Home Page"
                    @bind-Value="Model.PreferredHomePage"
                    Variant="Variant.Outlined"
-                   Disabled="@(!Model.CanOverrideHomePagePreference)">
+                   Disabled="@(Model.CanOverrideHomePagePreference != true)">
             <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
             <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
         </MudSelect>
@@ -24,18 +24,18 @@
         <MudTextField T="string" Label="Subdomain"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.Subdomain"
-                      Disabled="@(!Model.CanOverrideSubdomain)"
+                      Disabled="@(Model.CanOverrideSubdomain != true)"
                       HelperText="@($"{Model.Subdomain}.{Model.InstanceBaseDomain}")" />
 
         <MudTextField T="string" Label="Custom Domain"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.CustomDomain"
-                      Disabled="@(!Model.CanOverrideCustomDomain)"
+                      Disabled="@(Model.CanOverrideCustomDomain != true)"
                       Placeholder="custom.yourdomain.com" />
     </MudStack>
 </div>
 
 @code {
     [Parameter, EditorRequired]
-    public TenantPolicySettingsModel Model { get; set; } = null!;
+    public TenantPolicySettingsDto Model { get; set; } = null!;
 }

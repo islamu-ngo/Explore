@@ -649,7 +649,7 @@
                                             @foreach (var template in eventTemplates)
                                             {
                                                 <MudSelectItem T="Guid?" Value="@((Guid?)template.Id)">
-                                                    @template.DisplayName v@template.Version (@template.DefinitionsCount)
+                                                    @template.DisplayName v@template.Version (@template.DefinitionCount)
                                                 </MudSelectItem>
                                             }
                                         </MudSelect>
@@ -689,14 +689,14 @@
                                                         }
                                                     </div>
                                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
-                                                        @_selectedEventTemplate.Definitions.Count definition@(_selectedEventTemplate.Definitions.Count == 1 ? string.Empty : "s")
+                                                        @(_selectedEventTemplate.Definitions?.Count ?? 0) definition@(_selectedEventTemplate.Definitions?.Count == 1 ? string.Empty : "s")
                                                     </MudChip>
                                                 </div>
 
-                                                @if (_selectedEventTemplate.Definitions.Count > 0)
+                                                @if (_selectedEventTemplate.Definitions is { Count: > 0 })
                                                 {
                                                     <div class="create-event__template-definitions" aria-label="Template definition preview">
-                                                        @foreach (var definition in _selectedEventTemplate.Definitions.OrderBy(d => d.SortOrder).ThenBy(d => d.DisplayName))
+                                                        @foreach (var definition in (_selectedEventTemplate.Definitions ?? []).OrderBy(d => d.SortOrder).ThenBy(d => d.DisplayName))
                                                         {
                                                             <div class="create-event__template-definition">
                                                                 <div class="create-event__template-definition-main">
@@ -707,16 +707,16 @@
                                                                     }
                                                                 </div>
                                                                 <div class="create-event__template-definition-meta">
-                                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@definition.PropertyType</MudChip>
-                                                                    @if (definition.IsRequired)
+                                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@((PropertyType?)definition.PropertyType)</MudChip>
+                                                                    @if (definition.IsRequired == true)
                                                                     {
                                                                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">Required</MudChip>
                                                                     }
-                                                                    @if (definition.IsMulti)
+                                                                    @if (definition.IsMulti == true)
                                                                     {
                                                                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info">Multi</MudChip>
                                                                     }
-                                                                    @if (definition.Options.Count > 0)
+                                                                    @if (definition.Options is { Count: > 0 })
                                                                     {
                                                                         <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">
                                                                             @definition.Options.Count option@(definition.Options.Count == 1 ? string.Empty : "s")

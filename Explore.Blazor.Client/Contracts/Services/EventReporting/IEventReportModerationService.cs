@@ -20,24 +20,24 @@ public interface IEventReportModerationService
     Task<ModerationReportActionResult> TriageAsync(
         Guid eventId,
         Guid reportId,
-        ModerationReportTriageActionRequest request,
+        TriageModerationReportRequestDto request,
         CancellationToken cancellationToken = default);
 
     Task<ModerationReportActionResult> AssignAsync(
         Guid eventId,
         Guid reportId,
-        ModerationReportAssignActionRequest request,
+        AssignModerationReportRequestDto request,
         CancellationToken cancellationToken = default);
 
     Task<ModerationReportActionResult> DecideAsync(
         Guid eventId,
         Guid reportId,
-        ModerationReportDecisionActionRequest request,
+        DecideModerationReportRequestDto request,
         CancellationToken cancellationToken = default);
 
     Task<ModerationReportActionResult> ExecuteDecisionAsync(
         Guid eventId,
         Guid reportId,
-        ModerationReportExecuteDecisionActionRequest request,
+        ExecuteModerationReportDecisionRequestDto request,
         CancellationToken cancellationToken = default);
 }

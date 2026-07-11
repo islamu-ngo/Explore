@@ -3,8 +3,7 @@
 @* ABOUTME: Event Session Template Sync Page displaying template diffs. *@
 @* ABOUTME: Allows operators to selectively sync new, modified, and retired definitions/options for a session. *@
 
-@using Explore.Blazor.Client.Models.Responses
-@using Explore.Blazor.Client.Models.EventSessionTemplateSync
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services.EventSessionTemplateSync
 @using Explore.Blazor.Client.Components.EventTemplateSync
 @using MudBlazor
@@ -20,7 +19,7 @@
 <div class="template-sync-page">
     <div class="template-sync-page__header d-flex justify-space-between align-center mb-4">
         <MudText Typo="Typo.h5" HtmlTag="h1">Session Template Sync</MudText>
-        @if (_diff?.Links?.ContainsKey("sync-apply") == true && TotalSelected > 0)
+        @if (_diff?._links?.ContainsKey("sync-apply") == true && TotalSelected > 0)
         {
             <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="OpenApplyDialogAsync" Class="template-sync-page__apply-button" aria-label="Apply Sync Plan">
                 Apply Sync (@TotalSelected changes)
@@ -54,7 +53,7 @@
                     @foreach (var mod in _diff.ModifiedDefinitions)
                     {
                         <TemplateDiffRow Heading="@($"{mod.Namespace}.{mod.Key}")" 
-                                         Changes="@mod.FieldChanges.Select(c => new Explore.Blazor.Client.Models.EventTemplateSync.FieldChangeDto(c.FieldName, c.OldValue, c.NewValue, c.ValueType))" 
+                                         Changes="@mod.FieldChanges"
                                          @bind-IsSelected="GetSelectedState(mod.Key).Value" />
                     }
                 </MudTabPanel>
@@ -72,7 +71,7 @@
 
     private bool _isLoading = true;
     private bool _hasStaleError = false;
-    private Explore.Blazor.Client.Models.EventSessionTemplateSync.TemplateDiffDto? _diff;
+    private HalResourceOfTemplateDiffDto? _diff;
     private Dictionary<string, SelectedState> _selectedChanges = new();
 
     private class SelectedState { public bool Value { get; set; } }
@@ -103,7 +102,7 @@
             _diff = await TemplateSyncService.GetDiffAsync(SessionId, TemplateVersion ?? 0);
             _selectedChanges.Clear();
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        catch (ApiException ex) when (ex.StatusCode == 409)
         {
             _hasStaleError = true;
         }
@@ -136,14 +135,18 @@
 
         if (!result.Canceled)
         {
-            var plan = new Explore.Blazor.Client.Models.EventSessionTemplateSync.TemplateSyncPlanDto
+            var plan = new TemplateSyncPlanDto
             {
                 TargetTemplateVersion = _diff!.TargetTemplateVersion,
                 BaseProvenanceVersion = _diff.BaseProvenanceVersion,
                 ModifiedDefinitionKeys = _selectedChanges.Where(kv => kv.Value.Value).Select(kv => kv.Key).ToList()
             };
 
-            var request = new Explore.Blazor.Client.Models.EventSessionTemplateSync.EventSessionTemplateSyncApplyRequest(plan, _diff.BaseProvenanceVersion);
+            var request = new EventSessionTemplateSyncApplyRequest
+            {
+                Plan = plan,
+                BaseProvenanceVersion = _diff.BaseProvenanceVersion
+            };
 
             try
             {
@@ -151,7 +154,7 @@
                 Snackbar.Add("Session template sync applied successfully.", Severity.Success);
                 await LoadDiffAsync();
             }
-            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+            catch (ApiException ex) when (ex.StatusCode == 409)
             {
                 _hasStaleError = true;
                 StateHasChanged();

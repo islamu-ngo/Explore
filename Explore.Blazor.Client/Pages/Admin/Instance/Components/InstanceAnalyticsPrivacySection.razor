@@ -2,7 +2,6 @@
 @* ABOUTME: Displays provider info, consent configuration, PostHog feature toggles, and advisory warnings. *@
 
 @using MudBlazor
-@using Explore.Blazor.Client.Models.Analytics
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -16,12 +15,14 @@
     @* ── Global Kill Switch ─────────────────────────────────────────── *@
     <MudStack Spacing="3">
         <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true"
-                  Class="@(Model.GlobalDisableClientTracking ? "" : "d-none")">
+                  Class="@(Model.GlobalDisableClientTracking == true ? "" : "d-none")">
             <strong>Client-side analytics are globally disabled.</strong>
             No browser-side tracking will run regardless of other settings.
         </MudAlert>
 
-        <MudSwitch T="bool" @bind-Value="Model.GlobalDisableClientTracking"
+        <MudSwitch T="bool"
+                   Value="Model.GlobalDisableClientTracking == true"
+                   ValueChanged="@(value => Model.GlobalDisableClientTracking = value)"
                    Color="Color.Error" Label="Emergency: Disable all client-side analytics" />
 
         @* ── Provider Info (read-only) ──────────────────────────────── *@
@@ -35,15 +36,15 @@
                               HelperText="Set via environment variable or secret manager" />
             </MudItem>
             <MudItem xs="3">
-                <MudChip T="string" Color="@(Model.Enabled ? Color.Success : Color.Default)"
+                <MudChip T="string" Color="@(Model.Enabled == true ? Color.Success : Color.Default)"
                          Size="Size.Small" Class="mt-4">
-                    @(Model.Enabled ? "Enabled" : "Disabled")
+                    @(Model.Enabled == true ? "Enabled" : "Disabled")
                 </MudChip>
             </MudItem>
             <MudItem xs="3">
-                <MudChip T="string" Color="@(Model.HasApiKey ? Color.Success : Color.Warning)"
+                <MudChip T="string" Color="@(Model.HasApiKey == true ? Color.Success : Color.Warning)"
                          Size="Size.Small" Class="mt-4">
-                    @(Model.HasApiKey ? "API Key Set" : "No API Key")
+                    @(Model.HasApiKey == true ? "API Key Set" : "No API Key")
                 </MudChip>
             </MudItem>
         </MudGrid>
@@ -55,7 +56,7 @@
         }
 
         @* ── Computed Advisory ─────────────────────────────────────── *@
-        @if (Model.HasProvider)
+        @if (HasProvider)
         {
             <MudDivider Class="my-1" />
             <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Effective Runtime Behavior</MudText>
@@ -65,15 +66,15 @@
 
             <MudGrid>
                 <MudItem xs="4">
-                    <MudChip T="string" Color="@(Model.CookieBannerRequired ? Color.Info : Color.Success)"
+                    <MudChip T="string" Color="@(Model.CookieBannerRequired == true ? Color.Info : Color.Success)"
                              Size="Size.Small">
-                        @(Model.CookieBannerRequired ? "Banner Required" : "No Banner Needed")
+                        @(Model.CookieBannerRequired == true ? "Banner Required" : "No Banner Needed")
                     </MudChip>
                 </MudItem>
                 <MudItem xs="4">
-                    <MudChip T="string" Color="@(Model.CanRunBeforeConsent ? Color.Info : Color.Warning)"
+                    <MudChip T="string" Color="@(Model.CanRunBeforeConsent == true ? Color.Info : Color.Warning)"
                              Size="Size.Small">
-                        @(Model.CanRunBeforeConsent ? "Analytics Before Consent" : "Blocked Until Consent")
+                        @(Model.CanRunBeforeConsent == true ? "Analytics Before Consent" : "Blocked Until Consent")
                     </MudChip>
                 </MudItem>
                 <MudItem xs="4">
@@ -85,12 +86,12 @@
         }
 
         @* ── Cookie Consent Banner ────────────────────────────────── *@
-        @if (Model.HasProvider)
+        @if (HasProvider)
         {
             <MudDivider Class="my-1" />
             <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Cookie Consent Banner</MudText>
 
-            @if (Model.CookieBannerRequired && !Model.CookieConsentEnabled)
+            @if (Model.CookieBannerRequired == true && Model.CookieConsentEnabled != true)
             {
                 <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">
                     <strong>Legal Warning:</strong> Your current analytics configuration stores data on users' devices,
@@ -99,26 +100,28 @@
                 </MudAlert>
             }
 
-            <MudSwitch T="bool" @bind-Value="Model.CookieConsentEnabled"
+            <MudSwitch T="bool"
+                       Value="Model.CookieConsentEnabled == true"
+                       ValueChanged="@(value => Model.CookieConsentEnabled = value)"
                        Color="Color.Primary"
                        Label="Enable cookie consent banner" />
 
-            @if (Model.CookieConsentEnabled)
+            @if (Model.CookieConsentEnabled == true)
             {
-                <MudSelect T="string" @bind-Value="Model.DeclineBehavior"
+                <MudSelect T="DeclineBehavior?" @bind-Value="Model.DeclineBehavior"
                            Label="When user declines cookies"
                            Variant="Variant.Outlined"
                            HelperText="Controls what happens to analytics when a user clicks 'Decline'">
-                    <MudSelectItem T="string" Value="@("Cookieless")">
+                    <MudSelectItem T="DeclineBehavior?" Value="DeclineBehavior.Cookieless">
                         Privacy Analytics — Switch to cookieless tracking (recommended)
                     </MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Disable")">
+                    <MudSelectItem T="DeclineBehavior?" Value="DeclineBehavior.Disable">
                         Strict — Disable all analytics completely
                     </MudSelectItem>
                 </MudSelect>
 
-                @if (Model.DeclineBehavior == "Cookieless" && Model.IsPosthog
-                     && Model.PosthogCookielessMode == "Off")
+                @if (Model.DeclineBehavior == DeclineBehavior.Cookieless && IsPosthog
+                     && Model.PosthogCookielessMode == PosthogCookielessMode.Off)
                 {
                     <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
                         You selected "Privacy Analytics" on decline, but PostHog cookieless mode is Off.
@@ -126,7 +129,7 @@
                     </MudAlert>
                 }
 
-                <MudNumericField T="int" @bind-Value="Model.ConsentCookieLifetimeDays"
+                <MudNumericField T="int?" @bind-Value="Model.ConsentCookieLifetimeDays"
                                  Label="Consent cookie lifetime (days)"
                                  Variant="Variant.Outlined"
                                  Min="30" Max="365"
@@ -135,7 +138,7 @@
         }
 
         @* ── PostHog Privacy Controls ─────────────────────────────── *@
-        @if (Model.IsPosthog && Model.HasProvider)
+        @if (IsPosthog && HasProvider)
         {
             <MudDivider Class="my-1" />
             <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">PostHog Privacy Controls</MudText>
@@ -144,22 +147,22 @@
                 Disabling features here reduces data collection and may remove the need for a consent banner.
             </MudText>
 
-            <MudSelect T="string" @bind-Value="Model.PosthogCookielessMode"
+            <MudSelect T="PosthogCookielessMode?" @bind-Value="Model.PosthogCookielessMode"
                        Label="Cookieless Mode"
                        Variant="Variant.Outlined"
                        HelperText="Controls whether PostHog stores data on users' devices">
-                <MudSelectItem T="string" Value="@("Off")">
+                <MudSelectItem T="PosthogCookielessMode?" Value="PosthogCookielessMode.Off">
                     Off — Normal cookies/local storage (banner required)
                 </MudSelectItem>
-                <MudSelectItem T="string" Value="@("Always")">
+                <MudSelectItem T="PosthogCookielessMode?" Value="PosthogCookielessMode.Always">
                     Always — Never store anything on device (no banner needed)
                 </MudSelectItem>
-                <MudSelectItem T="string" Value="@("OnReject")">
+                <MudSelectItem T="PosthogCookielessMode?" Value="PosthogCookielessMode.OnReject">
                     On Reject — Cookieless only for users who decline (recommended)
                 </MudSelectItem>
             </MudSelect>
 
-            @if (Model.PosthogCookielessMode == "Always")
+            @if (Model.PosthogCookielessMode == PosthogCookielessMode.Always)
             {
                 <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
                     With cookieless mode set to "Always", PostHog will not store any data on users' devices.
@@ -170,17 +173,17 @@
                 </MudAlert>
             }
 
-            <MudSelect T="string" @bind-Value="Model.PosthogPersonProfiles"
+            <MudSelect T="PosthogPersonProfiles?" @bind-Value="Model.PosthogPersonProfiles"
                        Label="Person Profiles"
                        Variant="Variant.Outlined"
                        HelperText="Controls when PostHog creates user profiles">
-                <MudSelectItem T="string" Value="@("Always")">
+                <MudSelectItem T="PosthogPersonProfiles?" Value="PosthogPersonProfiles.Always">
                     Always — Create profiles for all visitors
                 </MudSelectItem>
-                <MudSelectItem T="string" Value="@("IdentifiedOnly")">
+                <MudSelectItem T="PosthogPersonProfiles?" Value="PosthogPersonProfiles.IdentifiedOnly">
                     Identified Only — Profiles only for logged-in users (recommended)
                 </MudSelectItem>
-                <MudSelectItem T="string" Value="@("Never")">
+                <MudSelectItem T="PosthogPersonProfiles?" Value="PosthogPersonProfiles.Never">
                     Never — No user profiles at all
                 </MudSelectItem>
             </MudSelect>
@@ -189,11 +192,13 @@
                 Feature Toggles
             </MudText>
 
-            <MudSwitch T="bool" @bind-Value="Model.PosthogSessionReplay"
+            <MudSwitch T="bool"
+                       Value="Model.PosthogSessionReplay == true"
+                       ValueChanged="@(value => Model.PosthogSessionReplay = value)"
                        Color="Color.Primary"
                        Label="Session Replay" />
 
-            @if (Model.PosthogSessionReplay && Model.PosthogCookielessMode == "Always")
+            @if (Model.PosthogSessionReplay == true && Model.PosthogCookielessMode == PosthogCookielessMode.Always)
             {
                 <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
                     Session Replay requires device storage and is incompatible with "Always Cookieless" mode.
@@ -201,19 +206,25 @@
                 </MudAlert>
             }
 
-            <MudSwitch T="bool" @bind-Value="Model.PosthogAutocapture"
+            <MudSwitch T="bool"
+                       Value="Model.PosthogAutocapture == true"
+                       ValueChanged="@(value => Model.PosthogAutocapture = value)"
                        Color="Color.Primary"
                        Label="Autocapture (automatic click/input tracking)" />
 
-            <MudSwitch T="bool" @bind-Value="Model.PosthogHeatmaps"
+            <MudSwitch T="bool"
+                       Value="Model.PosthogHeatmaps == true"
+                       ValueChanged="@(value => Model.PosthogHeatmaps = value)"
                        Color="Color.Primary"
                        Label="Heatmaps" />
 
-            <MudSwitch T="bool" @bind-Value="Model.PosthogToolbar"
+            <MudSwitch T="bool"
+                       Value="Model.PosthogToolbar == true"
+                       ValueChanged="@(value => Model.PosthogToolbar = value)"
                        Color="Color.Primary"
                        Label="PostHog Toolbar (debug overlay)" />
 
-            @if (Model.PosthogSessionReplay || Model.PosthogAutocapture || Model.PosthogHeatmaps)
+            @if (Model.PosthogSessionReplay == true || Model.PosthogAutocapture == true || Model.PosthogHeatmaps == true)
             {
                 <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
                     <strong>Reminder:</strong> These features must also be disabled in your PostHog project settings
@@ -223,7 +234,7 @@
         }
 
         @* ── Rybbit / Plausible Info ──────────────────────────────── *@
-        @if (Model.IsRybbit && Model.HasProvider)
+        @if (IsRybbit && HasProvider)
         {
             <MudDivider Class="my-1" />
             <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true">
@@ -248,7 +259,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public AnalyticsGovernanceSettingsModel Model { get; set; } = null!;
+    public AnalyticsGovernanceSettingsDto Model { get; set; } = null!;
 
     [Parameter]
     public bool IsSingleTenant { get; set; }
@@ -258,4 +269,11 @@
 
     [Parameter]
     public EventCallback<bool> LockForTenantsChanged { get; set; }
+
+    private bool IsPosthog => string.Equals(Model.Provider, "posthog", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsRybbit => string.Equals(Model.Provider, "rybbit", StringComparison.OrdinalIgnoreCase);
+
+    private bool HasProvider => Model.Enabled == true
+                                && !string.Equals(Model.Provider, "none", StringComparison.OrdinalIgnoreCase);
 }

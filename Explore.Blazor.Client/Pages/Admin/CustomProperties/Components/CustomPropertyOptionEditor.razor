@@ -64,14 +64,14 @@
 
 @code {
     [Parameter]
-    public IList<CustomPropertyOptionModel> Options { get; set; } = new List<CustomPropertyOptionModel>();
+    public ICollection<Options> Options { get; set; } = new List<Options>();
 
     [Inject]
     private IDialogService DialogService { get; set; } = default!;
 
     private void AddOption()
     {
-        var newOption = new CustomPropertyOptionModel
+        var newOption = new Options
         {
             Id = Guid.NewGuid(), // Client-side generation for tracking
             IsActive = true,
@@ -80,7 +80,7 @@
         Options.Add(newOption);
     }
 
-    private async Task PromptDeleteOptionAsync(CustomPropertyOptionModel option)
+    private async Task PromptDeleteOptionAsync(Options option)
     {
         var parameters = new DialogParameters<MudMessageBox>
         {

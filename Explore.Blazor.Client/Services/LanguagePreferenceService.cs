@@ -2,7 +2,7 @@
 // ABOUTME: Validates input against the allowlist before any HTTP call; logs and swallows transport errors.
 
 using Explore.Blazor.Client.Contracts.Services;
-using Explore.Domain.Common.Localization;
+using Explore.Blazor.Client.Localization;
 using Microsoft.Extensions.Logging;
 using Refit;
 

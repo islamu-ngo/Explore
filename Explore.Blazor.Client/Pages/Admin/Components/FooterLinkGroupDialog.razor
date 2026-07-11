@@ -1,7 +1,7 @@
 @* ABOUTME: Dialog for creating and editing footer link groups. *@
 @* ABOUTME: Follows TenantNavigationDialog pattern with EditForm validation and DialogResult dispatch. *@
 
-@using Explore.Blazor.Client.Contracts.Services.Footer
+@using Explore.Blazor.Client.Clients
 @using MudBlazor
 
 <MudDialog>
@@ -40,12 +40,12 @@
     private IDialogReference? DialogReference { get; set; }
 
     [Parameter]
-    public FooterLinkGroupListModel? ExistingGroup { get; set; }
+    public FooterLinkGroupListDto? ExistingGroup { get; set; }
 
     private EditContext _editContext = default!;
     private bool _isEdit;
     private bool _isActive = true;
-    private CreateFooterLinkGroupModel _model = new();
+    private CreateFooterLinkGroupRequest _model = new();
 
     protected override void OnInitialized()
     {
@@ -53,8 +53,8 @@
 
         if (_isEdit && ExistingGroup != null)
         {
-            _model.Title = ExistingGroup.Title;
-            _isActive = ExistingGroup.IsActive;
+            _model.Title = ExistingGroup.Title ?? string.Empty;
+            _isActive = ExistingGroup.IsActive == true;
         }
 
         _editContext = new EditContext(_model);
@@ -66,7 +66,7 @@
         {
             if (_isEdit && ExistingGroup != null)
             {
-                var updateModel = new UpdateFooterLinkGroupModel
+                var updateModel = new UpdateFooterLinkGroupRequest
                 {
                     Title = _model.Title,
                     IsActive = _isActive

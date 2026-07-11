@@ -39,19 +39,19 @@
 
 @code {
     [Parameter, EditorRequired]
-    public RenderPolicyModel Model { get; set; } = null!;
+    public RenderPolicySettingsDto Model { get; set; } = null!;
 
     [Parameter, EditorRequired]
-    public TenantDelegationModel Delegation { get; set; } = null!;
+    public TenantDelegationSettingsDto Delegation { get; set; } = null!;
 
     [Parameter, EditorRequired]
-    public EventPolicyModel EventPolicy { get; set; } = null!;
+    public EventPolicyDto EventPolicy { get; set; } = null!;
 
     private string _eventCardClickAction = "Sidebar";
 
     protected override void OnParametersSet()
     {
-        _eventCardClickAction = EventPolicy.EventCardClickOpensDetailPage ? "Navigate" : "Sidebar";
+        _eventCardClickAction = EventPolicy.EventCardClickOpensDetailPage == true ? "Navigate" : "Sidebar";
     }
 
     private void OnEventCardClickActionChanged(string value)

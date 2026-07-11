@@ -254,11 +254,12 @@
                         }
                         else
                         {
-                            var failedBlocking = _preflight.BlockingChecks.Where(c => !c.Status.Equals("Pass", StringComparison.OrdinalIgnoreCase)).ToList();
-                            var passedBlocking = _preflight.BlockingChecks.Where(c => c.Status.Equals("Pass", StringComparison.OrdinalIgnoreCase)).ToList();
-                            var warningChecks = _preflight.WarningChecks;
-                            var hasPublicWarning = warningChecks.Any(c => c.Severity.Equals("Critical", StringComparison.OrdinalIgnoreCase)
-                                || c.Severity.Equals("High", StringComparison.OrdinalIgnoreCase));
+                            var blockingChecks = _preflight.BlockingChecks ?? [];
+                            var failedBlocking = blockingChecks.Where(c => !string.Equals(c.Status, "Pass", StringComparison.OrdinalIgnoreCase)).ToList();
+                            var passedBlocking = blockingChecks.Where(c => string.Equals(c.Status, "Pass", StringComparison.OrdinalIgnoreCase)).ToList();
+                            var warningChecks = _preflight.WarningChecks ?? [];
+                            var hasPublicWarning = warningChecks.Any(c => string.Equals(c.Severity, "Critical", StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(c.Severity, "High", StringComparison.OrdinalIgnoreCase));
 
                             @* ── Critical Launch Requirements ── *@
                             <MudPaper Class="pa-5" Outlined="true">
@@ -292,7 +293,7 @@
                                                        Size="Size.Small"
                                                        EndIcon="@(_showPassedChecks ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
                                                        OnClick="@(() => { _showPassedChecks = !_showPassedChecks; })">
-                                                ✓ Critical launch requirements passed (@passedBlocking.Count/@_preflight.BlockingChecks.Count)
+                                                ✓ Critical launch requirements passed (@passedBlocking.Count/@blockingChecks.Count)
                                             </MudButton>
                                             @if (_showPassedChecks)
                                             {
@@ -348,7 +349,7 @@
                             }
 
                             @* ── Acknowledgement Checkboxes for Serious Warnings ── *@
-                            @if (hasPublicWarning && _preflight.IsReadyToLaunch)
+                            @if (hasPublicWarning && _preflight.IsReadyToLaunch == true)
                             {
                                 <MudPaper Class="pa-5" Outlined="true">
                                     <MudStack Spacing="2">
@@ -441,11 +442,11 @@
 
                             <MudStack Spacing="2">
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudIcon Icon="@(_preflight.IsReadyToLaunch ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
-                                             Color="@(_preflight.IsReadyToLaunch ? Color.Success : Color.Error)"
+                                    <MudIcon Icon="@(_preflight.IsReadyToLaunch == true ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                                             Color="@(_preflight.IsReadyToLaunch == true ? Color.Success : Color.Error)"
                                              Size="Size.Small" />
                                     <MudText Typo="Typo.body2">
-                                        @(_preflight.IsReadyToLaunch ? "Ready to launch" : "Resolve blockers first")
+                                        @(_preflight.IsReadyToLaunch == true ? "Ready to launch" : "Resolve blockers first")
                                     </MudText>
                                 </MudStack>
                             </MudStack>
@@ -470,11 +471,11 @@
     ];
 
     private string _deploymentMode = "SingleTenant";
-    private readonly SelfHostOnboardingProfileModel _siteProfile = new();
+    private readonly SelfHostOnboardingProfileDto _siteProfile = new();
     private EditContext _profileEditContext = default!;
     private string _administrationAccessMode = AdministrationAccessEmbedded;
     private string _adminHost = string.Empty;
-    public OnboardingPreflightModel? _preflight;
+    public OnboardingPreflightDto? _preflight;
     private bool _isLoading = true;
     private bool _isPreflightLoading;
     private bool _isCompleted;
@@ -498,12 +499,12 @@
     {
         get
         {
-            if (_preflight is null || !_preflight.IsReadyToLaunch)
+            if (_preflight?.IsReadyToLaunch != true)
                 return true;
 
-            var hasSeriousWarning = _preflight.WarningChecks.Any(c =>
-                c.Severity.Equals("Critical", StringComparison.OrdinalIgnoreCase) ||
-                c.Severity.Equals("High", StringComparison.OrdinalIgnoreCase));
+            var hasSeriousWarning = _preflight.WarningChecks?.Any(c =>
+                string.Equals(c.Severity, "Critical", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(c.Severity, "High", StringComparison.OrdinalIgnoreCase)) == true;
 
             return !hasSeriousWarning || _acknowledgePublicExposure;
         }
@@ -694,12 +695,12 @@
         _completeButtonLabel = "Launching...";
         _errorMessage = null;
 
-        var completion = new OnboardingCompletionModel
+        var completion = new CompleteInstanceOnboardingRequest
         {
-            DeploymentMode = _deploymentMode,
-            SiteProfile = new SelfHostOnboardingProfileModel
+            DeploymentMode = IsMultiTenantMode ? DeploymentMode.MultiTenant : DeploymentMode.SingleTenant,
+            SiteProfile = new SelfHostOnboardingProfileDto
             {
-                SiteName = _siteProfile.SiteName.Trim(),
+                SiteName = _siteProfile.SiteName?.Trim(),
                 SupportEmail = NormalizeOptional(_siteProfile.SupportEmail),
                 CanonicalUrl = NormalizeOptional(_siteProfile.CanonicalUrl),
                 Locale = string.IsNullOrWhiteSpace(_siteProfile.Locale) ? "en" : _siteProfile.Locale.Trim(),
@@ -708,7 +709,7 @@
             },
             AdministrationAccessMode = IsMultiTenantMode ? _administrationAccessMode : AdministrationAccessEmbedded,
             AdminHost = IsMultiTenantMode && IsDedicatedAdminHostMode ? NormalizeOptional(_adminHost) : null,
-            InstanceName = _siteProfile.SiteName.Trim()
+            InstanceName = _siteProfile.SiteName?.Trim()
         };
 
         // Proactively refresh the BFF auth session so the access token forwarded to the API is fresh.
@@ -725,32 +726,10 @@
 
         var response = await InstanceOnboardingService.CompleteAsync(completion);
 
-        // Retry once on 401
-        if (response.StatusCode == 401)
-        {
-            Logger.LogInformation("Complete returned 401 after pre-refresh. Retrying once with forced refresh.");
-            var retryRefreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
-            if (retryRefreshed)
-            {
-                response = await InstanceOnboardingService.CompleteAsync(completion);
-            }
-            else
-            {
-                Logger.LogWarning("Retry auth session refresh failed after Complete returned 401.");
-            }
-        }
-
         _submitState.Complete();
         _completeButtonLabel = "Launch Instance";
 
-        if (response.StatusCode == 401)
-        {
-            _errorMessage = "Your session expired. Please sign in again to complete setup.";
-            Navigation.NavigateTo("/login", forceLoad: true);
-            return;
-        }
-
-        if (response.Success)
+        if (response.Success == true)
         {
             var refreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
             if (!refreshed)
@@ -766,17 +745,22 @@
         _errorMessage = string.IsNullOrWhiteSpace(response.Message)
             ? "Failed to complete onboarding."
             : response.Message;
+
+        if (response.Errors?.Count > 0)
+        {
+            _errorMessage += " " + string.Join(" ", response.Errors);
+        }
     }
 
-    private static Severity GetCheckSeverity(OnboardingPreflightCheckModel check) =>
-        check.Status.Equals("Pass", StringComparison.OrdinalIgnoreCase)
+    private static Severity GetCheckSeverity(OnboardingPreflightCheckDto check) =>
+        string.Equals(check.Status, "Pass", StringComparison.OrdinalIgnoreCase)
             ? Severity.Success
             : Severity.Error;
 
-    private static Color GetSeverityColor(string severity) =>
-        severity.Equals("Critical", StringComparison.OrdinalIgnoreCase) ? Color.Error
-        : severity.Equals("High", StringComparison.OrdinalIgnoreCase) ? Color.Warning
-        : severity.Equals("Medium", StringComparison.OrdinalIgnoreCase) ? Color.Info
+    private static Color GetSeverityColor(string? severity) =>
+        string.Equals(severity, "Critical", StringComparison.OrdinalIgnoreCase) ? Color.Error
+        : string.Equals(severity, "High", StringComparison.OrdinalIgnoreCase) ? Color.Warning
+        : string.Equals(severity, "Medium", StringComparison.OrdinalIgnoreCase) ? Color.Info
         : Color.Default;
 
     private static string? NormalizeOptional(string? value) =>

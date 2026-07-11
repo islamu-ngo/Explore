@@ -1,80 +1,14 @@
 // ABOUTME: Central runtime service for composing MudBlazor themes and managing appearance state.
 // ABOUTME: Supports preset-based selection, user-owned profiles, custom theme generation, and System mode resolution.
 
-using Explore.Blazor.Client.Services.Appearance;
+using Explore.Blazor.Client.Clients;
 using MudBlazor;
-using Refit;
 
 namespace Explore.Blazor.Client.Services;
 
-public interface IAppearanceApi
-{
-    [Get("/bff/appearance")]
-    Task<IApiResponse<ResolvedAppearanceDto>> GetResolvedAsync(CancellationToken cancellationToken);
-
-    [Get("/bff/appearance/presets")]
-    Task<IApiResponse<IReadOnlyList<AvailablePresetDto>>> GetPresetsAsync(CancellationToken cancellationToken);
-
-    [Get("/bff/appearance/profiles")]
-    Task<IApiResponse<IReadOnlyList<UserAppearanceProfileDto>>> GetProfilesAsync(CancellationToken cancellationToken);
-
-    [Put("/bff/appearance/active-profile")]
-    Task<IApiResponse> SetActiveProfileAsync(
-        [Body] SetActiveProfileRequestDto request,
-        CancellationToken cancellationToken);
-
-    [Post("/bff/appearance/profiles/from-preset/{presetId}")]
-    Task<IApiResponse<UserAppearanceProfileDto>> ClonePresetAsync(
-        Guid presetId,
-        [Body] ClonePresetRequestDto request,
-        CancellationToken cancellationToken);
-
-    [Put("/bff/appearance/mode")]
-    Task<IApiResponse> SetThemeModeAsync(
-        [Body] SetThemeModeRequestDto request,
-        CancellationToken cancellationToken);
-
-    [Post("/bff/direction")]
-    Task<IApiResponse> SetDirectionAsync(
-        [Query] string dir,
-        CancellationToken cancellationToken);
-
-    [Put("/bff/appearance/profiles/{profileId}")]
-    Task<IApiResponse> UpdateProfileAsync(
-        Guid profileId,
-        [Body] UpdateAppearanceProfileRequestDto request,
-        CancellationToken cancellationToken);
-
-    [Post("/bff/appearance/profiles")]
-    Task<IApiResponse<UserAppearanceProfileDto>> CreateProfileAsync(
-        [Body] CreateCustomProfileRequestDto request,
-        CancellationToken cancellationToken);
-
-    [Get("/bff/appearance/generate-palette")]
-    Task<IApiResponse<ClientPaletteDto>> GeneratePaletteAsync(
-        string naturalColor,
-        string brandColor,
-        bool isDark,
-        CancellationToken cancellationToken);
-
-    [Put("/bff/appearance/profiles/{profileId}/archive")]
-    Task<IApiResponse> ArchiveProfileAsync(Guid profileId, CancellationToken cancellationToken);
-
-    [Post("/bff/appearance/profiles/{profileId}/duplicate")]
-    Task<IApiResponse<UserAppearanceProfileDto>> DuplicateProfileAsync(
-        Guid profileId,
-        [Body] DuplicateAppearanceProfileRequest? request,
-        CancellationToken cancellationToken);
-}
-
-public sealed class DuplicateAppearanceProfileRequest
-{
-    public string? Name { get; set; }
-}
-
 public sealed class AppearanceThemeService : IAppearanceThemeService
 {
-    private readonly IAppearanceApi _api;
+    private readonly IEventApiClient _api;
     private readonly ILogger<AppearanceThemeService> _logger;
 
     private AppearanceState _current = new();
@@ -169,7 +103,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     public event EventHandler<AppearanceStateChangedEventArgs>? Changed;
 
     public AppearanceThemeService(
-        IAppearanceApi api,
+        IEventApiClient api,
         ILogger<AppearanceThemeService> logger)
     {
         _api = api;
@@ -199,10 +133,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            var result = await _api.GetPresetsAsync(cancellationToken);
-            _current.AvailablePresets = result.IsSuccessStatusCode
-                ? result.Content ?? Array.Empty<AvailablePresetDto>()
-                : Array.Empty<AvailablePresetDto>();
+            _current.AvailablePresets = (await _api.GetAvailableThemesAsync(cancellationToken: cancellationToken)).ToList();
         }
         catch (Exception ex)
         {
@@ -234,11 +165,9 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            var result = await _api.SetActiveProfileAsync(new SetActiveProfileRequestDto { ProfileId = profileId }, cancellationToken);
-            if (!result.IsSuccessStatusCode)
-            {
-                throw CreateResponseException(result);
-            }
+            await _api.SetActiveAppearanceProfileAsync(
+                new SetActiveProfileRequestDto { ProfileId = profileId },
+                cancellationToken: cancellationToken);
 
             _current.ResolvedAppearance = await ReadResolvedAppearanceAsync(cancellationToken);
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
@@ -261,16 +190,16 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            var result = await _api.ClonePresetAsync(presetId, new ClonePresetRequestDto(), cancellationToken);
-            var profileDto = result.IsSuccessStatusCode ? result.Content : null;
+            var profileDto = await _api.ClonePresetToProfileAsync(
+                presetId,
+                body: new ClonePresetRequestDto(),
+                cancellationToken: cancellationToken);
 
             if (profileDto is not null)
             {
-                var activateResult = await _api.SetActiveProfileAsync(new SetActiveProfileRequestDto { ProfileId = profileDto.Id }, cancellationToken);
-                if (!activateResult.IsSuccessStatusCode)
-                {
-                    throw CreateResponseException(activateResult);
-                }
+                await _api.SetActiveAppearanceProfileAsync(
+                    new SetActiveProfileRequestDto { ProfileId = profileDto.Id },
+                    cancellationToken: cancellationToken);
 
                 _current.ResolvedAppearance = await ReadResolvedAppearanceAsync(cancellationToken);
             }
@@ -296,11 +225,9 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
             _current.ThemeMode = mode;
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
 
-            var result = await _api.SetThemeModeAsync(new SetThemeModeRequestDto { ThemeMode = mode }, cancellationToken);
-            if (!result.IsSuccessStatusCode)
-            {
-                throw CreateResponseException(result);
-            }
+            await _api.SetAppearanceThemeModeAsync(
+                new SetThemeModeRequestDto { ThemeMode = mode },
+                cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -319,11 +246,9 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
             _current.Direction = direction;
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
 
-            var result = await _api.SetDirectionAsync(direction, cancellationToken);
-            if (!result.IsSuccessStatusCode)
-            {
-                throw CreateResponseException(result);
-            }
+            await _api.UpdateCurrentUserAppearancePreferencesAsync(
+                new UpdateUserAppearancePreferencesDto { Direction = direction },
+                cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -341,11 +266,10 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            var result = await _api.UpdateProfileAsync(activeProfileId.Value, request, cancellationToken);
-            if (!result.IsSuccessStatusCode)
-            {
-                throw CreateResponseException(result);
-            }
+            await _api.UpdateAppearanceProfileAsync(
+                activeProfileId.Value,
+                request,
+                cancellationToken: cancellationToken);
 
             _current.ResolvedAppearance = await ReadResolvedAppearanceAsync(cancellationToken);
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
@@ -360,8 +284,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     {
         try
         {
-            var result = await _api.CreateProfileAsync(request, cancellationToken);
-            return result.IsSuccessStatusCode ? result.Content : null;
+            return await _api.CreateCustomAppearanceProfileAsync(request, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -370,17 +293,20 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         }
     }
 
-    public ClientPaletteDto GeneratePalettePreview(string naturalColor, string brandColor, bool isDark)
+    public UiThemePaletteDto GeneratePalettePreview(string naturalColor, string brandColor, bool isDark)
     {
         return GetFallbackPalette(isDark);
     }
 
-    public async Task<ClientPaletteDto?> GeneratePalettePreviewAsync(string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken = default)
+    public async Task<UiThemePaletteDto?> GeneratePalettePreviewAsync(string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken = default)
     {
         try
         {
-            var result = await _api.GeneratePaletteAsync(naturalColor, brandColor, isDark, cancellationToken);
-            return result.IsSuccessStatusCode ? result.Content : null;
+            return await _api.GenerateAppearancePaletteAsync(
+                naturalColor,
+                brandColor,
+                isDark,
+                cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -435,11 +361,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     {
         try
         {
-            var result = await _api.ArchiveProfileAsync(profileId, cancellationToken);
-            if (!result.IsSuccessStatusCode)
-            {
-                throw CreateResponseException(result);
-            }
+            await _api.ArchiveAppearanceProfileAsync(profileId, cancellationToken: cancellationToken);
 
             await RefreshProfilesAsync(cancellationToken);
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
@@ -455,10 +377,12 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         try
         {
             var request = name is not null
-                ? new DuplicateAppearanceProfileRequest { Name = name }
+                ? new ClonePresetRequestDto { Name = name }
                 : null;
-            var result = await _api.DuplicateProfileAsync(profileId, request, cancellationToken);
-            return result.IsSuccessStatusCode ? result.Content : null;
+            return await _api.DuplicateAppearanceProfileAsync(
+                profileId,
+                body: request,
+                cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -480,8 +404,36 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         }
     }
 
-    private static ClientPaletteDto GetFallbackPalette(bool isDark) => isDark
-        ? new ClientPaletteDto
+    public Task<ICollection<UiThemeListItemDto>> GetThemeCatalogAsync(
+        bool isPlatformCatalog,
+        bool activeOnly,
+        CancellationToken cancellationToken = default) =>
+        _api.GetUiThemeCatalogAsync(
+            isPlatformCatalog,
+            activeOnly,
+            cancellationToken: cancellationToken);
+
+    public Task<UiThemeDetailsDto> GetThemeDetailsAsync(
+        Guid id,
+        CancellationToken cancellationToken = default) =>
+        _api.GetUiThemeDetailsAsync(id, cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> CreateThemeAsync(
+        CreateUiThemeDto request,
+        CancellationToken cancellationToken = default) =>
+        _api.CreateUiThemeAsync(request, cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> UpdateThemeAsync(
+        Guid id,
+        UpdateUiThemeDto request,
+        CancellationToken cancellationToken = default) =>
+        _api.UpdateUiThemeAsync(id, request, cancellationToken: cancellationToken);
+
+    public Task DeleteThemeAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _api.DeleteUiThemeAsync(id, cancellationToken: cancellationToken);
+
+    private static UiThemePaletteDto GetFallbackPalette(bool isDark) => isDark
+        ? new UiThemePaletteDto
         {
             Primary = "#FAFAFA",
             PrimaryContrastText = "#1A1A1A",
@@ -503,7 +455,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
             LinesDefault = "#3F3F46",
             Divider = "#2E2E2E"
         }
-        : new ClientPaletteDto
+        : new UiThemePaletteDto
         {
             Primary = "#18181B",
             PrimaryContrastText = "#FFFFFF",
@@ -528,25 +480,18 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
     private async Task<ResolvedAppearanceDto?> ReadResolvedAppearanceAsync(CancellationToken cancellationToken)
     {
-        var result = await _api.GetResolvedAsync(cancellationToken);
-        return result.IsSuccessStatusCode ? result.Content : null;
+        return await _api.GetCurrentUserAppearancePreferencesAsync(cancellationToken: cancellationToken);
     }
 
     private async Task<IReadOnlyList<UserAppearanceProfileDto>?> ReadProfilesAsync(CancellationToken cancellationToken)
     {
-        var result = await _api.GetProfilesAsync(cancellationToken);
-        return result.IsSuccessStatusCode ? result.Content : null;
-    }
-
-    private static InvalidOperationException CreateResponseException(IApiResponse response)
-    {
-        return new InvalidOperationException(response.Error?.Content ?? response.Error?.Message ?? "Appearance request failed.");
+        return (await _api.GetUserAppearanceProfilesAsync(cancellationToken: cancellationToken)).ToList();
     }
 
     private static string PaletteValue(string? value, string fallback) =>
         string.IsNullOrWhiteSpace(value) ? fallback : value;
 
-    private static PaletteLight ComposeLight(ClientPaletteDto dto) => new()
+    private static PaletteLight ComposeLight(UiThemePaletteDto dto) => new()
     {
         Primary = PaletteValue(dto.Primary, BuiltInLight.Primary.ToString()),
         PrimaryContrastText = PaletteValue(dto.PrimaryContrastText, BuiltInLight.PrimaryContrastText.ToString()),
@@ -575,7 +520,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         OverlayLight = BuiltInLight.OverlayLight
     };
 
-    private static PaletteDark ComposeDark(ClientPaletteDto dto) => new()
+    private static PaletteDark ComposeDark(UiThemePaletteDto dto) => new()
     {
         Primary = PaletteValue(dto.Primary, BuiltInDark.Primary.ToString()),
         PrimaryContrastText = PaletteValue(dto.PrimaryContrastText, BuiltInDark.PrimaryContrastText.ToString()),

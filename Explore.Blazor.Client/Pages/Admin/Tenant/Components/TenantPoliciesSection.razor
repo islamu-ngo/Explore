@@ -12,19 +12,19 @@
         </MudText>
     </div>
     <MudStack Spacing="3">
-        <MudSwitch T="bool" @bind-Value="Model.AllowUserSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool?" @bind-Value="Model.AllowUserSubmittedEvents" Color="Color.Primary">
             Allow users to submit events
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.AllowOrganizationSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool?" @bind-Value="Model.AllowOrganizationSubmittedEvents" Color="Color.Primary">
             Allow organizations to submit events
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.AllowGroupSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool?" @bind-Value="Model.AllowGroupSubmittedEvents" Color="Color.Primary">
             Allow groups to submit events
         </MudSwitch>
 
-        @if (!Model.AllowUserSubmittedEvents && !Model.AllowOrganizationSubmittedEvents && !Model.AllowGroupSubmittedEvents)
+        @if (Model.AllowUserSubmittedEvents != true && Model.AllowOrganizationSubmittedEvents != true && Model.AllowGroupSubmittedEvents != true)
         {
             <MudAlert Severity="Severity.Info" Dense="true">
                 No entity types are allowed to submit events. Only administrators will be able to create events through entities they manage.
@@ -33,28 +33,28 @@
 
         <MudDivider />
 
-        <MudSwitch T="bool" @bind-Value="Model.AllowOrganizationSelfRegistration" Color="Color.Primary">
+        <MudSwitch T="bool?" @bind-Value="Model.AllowOrganizationSelfRegistration" Color="Color.Primary">
             Allow organization self-registration
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.AllowGroupSelfRegistration" Color="Color.Primary">
+        <MudSwitch T="bool?" @bind-Value="Model.AllowGroupSelfRegistration" Color="Color.Primary">
             Allow group self-registration
         </MudSwitch>
 
         <MudDivider />
 
-        <MudSwitch T="bool" @bind-Value="Model.RequireEventApproval" Color="Color.Primary">
+        <MudSwitch T="bool?" @bind-Value="Model.RequireEventApproval" Color="Color.Primary">
             Require approval before publication
         </MudSwitch>
 
-        <MudSwitch T="bool"
+        <MudSwitch T="bool?"
                    @bind-Value="Model.RequireOrganizationVerification"
                    Color="Color.Primary"
-                   Disabled="@(!IsSingleTenant && !Model.CanTenantOmitVerification)">
+                   Disabled="@(!IsSingleTenant && Model.CanTenantOmitVerification != true)">
             Require organization verification
         </MudSwitch>
 
-        @if (!IsSingleTenant && !Model.CanTenantOmitVerification)
+        @if (!IsSingleTenant && Model.CanTenantOmitVerification != true)
         {
             <MudText Typo="Typo.caption" Color="Color.Warning">
                 Verification requirement is locked by instance policy.
@@ -63,14 +63,14 @@
 
         <MudDivider />
 
-        <MudSwitch T="bool"
+        <MudSwitch T="bool?"
                    @bind-Value="Model.EventCardClickOpensDetailPage"
                    Color="Color.Primary"
-                   Disabled="@(!IsSingleTenant && !Model.CanOverrideEventCardClickBehavior)">
+                   Disabled="@(!IsSingleTenant && Model.CanOverrideEventCardClickBehavior != true)">
             Event card click opens detail page
         </MudSwitch>
 
-        @if (!IsSingleTenant && !Model.CanOverrideEventCardClickBehavior)
+        @if (!IsSingleTenant && Model.CanOverrideEventCardClickBehavior != true)
         {
             <MudText Typo="Typo.caption" Color="Color.Warning">
                 Event card click behavior is locked by instance policy.
@@ -81,7 +81,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public TenantPolicySettingsModel Model { get; set; } = null!;
+    public TenantPolicySettingsDto Model { get; set; } = null!;
 
     [Parameter]
     public bool IsSingleTenant { get; set; }

@@ -92,7 +92,7 @@ public partial class NavMenu : IDisposable
     private bool _showAddEventForAnonymous;
     private bool _languagePickerEnabled = true;
     private ICollection<OrganizationListDto> _userOrganizations = new List<OrganizationListDto>();
-    private ICollection<GroupPublisherListDto> _userGroups = new List<GroupPublisherListDto>();
+    private ICollection<GroupListDto> _userGroups = new List<GroupListDto>();
     private bool _orgSubmenuOpen;
     private bool _groupSubmenuOpen;
     private const string AiAssistantPreferencesCategory = "AiAssistantPreferences";
@@ -137,13 +137,13 @@ public partial class NavMenu : IDisposable
         var shell = shellTask is null ? null : await shellTask;
         if (shell is not null)
         {
-            if (!string.IsNullOrWhiteSpace(shell.Home.BrandDisplayName))
+            if (!string.IsNullOrWhiteSpace(shell.Home?.BrandDisplayName))
             {
                 _brandDisplayName = shell.Home.BrandDisplayName;
             }
 
-            _brandLogoUrl = shell.Home.BrandLogoUrl ?? string.Empty;
-            _eventCatalogLabel = string.IsNullOrWhiteSpace(shell.EventCatalog.Label)
+            _brandLogoUrl = shell.Home?.BrandLogoUrl ?? string.Empty;
+            _eventCatalogLabel = string.IsNullOrWhiteSpace(shell.EventCatalog?.Label)
                 ? _eventCatalogLabel
                 : shell.EventCatalog.Label.ToLowerInvariant();
         }
@@ -164,11 +164,11 @@ public partial class NavMenu : IDisposable
             ? settings.BrandLogoUrl ?? string.Empty
             : _brandLogoUrl;
         AiAssistantState.SetPolicy(
-            settings.IsAiAssistantEnabled,
-            settings.IsAiAssistantAvailable,
-            settings.AiAssistantAllowAnonymousAccess,
+            settings.IsAiAssistantEnabled == true,
+            settings.IsAiAssistantAvailable == true,
+            settings.AiAssistantAllowAnonymousAccess == true,
             isAuthenticated);
-        _languagePickerEnabled = settings.ClientPickerEnabled;
+        _languagePickerEnabled = settings.ClientPickerEnabled ?? true;
 
         if (isAuthenticated)
         {
@@ -177,9 +177,9 @@ public partial class NavMenu : IDisposable
 
         // Show "Add Event" button to anonymous visitors when at least one
         // submission type is enabled, prompting them to log in on click.
-        _showAddEventForAnonymous = settings.AllowUserSubmittedEvents
-            || settings.AllowOrganizationSubmittedEvents
-            || settings.AllowGroupSubmittedEvents;
+        _showAddEventForAnonymous = settings.AllowUserSubmittedEvents == true
+            || settings.AllowOrganizationSubmittedEvents == true
+            || settings.AllowGroupSubmittedEvents == true;
     }
 
     private async Task LoadAiAssistantPreferenceAsync()
@@ -342,7 +342,7 @@ public partial class NavMenu : IDisposable
     {
         var shellTask = PublicExperienceService.GetCachedShellAsync();
         var shell = shellTask is null ? null : await shellTask;
-        if (shell?.Navigation.Links.Count > 0)
+        if (shell?.Navigation?.Links?.Count > 0)
         {
             _navigationLinks = shell.Navigation.Links
                 .Where(link => !string.IsNullOrWhiteSpace(link.Label) && !string.IsNullOrWhiteSpace(link.Url))
@@ -351,9 +351,9 @@ public partial class NavMenu : IDisposable
                 .Select(link => new TenantNavigationLinkDto
                 {
                     Id = Guid.NewGuid(),
-                    Label = link.Label,
-                    Url = link.Url,
-                    Order = link.SortOrder,
+                    Label = link.Label!,
+                    Url = link.Url!,
+                    Order = link.SortOrder ?? 0,
                     OpenInNewTab = false
                 })
                 .ToList();
@@ -390,7 +390,7 @@ public partial class NavMenu : IDisposable
             _isSingleTenantMode = status == null
                 || string.IsNullOrWhiteSpace(status.SelectedDeploymentMode)
                 || string.Equals(status.SelectedDeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
-            _isCurrentUserInstanceAdmin = status?.IsAuthenticated == true && status.IsCurrentUserInstanceAdmin;
+            _isCurrentUserInstanceAdmin = status?.IsAuthenticated == true && status.IsCurrentUserInstanceAdmin == true;
 
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             if (authState.User.Identity?.IsAuthenticated == true)
@@ -405,7 +405,7 @@ public partial class NavMenu : IDisposable
 
                 var tenantStatus = await TenantOnboardingService.GetStatusAsync();
                 _isCurrentUserTenantAdmin = _isCurrentUserTenantAdmin
-                    || (tenantStatus?.IsAuthenticated == true && tenantStatus.IsCurrentUserTenantAdministrator);
+                    || (tenantStatus?.IsAuthenticated == true && tenantStatus.IsCurrentUserTenantAdministrator == true);
             }
         }
         catch
@@ -440,7 +440,7 @@ public partial class NavMenu : IDisposable
         }
         catch
         {
-            _userGroups = new List<GroupPublisherListDto>();
+            _userGroups = new List<GroupListDto>();
         }
     }
 

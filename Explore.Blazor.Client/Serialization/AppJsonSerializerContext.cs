@@ -6,10 +6,8 @@ using System.Text.Json.Serialization;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.Events;
-using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Pages.Events;
-using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Serialization;
 
@@ -49,7 +47,6 @@ namespace Explore.Blazor.Client.Serialization;
 [JsonSerializable(typeof(CreateEventRegistrationDto))]
 [JsonSerializable(typeof(CreateEventSessionAgendaItemDto))]
 [JsonSerializable(typeof(CreateEventSessionDto))]
-[JsonSerializable(typeof(ComposerCreateEventSessionRequest))]
 [JsonSerializable(typeof(CreateIndexedDidDto))]
 [JsonSerializable(typeof(CreateLocationDto))]
 [JsonSerializable(typeof(CreateOrganizationDto))]
@@ -195,11 +192,10 @@ namespace Explore.Blazor.Client.Serialization;
 [JsonSerializable(typeof(UpdateActorKeyStoreDto))]
 [JsonSerializable(typeof(UpdateAtprotoRecordDto))]
 [JsonSerializable(typeof(UpdateCategoryDto))]
-[JsonSerializable(typeof(UpdateEventDraftRequestDto))]
+[JsonSerializable(typeof(EventDraftEditModel))]
 [JsonSerializable(typeof(UpdateEventRegistrationDto))]
 [JsonSerializable(typeof(UpdateEventSessionAgendaItemDto))]
 [JsonSerializable(typeof(UpdateEventSessionDto))]
-[JsonSerializable(typeof(UpdateEventSessionRequest))]
 [JsonSerializable(typeof(UpdateIndexedDidDto))]
 [JsonSerializable(typeof(UpdateLocationDto))]
 [JsonSerializable(typeof(UpdateOrganizationApprovalStatusDto))]

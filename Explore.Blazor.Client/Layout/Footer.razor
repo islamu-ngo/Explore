@@ -77,10 +77,10 @@
     private bool _showDescription = true;
     private string _descriptionText = string.Empty;
     private bool _showSocialLinks = true;
-    private List<FooterSocialLinkModel> _socialLinks = [];
+    private List<FooterSocialLinkDto> _socialLinks = [];
     private string _copyrightText = string.Empty;
     private bool _showCookieSettingsLink = true;
-    private List<FooterLinkGroupModel> _linkGroups = [];
+    private List<FooterLinkGroupDto> _linkGroups = [];
     private bool _showCommunityGuidelinesLink;
 
     protected override async Task OnInitializedAsync()
@@ -89,27 +89,28 @@
         if (settings is null)
             return;
 
-        _brandDisplayName = settings.BrandDisplayName;
+        _brandDisplayName = settings.BrandDisplayName ?? string.Empty;
         _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
 
         var footer = settings.FooterConfig;
-        _template = footer.Settings.Template;
-        _footerEnabled = footer.Settings.Enabled;
-        _showDescription = footer.Settings.ShowDescription;
-        _descriptionText = footer.Settings.DescriptionText;
-        _showSocialLinks = footer.Settings.ShowSocialLinks;
-        _socialLinks = footer.Settings.SocialLinks;
-        _showCookieSettingsLink = footer.Settings.ShowCookieSettingsLink;
-        _linkGroups = footer.LinkGroups;
+        var footerSettings = footer?.Settings;
+        _template = footerSettings?.Template ?? _template;
+        _footerEnabled = footerSettings?.Enabled ?? _footerEnabled;
+        _showDescription = footerSettings?.ShowDescription ?? _showDescription;
+        _descriptionText = footerSettings?.DescriptionText ?? string.Empty;
+        _showSocialLinks = footerSettings?.ShowSocialLinks ?? _showSocialLinks;
+        _socialLinks = footerSettings?.SocialLinks?.ToList() ?? [];
+        _showCookieSettingsLink = footerSettings?.ShowCookieSettingsLink ?? _showCookieSettingsLink;
+        _linkGroups = footer?.LinkGroups?.ToList() ?? [];
 
         // Same rule as sidebar (MainLayout): show community guidelines when non-admin users can publish events
-        _showCommunityGuidelinesLink = settings.AllowUserSubmittedEvents
-            || settings.AllowOrganizationSubmittedEvents
-            || settings.AllowGroupSubmittedEvents;
+        _showCommunityGuidelinesLink = settings.AllowUserSubmittedEvents == true
+            || settings.AllowOrganizationSubmittedEvents == true
+            || settings.AllowGroupSubmittedEvents == true;
 
-        _copyrightText = string.IsNullOrWhiteSpace(footer.Settings.CopyrightText)
+        _copyrightText = string.IsNullOrWhiteSpace(footerSettings?.CopyrightText)
             ? $"© {DateTime.Now.Year} {_brandDisplayName}. All rights reserved."
-            : footer.Settings.CopyrightText;
+            : footerSettings.CopyrightText;
     }
 
     private async Task HandleCookieSettingsClick()

@@ -149,7 +149,7 @@
 
         if (confirm == true)
         {
-            var success = await RoomService.DeleteRoomAsync(room.Id);
+            var success = await RoomService.DeleteRoomAsync(room.Id ?? Guid.Empty);
             if (success)
             {
                 await LoadRooms();

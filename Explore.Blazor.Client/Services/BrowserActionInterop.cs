@@ -111,6 +111,27 @@ public sealed class BrowserActionInterop : IBrowserActionInterop, IAsyncDisposab
         }
     }
 
+    public async Task<bool> DownloadFileFromUrlAsync(
+        string url,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        try
+        {
+            var module = await GetModuleAsync(cancellationToken);
+            return await module.InvokeAsync<bool>("downloadFileFromUrl", cancellationToken, url);
+        }
+        catch (Exception ex) when (IsExpectedBrowserInteropFailure(ex))
+        {
+            _logger.LogDebug(ex, "Browser URL download action was unavailable.");
+            return false;
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_module is null)

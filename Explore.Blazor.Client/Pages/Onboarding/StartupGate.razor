@@ -51,14 +51,14 @@
                 return;
             }
 
-            if (!instanceStatus.IsCompleted)
+            if (instanceStatus.IsCompleted != true)
             {
                 Navigation.NavigateTo("/setup");
                 return;
             }
 
-            if (instanceStatus.IsAuthenticated &&
-                instanceStatus.IsCurrentUserInstanceAdmin &&
+            if (instanceStatus.IsAuthenticated == true &&
+                instanceStatus.IsCurrentUserInstanceAdmin == true &&
                 instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
             {
                 Navigation.NavigateTo("/admin/instance/settings");

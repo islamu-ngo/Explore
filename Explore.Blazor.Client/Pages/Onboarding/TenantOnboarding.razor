@@ -81,11 +81,11 @@
                 <MudText Typo="Typo.caption" Class="mb-1">Fields marked "(Required)" must be provided before completing onboarding.</MudText>
 
                 @{
-                    bool hasLocks = !_model.CanTenantOmitVerification || 
-                                    !_model.CanOverrideHomePagePreference ||
-                                    !_model.CanOverrideEventCardClickBehavior ||
-                                    !_model.CanOverrideSubdomain ||
-                                    !_model.CanOverrideCustomDomain;
+                    bool hasLocks = _model.CanTenantOmitVerification != true ||
+                                    _model.CanOverrideHomePagePreference != true ||
+                                    _model.CanOverrideEventCardClickBehavior != true ||
+                                    _model.CanOverrideSubdomain != true ||
+                                    _model.CanOverrideCustomDomain != true;
                 }
 
                 @if (hasLocks)
@@ -99,17 +99,17 @@
                 <MudExpansionPanels MultiExpansion="true" Class="mb-4">
                     <MudExpansionPanel Text="Content Governance" IsExpanded="true">
                         <MudStack Spacing="3">
-                            <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
+                            <MudSwitch T="bool?" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
                                 Allow users to submit events
                             </MudSwitch>
-                            <MudSwitch T="bool" @bind-Value="_model.RequireEventApproval" Color="Color.Primary">
+                            <MudSwitch T="bool?" @bind-Value="_model.RequireEventApproval" Color="Color.Primary">
                                 Require approval before user-submitted events are published
                             </MudSwitch>
-                            <MudSwitch T="bool"
+                            <MudSwitch T="bool?"
                                        @bind-Value="_model.RequireOrganizationVerification"
-                                       Disabled="@(!_model.CanTenantOmitVerification)"
+                                       Disabled="@(_model.CanTenantOmitVerification != true)"
                                        Color="Color.Primary">
-                                Require organization verification @(!_model.CanTenantOmitVerification ? "🔒" : "")
+                                Require organization verification @(_model.CanTenantOmitVerification != true ? "🔒" : "")
                             </MudSwitch>
                         </MudStack>
                     </MudExpansionPanel>
@@ -117,9 +117,9 @@
                     <MudExpansionPanel Text="Tenant Experience">
                         <MudStack Spacing="3">
                             <MudSelect T="string"
-                                       Label="@("Preferred Home Page" + (!_model.CanOverrideHomePagePreference ? " 🔒" : " (Required)"))"
+                                       Label="@("Preferred Home Page" + (_model.CanOverrideHomePagePreference != true ? " 🔒" : " (Required)"))"
                                        @bind-Value="_model.PreferredHomePage"
-                                       Disabled="@(!_model.CanOverrideHomePagePreference)"
+                                       Disabled="@(_model.CanOverrideHomePagePreference != true)"
                                        Variant="Variant.Outlined"
                                        Required="true"
                                        RequiredError="Preferred home page is required.">
@@ -127,25 +127,25 @@
                                 <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
                             </MudSelect>
 
-                            <MudSwitch T="bool"
+                            <MudSwitch T="bool?"
                                        @bind-Value="_model.EventCardClickOpensDetailPage"
                                        Color="Color.Primary"
-                                       Disabled="@(!_model.CanOverrideEventCardClickBehavior)">
-                                Event card click opens detail page @(!_model.CanOverrideEventCardClickBehavior ? "🔒" : "")
+                                       Disabled="@(_model.CanOverrideEventCardClickBehavior != true)">
+                                Event card click opens detail page @(_model.CanOverrideEventCardClickBehavior != true ? "🔒" : "")
                             </MudSwitch>
 
-                            <MudTextField T="string" Label="@("Subdomain (Optional)" + (!_model.CanOverrideSubdomain ? " 🔒" : ""))"
+                            <MudTextField T="string" Label="@("Subdomain (Optional)" + (_model.CanOverrideSubdomain != true ? " 🔒" : ""))"
                                           Variant="Variant.Outlined"
                                           Placeholder="tenant-slug"
                                           @bind-Value="_model.Subdomain"
-                                          Disabled="@(!_model.CanOverrideSubdomain)"
+                                          Disabled="@(_model.CanOverrideSubdomain != true)"
                                           HelperText="@($"Base domain: {(_model.InstanceBaseDomain == string.Empty ? "(not configured)" : _model.InstanceBaseDomain)}")" />
 
-                            <MudTextField T="string" Label="@("Custom Domain (Optional)" + (!_model.CanOverrideCustomDomain ? " 🔒" : ""))"
+                            <MudTextField T="string" Label="@("Custom Domain (Optional)" + (_model.CanOverrideCustomDomain != true ? " 🔒" : ""))"
                                           Variant="Variant.Outlined"
                                           Placeholder="events.example.org"
                                           @bind-Value="_model.CustomDomain"
-                                          Disabled="@(!_model.CanOverrideCustomDomain)" />
+                                          Disabled="@(_model.CanOverrideCustomDomain != true)" />
                         </MudStack>
                     </MudExpansionPanel>
 
@@ -169,7 +169,7 @@
 </MudContainer>
 
 @code {
-    private TenantPolicySettingsModel _model = new();
+    private TenantPolicySettingsDto _model = new();
     private bool _isLoading = true;
     private FormSubmitState _submitState = new();
     private bool _canEdit;
@@ -189,12 +189,12 @@
             return;
         }
 
-        _canEdit = status.IsCurrentUserTenantAdministrator || status.IsCurrentUserPlatformAdministrator;
-        _administrationSettingsHref = status.IsCurrentUserTenantAdministrator
+        _canEdit = status.IsCurrentUserTenantAdministrator == true || status.IsCurrentUserPlatformAdministrator == true;
+        _administrationSettingsHref = status.IsCurrentUserTenantAdministrator == true
             ? "/admin/tenant/settings"
             : "/admin/instance/settings";
 
-        if (status.IsCompleted && _canEdit)
+        if (status.IsCompleted == true && _canEdit)
         {
             _showCompletionPrompt = true;
             _isLoading = false;
@@ -213,7 +213,7 @@
         var response = await TenantOnboardingService.CompleteAsync(_model);
         _submitState.Complete();
 
-        if (response.Success)
+        if (response.Success == true)
         {
             Snackbar.Add("Tenant onboarding completed.", Severity.Success);
             _showCompletionPrompt = true;

@@ -3,12 +3,10 @@
 
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
-using Explore.Blazor.Client.Models.Responses;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -24,7 +22,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<PaginatedResult<CustomPropertyDefinitionListModel>> GetDefinitionsAsync(
+    public async Task<PaginatedResult<CustomPropertyDefinitionListDto>> GetDefinitionsAsync(
         EntityTypeName entityTypeName,
         int pageNumber = 1,
         int pageSize = 20,
@@ -43,18 +41,18 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP ADMIN] Failed to fetch definitions for {EntityType}", entityTypeName);
-            return PaginatedResult<CustomPropertyDefinitionListModel>.Empty(pageNumber, pageSize);
+            return PaginatedResult<CustomPropertyDefinitionListDto>.Empty(pageNumber, pageSize);
         }
     }
 
-    public async Task<CustomPropertyDefinitionDetailModel?> GetDefinitionAsync(
+    public async Task<CustomPropertyDefinitionDto?> GetDefinitionAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var hal = await _apiClient.GetCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
-            return hal.ToModel();
+            return hal.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -67,7 +65,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>?> UpdateDefinitionFlagsAsync(
+    public async Task<BaseCommandResponseOfGuid?> UpdateDefinitionFlagsAsync(
         DefinitionFlagUpdateModel update,
         CancellationToken cancellationToken = default)
     {
@@ -76,10 +74,10 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         try
         {
             var hal = await _apiClient.GetCustomPropertyDefinitionByIdAsync(update.DefinitionId, cancellationToken: cancellationToken);
-            var detail = hal.ToModel();
+            var detail = hal.ToDto();
             if (detail is null)
             {
-                return new BaseCommandResponse<Guid>
+                return new BaseCommandResponseOfGuid
                 {
                     Success = false,
                     Message = "Definition not found."
@@ -88,12 +86,12 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
 
             var dto = BuildUpdateDto(detail, update);
             var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(update.DefinitionId, dto, cancellationToken: cancellationToken);
-            return ToClientResponse(response);
+            return response;
         }
         catch (ApiException ex)
         {
             _logger.LogWarning(ex, "[CP ADMIN] Flag update rejected for {DefinitionId} — status {Status}", update.DefinitionId, ex.StatusCode);
-            return new BaseCommandResponse<Guid>
+            return new BaseCommandResponseOfGuid
             {
                 Success = false,
                 Message = TryReadErrorMessage(ex.Response) ?? $"API error ({ex.StatusCode})."
@@ -102,7 +100,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP ADMIN] Flag update failed for {DefinitionId}", update.DefinitionId);
-            return new BaseCommandResponse<Guid>
+            return new BaseCommandResponseOfGuid
             {
                 Success = false,
                 Message = ex.Message
@@ -110,7 +108,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>> UpdateManyDefinitionFlagsAsync(
+    public async Task<BaseCommandResponseOfGuid> UpdateManyDefinitionFlagsAsync(
         IReadOnlyList<DefinitionFlagUpdateModel> updates,
         CancellationToken cancellationToken = default)
     {
@@ -118,7 +116,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
 
         if (updates.Count == 0)
         {
-            return new BaseCommandResponse<Guid>
+            return new BaseCommandResponseOfGuid
             {
                 Success = true,
                 Message = "No updates supplied."
@@ -132,13 +130,13 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 break;
 
             var result = await UpdateDefinitionFlagsAsync(update, cancellationToken);
-            if (result is null || !result.Success)
+            if (result is null || result.Success != true)
             {
                 failures.Add($"{update.DefinitionId}: {result?.Message ?? "unknown error"}");
             }
         }
 
-        return new BaseCommandResponse<Guid>
+        return new BaseCommandResponseOfGuid
         {
             Success = failures.Count == 0,
             Message = failures.Count == 0
@@ -148,7 +146,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         };
     }
 
-    public async Task<PaginatedResult<CustomPropertyGovernanceRowModel>> GetGovernanceReportAsync(
+    public async Task<PaginatedResult<CustomPropertyGovernanceRowDto>> GetGovernanceReportAsync(
         Guid? tenantId = null,
         string? scope = null,
         PromotionRecommendation? recommendation = null,
@@ -167,11 +165,11 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 cancellationToken: cancellationToken);
 
             if (response is null)
-                return PaginatedResult<CustomPropertyGovernanceRowModel>.Empty(pageNumber, pageSize);
+                return PaginatedResult<CustomPropertyGovernanceRowDto>.Empty(pageNumber, pageSize);
 
-            return new PaginatedResult<CustomPropertyGovernanceRowModel>
+            return new PaginatedResult<CustomPropertyGovernanceRowDto>
             {
-                Items = response.Items?.Select(MapGovernanceRow).ToList() ?? [],
+                Items = response.Items?.ToList() ?? [],
                 PageNumber = response.PageNumber ?? pageNumber,
                 PageSize = response.PageSize ?? pageSize,
                 TotalCount = response.TotalCount ?? 0
@@ -180,43 +178,43 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP ADMIN] Governance report fetch failed");
-            return PaginatedResult<CustomPropertyGovernanceRowModel>.Empty(pageNumber, pageSize);
+            return PaginatedResult<CustomPropertyGovernanceRowDto>.Empty(pageNumber, pageSize);
         }
     }
 
-    public async Task<IReadOnlyList<ProjectionStatusModel>> GetEventProjectionStatusAsync(
+    public async Task<IReadOnlyList<HalResourceOfProjectionStatusDto>> GetEventProjectionStatusAsync(
         Guid? tenantId = null,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var response = await _apiClient.GetCustomPropertyProjectionStatusAsync(tenantId, cancellationToken: cancellationToken);
-            return response?._embedded?.Items?.Select(MapStatus).ToList() ?? new List<ProjectionStatusModel>();
+            return response?._embedded?.Items?.ToList() ?? new List<HalResourceOfProjectionStatusDto>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP ADMIN] Event projection status fetch failed");
-            return Array.Empty<ProjectionStatusModel>();
+            return Array.Empty<HalResourceOfProjectionStatusDto>();
         }
     }
 
-    public async Task<IReadOnlyList<ProjectionStatusModel>> GetSessionProjectionStatusAsync(
+    public async Task<IReadOnlyList<HalResourceOfProjectionStatusDto>> GetSessionProjectionStatusAsync(
         Guid? tenantId = null,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var response = await _apiClient.GetSessionCustomPropertyProjectionStatusAsync(tenantId, cancellationToken: cancellationToken);
-            return response?._embedded?.Items?.Select(MapStatus).ToList() ?? new List<ProjectionStatusModel>();
+            return response?._embedded?.Items?.ToList() ?? new List<HalResourceOfProjectionStatusDto>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP ADMIN] Session projection status fetch failed");
-            return Array.Empty<ProjectionStatusModel>();
+            return Array.Empty<HalResourceOfProjectionStatusDto>();
         }
     }
 
-    public async Task<PaginatedResult<ProjectionDirtyScopeModel>> GetDirtyScopesAsync(
+    public async Task<PaginatedResult<HalResourceOfProjectionDirtyScopeDto>> GetDirtyScopesAsync(
         Guid? tenantId = null,
         string? projectionName = null,
         int pageNumber = 1,
@@ -233,11 +231,11 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 cancellationToken: cancellationToken);
 
             if (response is null)
-                return PaginatedResult<ProjectionDirtyScopeModel>.Empty(pageNumber, pageSize);
+                return PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty(pageNumber, pageSize);
 
-            return new PaginatedResult<ProjectionDirtyScopeModel>
+            return new PaginatedResult<HalResourceOfProjectionDirtyScopeDto>
             {
-                Items = response._embedded?.Items?.Select(MapDirtyScope).ToList() ?? [],
+                Items = response._embedded?.Items?.ToList() ?? [],
                 PageNumber = response.PageNumber ?? pageNumber,
                 PageSize = response.PageSize ?? pageSize,
                 TotalCount = response.TotalCount ?? 0
@@ -246,11 +244,11 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP ADMIN] Dirty scopes fetch failed");
-            return PaginatedResult<ProjectionDirtyScopeModel>.Empty(pageNumber, pageSize);
+            return PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty(pageNumber, pageSize);
         }
     }
 
-    public async Task<BaseCommandResponse<RebuildProjectionResult>?> RebuildEventProjectionAsync(
+    public async Task<BaseCommandResponseOfRebuildProjectionResponseDto?> RebuildEventProjectionAsync(
         Guid tenantId,
         int? batchSize = null,
         CancellationToken cancellationToken = default)
@@ -263,13 +261,12 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 BatchSize = batchSize
             };
 
-            var response = await _apiClient.RebuildCustomPropertyProjectionAsync(request, cancellationToken: cancellationToken);
-            return ToRebuildResult(response);
+            return await _apiClient.RebuildCustomPropertyProjectionAsync(request, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP ADMIN] Event projection rebuild failed for {TenantId}", tenantId);
-            return new BaseCommandResponse<RebuildProjectionResult>
+            return new BaseCommandResponseOfRebuildProjectionResponseDto
             {
                 Success = false,
                 Message = ex.Message
@@ -277,7 +274,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         }
     }
 
-    public async Task<BaseCommandResponse<RebuildProjectionResult>?> RebuildSessionProjectionAsync(
+    public async Task<BaseCommandResponseOfRebuildProjectionResponseDto?> RebuildSessionProjectionAsync(
         Guid tenantId,
         int? batchSize = null,
         CancellationToken cancellationToken = default)
@@ -290,13 +287,12 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 BatchSize = batchSize
             };
 
-            var response = await _apiClient.RebuildSessionCustomPropertyProjectionAsync(request, cancellationToken: cancellationToken);
-            return ToRebuildResult(response);
+            return await _apiClient.RebuildSessionCustomPropertyProjectionAsync(request, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP ADMIN] Session projection rebuild failed for {TenantId}", tenantId);
-            return new BaseCommandResponse<RebuildProjectionResult>
+            return new BaseCommandResponseOfRebuildProjectionResponseDto
             {
                 Success = false,
                 Message = ex.Message
@@ -304,7 +300,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         }
     }
 
-    public async Task<BaseCommandResponse<DrainDirtyScopesResult>?> DrainDirtyScopesAsync(
+    public async Task<BaseCommandResponseOfDrainDirtyScopesResponseDto?> DrainDirtyScopesAsync(
         Guid tenantId,
         string? projectionName = null,
         CancellationToken cancellationToken = default)
@@ -317,13 +313,12 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 ProjectionName = projectionName
             };
 
-            var response = await _apiClient.DrainCustomPropertyProjectionDirtyScopesAsync(request, cancellationToken: cancellationToken);
-            return ToDrainResult(response);
+            return await _apiClient.DrainCustomPropertyProjectionDirtyScopesAsync(request, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CP ADMIN] Dirty-scope drain failed for {TenantId}", tenantId);
-            return new BaseCommandResponse<DrainDirtyScopesResult>
+            return new BaseCommandResponseOfDrainDirtyScopesResponseDto
             {
                 Success = false,
                 Message = ex.Message
@@ -332,19 +327,19 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
     }
 
     private static UpdateCustomPropertyDefinitionDto BuildUpdateDto(
-        CustomPropertyDefinitionDetailModel detail,
+        CustomPropertyDefinitionDto detail,
         DefinitionFlagUpdateModel update)
     {
         return new UpdateCustomPropertyDefinitionDto
         {
             Id = detail.Id,
             ExpectedConcurrencyStamp = detail.ConcurrencyStamp,
-            EntityTypeName = detail.EntityTypeName,
+            EntityTypeName = (EntityTypeName?)detail.EntityTypeName,
             Namespace = detail.Namespace,
             Key = detail.Key,
             DisplayName = detail.DisplayName,
             Description = detail.Description,
-            PropertyType = detail.PropertyType,
+            PropertyType = (PropertyType?)detail.PropertyType,
             IsRequired = detail.IsRequired,
             IsMulti = detail.IsMulti,
             IsActive = detail.IsActive,
@@ -368,149 +363,17 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
             MinDateTime = detail.MinDateTime,
             MaxDateTime = detail.MaxDateTime,
             AllowedUrlSchemes = detail.AllowedUrlSchemes,
-            Options = detail.Options.Select(o => new CreateCustomPropertyOptionDto
+            Options = detail.Options?.Select(o => new CreateCustomPropertyOptionDto
             {
                 Namespace = o.Namespace,
                 Key = o.Key,
                 DisplayName = o.DisplayName,
                 Description = o.Description,
                 Value = o.Value,
-                IsDefault = o.IsDefault,
-                IsActive = o.IsActive,
+                IsDefault = o.IsDefault == true,
+                IsActive = o.IsActive == true,
                 SortOrder = o.SortOrder
-            }).ToList()
-        };
-    }
-
-    private static BaseCommandResponse<Guid> ToClientResponse(BaseCommandResponseOfGuid response)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = response.Success ?? false,
-            Id = response.Id ?? Guid.Empty,
-            Message = response.Message,
-            Errors = response.Errors?.ToList()
-        };
-    }
-
-    private static BaseCommandResponse<RebuildProjectionResult> ToRebuildResult(BaseCommandResponseOfRebuildProjectionResponseDto? response)
-    {
-        if (response is null)
-        {
-            return new BaseCommandResponse<RebuildProjectionResult>
-            {
-                Success = false,
-                Message = "No response from server."
-            };
-        }
-
-        var payload = response.Id;
-        return new BaseCommandResponse<RebuildProjectionResult>
-        {
-            Success = response.Success ?? false,
-            Message = response.Message,
-            Errors = response.Errors?.ToList(),
-            Id = payload is null ? null : new RebuildProjectionResult
-            {
-                LockAcquired = payload.LockAcquired ?? false,
-                RowsProcessed = payload.RowsProcessed ?? 0,
-                RowsFailed = payload.RowsFailed ?? 0,
-                DrainedDirtyScopes = payload.DrainedDirtyScopes ?? 0,
-                StartedAt = payload.StartedAt,
-                CompletedAt = payload.CompletedAt
-            }
-        };
-    }
-
-    private static BaseCommandResponse<DrainDirtyScopesResult> ToDrainResult(BaseCommandResponseOfDrainDirtyScopesResponseDto? response)
-    {
-        if (response is null)
-        {
-            return new BaseCommandResponse<DrainDirtyScopesResult>
-            {
-                Success = false,
-                Message = "No response from server."
-            };
-        }
-
-        var payload = response.Id;
-        return new BaseCommandResponse<DrainDirtyScopesResult>
-        {
-            Success = response.Success ?? false,
-            Message = response.Message,
-            Errors = response.Errors?.ToList(),
-            Id = payload is null ? null : new DrainDirtyScopesResult
-            {
-                DrainedCount = payload.DrainedCount ?? 0,
-                DrainedAt = payload.DrainedAt
-            }
-        };
-    }
-
-    private static ProjectionStatusModel MapStatus(HalResourceOfProjectionStatusDto dto)
-    {
-        return new ProjectionStatusModel
-        {
-            ProjectionName = dto.ProjectionName ?? string.Empty,
-            ProjectionVersion = dto.ProjectionVersion ?? 0,
-            TenantId = dto.TenantId,
-            State = dto.State ?? 0,
-            LastRebuildStartedAt = dto.LastRebuildStartedAt,
-            LastRebuildCompletedAt = dto.LastRebuildCompletedAt,
-            RowsProcessed = dto.RowsProcessed ?? 0,
-            RowsFailed = dto.RowsFailed ?? 0,
-            LastCheckpoint = dto.LastCheckpoint,
-            LastErrorMessage = dto.LastErrorMessage,
-            LinkRelations = CaptureLinkRelations(dto._links?.Keys)
-        };
-    }
-
-    private static ProjectionDirtyScopeModel MapDirtyScope(HalResourceOfProjectionDirtyScopeDto dto)
-    {
-        return new ProjectionDirtyScopeModel
-        {
-            Id = dto.Id ?? 0,
-            ProjectionName = dto.ProjectionName ?? string.Empty,
-            ProjectionVersion = dto.ProjectionVersion ?? 0,
-            TenantId = dto.TenantId,
-            ScopeType = dto.ScopeType ?? 0,
-            ScopeId = dto.ScopeId,
-            DefinitionId = dto.DefinitionId,
-            Reason = dto.Reason,
-            CreatedAt = dto.CreatedAt,
-            DrainedAt = dto.DrainedAt,
-            LinkRelations = CaptureLinkRelations(dto._links?.Keys)
-        };
-    }
-
-    private static IReadOnlySet<string> CaptureLinkRelations(IEnumerable<string>? rels)
-    {
-        return rels is null
-            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            : rels.ToHashSet(StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static CustomPropertyGovernanceRowModel MapGovernanceRow(CustomPropertyGovernanceRowDto dto)
-    {
-        return new CustomPropertyGovernanceRowModel
-        {
-            TenantId = dto.TenantId ?? Guid.Empty,
-
-            Namespace = dto.Namespace ?? string.Empty,
-            Key = dto.Key ?? string.Empty,
-            DisplayName = dto.DisplayName ?? string.Empty,
-            EntityScope = dto.EntityScope ?? string.Empty,
-            PropertyType = dto.PropertyType ?? string.Empty,
-            ExposureLevel = dto.ExposureLevel ?? ExposureLevel.TenantAdminOnly,
-            IsSearchable = dto.IsSearchable ?? false,
-            IsFilterable = dto.IsFilterable ?? false,
-            IsExportable = dto.IsExportable ?? false,
-            IsModerationRelevant = dto.IsModerationRelevant ?? false,
-            IsAnalyticsRelevant = dto.IsAnalyticsRelevant ?? false,
-            IsSystemOwned = dto.IsSystemOwned ?? false,
-            ActiveInstanceCount = dto.ActiveInstanceCount ?? 0,
-            LastUsedAt = dto.LastUsedAt,
-            Recommendation = (PromotionRecommendation)(dto.Recommendation ?? 0)
+            }).ToList() ?? []
         };
     }
 

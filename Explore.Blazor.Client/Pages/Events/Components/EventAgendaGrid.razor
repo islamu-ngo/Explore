@@ -16,7 +16,7 @@
             Agenda
             @if (_selectedDay != null)
             {
-                <span> &mdash; @(!string.IsNullOrEmpty(_selectedDay.Label) ? _selectedDay.Label : _selectedDay.LocalDate.ToString("MMM d"))</span>
+                <span> &mdash; @(!string.IsNullOrEmpty(_selectedDay.Label) ? _selectedDay.Label : _selectedDay.LocalDate?.ToString("MMM d"))</span>
             }
         </MudText>
         <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Add"
@@ -39,8 +39,8 @@
             <MudChip T="Guid" Value="Guid.Empty" Variant="Variant.Text" Size="Size.Small">All Days</MudChip>
             @foreach (var day in Days.OrderBy(d => d.SortOrder))
             {
-                <MudChip T="Guid" Value="day.Id" Variant="Variant.Text" Size="Size.Small">
-                    @(!string.IsNullOrEmpty(day.Label) ? day.Label : day.LocalDate.ToString("MMM d"))
+                <MudChip T="Guid" Value="@(day.Id ?? Guid.Empty)" Variant="Variant.Text" Size="Size.Small">
+                    @(!string.IsNullOrEmpty(day.Label) ? day.Label : day.LocalDate?.ToString("MMM d"))
                 </MudChip>
             }
         </MudChipSet>
@@ -83,7 +83,7 @@
                     </div>
                     @foreach (var room in Rooms.OrderBy(r => r.SortOrder))
                     {
-                        var item = timeGroup.ItemsByRoom.GetValueOrDefault(room.Id);
+                        var item = timeGroup.ItemsByRoom.GetValueOrDefault(room.Id ?? Guid.Empty);
                         <div class="event-agenda-grid__cell @(item != null ? "event-agenda-grid__cell--filled" : "")">
                             @if (item != null)
                             {
@@ -220,7 +220,7 @@
 
         // Group items by their start time slot
         var timeSlots = sortedItems
-            .GroupBy(i => i.LocalStartTime.ToString("HH:mm"))
+            .GroupBy(i => i.LocalStartTime?.ToString(@"hh\:mm") ?? "--:--")
             .OrderBy(g => g.Key);
 
         foreach (var slot in timeSlots)
@@ -244,7 +244,7 @@
             var itemsList = slot.ToList();
             for (int i = 0; i < itemsList.Count && i < roomsList.Count; i++)
             {
-                group.ItemsByRoom[roomsList[i].Id] = itemsList[i];
+                group.ItemsByRoom[roomsList[i].Id ?? Guid.Empty] = itemsList[i];
             }
 
             groups.Add(group);
@@ -258,7 +258,7 @@
 
     private async Task OpenCreateDialog()
     {
-        var nextSortOrder = _allItems.Count > 0 ? _allItems.Max(i => i.SortOrder) + 1 : 1;
+        var nextSortOrder = _allItems.Count > 0 ? (_allItems.Max(i => i.SortOrder) ?? 0) + 1 : 1;
         var parameters = new DialogParameters<EventAgendaItemEditorDialog>
         {
             { x => x.EventId, EventId },
@@ -286,7 +286,7 @@
             { x => x.EventId, EventId },
             { x => x.IsNew, false },
             { x => x.ItemId, item.Id },
-            { x => x.InitialSortOrder, item.SortOrder },
+            { x => x.InitialSortOrder, item.SortOrder ?? 0 },
             { x => x.Days, Days },
             { x => x.Rooms, Rooms }
         };
@@ -311,7 +311,7 @@
 
         if (confirm == true)
         {
-            var success = await AgendaItemService.DeleteAgendaItemAsync(item.Id);
+            var success = await AgendaItemService.DeleteAgendaItemAsync(item.Id ?? Guid.Empty);
             if (success)
             {
                 await LoadItems();

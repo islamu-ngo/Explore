@@ -17,45 +17,37 @@
         </MudText>
     </div>
     <MudStack Spacing="3">
-        <MudSwitch T="bool" @bind-Value="AiAssistant.Enabled" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="AiAssistant.Enabled == true"
+                   ValueChanged="@(value => AiAssistant.Enabled = value)"
+                   Color="Color.Primary">
             Enable AI Assistant
         </MudSwitch>
 
-        @if (AiAssistant.Enabled)
+        @if (AiAssistant.Enabled == true)
         {
             <MudSelect T="string" Label="Provider" @bind-Value="AiAssistant.Provider" Variant="Variant.Outlined">
                 <MudSelectItem Value="@("openai-compatible")">OpenAI-compatible</MudSelectItem>
                 <MudSelectItem Value="@("anthropic-compatible")">Anthropic-compatible</MudSelectItem>
             </MudSelect>
 
-            <MudSwitch T="bool" @bind-Value="AiAssistant.AllowAnonymousAccess" Color="Color.Warning">
+            <MudSwitch T="bool"
+                       Value="AiAssistant.AllowAnonymousAccess == true"
+                       ValueChanged="@(value => AiAssistant.AllowAnonymousAccess = value)"
+                       Color="Color.Warning">
                 Allow anonymous users to open the AI Assistant
             </MudSwitch>
 
-            <MudSwitch T="bool" @bind-Value="AiAssistant.ToolProposalsEnabled" Color="Color.Primary">
+            <MudSwitch T="bool"
+                       Value="AiAssistant.ToolProposalsEnabled == true"
+                       ValueChanged="@(value => AiAssistant.ToolProposalsEnabled = value)"
+                       Color="Color.Primary">
                 Enable tool proposals (Build mode)
             </MudSwitch>
 
             <MudAlert Severity="Severity.Info" Dense="true">
                 The navbar AI button appears only after an endpoint URL and model ID are saved.
             </MudAlert>
-
-            <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">Context Disclosure Policy</MudText>
-
-            <MudAlert Severity="Severity.Warning" Dense="true">
-                Enabling PII disclosure allows the AI assistant to include personal data (emails, names, addresses) in prompts when users explicitly consent. Ensure transcript hygiene and right-to-be-forgotten controls are operational before enabling.
-            </MudAlert>
-
-            <MudSwitch T="bool" @bind-Value="AiAssistant.PiiDisclosureEnabled" Color="Color.Error">
-                Enable PII disclosure (requires explicit user consent per field)
-            </MudSwitch>
-
-            <MudSelect T="int" @bind-Value="AiAssistant.MaxAiContextSensitivity" Label="Maximum data sensitivity tier" Variant="Variant.Outlined" Margin="Margin.Dense">
-                <MudSelectItem Value="0">Public — only intentionally public data</MudSelectItem>
-                <MudSelectItem Value="1">Internal — business metadata, opaque IDs (default)</MudSelectItem>
-                <MudSelectItem Value="2">Confidential — sensitive contact data</MudSelectItem>
-                <MudSelectItem Value="3">Restricted — regulated personal PII</MudSelectItem>
-            </MudSelect>
 
             <MudTextField T="string"
                           Value="AiAssistant.EndpointUrl"
@@ -155,7 +147,10 @@
         @if (!IsSingleTenant)
         {
             <MudDivider Class="my-2" />
-            <MudSwitch T="bool" @bind-Value="AiAssistant.LockTenantAiAssistant" Color="Color.Primary">
+            <MudSwitch T="bool"
+                       Value="AiAssistant.LockTenantAiAssistant == true"
+                       ValueChanged="@(value => AiAssistant.LockTenantAiAssistant = value)"
+                       Color="Color.Primary">
                 Lock tenant AI Assistant configuration
             </MudSwitch>
         }
@@ -163,13 +158,13 @@
 </div>
 
 @code {
-    private IReadOnlyList<AiAssistantModelOptionModel> _discoveredModels = [];
+    private IReadOnlyList<AiAssistantModelDto> _discoveredModels = [];
     private bool _isLoadingModels;
     private string? _modelLoadMessage;
     private Color _modelLoadMessageColor = Color.Secondary;
 
     [Parameter, EditorRequired]
-    public AiAssistantGovernanceModel AiAssistant { get; set; } = new();
+    public AiAssistantGovernanceSettingsDto AiAssistant { get; set; } = new();
 
     [Parameter]
     public string DeploymentMode { get; set; } = "SingleTenant";
@@ -187,11 +182,11 @@
         !_isLoadingModels
         && !string.IsNullOrWhiteSpace(AiAssistant.EndpointUrl);
 
-    private IReadOnlyCollection<string> SelectedAllowedModelIds => AiAssistant.AllowedModelIds;
+    private IReadOnlyCollection<string> SelectedAllowedModelIds => AiAssistant.AllowedModelIds?.ToArray() ?? [];
 
-    private string AllowedModelsText => string.Join(Environment.NewLine, AiAssistant.AllowedModelIds);
+    private string AllowedModelsText => string.Join(Environment.NewLine, AiAssistant.AllowedModelIds ?? []);
 
-    private IEnumerable<AiAssistantModelOptionModel> ModelOptions
+    private IEnumerable<AiAssistantModelDto> ModelOptions
     {
         get
         {
@@ -203,14 +198,14 @@
             if (!string.IsNullOrWhiteSpace(AiAssistant.ModelId)
                 && !_discoveredModels.Any(m => string.Equals(m.Id, AiAssistant.ModelId, StringComparison.OrdinalIgnoreCase)))
             {
-                yield return new AiAssistantModelOptionModel
+                yield return new AiAssistantModelDto
                 {
                     Id = AiAssistant.ModelId,
                     DisplayName = $"{AiAssistant.ModelId} (current)"
                 };
             }
 
-            foreach (var allowedModelId in AiAssistant.AllowedModelIds)
+            foreach (var allowedModelId in AiAssistant.AllowedModelIds ?? [])
             {
                 if (string.IsNullOrWhiteSpace(allowedModelId)
                     || _discoveredModels.Any(m => string.Equals(m.Id, allowedModelId, StringComparison.OrdinalIgnoreCase))
@@ -219,7 +214,7 @@
                     continue;
                 }
 
-                yield return new AiAssistantModelOptionModel
+                yield return new AiAssistantModelDto
                 {
                     Id = allowedModelId,
                     DisplayName = $"{allowedModelId} (allowed)"
@@ -285,12 +280,12 @@
 
             if (string.IsNullOrWhiteSpace(AiAssistant.ModelId))
             {
-                AiAssistant.ModelId = _discoveredModels[0].Id;
+                AiAssistant.ModelId = _discoveredModels[0].Id!;
             }
 
-            if (AiAssistant.AllowedModelIds.Count == 0)
+            if (AiAssistant.AllowedModelIds is null or { Count: 0 })
             {
-                AiAssistant.AllowedModelIds = _discoveredModels.Select(m => m.Id).ToList();
+                AiAssistant.AllowedModelIds = _discoveredModels.Select(m => m.Id!).ToList();
             }
 
             EnsureDefaultModelAllowed();
@@ -315,16 +310,16 @@
         _modelLoadMessageColor = color;
     }
 
-    private static string FormatModelOption(AiAssistantModelOptionModel model)
+    private static string FormatModelOption(AiAssistantModelDto model)
     {
         return string.IsNullOrWhiteSpace(model.DisplayName) || string.Equals(model.DisplayName, model.Id, StringComparison.OrdinalIgnoreCase)
-            ? model.Id
+            ? model.Id ?? string.Empty
             : model.DisplayName;
     }
 
     private void EnsureDefaultModelAllowed()
     {
-        AiAssistant.AllowedModelIds = NormalizeModelIds(AiAssistant.ModelId, AiAssistant.AllowedModelIds).ToList();
+        AiAssistant.AllowedModelIds = NormalizeModelIds(AiAssistant.ModelId, AiAssistant.AllowedModelIds ?? []).ToList();
     }
 
     private static IEnumerable<string> SplitModelIds(string value)

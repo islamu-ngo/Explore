@@ -287,36 +287,44 @@ public partial class ModerationReportQueuePage : ComponentBase
                 ModerationReportActionKind.Triage => await ModerationService.TriageAsync(
                     eventId,
                     reportId,
-                    new ModerationReportTriageActionRequest(
-                        caseId,
-                        expectedStamp,
-                        actionResult.QueueCode ?? string.Empty,
-                        actionResult.Priority ?? EventReportPriority.Normal)),
+                    new TriageModerationReportRequestDto
+                    {
+                        CaseId = caseId,
+                        ExpectedCaseConcurrencyStamp = expectedStamp,
+                        QueueCode = actionResult.QueueCode ?? string.Empty,
+                        Priority = actionResult.Priority ?? EventReportPriority.Normal
+                    }),
                 ModerationReportActionKind.Assign => await ModerationService.AssignAsync(
                     eventId,
                     reportId,
-                    new ModerationReportAssignActionRequest(
-                        caseId,
-                        expectedStamp,
-                        actionResult.AssigneeUserId!.Value)),
+                    new AssignModerationReportRequestDto
+                    {
+                        CaseId = caseId,
+                        ExpectedCaseConcurrencyStamp = expectedStamp,
+                        AssigneeUserId = actionResult.AssigneeUserId!.Value
+                    }),
                 ModerationReportActionKind.Decide => await ModerationService.DecideAsync(
                     eventId,
                     reportId,
-                    new ModerationReportDecisionActionRequest(
-                        caseId,
-                        expectedStamp,
-                        actionResult.DecisionKind!.Value,
-                        actionResult.ReasonCode!,
-                        actionResult.SafeNote,
-                        actionResult.DuplicateGroupId)),
+                    new DecideModerationReportRequestDto
+                    {
+                        CaseId = caseId,
+                        ExpectedCaseConcurrencyStamp = expectedStamp,
+                        DecisionKind = actionResult.DecisionKind!.Value,
+                        ReasonCode = actionResult.ReasonCode!,
+                        SafeNote = actionResult.SafeNote,
+                        DuplicateGroupId = actionResult.DuplicateGroupId
+                    }),
                 ModerationReportActionKind.Execute => await ModerationService.ExecuteDecisionAsync(
                     eventId,
                     reportId,
-                    new ModerationReportExecuteDecisionActionRequest(
-                        caseId,
-                        actionResult.DecisionId!.Value,
-                        expectedStamp,
-                        actionResult.CorrelationId)),
+                    new ExecuteModerationReportDecisionRequestDto
+                    {
+                        CaseId = caseId,
+                        DecisionId = actionResult.DecisionId!.Value,
+                        ExpectedCaseConcurrencyStamp = expectedStamp,
+                        CorrelationId = actionResult.CorrelationId
+                    }),
                 _ => ModerationReportActionResult.Failed("Unsupported moderation action.")
             };
 

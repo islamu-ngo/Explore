@@ -12,7 +12,7 @@ using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.CustomProperties;
-using Explore.Blazor.Client.Models.EventSessionGroups;
+using Explore.Blazor.Client.Models.Events;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Pages.Events.Models;
@@ -21,7 +21,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
-using UpdateEventDraftRequestDto = Explore.Blazor.Client.Models.Events.UpdateEventDraftRequestDto;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
@@ -282,7 +281,7 @@ public partial class EventEdit : IDisposable
 
     // Event data
     private EventDto? currentEvent;
-    private UpdateEventDraftRequestDto? updateDto;
+    private EventDraftEditModel? updateDto;
 
     // Form state
     private ICollection<EventTypeListDto>? eventTypes;
@@ -322,11 +321,11 @@ public partial class EventEdit : IDisposable
     // Sessions
     private List<SessionEditorModel> sessions = new();
     private EventProgramSummaryDto? _programSummary;
-    private List<EventSessionGroupListModel> _programSections = new();
+    private List<HalResourceOfEventSessionGroupListDto> _programSections = new();
     private AppearanceSettings _appearance = new();
 
-    private IReadOnlyList<CustomPropertyDefinitionDetailModel> _eventCustomPropertyDefinitions = Array.Empty<CustomPropertyDefinitionDetailModel>();
-    private Dictionary<Guid, IReadOnlyList<CustomPropertyDefinitionDetailModel>> _sessionCustomPropertyDefinitions = new();
+    private IReadOnlyList<CustomPropertyDefinitionDto> _eventCustomPropertyDefinitions = Array.Empty<CustomPropertyDefinitionDto>();
+    private Dictionary<Guid, IReadOnlyList<CustomPropertyDefinitionDto>> _sessionCustomPropertyDefinitions = new();
     private Dictionary<Guid, string> _sessionCustomPropertyDefinitionLoadErrors = new();
     private string? _customPropertyDefinitionLoadError;
 
@@ -462,7 +461,7 @@ public partial class EventEdit : IDisposable
     {
         if (currentEvent == null) return;
 
-        updateDto = new UpdateEventDraftRequestDto
+        updateDto = new EventDraftEditModel
         {
             ExpectedConcurrencyStamp = currentEvent.ConcurrencyStamp ?? Guid.Empty,
             Title = currentEvent.Title ?? string.Empty,
@@ -803,7 +802,7 @@ public partial class EventEdit : IDisposable
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load runtime custom-property definitions for event {EventId}", EventId);
-            _eventCustomPropertyDefinitions = Array.Empty<CustomPropertyDefinitionDetailModel>();
+            _eventCustomPropertyDefinitions = Array.Empty<CustomPropertyDefinitionDto>();
             _customPropertyDefinitionLoadError = "Custom property definitions could not be loaded. Refresh before editing custom fields.";
         }
 
@@ -816,7 +815,7 @@ public partial class EventEdit : IDisposable
 
         var definitionTasks = persistedSessionIds.Select(async sessionId =>
         {
-            IReadOnlyList<CustomPropertyDefinitionDetailModel> definitions;
+            IReadOnlyList<CustomPropertyDefinitionDto> definitions;
             string? loadError = null;
             try
             {
@@ -826,7 +825,7 @@ public partial class EventEdit : IDisposable
             {
                 Logger.LogError(ex, "Failed to load runtime custom-property definitions for event session {EventSessionId}", sessionId);
                 loadError = "Session custom property definitions could not be loaded. Refresh before editing custom fields.";
-                definitions = Array.Empty<CustomPropertyDefinitionDetailModel>();
+                definitions = Array.Empty<CustomPropertyDefinitionDto>();
             }
 
             return (SessionId: sessionId, Definitions: definitions, LoadError: loadError);
@@ -841,16 +840,16 @@ public partial class EventEdit : IDisposable
             .ToDictionary(result => result.SessionId, result => result.LoadError!);
     }
 
-    private IReadOnlyList<CustomPropertyDefinitionDetailModel> GetSessionCustomPropertyDefinitions(Guid? sessionId)
+    private IReadOnlyList<CustomPropertyDefinitionDto> GetSessionCustomPropertyDefinitions(Guid? sessionId)
     {
         if (!sessionId.HasValue || sessionId.Value == Guid.Empty)
         {
-            return Array.Empty<CustomPropertyDefinitionDetailModel>();
+            return Array.Empty<CustomPropertyDefinitionDto>();
         }
 
         return _sessionCustomPropertyDefinitions.TryGetValue(sessionId.Value, out var definitions)
             ? definitions
-            : Array.Empty<CustomPropertyDefinitionDetailModel>();
+            : Array.Empty<CustomPropertyDefinitionDto>();
     }
 
     private string? GetSessionCustomPropertyDefinitionLoadError(Guid? sessionId)

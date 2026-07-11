@@ -25,13 +25,13 @@ public sealed class StartupRoutingService : IStartupRoutingService
             return StartupRouteDecision.PublicHome;
         }
 
-        if (!instanceStatus.IsCompleted)
+        if (instanceStatus.IsCompleted != true)
         {
             return StartupRouteDecision.Setup;
         }
 
-        if (instanceStatus.IsAuthenticated &&
-            instanceStatus.IsCurrentUserInstanceAdmin &&
+        if (instanceStatus.IsAuthenticated == true &&
+            instanceStatus.IsCurrentUserInstanceAdmin == true &&
             instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
         {
             return StartupRouteDecision.InstanceAdmin;

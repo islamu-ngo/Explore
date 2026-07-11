@@ -47,8 +47,6 @@ public class TenantConfiguration
     ///
     /// Note: This tenant must exist in the database (tenant table).
     /// The application should create this tenant on first run if it doesn't exist.
-    /// IMPORTANT: This MUST match Explore.API.Services.TenantContext.DefaultTenantId
-    /// and Explore.Persistence.SeedIds.DefaultTenantId for tenant isolation to work correctly.
     /// </summary>
     public Guid DefaultTenantId { get; set; } = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
 

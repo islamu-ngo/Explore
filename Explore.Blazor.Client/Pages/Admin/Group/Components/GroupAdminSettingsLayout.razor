@@ -104,7 +104,7 @@
     [Parameter, EditorRequired]
     public Guid GroupId { get; set; }
 
-    private GroupAdminDetailsModel? _group;
+    private HalResourceOfGroupDto? _group;
     private GroupProfileEditModel _model = new();
     private AppearanceSettings _branding = new();
     private bool _isLoading = true;
@@ -163,7 +163,7 @@
         try
         {
             var group = _group;
-            if (group is null || group.ConcurrencyStamp == Guid.Empty)
+            if (group is null || group.ConcurrencyStamp.GetValueOrDefault() == Guid.Empty)
             {
                 _errorMessage = "Reload the group settings before saving changes.";
                 return;
@@ -172,7 +172,7 @@
             // Branding fields are now managed via Actor — not saved through UpdateGroupDto
             var response = await GroupService.UpdateGroupAsync(
                 GroupId,
-                group.ConcurrencyStamp,
+                group.ConcurrencyStamp!.Value,
                 BuildUpdateDto(_model));
 
             if (response?.Success == true)

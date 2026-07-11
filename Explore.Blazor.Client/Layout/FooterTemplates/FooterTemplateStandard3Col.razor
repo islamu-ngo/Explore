@@ -30,12 +30,12 @@
             {
                 <div class="site-footer__section">
                     <div class="site-footer__heading">@group.Title</div>
-                    @foreach (var link in group.Links)
+                    @foreach (var link in group.Links ?? [])
                     {
                         <a href="@link.Url"
                            class="site-footer__link"
-                           target="@(link.OpenInNewTab ? "_blank" : "_self")"
-                           rel="@(link.OpenInNewTab ? "noopener noreferrer" : null)">
+                           target="@(link.OpenInNewTab == true ? "_blank" : "_self")"
+                           rel="@(link.OpenInNewTab == true ? "noopener noreferrer" : null)">
                             @link.Label
                         </a>
                     }
@@ -74,7 +74,7 @@
         <div class="site-footer__social">
             @foreach (var social in SocialLinks)
             {
-                <MudIconButton Icon="@FooterIconHelper.GetSocialIcon(social.Platform)"
+                <MudIconButton Icon="@FooterIconHelper.GetSocialIcon(social.Platform ?? string.Empty)"
                                aria-label="@social.Label"
                                title="@social.Label"
                                Class="site-footer__social-btn"
@@ -93,10 +93,10 @@
     [Parameter] public bool ShowDescription { get; set; }
     [Parameter] public string DescriptionText { get; set; } = string.Empty;
     [Parameter] public bool ShowSocialLinks { get; set; }
-    [Parameter] public List<FooterSocialLinkModel> SocialLinks { get; set; } = [];
+    [Parameter] public List<FooterSocialLinkDto> SocialLinks { get; set; } = [];
     [Parameter] public string CopyrightText { get; set; } = string.Empty;
     [Parameter] public bool ShowCookieSettingsLink { get; set; }
     [Parameter] public bool ShowCommunityGuidelinesLink { get; set; }
-    [Parameter] public List<FooterLinkGroupModel> LinkGroups { get; set; } = [];
+    [Parameter] public List<FooterLinkGroupDto> LinkGroups { get; set; } = [];
     [Parameter] public EventCallback OnCookieSettingsClick { get; set; }
 }

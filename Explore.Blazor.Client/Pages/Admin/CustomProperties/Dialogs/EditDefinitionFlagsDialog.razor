@@ -95,7 +95,7 @@
 @code {
     [CascadingParameter] private IDialogReference? DialogReference { get; set; }
 
-    [Parameter, EditorRequired] public IReadOnlyList<CustomPropertyDefinitionListModel> Definitions { get; set; } = Array.Empty<CustomPropertyDefinitionListModel>();
+    [Parameter, EditorRequired] public IReadOnlyList<CustomPropertyDefinitionListDto> Definitions { get; set; } = Array.Empty<CustomPropertyDefinitionListDto>();
     [Parameter] public bool IsBulkMode { get; set; }
 
     private DefinitionFlagUpdateModel _update = new();
@@ -107,13 +107,13 @@
         var seed = Definitions[0];
         _update = new DefinitionFlagUpdateModel
         {
-            DefinitionId = IsBulkMode ? Guid.Empty : seed.Id,
-            ExposureLevel = seed.ExposureLevel,
-            IsSearchable = seed.IsSearchable,
-            IsFilterable = seed.IsFilterable,
-            IsExportable = seed.IsExportable,
-            IsModerationRelevant = seed.IsModerationRelevant,
-            IsAnalyticsRelevant = seed.IsAnalyticsRelevant
+            DefinitionId = IsBulkMode ? Guid.Empty : seed.Id ?? Guid.Empty,
+            ExposureLevel = (ExposureLevel)(seed.ExposureLevel ?? 0),
+            IsSearchable = seed.IsSearchable == true,
+            IsFilterable = seed.IsFilterable == true,
+            IsExportable = seed.IsExportable == true,
+            IsModerationRelevant = seed.IsModerationRelevant == true,
+            IsAnalyticsRelevant = seed.IsAnalyticsRelevant == true
         };
     }
 

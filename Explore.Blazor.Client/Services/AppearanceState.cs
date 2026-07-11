@@ -1,6 +1,7 @@
-// ABOUTME: Appearance state model for the Blazor client, using local DTOs that mirror the server API shape.
+// ABOUTME: Appearance state model for the Blazor client using generated API contracts.
+// ABOUTME: Keeps only reactive presentation state while transport models come from IEventApiClient.
 
-using Explore.Blazor.Client.Services.Appearance;
+using Explore.Blazor.Client.Clients;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Services;
@@ -16,13 +17,18 @@ public interface IAppearanceThemeService
     Task SetDirectionAsync(string direction, CancellationToken cancellationToken = default);
     Task UpdateCurrentProfileAsync(UpdateAppearanceProfileRequestDto request, CancellationToken cancellationToken = default);
     Task<UserAppearanceProfileDto?> CreateCustomProfileAsync(CreateCustomProfileRequestDto request, CancellationToken cancellationToken = default);
-    ClientPaletteDto GeneratePalettePreview(string naturalColor, string brandColor, bool isDark);
-    Task<ClientPaletteDto?> GeneratePalettePreviewAsync(string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken = default);
+    UiThemePaletteDto GeneratePalettePreview(string naturalColor, string brandColor, bool isDark);
+    Task<UiThemePaletteDto?> GeneratePalettePreviewAsync(string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken = default);
     MudTheme CreateTheme(string appbarHeight);
     Task<bool> ResolveEffectiveDarkModeAsync(MudThemeProvider themeProvider);
     Task ArchiveProfileAsync(Guid profileId, CancellationToken cancellationToken = default);
     Task<UserAppearanceProfileDto?> DuplicateProfileAsync(Guid profileId, string? name, CancellationToken cancellationToken = default);
     Task RefreshProfilesAsync(CancellationToken cancellationToken = default);
+    Task<ICollection<UiThemeListItemDto>> GetThemeCatalogAsync(bool isPlatformCatalog, bool activeOnly, CancellationToken cancellationToken = default);
+    Task<UiThemeDetailsDto> GetThemeDetailsAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> CreateThemeAsync(CreateUiThemeDto request, CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> UpdateThemeAsync(Guid id, UpdateUiThemeDto request, CancellationToken cancellationToken = default);
+    Task DeleteThemeAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
 public class AppearanceState

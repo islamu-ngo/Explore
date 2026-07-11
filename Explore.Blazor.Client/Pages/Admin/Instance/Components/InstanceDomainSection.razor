@@ -27,15 +27,24 @@
                           HelperText="Optional operator host for the multi-tenant control plane." />
         }
 
-        <MudSwitch T="bool" @bind-Value="Model.AllowTenantCustomDomains" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.AllowTenantCustomDomains == true"
+                   ValueChanged="@(value => Model.AllowTenantCustomDomains = value)"
+                   Color="Color.Primary">
             Allow tenant custom domains
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantSubdomain" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.LockTenantSubdomain == true"
+                   ValueChanged="@(value => Model.LockTenantSubdomain = value)"
+                   Color="Color.Primary">
             Lock tenant subdomain changes
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantCustomDomain" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.LockTenantCustomDomain == true"
+                   ValueChanged="@(value => Model.LockTenantCustomDomain = value)"
+                   Color="Color.Primary">
             Lock tenant custom domain changes
         </MudSwitch>
     </MudStack>
@@ -43,7 +52,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public DomainSettingsModel Model { get; set; } = null!;
+    public DomainSettingsDto Model { get; set; } = null!;
 
     [Parameter]
     public bool IsMultiTenantMode { get; set; }

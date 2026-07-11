@@ -36,9 +36,9 @@
                              role="button"
                              tabindex="0"
                              aria-selected="@(SelectedDay?.Id == day.Id)">
-                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@(day.Label ?? day.LocalDate.ToString("ddd, MMM d"))</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@day.LocalDate.ToString("MMM d, yyyy")</MudText>
-                            @if (day.IsPublished)
+                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@(day.Label ?? day.LocalDate?.ToString("ddd, MMM d") ?? "Unscheduled")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@day.LocalDate?.ToString("MMM d, yyyy")</MudText>
+                            @if (day.IsPublished == true)
                             {
                                 <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" Class="agenda-miller__item-badge" />
                             }
@@ -53,7 +53,7 @@
             <div class="agenda-miller__column-header">
                 <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
                     <MudIcon Icon="@Icons.Material.Outlined.ViewAgenda" Size="Size.Small" Class="mr-1" />
-                    @(SelectedDay is null ? "Select a day" : (SelectedDay.Label ?? SelectedDay.LocalDate.ToString("ddd")))
+                    @(SelectedDay is null ? "Select a day" : (SelectedDay.Label ?? SelectedDay.LocalDate?.ToString("ddd") ?? "Unscheduled"))
                 </MudText>
                 @if (CanManage && SelectedDay is not null)
                 {
@@ -79,10 +79,10 @@
                              tabindex="0"
                              aria-selected="@(SelectedItem?.Id == item.Id)">
                             <div class="agenda-miller__item-time">
-                                @item.LocalStartTime.ToString("HH:mm")
+                                @item.LocalStartTime?.ToString(@"hh\:mm")
                                 @if (item.LocalEndTime != default)
                                 {
-                                    <span>– @item.LocalEndTime.ToString("HH:mm")</span>
+                                    <span>– @item.LocalEndTime?.ToString(@"hh\:mm")</span>
                                 }
                             </div>
                             <MudText Typo="Typo.body2" Style="font-weight: 600;">@item.Title</MudText>
@@ -124,7 +124,7 @@
                         <div class="d-flex gap-3 align-center">
                             <MudIcon Icon="@Icons.Material.Outlined.Schedule" Color="Color.Primary" Size="Size.Small" />
                             <MudText Typo="Typo.body2">
-                                @SelectedItem.LocalStartTime.ToString("HH:mm")@(SelectedItem.LocalEndTime != default ? $" – {SelectedItem.LocalEndTime:HH:mm}" : "")
+                                @SelectedItem.LocalStartTime?.ToString(@"hh\:mm")@(SelectedItem.LocalEndTime is { } endTime ? $" – {endTime:hh\\:mm}" : "")
                             </MudText>
                         </div>
 
@@ -132,7 +132,7 @@
                         {
                             <div class="d-flex gap-3 align-center">
                                 <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Color="Color.Primary" Size="Size.Small" />
-                                <MudText Typo="Typo.body2">@SelectedItem.LocalStartDate.ToString("dddd, MMMM d, yyyy")</MudText>
+                                <MudText Typo="Typo.body2">@SelectedItem.LocalStartDate?.ToString("dddd, MMMM d, yyyy")</MudText>
                             </div>
                         }
 
@@ -149,5 +149,4 @@
         </div>
     </div>
 </div>
-
 

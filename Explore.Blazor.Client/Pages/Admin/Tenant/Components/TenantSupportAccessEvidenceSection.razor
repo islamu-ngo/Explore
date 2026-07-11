@@ -2,6 +2,7 @@
 @* ABOUTME: Shows tenant-scoped session history and audit events using HAL-gated evidence links. *@
 
 @using System.Globalization
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Explore.Blazor.Client.Contracts.Services.SupportAccess
 
@@ -56,7 +57,7 @@
             <div class="tenant-support-evidence__summary" aria-label="Support access evidence summary">
                 <div class="tenant-support-evidence__metric">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Sessions</MudText>
-                    <MudText Typo="Typo.h6">@_sessions.Items.Count</MudText>
+                    <MudText Typo="Typo.h6">@SessionItems.Count</MudText>
                 </div>
                 <div class="tenant-support-evidence__metric">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Active</MudText>
@@ -75,26 +76,26 @@
             <section class="tenant-support-evidence__panel" aria-labelledby="tenant-support-evidence-history-heading">
                 <div class="tenant-support-evidence__panel-heading">
                     <MudText Typo="Typo.h6" HtmlTag="h3" Id="tenant-support-evidence-history-heading">Support Sessions</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_sessions.TotalCount total</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@(_sessions.TotalCount ?? SessionItems.Count) total</MudText>
                 </div>
 
                 @if (_isLoadingSessions)
                 {
                     <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
                 }
-                else if (!string.IsNullOrWhiteSpace(_sessions.ErrorMessage))
+                else if (!string.IsNullOrWhiteSpace(_sessionsErrorMessage))
                 {
-                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_sessions.ErrorMessage</MudAlert>
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_sessionsErrorMessage</MudAlert>
                 }
-                else if (_sessions.Items.Count == 0)
+                else if (SessionItems.Count == 0)
                 {
                     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No support access sessions were found for this tenant.</MudAlert>
                 }
                 else
                 {
                     <div class="tenant-support-evidence__table">
-                        <MudTable T="SupportAccessSessionResource"
-                                  Items="_sessions.Items"
+                        <MudTable T="HalResourceOfSupportAccessSessionDto"
+                                  Items="SessionItems"
                                   Hover="true"
                                   Dense="true"
                                   Elevation="0"
@@ -110,23 +111,23 @@
                             </HeaderContent>
                             <RowTemplate>
                                 <MudTd DataLabel="Status">
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetSessionColor(context.Session)">
-                                        @GetStatusLabel(context.Session)
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetSessionColor(context)">
+                                        @GetStatusLabel(context)
                                     </MudChip>
                                 </MudTd>
-                                <MudTd DataLabel="Mode">@GetModeLabel(context.Session)</MudTd>
-                                <MudTd DataLabel="Started">@FormatDate(context.Session.StartedAtUtc)</MudTd>
-                                <MudTd DataLabel="Ended">@FormatDate(context.Session.EndedAtUtc)</MudTd>
-                                <MudTd DataLabel="Reason">@FormatText(context.Session.ReasonCode)</MudTd>
-                                <MudTd DataLabel="Ticket">@FormatText(context.Session.TicketReference)</MudTd>
+                                <MudTd DataLabel="Mode">@GetModeLabel(context)</MudTd>
+                                <MudTd DataLabel="Started">@FormatDate(context.StartedAtUtc)</MudTd>
+                                <MudTd DataLabel="Ended">@FormatDate(context.EndedAtUtc)</MudTd>
+                                <MudTd DataLabel="Reason">@FormatText(context.ReasonCode)</MudTd>
+                                <MudTd DataLabel="Ticket">@FormatText(context.TicketReference)</MudTd>
                                 <MudTd DataLabel="Audit">
-                                    @if (context.CanViewAudit)
+                                    @if (HasLink(context._links, "audit-events", HttpMethod.Get.Method))
                                     {
                                         <AppIconButton Icon="@Icons.Material.Filled.ReceiptLong"
                                                        Color="Color.Primary"
                                                        Size="Size.Small"
                                                        OnClick="@(() => SelectAuditAsync(context))"
-                                                       aria-label="@($"View audit events for support session {FormatShortId(context.Session.Id)}")" />
+                                                       aria-label="@($"View audit events for support session {FormatShortId(context.Id)}")" />
                                     }
                                     else
                                     {
@@ -146,7 +147,7 @@
                         @if (_selectedAuditSession is not null)
                         {
                             <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                Session @FormatShortId(_selectedAuditSession.Session.Id)
+                                Session @FormatShortId(_selectedAuditSession.Id)
                             </MudText>
                         }
                     </div>
@@ -160,19 +161,19 @@
                 {
                     <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
                 }
-                else if (!string.IsNullOrWhiteSpace(_auditEvents.ErrorMessage))
+                else if (!string.IsNullOrWhiteSpace(_auditErrorMessage))
                 {
-                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_auditEvents.ErrorMessage</MudAlert>
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_auditErrorMessage</MudAlert>
                 }
-                else if (_auditEvents.Items.Count == 0)
+                else if (AuditItems.Count == 0)
                 {
                     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No audit events are available for this session.</MudAlert>
                 }
                 else
                 {
                     <div class="tenant-support-evidence__table">
-                        <MudTable T="SupportAccessAuditEventResource"
-                                  Items="_auditEvents.Items"
+                        <MudTable T="HalResourceOfSupportAccessAuditEventDto"
+                                  Items="AuditItems"
                                   Hover="true"
                                   Dense="true"
                                   Elevation="0"
@@ -186,12 +187,12 @@
                                 <MudTh>Status</MudTh>
                             </HeaderContent>
                             <RowTemplate>
-                                <MudTd DataLabel="Time">@FormatDate(context.Event.OccurredAtUtc)</MudTd>
-                                <MudTd DataLabel="Event">@FormatText(context.Event.EventTypeName)</MudTd>
-                                <MudTd DataLabel="Request">@FormatRequest(context.Event)</MudTd>
-                                <MudTd DataLabel="Action">@FormatText(context.Event.Action)</MudTd>
-                                <MudTd DataLabel="Outcome">@FormatText(context.Event.Outcome)</MudTd>
-                                <MudTd DataLabel="Status">@FormatStatusCode(context.Event.HttpStatusCode)</MudTd>
+                                <MudTd DataLabel="Time">@FormatDate(context.OccurredAtUtc)</MudTd>
+                                <MudTd DataLabel="Event">@FormatText(context.EventTypeName)</MudTd>
+                                <MudTd DataLabel="Request">@FormatRequest(context)</MudTd>
+                                <MudTd DataLabel="Action">@FormatText(context.Action)</MudTd>
+                                <MudTd DataLabel="Outcome">@FormatText(context.Outcome)</MudTd>
+                                <MudTd DataLabel="Status">@FormatStatusCode(context.HttpStatusCode)</MudTd>
                             </RowTemplate>
                         </MudTable>
                     </div>
@@ -208,20 +209,26 @@
     public Guid? TenantId { get; set; }
 
     private Guid? _tenantId;
-    private SupportAccessSessionCollection _sessions = SupportAccessSessionCollection.Empty();
-    private SupportAccessAuditEventCollection _auditEvents = SupportAccessAuditEventCollection.Empty();
-    private SupportAccessSessionResource? _selectedAuditSession;
+    private HalCollectionResourceOfSupportAccessSessionDto _sessions = new();
+    private HalCollectionResourceOfSupportAccessAuditEventDto _auditEvents = new();
+    private HalResourceOfSupportAccessSessionDto? _selectedAuditSession;
+    private string? _sessionsErrorMessage;
+    private string? _auditErrorMessage;
     private bool _isLoading = true;
     private bool _isLoadingSessions;
     private bool _isLoadingAudit;
     private string? _errorMessage;
     private string _announcement = string.Empty;
 
-    private int ActiveSessionCount => _sessions.Items.Count(item => item.Session.IsActive == true);
+    private ICollection<HalResourceOfSupportAccessSessionDto> SessionItems => _sessions._embedded?.Items ?? [];
 
-    private int WriteSessionCount => _sessions.Items.Count(item => IsWriteMode(item.Session));
+    private ICollection<HalResourceOfSupportAccessAuditEventDto> AuditItems => _auditEvents._embedded?.Items ?? [];
 
-    private int AuditableSessionCount => _sessions.Items.Count(item => item.CanViewAudit);
+    private int ActiveSessionCount => SessionItems.Count(item => item.IsActive == true);
+
+    private int WriteSessionCount => SessionItems.Count(IsWriteMode);
+
+    private int AuditableSessionCount => SessionItems.Count(item => HasLink(item._links, "audit-events", HttpMethod.Get.Method));
 
     protected override async Task OnInitializedAsync()
     {
@@ -265,7 +272,8 @@
     private async Task RefreshAsync()
     {
         _selectedAuditSession = null;
-        _auditEvents = SupportAccessAuditEventCollection.Empty();
+        _auditEvents = new();
+        _auditErrorMessage = null;
         await LoadInitialStateAsync();
 
         _announcement = "Support access evidence refreshed.";
@@ -276,8 +284,10 @@
     {
         if (_tenantId is not { } tenantId)
         {
-            _sessions = SupportAccessSessionCollection.Empty();
-            _auditEvents = SupportAccessAuditEventCollection.Empty();
+            _sessions = new();
+            _auditEvents = new();
+            _sessionsErrorMessage = null;
+            _auditErrorMessage = null;
             _selectedAuditSession = null;
             return;
         }
@@ -287,19 +297,23 @@
 
         try
         {
-            _sessions = await SupportAccessClientService.GetSessionsAsync(tenantId, SessionLimit);
-            _errorMessage = _sessions.ErrorMessage;
+            var result = await SupportAccessClientService.GetSessionsAsync(tenantId, SessionLimit);
+            _sessions = result.Data ?? new HalCollectionResourceOfSupportAccessSessionDto();
+            _sessionsErrorMessage = result.ErrorMessage;
+            _errorMessage = result.ErrorMessage;
 
             if (_selectedAuditSession is not null)
             {
-                _selectedAuditSession = _sessions.Items.FirstOrDefault(item => item.Session.Id == _selectedAuditSession.Session.Id);
-                if (_selectedAuditSession?.CanViewAudit == true)
+                _selectedAuditSession = SessionItems.FirstOrDefault(item => item.Id == _selectedAuditSession.Id);
+                if (_selectedAuditSession is { } selectedSession
+                    && HasLink(selectedSession._links, "audit-events", HttpMethod.Get.Method))
                 {
-                    await LoadAuditEventsAsync(_selectedAuditSession);
+                    await LoadAuditEventsAsync(selectedSession);
                 }
                 else
                 {
-                    _auditEvents = SupportAccessAuditEventCollection.Empty();
+                    _auditEvents = new();
+                    _auditErrorMessage = null;
                 }
             }
         }
@@ -309,24 +323,27 @@
         }
     }
 
-    private async Task LoadAuditEventsAsync(SupportAccessSessionResource session)
+    private async Task LoadAuditEventsAsync(HalResourceOfSupportAccessSessionDto session)
     {
-        if (!session.CanViewAudit)
+        if (!HasLink(session._links, "audit-events", HttpMethod.Get.Method))
         {
             _selectedAuditSession = null;
-            _auditEvents = SupportAccessAuditEventCollection.Empty();
+            _auditEvents = new();
+            _auditErrorMessage = null;
             return;
         }
 
-        if (_tenantId is not { } tenantId || session.Session.Id is not { } sessionId)
+        if (_tenantId is not { } tenantId || session.Id is not { } sessionId)
         {
-            _auditEvents = SupportAccessAuditEventCollection.Failed("The selected support session is missing identifiers.");
+            _auditEvents = new();
+            _auditErrorMessage = "The selected support session is missing identifiers.";
             return;
         }
 
-        if (session.Session.TargetTenantId != tenantId)
+        if (session.TargetTenantId != tenantId)
         {
-            _auditEvents = SupportAccessAuditEventCollection.Failed("The selected support session belongs to another tenant.");
+            _auditEvents = new();
+            _auditErrorMessage = "The selected support session belongs to another tenant.";
             return;
         }
 
@@ -335,8 +352,10 @@
 
         try
         {
-            _auditEvents = await SupportAccessClientService.GetAuditEventsAsync(tenantId, sessionId, SessionLimit);
-            _announcement = $"{_auditEvents.Items.Count} audit events loaded.";
+            var result = await SupportAccessClientService.GetAuditEventsAsync(tenantId, sessionId, SessionLimit);
+            _auditEvents = result.Data ?? new HalCollectionResourceOfSupportAccessAuditEventDto();
+            _auditErrorMessage = result.ErrorMessage;
+            _announcement = $"{AuditItems.Count} audit events loaded.";
             await AccessibilityAnnouncerService.AnnouncePoliteAsync(_announcement);
         }
         finally
@@ -347,7 +366,7 @@
 
     private Task RefreshFromClickAsync(MouseEventArgs _) => RefreshAsync();
 
-    private Task SelectAuditAsync(SupportAccessSessionResource session) => LoadAuditEventsAsync(session);
+    private Task SelectAuditAsync(HalResourceOfSupportAccessSessionDto session) => LoadAuditEventsAsync(session);
 
     private static string FormatShortId(Guid? value) =>
         value.HasValue ? value.Value.ToString("N")[..8] : "unknown";
@@ -361,24 +380,24 @@
     private static string FormatStatusCode(int? statusCode) =>
         statusCode.HasValue ? statusCode.Value.ToString(CultureInfo.InvariantCulture) : "not recorded";
 
-    private static string FormatRequest(SupportAccessAuditEventDto auditEvent) =>
+    private static string FormatRequest(HalResourceOfSupportAccessAuditEventDto auditEvent) =>
         !string.IsNullOrWhiteSpace(auditEvent.RouteName)
             ? auditEvent.RouteName
             : FormatText(auditEvent.RequestName);
 
-    private static string GetStatusLabel(SupportAccessSessionDto session) =>
+    private static string GetStatusLabel(HalResourceOfSupportAccessSessionDto session) =>
         !string.IsNullOrWhiteSpace(session.StatusName)
             ? session.StatusName
             : session.IsActive == true ? "Active" : "Ended";
 
-    private static string GetModeLabel(SupportAccessSessionDto session) =>
+    private static string GetModeLabel(HalResourceOfSupportAccessSessionDto session) =>
         IsWriteMode(session) ? "Write" : "Read-only";
 
-    private static bool IsWriteMode(SupportAccessSessionDto session) =>
+    private static bool IsWriteMode(HalResourceOfSupportAccessSessionDto session) =>
         session.AllowsWrites == true
         || string.Equals(session.ModeName, "Write", StringComparison.OrdinalIgnoreCase);
 
-    private static Color GetSessionColor(SupportAccessSessionDto session)
+    private static Color GetSessionColor(HalResourceOfSupportAccessSessionDto session)
     {
         if (session.IsActive != true)
         {
@@ -387,4 +406,11 @@
 
         return IsWriteMode(session) ? Color.Error : Color.Warning;
     }
+
+    private static bool HasLink(
+        IDictionary<string, HalLink>? links,
+        string relation,
+        string method) =>
+        links?.TryGetValue(relation, out var link) == true
+        && string.Equals(link.Method, method, StringComparison.OrdinalIgnoreCase);
 }

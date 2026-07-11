@@ -2,6 +2,7 @@
 @* ABOUTME: Follows Navigation.razor CRUD pattern with settings panel, link group table, and nested link management. *@
 
 @using Explore.Blazor.Client.Pages.Admin.Components
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Footer
 @using Explore.Blazor.Client.Components.Forms
 @using Microsoft.AspNetCore.Authorization
@@ -186,9 +187,9 @@
                         </MudTd>
                         <MudTd DataLabel="Title">@context.Title</MudTd>
                         <MudTd DataLabel="Active">
-                            <MudChip T="string" Color="@(context.IsActive ? Color.Success : Color.Default)"
+                            <MudChip T="string" Color="@(context.IsActive == true ? Color.Success : Color.Default)"
                                      Size="Size.Small">
-                                @(context.IsActive ? "Active" : "Inactive")
+                                @(context.IsActive == true ? "Active" : "Inactive")
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Links">@context.LinkCount</MudTd>
@@ -256,7 +257,7 @@
                                 <MudLink Href="@context.Url" Target="_blank">@TruncateUrl(context.Url)</MudLink>
                             </MudTd>
                             <MudTd DataLabel="New Tab">
-                                <MudCheckBox T="bool" Value="@context.OpenInNewTab" Disabled="true" />
+                                <MudCheckBox T="bool" Value="@(context.OpenInNewTab == true)" Disabled="true" />
                             </MudTd>
                             <MudTd DataLabel="Actions">
                                 <MudStack Row="true" Spacing="1">
@@ -295,14 +296,14 @@
     private string _copyrightText = string.Empty;
     private bool _showCookieSettingsLink;
     private bool _showSocialLinks;
-    private List<SocialLinkEntry> _socialLinks = new();
+    private List<FooterSocialLinkDto> _socialLinks = new();
 
     // Link groups
-    private List<FooterLinkGroupListModel> _linkGroups = new();
+    private List<FooterLinkGroupListDto> _linkGroups = new();
 
     // Selected group for link management
-    private FooterLinkGroupDetailsModel? _selectedGroup;
-    private List<FooterLinkDetailModel> _selectedGroupLinks = new();
+    private FooterLinkGroupDetailsDto? _selectedGroup;
+    private List<FooterLinkItemDto> _selectedGroupLinks = new();
 
     // ── Available Platforms ───────────────────────────────────────────────
 
@@ -334,19 +335,19 @@
             var settings = settingsTask.Result;
             if (settings != null)
             {
-                _enabled = settings.Enabled;
-                _template = settings.Template;
-                _showDescription = settings.ShowDescription;
-                _descriptionText = settings.DescriptionText;
-                _copyrightText = settings.CopyrightText;
-                _showCookieSettingsLink = settings.ShowCookieSettingsLink;
-                _showSocialLinks = settings.ShowSocialLinks;
-                _socialLinks = settings.SocialLinks
-                    .Select(s => new SocialLinkEntry
+                _enabled = settings.Enabled == true;
+                _template = settings.Template ?? "standard-3-col";
+                _showDescription = settings.ShowDescription == true;
+                _descriptionText = settings.DescriptionText ?? string.Empty;
+                _copyrightText = settings.CopyrightText ?? string.Empty;
+                _showCookieSettingsLink = settings.ShowCookieSettingsLink == true;
+                _showSocialLinks = settings.ShowSocialLinks == true;
+                _socialLinks = (settings.SocialLinks ?? [])
+                    .Select(s => new FooterSocialLinkDto
                     {
-                        Platform = s.Platform,
-                        Url = s.Url,
-                        Label = s.Label
+                        Platform = s.Platform ?? "facebook",
+                        Url = s.Url ?? string.Empty,
+                        Label = s.Label ?? string.Empty
                     })
                     .ToList();
             }
@@ -376,7 +377,7 @@
                 _socialLinks.Select(s => new { platform = s.Platform, url = s.Url, label = s.Label }),
                 new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-            var model = new UpdateTenantFooterSettingsModel
+            var model = new UpdateTenantFooterSettingsRequest
             {
                 Enabled = _enabled,
                 Template = _template,
@@ -412,7 +413,12 @@
 
     private void AddSocialLink()
     {
-        _socialLinks.Add(new SocialLinkEntry { Platform = "facebook" });
+        _socialLinks.Add(new FooterSocialLinkDto
+        {
+            Platform = "facebook",
+            Url = string.Empty,
+            Label = string.Empty
+        });
     }
 
     private void RemoveSocialLink(int index)
@@ -443,14 +449,20 @@
         var dialog = await FooterLinkGroupDialog.ShowAsync(DialogService, "Create Link Group");
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is CreateFooterLinkGroupModel createModel)
+        if (!result.Canceled && result.Data is CreateFooterLinkGroupRequest createModel)
         {
             await CreateGroupAsync(createModel);
         }
     }
 
-    private async Task OpenEditGroupDialog(FooterLinkGroupListModel group)
+    private async Task OpenEditGroupDialog(FooterLinkGroupListDto group)
     {
+        if (group.Id is not Guid groupId)
+        {
+            _errorMessage = "The selected link group has no identifier.";
+            return;
+        }
+
         var parameters = new DialogParameters<FooterLinkGroupDialog>
         {
             { x => x.ExistingGroup, group }
@@ -459,13 +471,13 @@
         var dialog = await FooterLinkGroupDialog.ShowAsync(DialogService, "Edit Link Group", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is UpdateFooterLinkGroupModel updateModel)
+        if (!result.Canceled && result.Data is UpdateFooterLinkGroupRequest updateModel)
         {
-            await UpdateGroupAsync(group.Id, updateModel);
+            await UpdateGroupAsync(groupId, updateModel);
         }
     }
 
-    private async Task CreateGroupAsync(CreateFooterLinkGroupModel model)
+    private async Task CreateGroupAsync(CreateFooterLinkGroupRequest model)
     {
         try
         {
@@ -486,7 +498,7 @@
         }
     }
 
-    private async Task UpdateGroupAsync(Guid id, UpdateFooterLinkGroupModel model)
+    private async Task UpdateGroupAsync(Guid id, UpdateFooterLinkGroupRequest model)
     {
         try
         {
@@ -507,8 +519,14 @@
         }
     }
 
-    private async Task DeleteGroup(FooterLinkGroupListModel group)
+    private async Task DeleteGroup(FooterLinkGroupListDto group)
     {
+        if (group.Id is not Guid groupId)
+        {
+            _errorMessage = "The selected link group has no identifier.";
+            return;
+        }
+
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Confirm Delete",
             $"Are you sure you want to delete '{group.Title}' and all its links?",
@@ -519,12 +537,12 @@
         {
             try
             {
-                var response = await FooterService.DeleteLinkGroupAsync(group.Id);
-                if (response?.Success == true)
+                var deleted = await FooterService.DeleteLinkGroupAsync(groupId);
+                if (deleted)
                 {
                     Snackbar.Add("Link group deleted.", Severity.Success);
 
-                    if (_selectedGroup?.Id == group.Id)
+                    if (_selectedGroup?.Id == groupId)
                     {
                         _selectedGroup = null;
                         _selectedGroupLinks.Clear();
@@ -534,7 +552,7 @@
                 }
                 else
                 {
-                    _errorMessage = response?.Message ?? "Failed to delete link group.";
+                    _errorMessage = "Failed to delete link group.";
                 }
             }
             catch (Exception)
@@ -546,7 +564,7 @@
 
     // ── Group Reorder ─────────────────────────────────────────────────────
 
-    private async Task MoveGroupUp(FooterLinkGroupListModel group)
+    private async Task MoveGroupUp(FooterLinkGroupListDto group)
     {
         var index = _linkGroups.IndexOf(group);
         if (index > 0)
@@ -555,7 +573,7 @@
         }
     }
 
-    private async Task MoveGroupDown(FooterLinkGroupListModel group)
+    private async Task MoveGroupDown(FooterLinkGroupListDto group)
     {
         var index = _linkGroups.IndexOf(group);
         if (index < _linkGroups.Count - 1)
@@ -576,7 +594,13 @@
         _linkGroups[index1] = group2;
         _linkGroups[index2] = group1;
 
-        var orderedIds = _linkGroups.Select(g => g.Id).ToList();
+        var orderedIds = _linkGroups.Select(g => g.Id).OfType<Guid>().ToList();
+        if (orderedIds.Count != _linkGroups.Count)
+        {
+            _errorMessage = "A link group has no identifier.";
+            await LoadLinkGroupsAsync();
+            return;
+        }
 
         try
         {
@@ -594,20 +618,26 @@
         }
     }
 
-    private bool IsFirstGroup(FooterLinkGroupListModel group) => _linkGroups.IndexOf(group) == 0;
-    private bool IsLastGroup(FooterLinkGroupListModel group) => _linkGroups.IndexOf(group) == _linkGroups.Count - 1;
+    private bool IsFirstGroup(FooterLinkGroupListDto group) => _linkGroups.IndexOf(group) == 0;
+    private bool IsLastGroup(FooterLinkGroupListDto group) => _linkGroups.IndexOf(group) == _linkGroups.Count - 1;
 
     // ── Group Links ───────────────────────────────────────────────────────
 
-    private async Task SelectGroup(FooterLinkGroupListModel group)
+    private async Task SelectGroup(FooterLinkGroupListDto group)
     {
+        if (group.Id is not Guid groupId)
+        {
+            _errorMessage = "The selected link group has no identifier.";
+            return;
+        }
+
         try
         {
-            var details = await FooterService.GetLinkGroupAsync(group.Id);
+            var details = await FooterService.GetLinkGroupAsync(groupId);
             if (details != null)
             {
                 _selectedGroup = details;
-                _selectedGroupLinks = details.Links.OrderBy(l => l.Order).ToList();
+                _selectedGroupLinks = (details.Links ?? []).OrderBy(l => l.Order).ToList();
             }
             else
             {
@@ -628,15 +658,15 @@
 
     private async Task ReloadSelectedGroupLinksAsync()
     {
-        if (_selectedGroup == null) return;
+        if (_selectedGroup?.Id is not Guid groupId) return;
 
         try
         {
-            var details = await FooterService.GetLinkGroupAsync(_selectedGroup.Id);
+            var details = await FooterService.GetLinkGroupAsync(groupId);
             if (details != null)
             {
                 _selectedGroup = details;
-                _selectedGroupLinks = details.Links.OrderBy(l => l.Order).ToList();
+                _selectedGroupLinks = (details.Links ?? []).OrderBy(l => l.Order).ToList();
             }
         }
         catch (Exception)
@@ -650,14 +680,20 @@
         var dialog = await FooterLinkDialog.ShowAsync(DialogService, "Add Link");
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is CreateFooterLinkModel createModel)
+        if (!result.Canceled && result.Data is CreateFooterLinkRequest createModel)
         {
             await CreateLinkAsync(createModel);
         }
     }
 
-    private async Task OpenEditLinkDialog(FooterLinkDetailModel link)
+    private async Task OpenEditLinkDialog(FooterLinkItemDto link)
     {
+        if (link.Id is not Guid linkId)
+        {
+            _errorMessage = "The selected link has no identifier.";
+            return;
+        }
+
         var parameters = new DialogParameters<FooterLinkDialog>
         {
             { x => x.ExistingLink, link }
@@ -666,19 +702,19 @@
         var dialog = await FooterLinkDialog.ShowAsync(DialogService, "Edit Link", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is UpdateFooterLinkModel updateModel)
+        if (!result.Canceled && result.Data is UpdateFooterLinkRequest updateModel)
         {
-            await UpdateLinkAsync(link.Id, updateModel);
+            await UpdateLinkAsync(linkId, updateModel);
         }
     }
 
-    private async Task CreateLinkAsync(CreateFooterLinkModel model)
+    private async Task CreateLinkAsync(CreateFooterLinkRequest model)
     {
-        if (_selectedGroup == null) return;
+        if (_selectedGroup?.Id is not Guid groupId) return;
 
         try
         {
-            var response = await FooterService.CreateLinkAsync(_selectedGroup.Id, model);
+            var response = await FooterService.CreateLinkAsync(groupId, model);
             if (response?.Success == true)
             {
                 Snackbar.Add("Link added.", Severity.Success);
@@ -696,7 +732,7 @@
         }
     }
 
-    private async Task UpdateLinkAsync(Guid id, UpdateFooterLinkModel model)
+    private async Task UpdateLinkAsync(Guid id, UpdateFooterLinkRequest model)
     {
         try
         {
@@ -717,8 +753,14 @@
         }
     }
 
-    private async Task DeleteLink(FooterLinkDetailModel link)
+    private async Task DeleteLink(FooterLinkItemDto link)
     {
+        if (link.Id is not Guid linkId)
+        {
+            _errorMessage = "The selected link has no identifier.";
+            return;
+        }
+
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Confirm Delete",
             $"Are you sure you want to delete '{link.Label}'?",
@@ -729,8 +771,8 @@
         {
             try
             {
-                var response = await FooterService.DeleteLinkAsync(link.Id);
-                if (response?.Success == true)
+                var deleted = await FooterService.DeleteLinkAsync(linkId);
+                if (deleted)
                 {
                     Snackbar.Add("Link deleted.", Severity.Success);
                     await ReloadSelectedGroupLinksAsync();
@@ -738,7 +780,7 @@
                 }
                 else
                 {
-                    _errorMessage = response?.Message ?? "Failed to delete link.";
+                    _errorMessage = "Failed to delete link.";
                 }
             }
             catch (Exception)
@@ -750,8 +792,8 @@
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private static string TruncateUrl(string url) =>
-        url.Length > 60 ? string.Concat(url.AsSpan(0, 57), "...") : url;
+    private static string TruncateUrl(string? url) =>
+        url?.Length > 60 ? string.Concat(url.AsSpan(0, 57), "...") : url ?? string.Empty;
 
     private static string CapitalizePlatform(string platform) =>
         platform switch
@@ -765,12 +807,4 @@
             _ => char.ToUpperInvariant(platform[0]) + platform[1..]
         };
 
-    // ── Inner Types ───────────────────────────────────────────────────────
-
-    private sealed class SocialLinkEntry
-    {
-        public string Platform { get; set; } = "facebook";
-        public string Url { get; set; } = string.Empty;
-        public string Label { get; set; } = string.Empty;
-    }
 }

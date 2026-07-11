@@ -110,10 +110,10 @@
                                AnchorOrigin="Origin.BottomCenter"
                                Class="mb-4"
                                Required="true">
-                        @foreach (var day in Days.Where(d => d.IsPublished).OrderBy(d => d.LocalDate))
+                        @foreach (var day in Days.Where(d => d.IsPublished == true).OrderBy(d => d.LocalDate))
                         {
                             <MudSelectItem T="Guid?" Value="@day.Id">
-                                @day.LocalDate.ToString("ddd, MMM d")@(!string.IsNullOrEmpty(day.Label) ? $" - {day.Label}" : "")
+                                @day.LocalDate?.ToString("ddd, MMM d")@(!string.IsNullOrEmpty(day.Label) ? $" - {day.Label}" : "")
                             </MudSelectItem>
                         }
                     </MudSelect>

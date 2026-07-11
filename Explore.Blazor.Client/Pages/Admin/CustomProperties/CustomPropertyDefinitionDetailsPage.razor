@@ -30,7 +30,7 @@
         </div>
         <MudSpacer />
         
-        @if (_definition?.Links?.ContainsKey("edit") == true)
+        @if (_definition?.HasHalLink("edit") == true)
         {
             <MudButton Variant="Variant.Outlined" 
                        Color="Color.Primary" 
@@ -42,7 +42,7 @@
             </MudButton>
         }
         
-        @if (_definition?.Links?.ContainsKey("delete") == true)
+        @if (_definition?.HasHalLink("delete") == true)
         {
             <MudButton Variant="Variant.Outlined" 
                        Color="Color.Error" 
@@ -83,13 +83,13 @@
                     </MudItem>
                     
                     <MudItem xs="12" sm="6" md="4">
-                        <MudTextField Value="@_definition.EntityTypeName.ToString()" Label="Entity Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudTextField Value="@(((EntityTypeName)(_definition.EntityTypeName ?? 0)).ToString())" Label="Entity Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     </MudItem>
                     <MudItem xs="12" sm="6" md="4">
-                        <MudTextField Value="@_definition.PropertyType.ToString()" Label="Property Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudTextField Value="@(((PropertyType)(_definition.PropertyType ?? 0)).ToString())" Label="Property Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     </MudItem>
                     <MudItem xs="12" sm="6" md="4">
-                        <MudTextField Value="@_definition.ExposureLevel.ToString()" Label="Exposure Level" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudTextField Value="@(((ExposureLevel)(_definition.ExposureLevel ?? 0)).ToString())" Label="Exposure Level" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     </MudItem>
                     
                     <MudItem xs="12">
@@ -98,14 +98,14 @@
                 </MudGrid>
                 
                 <div class="d-flex flex-wrap gap-4 mt-4">
-                    <MudChip T="string" Color="@(_definition.IsRequired ? Color.Primary : Color.Default)">
-                        Required: @(_definition.IsRequired ? "Yes" : "No")
+                    <MudChip T="string" Color="@(_definition.IsRequired == true ? Color.Primary : Color.Default)">
+                        Required: @(_definition.IsRequired == true ? "Yes" : "No")
                     </MudChip>
-                    <MudChip T="string" Color="@(_definition.IsMulti ? Color.Primary : Color.Default)">
-                        Multi-Value: @(_definition.IsMulti ? "Yes" : "No")
+                    <MudChip T="string" Color="@(_definition.IsMulti == true ? Color.Primary : Color.Default)">
+                        Multi-Value: @(_definition.IsMulti == true ? "Yes" : "No")
                     </MudChip>
-                    <MudChip T="string" Color="@(_definition.IsActive ? Color.Success : Color.Default)">
-                        Active: @(_definition.IsActive ? "Yes" : "No")
+                    <MudChip T="string" Color="@(_definition.IsActive == true ? Color.Success : Color.Default)">
+                        Active: @(_definition.IsActive == true ? "Yes" : "No")
                     </MudChip>
                     <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">
                         Sort Order: @_definition.SortOrder
@@ -114,7 +114,7 @@
             </MudCardContent>
         </MudCard>
 
-        @if (_definition.PropertyType == PropertyType.Option && _definition.Options?.Any() == true)
+        @if (_definition.PropertyType == (int)PropertyType.Option && _definition.Options?.Any() == true)
         {
             <MudCard Elevation="0" Class="cp-def-details__card mb-6">
                 <MudCardHeader>
@@ -138,10 +138,10 @@
                             <MudTd DataLabel="Value">@opt.Value</MudTd>
                             <MudTd DataLabel="Sort Order">@opt.SortOrder</MudTd>
                             <MudTd DataLabel="Default">
-                                @if (opt.IsDefault) { <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Primary" Size="Size.Small" /> }
+                                @if (opt.IsDefault == true) { <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Primary" Size="Size.Small" /> }
                             </MudTd>
                             <MudTd DataLabel="Active">
-                                @if (opt.IsActive) { <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" /> }
+                                @if (opt.IsActive == true) { <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" /> }
                             </MudTd>
                         </RowTemplate>
                     </MudTable>
@@ -155,7 +155,7 @@
     [Parameter]
     public Guid Id { get; set; }
 
-    private CustomPropertyDefinitionDetailModel? _definition;
+    private CustomPropertyDefinitionDto? _definition;
     private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -188,7 +188,7 @@
         var dialog = await DialogService.ShowAsync<CustomPropertyDefinitionEditor>("Edit Definition", parameters, options);
         var result = await dialog.Result;
 
-        if (result != null && !result.Canceled && result.Data is CustomPropertyDefinitionDetailModel model)
+        if (result != null && !result.Canceled && result.Data is CustomPropertyDefinitionDto model)
         {
             var updateDto = new UpdateCustomPropertyDefinitionDto
             {
@@ -200,14 +200,14 @@
                 IsMulti = model.IsMulti,
                 IsActive = model.IsActive,
                 SortOrder = model.SortOrder,
-                ExposureLevel = model.ExposureLevel,
+                ExposureLevel = (ExposureLevel?)model.ExposureLevel,
                 MinLength = model.MinLength,
                 MaxLength = model.MaxLength,
                 RegexPattern = model.RegexPattern,
                 MinNumber = (double?)model.MinNumber,
                 MaxNumber = (double?)model.MaxNumber,
                 AllowedUrlSchemes = model.AllowedUrlSchemes,
-                Options = model.Options.Select(o => new CreateCustomPropertyOptionDto
+                Options = model.Options?.Select(o => new CreateCustomPropertyOptionDto
                 {
                     Namespace = model.Namespace,
                     Key = o.Key,
@@ -222,7 +222,7 @@
 
             var response = await CustomPropertyService.UpdateDefinitionAsync(Id, updateDto);
             
-            if (response != null)
+            if (response?.Success is true)
             {
                 Snackbar.Add("Definition updated successfully", Severity.Success);
                 await LoadDataAsync();

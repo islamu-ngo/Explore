@@ -205,7 +205,7 @@
     private bool _hasStoredSecret;
     private string _secret = string.Empty;
     private string? _errorMessage;
-    private DateTime? _instanceStartedAt;
+    private DateTimeOffset? _instanceStartedAt;
     private string _remainingTime = string.Empty;
     private string _setupSecretState = "Unavailable";
     private string _setupSecretGuidance = string.Empty;
@@ -244,14 +244,14 @@
             return;
         }
 
-        if (status.IsCompleted)
+        if (status.IsCompleted == true)
         {
             Navigation.NavigateTo("/");
             return;
         }
 
-        _isAuthenticated = status.IsAuthenticated;
-        _setupTimedOut = status.SetupTimedOut;
+        _isAuthenticated = status.IsAuthenticated == true;
+        _setupTimedOut = status.SetupTimedOut == true;
         _instanceStartedAt = status.InstanceStartedAt;
         _setupSecretState = string.IsNullOrWhiteSpace(status.SetupSecretState) ? "Unavailable" : status.SetupSecretState;
         _setupSecretGuidance = status.SetupSecretGuidance ?? string.Empty;
@@ -271,9 +271,7 @@
         if (!result.Valid)
         {
             _validationSucceeded = false;
-            _errorMessage = string.IsNullOrWhiteSpace(result.Error)
-                ? "Secret validation failed."
-                : result.Error;
+            _errorMessage = "Secret validation failed.";
             return;
         }
 
@@ -463,7 +461,7 @@
             return;
         }
 
-        var elapsed = DateTime.UtcNow - _instanceStartedAt.Value;
+        var elapsed = DateTimeOffset.UtcNow - _instanceStartedAt.Value;
         var remaining = TimeSpan.FromMinutes(60) - elapsed;
 
         if (remaining <= TimeSpan.Zero)

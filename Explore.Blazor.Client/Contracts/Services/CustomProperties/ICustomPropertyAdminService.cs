@@ -4,31 +4,30 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
-using Explore.Blazor.Client.Models.Responses;
 
 namespace Explore.Blazor.Client.Contracts.Services.CustomProperties;
 
 public interface ICustomPropertyAdminService
 {
-    Task<PaginatedResult<CustomPropertyDefinitionListModel>> GetDefinitionsAsync(
+    Task<PaginatedResult<CustomPropertyDefinitionListDto>> GetDefinitionsAsync(
         EntityTypeName entityTypeName,
         int pageNumber = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default);
 
-    Task<CustomPropertyDefinitionDetailModel?> GetDefinitionAsync(
+    Task<CustomPropertyDefinitionDto?> GetDefinitionAsync(
         Guid id,
         CancellationToken cancellationToken = default);
 
-    Task<BaseCommandResponse<Guid>?> UpdateDefinitionFlagsAsync(
+    Task<BaseCommandResponseOfGuid?> UpdateDefinitionFlagsAsync(
         DefinitionFlagUpdateModel update,
         CancellationToken cancellationToken = default);
 
-    Task<BaseCommandResponse<Guid>> UpdateManyDefinitionFlagsAsync(
+    Task<BaseCommandResponseOfGuid> UpdateManyDefinitionFlagsAsync(
         IReadOnlyList<DefinitionFlagUpdateModel> updates,
         CancellationToken cancellationToken = default);
 
-    Task<PaginatedResult<CustomPropertyGovernanceRowModel>> GetGovernanceReportAsync(
+    Task<PaginatedResult<CustomPropertyGovernanceRowDto>> GetGovernanceReportAsync(
         Guid? tenantId = null,
         string? scope = null,
         PromotionRecommendation? recommendation = null,
@@ -36,32 +35,32 @@ public interface ICustomPropertyAdminService
         int pageSize = 50,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<ProjectionStatusModel>> GetEventProjectionStatusAsync(
+    Task<IReadOnlyList<HalResourceOfProjectionStatusDto>> GetEventProjectionStatusAsync(
         Guid? tenantId = null,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<ProjectionStatusModel>> GetSessionProjectionStatusAsync(
+    Task<IReadOnlyList<HalResourceOfProjectionStatusDto>> GetSessionProjectionStatusAsync(
         Guid? tenantId = null,
         CancellationToken cancellationToken = default);
 
-    Task<PaginatedResult<ProjectionDirtyScopeModel>> GetDirtyScopesAsync(
+    Task<PaginatedResult<HalResourceOfProjectionDirtyScopeDto>> GetDirtyScopesAsync(
         Guid? tenantId = null,
         string? projectionName = null,
         int pageNumber = 1,
         int pageSize = 50,
         CancellationToken cancellationToken = default);
 
-    Task<BaseCommandResponse<RebuildProjectionResult>?> RebuildEventProjectionAsync(
+    Task<BaseCommandResponseOfRebuildProjectionResponseDto?> RebuildEventProjectionAsync(
         Guid tenantId,
         int? batchSize = null,
         CancellationToken cancellationToken = default);
 
-    Task<BaseCommandResponse<RebuildProjectionResult>?> RebuildSessionProjectionAsync(
+    Task<BaseCommandResponseOfRebuildProjectionResponseDto?> RebuildSessionProjectionAsync(
         Guid tenantId,
         int? batchSize = null,
         CancellationToken cancellationToken = default);
 
-    Task<BaseCommandResponse<DrainDirtyScopesResult>?> DrainDirtyScopesAsync(
+    Task<BaseCommandResponseOfDrainDirtyScopesResponseDto?> DrainDirtyScopesAsync(
         Guid tenantId,
         string? projectionName = null,
         CancellationToken cancellationToken = default);

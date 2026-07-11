@@ -125,12 +125,12 @@
             if (day != null)
             {
                 _model.Label = day.Label ?? string.Empty;
-                _localDate = day.LocalDate.ToDateTime(TimeOnly.MinValue);
+                _localDate = day.LocalDate?.DateTime;
                 _model.Description = day.Description ?? string.Empty;
                 _model.BannerText = day.BannerText ?? string.Empty;
-                _model.SortOrder = day.SortOrder;
-                _model.IsPublished = day.IsPublished;
-                _model.AllowsDayScopeRegistration = day.AllowsDayScopeRegistration;
+                _model.SortOrder = day.SortOrder ?? 0;
+                _model.IsPublished = day.IsPublished == true;
+                _model.AllowsDayScopeRegistration = day.AllowsDayScopeRegistration == true;
                 _concurrencyStamp = day.ConcurrencyStamp ?? Guid.Empty;
             }
             _isLoadingDetail = false;

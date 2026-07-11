@@ -129,7 +129,7 @@ public partial class AgendaMillerColumns
 
         try
         {
-            await AgendaItemService.DeleteAgendaItemAsync(item.Id);
+            await AgendaItemService.DeleteAgendaItemAsync(item.Id ?? Guid.Empty);
             SelectedItem = null;
             await OnDataChanged.InvokeAsync();
         }

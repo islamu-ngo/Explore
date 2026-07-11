@@ -2,9 +2,8 @@
    ABOUTME: Handles root properties and embeds definition editor. *@
 
 @using Explore.Blazor.Client.Contracts.Services.EventTemplates
-@using Explore.Blazor.Client.Models.EventTemplates
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Models
-@using Explore.Blazor.Client.Models.Responses
 @using Microsoft.AspNetCore.Components.Forms
 @using Explore.Blazor.Client.Components.Forms
 @inject IEventTemplateService TemplateService
@@ -71,14 +70,14 @@
     private IMudDialogInstance Dialog { get; set; } = null!;
 
     [Parameter]
-    public EventTemplateDetailModel? Template { get; set; }
+    public HalResourceOfEventTemplateDto? Template { get; set; }
 
     private EditContext _editContext = default!;
     private FormSubmitState _submitState = new();
     private ServerValidationErrorStore _errorStore = new();
 
     private CreateEventTemplateDto _model = new();
-    private List<EventTemplateDefinitionModel> _definitions = new();
+    private List<CreateEventTemplateDefinitionDto> _definitions = new();
 
     protected override void OnInitialized()
     {
@@ -94,24 +93,23 @@
                 IsPublished = Template.IsPublished,
                 IsActive = Template.IsActive,
                 SortOrder = Template.SortOrder,
-                Definitions = new List<CreateEventTemplateDefinitionDto>() // Re-populated below
+                Definitions = _definitions
             };
 
-            // Copy definitions
-            foreach (var def in Template.Definitions)
+            foreach (var def in Template.Definitions ?? [])
             {
-                _definitions.Add(new EventTemplateDefinitionModel
+                _definitions.Add(new CreateEventTemplateDefinitionDto
                 {
                     Namespace = def.Namespace,
                     Key = def.Key,
                     DisplayName = def.DisplayName,
                     Description = def.Description,
-                    PropertyType = def.PropertyType,
+                    PropertyType = (PropertyType?)def.PropertyType,
                     IsRequired = def.IsRequired,
                     IsMulti = def.IsMulti,
                     IsActive = def.IsActive,
                     SortOrder = def.SortOrder,
-                    ExposureLevel = def.ExposureLevel,
+                    ExposureLevel = (ExposureLevel?)def.ExposureLevel,
                     IsSearchable = def.IsSearchable,
                     IsFilterable = def.IsFilterable,
                     IsExportable = def.IsExportable,
@@ -131,7 +129,7 @@
                     MinDateTime = def.MinDateTime,
                     MaxDateTime = def.MaxDateTime,
                     AllowedUrlSchemes = def.AllowedUrlSchemes,
-                    Options = def.Options.Select(o => new EventTemplateOptionModel
+                    Options = def.Options?.Select(o => new CreateEventTemplateOptionDto
                     {
                         Namespace = o.Namespace,
                         Key = o.Key,
@@ -141,7 +139,7 @@
                         IsDefault = o.IsDefault,
                         IsActive = o.IsActive,
                         SortOrder = o.SortOrder
-                    }).ToList()
+                    }).ToList() ?? []
                 });
             }
         }
@@ -152,64 +150,16 @@
             _model.IsPublished = false;
         }
         
-        // Pass ref to the UI model representation so the child editor can mutate it directly
-        _model.Definitions = _definitions.Select(d => MapToDefinitionDto(d)).ToList();
+        _model.Definitions = _definitions;
 
         _editContext = new EditContext(_model);
         _errorStore.Init(_editContext);
     }
 
-    private void HandleDefinitionsChanged(IList<EventTemplateDefinitionModel> definitions)
+    private void HandleDefinitionsChanged(IList<CreateEventTemplateDefinitionDto> definitions)
     {
         _definitions = definitions.ToList();
-        _model.Definitions = _definitions.Select(d => MapToDefinitionDto(d)).ToList();
-    }
-
-    private CreateEventTemplateDefinitionDto MapToDefinitionDto(EventTemplateDefinitionModel model)
-    {
-        return new CreateEventTemplateDefinitionDto
-        {
-            Namespace = model.Namespace,
-            Key = model.Key,
-            DisplayName = model.DisplayName,
-            Description = model.Description,
-            PropertyType = model.PropertyType,
-            IsRequired = model.IsRequired,
-            IsMulti = model.IsMulti,
-            IsActive = model.IsActive,
-            SortOrder = model.SortOrder,
-            ExposureLevel = model.ExposureLevel,
-            IsSearchable = model.IsSearchable,
-            IsFilterable = model.IsFilterable,
-            IsExportable = model.IsExportable,
-            IsModerationRelevant = model.IsModerationRelevant,
-            IsAnalyticsRelevant = model.IsAnalyticsRelevant,
-            IsSystemOwned = model.IsSystemOwned,
-            DefaultTextValue = model.DefaultTextValue,
-            DefaultNumberValue = model.DefaultNumberValue,
-            DefaultBooleanValue = model.DefaultBooleanValue,
-            DefaultDateTimeValue = model.DefaultDateTimeValue.HasValue ? new DateTimeOffset(model.DefaultDateTimeValue.Value) : null,
-            DefaultOptionId = model.DefaultOptionId,
-            MinLength = model.MinLength,
-            MaxLength = model.MaxLength,
-            RegexPattern = model.RegexPattern,
-            MinNumber = model.MinNumber,
-            MaxNumber = model.MaxNumber,
-            MinDateTime = model.MinDateTime.HasValue ? new DateTimeOffset(model.MinDateTime.Value) : null,
-            MaxDateTime = model.MaxDateTime.HasValue ? new DateTimeOffset(model.MaxDateTime.Value) : null,
-            AllowedUrlSchemes = model.AllowedUrlSchemes,
-            Options = model.Options.Select(o => new CreateEventTemplateOptionDto
-            {
-                Namespace = o.Namespace,
-                Key = o.Key,
-                DisplayName = o.DisplayName,
-                Description = o.Description,
-                Value = o.Value,
-                IsDefault = o.IsDefault,
-                IsActive = o.IsActive,
-                SortOrder = o.SortOrder
-            }).ToList()
-        };
+        _model.Definitions = _definitions;
     }
 
     private async Task SaveAsync()
@@ -220,10 +170,9 @@
         _submitState.Start();
         try
         {
-            // Sync definitions from child editor before saving
-            _model.Definitions = _definitions.Select(d => MapToDefinitionDto(d)).ToList();
+            _model.Definitions = _definitions;
 
-            BaseCommandResponse<Guid>? result;
+            BaseCommandResponseOfGuid? result;
 
             if (Template == null)
             {
@@ -231,9 +180,10 @@
             }
             else
             {
+                var templateId = Template.Id ?? throw new InvalidOperationException("The template response did not include an ID.");
                 var updateDto = new UpdateEventTemplateDto
                 {
-                    Id = Template.Id,
+                    Id = templateId,
                     TemplateKey = _model.TemplateKey,
                     DisplayName = _model.DisplayName,
                     Description = _model.Description,
@@ -244,7 +194,7 @@
                     SortOrder = _model.SortOrder,
                     Definitions = _model.Definitions
                 };
-                result = await TemplateService.UpdateTemplateAsync(Template.Id, updateDto);
+                result = await TemplateService.UpdateTemplateAsync(templateId, updateDto);
             }
 
             if (result?.Success == true)

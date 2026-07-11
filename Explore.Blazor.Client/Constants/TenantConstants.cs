@@ -13,7 +13,7 @@ public static class TenantConstants
 
     /// <summary>
     /// Default tenant ID matching the seeded tenant in the database.
-    /// This MUST match SeedIds.DefaultTenantId in Explore.Persistence.
+    /// This MUST match the default tenant ID published by the API contract.
     /// </summary>
     public static readonly Guid DefaultTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
 }

@@ -44,7 +44,7 @@
                 <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
             }
 
-            @if (_model.KeycloakDetectedFromEnvironment && !_showAdvancedConfig)
+            @if (_model.KeycloakDetectedFromEnvironment == true && !_showAdvancedConfig)
             {
                 <MudPaper Class="pa-8 mb-4 d-flex flex-column align-center text-center" Outlined="true">
                     <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-4" />
@@ -74,7 +74,7 @@
                         <TitleContent>
                             <div class="d-flex align-center" data-testid="keycloak-provider-header">
                                 <MudText Typo="Typo.h6" Class="mr-2">Keycloak (OIDC)</MudText>
-                                @if (_model.KeycloakDetectedFromEnvironment)
+                                @if (_model.KeycloakDetectedFromEnvironment == true)
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
                                         Auto-detected
@@ -89,17 +89,17 @@
                             <MudStack Spacing="2">
                                 <div data-testid="keycloak-enable-switch">
                                     <MudSwitch T="bool"
-                                               Value="_model.KeycloakEnabled"
+                                               Value="@(_model.KeycloakEnabled == true)"
                                                ValueChanged="OnKeycloakToggled"
                                                Color="Color.Primary"
-                                               Disabled="_model.KeycloakDetectedFromEnvironment">
+                                               Disabled="@(_model.KeycloakDetectedFromEnvironment == true)">
                                         Enable Keycloak
                                     </MudSwitch>
                                 </div>
 
-                                @if (_model.KeycloakEnabled)
+                                @if (_model.KeycloakEnabled == true)
                                 {
-                                    @if (_model.KeycloakDetectedFromEnvironment)
+                                    @if (_model.KeycloakDetectedFromEnvironment == true)
                                     {
                                         <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
                                             <MudText Typo="Typo.caption">
@@ -144,12 +144,12 @@
                                              <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
                                                   The platform will use the bootstrap admin credential one time to create or patch Keycloak clients. The admin credential is not stored after this request.
                                              </MudAlert>
-                                            <MudSelect T="int" Variant="Variant.Outlined"
+                                            <MudSelect T="KeycloakBootstrapMode?" Variant="Variant.Outlined"
                                                        Label="Bootstrap action"
                                                        @bind-Value="_keycloakBootstrap.Mode"
                                                        HelperText="Choose whether the platform should create the realm when it is missing, or only patch an existing realm.">
-                                                <MudSelectItem T="int" Value="@PatchExistingRealmMode">Patch existing realm</MudSelectItem>
-                                                <MudSelectItem T="int" Value="@CreateRealmMode">Create realm if missing</MudSelectItem>
+                                                <MudSelectItem T="KeycloakBootstrapMode?" Value="@KeycloakBootstrapMode.PatchExistingRealm">Patch existing realm</MudSelectItem>
+                                                <MudSelectItem T="KeycloakBootstrapMode?" Value="@KeycloakBootstrapMode.CreateRealm">Create realm if missing</MudSelectItem>
                                             </MudSelect>
                                              <MudTextField Variant="Variant.Outlined" T="string"
                                                            Label="Keycloak base URL (Required)"
@@ -214,11 +214,11 @@
                         </TitleContent>
                         <ChildContent>
                             <MudStack Spacing="2">
-                                <MudSwitch T="bool" @bind-Value="_model.AtprotoLoginEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool?" @bind-Value="_model.AtprotoLoginEnabled" Color="Color.Primary">
                                     Enable AT Protocol Login
                                 </MudSwitch>
 
-                                @if (_model.AtprotoLoginEnabled)
+                                @if (_model.AtprotoLoginEnabled == true)
                                 {
                                     <MudTextField Variant="Variant.Outlined" T="string"
                                                   Label="Public URL (Required)"
@@ -251,11 +251,11 @@
                         </TitleContent>
                         <ChildContent>
                             <MudStack Spacing="2">
-                                <MudSwitch T="bool" @bind-Value="_model.GoogleSsoEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool?" @bind-Value="_model.GoogleSsoEnabled" Color="Color.Primary">
                                     Enable Google SSO
                                 </MudSwitch>
 
-                                @if (_model.GoogleSsoEnabled)
+                                @if (_model.GoogleSsoEnabled == true)
                                 {
                                     <MudTextField Variant="Variant.Outlined" T="string"
                                                   Label="Google Client ID (Required)"
@@ -300,11 +300,8 @@
 </MudContainer>
 
 @code {
-    private const int PatchExistingRealmMode = 0;
-    private const int CreateRealmMode = 1;
-
-    private AuthProviderConfigurationModel _model = new();
-    private KeycloakBootstrapRequestModel _keycloakBootstrap = new();
+    private AuthProviderConfigurationDto _model = new();
+    private KeycloakBootstrapRequestDto _keycloakBootstrap = new();
     private KeycloakConfigurationMode _keycloakConfigurationMode = KeycloakConfigurationMode.Manual;
     private bool _isLoading = true;
     private FormSubmitState _submitState = new();
@@ -314,10 +311,10 @@
     private bool _isKeycloakPanelExpanded = true;
 
     private bool HasAnyProviderEnabled =>
-        _model.KeycloakEnabled || _model.AtprotoLoginEnabled || _model.GoogleSsoEnabled;
+        _model.KeycloakEnabled == true || _model.AtprotoLoginEnabled == true || _model.GoogleSsoEnabled == true;
 
     private bool HasKeycloakCredentials =>
-        _model.KeycloakDetectedFromEnvironment ||
+        _model.KeycloakDetectedFromEnvironment == true ||
         (_keycloakConfigurationMode == KeycloakConfigurationMode.Manual
             ? !string.IsNullOrWhiteSpace(_model.KeycloakAuthority) && !string.IsNullOrWhiteSpace(_model.KeycloakClientId)
             : HasKeycloakBootstrapCredentials);
@@ -339,9 +336,9 @@
     private bool CanSave =>
         !_submitState.IsSubmitting &&
         HasAnyProviderEnabled &&
-        (!_model.KeycloakEnabled || HasKeycloakCredentials) &&
-        (!_model.AtprotoLoginEnabled || HasAtprotoCredentials) &&
-        (!_model.GoogleSsoEnabled || HasGoogleCredentials);
+        (_model.KeycloakEnabled != true || HasKeycloakCredentials) &&
+        (_model.AtprotoLoginEnabled != true || HasAtprotoCredentials) &&
+        (_model.GoogleSsoEnabled != true || HasGoogleCredentials);
 
     protected override async Task OnInitializedAsync()
     {
@@ -372,7 +369,7 @@
         if (!enabled)
         {
             // Clear credentials when disabled (unless env-detected)
-            if (!_model.KeycloakDetectedFromEnvironment)
+            if (_model.KeycloakDetectedFromEnvironment != true)
             {
                 _model.KeycloakAuthority = string.Empty;
                 _model.KeycloakClientId = string.Empty;
@@ -403,14 +400,14 @@
             ClearKeycloakBootstrapSecrets();
         }
 
-        if (!response.Success)
+        if (response.Success != true)
         {
             _submitState.Complete();
             _errorMessage = string.IsNullOrWhiteSpace(response.Message)
                 ? "Failed to save auth provider configuration."
                 : response.Message;
 
-            if (response.Errors.Count > 0)
+            if (response.Errors?.Count > 0)
             {
                 _errorMessage += " " + string.Join(" ", response.Errors);
             }
@@ -443,7 +440,7 @@
     }
 
     private bool ShouldBootstrapKeycloak =>
-        _model.KeycloakEnabled &&
+        _model.KeycloakEnabled == true &&
         _keycloakConfigurationMode == KeycloakConfigurationMode.Bootstrap;
 
     private void SeedKeycloakBootstrapDefaults()
@@ -484,7 +481,7 @@
         _keycloakBootstrap.BootstrapAdminPassword = string.Empty;
     }
 
-    private static bool IsPrivateUrl(string url)
+    private static bool IsPrivateUrl(string? url)
     {
         if (string.IsNullOrWhiteSpace(url))
             return false;

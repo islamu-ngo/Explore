@@ -1,7 +1,7 @@
 // ABOUTME: Fetches the authenticated user's feature flags from GET /api/features/my-flags.
 // ABOUTME: Hydrates the FeatureStateContainer on login; no OpenFeature SDK dependency in UI.
 
-using System.Net;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -12,12 +12,12 @@ public interface IFeatureFlagClientService
 
 public class FeatureFlagClientService : IFeatureFlagClientService
 {
-    private readonly IFeatureFlagApi _api;
+    private readonly IEventApiClient _api;
     private readonly FeatureStateContainer _featureState;
     private readonly ILogger<FeatureFlagClientService> _logger;
 
     public FeatureFlagClientService(
-        IFeatureFlagApi api,
+        IEventApiClient api,
         FeatureStateContainer featureState,
         ILogger<FeatureFlagClientService> logger)
     {
@@ -30,27 +30,12 @@ public class FeatureFlagClientService : IFeatureFlagClientService
     {
         try
         {
-            var response = await _api.GetMyFlagsAsync(CancellationToken.None);
-
-            if (response.IsSuccessStatusCode && response.Content is not null)
-            {
-                _featureState.SetFlags(response.Content);
-                _logger.LogDebug("Loaded {Count} feature flags", response.Content.Count);
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                _logger.LogDebug("Feature flags not loaded — user is not authenticated");
-                return;
-            }
-
-            if (_logger.IsEnabled(LogLevel.Warning))
-            {
-                _logger.LogWarning("Failed to load feature flags from API: {StatusCode}", (int)response.StatusCode);
-            }
+            var response = await _api.GetMyFeatureFlagsAsync();
+            var flags = response.ToDictionary(pair => pair.Key, pair => pair.Value);
+            _featureState.SetFlags(flags);
+            _logger.LogDebug("Loaded {Count} feature flags", flags.Count);
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        catch (ApiException ex) when (ex.StatusCode == 401)
         {
             _logger.LogDebug("Feature flags not loaded — user is not authenticated");
         }

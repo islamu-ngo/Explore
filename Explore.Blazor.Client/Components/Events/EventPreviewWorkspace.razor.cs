@@ -268,9 +268,7 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
     {
         try
         {
-            var settingsTask = PublicExperienceService.GetSettingsAsync()
-                ?? Task.FromResult<PublicExperienceSettingsModel?>(null);
-            var settings = await settingsTask;
+            var settings = await PublicExperienceService.GetSettingsAsync();
             _eventCardClickOpensDetailPage = settings?.EventCardClickOpensDetailPage ?? false;
         }
         catch (Exception ex)

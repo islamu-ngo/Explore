@@ -1,56 +1,26 @@
-// ABOUTME: Refit-backed service for managing tenant navigation links through BFF endpoints.
-// ABOUTME: Provides safe fallback results while keeping navigation CRUD off raw HttpClient calls.
+// ABOUTME: Manages tenant navigation links through the NSwag-generated Event API client.
+// ABOUTME: Returns generated contract models and preserves safe fallback results on API failures.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
-using Explore.Blazor.Client.Models.Responses;
 using Microsoft.Extensions.Logging;
-using Refit;
 
 namespace Explore.Blazor.Client.Services;
 
-public interface ITenantNavigationApi
-{
-    [Get("/api/tenant/navigation")]
-    Task<IApiResponse<List<TenantNavigationLinkDto>>> GetNavigationLinksAsync(CancellationToken cancellationToken);
-
-    [Post("/api/tenant/navigation")]
-    Task<IApiResponse<BaseCommandResponse<Guid>>> CreateNavigationLinkAsync(
-        [Body] CreateTenantNavigationLinkDto dto,
-        CancellationToken cancellationToken);
-
-    [Put("/api/tenant/navigation/{id}")]
-    Task<IApiResponse<BaseCommandResponse<bool>>> UpdateNavigationLinkAsync(
-        Guid id,
-        [Body] UpdateTenantNavigationLinkDto dto,
-        CancellationToken cancellationToken);
-
-    [Delete("/api/tenant/navigation/{id}")]
-    Task<IApiResponse<BaseCommandResponse<bool>>> DeleteNavigationLinkAsync(
-        Guid id,
-        CancellationToken cancellationToken);
-
-    [Put("/api/tenant/navigation/reorder")]
-    Task<IApiResponse<BaseCommandResponse<bool>>> ReorderNavigationLinksAsync(
-        [Body] List<UpdateTenantNavigationLinkOrderDto> orders,
-        CancellationToken cancellationToken);
-}
-
 /// <summary>
 /// Service for managing tenant navigation links.
-/// Communicates with the API through BFF Refit endpoints to retrieve, create, update, delete, and reorder navigation links.
+/// Communicates through the generated API client to retrieve, create, update, delete, and reorder navigation links.
 /// </summary>
 public class TenantNavigationService : ITenantNavigationService
 {
-    private readonly ITenantNavigationApi _api;
+    private readonly IEventApiClient _apiClient;
     private readonly ILogger<TenantNavigationService> _logger;
 
     public TenantNavigationService(
-        ITenantNavigationApi api,
+        IEventApiClient apiClient,
         ILogger<TenantNavigationService> logger)
     {
-        _api = api ?? throw new ArgumentNullException(nameof(api));
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -61,14 +31,7 @@ public class TenantNavigationService : ITenantNavigationService
     {
         try
         {
-            var response = await _api.GetNavigationLinksAsync(CancellationToken.None);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("[TENANT NAVIGATION SERVICE] Failed to fetch navigation links: {StatusCode}", (int)response.StatusCode);
-                return new List<TenantNavigationLinkDto>();
-            }
-
-            return response.Content ?? new List<TenantNavigationLinkDto>();
+            return await _apiClient.GetTenantNavigationLinksAsync();
         }
         catch (Exception ex)
         {
@@ -80,108 +43,80 @@ public class TenantNavigationService : ITenantNavigationService
     /// <summary>
     /// Creates a new navigation link for the tenant.
     /// </summary>
-    public async Task<BaseCommandResponse<Guid>?> CreateNavigationLinkAsync(CreateTenantNavigationLinkDto dto)
+    public async Task<BaseCommandResponseOfGuid?> CreateNavigationLinkAsync(CreateTenantNavigationLinkDto dto)
     {
         try
         {
-            var response = await _api.CreateNavigationLinkAsync(dto, CancellationToken.None);
-            return response.IsSuccessStatusCode
-                ? response.Content
-                : CreateFailureResponse<Guid>(response, "[TENANT NAVIGATION SERVICE] Failed to create navigation link: {StatusCode}");
+            return await _apiClient.CreateTenantNavigationLinkAsync(dto);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[TENANT NAVIGATION SERVICE] Error creating navigation link");
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = $"Error: {ex.Message}",
-                Errors = new List<string> { ex.Message }
-            };
+            return CreateGuidFailure(ex);
         }
     }
 
     /// <summary>
     /// Updates an existing navigation link.
     /// </summary>
-    public async Task<BaseCommandResponse<bool>?> UpdateNavigationLinkAsync(Guid id, UpdateTenantNavigationLinkDto dto)
+    public async Task<BaseCommandResponseOfboolean?> UpdateNavigationLinkAsync(Guid id, UpdateTenantNavigationLinkDto dto)
     {
         try
         {
-            var response = await _api.UpdateNavigationLinkAsync(id, dto, CancellationToken.None);
-            return response.IsSuccessStatusCode
-                ? response.Content
-                : CreateFailureResponse<bool>(response, "[TENANT NAVIGATION SERVICE] Failed to update navigation link {Id}: {StatusCode}", id);
+            return await _apiClient.UpdateTenantNavigationLinkAsync(id, dto);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[TENANT NAVIGATION SERVICE] Error updating navigation link {Id}", id);
-            return new BaseCommandResponse<bool>
-            {
-                Success = false,
-                Message = $"Error: {ex.Message}",
-                Errors = new List<string> { ex.Message }
-            };
+            return CreateBooleanFailure(ex);
         }
     }
 
     /// <summary>
     /// Deletes a navigation link.
     /// </summary>
-    public async Task<BaseCommandResponse<bool>?> DeleteNavigationLinkAsync(Guid id)
+    public async Task<BaseCommandResponseOfboolean?> DeleteNavigationLinkAsync(Guid id)
     {
         try
         {
-            var response = await _api.DeleteNavigationLinkAsync(id, CancellationToken.None);
-            return response.IsSuccessStatusCode
-                ? response.Content
-                : CreateFailureResponse<bool>(response, "[TENANT NAVIGATION SERVICE] Failed to delete navigation link {Id}: {StatusCode}", id);
+            return await _apiClient.DeleteTenantNavigationLinkAsync(id);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[TENANT NAVIGATION SERVICE] Error deleting navigation link {Id}", id);
-            return new BaseCommandResponse<bool>
-            {
-                Success = false,
-                Message = $"Error: {ex.Message}",
-                Errors = new List<string> { ex.Message }
-            };
+            return CreateBooleanFailure(ex);
         }
     }
 
     /// <summary>
     /// Reorders multiple navigation links.
     /// </summary>
-    public async Task<BaseCommandResponse<bool>?> ReorderNavigationLinksAsync(List<UpdateTenantNavigationLinkOrderDto> orders)
+    public async Task<BaseCommandResponseOfboolean?> ReorderNavigationLinksAsync(List<UpdateTenantNavigationLinkOrderDto> orders)
     {
         try
         {
-            var response = await _api.ReorderNavigationLinksAsync(orders, CancellationToken.None);
-            return response.IsSuccessStatusCode
-                ? response.Content
-                : CreateFailureResponse<bool>(response, "[TENANT NAVIGATION SERVICE] Failed to reorder navigation links: {StatusCode}");
+            return await _apiClient.ReorderTenantNavigationLinksAsync(orders);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[TENANT NAVIGATION SERVICE] Error reordering navigation links");
-            return new BaseCommandResponse<bool>
-            {
-                Success = false,
-                Message = $"Error: {ex.Message}",
-                Errors = new List<string> { ex.Message }
-            };
+            return CreateBooleanFailure(ex);
         }
     }
 
-    private BaseCommandResponse<T> CreateFailureResponse<T>(IApiResponse response, string logMessage, params object[] logArgs)
-    {
-        _logger.LogWarning(logMessage, [.. logArgs, (int)response.StatusCode]);
-        var message = response.Error?.Content ?? response.Error?.Message ?? "Unknown error";
-        return new BaseCommandResponse<T>
+    private static BaseCommandResponseOfGuid CreateGuidFailure(Exception exception) =>
+        new()
         {
             Success = false,
-            Message = $"Error: {message}",
-            Errors = new List<string> { message }
+            Message = $"Error: {exception.Message}",
+            Errors = [exception.Message]
         };
-    }
+
+    private static BaseCommandResponseOfboolean CreateBooleanFailure(Exception exception) =>
+        new()
+        {
+            Success = false,
+            Message = $"Error: {exception.Message}",
+            Errors = [exception.Message]
+        };
 }

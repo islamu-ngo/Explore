@@ -2,6 +2,7 @@
 // ABOUTME: Keeps Razor components dependent on server-confirmed state instead of browser claims.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Models.Responses;
 
 namespace Explore.Blazor.Client.Contracts.Services.SupportAccess;
 
@@ -29,12 +30,12 @@ public interface ISupportAccessClientService
         string? endReasonText = null,
         CancellationToken cancellationToken = default);
 
-    Task<SupportAccessSessionCollection> GetSessionsAsync(
+    Task<ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>> GetSessionsAsync(
         Guid targetTenantId,
         int limit = 100,
         CancellationToken cancellationToken = default);
 
-    Task<SupportAccessAuditEventCollection> GetAuditEventsAsync(
+    Task<ServiceResult<HalCollectionResourceOfSupportAccessAuditEventDto>> GetAuditEventsAsync(
         Guid targetTenantId,
         Guid sessionId,
         int limit = 100,

@@ -22,7 +22,7 @@ public partial class GroupProfile
 
     private Guid Id { get; set; }
 
-    private GroupAdminDetailsModel? _group;
+    private HalResourceOfGroupDto? _group;
     private bool _isLoading = true;
     private bool _isLoadingEvents;
     private bool _isLoadingRegistrationEvents;
@@ -222,6 +222,6 @@ public partial class GroupProfile
     public sealed class GroupProfileState
     {
         public Guid GroupId { get; init; }
-        public GroupAdminDetailsModel? Group { get; init; }
+        public HalResourceOfGroupDto? Group { get; init; }
     }
 }

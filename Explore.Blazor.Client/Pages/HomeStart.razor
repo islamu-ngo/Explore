@@ -148,7 +148,7 @@
             return;
         }
 
-        if (!instanceStatus.IsCompleted)
+        if (instanceStatus.IsCompleted != true)
         {
             Navigation.NavigateTo("/setup");
             return;
@@ -159,7 +159,7 @@
             var resolvedTenantId = TenantContext?.TenantId;
             if (resolvedTenantId == null || resolvedTenantId == Guid.Empty)
             {
-                if (instanceStatus.IsAuthenticated)
+                if (instanceStatus.IsAuthenticated == true)
                 {
                     var redirection = await UserService.ResolveUserTenantRedirectionAsync();
                     if (redirection != null && !string.IsNullOrWhiteSpace(redirection.TenantSlug))
@@ -170,7 +170,7 @@
                     }
                     else
                     {
-                        if (instanceStatus.IsCurrentUserInstanceAdmin)
+                        if (instanceStatus.IsCurrentUserInstanceAdmin == true)
                         {
                             Navigation.NavigateTo("/admin/instance/settings");
                             return;

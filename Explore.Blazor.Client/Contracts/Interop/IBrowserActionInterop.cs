@@ -16,4 +16,8 @@ public interface IBrowserActionInterop
         string fileName,
         string contentType,
         CancellationToken cancellationToken = default);
+
+    Task<bool> DownloadFileFromUrlAsync(
+        string url,
+        CancellationToken cancellationToken = default);
 }

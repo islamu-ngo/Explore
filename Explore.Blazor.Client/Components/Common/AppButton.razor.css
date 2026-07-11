@@ -24,10 +24,44 @@
 
 /* ── Outlined variant: subtle border + ring on hover ── */
 .app-button ::deep .mud-button-outlined {
-    border: 1px solid var(--mud-palette-lines-default);
+    border: 1px solid var(--isl-color-text-secondary);
 }
 
 .app-button ::deep .mud-button-outlined:hover {
     border-color: var(--mud-palette-primary);
     box-shadow: 0 0 0 1px var(--isl-button-ring);
+}
+
+.app-button ::deep .mud-button-outlined-warning,
+.app-button ::deep .mud-button-outlined-warning:hover,
+.app-button ::deep .mud-button-outlined-warning:active {
+    color: var(--isl-color-warning-strong);
+    border-color: var(--isl-color-warning-strong);
+    box-shadow: none;
+    --mud-ripple-color: transparent;
+}
+
+.app-button ::deep .mud-button-filled-warning,
+.app-button ::deep .mud-button-filled-warning:hover,
+.app-button ::deep .mud-button-filled-warning:active {
+    color: var(--isl-color-background);
+    border-color: var(--isl-color-warning-strong);
+    background-color: var(--isl-color-warning-strong);
+    box-shadow: none;
+    --mud-ripple-color: transparent;
+}
+
+.app-button ::deep .mud-button-outlined-error,
+.app-button ::deep .mud-button-filled-error {
+    --mud-ripple-color: transparent;
+}
+
+.app-button ::deep .mud-button-outlined-error:hover,
+.app-button ::deep .mud-button-outlined-error:active,
+.app-button ::deep .mud-button-filled-error:hover,
+.app-button ::deep .mud-button-filled-error:active {
+    color: var(--isl-color-background);
+    border-color: var(--mud-palette-error-darken);
+    background-color: var(--mud-palette-error-darken);
+    box-shadow: none;
 }

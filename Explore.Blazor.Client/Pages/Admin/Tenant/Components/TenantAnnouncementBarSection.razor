@@ -21,7 +21,7 @@
     </div>
 
     <MudStack Spacing="3" Class="settings-form-section mt-4">
-        <MudSwitch T="bool" @bind-Value="Model.AnnouncementBarEnabled" Color="Color.Primary">
+        <MudSwitch T="bool?" @bind-Value="Model.AnnouncementBarEnabled" Color="Color.Primary">
             Show announcement bar
         </MudSwitch>
 
@@ -31,7 +31,7 @@
                       Variant="Variant.Outlined"
                       Lines="3"
                       FullWidth="true"
-                      Disabled="!Model.AnnouncementBarEnabled"
+                      Disabled="Model.AnnouncementBarEnabled != true"
                       HelperText="Required when the announcement bar is enabled." />
 
         <MudGrid Spacing="3">
@@ -41,7 +41,7 @@
                               Label="Optional link text"
                               Variant="Variant.Outlined"
                               FullWidth="true"
-                              Disabled="!Model.AnnouncementBarEnabled" />
+                              Disabled="Model.AnnouncementBarEnabled != true" />
             </MudItem>
             <MudItem xs="12" md="7">
                 <MudTextField T="string"
@@ -49,19 +49,19 @@
                               Label="Optional link URL"
                               Variant="Variant.Outlined"
                               FullWidth="true"
-                              Disabled="!Model.AnnouncementBarEnabled"
+                              Disabled="Model.AnnouncementBarEnabled != true"
                               HelperText="Use a relative path such as /events or a full https:// URL." />
             </MudItem>
         </MudGrid>
 
-        @if (Model.AnnouncementBarEnabled && string.IsNullOrWhiteSpace(Model.AnnouncementBarMessage))
+        @if (Model.AnnouncementBarEnabled == true && string.IsNullOrWhiteSpace(Model.AnnouncementBarMessage))
         {
             <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
                 The bar will stay hidden until a message is provided.
             </MudAlert>
         }
 
-        @if (Model.AnnouncementBarEnabled && !string.IsNullOrWhiteSpace(Model.AnnouncementBarMessage))
+        @if (Model.AnnouncementBarEnabled == true && !string.IsNullOrWhiteSpace(Model.AnnouncementBarMessage))
         {
             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" NoIcon="true">
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
@@ -81,7 +81,7 @@
 
 @code {
     [Parameter]
-    public TenantPolicySettingsModel Model { get; set; } = new();
+    public TenantPolicySettingsDto Model { get; set; } = new();
 
     [Parameter]
     public bool HasExistingAnnouncementBar { get; set; }

@@ -3,10 +3,6 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.EventTemplates;
-using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models;
-using Explore.Blazor.Client.Models.EventTemplates;
-using Explore.Blazor.Client.Models.Responses;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -22,7 +18,7 @@ public sealed class EventTemplateService : IEventTemplateService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<PaginatedResult<EventTemplateListModel>> GetTemplatesAsync(
+    public async Task<HalCollectionResourceOfEventTemplateListDto> GetTemplatesAsync(
         int? eventTypeId = null,
         int pageNumber = 1,
         int pageSize = 20,
@@ -30,29 +26,33 @@ public sealed class EventTemplateService : IEventTemplateService
     {
         try
         {
-            var response = await _apiClient.GetEventTemplatesAsync(
+            return await _apiClient.GetEventTemplatesAsync(
                 eventTypeId,
                 pageNumber,
                 pageSize,
                 cancellationToken: ct);
-
-            return response.ToEventTemplatePaginatedResult();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[EVENT TEMPLATE] Failed to fetch templates");
-            return PaginatedResult<EventTemplateListModel>.Empty(pageNumber, pageSize);
+            return new HalCollectionResourceOfEventTemplateListDto
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = 0,
+                TotalPages = 0,
+                _embedded = new HalCollectionEmbeddedOfEventTemplateListDto { Items = [] }
+            };
         }
     }
 
-    public async Task<EventTemplateDetailModel?> GetTemplateByIdAsync(
+    public async Task<HalResourceOfEventTemplateDto?> GetTemplateByIdAsync(
         Guid id,
         CancellationToken ct = default)
     {
         try
         {
-            var hal = await _apiClient.GetEventTemplateByIdAsync(id, cancellationToken: ct);
-            return hal.ToEventTemplateModel();
+            return await _apiClient.GetEventTemplateByIdAsync(id, cancellationToken: ct);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -65,7 +65,7 @@ public sealed class EventTemplateService : IEventTemplateService
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>?> CreateTemplateAsync(
+    public async Task<BaseCommandResponseOfGuid?> CreateTemplateAsync(
         CreateEventTemplateDto dto,
         CancellationToken ct = default)
     {
@@ -73,8 +73,7 @@ public sealed class EventTemplateService : IEventTemplateService
 
         try
         {
-            var response = await _apiClient.CreateEventTemplateAsync(dto, cancellationToken: ct);
-            return ToClientResponse(response);
+            return await _apiClient.CreateEventTemplateAsync(dto, cancellationToken: ct);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -88,7 +87,7 @@ public sealed class EventTemplateService : IEventTemplateService
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>?> UpdateTemplateAsync(
+    public async Task<BaseCommandResponseOfGuid?> UpdateTemplateAsync(
         Guid id,
         UpdateEventTemplateDto dto,
         CancellationToken ct = default)
@@ -97,8 +96,7 @@ public sealed class EventTemplateService : IEventTemplateService
 
         try
         {
-            var response = await _apiClient.UpdateEventTemplateAsync(id, dto, cancellationToken: ct);
-            return ToClientResponse(response);
+            return await _apiClient.UpdateEventTemplateAsync(id, dto, cancellationToken: ct);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -130,16 +128,5 @@ public sealed class EventTemplateService : IEventTemplateService
             _logger.LogError(ex, "[EVENT TEMPLATE] Unexpected error deleting template {TemplateId}", id);
             return false;
         }
-    }
-
-    private static BaseCommandResponse<Guid> ToClientResponse(BaseCommandResponseOfGuid response)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = response.Success ?? false,
-            Id = response.Id ?? Guid.Empty,
-            Message = response.Message,
-            Errors = response.Errors?.ToList()
-        };
     }
 }

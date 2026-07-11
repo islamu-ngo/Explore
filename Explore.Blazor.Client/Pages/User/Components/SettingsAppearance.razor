@@ -2,7 +2,7 @@
 @* ABOUTME: Uses IAppearanceThemeService for reactive state and persistence. Custom builder uses algorithmic palette generation. *@
 
 @using Explore.Blazor.Client.Services
-@using Explore.Blazor.Client.Services.Appearance
+@using Explore.Blazor.Client.Clients
 @using MudBlazor
 @inject IAppearanceThemeService AppearanceThemeService
 @inject ISnackbar Snackbar
@@ -74,8 +74,8 @@
                                 var p = preset;
                                 <MudItem xs="12" sm="6" md="4">
                                     <MudPaper Elevation="0"
-                                              Class="@GetThemeCardClass(p.Id, isActive: IsActivePresetOrProfile(p.Id))"
-                                              @onclick="@(() => ActivatePresetAsync(p.Id))"
+                                              Class="@GetThemeCardClass(p.Id ?? Guid.Empty, isActive: IsActivePresetOrProfile(p.Id ?? Guid.Empty))"
+                                              @onclick="@(() => ActivatePresetAsync(p.Id ?? Guid.Empty))"
                                               Style="cursor: pointer;">
                                         <div class="settings-appearance__theme-swatch">
                                             <span class="settings-appearance__swatch-chip"
@@ -85,7 +85,7 @@
                                         </div>
                                         <MudText Typo="Typo.body1" Style="font-weight: 600;">@p.DisplayName</MudText>
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            @(p.IsSystem ? "System preset" : p.ThemeKey)
+                                            @(p.IsSystem == true ? "System preset" : p.ThemeKey)
                                         </MudText>
                                     </MudPaper>
                                 </MudItem>
@@ -219,7 +219,7 @@
                                     <MudText Typo="Typo.body1" Style="font-weight: 600;">@p.Name</MudText>
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                                         @p.ThemeMode
-                                        @if (p.IsDefault)
+                                        @if (p.IsDefault == true)
                                         {
                                             <span class="ml-2" style="color: var(--mud-palette-success);">
                                                 <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" /> Active
@@ -232,29 +232,29 @@
                                     </MudText>
                                 </div>
                                 <MudStack Row="true" Spacing="1">
-                                    @if (!p.IsDefault)
+                                    @if (p.IsDefault != true)
                                     {
                                         <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
                                                        Size="Size.Small"
                                                        Color="Color.Primary"
                                                        Title="Set active"
-                                                       OnClick="@(() => ActivateProfileAsync(p.Id))" />
+                                                       OnClick="@(() => ActivateProfileAsync(p.Id ?? Guid.Empty))" />
                                     }
-                                    @if (p.IsUserEditable)
+                                    @if (p.IsUserEditable == true)
                                     {
                                         <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
                                                        Size="Size.Small"
                                                        Color="Color.Secondary"
                                                        Title="Duplicate"
-                                                       OnClick="@(() => DuplicateProfileAsync(p.Id))" />
+                                                       OnClick="@(() => DuplicateProfileAsync(p.Id ?? Guid.Empty))" />
                                     }
-                                    @if (!p.IsDefault)
+                                    @if (p.IsDefault != true)
                                     {
                                         <MudIconButton Icon="@Icons.Material.Filled.Archive"
                                                        Size="Size.Small"
                                                        Color="Color.Secondary"
                                                        Title="Archive"
-                                                       OnClick="@(() => ArchiveProfileAsync(p.Id))" />
+                                                       OnClick="@(() => ArchiveProfileAsync(p.Id ?? Guid.Empty))" />
                                     }
                                 </MudStack>
                             </div>
@@ -290,8 +290,8 @@
     private PreferenceForm _form = new();
     private PreferenceForm _serverForm = new();
 
-    private IReadOnlyList<Explore.Blazor.Client.Services.Appearance.AvailablePresetDto> _presets = Array.Empty<Explore.Blazor.Client.Services.Appearance.AvailablePresetDto>();
-    private IReadOnlyList<Explore.Blazor.Client.Services.Appearance.UserAppearanceProfileDto> _profiles = Array.Empty<Explore.Blazor.Client.Services.Appearance.UserAppearanceProfileDto>();
+    private IReadOnlyList<AvailablePresetDto> _presets = Array.Empty<AvailablePresetDto>();
+    private IReadOnlyList<UserAppearanceProfileDto> _profiles = Array.Empty<UserAppearanceProfileDto>();
 
     private static readonly string[] _naturalSwatches = ["#475569", "#5C6BC0", "#78716C", "#6B7280", "#44403C"];
     private static readonly string[] _brandSwatches = ["#3B82F6", "#6366F1", "#8B5CF6", "#F43F5E", "#F59E0B", "#10B981"];
@@ -301,7 +301,7 @@
     private string _customBrandColor = "#3B82F6";
     private string _customBrandColorHex = "#3B82F6";
     private string _customBaseMode = "light";
-    private ClientPaletteDto? _customPreviewPalette;
+    private UiThemePaletteDto? _customPreviewPalette;
 
     protected override async Task OnInitializedAsync()
     {
@@ -533,7 +533,7 @@
         _savingCustom = true;
         try
         {
-            var request = new Explore.Blazor.Client.Services.Appearance.CreateCustomProfileRequestDto
+            var request = new CreateCustomProfileRequestDto
             {
                 Name = $"Custom {(_customBaseMode.Equals("dark", StringComparison.OrdinalIgnoreCase) ? "Dark" : "Light")}",
                 ThemeMode = _customBaseMode,
@@ -544,7 +544,7 @@
             var profile = await AppearanceThemeService.CreateCustomProfileAsync(request);
             if (profile is not null)
             {
-                await AppearanceThemeService.SetActiveProfileAsync(profile.Id);
+                await AppearanceThemeService.SetActiveProfileAsync(profile.Id ?? Guid.Empty);
                 await RefreshStateAsync();
                 Snackbar.Add("Custom theme created and activated!", Severity.Success);
             }
@@ -584,22 +584,22 @@
         return trimmed.Length is 3 or 6 && trimmed.All(c => char.IsDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
     }
 
-    private static string GetPreviewStyle(ClientPaletteDto palette) =>
+    private static string GetPreviewStyle(UiThemePaletteDto palette) =>
         $"background:{palette.Background};color:{palette.TextPrimary};border-radius:12px;overflow:hidden;border:1px solid {palette.LinesDefault};";
 
-    private static string GetPreviewAppbarStyle(ClientPaletteDto palette) =>
+    private static string GetPreviewAppbarStyle(UiThemePaletteDto palette) =>
         $"background:{palette.AppbarBackground};color:{palette.AppbarText};padding:12px 16px;font-weight:600;";
 
-    private static string GetPreviewBodyStyle(ClientPaletteDto palette) =>
+    private static string GetPreviewBodyStyle(UiThemePaletteDto palette) =>
         $"background:{palette.Background};padding:16px;";
 
-    private static string GetPreviewSurfaceStyle(ClientPaletteDto palette) =>
+    private static string GetPreviewSurfaceStyle(UiThemePaletteDto palette) =>
         $"background:{palette.Surface};border-radius:8px;padding:12px;border:1px solid {palette.LinesDefault};";
 
-    private static string GetPreviewButtonStyle(ClientPaletteDto palette) =>
+    private static string GetPreviewButtonStyle(UiThemePaletteDto palette) =>
         $"background:{palette.Primary};color:{palette.PrimaryContrastText};border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:0.875rem;margin-top:8px;display:inline-block;";
 
-    private static string GetPreviewTextStyle(ClientPaletteDto palette, bool isPrimary, bool isAppBar) =>
+    private static string GetPreviewTextStyle(UiThemePaletteDto palette, bool isPrimary, bool isAppBar) =>
         isPrimary
             ? $"color:{palette.Primary};font-weight:600;"
             : isAppBar

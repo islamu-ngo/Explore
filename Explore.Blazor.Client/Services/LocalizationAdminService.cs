@@ -1,19 +1,18 @@
 // ABOUTME: HTTP service for the localization admin endpoints — test connection, export, governance update.
-// ABOUTME: Refit-based typed API client registered via server-side AddTypedApiRefitClient.
+// ABOUTME: Uses the generated API client contract for every backend operation.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
-using Refit;
 
 namespace Explore.Blazor.Client.Services;
 
 public sealed class LocalizationAdminService : ILocalizationAdminService
 {
-    private readonly ILocalizationAdminApi _api;
+    private readonly IEventApiClient _api;
     private readonly ILogger<LocalizationAdminService> _logger;
 
     public LocalizationAdminService(
-        ILocalizationAdminApi api,
+        IEventApiClient api,
         ILogger<LocalizationAdminService> logger)
     {
         _api = api;
@@ -24,13 +23,7 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _api.GetConfigurationAsync(ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("[LOCALIZATION ADMIN] GET configuration returned {Status}", (int)response.StatusCode);
-                return null;
-            }
-            return response.Content;
+            return await _api.GetLocalizationConfigurationAsync(cancellationToken: ct);
         }
         catch (Exception ex)
         {
@@ -43,8 +36,8 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _api.TestConnectionAsync(ct);
-            return MapCommandResult(response, "TMS connection OK.", "TMS connection failed.");
+            await _api.TestLocalizationTmsConnectionAsync(cancellationToken: ct);
+            return new LocalizationAdminCommandResult(true, "TMS connection OK.");
         }
         catch (Exception ex)
         {
@@ -57,10 +50,10 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _api.RotateTmsApiKeyAsync(new RotateLocalizationTmsApiKeyDto
+            var response = await _api.RotateLocalizationTmsApiKeyAsync(new RotateLocalizationTmsApiKeyDto
             {
                 TmsApiKey = apiKey
-            }, ct);
+            }, cancellationToken: ct);
 
             return MapCommandResult(response, "TMS API key updated.", "TMS API key update failed.");
         }
@@ -75,8 +68,8 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _api.ExportFromTmsAsync(languageCode, ct);
-            return MapCommandResult(response, $"Exported translations for '{languageCode}'.", $"Export failed for '{languageCode}'.");
+            await _api.ExportLocalizationFromTmsAsync(languageCode, cancellationToken: ct);
+            return new LocalizationAdminCommandResult(true, $"Exported translations for '{languageCode}'.");
         }
         catch (Exception ex)
         {
@@ -89,14 +82,9 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _api.ExportBundleAsync(languageCode, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("[LOCALIZATION ADMIN] Static bundle export returned {Status} for {Language}", (int)response.StatusCode, languageCode);
-                return null;
-            }
-
-            return response.Content;
+            var response = await _api.ExportLocalizationBundleAsync(languageCode, cancellationToken: ct);
+            return response as IReadOnlyDictionary<string, string>
+                ?? response.ToDictionary(pair => pair.Key, pair => pair.Value);
         }
         catch (Exception ex)
         {
@@ -118,7 +106,7 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
                 Translations = translations.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
             };
 
-            var response = await _api.ImportBundleAsync(request, ct);
+            var response = await _api.ImportLocalizationBundleAsync(request, cancellationToken: ct);
             return MapCommandResult(response, $"Imported static bundle for '{languageCode}'.", $"Static bundle import failed for '{languageCode}'.");
         }
         catch (Exception ex)
@@ -132,7 +120,7 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _api.UpdateGovernanceAsync(payload, ct);
+            var response = await _api.UpdateLocalizationGovernanceAsync(payload, cancellationToken: ct);
             return MapCommandResult(response, "Localization governance saved.", "Localization governance save failed.");
         }
         catch (Exception ex)
@@ -142,17 +130,11 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
         }
     }
 
-    public async Task<BundlePathHealthResult?> GetBundlePathHealthAsync(CancellationToken ct = default)
+    public async Task<WritablePathHealth?> GetBundlePathHealthAsync(CancellationToken ct = default)
     {
         try
         {
-            var response = await _api.GetBundlePathHealthAsync(ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("[LOCALIZATION ADMIN] GET bundle-health returned {Status}", (int)response.StatusCode);
-                return null;
-            }
-            return response.Content;
+            return await _api.CheckLocalizationBundleHealthAsync(cancellationToken: ct);
         }
         catch (Exception ex)
         {
@@ -161,26 +143,16 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
         }
     }
 
-    private LocalizationAdminCommandResult MapCommandResult(
-        IApiResponse<LocalizationAdminCommandResponse> response,
+    private static LocalizationAdminCommandResult MapCommandResult(
+        BaseCommandResponseOfGuid response,
         string successFallback,
         string failureFallback)
     {
-        if (!response.IsSuccessStatusCode)
-        {
-            return new LocalizationAdminCommandResult(false, failureFallback);
-        }
-
-        var content = response.Content;
-        if (content is not null)
-        {
-            return new LocalizationAdminCommandResult(
-                content.Success,
-                string.IsNullOrWhiteSpace(content.Message)
-                    ? successFallback
-                    : content.Message);
-        }
-
-        return new LocalizationAdminCommandResult(true, successFallback);
+        bool success = response.Success == true;
+        return new LocalizationAdminCommandResult(
+            success,
+            string.IsNullOrWhiteSpace(response.Message)
+                ? success ? successFallback : failureFallback
+                : response.Message);
     }
 }

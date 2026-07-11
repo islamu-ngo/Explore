@@ -2,7 +2,6 @@
 @* ABOUTME: Exposes rebuild + drain controls and surfaces outstanding dirty scopes. *@
 
 @using Explore.Blazor.Client.Contracts.Services.CustomProperties
-@using Explore.Blazor.Client.Models.CustomProperties
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Rendering
@@ -27,14 +26,14 @@
                 @{ var eventStatus = _eventStatus.FirstOrDefault(); }
                 @RenderStatusBody(eventStatus)
                 <MudStack Row="true" Spacing="2" Class="mt-3">
-                    @if (eventStatus?.HasLink("rebuild") == true)
+                    @if (eventStatus?._links?.ContainsKey("rebuild") == true)
                     {
                         <MudButton Color="Color.Primary" Variant="Variant.Filled"
                                    StartIcon="@Icons.Material.Filled.Cached"
                                    OnClick="() => RebuildAsync(true)"
                                    Disabled="_isRebuildingEvent">Rebuild</MudButton>
                     }
-                    @if (eventStatus?.HasLink("drain-dirty-scopes") == true)
+                    @if (eventStatus?._links?.ContainsKey("drain-dirty-scopes") == true)
                     {
                         <MudButton Color="Color.Warning" Variant="Variant.Outlined"
                                    StartIcon="@Icons.Material.Filled.WaterDrop"
@@ -50,7 +49,7 @@
                 @{ var sessionStatus = _sessionStatus.FirstOrDefault(); }
                 @RenderStatusBody(sessionStatus)
                 <MudStack Row="true" Spacing="2" Class="mt-3">
-                    @if (sessionStatus?.HasLink("rebuild") == true)
+                    @if (sessionStatus?._links?.ContainsKey("rebuild") == true)
                     {
                         <MudButton Color="Color.Primary" Variant="Variant.Filled"
                                    StartIcon="@Icons.Material.Filled.Cached"
@@ -111,9 +110,9 @@
     private bool _isDraining;
     private string? _errorMessage;
 
-    private IReadOnlyList<ProjectionStatusModel> _eventStatus = Array.Empty<ProjectionStatusModel>();
-    private IReadOnlyList<ProjectionStatusModel> _sessionStatus = Array.Empty<ProjectionStatusModel>();
-    private List<ProjectionDirtyScopeModel> _dirtyScopes = new();
+    private IReadOnlyList<HalResourceOfProjectionStatusDto> _eventStatus = Array.Empty<HalResourceOfProjectionStatusDto>();
+    private IReadOnlyList<HalResourceOfProjectionStatusDto> _sessionStatus = Array.Empty<HalResourceOfProjectionStatusDto>();
+    private List<HalResourceOfProjectionDirtyScopeDto> _dirtyScopes = new();
     private Guid? _tenantId;
 
     protected override async Task OnInitializedAsync()
@@ -152,7 +151,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Failed to load dirty scopes: {ex.Message}";
-            _dirtyScopes = new List<ProjectionDirtyScopeModel>();
+            _dirtyScopes = new List<HalResourceOfProjectionDirtyScopeDto>();
         }
         finally { _isLoadingDirty = false; }
     }
@@ -180,7 +179,7 @@
             var response = isEvent
                 ? await AdminService.RebuildEventProjectionAsync(_tenantId.Value)
                 : await AdminService.RebuildSessionProjectionAsync(_tenantId.Value);
-            if (response is null || !response.Success)
+            if (response?.Success != true)
             {
                 _errorMessage = response?.Message ?? "Rebuild failed.";
                 Snackbar.Add(_errorMessage, Severity.Error);
@@ -201,7 +200,7 @@
         }
     }
 
-    private async Task DrainAsync(ProjectionStatusModel? status)
+    private async Task DrainAsync(HalResourceOfProjectionStatusDto? status)
     {
         if (_tenantId is null)
         {
@@ -220,7 +219,7 @@
         try
         {
             var response = await AdminService.DrainDirtyScopesAsync(_tenantId.Value, projectionName);
-            if (response is null || !response.Success)
+            if (response?.Success != true)
             {
                 _errorMessage = response?.Message ?? "Drain failed.";
                 Snackbar.Add(_errorMessage, Severity.Error);
@@ -238,12 +237,13 @@
     }
 
     private string? GetEventDirtyScopeProjectionName()
-        => _eventStatus.FirstOrDefault(status => status.HasLink("dirty-scopes") || status.HasLink("drain-dirty-scopes"))?.ProjectionName
+        => _eventStatus.FirstOrDefault(status => status._links?.ContainsKey("dirty-scopes") == true
+                || status._links?.ContainsKey("drain-dirty-scopes") == true)?.ProjectionName
             ?? _eventStatus.FirstOrDefault()?.ProjectionName;
 
     private static string FormatDateOrDash(DateTimeOffset? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) : "—";
 
-    private RenderFragment RenderStatusBody(ProjectionStatusModel? status) => builder =>
+    private RenderFragment RenderStatusBody(HalResourceOfProjectionStatusDto? status) => builder =>
     {
         var sequence = 0;
         if (status is null)
@@ -255,9 +255,9 @@
         }
         else
         {
-            AddStatusRow(builder, ref sequence, "Version:", status.ProjectionVersion.ToString(CultureInfo.InvariantCulture));
-            AddStatusRow(builder, ref sequence, "Rows processed:", status.RowsProcessed.ToString(CultureInfo.InvariantCulture));
-            AddStatusRow(builder, ref sequence, "Rows failed:", status.RowsFailed.ToString(CultureInfo.InvariantCulture));
+            AddStatusRow(builder, ref sequence, "Version:", status.ProjectionVersion?.ToString(CultureInfo.InvariantCulture) ?? "—");
+            AddStatusRow(builder, ref sequence, "Rows processed:", status.RowsProcessed?.ToString(CultureInfo.InvariantCulture) ?? "—");
+            AddStatusRow(builder, ref sequence, "Rows failed:", status.RowsFailed?.ToString(CultureInfo.InvariantCulture) ?? "—");
             AddStatusRow(builder, ref sequence, "Last rebuild:", FormatDateOrDash(status.LastRebuildCompletedAt));
             if (!string.IsNullOrWhiteSpace(status.LastErrorMessage))
                 AddStatusRow(builder, ref sequence, "Last error:", status.LastErrorMessage, isError: true);

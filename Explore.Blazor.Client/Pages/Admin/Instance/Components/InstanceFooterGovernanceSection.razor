@@ -15,23 +15,38 @@
     <MudStack Spacing="3">
         <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Tenant Lock Controls</MudText>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantTemplate" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.LockTenantTemplate == true"
+                   ValueChanged="@(value => Model.LockTenantTemplate = value)"
+                   Color="Color.Primary">
             Lock tenant footer template
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantLinkGroups" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.LockTenantLinkGroups == true"
+                   ValueChanged="@(value => Model.LockTenantLinkGroups = value)"
+                   Color="Color.Primary">
             Lock tenant link groups
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantSocialLinks" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.LockTenantSocialLinks == true"
+                   ValueChanged="@(value => Model.LockTenantSocialLinks = value)"
+                   Color="Color.Primary">
             Lock tenant social links
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantDescription" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.LockTenantDescription == true"
+                   ValueChanged="@(value => Model.LockTenantDescription = value)"
+                   Color="Color.Primary">
             Lock tenant description
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantCopyright" Color="Color.Primary">
+        <MudSwitch T="bool"
+                   Value="Model.LockTenantCopyright == true"
+                   ValueChanged="@(value => Model.LockTenantCopyright = value)"
+                   Color="Color.Primary">
             Lock tenant copyright text
         </MudSwitch>
 
@@ -46,7 +61,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public FooterGovernanceSettingsModel Model { get; set; } = null!;
+    public FooterGovernanceSettingsDto Model { get; set; } = null!;
 
     /// <summary>When true, shows an informational note that locks have no effect.</summary>
     [Parameter]

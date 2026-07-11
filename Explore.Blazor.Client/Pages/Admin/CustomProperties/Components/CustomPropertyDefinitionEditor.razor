@@ -11,7 +11,7 @@
             
             <MudGrid>
                 <MudItem xs="12" sm="6">
-                    <MudSelect T="EntityTypeName" Label="Entity Type" @bind-Value="Model.EntityTypeName" Required="true" Variant="Variant.Outlined">
+                    <MudSelect T="EntityTypeName" Label="Entity Type" @bind-Value="ModelEntityTypeName" Required="true" Variant="Variant.Outlined">
                         @foreach (EntityTypeName type in Enum.GetValues(typeof(EntityTypeName)))
                         {
                             <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
@@ -19,7 +19,7 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudSelect T="PropertyType" Label="Property Type" @bind-Value="Model.PropertyType" Required="true" Variant="Variant.Outlined">
+                    <MudSelect T="PropertyType" Label="Property Type" @bind-Value="ModelPropertyType" Required="true" Variant="Variant.Outlined">
                         @foreach (PropertyType type in Enum.GetValues(typeof(PropertyType)))
                         {
                             <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
@@ -59,7 +59,7 @@
             <div class="cp-def-editor__validation">
                 <MudText Typo="Typo.subtitle2" Class="mb-3">Validation & Defaults</MudText>
                 <MudGrid>
-                    @if (Model.PropertyType == PropertyType.Text)
+                    @if (ModelPropertyType == PropertyType.Text)
                     {
                         <MudItem xs="12" sm="6">
                             <MudNumericField Label="Min Length" @bind-Value="Model.MinLength" Variant="Variant.Outlined" HideSpinButtons="true" />
@@ -74,7 +74,7 @@
                             <MudTextField Label="Default Value" @bind-Value="Model.DefaultTextValue" Variant="Variant.Outlined" />
                         </MudItem>
                     }
-                    else if (Model.PropertyType == PropertyType.Number)
+                    else if (ModelPropertyType == PropertyType.Number)
                     {
                         <MudItem xs="12" sm="6">
                             <MudNumericField Label="Min Number" @bind-Value="Model.MinNumber" Variant="Variant.Outlined" HideSpinButtons="true" />
@@ -86,7 +86,7 @@
                             <MudNumericField Label="Default Value" @bind-Value="Model.DefaultNumberValue" Variant="Variant.Outlined" HideSpinButtons="true" />
                         </MudItem>
                     }
-                    else if (Model.PropertyType == PropertyType.DateTime)
+                    else if (ModelPropertyType == PropertyType.DateTime)
                     {
                         <MudItem xs="12" sm="6">
                             <MudDatePicker Label="Min Date" @bind-Date="_minDate" Variant="Variant.Outlined" />
@@ -98,7 +98,7 @@
                             <MudDatePicker Label="Default Value" @bind-Date="_defaultDate" Variant="Variant.Outlined" />
                         </MudItem>
                     }
-                    else if (Model.PropertyType == PropertyType.Url)
+                    else if (ModelPropertyType == PropertyType.Url)
                     {
                         <MudItem xs="12">
                             <MudTextField Label="Allowed Schemes (comma separated)" @bind-Value="Model.AllowedUrlSchemes" Variant="Variant.Outlined" HelperText="e.g. http,https" />
@@ -107,7 +107,7 @@
                             <MudTextField Label="Default Value" @bind-Value="Model.DefaultTextValue" Variant="Variant.Outlined" />
                         </MudItem>
                     }
-                    else if (Model.PropertyType == PropertyType.Boolean)
+                    else if (ModelPropertyType == PropertyType.Boolean)
                     {
                         <MudItem xs="12">
                             <MudSwitch Label="Default Value" @bind-Value="Model.DefaultBooleanValue" Color="Color.Primary" />
@@ -116,7 +116,7 @@
                 </MudGrid>
             </div>
 
-            @if (Model.PropertyType == PropertyType.Option)
+            @if (ModelPropertyType == PropertyType.Option)
             {
                 <MudDivider Class="my-4" />
                 <CustomPropertyOptionEditor Options="@Model.Options" />
@@ -135,12 +135,24 @@
     private IMudDialogInstance DialogInstance { get; set; } = default!;
 
     [Parameter]
-    public CustomPropertyDefinitionDetailModel? Definition { get; set; }
+    public CustomPropertyDefinitionDto? Definition { get; set; }
 
     private EditContext _editContext = default!;
 
     // We bind to a local copy so we can cancel without polluting original
-    public CustomPropertyDefinitionDetailModel Model { get; set; } = new();
+    public CustomPropertyDefinitionDto Model { get; set; } = new();
+
+    private EntityTypeName ModelEntityTypeName
+    {
+        get => (EntityTypeName)(Model.EntityTypeName ?? 0);
+        set => Model.EntityTypeName = (int)value;
+    }
+
+    private PropertyType ModelPropertyType
+    {
+        get => (PropertyType)(Model.PropertyType ?? 0);
+        set => Model.PropertyType = (int)value;
+    }
 
     // Date binding helpers
     private DateTime? _minDate
@@ -167,15 +179,15 @@
         {
             // Simple clone for the editor
             var json = System.Text.Json.JsonSerializer.Serialize(Definition);
-            Model = System.Text.Json.JsonSerializer.Deserialize<CustomPropertyDefinitionDetailModel>(json) ?? new();
+            Model = System.Text.Json.JsonSerializer.Deserialize<CustomPropertyDefinitionDto>(json) ?? new();
         }
         else
         {
-            Model = new CustomPropertyDefinitionDetailModel
+            Model = new CustomPropertyDefinitionDto
             {
-                EntityTypeName = EntityTypeName.Event,
-                PropertyType = PropertyType.Text,
-                ExposureLevel = ExposureLevel.TenantAdminOnly
+                EntityTypeName = (int)EntityTypeName.Event,
+                PropertyType = (int)PropertyType.Text,
+                ExposureLevel = (int)ExposureLevel.TenantAdminOnly
             };
         }
 

@@ -1,374 +1,272 @@
-// ABOUTME: Client service for instance onboarding and governance settings via sub-resource endpoints.
-// ABOUTME: Powers first-run wizard, instance admin settings, and infrastructure config from Blazor pages.
+// ABOUTME: Client service for instance onboarding and governance through the generated API client.
+// ABOUTME: Exposes generated request and response DTOs for all onboarding settings.
 
-using System.ComponentModel.DataAnnotations;
-using System.Net;
 using System.Text.Json;
+using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components;
-using Refit;
 
 namespace Explore.Blazor.Client.Services;
 
 public interface IInstanceOnboardingService
 {
-    Task<SystemOnboardingStatusModel?> GetSystemOnboardingStatusAsync();
-    Task<OnboardingPreflightModel?> GetOnboardingPreflightAsync();
-    Task<InstanceOnboardingStatusModel?> GetStatusAsync();
-    Task<SetupSecretValidationResult> ValidateSecretAsync(string secret);
-    Task<InstanceCommandResponseModel> CompleteAsync(OnboardingCompletionModel completion);
+    Task<SystemOnboardingStatusDto?> GetSystemOnboardingStatusAsync();
+    Task<OnboardingPreflightDto?> GetOnboardingPreflightAsync();
+    Task<InstanceOnboardingStatusDto?> GetStatusAsync();
+    Task<SetupSecretValidationResultDto> ValidateSecretAsync(string secret);
+    Task<BaseCommandResponseOfGuid> CompleteAsync(CompleteInstanceOnboardingRequest completion);
 
-    Task<DeploymentModeModel> GetDeploymentModeAsync();
-    Task<ModuleSettingsModel> GetModuleSettingsAsync();
-    Task<EventPolicyModel> GetEventPolicyAsync();
-    Task<OrganizationPolicyModel> GetOrganizationPolicyAsync();
-    Task<BrandingSettingsModel> GetBrandingSettingsAsync();
-    Task<DomainSettingsModel> GetDomainSettingsAsync();
-    Task<TenantDelegationModel> GetTenantDelegationAsync();
-    Task<RenderPolicyModel> GetRenderPolicyAsync();
-    Task<McpGovernanceModel> GetMcpGovernanceSettingsAsync();
-    Task<AiAssistantGovernanceModel> GetAiAssistantGovernanceSettingsAsync();
+    Task<DeploymentModeDto> GetDeploymentModeAsync();
+    Task<ModuleSettingsDto> GetModuleSettingsAsync();
+    Task<EventPolicyDto> GetEventPolicyAsync();
+    Task<OrganizationPolicyDto> GetOrganizationPolicyAsync();
+    Task<BrandingSettingsDto> GetBrandingSettingsAsync();
+    Task<DomainSettingsDto> GetDomainSettingsAsync();
+    Task<TenantDelegationSettingsDto> GetTenantDelegationAsync();
+    Task<RenderPolicySettingsDto> GetRenderPolicyAsync();
+    Task<McpGovernanceSettingsDto> GetMcpGovernanceSettingsAsync();
+    Task<AiAssistantGovernanceSettingsDto> GetAiAssistantGovernanceSettingsAsync();
 
-    Task<InstanceCommandResponseModel> UpdateDeploymentModeAsync(string deploymentMode);
-    Task<InstanceCommandResponseModel> UpdateModuleSettingsAsync(ModuleSettingsModel settings);
-    Task<InstanceCommandResponseModel> UpdateEventPolicyAsync(EventPolicyModel settings);
-    Task<InstanceCommandResponseModel> UpdateOrganizationPolicyAsync(OrganizationPolicyModel settings);
-    Task<InstanceCommandResponseModel> UpdateBrandingSettingsAsync(BrandingSettingsModel settings);
-    Task<InstanceCommandResponseModel> UpdateDomainSettingsAsync(DomainSettingsModel settings);
-    Task<InstanceCommandResponseModel> UpdateTenantDelegationAsync(TenantDelegationModel settings);
-    Task<InstanceCommandResponseModel> UpdateRenderPolicyAsync(RenderPolicyModel settings);
-    Task<InstanceCommandResponseModel> UpdateMcpGovernanceSettingsAsync(McpGovernanceModel settings);
-    Task<InstanceCommandResponseModel> UpdateAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceModel settings);
+    Task<BaseCommandResponseOfGuid> UpdateDeploymentModeAsync(string deploymentMode);
+    Task<BaseCommandResponseOfGuid> UpdateModuleSettingsAsync(ModuleSettingsDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateEventPolicyAsync(EventPolicyDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateOrganizationPolicyAsync(OrganizationPolicyDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateBrandingSettingsAsync(BrandingSettingsDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateDomainSettingsAsync(DomainSettingsDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateTenantDelegationAsync(TenantDelegationSettingsDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateRenderPolicyAsync(RenderPolicySettingsDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateMcpGovernanceSettingsAsync(McpGovernanceSettingsDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto settings);
 
-    Task<InstanceStorageSettingsModel> GetStorageSettingsAsync();
-    Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings);
-    Task<StorageConnectionTestResult> TestStorageConnectionAsync();
-    Task<StorageUsageOperationResult> RecalculateStorageUsageAsync();
-    Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync();
-    Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings);
-    Task<SmtpConnectionTestResult> TestSmtpConnectionAsync();
+    Task<HalResourceOfInstanceStorageSettingsDto> GetStorageSettingsAsync();
+    Task<BaseCommandResponseOfGuid> UpdateStorageSettingsAsync(HalResourceOfInstanceStorageSettingsDto settings);
+    Task<InstanceStorageProviderStatusDto> TestStorageConnectionAsync();
+    Task<InstanceStorageUsageDto?> RecalculateStorageUsageAsync();
+    Task<InstanceSmtpSettingsDto> GetSmtpSettingsAsync();
+    Task<BaseCommandResponseOfGuid> UpdateSmtpSettingsAsync(InstanceSmtpSettingsDto settings);
+    Task<SmtpConnectionTestResultDto> TestSmtpConnectionAsync();
     Task<int> GetActiveTenantCountAsync();
 
-    Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync();
-    Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsAdminAsync();
-    Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config);
-    Task<InstanceCommandResponseModel> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestModel request);
-    Task<KeycloakRealmDoctorResultModel> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestModel request);
-    Task<KeycloakRealmSyncPlanModel> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestModel request);
-    Task<KeycloakRealmSyncPlanModel> ApplyKeycloakRealmSyncAsync(KeycloakRealmSyncApplyRequestModel request);
-    Task<KeycloakClientSecretRotationResultModel> RotateKeycloakClientSecretAsync(KeycloakClientSecretRotationRequestModel request);
-    Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config);
+    Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsync();
+    Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsAdminAsync();
+    Task<BaseCommandResponseOfGuid> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationDto config);
+    Task<BaseCommandResponseOfGuid> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestDto request);
+    Task<KeycloakRealmDoctorResultDto> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestDto request);
+    Task<KeycloakRealmSyncPlanDto> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestDto request);
+    Task<KeycloakRealmSyncPlanDto> ApplyKeycloakRealmSyncAsync(KeycloakRealmSyncApplyRequestDto request);
+    Task<KeycloakClientSecretRotationResultDto> RotateKeycloakClientSecretAsync(KeycloakClientSecretRotationRequestDto request);
+    Task<BaseCommandResponseOfGuid> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationDto config);
     Task<bool> IsAuthProviderConfiguredAsync();
     Task RefreshAuthSchemesAsync();
     Task<bool> RefreshAuthSessionAsync();
 
-    Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsync();
-    Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsAdminAsync();
-    Task<InstanceCommandResponseModel> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationModel config);
-    Task<InstanceCommandResponseModel> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationModel config);
-    Task<InstanceCommandResponseModel> SyncAuthorizationPolicyPackageAsync();
-    Task<InstanceCommandResponseModel> SyncAuthorizationPolicyPackageAsAdminAsync();
-    Task<PolicyPackageDownloadModel?> DownloadAuthorizationPolicyPackageAsync();
-    Task<PolicyPackageDownloadModel?> DownloadAuthorizationPolicyPackageAsAdminAsync();
-    Task<InstanceCommandResponseModel> VerifyCerbosEndpointAsync(string grpcEndpoint);
+    Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsync();
+    Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsAdminAsync();
+    Task<BaseCommandResponseOfGuid> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationDto config);
+    Task<BaseCommandResponseOfGuid> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationDto config);
+    Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsync();
+    Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsAdminAsync();
+    Task<BaseCommandResponseOfGuid> VerifyCerbosEndpointAsync(string grpcEndpoint);
     Task<bool> IsAuthorizationProviderConfiguredAsync();
 
-    Task<Models.Analytics.AnalyticsGovernanceSettingsModel> GetAnalyticsGovernanceSettingsAsync();
-    Task<InstanceCommandResponseModel> UpdateAnalyticsGovernanceSettingsAsync(Models.Analytics.AnalyticsGovernanceSettingsModel settings);
-
-    Task<FooterGovernanceSettingsModel> GetFooterGovernanceSettingsAsync();
-    Task<InstanceCommandResponseModel> UpdateFooterGovernanceSettingsAsync(FooterGovernanceSettingsModel settings);
+    Task<AnalyticsGovernanceSettingsDto> GetAnalyticsGovernanceSettingsAsync();
+    Task<BaseCommandResponseOfGuid> UpdateAnalyticsGovernanceSettingsAsync(AnalyticsGovernanceSettingsDto settings);
+    Task<FooterGovernanceSettingsDto> GetFooterGovernanceSettingsAsync();
+    Task<BaseCommandResponseOfGuid> UpdateFooterGovernanceSettingsAsync(FooterGovernanceSettingsDto settings);
 }
 
-public class InstanceOnboardingService : IInstanceOnboardingService
+public sealed class InstanceOnboardingService(
+    IEventApiClient api,
+    IBffAuthApi bffAuthApi,
+    ILogger<InstanceOnboardingService> logger,
+    NavigationManager navigation) : IInstanceOnboardingService
 {
-    private readonly IInstanceOnboardingApi _api;
-    private readonly IBffAuthApi _bffAuthApi;
-    private readonly ILogger<InstanceOnboardingService> _logger;
-    private readonly NavigationManager _navigation;
+    public Task<SystemOnboardingStatusDto?> GetSystemOnboardingStatusAsync() =>
+        GetOptionalAsync(ct => api.GetSystemOnboardingStatusAsync(cancellationToken: ct), "system onboarding status");
 
-    public InstanceOnboardingService(
-        IInstanceOnboardingApi api,
-        IBffAuthApi bffAuthApi,
-        ILogger<InstanceOnboardingService> logger,
-        NavigationManager navigation)
-    {
-        _api = api;
-        _bffAuthApi = bffAuthApi;
-        _logger = logger;
-        _navigation = navigation;
-    }
+    public Task<OnboardingPreflightDto?> GetOnboardingPreflightAsync() =>
+        GetOptionalAsync(ct => api.GetSystemOnboardingPreflightAsync(cancellationToken: ct), "onboarding preflight");
 
-    // ── Onboarding ───────────────────────────────────────────────────────
+    public Task<InstanceOnboardingStatusDto?> GetStatusAsync() =>
+        GetOptionalAsync(ct => api.GetInstanceOnboardingStatusAsync(cancellationToken: ct), "instance onboarding status");
 
-    public async Task<SystemOnboardingStatusModel?> GetSystemOnboardingStatusAsync()
+    public async Task<SetupSecretValidationResultDto> ValidateSecretAsync(string secret)
     {
         try
         {
-            var response = await _api.GetSystemOnboardingStatusAsync(CancellationToken.None);
-            return response.IsSuccessStatusCode ? response.Content : null;
+            return await api.ValidateInstanceSetupSecretAsync(
+                new ValidateSetupSecretRequest { Secret = secret },
+                cancellationToken: CancellationToken.None);
+        }
+        catch (ApiException ex) when (ex.StatusCode == 429)
+        {
+            logger.LogWarning("Setup secret validation rate-limited (429).");
+            return new SetupSecretValidationResultDto { Valid = false };
+        }
+        catch (ApiException ex) when (ex.StatusCode == 410)
+        {
+            return new SetupSecretValidationResultDto { Valid = false };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch system onboarding status.");
-            return null;
+            logger.LogError(ex, "Failed to validate setup secret.");
+            return new SetupSecretValidationResultDto { Valid = false };
         }
     }
 
-    public async Task<OnboardingPreflightModel?> GetOnboardingPreflightAsync()
+    public async Task<BaseCommandResponseOfGuid> CompleteAsync(CompleteInstanceOnboardingRequest completion)
     {
         try
         {
-            var response = await _api.GetOnboardingPreflightAsync(CancellationToken.None);
-            return response.IsSuccessStatusCode ? response.Content : null;
+            return await api.CompleteInstanceOnboardingAsync(completion, cancellationToken: CancellationToken.None);
         }
-        catch (Exception ex)
+        catch (ApiException ex) when (ex.StatusCode == 401)
         {
-            _logger.LogError(ex, "Failed to fetch onboarding preflight.");
-            return null;
-        }
-    }
-
-    public async Task<InstanceOnboardingStatusModel?> GetStatusAsync()
-    {
-        try
-        {
-            var response = await _api.GetStatusAsync(CancellationToken.None);
-            return response.IsSuccessStatusCode ? response.Content : null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to fetch instance onboarding status.");
-            return null;
-        }
-    }
-
-    public async Task<SetupSecretValidationResult> ValidateSecretAsync(string secret)
-    {
-        try
-        {
-            var response = await _api.ValidateSecretAsync(new ValidateSecretRequest { Secret = secret }, CancellationToken.None);
-
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            if (await RefreshAuthSessionAsync())
             {
-                _logger.LogWarning("Setup secret validation rate-limited (429).");
-                return new SetupSecretValidationResult
-                {
-                    Valid = false,
-                    Error = "Too many attempts. Please wait a moment and try again."
-                };
+                return await SendCommandAsync(
+                    ct => api.CompleteInstanceOnboardingAsync(completion, cancellationToken: ct));
             }
 
-            if (response.StatusCode == HttpStatusCode.Gone)
-            {
-                return response.Content ?? new SetupSecretValidationResult { Valid = false, Error = "Setup already completed." };
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError(
-                    "Setup secret validation failed with HTTP {StatusCode}.",
-                    (int)response.StatusCode);
-                return new SetupSecretValidationResult
-                {
-                    Valid = false,
-                    Error = $"Validation unavailable (HTTP {(int)response.StatusCode}). Please try again."
-                };
-            }
-
-            return response.Content ?? new SetupSecretValidationResult { Valid = false };
+            return MapCommandApiException(ex);
+        }
+        catch (ApiException ex)
+        {
+            logger.LogError(ex, "Failed to complete onboarding.");
+            return MapCommandApiException(ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to validate setup secret.");
-            return new SetupSecretValidationResult { Valid = false };
+            logger.LogError(ex, "Failed to complete onboarding.");
+            return FailedCommandResponse("Request failed.");
         }
     }
 
-    public async Task<InstanceCommandResponseModel> CompleteAsync(OnboardingCompletionModel completion)
+    public Task<DeploymentModeDto> GetDeploymentModeAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceDeploymentModeAsync(cancellationToken: ct), () => new());
+
+    public Task<ModuleSettingsDto> GetModuleSettingsAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceModuleSettingsAsync(cancellationToken: ct), () => new());
+
+    public Task<EventPolicyDto> GetEventPolicyAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceEventPolicyAsync(cancellationToken: ct), () => new());
+
+    public Task<OrganizationPolicyDto> GetOrganizationPolicyAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceOrganizationPolicyAsync(cancellationToken: ct), () => new());
+
+    public Task<BrandingSettingsDto> GetBrandingSettingsAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceBrandingSettingsAsync(cancellationToken: ct), () => new());
+
+    public Task<DomainSettingsDto> GetDomainSettingsAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceDomainSettingsAsync(cancellationToken: ct), () => new());
+
+    public Task<TenantDelegationSettingsDto> GetTenantDelegationAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceTenantDelegationSettingsAsync(cancellationToken: ct), () => new());
+
+    public Task<RenderPolicySettingsDto> GetRenderPolicyAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceRenderPolicySettingsAsync(cancellationToken: ct), () => new());
+
+    public Task<McpGovernanceSettingsDto> GetMcpGovernanceSettingsAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceMcpGovernanceSettingsAsync(cancellationToken: ct), () => new());
+
+    public Task<AiAssistantGovernanceSettingsDto> GetAiAssistantGovernanceSettingsAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceAiAssistantGovernanceSettingsAsync(cancellationToken: ct), () => new());
+
+    public Task<BaseCommandResponseOfGuid> UpdateDeploymentModeAsync(string deploymentMode) =>
+        SendCommandAsync(ct => api.UpdateInstanceDeploymentModeAsync(
+            new UpdateDeploymentModeRequest { DeploymentMode = deploymentMode }, cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateModuleSettingsAsync(ModuleSettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceModuleSettingsAsync(settings, cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateEventPolicyAsync(EventPolicyDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceEventPolicyAsync(settings, cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateOrganizationPolicyAsync(OrganizationPolicyDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceOrganizationPolicyAsync(settings, cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateBrandingSettingsAsync(BrandingSettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceBrandingSettingsAsync(settings, cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateDomainSettingsAsync(DomainSettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceDomainSettingsAsync(settings, cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateTenantDelegationAsync(TenantDelegationSettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceTenantDelegationSettingsAsync(settings, cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateRenderPolicyAsync(RenderPolicySettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceRenderPolicySettingsAsync(settings, cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateMcpGovernanceSettingsAsync(McpGovernanceSettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceMcpGovernanceSettingsAsync(settings, cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceAiAssistantGovernanceSettingsAsync(settings, cancellationToken: ct));
+
+    public async Task<HalResourceOfInstanceStorageSettingsDto> GetStorageSettingsAsync()
     {
         try
         {
-            var response = await _api.CompleteOnboardingAsync(completion, CancellationToken.None);
-            return await MapCommandResponseAsync(response);
+            return (await api.GetInstanceStorageSettingsAsync(
+                cancellationToken: CancellationToken.None)).InitializeForEditing();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to complete onboarding.");
-            return FailedCommandResponse(ex.Message);
+            logger.LogError(ex, "Failed to fetch storage settings.");
+            return new HalResourceOfInstanceStorageSettingsDto().InitializeForEditing();
         }
     }
 
-    // ── Governance Sub-Resource Reads ─────────────────────────────────────
+    public Task<BaseCommandResponseOfGuid> UpdateStorageSettingsAsync(HalResourceOfInstanceStorageSettingsDto settings) =>
+        settings.HasLink("edit")
+            ? SendCommandAsync(ct => api.UpdateInstanceStorageSettingsAsync(settings.ToUpdateRequest(), cancellationToken: ct))
+            : Task.FromResult(FailedCommandResponse("The API did not expose a storage settings edit affordance."));
 
-    public async Task<DeploymentModeModel> GetDeploymentModeAsync() =>
-        await GetSettingsAsync(_api.GetDeploymentModeAsync, () => new DeploymentModeModel());
-
-    public async Task<ModuleSettingsModel> GetModuleSettingsAsync() =>
-        await GetSettingsAsync(_api.GetModuleSettingsAsync, () => new ModuleSettingsModel());
-
-    public async Task<EventPolicyModel> GetEventPolicyAsync() =>
-        await GetSettingsAsync(_api.GetEventPolicyAsync, () => new EventPolicyModel());
-
-    public async Task<OrganizationPolicyModel> GetOrganizationPolicyAsync() =>
-        await GetSettingsAsync(_api.GetOrganizationPolicyAsync, () => new OrganizationPolicyModel());
-
-    public async Task<BrandingSettingsModel> GetBrandingSettingsAsync() =>
-        await GetSettingsAsync(_api.GetBrandingSettingsAsync, () => new BrandingSettingsModel());
-
-    public async Task<DomainSettingsModel> GetDomainSettingsAsync() =>
-        await GetSettingsAsync(_api.GetDomainSettingsAsync, () => new DomainSettingsModel());
-
-    public async Task<TenantDelegationModel> GetTenantDelegationAsync() =>
-        await GetSettingsAsync(_api.GetTenantDelegationAsync, () => new TenantDelegationModel());
-
-    public async Task<RenderPolicyModel> GetRenderPolicyAsync() =>
-        await GetSettingsAsync(_api.GetRenderPolicyAsync, () => new RenderPolicyModel());
-
-    public async Task<McpGovernanceModel> GetMcpGovernanceSettingsAsync() =>
-        await GetSettingsAsync(_api.GetMcpGovernanceSettingsAsync, () => new McpGovernanceModel());
-
-    public async Task<AiAssistantGovernanceModel> GetAiAssistantGovernanceSettingsAsync() =>
-        await GetSettingsAsync(_api.GetAiAssistantGovernanceSettingsAsync, () => new AiAssistantGovernanceModel());
-
-    // ── Governance Sub-Resource Writes ────────────────────────────────────
-
-    public Task<InstanceCommandResponseModel> UpdateDeploymentModeAsync(string deploymentMode) =>
-        SendCommandAsync(
-            ct => _api.UpdateDeploymentModeAsync(new UpdateDeploymentModeRequest { DeploymentMode = deploymentMode }, ct));
-
-    public Task<InstanceCommandResponseModel> UpdateModuleSettingsAsync(ModuleSettingsModel settings) =>
-        SendCommandAsync(ct => _api.UpdateModuleSettingsAsync(settings, ct));
-
-    public Task<InstanceCommandResponseModel> UpdateEventPolicyAsync(EventPolicyModel settings) =>
-        SendCommandAsync(ct => _api.UpdateEventPolicyAsync(settings, ct));
-
-    public Task<InstanceCommandResponseModel> UpdateOrganizationPolicyAsync(OrganizationPolicyModel settings) =>
-        SendCommandAsync(ct => _api.UpdateOrganizationPolicyAsync(settings, ct));
-
-    public Task<InstanceCommandResponseModel> UpdateBrandingSettingsAsync(BrandingSettingsModel settings) =>
-        SendCommandAsync(ct => _api.UpdateBrandingSettingsAsync(settings, ct));
-
-    public Task<InstanceCommandResponseModel> UpdateDomainSettingsAsync(DomainSettingsModel settings) =>
-        SendCommandAsync(ct => _api.UpdateDomainSettingsAsync(settings, ct));
-
-    public Task<InstanceCommandResponseModel> UpdateTenantDelegationAsync(TenantDelegationModel settings) =>
-        SendCommandAsync(ct => _api.UpdateTenantDelegationAsync(settings, ct));
-
-    public Task<InstanceCommandResponseModel> UpdateRenderPolicyAsync(RenderPolicyModel settings) =>
-        SendCommandAsync(ct => _api.UpdateRenderPolicyAsync(settings, ct));
-
-    public Task<InstanceCommandResponseModel> UpdateMcpGovernanceSettingsAsync(McpGovernanceModel settings) =>
-        SendCommandAsync(ct => _api.UpdateMcpGovernanceSettingsAsync(settings, ct));
-
-    public Task<InstanceCommandResponseModel> UpdateAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceModel settings) =>
-        SendCommandAsync(ct => _api.UpdateAiAssistantGovernanceSettingsAsync(settings, ct));
-
-    // ── Infrastructure Settings ──────────────────────────────────────────
-
-    public async Task<InstanceStorageSettingsModel> GetStorageSettingsAsync()
+    public async Task<InstanceStorageProviderStatusDto> TestStorageConnectionAsync()
     {
         try
         {
-            var response = await _api.GetStorageSettingsAsync(CancellationToken.None);
-            if (!response.IsSuccessStatusCode || response.Content is null)
-            {
-                return InstanceStorageSettingsModel.Failed("Unable to load storage settings.");
-            }
-
-            return InstanceStorageSettingsModel.FromHal(response.Content);
+            return await api.TestInstanceStorageConnectionAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch storage settings.");
-            return InstanceStorageSettingsModel.Failed("Unable to load storage settings.");
-        }
-    }
-
-    public Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings) =>
-        settings.CanUpdate
-            ? SendCommandAsync(ct => _api.UpdateStorageSettingsAsync(settings.ToDto(), ct))
-            : Task.FromResult(new InstanceCommandResponseModel
+            logger.LogError(ex, "Failed to test storage connection.");
+            return new InstanceStorageProviderStatusDto
             {
-                Success = false,
-                Message = "The API did not expose a storage settings edit affordance."
-            });
-
-    public async Task<StorageConnectionTestResult> TestStorageConnectionAsync()
-    {
-        try
-        {
-            var response = await _api.TestStorageConnectionAsync(CancellationToken.None);
-            if (!response.IsSuccessStatusCode || response.Content is null)
-            {
-                return new StorageConnectionTestResult
-                {
-                    Success = false,
-                    Message = "Storage provider test failed."
-                };
-            }
-
-            return StorageConnectionTestResult.FromStatus(StorageProviderStatusModel.FromDto(response.Content));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to test storage connection.");
-            return new StorageConnectionTestResult
-            {
-                Success = false,
+                IsAvailable = false,
                 Message = "Storage provider test failed."
             };
         }
     }
 
-    public async Task<StorageUsageOperationResult> RecalculateStorageUsageAsync()
+    public async Task<InstanceStorageUsageDto?> RecalculateStorageUsageAsync()
     {
         try
         {
-            var response = await _api.RecalculateStorageUsageAsync(CancellationToken.None);
-            if (!response.IsSuccessStatusCode || response.Content is null)
-            {
-                return new StorageUsageOperationResult
-                {
-                    Success = false,
-                    Message = "Storage usage recalculation failed."
-                };
-            }
-
-            return new StorageUsageOperationResult
-            {
-                Success = true,
-                Message = "Storage usage recalculated.",
-                Usage = StorageUsageModel.FromDto(response.Content)
-            };
+            return await api.RecalculateInstanceStorageUsageAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to recalculate storage usage.");
-            return new StorageUsageOperationResult
-            {
-                Success = false,
-                Message = "Storage usage recalculation failed."
-            };
+            logger.LogError(ex, "Failed to recalculate storage usage.");
+            return null;
         }
     }
 
-    public async Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync() =>
-        await GetSettingsAsync(_api.GetSmtpSettingsAsync, () => new InstanceSmtpSettingsModel());
+    public Task<InstanceSmtpSettingsDto> GetSmtpSettingsAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceSmtpSettingsAsync(cancellationToken: ct), () => new());
 
-    public Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings) =>
-        SendCommandAsync(ct => _api.UpdateSmtpSettingsAsync(settings, ct));
+    public Task<BaseCommandResponseOfGuid> UpdateSmtpSettingsAsync(InstanceSmtpSettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceSmtpSettingsAsync(settings, cancellationToken: ct));
 
-    public async Task<SmtpConnectionTestResult> TestSmtpConnectionAsync()
+    public async Task<SmtpConnectionTestResultDto> TestSmtpConnectionAsync()
     {
         try
         {
-            var response = await _api.TestSmtpConnectionAsync(CancellationToken.None);
-            return response.IsSuccessStatusCode ? response.Content ?? new() : new();
+            return await api.TestInstanceSmtpConnectionAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to test SMTP connection.");
-            return new SmtpConnectionTestResult();
+            logger.LogError(ex, "Failed to test SMTP connection.");
+            return new SmtpConnectionTestResultDto { Success = false, Message = "SMTP connection test failed." };
         }
     }
 
@@ -376,35 +274,30 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     {
         try
         {
-            var response = await _api.GetActiveTenantCountAsync(CancellationToken.None);
-            response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadAsStringAsync();
-            return int.TryParse(content, out var count) ? count : 0;
+            return await api.GetActiveTenantCountAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to retrieve active tenant count.");
+            logger.LogError(ex, "Failed to retrieve active tenant count.");
             return 0;
         }
     }
 
-    // ── Auth Provider Configuration ──────────────────────────────────────
+    public Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceOnboardingAuthProviderConfigurationInternalAsync(cancellationToken: ct), () => new());
 
-    public async Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync() =>
-        await GetSettingsAsync(_api.GetAuthProviderConfigurationAsync, () => new AuthProviderConfigurationModel());
+    public Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsAdminAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceAuthProviderConfigurationAsync(cancellationToken: ct), () => new());
 
-    public async Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsAdminAsync() =>
-        await GetSettingsAsync(_api.GetAuthProviderConfigurationAsAdminAsync, () => new AuthProviderConfigurationModel());
+    public Task<BaseCommandResponseOfGuid> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationDto config) =>
+        SendCommandAsync(ct => api.SaveInstanceOnboardingAuthProviderConfigurationAsync(config, cancellationToken: ct));
 
-    public Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config) =>
-        SendCommandAsync(ct => _api.SaveAuthProviderConfigurationAsync(config, ct));
-
-    public async Task<InstanceCommandResponseModel> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestModel request)
+    public async Task<BaseCommandResponseOfGuid> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestDto request)
     {
         ApplyKeycloakBootstrapBrowserDefaults(request);
-
-        var result = await SendCommandAsync(ct => _api.BootstrapKeycloakRealmAsync(request, ct));
-        if (result.Success)
+        var result = await SendCommandAsync(
+            ct => api.BootstrapInstanceOnboardingKeycloakRealmAsync(request, cancellationToken: ct));
+        if (result.Success == true)
         {
             await RefreshAuthSchemesAsync();
         }
@@ -412,146 +305,77 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         return result;
     }
 
-    private void ApplyKeycloakBootstrapBrowserDefaults(KeycloakBootstrapRequestModel request)
-    {
-        if (!Uri.TryCreate(_navigation.BaseUri, UriKind.Absolute, out var baseUri))
-            return;
+    public Task<KeycloakRealmDoctorResultDto> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestDto request) =>
+        GetSettingsAsync(
+            ct => api.RunInstanceKeycloakRealmDoctorAsync(request, cancellationToken: ct),
+            () => BlockedDoctor("Keycloak diagnostics failed. Check admin access and retry."));
 
-        var origin = $"{baseUri.Scheme}://{baseUri.Host}{(baseUri.IsDefaultPort ? string.Empty : $":{baseUri.Port}")}";
-        var redirectUri = $"{origin.TrimEnd('/')}/*";
+    public Task<KeycloakRealmSyncPlanDto> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestDto request) =>
+        GetSettingsAsync(
+            ct => api.PreviewInstanceKeycloakRealmSyncAsync(request, cancellationToken: ct),
+            () => BlockedPlan("Keycloak sync preview failed. Check admin access and retry."));
 
-        request.BlazorRedirectUris = MergeBootstrapValues(request.BlazorRedirectUris, redirectUri);
-        request.BlazorWebOrigins = MergeBootstrapValues(request.BlazorWebOrigins, "+");
-    }
+    public Task<KeycloakRealmSyncPlanDto> ApplyKeycloakRealmSyncAsync(KeycloakRealmSyncApplyRequestDto request) =>
+        GetSettingsAsync(
+            ct => api.ApplyInstanceKeycloakRealmSyncAsync(request, cancellationToken: ct),
+            () => BlockedPlan("Keycloak sync apply failed. Check admin access and retry."));
 
-    public async Task<KeycloakRealmDoctorResultModel> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestModel request)
-    {
-        try
-        {
-            var response = await _api.RunKeycloakRealmDoctorAsync(request, CancellationToken.None);
-            return response.IsSuccessStatusCode && response.Content is not null
-                ? response.Content
-                : KeycloakRealmDoctorResultModel.Blocked("Keycloak diagnostics failed. Check admin access and retry.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to run Keycloak realm diagnostics.");
-            return KeycloakRealmDoctorResultModel.Blocked("Keycloak diagnostics failed. Check admin access and retry.");
-        }
-    }
+    public Task<KeycloakClientSecretRotationResultDto> RotateKeycloakClientSecretAsync(KeycloakClientSecretRotationRequestDto request) =>
+        GetSettingsAsync(
+            ct => api.RotateInstanceKeycloakClientSecretAsync(request, cancellationToken: ct),
+            () => BlockedRotation("Keycloak client-secret rotation failed. Check admin access and retry."));
 
-    public async Task<KeycloakRealmSyncPlanModel> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestModel request)
-    {
-        try
-        {
-            var response = await _api.PreviewKeycloakRealmSyncAsync(request, CancellationToken.None);
-            return response.IsSuccessStatusCode && response.Content is not null
-                ? response.Content
-                : KeycloakRealmSyncPlanModel.Blocked("Keycloak sync preview failed. Check admin access and retry.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to preview Keycloak realm sync plan.");
-            return KeycloakRealmSyncPlanModel.Blocked("Keycloak sync preview failed. Check admin access and retry.");
-        }
-    }
-
-    public async Task<KeycloakRealmSyncPlanModel> ApplyKeycloakRealmSyncAsync(KeycloakRealmSyncApplyRequestModel request)
-    {
-        try
-        {
-            var response = await _api.ApplyKeycloakRealmSyncAsync(request, CancellationToken.None);
-            return response.IsSuccessStatusCode && response.Content is not null
-                ? response.Content
-                : KeycloakRealmSyncPlanModel.Blocked("Keycloak sync apply failed. Check admin access and retry.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to apply Keycloak realm sync plan.");
-            return KeycloakRealmSyncPlanModel.Blocked("Keycloak sync apply failed. Check admin access and retry.");
-        }
-    }
-
-    public async Task<KeycloakClientSecretRotationResultModel> RotateKeycloakClientSecretAsync(KeycloakClientSecretRotationRequestModel request)
-    {
-        try
-        {
-            var response = await _api.RotateKeycloakClientSecretAsync(request, CancellationToken.None);
-            return response.IsSuccessStatusCode && response.Content is not null
-                ? response.Content
-                : KeycloakClientSecretRotationResultModel.Blocked("Keycloak client-secret rotation failed. Check admin access and retry.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to rotate Keycloak client secret.");
-            return KeycloakClientSecretRotationResultModel.Blocked("Keycloak client-secret rotation failed. Check admin access and retry.");
-        }
-    }
-
-    public Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config) =>
-        SendCommandAsync(ct => _api.UpdateAuthProviderConfigurationAsAdminAsync(config, ct));
+    public Task<BaseCommandResponseOfGuid> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationDto config) =>
+        SendCommandAsync(ct => api.UpdateInstanceAuthProviderConfigurationAsync(config, cancellationToken: ct));
 
     public async Task<bool> IsAuthProviderConfiguredAsync()
     {
         try
         {
-            var response = await _api.IsAuthProviderConfiguredAsync(CancellationToken.None);
-            return response.IsSuccessStatusCode && response.Content?.Configured == true;
+            return (await api.GetInstanceAuthProviderConfigurationStatusAsync(
+                cancellationToken: CancellationToken.None)).Configured;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check auth provider configuration status.");
+            logger.LogError(ex, "Failed to check auth provider configuration status.");
             return false;
         }
     }
 
-    // ── Authorization Provider Configuration ─────────────────────────────
+    public Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsync() =>
+        GetSettingsAsync(
+            ct => api.GetInstanceOnboardingAuthorizationProviderConfigurationInternalAsync(cancellationToken: ct),
+            () => new());
 
-    public async Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsync() =>
-        await GetSettingsAsync(_api.GetAuthorizationProviderConfigurationAsync, () => new AuthorizationProviderConfigurationModel());
+    public Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsAdminAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceAuthorizationProviderConfigurationAsync(cancellationToken: ct), () => new());
 
-    public async Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsAdminAsync() =>
-        await GetSettingsAsync(_api.GetAuthorizationProviderConfigurationAsAdminAsync, () => new AuthorizationProviderConfigurationModel());
+    public Task<BaseCommandResponseOfGuid> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationDto config) =>
+        SendCommandAsync(ct => api.SaveInstanceOnboardingAuthorizationProviderConfigurationAsync(config, cancellationToken: ct));
 
-    public Task<InstanceCommandResponseModel> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationModel config) =>
-        SendCommandAsync(ct => _api.SaveAuthorizationProviderConfigurationAsync(config, ct));
+    public Task<BaseCommandResponseOfGuid> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationDto config) =>
+        SendCommandAsync(ct => api.UpdateInstanceAuthorizationProviderConfigurationAsync(config, cancellationToken: ct));
 
-    public Task<InstanceCommandResponseModel> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationModel config) =>
-        SendCommandAsync(ct => _api.UpdateAuthorizationProviderConfigurationAsAdminAsync(config, ct));
+    public Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsync() =>
+        SendCommandAsync(ct => api.SyncInstanceOnboardingAuthorizationPolicyPackageAsync(cancellationToken: ct));
 
-    public Task<InstanceCommandResponseModel> SyncAuthorizationPolicyPackageAsync() =>
-        SendCommandAsync(ct => _api.SyncAuthorizationPolicyPackageAsync(ct));
+    public Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsAdminAsync() =>
+        SendCommandAsync(ct => api.SyncInstanceAuthorizationPolicyPackageAsync(cancellationToken: ct));
 
-    public Task<InstanceCommandResponseModel> SyncAuthorizationPolicyPackageAsAdminAsync() =>
-        SendCommandAsync(ct => _api.SyncAuthorizationPolicyPackageAsAdminAsync(ct));
-
-    public Task<PolicyPackageDownloadModel?> DownloadAuthorizationPolicyPackageAsync() =>
-        DownloadFileAsync(
-            ct => _api.DownloadAuthorizationPolicyPackageAsync(ct),
-            "authorization policy package",
-            "authorization-policy-package.zip",
-            "application/zip");
-
-    public Task<PolicyPackageDownloadModel?> DownloadAuthorizationPolicyPackageAsAdminAsync() =>
-        DownloadFileAsync(
-            ct => _api.DownloadAuthorizationPolicyPackageAsAdminAsync(ct),
-            "authorization policy package",
-            "authorization-policy-package.zip",
-            "application/zip");
-
-    public Task<InstanceCommandResponseModel> VerifyCerbosEndpointAsync(string grpcEndpoint) =>
-        SendCommandAsync(ct => _api.VerifyCerbosEndpointAsync(new VerifyCerbosEndpointRequest { GrpcEndpoint = grpcEndpoint }, ct));
+    public Task<BaseCommandResponseOfGuid> VerifyCerbosEndpointAsync(string grpcEndpoint) =>
+        SendCommandAsync(ct => api.VerifyInstanceOnboardingAuthorizationProviderEndpointAsync(
+            body: new VerifyCerbosEndpointRequest { GrpcEndpoint = grpcEndpoint }, cancellationToken: ct));
 
     public async Task<bool> IsAuthorizationProviderConfiguredAsync()
     {
         try
         {
-            var response = await _api.IsAuthorizationProviderConfiguredAsync(CancellationToken.None);
-            return response.IsSuccessStatusCode && response.Content?.Configured == true;
+            return (await api.GetInstanceAuthorizationProviderConfigurationStatusAsync(
+                cancellationToken: CancellationToken.None)).Configured;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check authorization provider configuration status.");
+            logger.LogError(ex, "Failed to check authorization provider configuration status.");
             return false;
         }
     }
@@ -560,15 +384,15 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     {
         try
         {
-            var response = await _bffAuthApi.RefreshSchemesAsync(CancellationToken.None);
+            var response = await bffAuthApi.RefreshSchemesAsync(CancellationToken.None);
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Failed to refresh auth schemes. Status: {StatusCode}", (int)response.StatusCode);
+                logger.LogWarning("Failed to refresh auth schemes. Status: {StatusCode}", (int)response.StatusCode);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to refresh auth schemes.");
+            logger.LogError(ex, "Failed to refresh auth schemes.");
         }
     }
 
@@ -576,757 +400,190 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     {
         try
         {
-            var response = await _bffAuthApi.RefreshSessionInternalAsync(CancellationToken.None);
+            var response = await bffAuthApi.RefreshSessionInternalAsync(CancellationToken.None);
             if (response.IsSuccessStatusCode)
             {
                 return true;
             }
 
-            var responseBody = response.Error?.Content;
-            _logger.LogWarning(
-                "Failed to refresh auth session. Status: {StatusCode} Body: {ResponseBody}",
-                (int)response.StatusCode,
-                string.IsNullOrWhiteSpace(responseBody) ? "<empty>" : responseBody);
+            logger.LogWarning("Failed to refresh auth session. Status: {StatusCode}", (int)response.StatusCode);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to refresh auth session.");
+            logger.LogError(ex, "Failed to refresh auth session.");
             return false;
         }
     }
 
-    // ── Analytics Governance ─────────────────────────────────────────────
+    public Task<AnalyticsGovernanceSettingsDto> GetAnalyticsGovernanceSettingsAsync() =>
+        GetSettingsAsync(ct => api.GetInstanceAnalyticsGovernanceSettingsAsync(cancellationToken: ct), () => new());
 
-    public async Task<Models.Analytics.AnalyticsGovernanceSettingsModel> GetAnalyticsGovernanceSettingsAsync() =>
-        await GetSettingsAsync(_api.GetAnalyticsGovernanceSettingsAsync, () => new Models.Analytics.AnalyticsGovernanceSettingsModel());
+    public Task<BaseCommandResponseOfGuid> UpdateAnalyticsGovernanceSettingsAsync(AnalyticsGovernanceSettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceAnalyticsGovernanceSettingsAsync(settings, cancellationToken: ct));
 
-    public Task<InstanceCommandResponseModel> UpdateAnalyticsGovernanceSettingsAsync(Models.Analytics.AnalyticsGovernanceSettingsModel settings) =>
-        SendCommandAsync(ct => _api.UpdateAnalyticsGovernanceSettingsAsync(settings, ct));
+    public Task<FooterGovernanceSettingsDto> GetFooterGovernanceSettingsAsync() =>
+        GetSettingsAsync(ct => api.GetFooterGovernanceSettingsAsync(cancellationToken: ct), () => new());
 
-    // ── Footer Governance ────────────────────────────────────────────────
+    public Task<BaseCommandResponseOfGuid> UpdateFooterGovernanceSettingsAsync(FooterGovernanceSettingsDto settings) =>
+        SendCommandAsync(ct => api.UpdateFooterGovernanceSettingsAsync(settings, cancellationToken: ct));
 
-    public async Task<FooterGovernanceSettingsModel> GetFooterGovernanceSettingsAsync() =>
-        await GetSettingsAsync(_api.GetFooterGovernanceSettingsAsync, () => new FooterGovernanceSettingsModel());
+    private void ApplyKeycloakBootstrapBrowserDefaults(KeycloakBootstrapRequestDto request)
+    {
+        if (!Uri.TryCreate(navigation.BaseUri, UriKind.Absolute, out var baseUri))
+        {
+            return;
+        }
 
-    public Task<InstanceCommandResponseModel> UpdateFooterGovernanceSettingsAsync(FooterGovernanceSettingsModel settings) =>
-        SendCommandAsync(ct => _api.UpdateFooterGovernanceSettingsAsync(settings, ct));
+        var origin = $"{baseUri.Scheme}://{baseUri.Host}{(baseUri.IsDefaultPort ? string.Empty : $":{baseUri.Port}")}";
+        request.BlazorRedirectUris = MergeBootstrapValues(request.BlazorRedirectUris, $"{origin.TrimEnd('/')}/*");
+        request.BlazorWebOrigins = MergeBootstrapValues(request.BlazorWebOrigins, "+");
+    }
 
-    // ── Shared Helpers ───────────────────────────────────────────────────
-
-    private async Task<T> GetSettingsAsync<T>(
-        Func<CancellationToken, Task<IApiResponse<T>>> apiCall,
-        Func<T> defaultValueFactory) where T : class
+    private async Task<T?> GetOptionalAsync<T>(Func<CancellationToken, Task<T>> apiCall, string description)
+        where T : class
     {
         try
         {
-            var response = await apiCall(CancellationToken.None);
-            return response.IsSuccessStatusCode ? response.Content ?? defaultValueFactory() : defaultValueFactory();
+            return await apiCall(CancellationToken.None);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch {Type}.", typeof(T).Name);
-            return defaultValueFactory();
+            logger.LogError(ex, "Failed to fetch {Description}.", description);
+            return null;
         }
     }
 
-    private async Task<InstanceCommandResponseModel> SendCommandAsync(
-        Func<CancellationToken, Task<IApiResponse<InstanceCommandResponseModel>>> apiCall)
+    private async Task<T> GetSettingsAsync<T>(Func<CancellationToken, Task<T>> apiCall, Func<T> fallback)
+        where T : class
     {
         try
         {
-            var response = await apiCall(CancellationToken.None);
-            return await MapCommandResponseAsync(response);
+            return await apiCall(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to fetch {Type}.", typeof(T).Name);
+            return fallback();
+        }
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SendCommandAsync(
+        Func<CancellationToken, Task<BaseCommandResponseOfGuid>> apiCall)
+    {
+        try
+        {
+            return await apiCall(CancellationToken.None);
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "Failed to send command.");
+            logger.LogError(ex, "Failed to send command.");
             return MapCommandApiException(ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send command.");
+            logger.LogError(ex, "Failed to send command.");
             return FailedCommandResponse(ex.Message);
         }
     }
 
-    private static InstanceCommandResponseModel MapCommandApiException(ApiException exception)
+    private static BaseCommandResponseOfGuid MapCommandApiException(ApiException exception)
     {
-        var result = new InstanceCommandResponseModel
-        {
-            Success = false,
-            StatusCode = (int)exception.StatusCode,
-            Message = $"Failed with status {(int)exception.StatusCode}."
-        };
-
-        if (string.IsNullOrWhiteSpace(exception.Content))
+        var result = FailedCommandResponse($"Failed with status {exception.StatusCode}.");
+        if (string.IsNullOrWhiteSpace(exception.Response))
         {
             return result;
         }
 
         try
         {
-            using var doc = JsonDocument.Parse(exception.Content);
-            var root = doc.RootElement;
-
-            if (root.TryGetProperty("success", out var successProp))
+            using var document = JsonDocument.Parse(exception.Response);
+            var root = document.RootElement;
+            if (root.TryGetProperty("message", out var message))
             {
-                result.Success = successProp.GetBoolean();
-                result.Message = root.TryGetProperty("message", out var msgProp) ? msgProp.GetString() ?? string.Empty : string.Empty;
-
-                if (root.TryGetProperty("id", out var idProp) && idProp.TryGetGuid(out var id))
-                {
-                    result.Id = id;
-                }
-
-                if (root.TryGetProperty("errors", out var errorsProp) && errorsProp.ValueKind == JsonValueKind.Array)
-                {
-                    result.Errors = errorsProp.EnumerateArray()
-                        .Where(e => e.ValueKind == JsonValueKind.String)
-                        .Select(e => e.GetString()!)
-                        .ToList();
-                }
+                result.Message = message.GetString();
             }
-            else if (root.TryGetProperty("title", out var titleProp))
+
+            if (root.TryGetProperty("failureCode", out var failureCode))
             {
-                result.Message = titleProp.GetString() ?? "Validation failed.";
+                result.FailureCode = failureCode.GetString();
+            }
 
-                if (root.TryGetProperty("errors", out var pdErrors) && pdErrors.ValueKind == JsonValueKind.Object)
-                {
-                    var errors = new List<string>();
-                    foreach (var field in pdErrors.EnumerateObject())
-                    {
-                        if (field.Value.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var msg in field.Value.EnumerateArray())
-                            {
-                                errors.Add(msg.GetString() ?? field.Name);
-                            }
-                        }
-                    }
-
-                    result.Errors = errors;
-                }
+            if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Array)
+            {
+                result.Errors = errors.EnumerateArray()
+                    .Select(item => item.GetString() ?? string.Empty)
+                    .ToArray();
+            }
+            else if (root.TryGetProperty("errors", out errors) && errors.ValueKind == JsonValueKind.Object)
+            {
+                result.Errors = errors.EnumerateObject()
+                    .Where(field => field.Value.ValueKind == JsonValueKind.Array)
+                    .SelectMany(field => field.Value.EnumerateArray())
+                    .Select(item => item.GetString() ?? string.Empty)
+                    .ToArray();
             }
         }
         catch (JsonException)
         {
-            // Keep the default status-derived values when the error body is not JSON.
         }
 
         return result;
     }
 
-    private async Task<PolicyPackageDownloadModel?> DownloadFileAsync(
-        Func<CancellationToken, Task<HttpResponseMessage>> download,
-        string description,
-        string fallbackFileName,
-        string fallbackContentType)
-    {
-        try
-        {
-            using var response = await download(CancellationToken.None);
-            response.EnsureSuccessStatusCode();
+    private static BaseCommandResponseOfGuid FailedCommandResponse(string message) =>
+        new() { Success = false, Message = message, Errors = [message] };
 
-            var fileBytes = await response.Content.ReadAsByteArrayAsync();
-            if (fileBytes.Length == 0)
-            {
-                return null;
-            }
-
-            return new PolicyPackageDownloadModel
-            {
-                FileBytes = fileBytes,
-                FileName = GetDownloadFileName(response, fallbackFileName),
-                ContentType = response.Content.Headers.ContentType?.MediaType ?? fallbackContentType
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to download {Description}.", description);
-            return null;
-        }
-    }
-
-    private static string GetDownloadFileName(HttpResponseMessage response, string fallbackFileName)
-    {
-        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
-            ?? response.Content.Headers.ContentDisposition?.FileName;
-        return string.IsNullOrWhiteSpace(fileName)
-            ? fallbackFileName
-            : fileName.Trim('"');
-    }
-
-    private static async Task<InstanceCommandResponseModel> MapCommandResponseAsync(IApiResponse response)
-    {
-        var result = new InstanceCommandResponseModel
-        {
-            Success = response.IsSuccessStatusCode,
-            StatusCode = (int)response.StatusCode,
-            Message = response.IsSuccessStatusCode ? "OK" : $"Failed with status {(int)response.StatusCode}."
-        };
-
-        if (response.Error?.Content is not null)
-        {
-            try
-            {
-                using var doc = JsonDocument.Parse(response.Error.Content);
-                var root = doc.RootElement;
-
-                if (root.TryGetProperty("success", out var successProp))
-                {
-                    result.Success = successProp.GetBoolean();
-                    result.Message = root.TryGetProperty("message", out var msgProp) ? msgProp.GetString() ?? "" : "";
-                    result.Id = root.TryGetProperty("id", out var idProp) && idProp.TryGetGuid(out var id) ? id : Guid.Empty;
-
-                    if (root.TryGetProperty("errors", out var errorsProp) && errorsProp.ValueKind == JsonValueKind.Array)
-                    {
-                        result.Errors = errorsProp.EnumerateArray()
-                            .Where(e => e.ValueKind == JsonValueKind.String)
-                            .Select(e => e.GetString()!)
-                            .ToList();
-                    }
-                }
-                else if (root.TryGetProperty("title", out var titleProp))
-                {
-                    result.Message = titleProp.GetString() ?? "Validation failed.";
-
-                    if (root.TryGetProperty("errors", out var pdErrors) && pdErrors.ValueKind == JsonValueKind.Object)
-                    {
-                        var errors = new List<string>();
-                        foreach (var field in pdErrors.EnumerateObject())
-                        {
-                            if (field.Value.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (var msg in field.Value.EnumerateArray())
-                                {
-                                    errors.Add(msg.GetString() ?? field.Name);
-                                }
-                            }
-                        }
-
-                        result.Errors = errors;
-                    }
-                }
-            }
-            catch
-            {
-                // Keep the default values
-            }
-        }
-        else if (response.IsSuccessStatusCode && response is IApiResponse<InstanceCommandResponseModel> typed)
-        {
-            return typed.Content ?? result;
-        }
-
-        return result;
-    }
-
-    private static InstanceCommandResponseModel FailedCommandResponse(string error) =>
-        new()
-        {
-            Success = false,
-            Message = "Request failed.",
-            Errors = [error]
-        };
-
-    private static IReadOnlyList<string> MergeBootstrapValues(
-        IReadOnlyList<string>? currentValues,
-        string requiredValue)
-    {
-        if (string.IsNullOrWhiteSpace(requiredValue))
-            return currentValues ?? [];
-
-        return (currentValues ?? [])
+    private static ICollection<string> MergeBootstrapValues(ICollection<string>? currentValues, string requiredValue) =>
+        (currentValues ?? [])
             .Append(requiredValue)
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-    }
-}
 
-// ── Onboarding Models ────────────────────────────────────────────────────
-
-public class InstanceOnboardingStatusModel
-{
-    public bool IsCompleted { get; set; }
-    public bool IsAuthenticated { get; set; }
-    public bool IsCurrentUserInstanceAdmin { get; set; }
-    public string? SelectedDeploymentMode { get; set; }
-    public bool IsSetupModeActive { get; set; }
-    public bool SetupSecretFromEnvironment { get; set; }
-    public bool SetupTimedOut { get; set; }
-    public DateTime? InstanceStartedAt { get; set; }
-    public string SetupSecretState { get; set; } = "Unavailable";
-    public string SetupSecretGuidance { get; set; } = "Setup access is not currently available.";
-}
-
-public class SystemOnboardingStatusModel
-{
-    public bool RequiresOnboarding { get; set; }
-    public string DeploymentMode { get; set; } = "SingleTenant";
-}
-
-public class OnboardingCompletionModel
-{
-    public string DeploymentMode { get; set; } = "SingleTenant";
-    public SelfHostOnboardingProfileModel SiteProfile { get; set; } = new();
-    public string AdministrationAccessMode { get; set; } = "Embedded";
-    public string? AdminHost { get; set; }
-    public string? InstanceName { get; set; }
-}
-
-public class SelfHostOnboardingProfileModel
-{
-    [Required(ErrorMessage = "Site name is required.")]
-    [StringLength(200, ErrorMessage = "Site name must be 200 characters or fewer.")]
-    public string SiteName { get; set; } = string.Empty;
-
-    [EmailAddress(ErrorMessage = "Support email must be a valid email address.")]
-    public string? SupportEmail { get; set; }
-
-    [Url(ErrorMessage = "Canonical URL must be a valid URL.")]
-    public string? CanonicalUrl { get; set; }
-
-    [Required]
-    [StringLength(20)]
-    public string Locale { get; set; } = "en";
-
-    [Required]
-    [StringLength(100)]
-    public string TimeZone { get; set; } = "UTC";
-
-    [StringLength(500, ErrorMessage = "Purpose must be 500 characters or fewer.")]
-    public string? Purpose { get; set; }
-}
-
-public class OnboardingPreflightModel
-{
-    public string DeploymentMode { get; set; } = "SingleTenant";
-    public bool IsReadyToLaunch { get; set; }
-    public List<OnboardingPreflightCheckModel> BlockingChecks { get; set; } = [];
-    public List<OnboardingPreflightCheckModel> WarningChecks { get; set; } = [];
-}
-
-public class OnboardingPreflightCheckModel
-{
-    public string Code { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Severity { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
-    public string? Detail { get; set; }
-}
-
-// ── Governance Sub-Resource Models ───────────────────────────────────────
-
-public class DeploymentModeModel
-{
-    public string Mode { get; set; } = "SingleTenant";
-}
-
-public class ModuleSettingsModel
-{
-    public bool EnableIslamicModule { get; set; } = true;
-    public bool EnableTechModule { get; set; } = true;
-}
-
-public class EventPolicyModel
-{
-    public bool AllowUserSubmittedEvents { get; set; } = true;
-    public bool AllowOrganizationSubmittedEvents { get; set; } = true;
-    public bool AllowGroupSubmittedEvents { get; set; } = true;
-    public bool EventCardClickOpensDetailPage { get; set; }
-    public bool LockTenantEventCardClickBehavior { get; set; }
-}
-
-public class OrganizationPolicyModel
-{
-    public bool RequireOrganizationVerification { get; set; } = true;
-    public bool AllowTenantToOmitVerification { get; set; }
-    public bool AllowOrganizationSelfRegistration { get; set; } = true;
-    public bool AllowGroupSelfRegistration { get; set; } = true;
-}
-
-public class BrandingSettingsModel
-{
-    public string DefaultBrandDisplayName { get; set; } = string.Empty;
-    public string DefaultBrandLogoUrl { get; set; } = string.Empty;
-    public string DefaultBrandFaviconUrl { get; set; } = string.Empty;
-    public string DefaultBrandCustomCssUrl { get; set; } = string.Empty;
-    public bool LockTenantBrandDisplayName { get; set; }
-    public bool LockTenantBrandLogoUrl { get; set; }
-    public bool LockTenantBrandFaviconUrl { get; set; }
-    public bool LockTenantBrandCustomCssUrl { get; set; }
-}
-
-public class DomainSettingsModel
-{
-    public string InstanceBaseDomain { get; set; } = string.Empty;
-    public string AdminHost { get; set; } = string.Empty;
-    public bool AllowTenantCustomDomains { get; set; } = true;
-    public bool LockTenantSubdomain { get; set; }
-    public bool LockTenantCustomDomain { get; set; }
-}
-
-public class TenantDelegationModel
-{
-    public bool AllowTenantSelfServiceRegistration { get; set; }
-    public bool AllowTenantWhiteLabeling { get; set; }
-    public string DefaultPublicHomePage { get; set; } = "EventList";
-    public bool LockTenantHomePagePreference { get; set; }
-    public bool LockTenantSmtp { get; set; } = true;
-    public bool LockTenantStorage { get; set; } = true;
-    public bool LockTenantAnalytics { get; set; } = true;
-    public bool DecentralizationEnabled { get; set; }
-    public bool LockDecentralizationEnabled { get; set; }
-    public string AuthorizationProvider { get; set; } = "local";
-    public bool LockTenantAiAssistant { get; set; }
-}
-
-public class McpGovernanceModel
-{
-    public bool Enabled { get; set; }
-    public bool EnableLegacySse { get; set; }
-    public bool LockTenantMcp { get; set; } = true;
-    public bool LockTenantMcpLegacySse { get; set; } = true;
-}
-
-public class AiAssistantGovernanceModel
-{
-    public bool Enabled { get; set; }
-    public string Provider { get; set; } = "openai-compatible";
-    public string EndpointUrl { get; set; } = string.Empty;
-    public string ApiKey { get; set; } = string.Empty;
-    public string ModelId { get; set; } = string.Empty;
-    public List<string> AllowedModelIds { get; set; } = [];
-    public bool AllowAnonymousAccess { get; set; }
-    public bool ToolProposalsEnabled { get; set; } = true;
-    public bool LockTenantAiAssistant { get; set; } = true;
-    public int MaxAiContextSensitivity { get; set; } = 1;
-    public bool PiiDisclosureEnabled { get; set; }
-}
-
-public class RenderPolicyModel
-{
-    public int RenderPolicyVersion { get; set; } = 1;
-    public string RenderPolicyPreset { get; set; } = "AllInteractiveServer";
-    public bool EnableAdvancedRenderPolicyOverrides { get; set; }
-    public string GlobalRenderMode { get; set; } = "InteractiveServer";
-    public bool GlobalPrerenderEnabled { get; set; }
-    public string PublicSeoRenderMode { get; set; } = "InteractiveServer";
-    public bool PublicSeoPrerenderEnabled { get; set; }
-    public string OperationalRenderMode { get; set; } = "InteractiveServer";
-    public bool OperationalPrerenderEnabled { get; set; }
-    public string AdminRenderMode { get; set; } = "InteractiveServer";
-    public bool AdminPrerenderEnabled { get; set; }
-    public string OnboardingRenderMode { get; set; } = "InteractiveServer";
-    public bool OnboardingPrerenderEnabled { get; set; }
-    public bool DisallowInteractiveServerOnOnboarding { get; set; } = true;
-    public bool AllowTenantRenderPolicyOverride { get; set; }
-    public bool LockTenantPublicSeoRenderPolicy { get; set; }
-    public bool LockTenantOperationalRenderPolicy { get; set; }
-    public bool LockTenantAdminRenderPolicy { get; set; }
-}
-
-// ── Command Response Model ───────────────────────────────────────────────
-
-public class InstanceCommandResponseModel
-{
-    public bool Success { get; set; }
-    public int StatusCode { get; set; }
-    public Guid Id { get; set; }
-    public string Message { get; set; } = string.Empty;
-    public List<string> Errors { get; set; } = new();
-}
-
-public class PolicyPackageDownloadModel
-{
-    public byte[] FileBytes { get; set; } = [];
-    public string FileName { get; set; } = "authorization-policy-package.zip";
-    public string ContentType { get; set; } = "application/zip";
-}
-
-// ── Infrastructure Models ────────────────────────────────────────────────
-
-public class InstanceSmtpSettingsModel
-{
-    public string Host { get; set; } = string.Empty;
-    public int Port { get; set; } = 587;
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string Security { get; set; } = "StartTls";
-    public string FromAddress { get; set; } = string.Empty;
-    public string FromName { get; set; } = string.Empty;
-    public int TimeoutSeconds { get; set; } = 30;
-    public bool SkipCertificateValidation { get; set; }
-}
-
-public class SmtpConnectionTestResult
-{
-    public bool Success { get; set; }
-    public string Message { get; set; } = string.Empty;
-}
-
-public class SetupSecretValidationResult
-{
-    public bool Valid { get; set; }
-    public string? Error { get; set; }
-}
-
-
-public class SecretOwnershipModel
-{
-    public string Mode { get; set; } = "application-managed";
-    public string Source { get; set; } = "application";
-    public string Badge { get; set; } = "Managed by Application";
-    public string Description { get; set; } = "Stored securely by the platform and editable from Admin UI.";
-    public bool Editable { get; set; } = true;
-    public bool Configured { get; set; }
-    public bool BootstrapAvailable { get; set; }
-}
-
-// ── Auth Provider Models ─────────────────────────────────────────────────
-
-public class AuthProviderConfigurationModel
-{
-    public bool KeycloakEnabled { get; set; }
-    public string KeycloakAuthority { get; set; } = string.Empty;
-    public string KeycloakClientId { get; set; } = string.Empty;
-    public string KeycloakClientSecret { get; set; } = string.Empty;
-    public bool KeycloakDetectedFromEnvironment { get; set; }
-    public SecretOwnershipModel KeycloakClientSecretOwnership { get; set; } = new();
-    public bool AtprotoLoginEnabled { get; set; }
-    public string AtprotoPublicUrl { get; set; } = string.Empty;
-    public bool GoogleSsoEnabled { get; set; }
-    public string GoogleClientId { get; set; } = string.Empty;
-    public string GoogleClientSecret { get; set; } = string.Empty;
-    public bool LockKeycloakEnabled { get; set; }
-    public bool LockAtprotoLoginEnabled { get; set; }
-    public bool LockGoogleSsoEnabled { get; set; }
-}
-
-public class KeycloakBootstrapRequestModel
-{
-    public string KeycloakBaseUrl { get; set; } = string.Empty;
-    public string Realm { get; set; } = string.Empty;
-    public string BlazorClientId { get; set; } = "islamu-event-blazor";
-    public string BlazorClientSecret { get; set; } = string.Empty;
-    public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
-    public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
-    public string? ApiClientId { get; set; } = "islamu-event-api";
-    public string? ApiClientSecret { get; set; }
-    public int Mode { get; set; }
-    public string BootstrapAdminUsername { get; set; } = string.Empty;
-    public string BootstrapAdminPassword { get; set; } = string.Empty;
-}
-
-public class KeycloakRealmDoctorRequestModel
-{
-    public bool UseTemporaryAdminCredentials { get; set; }
-    public string? BootstrapAdminUsername { get; set; }
-    public string? BootstrapAdminPassword { get; set; }
-    public string? ApiClientId { get; set; } = "islamu-event-api";
-}
-
-public class KeycloakRealmDoctorResultModel
-{
-    public string OverallStatus { get; set; } = "blocked";
-    public string Message { get; set; } = string.Empty;
-    public string Realm { get; set; } = string.Empty;
-    public string Authority { get; set; } = string.Empty;
-    public string ClientId { get; set; } = string.Empty;
-    public string? ApiClientId { get; set; }
-    public IReadOnlyList<KeycloakRealmDoctorCheckModel> Checks { get; set; } = [];
-
-    public static KeycloakRealmDoctorResultModel Blocked(string message) => new()
+    private static KeycloakRealmDoctorResultDto BlockedDoctor(string message) => new()
     {
         OverallStatus = "blocked",
         Message = message,
-        Checks =
-        [
-            new KeycloakRealmDoctorCheckModel
-            {
-                Code = "keycloak_doctor_failed",
-                Name = "Keycloak diagnostics",
-                Status = "blocked",
-                Message = message
-            }
-        ]
+        Checks = [new KeycloakRealmDoctorCheckDto
+        {
+            Code = "keycloak_doctor_failed",
+            Name = "Keycloak diagnostics",
+            Status = "blocked",
+            Message = message
+        }]
     };
-}
 
-public class KeycloakRealmDoctorCheckModel
-{
-    public string Code { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
-    public string? Remediation { get; set; }
-}
-
-public class KeycloakRealmSyncPreviewRequestModel
-{
-    public bool UseTemporaryAdminCredentials { get; set; }
-    public string? BootstrapAdminUsername { get; set; }
-    public string? BootstrapAdminPassword { get; set; }
-    public string? ApiClientId { get; set; } = "islamu-event-api";
-    public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
-    public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
-}
-
-public class KeycloakRealmSyncApplyRequestModel
-{
-    public bool BackupConfirmed { get; set; }
-    public string? BootstrapAdminUsername { get; set; }
-    public string? BootstrapAdminPassword { get; set; }
-    public string? ApiClientId { get; set; } = "islamu-event-api";
-    public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
-    public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
-}
-
-public class KeycloakClientSecretRotationRequestModel
-{
-    public string? ClientId { get; set; }
-    public string SecretOwnershipMode { get; set; } = "application-managed";
-    public bool ConfirmApplicationManagedSecret { get; set; }
-    public string? NewClientSecret { get; set; }
-    public string? BootstrapAdminUsername { get; set; }
-    public string? BootstrapAdminPassword { get; set; }
-}
-
-public class KeycloakClientSecretRotationResultModel
-{
-    public string Status { get; set; } = "blocked";
-    public string Message { get; set; } = string.Empty;
-    public string ClientId { get; set; } = string.Empty;
-    public string SecretOwnershipMode { get; set; } = "application-managed";
-    public bool AuthSchemesReloaded { get; set; }
-    public bool RequiresRestart { get; set; }
-    public string OperatorInstructions { get; set; } = string.Empty;
-    public IReadOnlyList<KeycloakRealmSyncOperationModel> Operations { get; set; } = [];
-
-    public static KeycloakClientSecretRotationResultModel Blocked(string message) => new()
+    private static KeycloakRealmSyncPlanDto BlockedPlan(string message) => new()
     {
         Status = "blocked",
         Message = message,
-        Operations =
-        [
-            new KeycloakRealmSyncOperationModel
-            {
-                OperationId = "keycloak_client_secret_rotation_failed",
-                Category = "client-secret",
-                TargetType = "client",
-                Action = "update",
-                Status = "blocked",
-                Summary = message,
-                Reason = "The client-secret rotation could not be completed safely."
-            }
-        ]
+        Operations = [new KeycloakRealmSyncOperationDto
+        {
+            OperationId = "keycloak_sync_failed",
+            Category = "inspection",
+            TargetType = "realm",
+            Target = "Keycloak",
+            Action = "none",
+            Status = "blocked",
+            Summary = message,
+            Reason = "The sync operation could not be completed safely."
+        }]
     };
-}
 
-public class KeycloakRealmSyncPlanModel
-{
-    public string Status { get; set; } = "blocked";
-    public string Message { get; set; } = string.Empty;
-    public string Realm { get; set; } = string.Empty;
-    public string Authority { get; set; } = string.Empty;
-    public string ClientId { get; set; } = string.Empty;
-    public string? ApiClientId { get; set; }
-    public bool DestructiveOperationsSupported { get; set; }
-    public bool RequiresBackupBeforeApply { get; set; }
-    public KeycloakRealmDesiredStateModel DesiredState { get; set; } = new();
-    public IReadOnlyList<KeycloakRealmSyncOperationModel> Operations { get; set; } = [];
-    public IReadOnlyList<KeycloakRealmDoctorCheckModel> Diagnostics { get; set; } = [];
-
-    public static KeycloakRealmSyncPlanModel Blocked(string message) => new()
+    private static KeycloakClientSecretRotationResultDto BlockedRotation(string message) => new()
     {
         Status = "blocked",
         Message = message,
-        Operations =
-        [
-            new KeycloakRealmSyncOperationModel
-            {
-                OperationId = "keycloak_sync_preview_failed",
-                Category = "inspection",
-                TargetType = "realm",
-                Target = "Keycloak",
-                Action = "none",
-                Status = "blocked",
-                Summary = message,
-                Reason = "The sync preview could not be generated safely."
-            }
-        ]
+        Operations = [new KeycloakRealmSyncOperationDto
+        {
+            OperationId = "keycloak_client_secret_rotation_failed",
+            Category = "client-secret",
+            TargetType = "client",
+            Action = "update",
+            Status = "blocked",
+            Summary = message,
+            Reason = "The client-secret rotation could not be completed safely."
+        }]
     };
-}
-
-public class KeycloakRealmDesiredStateModel
-{
-    public string Realm { get; set; } = string.Empty;
-    public string BlazorClientId { get; set; } = string.Empty;
-    public string? ApiClientId { get; set; }
-    public bool DestructiveOperationsSupported { get; set; }
-    public IReadOnlyList<string> RequiredRealmRoles { get; set; } = [];
-    public IReadOnlyList<KeycloakClientDesiredStateModel> Clients { get; set; } = [];
-}
-
-public class KeycloakClientDesiredStateModel
-{
-    public string ClientId { get; set; } = string.Empty;
-    public string ClientKind { get; set; } = string.Empty;
-    public IReadOnlyList<string> RedirectUris { get; set; } = [];
-    public IReadOnlyList<string> WebOrigins { get; set; } = [];
-    public IReadOnlyList<string> OptionalClientScopes { get; set; } = [];
-}
-
-public class KeycloakRealmSyncOperationModel
-{
-    public string OperationId { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
-    public string TargetType { get; set; } = string.Empty;
-    public string Target { get; set; } = string.Empty;
-    public string Action { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public string Summary { get; set; } = string.Empty;
-    public string Reason { get; set; } = string.Empty;
-    public IReadOnlyList<string> Changes { get; set; } = [];
-    public bool RequiresBackupBeforeApply { get; set; }
-}
-
-public class AuthProviderConfiguredResult
-{
-    public bool Configured { get; set; }
-}
-
-public class AuthorizationProviderConfigurationModel
-{
-    public string Provider { get; set; } = "local";
-    public string CerbosGrpcEndpoint { get; set; } = string.Empty;
-    public string CerbosAdminEndpoint { get; set; } = string.Empty;
-    public string? CerbosAdminUsername { get; set; }
-    public string? CerbosAdminPassword { get; set; }
-    public bool CerbosAdminUsernameConfigured { get; set; }
-    public bool CerbosAdminPasswordConfigured { get; set; }
-    public bool CerbosDetectedFromEnvironment { get; set; }
-    public bool CerbosEndpointVerified { get; set; }
-    public bool AuthorizationProviderConfigured { get; set; }
-    public SecretOwnershipModel CerbosEndpointOwnership { get; set; } = new();
-    public SecretOwnershipModel CerbosAdminCredentialsOwnership { get; set; } = new();
-}
-
-public class AuthorizationProviderConfiguredResult
-{
-    public bool Configured { get; set; }
-}
-
-// ── Footer Governance Model ──────────────────────────────────────────────
-
-public class FooterGovernanceSettingsModel
-{
-    public bool LockTenantTemplate { get; set; }
-    public bool LockTenantLinkGroups { get; set; }
-    public bool LockTenantSocialLinks { get; set; }
-    public bool LockTenantDescription { get; set; }
-    public bool LockTenantCopyright { get; set; }
 }

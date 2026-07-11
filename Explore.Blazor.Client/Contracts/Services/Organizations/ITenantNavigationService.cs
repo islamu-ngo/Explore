@@ -1,7 +1,7 @@
-// ABOUTME: Service for managing tenant navigation links.
+// ABOUTME: Service contract for managing tenant navigation links through the generated API client.
+// ABOUTME: Exposes only NSwag-generated request, response, and resource models.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Models.Responses;
 
 namespace Explore.Blazor.Client.Contracts.Services.Organizations;
 
@@ -23,7 +23,7 @@ public interface ITenantNavigationService
     /// </summary>
     /// <param name="dto">DTO containing the navigation link data to create.</param>
     /// <returns>Response containing the created link ID, or null on error.</returns>
-    Task<BaseCommandResponse<Guid>?> CreateNavigationLinkAsync(CreateTenantNavigationLinkDto dto);
+    Task<BaseCommandResponseOfGuid?> CreateNavigationLinkAsync(CreateTenantNavigationLinkDto dto);
 
     /// <summary>
     /// Updates an existing navigation link.
@@ -31,19 +31,19 @@ public interface ITenantNavigationService
     /// <param name="id">The ID of the navigation link to update.</param>
     /// <param name="dto">DTO containing the updated navigation link data.</param>
     /// <returns>Response indicating success or failure.</returns>
-    Task<BaseCommandResponse<bool>?> UpdateNavigationLinkAsync(Guid id, UpdateTenantNavigationLinkDto dto);
+    Task<BaseCommandResponseOfboolean?> UpdateNavigationLinkAsync(Guid id, UpdateTenantNavigationLinkDto dto);
 
     /// <summary>
     /// Deletes a navigation link.
     /// </summary>
     /// <param name="id">The ID of the navigation link to delete.</param>
     /// <returns>Response indicating success or failure.</returns>
-    Task<BaseCommandResponse<bool>?> DeleteNavigationLinkAsync(Guid id);
+    Task<BaseCommandResponseOfboolean?> DeleteNavigationLinkAsync(Guid id);
 
     /// <summary>
     /// Reorders multiple navigation links.
     /// </summary>
     /// <param name="orders">List of navigation links with their new order values.</param>
     /// <returns>Response indicating success or failure.</returns>
-    Task<BaseCommandResponse<bool>?> ReorderNavigationLinksAsync(List<UpdateTenantNavigationLinkOrderDto> orders);
+    Task<BaseCommandResponseOfboolean?> ReorderNavigationLinksAsync(List<UpdateTenantNavigationLinkOrderDto> orders);
 }

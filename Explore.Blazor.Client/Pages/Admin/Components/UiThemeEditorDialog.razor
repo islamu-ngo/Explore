@@ -4,6 +4,7 @@
 @using MudBlazor
 @using System.Text.RegularExpressions
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
 
 <MudDialog>
     <DialogContent>
@@ -81,7 +82,7 @@
     [Parameter] public bool IsPlatformCatalog { get; set; }
     [Parameter] public bool AllowPlatformToggle { get; set; }
 
-    [Inject] private IEventApiClient ApiClient { get; set; } = null!;
+    [Inject] private IAppearanceThemeService AppearanceThemeService { get; set; } = null!;
     [Inject] private ISnackbar Snackbar { get; set; } = null!;
     [Inject] private ILogger<UiThemeEditorDialog> Logger { get; set; } = null!;
 
@@ -194,7 +195,7 @@
                     RowVersion = _form.RowVersion
                 };
 
-                response = await ApiClient.UpdateUiThemeAsync(_form.Id, updateDto);
+                response = await AppearanceThemeService.UpdateThemeAsync(_form.Id, updateDto);
             }
             else
             {
@@ -211,7 +212,7 @@
                     DarkPalette = _form.DarkPalette
                 };
 
-                response = await ApiClient.CreateUiThemeAsync(createDto);
+                response = await AppearanceThemeService.CreateThemeAsync(createDto);
             }
 
             if (response is null || response.Success != true)

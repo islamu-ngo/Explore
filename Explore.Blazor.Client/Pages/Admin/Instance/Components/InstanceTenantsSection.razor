@@ -1,230 +1,389 @@
-@* ABOUTME: Tenant management section for multi-tenant mode within Instance Administration.
-   Uses IAdminService wrapper instead of IEventApiClient directly. *@
+@* ABOUTME: Renders public instance tenant inventory and HAL-authorized lifecycle controls. *@
+@* ABOUTME: Uses the control-plane tenant service and fail-closed purge confirmation. *@
 
-@using MudBlazor
-@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Contracts.ControlPlane
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Routing.ControlPlane
+@using Explore.Blazor.Client.Contracts.Services.ControlPlane
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@inject IControlPlaneTenantService TenantService
+@inject IAccessibilityFocusService AccessibilityFocusService
 
-<div class="settings-section">
+<section class="settings-section instance-tenants" aria-labelledby="instance-tenants-title">
     <div class="settings-section-header">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-            <div>
-                <MudText Typo="Typo.h5" Style="font-weight: 700;">Tenant Management</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-                    Create, view, and manage tenants on this platform.
-                </MudText>
-            </div>
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="OpenCreateDialog">
-                Create Tenant
-            </MudButton>
-        </MudStack>
+        <MudText Typo="Typo.h5" HtmlTag="h2" id="instance-tenants-title">Tenant lifecycle</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1" dir="auto">
+            Review tenants and run only lifecycle actions authorized by the control-plane API.
+        </MudText>
+        @if (CanCreateTenant)
+        {
+            <AppButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsBusy"
+                       id="instance-tenants-create-trigger"
+                       aria-label="Create tenant" OnClick="StartCreateAsync">Create tenant</AppButton>
+        }
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    @if (_loading)
     {
-        <MudAlert Severity="Severity.Error" Class="mb-4" CloseIconClicked="() => _errorMessage = null" ShowCloseIcon="true">
-            @_errorMessage
-        </MudAlert>
-    }
-
-    @if (_isLoading)
-    {
-        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+        <div class="instance-tenants__loading" role="status" aria-live="polite">
             <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading tenants...</MudText>
-        </MudStack>
+            <span>Loading tenants...</span>
+        </div>
     }
-    else if (_tenants.Count == 0)
+    else if (_tenants is null)
     {
-        <MudAlert Severity="Severity.Info" Class="my-4">
-            No tenants exist yet. Create your first tenant to get started.
-        </MudAlert>
+        <MudAlert Severity="Severity.Error" role="alert">@ProblemMessage</MudAlert>
+    }
+    else if (TenantItems.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No tenants were returned by the control-plane API.</MudAlert>
     }
     else
     {
-        <MudTable Items="_tenants" Hover="true" Striped="true" Dense="true" Elevation="0"
-                  Class="border-solid border-1 mud-border-lines-default rounded-lg">
-            <HeaderContent>
-                <MudTh>Name</MudTh>
-                <MudTh>Slug</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh Style="width: 120px;">Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Name">@context.FullName</MudTd>
-                <MudTd DataLabel="Slug">
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@context.Slug</MudChip>
-                </MudTd>
-                <MudTd DataLabel="Status">
-                    @if (context.IsActive == true)
-                    {
-                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Active</MudChip>
-                    }
-                    else
-                    {
-                        <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">Inactive</MudChip>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Actions">
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Color="Color.Error"
-                                   Size="Size.Small"
-                                   OnClick="@(() => ConfirmDeleteTenant(context))"
-                                   Title="Delete tenant" />
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        <div class="instance-tenants__table">
+            <MudTable Items="TenantItems" Hover="true" Dense="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Slug</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">@TenantName(context)</MudTd>
+                    <MudTd DataLabel="Slug"><code>@context.Slug</code></MudTd>
+                    <MudTd DataLabel="Status">@TenantStatus(context)</MudTd>
+                    <MudTd DataLabel="Actions">
+                        <div id="@TenantActionTargetId(TenantId(context))"
+                             class="instance-tenants__action-focus-target"
+                             role="group"
+                             tabindex="-1"
+                             aria-label="@($"Tenant lifecycle controls for {TenantName(context)}")">
+                            @if (HasTenantAction(context))
+                            {
+                                <div class="instance-tenants__actions">
+                                @if (ControlPlaneHal.HasLink(context._links, ControlPlaneLinkRelations.Configuration))
+                                {
+                                    <AppButton Size="Size.Small" Variant="Variant.Outlined"
+                                               Href="@TenantConfigurationHref(TenantId(context))"
+                                               aria-label="@($"Configure {TenantName(context)}")">Configure</AppButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(context._links, ControlPlaneLinkRelations.Activate))
+                                {
+                                    <AppButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@IsBusy"
+                                               aria-label="@($"Activate {TenantName(context)}")"
+                                               OnClick="@(() => RunTenantCommandAsync(context, ControlPlaneLinkRelations.Activate))">Activate</AppButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(context._links, ControlPlaneLinkRelations.Suspend))
+                                {
+                                    <AppButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@IsBusy"
+                                               aria-label="@($"Suspend {TenantName(context)}")"
+                                               OnClick="@(() => StartReasonConfirmation(context, ControlPlaneLinkRelations.Suspend))">Suspend</AppButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(context._links, ControlPlaneLinkRelations.Archive))
+                                {
+                                    <AppButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@IsBusy"
+                                               aria-label="@($"Archive {TenantName(context)}")"
+                                               OnClick="@(() => StartReasonConfirmation(context, ControlPlaneLinkRelations.Archive))">Archive</AppButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(context._links, ControlPlaneLinkRelations.Reactivate))
+                                {
+                                    <AppButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@IsBusy"
+                                               aria-label="@($"Reactivate {TenantName(context)}")"
+                                               OnClick="@(() => RunTenantCommandAsync(context, ControlPlaneLinkRelations.Reactivate))">Reactivate</AppButton>
+                                }
+                                @if (ControlPlaneHal.HasLink(context._links, ControlPlaneLinkRelations.SchedulePurge))
+                                {
+                                    <AppButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@IsBusy"
+                                               aria-label="@($"Schedule purge for {TenantName(context)}")"
+                                               OnClick="@(() => StartPurgeConfirmation(context))">Schedule purge</AppButton>
+                                }
+                                </div>
+                            }
+                        </div>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </div>
 
-        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
-            @_tenants.Count tenant(s) total
-        </MudText>
+        <p class="instance-tenants__count" dir="auto">@TenantCountLabel</p>
     }
 
-    @* ── Create Tenant Dialog ────────────────────────────────────── *@
-    <MudDialog @bind-Visible="_showCreateDialog">
-        <TitleContent>
-            <MudText Typo="Typo.h6">Create New Tenant</MudText>
-        </TitleContent>
-        <DialogContent>
-            <MudStack Spacing="3">
-                <MudTextField T="string" @bind-Value="_newTenantName"
-                              Label="Tenant Name"
-                              Variant="Variant.Outlined"
-                              Required="true"
-                              RequiredError="Tenant name is required" />
-                <MudTextField T="string" @bind-Value="_newTenantSlug"
-                              Label="Slug (URL identifier)"
-                              Variant="Variant.Outlined"
-                              HelperText="Lowercase, alphanumeric with hyphens"
-                              Required="true"
-                              RequiredError="Slug is required" />
-                <MudCheckBox T="bool" @bind-Value="_assignSelfAsTenantAdmin" Color="Color.Primary">
-                    Assign me as administrator of this tenant
-                </MudCheckBox>
-            </MudStack>
-        </DialogContent>
-        <DialogActions>
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => _showCreateDialog = false)">Cancel</MudButton>
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateTenantAsync"
-                       Disabled="_isCreating || string.IsNullOrWhiteSpace(_newTenantName) || string.IsNullOrWhiteSpace(_newTenantSlug)">
-                @(_isCreating ? "Creating..." : "Create")
-            </MudButton>
-        </DialogActions>
-    </MudDialog>
+    @if (_showCreate)
+    {
+        <section class="instance-tenants__confirmation" role="region" aria-labelledby="instance-tenants-create-title">
+            <h3 id="instance-tenants-create-title">Create tenant</h3>
+            <p>The tenant will begin in provisioning status.</p>
 
-    @* ── Delete Confirmation Dialog ──────────────────────────────── *@
-    <MudDialog @bind-Visible="_showDeleteDialog">
-        <TitleContent>
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" />
-                <MudText Typo="Typo.h6">Delete Tenant?</MudText>
-            </MudStack>
-        </TitleContent>
-        <DialogContent>
-            <MudText Typo="Typo.body1">
-                Are you sure you want to delete <strong>@_tenantToDelete?.FullName</strong>?
-            </MudText>
-            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">
-                This action is destructive and cannot be undone. All data associated with this tenant will be permanently removed.
-            </MudAlert>
-        </DialogContent>
-        <DialogActions>
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => _showDeleteDialog = false)">Cancel</MudButton>
-            <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Error" OnClick="DeleteTenantAsync" Disabled="_isDeleting">
-                @(_isDeleting ? "Deleting..." : "Delete Permanently")
-            </MudButton>
-        </DialogActions>
-    </MudDialog>
-</div>
+            <label for="instance-tenants-create-name">Tenant name</label>
+            <input id="instance-tenants-create-name"
+                   aria-label="Tenant name"
+                   autocomplete="organization"
+                   maxlength="500"
+                   required
+                   @bind="_createName"
+                   disabled="@IsBusy" />
+
+            <label for="instance-tenants-create-slug">Tenant slug</label>
+            <input id="instance-tenants-create-slug"
+                   aria-label="Tenant slug"
+                   autocomplete="off"
+                   maxlength="500"
+                   pattern="[a-z0-9-]+"
+                   required
+                   @bind="_createSlug"
+                   disabled="@IsBusy" />
+
+            <div class="instance-tenants__checkbox">
+                <input id="instance-tenants-create-assign-self"
+                       type="checkbox"
+                       aria-label="Assign me as administrator of this tenant"
+                       @bind="_assignCurrentUserAsTenantAdmin"
+                       disabled="@IsBusy" />
+                <label for="instance-tenants-create-assign-self">Assign me as administrator of this tenant</label>
+            </div>
+
+            <div class="instance-tenants__actions">
+                <AppButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanSubmitCreate || IsBusy)"
+                           aria-label="Submit tenant creation" OnClick="SubmitCreateAsync">Create tenant</AppButton>
+                <AppButton Variant="Variant.Text" Disabled="@IsBusy" aria-label="Cancel tenant creation"
+                           OnClick="CancelCreateAsync">Cancel</AppButton>
+            </div>
+        </section>
+    }
+
+    @if (_reasonTenant is not null && _reasonRelation is not null)
+    {
+        <section class="instance-tenants__confirmation" role="region" aria-labelledby="instance-tenants-reason-title">
+            <h3 id="instance-tenants-reason-title">Confirm tenant @ReasonActionLabel</h3>
+            <p>Provide an operator reason before changing <strong>@TenantName(_reasonTenant)</strong>.</p>
+
+            <label for="instance-tenants-lifecycle-reason">Operator reason</label>
+            <input id="instance-tenants-lifecycle-reason"
+                   aria-label="Lifecycle reason"
+                   autocomplete="off"
+                   @bind="_lifecycleReason"
+                   disabled="@IsBusy" />
+
+            <div class="instance-tenants__actions">
+                <AppButton Variant="Variant.Filled" Disabled="@(!CanConfirmReason || IsBusy)"
+                           aria-label="@($"Confirm {ReasonActionLabel} for {TenantName(_reasonTenant)}")"
+                           OnClick="ConfirmReasonTransitionAsync">Confirm @ReasonActionLabel</AppButton>
+                <AppButton Variant="Variant.Text" Disabled="@IsBusy" aria-label="Cancel tenant lifecycle action"
+                           OnClick="CancelReasonConfirmationAsync">Cancel</AppButton>
+            </div>
+        </section>
+    }
+
+    @if (_purgeTenant is not null)
+    {
+        <section class="instance-tenants__confirmation instance-tenants__purge" role="region" aria-labelledby="instance-tenants-purge-title">
+            <h3 id="instance-tenants-purge-title">Confirm tenant purge</h3>
+            <p>Type <code>@_purgeTenant.Slug</code> exactly and provide an operator reason.</p>
+
+            <label for="instance-tenants-purge-reason">Operator reason</label>
+            <input id="instance-tenants-purge-reason"
+                   aria-label="Purge reason"
+                   autocomplete="off"
+                   @bind="_purgeReason"
+                   disabled="@IsBusy" />
+
+            <label for="instance-tenants-purge-confirmation">Tenant slug confirmation</label>
+            <input id="instance-tenants-purge-confirmation"
+                   aria-label="Purge confirmation"
+                   autocomplete="off"
+                   @bind="_purgeConfirmation"
+                   disabled="@IsBusy" />
+
+            <div class="instance-tenants__actions">
+                <AppButton Variant="Variant.Filled" Color="Color.Error" Disabled="@(!CanConfirmPurge || IsBusy)"
+                           aria-label="@($"Confirm purge for {TenantName(_purgeTenant)}")"
+                           OnClick="ConfirmPurgeAsync">Confirm purge</AppButton>
+                <AppButton Variant="Variant.Text" Disabled="@IsBusy" aria-label="Cancel tenant purge"
+                           OnClick="CancelPurgeConfirmationAsync">Cancel</AppButton>
+            </div>
+        </section>
+    }
+
+    @if (_commandMessage is not null)
+    {
+        <MudAlert Severity="@(_commandSucceeded ? Severity.Success : Severity.Error)"
+                  role="@(_commandSucceeded ? "status" : "alert")"
+                  aria-live="@(_commandSucceeded ? "polite" : "assertive")">
+            @_commandMessage
+        </MudAlert>
+    }
+</section>
 
 @code {
-    [Inject] private IAdminService AdminService { get; set; } = null!;
-    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+    [Parameter] public int TenantCount { get; set; }
+    [Parameter] public EventCallback<int> TenantCountChanged { get; set; }
 
-    [Parameter]
-    public int TenantCount { get; set; }
-
-    [Parameter]
-    public EventCallback<int> TenantCountChanged { get; set; }
-
-    private ICollection<TenantListDto> _tenants = new List<TenantListDto>();
-    private bool _isLoading = true;
-    private string? _errorMessage;
-
-    private bool _showCreateDialog;
-    private string _newTenantName = string.Empty;
-    private string _newTenantSlug = string.Empty;
-    private bool _assignSelfAsTenantAdmin;
+    private HalCollectionResourceOfControlPlaneTenantListItemDto? _tenants;
+    private bool _loading = true;
+    private Guid? _busyTenantId;
     private bool _isCreating;
+    private bool _showCreate;
+    private string? _createName;
+    private string? _createSlug;
+    private bool _assignCurrentUserAsTenantAdmin;
+    private HalResourceOfControlPlaneTenantListItemDto? _reasonTenant;
+    private string? _reasonRelation;
+    private string? _lifecycleReason;
+    private HalResourceOfControlPlaneTenantListItemDto? _purgeTenant;
+    private string? _purgeReason;
+    private string? _purgeConfirmation;
+    private string? _commandMessage;
+    private string? _pendingFocusElementId;
+    private bool _commandSucceeded;
 
-    private bool _showDeleteDialog;
-    private TenantListDto? _tenantToDelete;
-    private bool _isDeleting;
+    private IReadOnlyList<HalResourceOfControlPlaneTenantListItemDto> TenantItems => _tenants?._embedded?.Items?.ToArray() ?? [];
+    private bool CanCreateTenant => ControlPlaneHal.HasLink(_tenants?._links, ControlPlaneLinkRelations.Create);
+    private bool IsBusy => _busyTenantId is not null || _isCreating;
+    private bool CanSubmitCreate => IsValidName(_createName) && IsValidSlug(_createSlug);
+    private bool CanConfirmReason => _reasonTenant is not null
+        && _reasonRelation is not null
+        && !string.IsNullOrWhiteSpace(_lifecycleReason);
+    private bool CanConfirmPurge => _purgeTenant is not null
+        && !string.IsNullOrWhiteSpace(_purgeTenant.Slug)
+        && !string.IsNullOrWhiteSpace(_purgeReason)
+        && string.Equals(_purgeConfirmation, _purgeTenant.Slug, StringComparison.Ordinal);
+    private string ReasonActionLabel => _reasonRelation == ControlPlaneLinkRelations.Suspend ? "suspend" : "archive";
+    private const string ProblemMessage = "Tenant data is currently unavailable.";
+    private int TotalTenantCount => _tenants?.TotalCount ?? TenantItems.Count;
+    private string TenantCountLabel => TotalTenantCount == 1 ? "1 tenant total" : $"{TotalTenantCount} tenants total";
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => LoadTenantsAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await LoadTenantsAsync();
+        if (_pendingFocusElementId is null)
+        {
+            return;
+        }
+
+        var elementId = _pendingFocusElementId;
+        _pendingFocusElementId = null;
+        await AccessibilityFocusService.FocusByIdAsync(elementId);
     }
 
     private async Task LoadTenantsAsync()
     {
-        _isLoading = true;
-        _errorMessage = null;
-
         try
         {
-            _tenants = await AdminService.GetTenantsAsync();
-            await TenantCountChanged.InvokeAsync(_tenants.Count);
+            _tenants = await TenantService.GetTenantsAsync();
+            await TenantCountChanged.InvokeAsync(TotalTenantCount);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _errorMessage = $"Failed to load tenants: {ex.Message}";
-            _tenants = new List<TenantListDto>();
+            _tenants = null;
         }
         finally
         {
-            _isLoading = false;
+            _loading = false;
         }
     }
 
-    private void OpenCreateDialog()
+    private async Task RunTenantCommandAsync(HalResourceOfControlPlaneTenantListItemDto tenant, string relation)
     {
-        _newTenantName = string.Empty;
-        _newTenantSlug = string.Empty;
-        _assignSelfAsTenantAdmin = false;
-        _showCreateDialog = true;
-    }
-
-    private async Task CreateTenantAsync()
-    {
-        _isCreating = true;
+        var tenantId = TenantId(tenant);
+        var fallbackSelector = TenantActionTargetSelector(tenantId);
+        await AccessibilityFocusService.SaveFocusAsync();
+        _busyTenantId = tenantId;
+        _commandMessage = null;
 
         try
         {
-            var dto = new CreateTenantDto
+            var result = relation switch
             {
-                FullName = _newTenantName.Trim(),
-                Slug = _newTenantSlug.Trim().ToLowerInvariant()
+                ControlPlaneLinkRelations.Activate => await TenantService.ActivateTenantAsync(tenantId),
+                ControlPlaneLinkRelations.Reactivate => await TenantService.ReactivateTenantAsync(tenantId),
+                _ => new BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto
+                {
+                    Success = false,
+                    Message = "This tenant action is not supported.",
+                    FailureCode = "control_plane_action_not_supported"
+                }
             };
 
-            var response = await AdminService.CreateTenantAsync(dto, _assignSelfAsTenantAdmin);
-            if (response?.Success == true)
+            await ApplyCommandResultAsync(result.Success, result.Message);
+
+            if (result.Success == true)
             {
-                _showCreateDialog = false;
-                var adminNote = _assignSelfAsTenantAdmin ? " You have been assigned as tenant administrator." : string.Empty;
-                Snackbar.Add($"Tenant '{dto.FullName}' created.{adminNote}", Severity.Success);
-                await LoadTenantsAsync();
-            }
-            else
-            {
-                _errorMessage = string.IsNullOrWhiteSpace(response?.Message)
-                    ? "Failed to create tenant."
-                    : response?.Message;
+                await AccessibilityFocusService.RestoreFocusAsync(fallbackSelector);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _errorMessage = $"Failed to create tenant: {ex.Message}";
+            SetCommandFailure();
+        }
+        finally
+        {
+            _busyTenantId = null;
+        }
+    }
+
+    private async Task StartCreateAsync()
+    {
+        await AccessibilityFocusService.SaveFocusAsync();
+        ClearReasonConfirmation();
+        ClearPurgeConfirmation();
+        _showCreate = true;
+        _createName = null;
+        _createSlug = null;
+        _assignCurrentUserAsTenantAdmin = false;
+        _commandMessage = null;
+        _pendingFocusElementId = "instance-tenants-create-name";
+    }
+
+    private async Task CancelCreateAsync()
+    {
+        ClearCreate();
+        await AccessibilityFocusService.RestoreFocusAsync("#instance-tenants-create-trigger");
+    }
+
+    private void ClearCreate()
+    {
+        _showCreate = false;
+        _createName = null;
+        _createSlug = null;
+        _assignCurrentUserAsTenantAdmin = false;
+    }
+
+    private async Task SubmitCreateAsync()
+    {
+        if (!CanSubmitCreate)
+        {
+            return;
+        }
+
+        _isCreating = true;
+        _commandMessage = null;
+
+        try
+        {
+            var result = await TenantService.CreateTenantAsync(new CreateTenantDto
+            {
+                FullName = _createName!.Trim(),
+                Slug = _createSlug!.Trim(),
+                IsActive = false,
+                AssignCurrentUserAsTenantAdmin = _assignCurrentUserAsTenantAdmin
+            });
+
+            if (result.Success == true)
+            {
+                ClearCreate();
+            }
+
+            await ApplyCommandResultAsync(result.Success, result.Message);
+
+            if (result.Success == true)
+            {
+                await AccessibilityFocusService.RestoreFocusAsync("#instance-tenants-create-trigger");
+            }
+        }
+        catch (Exception)
+        {
+            SetCommandFailure();
         }
         finally
         {
@@ -232,36 +391,201 @@
         }
     }
 
-    private void ConfirmDeleteTenant(TenantListDto tenant)
+    private async Task StartReasonConfirmation(HalResourceOfControlPlaneTenantListItemDto tenant, string relation)
     {
-        _tenantToDelete = tenant;
-        _showDeleteDialog = true;
+        await AccessibilityFocusService.SaveFocusAsync();
+        ClearCreate();
+        ClearPurgeConfirmation();
+        _reasonTenant = tenant;
+        _reasonRelation = relation;
+        _lifecycleReason = null;
+        _commandMessage = null;
+        _pendingFocusElementId = "instance-tenants-lifecycle-reason";
     }
 
-    private async Task DeleteTenantAsync()
+    private async Task CancelReasonConfirmationAsync()
     {
-        if (_tenantToDelete?.Id == null)
+        var fallbackSelector = _reasonTenant is null
+            ? null
+            : TenantActionTargetSelector(TenantId(_reasonTenant));
+        ClearReasonConfirmation();
+        await AccessibilityFocusService.RestoreFocusAsync(fallbackSelector);
+    }
+
+    private void ClearReasonConfirmation()
+    {
+        _reasonTenant = null;
+        _reasonRelation = null;
+        _lifecycleReason = null;
+    }
+
+    private async Task ConfirmReasonTransitionAsync()
+    {
+        if (!CanConfirmReason || _reasonTenant is null || _reasonRelation is null)
         {
             return;
         }
 
-        _isDeleting = true;
+        var tenantId = TenantId(_reasonTenant);
+        _busyTenantId = tenantId;
+        _commandMessage = null;
 
         try
         {
-            await AdminService.DeleteTenantAsync(_tenantToDelete.Id.Value);
-            _showDeleteDialog = false;
-            Snackbar.Add($"Tenant '{_tenantToDelete.FullName}' deleted.", Severity.Success);
-            _tenantToDelete = null;
-            await LoadTenantsAsync();
+            var reason = _lifecycleReason!.Trim();
+            var result = _reasonRelation switch
+            {
+                ControlPlaneLinkRelations.Suspend => await TenantService.SuspendTenantAsync(tenantId, reason),
+                ControlPlaneLinkRelations.Archive => await TenantService.ArchiveTenantAsync(tenantId, reason),
+                _ => new BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto
+                {
+                    Success = false,
+                    Message = "This tenant action is not supported.",
+                    FailureCode = "control_plane_action_not_supported"
+                }
+            };
+
+            if (result.Success == true)
+            {
+                ClearReasonConfirmation();
+            }
+
+            await ApplyCommandResultAsync(result.Success, result.Message);
+
+            if (result.Success == true)
+            {
+                await AccessibilityFocusService.RestoreFocusAsync(TenantActionTargetSelector(tenantId));
+            }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _errorMessage = $"Failed to delete tenant: {ex.Message}";
+            SetCommandFailure();
         }
         finally
         {
-            _isDeleting = false;
+            _busyTenantId = null;
         }
     }
+
+    private async Task StartPurgeConfirmation(HalResourceOfControlPlaneTenantListItemDto tenant)
+    {
+        await AccessibilityFocusService.SaveFocusAsync();
+        ClearCreate();
+        ClearReasonConfirmation();
+        _purgeTenant = tenant;
+        _purgeReason = null;
+        _purgeConfirmation = null;
+        _commandMessage = null;
+        _pendingFocusElementId = "instance-tenants-purge-reason";
+    }
+
+    private async Task CancelPurgeConfirmationAsync()
+    {
+        var fallbackSelector = _purgeTenant is null
+            ? null
+            : TenantActionTargetSelector(TenantId(_purgeTenant));
+        ClearPurgeConfirmation();
+        await AccessibilityFocusService.RestoreFocusAsync(fallbackSelector);
+    }
+
+    private void ClearPurgeConfirmation()
+    {
+        _purgeTenant = null;
+        _purgeReason = null;
+        _purgeConfirmation = null;
+    }
+
+    private async Task ConfirmPurgeAsync()
+    {
+        if (!CanConfirmPurge || _purgeTenant is null)
+        {
+            return;
+        }
+
+        var tenantId = TenantId(_purgeTenant);
+        _busyTenantId = tenantId;
+        _commandMessage = null;
+
+        try
+        {
+            var result = await TenantService.ScheduleTenantPurgeAsync(
+                tenantId,
+                _purgeReason!.Trim(),
+                _purgeConfirmation!);
+
+            if (result.Success == true)
+            {
+                ClearPurgeConfirmation();
+            }
+
+            await ApplyCommandResultAsync(result.Success, result.Message);
+
+            if (result.Success == true)
+            {
+                await AccessibilityFocusService.RestoreFocusAsync(TenantActionTargetSelector(tenantId));
+            }
+        }
+        catch (Exception)
+        {
+            SetCommandFailure();
+        }
+        finally
+        {
+            _busyTenantId = null;
+        }
+    }
+
+    private async Task ApplyCommandResultAsync(bool? success, string? message)
+    {
+        _commandSucceeded = success == true;
+        _commandMessage = message ?? (_commandSucceeded ? "Tenant updated." : "The tenant action could not be completed.");
+
+        if (_commandSucceeded)
+        {
+            await LoadTenantsAsync();
+        }
+    }
+
+    private void SetCommandFailure()
+    {
+        _commandSucceeded = false;
+        _commandMessage = "The tenant action could not be completed.";
+    }
+
+    private static bool IsValidName(string? name)
+    {
+        var value = name?.Trim();
+        return !string.IsNullOrEmpty(value) && value.Length <= 500;
+    }
+
+    private static bool IsValidSlug(string? slug)
+    {
+        var value = slug?.Trim();
+        return !string.IsNullOrEmpty(value)
+            && value.Length <= 500
+            && value.All(character => char.IsAsciiLetterLower(character) || char.IsAsciiDigit(character) || character == '-');
+    }
+
+    private static bool HasTenantAction(HalResourceOfControlPlaneTenantListItemDto tenant) =>
+        ControlPlaneHal.HasLink(tenant._links, ControlPlaneLinkRelations.Configuration)
+        || ControlPlaneHal.HasLink(tenant._links, ControlPlaneLinkRelations.Activate)
+        || ControlPlaneHal.HasLink(tenant._links, ControlPlaneLinkRelations.Suspend)
+        || ControlPlaneHal.HasLink(tenant._links, ControlPlaneLinkRelations.Archive)
+        || ControlPlaneHal.HasLink(tenant._links, ControlPlaneLinkRelations.Reactivate)
+        || ControlPlaneHal.HasLink(tenant._links, ControlPlaneLinkRelations.SchedulePurge);
+
+    private static Guid TenantId(HalResourceOfControlPlaneTenantListItemDto tenant) => tenant.Id ?? Guid.Empty;
+
+    private static string TenantName(HalResourceOfControlPlaneTenantListItemDto tenant) =>
+        string.IsNullOrWhiteSpace(tenant.FullName) ? tenant.Slug ?? "Unnamed tenant" : tenant.FullName;
+
+    private static string TenantStatus(HalResourceOfControlPlaneTenantListItemDto tenant) =>
+        tenant.StatusName ?? tenant.StatusCode ?? "Unknown";
+
+    private static string TenantActionTargetId(Guid tenantId) => $"instance-tenants-actions-{tenantId:N}";
+
+    private static string TenantActionTargetSelector(Guid tenantId) => $"#{TenantActionTargetId(tenantId)}";
+
+    private static string TenantConfigurationHref(Guid tenantId) =>
+        ControlPlaneRoutes.TenantConfiguration.Replace("{TenantId}", tenantId.ToString(), StringComparison.Ordinal);
 }

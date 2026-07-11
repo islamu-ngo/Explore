@@ -97,7 +97,7 @@ public sealed class EventReportModerationService(
     public Task<ModerationReportActionResult> TriageAsync(
         Guid eventId,
         Guid reportId,
-        ModerationReportTriageActionRequest request,
+        TriageModerationReportRequestDto request,
         CancellationToken cancellationToken = default)
         => ExecuteActionAsync(
             eventId,
@@ -106,19 +106,13 @@ public sealed class EventReportModerationService(
             () => apiClient.TriageModerationReportAsync(
                 eventId,
                 reportId,
-                new TriageModerationReportRequestDto
-                {
-                    CaseId = request.CaseId,
-                    ExpectedCaseConcurrencyStamp = request.ExpectedCaseConcurrencyStamp,
-                    QueueCode = request.QueueCode,
-                    Priority = request.Priority
-                },
+                request,
                 cancellationToken: cancellationToken));
 
     public Task<ModerationReportActionResult> AssignAsync(
         Guid eventId,
         Guid reportId,
-        ModerationReportAssignActionRequest request,
+        AssignModerationReportRequestDto request,
         CancellationToken cancellationToken = default)
         => ExecuteActionAsync(
             eventId,
@@ -127,18 +121,13 @@ public sealed class EventReportModerationService(
             () => apiClient.AssignModerationReportAsync(
                 eventId,
                 reportId,
-                new AssignModerationReportRequestDto
-                {
-                    CaseId = request.CaseId,
-                    ExpectedCaseConcurrencyStamp = request.ExpectedCaseConcurrencyStamp,
-                    AssigneeUserId = request.AssigneeUserId
-                },
+                request,
                 cancellationToken: cancellationToken));
 
     public Task<ModerationReportActionResult> DecideAsync(
         Guid eventId,
         Guid reportId,
-        ModerationReportDecisionActionRequest request,
+        DecideModerationReportRequestDto request,
         CancellationToken cancellationToken = default)
         => ExecuteActionAsync(
             eventId,
@@ -147,21 +136,13 @@ public sealed class EventReportModerationService(
             () => apiClient.DecideModerationReportAsync(
                 eventId,
                 reportId,
-                new DecideModerationReportRequestDto
-                {
-                    CaseId = request.CaseId,
-                    ExpectedCaseConcurrencyStamp = request.ExpectedCaseConcurrencyStamp,
-                    DecisionKind = request.DecisionKind,
-                    ReasonCode = request.ReasonCode,
-                    SafeNote = request.SafeNote,
-                    DuplicateGroupId = request.DuplicateGroupId
-                },
+                request,
                 cancellationToken: cancellationToken));
 
     public Task<ModerationReportActionResult> ExecuteDecisionAsync(
         Guid eventId,
         Guid reportId,
-        ModerationReportExecuteDecisionActionRequest request,
+        ExecuteModerationReportDecisionRequestDto request,
         CancellationToken cancellationToken = default)
         => ExecuteActionAsync(
             eventId,
@@ -170,13 +151,7 @@ public sealed class EventReportModerationService(
             () => apiClient.ExecuteModerationReportDecisionAsync(
                 eventId,
                 reportId,
-                new ExecuteModerationReportDecisionRequestDto
-                {
-                    CaseId = request.CaseId,
-                    DecisionId = request.DecisionId,
-                    ExpectedCaseConcurrencyStamp = request.ExpectedCaseConcurrencyStamp,
-                    CorrelationId = request.CorrelationId
-                },
+                request,
                 cancellationToken: cancellationToken));
 
     private async Task<ModerationReportActionResult> ExecuteActionAsync(

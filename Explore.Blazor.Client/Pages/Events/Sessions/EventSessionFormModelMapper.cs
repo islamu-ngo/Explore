@@ -3,15 +3,13 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models.EventSessions;
-using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
 
 namespace Explore.Blazor.Client.Pages.Events.Sessions;
 
 internal static class EventSessionFormModelMapper
 {
     public static EventSessionCreateFormState ApplyCreateContext(
-        ComposerCreateEventSessionRequest session,
+        CreateEventSessionDto session,
         EventSessionCreateContextDto context,
         int fallbackRegistrationModeId)
     {
@@ -37,29 +35,35 @@ internal static class EventSessionFormModelMapper
     }
 
     public static EventSessionEditFormState PopulateUpdateRequest(
-        UpdateEventSessionRequest session,
+        UpdateEventSessionDto session,
         EventSessionDto sourceSession,
         Guid eventId)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(sourceSession);
 
-        session.Id = sourceSession.Id;
-        session.ExpectedConcurrencyStamp = sourceSession.ConcurrencyStamp ?? Guid.Empty;
-        session.EventId = eventId;
-        session.Title = sourceSession.Title ?? string.Empty;
-        session.Description = sourceSession.Description;
-        session.LocationId = sourceSession.LocationId;
-        session.RoomId = sourceSession.RoomId;
-        session.SortOrder = sourceSession.SortOrder;
-        session.FeaturedImageId = sourceSession.FeaturedImageId;
-        session.EventSessionKindId = sourceSession.EventSessionKindId;
-        session.MaxAudienceAttendees = sourceSession.MaxAudienceAttendees;
-        session.RegistrationModeId = sourceSession.RegistrationModeId;
-        session.Slug = sourceSession.Slug;
-        session.Price = sourceSession.Price;
-        session.CurrencyCode = sourceSession.CurrencyCode;
-        session.IslamicAspect = MapIslamicAspect(sourceSession.IslamicAspect);
+        session.Event = new UpdateEventSessionEventDto { EventId = eventId };
+        session.Schedule = new UpdateEventSessionScheduleDto
+        {
+            StartTime = OptionalDateTimeOffset(sourceSession.StartTime),
+            EndTime = OptionalDateTimeOffset(sourceSession.EndTime)
+        };
+        session.Location = new UpdateEventSessionLocationDto { Value = OptionalGuid(sourceSession.LocationId) };
+        session.FeaturedImage = new UpdateEventSessionFeaturedImageDto { Value = OptionalGuid(sourceSession.FeaturedImageId) };
+        session.Room = new UpdateEventSessionRoomDto { Value = OptionalGuid(sourceSession.RoomId) };
+        session.SortOrder = new UpdateEventSessionSortOrderDto { Value = sourceSession.SortOrder.GetValueOrDefault() };
+        session.Title = new UpdateEventSessionTitleDto { Value = OptionalString(sourceSession.Title ?? string.Empty) };
+        session.Kind = new UpdateEventSessionKindDto { Value = OptionalInt(sourceSession.EventSessionKindId) };
+        session.Description = new UpdateEventSessionDescriptionDto { Value = OptionalString(sourceSession.Description) };
+        session.Slug = new UpdateEventSessionSlugDto { Value = OptionalString(sourceSession.Slug) };
+        session.MaxAudienceAttendees = new UpdateEventSessionMaxAudienceAttendeesDto { Value = OptionalInt(sourceSession.MaxAudienceAttendees) };
+        session.RegistrationMode = new UpdateEventSessionRegistrationModeDto { Value = OptionalInt(sourceSession.RegistrationModeId) };
+        session.Price = new UpdateEventSessionPriceDto { Value = OptionalDecimal(sourceSession.Price) };
+        session.CurrencyCode = new UpdateEventSessionCurrencyCodeDto { Value = OptionalString(sourceSession.CurrencyCode) };
+        session.IslamicAspect = new UpdateEventSessionIslamicAspectUpdateDto
+        {
+            Value = OptionalEventSessionIslamicAspect(sourceSession.IslamicAspect)
+        };
 
         var localStart = DateTimeHelper.ConvertUtcToLocal(sourceSession.StartTime);
         var localEnd = DateTimeHelper.ConvertUtcToLocal(sourceSession.EndTime);
@@ -71,7 +75,7 @@ internal static class EventSessionFormModelMapper
     }
 
     public static bool TryPrepareCreateRequest(
-        ComposerCreateEventSessionRequest session,
+        CreateEventSessionDto session,
         Guid eventId,
         Guid? tenantId,
         DateTime? sessionDate,
@@ -100,9 +104,10 @@ internal static class EventSessionFormModelMapper
     }
 
     public static bool TryPrepareUpdateRequest(
-        UpdateEventSessionRequest session,
+        UpdateEventSessionDto session,
         Guid eventId,
         Guid sessionId,
+        Guid? sourceSessionId,
         DateTime? sessionDate,
         TimeSpan? startTime,
         TimeSpan? endTime,
@@ -111,18 +116,22 @@ internal static class EventSessionFormModelMapper
         ArgumentNullException.ThrowIfNull(session);
         validationError = null;
 
-        if (session.Id is null || session.Id == Guid.Empty || session.Id != sessionId)
+        if (sourceSessionId is null
+            || sourceSessionId == Guid.Empty
+            || sessionId == Guid.Empty
+            || sourceSessionId != sessionId)
         {
             validationError = "The session context is invalid. Return to the event draft and try again.";
             return false;
         }
 
-        if (!TryNormalizeSchedule(session.Title, sessionDate, startTime, endTime, out var title, out var start, out var end, out validationError))
+        if (!TryNormalizeSchedule(session.Title?.Value?.Value, sessionDate, startTime, endTime, out var title, out var start, out var end, out validationError))
         {
             return false;
         }
 
-        session.EventId = eventId;
+        session.Event ??= new UpdateEventSessionEventDto();
+        session.Event.EventId = eventId;
         ApplyNormalizedSchedule(session, title, start, end);
         return true;
     }
@@ -166,7 +175,7 @@ internal static class EventSessionFormModelMapper
         return true;
     }
 
-    private static void ApplyNormalizedSchedule(ComposerCreateEventSessionRequest session, string title, DateTime start, DateTime end)
+    private static void ApplyNormalizedSchedule(CreateEventSessionDto session, string title, DateTime start, DateTime end)
     {
         session.Title = title;
         session.MaxAudienceAttendees = session.MaxAudienceAttendees > 0 ? session.MaxAudienceAttendees : null;
@@ -174,12 +183,14 @@ internal static class EventSessionFormModelMapper
         session.EndTime = DateTimeHelper.ConvertLocalToUtc(end);
     }
 
-    private static void ApplyNormalizedSchedule(UpdateEventSessionRequest session, string title, DateTime start, DateTime end)
+    private static void ApplyNormalizedSchedule(UpdateEventSessionDto session, string title, DateTime start, DateTime end)
     {
-        session.Title = title;
-        session.MaxAudienceAttendees = session.MaxAudienceAttendees > 0 ? session.MaxAudienceAttendees : null;
-        session.StartTime = DateTimeHelper.ConvertLocalToUtc(start);
-        session.EndTime = DateTimeHelper.ConvertLocalToUtc(end);
+        session.Title!.Value!.Value = title;
+        session.MaxAudienceAttendees!.Value!.Value = session.MaxAudienceAttendees.Value.Value > 0
+            ? session.MaxAudienceAttendees.Value.Value
+            : null;
+        session.Schedule!.StartTime!.Value = DateTimeHelper.ConvertLocalToUtc(start);
+        session.Schedule.EndTime!.Value = DateTimeHelper.ConvertLocalToUtc(end);
     }
 
     private static bool TryParseDefaultTime(string? value, out TimeSpan time)
@@ -197,7 +208,42 @@ internal static class EventSessionFormModelMapper
             .Select(group => group.EventSessionGroupId)
             .FirstOrDefault(groupId => groupId.HasValue && groupId.Value != Guid.Empty);
 
-    private static EventSessionIslamicAspectDto? MapIslamicAspect(EventSessionIslamicAspectDto? aspect) => aspect;
+    private static OptionalUpdateOfDateTimeOffset OptionalDateTimeOffset(DateTimeOffset? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOfEventSessionIslamicAspectDto OptionalEventSessionIslamicAspect(
+        EventSessionIslamicAspectDto? value) => new()
+        {
+            HasValue = true,
+            Value = value
+        };
+
+    private static OptionalUpdateOfGuid OptionalGuid(Guid? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOfint OptionalInt(int? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOfdecimal OptionalDecimal(double? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOfstring OptionalString(string? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
 }
 
 internal sealed record EventSessionCreateFormState(

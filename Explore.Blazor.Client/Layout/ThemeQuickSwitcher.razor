@@ -2,6 +2,7 @@
 @* ABOUTME: Delegates persistence to IAppearanceThemeService; links to Settings > Appearance for full control. *@
 
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
 @using MudBlazor
 @inject IAppearanceThemeService AppearanceThemeService
 @inject NavigationManager Nav
@@ -86,7 +87,7 @@
     private bool _isOpen;
     private string _currentMode = "system";
     private string? _currentPresetKey;
-    private IReadOnlyList<Services.Appearance.AvailablePresetDto> _presets = Array.Empty<Services.Appearance.AvailablePresetDto>();
+    private IReadOnlyList<AvailablePresetDto> _presets = Array.Empty<AvailablePresetDto>();
 
     private sealed record ModeOption(string Value, string Label, string Icon);
 
@@ -124,21 +125,21 @@
 
     private void ToggleMenu() => _isOpen = !_isOpen;
 
-    private async Task SelectPresetAsync(Services.Appearance.AvailablePresetDto preset)
+    private async Task SelectPresetAsync(AvailablePresetDto preset)
     {
         _currentPresetKey = preset.ThemeKey;
         _isOpen = false;
 
         var existingProfile = AppearanceThemeService.Current.UserProfiles
-            .FirstOrDefault(p => p.SourcePresetId == preset.Id && !p.IsArchived);
+            .FirstOrDefault(p => p.SourcePresetId == preset.Id && p.IsArchived != true);
 
         if (existingProfile is not null)
         {
-            await AppearanceThemeService.SetActiveProfileAsync(existingProfile.Id);
+            await AppearanceThemeService.SetActiveProfileAsync(existingProfile.Id ?? Guid.Empty);
         }
         else
         {
-            await AppearanceThemeService.ClonePresetAndActivateAsync(preset.Id);
+            await AppearanceThemeService.ClonePresetAndActivateAsync(preset.Id ?? Guid.Empty);
         }
     }
 

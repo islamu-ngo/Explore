@@ -4,7 +4,6 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Models.CustomProperties;
-using Explore.Blazor.Client.Models.Responses;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -26,7 +25,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
         return response?.Select(CustomPropertyValueModel.FromEventDto).ToList() ?? new List<CustomPropertyValueModel>();
     }
 
-    public async Task<BaseCommandResponse<Guid>?> SetEventValueAsync(Guid definitionId, Guid eventId, CustomPropertyValueModel model, CancellationToken cancellationToken = default)
+    public async Task<BaseCommandResponseOfGuid?> SetEventValueAsync(Guid definitionId, Guid eventId, CustomPropertyValueModel model, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -42,8 +41,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 OptionId = model.OptionId
             };
 
-            var response = await _apiClient.SetEventCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
-            return ToClientResponse(response);
+            return await _apiClient.SetEventCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -57,7 +55,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>?> SetEventMultiValuesAsync(Guid definitionId, Guid eventId, IEnumerable<CustomPropertyValueModel> models, CancellationToken cancellationToken = default)
+    public async Task<BaseCommandResponseOfGuid?> SetEventMultiValuesAsync(Guid definitionId, Guid eventId, IEnumerable<CustomPropertyValueModel> models, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -78,8 +76,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 }).ToList()
             };
 
-            var response = await _apiClient.SetEventCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
-            return ToClientResponse(response);
+            return await _apiClient.SetEventCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -99,7 +96,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
         return response?.Select(CustomPropertyValueModel.FromEventSessionDto).ToList() ?? new List<CustomPropertyValueModel>();
     }
 
-    public async Task<BaseCommandResponse<Guid>?> SetEventSessionValueAsync(Guid definitionId, Guid eventSessionId, CustomPropertyValueModel model, CancellationToken cancellationToken = default)
+    public async Task<BaseCommandResponseOfGuid?> SetEventSessionValueAsync(Guid definitionId, Guid eventSessionId, CustomPropertyValueModel model, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -115,8 +112,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 OptionId = model.OptionId
             };
 
-            var response = await _apiClient.SetEventSessionCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
-            return ToClientResponse(response);
+            return await _apiClient.SetEventSessionCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -130,7 +126,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
         }
     }
 
-    public async Task<BaseCommandResponse<Guid>?> SetEventSessionMultiValuesAsync(Guid definitionId, Guid eventSessionId, IEnumerable<CustomPropertyValueModel> models, CancellationToken cancellationToken = default)
+    public async Task<BaseCommandResponseOfGuid?> SetEventSessionMultiValuesAsync(Guid definitionId, Guid eventSessionId, IEnumerable<CustomPropertyValueModel> models, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -151,8 +147,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 }).ToList()
             };
 
-            var response = await _apiClient.SetEventSessionCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
-            return ToClientResponse(response);
+            return await _apiClient.SetEventSessionCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -164,16 +159,5 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
             _logger.LogError(ex, "[CP VAL] Unexpected error setting multi values for EventSession {EventSessionId} / Def {DefinitionId}", eventSessionId, definitionId);
             throw;
         }
-    }
-
-    private static BaseCommandResponse<Guid> ToClientResponse(BaseCommandResponseOfGuid response)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = response.Success ?? false,
-            Id = response.Id ?? Guid.Empty,
-            Message = response.Message,
-            Errors = response.Errors?.ToList()
-        };
     }
 }

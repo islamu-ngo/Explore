@@ -47,7 +47,7 @@
     </MudCard>
 
     <MudDataGrid @ref="_dataGrid" 
-                 T="CustomPropertyDefinitionListModel" 
+                 T="CustomPropertyDefinitionListDto"
                  ServerData="ServerReloadAsync"
                  RowClick="OnRowClick" 
                  Elevation="0" 
@@ -63,7 +63,7 @@
             <PropertyColumn Property="x => x.ExposureLevel" Title="Exposure" />
             <TemplateColumn Title="Status">
                 <CellTemplate>
-                    @if (context.Item.IsActive)
+                    @if (context.Item.IsActive == true)
                     {
                         <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Active</MudChip>
                     }
@@ -88,16 +88,16 @@
             </TemplateColumn>
         </Columns>
         <PagerContent>
-            <MudDataGridPager T="CustomPropertyDefinitionListModel" />
+            <MudDataGridPager T="CustomPropertyDefinitionListDto" />
         </PagerContent>
     </MudDataGrid>
 </MudContainer>
 
 @code {
-    private MudDataGrid<CustomPropertyDefinitionListModel> _dataGrid = default!;
+    private MudDataGrid<CustomPropertyDefinitionListDto> _dataGrid = default!;
     private EntityTypeName _entityTypeFilter = EntityTypeName.Event;
 
-    private async Task<GridData<CustomPropertyDefinitionListModel>> ServerReloadAsync(GridState<CustomPropertyDefinitionListModel> state, CancellationToken ct)
+    private async Task<GridData<CustomPropertyDefinitionListDto>> ServerReloadAsync(GridState<CustomPropertyDefinitionListDto> state, CancellationToken ct)
     {
         // MudDataGrid page uses 0-based index, our API uses 1-based
         int pageNumber = state.Page + 1;
@@ -108,7 +108,7 @@
             state.PageSize,
             ct);
 
-        return new GridData<CustomPropertyDefinitionListModel>
+        return new GridData<CustomPropertyDefinitionListDto>
         {
             TotalItems = result.TotalCount,
             Items = result.Items
@@ -121,7 +121,7 @@
         await _dataGrid.ReloadServerData();
     }
 
-    private void OnRowClick(DataGridRowClickEventArgs<CustomPropertyDefinitionListModel> args)
+    private void OnRowClick(DataGridRowClickEventArgs<CustomPropertyDefinitionListDto> args)
     {
         Navigation.NavigateTo($"/admin/tenant/custom-property-definitions/{args.Item.Id}");
     }
@@ -132,27 +132,27 @@
         var dialog = await DialogService.ShowAsync<CustomPropertyDefinitionEditor>("Create Definition", options);
         var result = await dialog.Result;
 
-        if (result != null && !result.Canceled && result.Data is CustomPropertyDefinitionDetailModel model)
+        if (result != null && !result.Canceled && result.Data is CustomPropertyDefinitionDto model)
         {
             var createDto = new CreateCustomPropertyDefinitionDto
             {
-                EntityTypeName = model.EntityTypeName,
+                EntityTypeName = (EntityTypeName?)model.EntityTypeName,
                 Namespace = model.Namespace,
                 Key = model.Key,
                 DisplayName = model.DisplayName,
                 Description = model.Description,
-                PropertyType = model.PropertyType,
+                PropertyType = (PropertyType?)model.PropertyType,
                 IsRequired = model.IsRequired,
                 IsMulti = model.IsMulti,
                 SortOrder = model.SortOrder,
-                ExposureLevel = model.ExposureLevel,
+                ExposureLevel = (ExposureLevel?)model.ExposureLevel,
                 MinLength = model.MinLength,
                 MaxLength = model.MaxLength,
                 RegexPattern = model.RegexPattern,
                 MinNumber = (double?)model.MinNumber,
                 MaxNumber = (double?)model.MaxNumber,
                 AllowedUrlSchemes = model.AllowedUrlSchemes,
-                Options = model.Options.Select(o => new CreateCustomPropertyOptionDto
+                Options = model.Options?.Select(o => new CreateCustomPropertyOptionDto
                 {
                     Namespace = model.Namespace,
                     Key = o.Key,
@@ -167,7 +167,7 @@
 
             var response = await CustomPropertyService.CreateDefinitionAsync(createDto);
             
-            if (response != null)
+            if (response?.Success is true)
             {
                 Snackbar.Add("Definition created successfully", Severity.Success);
                 await _dataGrid.ReloadServerData();
@@ -175,7 +175,7 @@
         }
     }
 
-    private async Task DeleteDefinitionAsync(CustomPropertyDefinitionListModel item)
+    private async Task DeleteDefinitionAsync(CustomPropertyDefinitionListDto item)
     {
         var parameters = new DialogParameters<MudMessageBox>
         {
@@ -190,7 +190,7 @@
 
         if (result != null && !result.Canceled)
         {
-            var success = await CustomPropertyService.DeleteDefinitionAsync(item.Id);
+            var success = await CustomPropertyService.DeleteDefinitionAsync(item.Id ?? Guid.Empty);
             if (success)
             {
                 Snackbar.Add("Definition deleted", Severity.Success);

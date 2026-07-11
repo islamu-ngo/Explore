@@ -42,8 +42,7 @@ else if (!_redirecting)
         try
         {
             var deploymentMode = await InstanceOnboardingService.GetDeploymentModeAsync();
-            if (string.IsNullOrWhiteSpace(deploymentMode?.Mode)
-                || string.Equals(deploymentMode.Mode, "SingleTenant", StringComparison.OrdinalIgnoreCase))
+            if (deploymentMode.Mode is null or DeploymentMode.SingleTenant)
             {
                 _redirecting = true;
                 Navigation.NavigateTo("/admin/instance/settings", replace: true);

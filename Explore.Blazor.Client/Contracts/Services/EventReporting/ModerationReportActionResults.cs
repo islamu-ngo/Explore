@@ -1,34 +1,9 @@
-// ABOUTME: Action request and result models for Blazor moderation report workflows.
-// ABOUTME: Keeps generated API DTOs behind the moderation service boundary.
+// ABOUTME: UI result model for Blazor moderation report actions.
+// ABOUTME: Preserves safe command failures while requests use generated API client DTOs directly.
 
 using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Contracts.Services.EventReporting;
-
-public sealed record ModerationReportTriageActionRequest(
-    Guid CaseId,
-    Guid ExpectedCaseConcurrencyStamp,
-    string QueueCode,
-    EventReportPriority Priority);
-
-public sealed record ModerationReportAssignActionRequest(
-    Guid CaseId,
-    Guid ExpectedCaseConcurrencyStamp,
-    Guid AssigneeUserId);
-
-public sealed record ModerationReportDecisionActionRequest(
-    Guid CaseId,
-    Guid ExpectedCaseConcurrencyStamp,
-    EventReportDecisionKind DecisionKind,
-    string ReasonCode,
-    string? SafeNote,
-    Guid? DuplicateGroupId);
-
-public sealed record ModerationReportExecuteDecisionActionRequest(
-    Guid CaseId,
-    Guid DecisionId,
-    Guid ExpectedCaseConcurrencyStamp,
-    string? CorrelationId);
 
 public sealed record ModerationReportActionResult(
     bool Success,

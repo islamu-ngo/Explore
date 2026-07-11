@@ -3,6 +3,7 @@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
 
 <div class="settings-section tenant-storage-section">
     <div class="settings-section-header">
@@ -12,18 +13,13 @@
         </MudText>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
-    {
-        <MudAlert Severity="Severity.Error" Class="tenant-storage-section__alert">@Model.ErrorMessage</MudAlert>
-    }
-
-    @if (!Model.TenantOverridesAllowed || Model.TenantStorageLocked || Model.IsReadOnly)
+    @if (Model.TenantOverridesAllowed != true || Model.TenantStorageLocked == true || Model.IsReadOnly == true)
     {
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="tenant-storage-section__alert">
             Storage overrides are read-only for this tenant. The effective provider and quotas below are inherited from platform policy.
         </MudAlert>
     }
-    else if (!Model.CanUpdate)
+    else if (!Model.HasLink("edit"))
     {
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="tenant-storage-section__alert">
             Storage settings are visible, but the API response did not include an edit affordance for this session.
@@ -33,37 +29,37 @@
     <div class="tenant-storage-section__summary">
         <div class="tenant-storage-section__summary-item">
             <MudText Typo="Typo.overline" Color="Color.Secondary">Effective Provider</MudText>
-            <MudText Typo="Typo.subtitle1">@StorageProviderOptions.Label(Model.EffectivePolicy.Provider)</MudText>
-            <MudText Typo="Typo.caption" Color="Color.Secondary">@Model.EffectivePolicy.ProviderSource</MudText>
+            <MudText Typo="Typo.subtitle1">@StorageProviderOptions.Label(Model.EffectivePolicy?.Provider)</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@Model.EffectivePolicy?.ProviderSource</MudText>
         </div>
         <div class="tenant-storage-section__summary-item">
             <MudText Typo="Typo.overline" Color="Color.Secondary">Max Upload</MudText>
-            <MudText Typo="Typo.subtitle1">@FormatBytes(Model.EffectivePolicy.MaxUploadBytes)</MudText>
-            <MudText Typo="Typo.caption" Color="Color.Secondary">@Model.EffectivePolicy.MaxUploadSource</MudText>
+            <MudText Typo="Typo.subtitle1">@FormatBytes(Model.EffectivePolicy?.MaxUploadBytes ?? 0)</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@Model.EffectivePolicy?.MaxUploadSource</MudText>
         </div>
         <div class="tenant-storage-section__summary-item">
             <MudText Typo="Typo.overline" Color="Color.Secondary">Tenant Quota</MudText>
-            <MudText Typo="Typo.subtitle1">@FormatBytes(Model.EffectivePolicy.TenantQuotaBytes)</MudText>
-            <MudText Typo="Typo.caption" Color="Color.Secondary">@Model.EffectivePolicy.QuotaSource</MudText>
+            <MudText Typo="Typo.subtitle1">@FormatBytes(Model.EffectivePolicy?.TenantQuotaBytes ?? 0)</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@Model.EffectivePolicy?.QuotaSource</MudText>
         </div>
     </div>
 
     <div class="tenant-storage-section__usage" aria-label="Tenant storage usage">
         <div class="tenant-storage-section__usage-item">
             <MudText Typo="Typo.overline" Color="Color.Secondary">Used</MudText>
-            <MudText Typo="Typo.h6">@FormatBytes(Model.Usage.UsedBytes)</MudText>
+            <MudText Typo="Typo.h6">@FormatBytes(Model.Usage?.UsedBytes ?? 0)</MudText>
         </div>
         <div class="tenant-storage-section__usage-item">
             <MudText Typo="Typo.overline" Color="Color.Secondary">Reserved</MudText>
-            <MudText Typo="Typo.h6">@FormatBytes(Model.Usage.ReservedBytes)</MudText>
+            <MudText Typo="Typo.h6">@FormatBytes(Model.Usage?.ReservedBytes ?? 0)</MudText>
         </div>
         <div class="tenant-storage-section__usage-item">
             <MudText Typo="Typo.overline" Color="Color.Secondary">Available</MudText>
-            <MudText Typo="Typo.h6">@(Model.Usage.AvailableBytes is long available ? FormatBytes(available) : "Not tracked")</MudText>
+            <MudText Typo="Typo.h6">@(Model.Usage?.AvailableBytes is long available ? FormatBytes(available) : "Not tracked")</MudText>
         </div>
         <div class="tenant-storage-section__usage-item">
             <MudText Typo="Typo.overline" Color="Color.Secondary">Objects</MudText>
-            <MudText Typo="Typo.h6">@Model.Usage.ObjectCount</MudText>
+            <MudText Typo="Typo.h6">@(Model.Usage?.ObjectCount ?? 0)</MudText>
         </div>
     </div>
 
@@ -71,7 +67,7 @@
         <MudSelect T="string"
                    Label="Tenant Storage Provider"
                    Variant="Variant.Outlined"
-                   @bind-Value="Model.Provider"
+                   @bind-Value="Provider"
                    Disabled="@ControlsDisabled">
             <MudSelectItem T="string" Value="@StorageProviderOptions.Local">Local file storage</MudSelectItem>
             <MudSelectItem T="string" Value="@StorageProviderOptions.S3Compatible">S3-compatible object storage</MudSelectItem>
@@ -82,17 +78,17 @@
                 <MudNumericField T="long"
                                  Label="Max upload (MB)"
                                  Variant="Variant.Outlined"
-                                 @bind-Value="Model.MaxUploadMiB"
+                                 @bind-Value="MaxUploadMiB"
                                  Min="1L"
                                  Max="@InstanceMaxUploadMiB"
                                  Disabled="@ControlsDisabled"
-                                 HelperText="@($"Platform ceiling: {FormatBytes(Model.EffectivePolicy.InstanceMaxUploadBytes)}")" />
+                                 HelperText="@($"Platform ceiling: {FormatBytes(Model.EffectivePolicy?.InstanceMaxUploadBytes ?? 0)}")" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudNumericField T="long"
                                  Label="Tenant quota (GB)"
                                  Variant="Variant.Outlined"
-                                 @bind-Value="Model.TenantQuotaGiB"
+                                 @bind-Value="TenantQuotaGiB"
                                  Min="1L"
                                  Disabled="@ControlsDisabled"
                                  HelperText="Total storage quota for this tenant." />
@@ -108,20 +104,20 @@
                     </MudText>
                 </div>
 
-                @foreach (var route in Model.Routes)
+                @foreach (var route in Model.Routes ?? [])
                 {
-                    <MudGrid Spacing="3" Class="tenant-storage-section__route-row" aria-label="@($"{route.RouteLabel} storage route")">
+                    <MudGrid Spacing="3" Class="tenant-storage-section__route-row" aria-label="@($"{StorageRouteOptions.Label(route.RouteKey)} storage route")">
                         <MudItem xs="12" md="4">
-                            <MudText Typo="Typo.subtitle2">@route.RouteLabel</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@route.RouteDescription</MudText>
+                            <MudText Typo="Typo.subtitle2">@StorageRouteOptions.Label(route.RouteKey)</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@StorageRouteOptions.Description(route.RouteKey)</MudText>
                         </MudItem>
                         <MudItem xs="12" md="4">
                             <MudSelect T="string"
-                                       Label="@($"{route.RouteLabel} provider")"
+                                       Label="@($"{StorageRouteOptions.Label(route.RouteKey)} provider")"
                                        Variant="Variant.Outlined"
                                        Dense="true"
                                        @bind-Value="route.Provider"
-                                       Disabled="@(ControlsDisabled || route.IsReadOnly)">
+                                       Disabled="@(ControlsDisabled || route.IsReadOnly == true)">
                                 <MudSelectItem T="string" Value="@StorageProviderOptions.Local">Local file storage</MudSelectItem>
                                 <MudSelectItem T="string" Value="@StorageProviderOptions.S3Compatible">S3-compatible object storage</MudSelectItem>
                             </MudSelect>
@@ -129,13 +125,14 @@
                         </MudItem>
                         <MudItem xs="12" md="4">
                             <MudNumericField T="long"
-                                             Label="@($"{route.RouteLabel} max upload (MB)")"
+                                             Label="@($"{StorageRouteOptions.Label(route.RouteKey)} max upload (MB)")"
                                              Variant="Variant.Outlined"
                                              Dense="true"
-                                             @bind-Value="route.MaxUploadMiB"
+                                             Value="@StorageAdminExtensions.BytesToMiB(route.MaxUploadBytes)"
+                                             ValueChanged="@(value => route.MaxUploadBytes = StorageAdminExtensions.MiBToBytes(value))"
                                              Min="1L"
                                              Max="@InstanceMaxUploadMiB"
-                                             Disabled="@(ControlsDisabled || route.IsReadOnly)" />
+                                             Disabled="@(ControlsDisabled || route.IsReadOnly == true)" />
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Source: @route.MaxUploadSource</MudText>
                         </MudItem>
                     </MudGrid>
@@ -143,7 +140,7 @@
             </MudStack>
         </MudPaper>
 
-        @if (Model.UsesS3CompatibleProvider)
+        @if (Provider == StorageProviderOptions.S3Compatible)
         {
             <div class="tenant-storage-section__provider-panel">
                 <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">S3-Compatible Override</MudText>
@@ -192,7 +189,7 @@
                 </MudGrid>
 
                 <MudSwitch T="bool"
-                           @bind-Value="Model.S3ForcePathStyle"
+                           @bind-Value="S3ForcePathStyle"
                            Color="Color.Primary"
                            Disabled="@ControlsDisabled">
                     Force path-style URLs
@@ -201,7 +198,7 @@
                 <MudNumericField T="int"
                                  Label="Upload URL expiration (minutes)"
                                  Variant="Variant.Outlined"
-                                 @bind-Value="Model.S3UploadUrlExpirationMinutes"
+                                 @bind-Value="S3UploadUrlExpirationMinutes"
                                  Min="1"
                                  Max="1440"
                                  Disabled="@ControlsDisabled" />
@@ -218,18 +215,48 @@
 
 @code {
     [Parameter, EditorRequired]
-    public TenantStorageSettingsModel Model { get; set; } = null!;
+    public HalResourceOfTenantStorageSettingsDto Model { get; set; } = null!;
 
     [Parameter]
     public bool IsSaving { get; set; }
 
-    private bool ControlsDisabled => IsSaving || !Model.IsEditable;
+    private bool ControlsDisabled => IsSaving || !Model.IsEditable();
+
+    private string Provider
+    {
+        get => StorageProviderOptions.Normalize(Model.Provider);
+        set => Model.Provider = value;
+    }
+
+    private long MaxUploadMiB
+    {
+        get => StorageAdminExtensions.BytesToMiB(Model.MaxUploadBytes);
+        set => Model.MaxUploadBytes = StorageAdminExtensions.MiBToBytes(value);
+    }
+
+    private long TenantQuotaGiB
+    {
+        get => StorageAdminExtensions.BytesToGiB(Model.TenantQuotaBytes);
+        set => Model.TenantQuotaBytes = StorageAdminExtensions.GiBToBytes(value);
+    }
+
+    private bool S3ForcePathStyle
+    {
+        get => Model.S3ForcePathStyle ?? true;
+        set => Model.S3ForcePathStyle = value;
+    }
+
+    private int S3UploadUrlExpirationMinutes
+    {
+        get => Model.S3UploadUrlExpirationMinutes ?? 60;
+        set => Model.S3UploadUrlExpirationMinutes = value;
+    }
 
     private long InstanceMaxUploadMiB =>
-        Math.Max(1, Model.EffectivePolicy.InstanceMaxUploadBytes / (1024L * 1024L));
+        StorageAdminExtensions.BytesToMiB(Model.EffectivePolicy?.InstanceMaxUploadBytes);
 
-    private static string ConfiguredText(bool configured, string label) =>
-        configured ? $"An existing {label} is configured. Leave blank to keep it." : string.Empty;
+    private static string ConfiguredText(bool? configured, string label) =>
+        configured == true ? $"An existing {label} is configured. Leave blank to keep it." : string.Empty;
 
     private static string FormatBytes(long bytes)
     {

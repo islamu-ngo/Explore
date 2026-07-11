@@ -2,7 +2,7 @@
 // ABOUTME: Maps to/from NSwag-generated localization configuration and governance DTOs.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Domain.Common.Localization;
+using Explore.Blazor.Client.Localization;
 
 namespace Explore.Blazor.Client.Models.Admin;
 

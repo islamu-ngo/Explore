@@ -1,7 +1,7 @@
 @* ABOUTME: Editor for a collection of event template definitions.
    ABOUTME: Handles adding/removing properties and configuring their metadata. *@
 
-@using Explore.Blazor.Client.Models.EventTemplates
+@using Explore.Blazor.Client.Clients
 
 <div class="event-template-definition-editor">
     @if (!Definitions.Any())
@@ -30,10 +30,10 @@
                                 <MudTextField @bind-Value="def.DisplayName" Label="Display Name" Required="true" />
                             </MudItem>
                             <MudItem xs="12" sm="6" md="4">
-                                <MudSelect T="PropertyType" @bind-Value="def.PropertyType" Label="Type" Required="true">
+                                <MudSelect T="PropertyType?" @bind-Value="def.PropertyType" Label="Type" Required="true">
                                     @foreach (PropertyType type in Enum.GetValues(typeof(PropertyType)))
                                     {
-                                        <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
+                                        <MudSelectItem T="PropertyType?" Value="@((PropertyType?)type)">@type.ToString()</MudSelectItem>
                                     }
                                 </MudSelect>
                             </MudItem>
@@ -46,10 +46,10 @@
                                 <MudNumericField @bind-Value="def.SortOrder" Label="Sort Order" />
                             </MudItem>
                             <MudItem xs="6" sm="3" md="2">
-                                <MudSelect T="ExposureLevel" @bind-Value="def.ExposureLevel" Label="Exposure">
+                                <MudSelect T="ExposureLevel?" @bind-Value="def.ExposureLevel" Label="Exposure">
                                     @foreach (ExposureLevel level in Enum.GetValues(typeof(ExposureLevel)))
                                     {
-                                        <MudSelectItem Value="@level">@level.ToString()</MudSelectItem>
+                                        <MudSelectItem T="ExposureLevel?" Value="@((ExposureLevel?)level)">@level.ToString()</MudSelectItem>
                                     }
                                 </MudSelect>
                             </MudItem>
@@ -99,7 +99,7 @@
                         {
                             <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">Options</MudText>
                             <div class="event-template-definition-editor__options">
-                                @if (def.Options.Any())
+                                @if (def.Options?.Any() == true)
                                 {
                                     <MudTable Items="@def.Options" Hover="true" Dense="true" Elevation="0" Class="mb-2">
                                         <HeaderContent>
@@ -142,14 +142,14 @@
 
 @code {
     [Parameter]
-    public IList<EventTemplateDefinitionModel> Definitions { get; set; } = new List<EventTemplateDefinitionModel>();
+    public IList<CreateEventTemplateDefinitionDto> Definitions { get; set; } = new List<CreateEventTemplateDefinitionDto>();
 
     [Parameter]
-    public EventCallback<IList<EventTemplateDefinitionModel>> OnDefinitionsChanged { get; set; }
+    public EventCallback<IList<CreateEventTemplateDefinitionDto>> OnDefinitionsChanged { get; set; }
 
     private async Task AddDefinition()
     {
-        Definitions.Add(new EventTemplateDefinitionModel 
+        Definitions.Add(new CreateEventTemplateDefinitionDto
         { 
             PropertyType = PropertyType.Text, 
             IsActive = true,
@@ -167,15 +167,16 @@
         }
     }
 
-    private async Task AddOption(EventTemplateDefinitionModel definition)
+    private async Task AddOption(CreateEventTemplateDefinitionDto definition)
     {
-        definition.Options.Add(new EventTemplateOptionModel { IsActive = true });
+        definition.Options ??= [];
+        definition.Options.Add(new CreateEventTemplateOptionDto { IsActive = true });
         await NotifyChangedAsync();
     }
 
-    private async Task RemoveOption(EventTemplateDefinitionModel definition, EventTemplateOptionModel option)
+    private async Task RemoveOption(CreateEventTemplateDefinitionDto definition, CreateEventTemplateOptionDto option)
     {
-        definition.Options.Remove(option);
+        definition.Options?.Remove(option);
         await NotifyChangedAsync();
     }
 

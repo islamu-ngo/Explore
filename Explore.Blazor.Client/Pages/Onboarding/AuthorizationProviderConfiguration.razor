@@ -118,15 +118,15 @@
                                                 Best for strict policy control, audits, enterprise deployments, and BYO policy setups.
                                             </MudText>
                                             <MudStack Row="true" Spacing="1" Class="authz-provider-card__chips">
-                                                @if (_model.CerbosEndpointVerified)
+                                                @if (_model.CerbosEndpointVerified == true)
                                                 {
                                                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">PDP reachable</MudChip>
                                                 }
-                                                else if (_model.CerbosDetectedFromEnvironment)
+                                                else if (_model.CerbosDetectedFromEnvironment == true)
                                                 {
                                                     <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">Detected</MudChip>
                                                 }
-                                                <MudChip T="string" Size="Size.Small" Color="@OwnershipChipColor(_model.CerbosEndpointOwnership)" Variant="Variant.Outlined">@SourceLabel</MudChip>
+                                                <MudChip T="string" Size="Size.Small" Color="@OwnershipChipColor(EndpointOwnership)" Variant="Variant.Outlined">@SourceLabel</MudChip>
                                                 <MudChip T="string" Size="Size.Small" Color="@PolicyReadinessColor" Variant="Variant.Outlined">@PolicyReadinessLabel</MudChip>
                                             </MudStack>
                                         </MudStack>
@@ -147,10 +147,10 @@
                                     </MudText>
                                 </MudStack>
 
-                                <MudAlert Severity="@OwnershipAlertSeverity(_model.CerbosEndpointOwnership)" Dense="true">
+                                <MudAlert Severity="@OwnershipAlertSeverity(EndpointOwnership)" Dense="true">
                                     <MudStack Spacing="1">
                                         <MudText Typo="Typo.subtitle2">@SourceLabel</MudText>
-                                        <MudText Typo="Typo.body2">@_model.CerbosEndpointOwnership.Description</MudText>
+                                        <MudText Typo="Typo.body2">@EndpointOwnership.Description</MudText>
                                     </MudStack>
                                 </MudAlert>
 
@@ -281,7 +281,7 @@
                             else
                             {
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                    Sync now uses @(_model.CerbosAdminCredentialsOwnership.Badge.ToLowerInvariant()) Admin API credentials already configured for the API. No Cerbos password is sent from the browser.
+                                    Sync now uses @(AdminCredentialsOwnership.Badge?.ToLowerInvariant() ?? "configured") Admin API credentials already configured for the API. No Cerbos password is sent from the browser.
                                 </MudText>
                             }
                         </MudStack>
@@ -308,8 +308,8 @@
                         @if (IsSelected(CerbosProvider))
                         {
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudIcon Icon="@(_model.CerbosEndpointVerified ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Warning)"
-                                         Color="@(_model.CerbosEndpointVerified ? Color.Success : Color.Warning)"
+                                <MudIcon Icon="@(_model.CerbosEndpointVerified == true ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Warning)"
+                                         Color="@(_model.CerbosEndpointVerified == true ? Color.Success : Color.Warning)"
                                          Size="Size.Small" />
                                 <MudText Typo="Typo.body2">Runtime endpoint: @RuntimeStatusLabel</MudText>
                             </MudStack>
@@ -344,7 +344,7 @@
                         }
                     </MudButton>
 
-                    @if (IsSelected(CerbosProvider) && !_model.CerbosEndpointVerified)
+                    @if (IsSelected(CerbosProvider) && _model.CerbosEndpointVerified != true)
                     {
                         <MudText Typo="Typo.caption" Color="Color.Secondary">
                             Verify the runtime PDP endpoint before continuing with Cerbos.
@@ -376,7 +376,7 @@
         (6, "Finish")
     ];
 
-    private AuthorizationProviderConfigurationModel _model = new();
+    private AuthorizationProviderConfigurationDto _model = new();
     private bool _isAuthenticated;
     private bool _isLoading = true;
     private FormSubmitState _submitState = new();
@@ -384,32 +384,34 @@
     private string? _errorMessage;
     private string? _successMessage;
     private bool _shouldLoadConfiguration = true;
-    private IJSObjectReference? _bffModule;
     private bool _isSyncing;
     private bool _manualPolicyPackageInstalled;
     private bool _policyPackageSynced;
 
-    private bool IsEndpointLocked => !_model.CerbosEndpointOwnership.Editable;
+    private SecretOwnershipDto EndpointOwnership => _model.CerbosEndpointOwnership ??= new();
+    private SecretOwnershipDto AdminCredentialsOwnership => _model.CerbosAdminCredentialsOwnership ??= new();
+
+    private bool IsEndpointLocked => EndpointOwnership.Editable != true;
 
     private bool IsUsingDetectedBootstrap =>
-        IsSelected(CerbosProvider) && _model.CerbosEndpointOwnership.BootstrapAvailable;
+        IsSelected(CerbosProvider) && EndpointOwnership.BootstrapAvailable == true;
 
     private bool PolicyPackageReady => _policyPackageSynced || _manualPolicyPackageInstalled;
 
     private string EndpointHelperText => IsEndpointLocked
         ? "Deployment-managed endpoint. Change it in the environment, secret provider, or appsettings and redeploy/restart."
-        : _model.CerbosEndpointOwnership.BootstrapAvailable
+        : EndpointOwnership.BootstrapAvailable == true
             ? "Modify before saving if needed. This checks runtime PDP health only; policy installation is tracked below."
             : "This checks runtime PDP health only. Policy installation is tracked below.";
 
     private bool HasServerSideAdminApiCredentials =>
-        _model.CerbosAdminUsernameConfigured && _model.CerbosAdminPasswordConfigured;
+        _model.CerbosAdminUsernameConfigured == true && _model.CerbosAdminPasswordConfigured == true;
 
     private bool CanShowPolicySync =>
         IsSelected(CerbosProvider) && HasServerSideAdminApiCredentials && !PolicyPackageReady;
 
     private bool CanSyncPolicies =>
-        !_isSyncing && !_submitState.IsSubmitting && CanShowPolicySync && _model.CerbosEndpointVerified;
+        !_isSyncing && !_submitState.IsSubmitting && CanShowPolicySync && _model.CerbosEndpointVerified == true;
 
     private bool CanVerify =>
         !_isVerifying &&
@@ -418,7 +420,7 @@
     private bool CanSave =>
         !_submitState.IsSubmitting &&
         (IsSelected(LocalProvider) ||
-         (!string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint) && _model.CerbosEndpointVerified && PolicyPackageReady));
+         (!string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint) && _model.CerbosEndpointVerified == true && PolicyPackageReady));
 
     private bool CanPrimaryAction =>
         IsSelected(CerbosProvider) && CanShowPolicySync
@@ -427,7 +429,7 @@
 
     private string PrimaryActionLabel => IsSelected(LocalProvider)
         ? "Continue with Local RBAC"
-        : !_model.CerbosEndpointVerified
+        : _model.CerbosEndpointVerified != true
             ? "Fix Cerbos endpoint"
             : CanShowPolicySync
                 ? "Sync policies now"
@@ -437,11 +439,11 @@
 
     private string SelectedProviderLabel => IsSelected(CerbosProvider) ? "Cerbos" : "Local RBAC";
 
-    private string RuntimeStatusLabel => _model.CerbosEndpointVerified
+    private string RuntimeStatusLabel => _model.CerbosEndpointVerified == true
         ? "Reachable"
         : string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint) ? "Not configured" : "Not verified";
 
-    private Color RuntimeStatusColor => _model.CerbosEndpointVerified ? Color.Success : Color.Warning;
+    private Color RuntimeStatusColor => _model.CerbosEndpointVerified == true ? Color.Success : Color.Warning;
 
     private string PolicyReadinessLabel => PolicyPackageReady ? "Policies confirmed" : "Policies not verified";
 
@@ -451,9 +453,9 @@
 
     private Color SyncStatusColor => HasServerSideAdminApiCredentials ? Color.Info : Color.Default;
 
-    private string SourceLabel => _model.CerbosEndpointOwnership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+    private string SourceLabel => string.Equals(EndpointOwnership.Mode, "deployment-managed", StringComparison.OrdinalIgnoreCase)
         ? "Deployment-managed"
-        : _model.CerbosEndpointOwnership.BootstrapAvailable ? "From deployment" : "Application-managed";
+        : EndpointOwnership.BootstrapAvailable == true ? "From deployment" : "Application-managed";
 
     private string ReadinessSummaryText => IsSelected(LocalProvider)
         ? "Local RBAC has no external service dependency."
@@ -485,17 +487,14 @@
 
         try
         {
-            var bffModule = await GetBffModuleAsync();
-            _model = await bffModule.InvokeAsync<AuthorizationProviderConfigurationModel>(
-                "fetchJson",
-                "/api/InstanceOnboarding/authz-provider-configuration/internal");
+            _model = await InstanceOnboardingService.GetAuthorizationProviderConfigurationAsync();
             ApplyDetectedProviderDefaults();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load authorization provider configuration.");
             _errorMessage = "Could not load authorization provider configuration. Please refresh and try again.";
-            _model = new AuthorizationProviderConfigurationModel();
+            _model = new AuthorizationProviderConfigurationDto();
         }
         finally
         {
@@ -503,8 +502,8 @@
             StateHasChanged();
         }
 
-        if (_model.CerbosDetectedFromEnvironment
-            && !_model.CerbosEndpointVerified
+        if (_model.CerbosDetectedFromEnvironment == true
+            && _model.CerbosEndpointVerified != true
             && IsSelected(CerbosProvider)
             && !string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint))
         {
@@ -534,7 +533,7 @@
 
     private void ApplyDetectedProviderDefaults()
     {
-        if (_model.CerbosDetectedFromEnvironment && !_model.AuthorizationProviderConfigured)
+        if (_model.CerbosDetectedFromEnvironment == true && _model.AuthorizationProviderConfigured != true)
         {
             _model.Provider = CerbosProvider;
             return;
@@ -547,24 +546,24 @@
     }
 
     private bool IsSelected(string provider) =>
-        _model.Provider.Equals(provider, StringComparison.OrdinalIgnoreCase);
+        string.Equals(_model.Provider, provider, StringComparison.OrdinalIgnoreCase);
 
     private string GetCardStyle(string provider) =>
         IsSelected(provider)
             ? "cursor:pointer; border: 2px solid var(--mud-palette-primary);"
             : "cursor:pointer;";
 
-    private static Color OwnershipChipColor(SecretOwnershipModel ownership) =>
-        ownership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+    private static Color OwnershipChipColor(SecretOwnershipDto ownership) =>
+        string.Equals(ownership.Mode, "deployment-managed", StringComparison.OrdinalIgnoreCase)
             ? Color.Warning
-            : ownership.BootstrapAvailable
+            : ownership.BootstrapAvailable == true
                 ? Color.Info
                 : Color.Success;
 
-    private static Severity OwnershipAlertSeverity(SecretOwnershipModel ownership) =>
-        ownership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+    private static Severity OwnershipAlertSeverity(SecretOwnershipDto ownership) =>
+        string.Equals(ownership.Mode, "deployment-managed", StringComparison.OrdinalIgnoreCase)
             ? Severity.Warning
-            : ownership.BootstrapAvailable
+            : ownership.BootstrapAvailable == true
                 ? Severity.Info
                 : Severity.Success;
 
@@ -588,19 +587,19 @@
 
     private async Task VerifyCerbosEndpointAsync()
     {
+        if (string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint))
+        {
+            return;
+        }
+
         _isVerifying = true;
         _errorMessage = null;
         _successMessage = null;
 
-        var bffModule = await GetBffModuleAsync();
-        var response = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
-            "sendCommand",
-            "POST",
-            "/api/InstanceOnboarding/authz-provider-configuration/verify",
-            new { grpcEndpoint = _model.CerbosGrpcEndpoint });
+        var response = await InstanceOnboardingService.VerifyCerbosEndpointAsync(_model.CerbosGrpcEndpoint);
         _isVerifying = false;
 
-        if (!response.Success)
+        if (response.Success != true)
         {
             _model.CerbosEndpointVerified = false;
             _policyPackageSynced = false;
@@ -608,7 +607,7 @@
                 ? "Failed to verify the Cerbos PDP endpoint."
                 : response.Message;
 
-            if (response.Errors.Count > 0)
+            if (response.Errors?.Count > 0)
             {
                 _errorMessage += " " + string.Join(" ", response.Errors);
             }
@@ -632,15 +631,10 @@
         _successMessage = null;
         _manualPolicyPackageInstalled = false;
 
-        var bffModule = await GetBffModuleAsync();
-        var syncResponse = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
-            "sendCommand",
-            "POST",
-            "/api/InstanceOnboarding/authz-provider-configuration/sync",
-            new { });
+        var syncResponse = await InstanceOnboardingService.SyncAuthorizationPolicyPackageAsync();
         _isSyncing = false;
 
-        if (!syncResponse.Success)
+        if (syncResponse.Success != true)
         {
             _model.CerbosAdminPassword = null;
             _policyPackageSynced = false;
@@ -648,7 +642,7 @@
                 ? "Authorization policy package sync failed."
                 : syncResponse.Message;
 
-            if (syncResponse.Errors.Count > 0)
+            if (syncResponse.Errors?.Count > 0)
             {
                 _errorMessage += " " + string.Join(" ", syncResponse.Errors);
             }
@@ -680,20 +674,15 @@
         _errorMessage = null;
         _successMessage = null;
 
-        var bffModule = await GetBffModuleAsync();
-        var response = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
-            "sendCommand",
-            "PUT",
-            "/api/InstanceOnboarding/authz-provider-configuration",
-            _model);
-        if (!response.Success)
+        var response = await InstanceOnboardingService.SaveAuthorizationProviderConfigurationAsync(_model);
+        if (response.Success != true)
         {
             _submitState.Complete();
             _errorMessage = string.IsNullOrWhiteSpace(response.Message)
                 ? "Failed to save authorization provider configuration."
                 : response.Message;
 
-            if (response.Errors.Count > 0)
+            if (response.Errors?.Count > 0)
             {
                 _errorMessage += " " + string.Join(" ", response.Errors);
             }
@@ -722,9 +711,4 @@
         }
     }
 
-    private async Task<IJSObjectReference> GetBffModuleAsync()
-    {
-        _bffModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "/js/bff.js");
-        return _bffModule;
-    }
 }

@@ -1,37 +1,39 @@
 // ABOUTME: Client service for tenant onboarding status and tenant policy settings workflows.
 // ABOUTME: Supports startup gating and tenant policy questionnaire submission through BFF endpoints.
 
-using Refit;
+using Explore.Blazor.Client.Clients;
+
 namespace Explore.Blazor.Client.Services;
 
 public interface ITenantOnboardingService
 {
-    Task<TenantOnboardingStatusModel?> GetStatusAsync();
-    Task<TenantPolicySettingsModel> GetSettingsAsync();
-    Task<InstanceCommandResponseModel> CompleteAsync(TenantPolicySettingsModel settings);
-    Task<InstanceCommandResponseModel> UpdateSettingsAsync(TenantPolicySettingsModel settings);
-    Task<IReadOnlyList<AiAssistantModelOptionModel>> GetAiModelsAsync(string endpointUrl, string? apiKey);
+    Task<TenantOnboardingStatusDto?> GetStatusAsync();
+    Task<TenantPolicySettingsDto> GetSettingsAsync();
+    Task<BaseCommandResponseOfGuid> CompleteAsync(TenantPolicySettingsDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateSettingsAsync(
+        TenantPolicySettingsDto settings,
+        bool forceAnnouncementBarRedisplay = false);
+    Task<IReadOnlyList<AiAssistantModelDto>> GetAiModelsAsync(string endpointUrl, string? apiKey);
 }
 
 public class TenantOnboardingService : ITenantOnboardingService
 {
-    private readonly ITenantOnboardingApi _api;
+    private readonly IEventApiClient _api;
     private readonly ILogger<TenantOnboardingService> _logger;
 
     public TenantOnboardingService(
-        ITenantOnboardingApi api,
+        IEventApiClient api,
         ILogger<TenantOnboardingService> logger)
     {
         _api = api;
         _logger = logger;
     }
 
-    public async Task<TenantOnboardingStatusModel?> GetStatusAsync()
+    public async Task<TenantOnboardingStatusDto?> GetStatusAsync()
     {
         try
         {
-            var response = await _api.GetStatusAsync(CancellationToken.None);
-            return response.IsSuccessStatusCode ? response.Content : null;
+            return await _api.GetTenantOnboardingStatusAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -40,39 +42,42 @@ public class TenantOnboardingService : ITenantOnboardingService
         }
     }
 
-    public async Task<TenantPolicySettingsModel> GetSettingsAsync()
+    public async Task<TenantPolicySettingsDto> GetSettingsAsync()
     {
         try
         {
-            var response = await _api.GetSettingsAsync(CancellationToken.None);
-            return response.IsSuccessStatusCode ? response.Content! : new TenantPolicySettingsModel();
+            return await _api.GetTenantOnboardingPolicySettingsAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch tenant policy settings.");
-            return new TenantPolicySettingsModel();
+            return DefaultSettings();
         }
     }
 
-    public Task<InstanceCommandResponseModel> CompleteAsync(TenantPolicySettingsModel settings) =>
-        SendCommandAsync(() => _api.CompleteAsync(settings, CancellationToken.None));
+    public Task<BaseCommandResponseOfGuid> CompleteAsync(TenantPolicySettingsDto settings) =>
+        SendCommandAsync(() => _api.CompleteTenantOnboardingAsync(
+            ToRequest(settings, false),
+            cancellationToken: CancellationToken.None));
 
-    public Task<InstanceCommandResponseModel> UpdateSettingsAsync(TenantPolicySettingsModel settings) =>
-        SendCommandAsync(() => _api.UpdateSettingsAsync(settings, CancellationToken.None));
+    public Task<BaseCommandResponseOfGuid> UpdateSettingsAsync(
+        TenantPolicySettingsDto settings,
+        bool forceAnnouncementBarRedisplay = false) =>
+        SendCommandAsync(() => _api.UpdateTenantOnboardingPolicySettingsAsync(
+            ToRequest(settings, forceAnnouncementBarRedisplay),
+            cancellationToken: CancellationToken.None));
 
-    public async Task<IReadOnlyList<AiAssistantModelOptionModel>> GetAiModelsAsync(string endpointUrl, string? apiKey)
+    public async Task<IReadOnlyList<AiAssistantModelDto>> GetAiModelsAsync(string endpointUrl, string? apiKey)
     {
         try
         {
-            var response = await _api.GetAiModelsAsync(new AiAssistantModelDiscoveryRequestModel
+            var response = await _api.GetAiAssistantModelsAsync(new AiAssistantModelDiscoveryRequestDto
             {
                 EndpointUrl = endpointUrl,
                 ApiKey = apiKey
-            }, CancellationToken.None);
+            }, cancellationToken: CancellationToken.None);
 
-            return response.IsSuccessStatusCode && response.Content is not null
-                ? response.Content
-                : [];
+            return response.ToList();
         }
         catch (Exception ex)
         {
@@ -81,29 +86,26 @@ public class TenantOnboardingService : ITenantOnboardingService
         }
     }
 
-    private async Task<InstanceCommandResponseModel> SendCommandAsync(
-        Func<Task<IApiResponse<InstanceCommandResponseModel>>> sendFunc)
+    private async Task<BaseCommandResponseOfGuid> SendCommandAsync(
+        Func<Task<BaseCommandResponseOfGuid>> sendFunc)
     {
         try
         {
-            var response = await sendFunc();
-
-            if (response.IsSuccessStatusCode && response.Content is not null)
-            {
-                return response.Content;
-            }
-
-            return new InstanceCommandResponseModel
+            return await sendFunc();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "Tenant onboarding endpoint returned status {StatusCode}.", ex.StatusCode);
+            return new BaseCommandResponseOfGuid
             {
                 Success = false,
-                StatusCode = (int)response.StatusCode,
-                Message = response.Error?.Content ?? $"Request failed with status {(int)response.StatusCode}."
+                Message = $"Request failed with status {ex.StatusCode}."
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to call tenant onboarding endpoint.");
-            return new InstanceCommandResponseModel
+            return new BaseCommandResponseOfGuid
             {
                 Success = false,
                 Message = "Request failed.",
@@ -111,87 +113,63 @@ public class TenantOnboardingService : ITenantOnboardingService
             };
         }
     }
-}
 
-public class AiAssistantModelDiscoveryRequestModel
-{
-    public string EndpointUrl { get; set; } = string.Empty;
-    public string? ApiKey { get; set; }
-}
+    private static TenantPolicySettingsDto DefaultSettings() => new()
+    {
+        AllowUserSubmittedEvents = true,
+        AllowOrganizationSubmittedEvents = true,
+        AllowGroupSubmittedEvents = true,
+        AllowOrganizationSelfRegistration = true,
+        AllowGroupSelfRegistration = true,
+        RequireOrganizationVerification = true,
+        PreferredHomePage = "EventList",
+        CanOverrideHomePagePreference = true,
+        CanOverrideSubdomain = true,
+        CanOverrideCustomDomain = true,
+        CanOverrideEventCardClickBehavior = true,
+        CanOverrideCommunityGuidelines = true,
+        AiAssistantProvider = "none"
+    };
 
-public class AiAssistantModelOptionModel
-{
-    public string Id { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public int? MaxInputTokens { get; set; }
-    public int? MaxOutputTokens { get; set; }
-    public bool SupportsToolProposals { get; set; }
-    public bool SupportsStreaming { get; set; }
-}
-
-public class TenantOnboardingStatusModel
-{
-    public bool IsCompleted { get; set; }
-    public bool IsAuthenticated { get; set; }
-    public bool IsCurrentUserTenantAdministrator { get; set; }
-    public bool IsCurrentUserPlatformAdministrator { get; set; }
-    public Guid TenantId { get; set; }
-}
-
-public class TenantPolicySettingsModel
-{
-    public bool AllowUserSubmittedEvents { get; set; } = true;
-    public bool AllowOrganizationSubmittedEvents { get; set; } = true;
-    public bool AllowGroupSubmittedEvents { get; set; } = true;
-    public bool AllowOrganizationSelfRegistration { get; set; } = true;
-    public bool AllowGroupSelfRegistration { get; set; } = true;
-    public bool EventCardClickOpensDetailPage { get; set; }
-    public bool RequireEventApproval { get; set; }
-    public bool RequireOrganizationVerification { get; set; } = true;
-    public bool CanTenantOmitVerification { get; set; }
-    public string PreferredHomePage { get; set; } = "EventList";
-    public string InstanceBaseDomain { get; set; } = string.Empty;
-    public string Subdomain { get; set; } = string.Empty;
-    public string CustomDomain { get; set; } = string.Empty;
-    public bool AnnouncementBarEnabled { get; set; }
-    public string AnnouncementBarMessage { get; set; } = string.Empty;
-    public string AnnouncementBarLinkText { get; set; } = string.Empty;
-    public string AnnouncementBarLinkUrl { get; set; } = string.Empty;
-    public int AnnouncementBarRevision { get; set; }
-    public bool ForceAnnouncementBarRedisplay { get; set; }
-    public bool CanOverrideHomePagePreference { get; set; } = true;
-    public bool CanOverrideSubdomain { get; set; } = true;
-    public bool CanOverrideCustomDomain { get; set; } = true;
-    public bool CanOverrideEventCardClickBehavior { get; set; } = true;
-    public string CommunityGuidelinesContent { get; set; } = string.Empty;
-    public bool CanOverrideCommunityGuidelines { get; set; } = true;
-    public string RenderPolicyPreset { get; set; } = string.Empty;
-    public bool EnableAdvancedRenderPolicyOverrides { get; set; }
-    public string GlobalRenderMode { get; set; } = string.Empty;
-    public bool GlobalPrerenderEnabled { get; set; }
-    public string PublicSeoRenderMode { get; set; } = string.Empty;
-    public bool PublicSeoPrerenderEnabled { get; set; }
-    public string OperationalRenderMode { get; set; } = string.Empty;
-    public bool OperationalPrerenderEnabled { get; set; }
-    public string AdminRenderMode { get; set; } = string.Empty;
-    public bool AdminPrerenderEnabled { get; set; }
-    public bool CanOverrideRenderPolicy { get; set; }
-    public bool CanOverridePublicSeoRenderPolicy { get; set; }
-    public bool CanOverrideOperationalRenderPolicy { get; set; }
-    public bool CanOverrideAdminRenderPolicy { get; set; }
-    public bool CanOverrideSmtp { get; set; }
-    public bool CanOverrideStorage { get; set; }
-    public bool CanOverrideAnalytics { get; set; }
-    public bool AiAssistantEnabled { get; set; }
-    public string AiAssistantProvider { get; set; } = "none";
-    public string AiAssistantEndpointUrl { get; set; } = string.Empty;
-    public string AiAssistantApiKey { get; set; } = string.Empty;
-    public string AiAssistantModelId { get; set; } = string.Empty;
-    public List<string> AiAssistantAllowedModelIds { get; set; } = [];
-    public bool AiAssistantAllowAnonymousAccess { get; set; }
-    public bool CanOverrideAiAssistant { get; set; }
-    public bool CanOverrideMcp { get; set; }
-    public bool CanOverrideMcpLegacySse { get; set; }
-    public bool McpEnabled { get; set; }
-    public bool McpEnableLegacySse { get; set; }
+    private static UpdateTenantPolicyRequest ToRequest(
+        TenantPolicySettingsDto settings,
+        bool forceAnnouncementBarRedisplay) => new()
+        {
+            AllowUserSubmittedEvents = settings.AllowUserSubmittedEvents,
+            AllowOrganizationSubmittedEvents = settings.AllowOrganizationSubmittedEvents,
+            AllowGroupSubmittedEvents = settings.AllowGroupSubmittedEvents,
+            AllowOrganizationSelfRegistration = settings.AllowOrganizationSelfRegistration,
+            AllowGroupSelfRegistration = settings.AllowGroupSelfRegistration,
+            EventCardClickOpensDetailPage = settings.EventCardClickOpensDetailPage,
+            RequireEventApproval = settings.RequireEventApproval,
+            RequireOrganizationVerification = settings.RequireOrganizationVerification,
+            PreferredHomePage = settings.PreferredHomePage,
+            Subdomain = settings.Subdomain,
+            CustomDomain = settings.CustomDomain,
+            AnnouncementBarEnabled = settings.AnnouncementBarEnabled,
+            AnnouncementBarMessage = settings.AnnouncementBarMessage,
+            AnnouncementBarLinkText = settings.AnnouncementBarLinkText,
+            AnnouncementBarLinkUrl = settings.AnnouncementBarLinkUrl,
+            ForceAnnouncementBarRedisplay = forceAnnouncementBarRedisplay,
+            CommunityGuidelinesContent = settings.CommunityGuidelinesContent,
+            RenderPolicyPreset = settings.RenderPolicyPreset,
+            EnableAdvancedRenderPolicyOverrides = settings.EnableAdvancedRenderPolicyOverrides,
+            GlobalRenderMode = settings.GlobalRenderMode,
+            GlobalPrerenderEnabled = settings.GlobalPrerenderEnabled,
+            PublicSeoRenderMode = settings.PublicSeoRenderMode,
+            PublicSeoPrerenderEnabled = settings.PublicSeoPrerenderEnabled,
+            OperationalRenderMode = settings.OperationalRenderMode,
+            OperationalPrerenderEnabled = settings.OperationalPrerenderEnabled,
+            AdminRenderMode = settings.AdminRenderMode,
+            AdminPrerenderEnabled = settings.AdminPrerenderEnabled,
+            AiAssistantEnabled = settings.AiAssistantEnabled,
+            AiAssistantProvider = settings.AiAssistantProvider,
+            AiAssistantEndpointUrl = settings.AiAssistantEndpointUrl,
+            AiAssistantApiKey = settings.AiAssistantApiKey,
+            AiAssistantModelId = settings.AiAssistantModelId,
+            AiAssistantAllowedModelIds = settings.AiAssistantAllowedModelIds,
+            AiAssistantAllowAnonymousAccess = settings.AiAssistantAllowAnonymousAccess,
+            McpEnabled = settings.McpEnabled,
+            McpEnableLegacySse = settings.McpEnableLegacySse
+        };
 }

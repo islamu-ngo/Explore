@@ -80,6 +80,30 @@ export function downloadBase64File(base64Content, fileName, contentType) {
     }
 }
 
+export function downloadFileFromUrl(url) {
+    if (typeof url !== 'string' || url.trim().length === 0) {
+        return false;
+    }
+
+    try {
+        const downloadUrl = new URL(url, window.location.origin);
+        if (downloadUrl.origin !== window.location.origin) {
+            return false;
+        }
+
+        const link = document.createElement('a');
+        link.href = downloadUrl.href;
+        link.download = '';
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function normalizeContentType(contentType) {
     return typeof contentType === 'string' && contentType.trim().length > 0
         ? contentType

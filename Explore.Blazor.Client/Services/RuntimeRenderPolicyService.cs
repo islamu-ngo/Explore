@@ -1,6 +1,7 @@
 // ABOUTME: Resolves runtime Blazor render policy for the current request path using governance settings.
 // ABOUTME: Applies route-group classification, global fallback, and onboarding InteractiveServer guardrail.
 
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Providers;
 
 namespace Explore.Blazor.Client.Services;
@@ -40,7 +41,7 @@ public sealed class RuntimeRenderPolicyService : IRuntimeRenderPolicyService
         }
     }
 
-    internal static RuntimeRenderPolicyDecision ResolveFromSettings(RuntimeRouteGroup routeGroup, PublicExperienceSettingsModel? settings)
+    internal static RuntimeRenderPolicyDecision ResolveFromSettings(RuntimeRouteGroup routeGroup, PublicExperienceSettingsDto? settings)
     {
         if (settings is null)
         {
@@ -48,32 +49,32 @@ public sealed class RuntimeRenderPolicyService : IRuntimeRenderPolicyService
         }
 
         var renderMode = NormalizeRenderMode(settings.GlobalRenderMode);
-        var prerenderEnabled = settings.GlobalPrerenderEnabled;
+        var prerenderEnabled = settings.GlobalPrerenderEnabled == true;
 
-        if (settings.EnableAdvancedRenderPolicyOverrides)
+        if (settings.EnableAdvancedRenderPolicyOverrides == true)
         {
             switch (routeGroup)
             {
                 case RuntimeRouteGroup.PublicSeo:
                     renderMode = NormalizeRenderMode(settings.PublicSeoRenderMode);
-                    prerenderEnabled = settings.PublicSeoPrerenderEnabled;
+                    prerenderEnabled = settings.PublicSeoPrerenderEnabled == true;
                     break;
                 case RuntimeRouteGroup.Admin:
                     renderMode = NormalizeRenderMode(settings.AdminRenderMode);
-                    prerenderEnabled = settings.AdminPrerenderEnabled;
+                    prerenderEnabled = settings.AdminPrerenderEnabled == true;
                     break;
                 case RuntimeRouteGroup.Onboarding:
                     renderMode = NormalizeRenderMode(settings.OnboardingRenderMode);
-                    prerenderEnabled = settings.OnboardingPrerenderEnabled;
+                    prerenderEnabled = settings.OnboardingPrerenderEnabled == true;
                     break;
                 default:
                     renderMode = NormalizeRenderMode(settings.OperationalRenderMode);
-                    prerenderEnabled = settings.OperationalPrerenderEnabled;
+                    prerenderEnabled = settings.OperationalPrerenderEnabled == true;
                     break;
             }
         }
         else if (routeGroup == RuntimeRouteGroup.PublicSeo &&
-                 settings.RenderPolicyPreset.Equals(SeoBalancedPreset, StringComparison.OrdinalIgnoreCase))
+                 settings.RenderPolicyPreset?.Equals(SeoBalancedPreset, StringComparison.OrdinalIgnoreCase) == true)
         {
             prerenderEnabled = true;
         }
