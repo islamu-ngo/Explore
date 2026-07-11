@@ -1,5 +1,5 @@
-// ABOUTME: Extension methods for IConfigurationBuilder to add secret providers.
-// Provides AddInfisical and AddDatabaseConfiguration extension methods.
+// ABOUTME: Adds Infisical and database-backed secret sources to IConfigurationBuilder.
+// ABOUTME: Owns the API-side startup configuration implementation for Explore.Secrets consumers.
 
 namespace Explore.Secrets.Extensions;
 
@@ -37,10 +37,9 @@ public static class ConfigurationBuilderExtensions
         var clientId = configuration["Infisical:ClientId"];
         var clientSecret = configuration["Infisical:ClientSecret"];
 
-        // Skip if not configured (allow running without Infisical in some environments)
-        if (string.IsNullOrEmpty(projectId) ||
-            string.IsNullOrEmpty(clientId) ||
-            string.IsNullOrEmpty(clientSecret))
+        if (string.IsNullOrEmpty(projectId)
+            || string.IsNullOrEmpty(clientId)
+            || string.IsNullOrEmpty(clientSecret))
         {
             Console.WriteLine("[Infisical] Skipping: Infisical credentials not configured in user secrets.");
             Console.WriteLine("[Infisical] Set Infisical:ProjectId, Infisical:ClientId, and Infisical:ClientSecret to enable.");
@@ -53,12 +52,11 @@ public static class ConfigurationBuilderExtensions
             ProjectId = projectId,
             ClientId = clientId,
             ClientSecret = clientSecret,
-            Environment = configuration["Infisical:Environment"] ?? "dev"
+            Environment = configuration["Infisical:Environment"] ?? "dev",
         };
 
-        // Load paths from configuration
         var paths = configuration.GetSection("Infisical:Paths").Get<List<string>>();
-        if (paths is not null && paths.Count > 0)
+        if (paths is { Count: > 0 })
         {
             source.Paths.Clear();
             source.Paths.AddRange(paths);
@@ -90,7 +88,7 @@ public static class ConfigurationBuilderExtensions
         {
             ProjectId = projectId,
             ClientId = clientId,
-            ClientSecret = clientSecret
+            ClientSecret = clientSecret,
         };
 
         configure?.Invoke(source);

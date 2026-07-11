@@ -10,7 +10,6 @@ KEYCLOAK_REALM="${KEYCLOAK_REALM:-ISLAMU}"
 KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN:-}"
 KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-}"
 KEYCLOAK_BLAZOR_CLIENT_ID="${KEYCLOAK_BLAZOR_CLIENT_ID:-islamu-event-blazor}"
-KEYCLOAK_CONTROL_PLANE_CLIENT_ID="${KEYCLOAK_CONTROL_PLANE_CLIENT_ID:-islamu-event-control-plane}"
 KEYCLOAK_API_CLIENT_ID="${KEYCLOAK_API_CLIENT_ID:-islamu-event-api}"
 KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET="${KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET:-false}"
 KEYCLOAK_SMTP_HOST="${KEYCLOAK_SMTP_HOST:-}"
@@ -26,10 +25,9 @@ KEYCLOAK_SMTP_ENVELOPE_FROM="${KEYCLOAK_SMTP_ENVELOPE_FROM:-}"
 KEYCLOAK_SMTP_USER="${KEYCLOAK_SMTP_USER:-}"
 KEYCLOAK_SMTP_PASSWORD="${KEYCLOAK_SMTP_PASSWORD:-}"
 DEFAULT_LOCAL_BLAZOR_SECRET="islamu-event-blazor-secret"
-DEFAULT_LOCAL_CONTROL_PLANE_SECRET="islamu-event-control-plane-secret"
 KCADM="${KCADM:-/opt/keycloak/bin/kcadm.sh}"
-CONTROL_PLANE_REDIRECT_URIS='["http://localhost:7003/*","https://localhost:7188/*","http://localhost/*","https://localhost/*","http://127.0.0.1:7003/*","https://127.0.0.1:7188/*","http://127.0.0.1/*","https://127.0.0.1/*","https://100.64.0.2:7188/*","https://100.64.0.2/*","http://100.64.0.2:7003/*","http://100.64.0.2/*","http://admin.localhost/*","https://admin.localhost/*","http://control.localhost/*","https://control.localhost/*","http://host.docker.internal:7003/*","http://host.docker.internal/*"]'
-CONTROL_PLANE_LOGOUT_REDIRECT_URIS='http://localhost:7003/*##https://localhost:7188/*##http://localhost/*##https://localhost/*##http://127.0.0.1:7003/*##https://127.0.0.1:7188/*##http://127.0.0.1/*##https://127.0.0.1/*##https://100.64.0.2:7188/*##https://100.64.0.2/*##http://100.64.0.2:7003/*##http://100.64.0.2/*##http://admin.localhost/*##https://admin.localhost/*##http://control.localhost/*##https://control.localhost/*##http://host.docker.internal:7003/*##http://host.docker.internal/*'
+BLAZOR_REDIRECT_URIS='["http://localhost:7002/*","https://localhost:7177/*","https://100.64.0.2:7177/*","http://localhost/*","https://localhost/*","http://127.0.0.1/*","https://100.64.0.2/*","http://100.64.0.2/*","http://admin.localhost:7002/*","http://admin.localhost/*","https://admin.localhost/*","http://host.docker.internal/*"]'
+BLAZOR_LOGOUT_REDIRECT_URIS='http://localhost:7002/*##https://localhost:7177/*##http://localhost/*##https://localhost/*##https://100.64.0.2:7177/*##https://100.64.0.2/*##http://100.64.0.2:7177/*##http://100.64.0.2/*##http://admin.localhost:7002/*##http://admin.localhost/*##https://admin.localhost/*'
 
 log() {
   printf '[keycloak-init] %s\n' "$1" >&2
@@ -68,21 +66,6 @@ resolve_blazor_secret() {
   fi
 
   fail "KEYCLOAK_BLAZOR_CLIENT_SECRET is required for the confidential Blazor BFF client. Set KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true only for throwaway local development."
-}
-
-resolve_control_plane_secret() {
-  if [ -n "${KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET:-}" ]; then
-    printf '%s' "$KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET"
-    return 0
-  fi
-
-  if [ "$KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET" = "true" ]; then
-    log "Using the opt-in local development default for ${KEYCLOAK_CONTROL_PLANE_CLIENT_ID}. Do not use this in production."
-    printf '%s' "$DEFAULT_LOCAL_CONTROL_PLANE_SECRET"
-    return 0
-  fi
-
-  return 1
 }
 
 client_uuid() {
@@ -147,28 +130,27 @@ sync_realm_smtp_settings() {
   log "Synchronized SMTP settings for realm '$KEYCLOAK_REALM'."
 }
 
-sync_control_plane_client_settings() {
+sync_blazor_client_settings() {
   local uuid
   local attributes
 
-  uuid="$(client_uuid "$KEYCLOAK_CONTROL_PLANE_CLIENT_ID")"
+  uuid="$(client_uuid "$KEYCLOAK_BLAZOR_CLIENT_ID")"
   if [ -z "$uuid" ]; then
-    fail "Keycloak client '$KEYCLOAK_CONTROL_PLANE_CLIENT_ID' was not found in realm '$KEYCLOAK_REALM'. Confirm realm import completed successfully."
+    fail "Keycloak client '$KEYCLOAK_BLAZOR_CLIENT_ID' was not found in realm '$KEYCLOAK_REALM'. Confirm realm import completed successfully."
   fi
 
-  attributes="{\"pkce.code.challenge.method\":\"S256\",\"post.logout.redirect.uris\":\"$CONTROL_PLANE_LOGOUT_REDIRECT_URIS\",\"backchannel.logout.session.required\":\"true\",\"backchannel.logout.revoke.offline.tokens\":\"false\",\"use.refresh.tokens\":\"true\",\"oauth2.device.authorization.grant.enabled\":\"false\",\"oidc.ciba.grant.enabled\":\"false\"}"
+  attributes="{\"pkce.code.challenge.method\":\"S256\",\"post.logout.redirect.uris\":\"$BLAZOR_LOGOUT_REDIRECT_URIS\",\"backchannel.logout.session.required\":\"true\",\"backchannel.logout.revoke.offline.tokens\":\"false\",\"use.refresh.tokens\":\"true\",\"oauth2.device.authorization.grant.enabled\":\"false\",\"oidc.ciba.grant.enabled\":\"false\"}"
 
   "$KCADM" update "clients/$uuid" -r "$KEYCLOAK_REALM" \
-    -s "redirectUris=$CONTROL_PLANE_REDIRECT_URIS" \
+    -s "redirectUris=$BLAZOR_REDIRECT_URIS" \
     -s 'webOrigins=["+"]' \
     -s "attributes=$attributes" >/dev/null
 
-  log "Synchronized redirect URIs for client '$KEYCLOAK_CONTROL_PLANE_CLIENT_ID'."
+  log "Synchronized redirect URIs for client '$KEYCLOAK_BLAZOR_CLIENT_ID'."
 }
 
 main() {
   local blazor_secret
-  local control_plane_secret
 
   require_non_empty "KEYCLOAK_ADMIN" "$KEYCLOAK_ADMIN"
   require_non_empty "KEYCLOAK_ADMIN_PASSWORD" "$KEYCLOAK_ADMIN_PASSWORD"
@@ -186,16 +168,10 @@ main() {
 
   enable_realm_registration
   sync_realm_smtp_settings
-  sync_control_plane_client_settings
+  sync_blazor_client_settings
 
   blazor_secret="$(resolve_blazor_secret)"
   set_client_secret "$KEYCLOAK_BLAZOR_CLIENT_ID" "$blazor_secret"
-
-  if control_plane_secret="$(resolve_control_plane_secret)"; then
-    set_client_secret "$KEYCLOAK_CONTROL_PLANE_CLIENT_ID" "$control_plane_secret"
-  else
-    log "KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET is unset; leaving optional control-plane BFF client secret unchanged."
-  fi
 
   if [ -n "${KEYCLOAK_API_CLIENT_SECRET:-}" ]; then
     set_client_secret "$KEYCLOAK_API_CLIENT_ID" "$KEYCLOAK_API_CLIENT_SECRET"

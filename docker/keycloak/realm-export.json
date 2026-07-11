@@ -243,73 +243,9 @@
         "http://127.0.0.1/*",
         "https://100.64.0.2/*",
         "http://100.64.0.2/*",
-        "http://host.docker.internal/*"
-      ],
-      "webOrigins": ["+"],
-      "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
-        "web-origins",
-        "acr"
-      ],
-      "optionalClientScopes": ["offline_access", "address", "phone"],
-      "attributes": {
-        "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:7002/*##https://localhost:7177/*##http://localhost/*##https://localhost/*##https://100.64.0.2:7177/*##https://100.64.0.2/*##http://100.64.0.2:7177/*##http://100.64.0.2/*",
-        "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false",
-        "use.refresh.tokens": "true",
-        "oauth2.device.authorization.grant.enabled": "false",
-        "oidc.ciba.grant.enabled": "false"
-      },
-      "protocolMappers": [
-        {
-          "name": "islamu-event-api-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "consentRequired": false,
-          "config": {
-            "included.client.audience": "islamu-event-api",
-            "id.token.claim": "false",
-            "access.token.claim": "true"
-          }
-        }
-      ]
-    },
-    {
-      "clientId": "islamu-event-control-plane",
-      "name": "ISLAMU Event Control Plane (BFF)",
-      "description": "Dedicated confidential OIDC client for the separate Event control-plane Blazor BFF. Authorization code flow with PKCE.",
-      "enabled": true,
-      "consentRequired": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "islamu-event-control-plane-secret",
-      "publicClient": false,
-      "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "implicitFlowEnabled": false,
-      "fullScopeAllowed": false,
-      "protocol": "openid-connect",
-      "redirectUris": [
-        "http://localhost:7003/*",
-        "https://localhost:7188/*",
-        "http://localhost/*",
-        "https://localhost/*",
-        "http://127.0.0.1:7003/*",
-        "https://127.0.0.1:7188/*",
-        "http://127.0.0.1/*",
-        "https://127.0.0.1/*",
-        "https://100.64.0.2:7188/*",
-        "https://100.64.0.2/*",
-        "http://100.64.0.2:7003/*",
-        "http://100.64.0.2/*",
+        "http://admin.localhost:7002/*",
         "http://admin.localhost/*",
         "https://admin.localhost/*",
-        "http://control.localhost/*",
-        "https://control.localhost/*",
-        "http://host.docker.internal:7003/*",
         "http://host.docker.internal/*"
       ],
       "webOrigins": ["+"],
@@ -323,7 +259,7 @@
       "optionalClientScopes": ["offline_access", "address", "phone"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:7003/*##https://localhost:7188/*##http://localhost/*##https://localhost/*##http://127.0.0.1:7003/*##https://127.0.0.1:7188/*##http://127.0.0.1/*##https://127.0.0.1/*##https://100.64.0.2:7188/*##https://100.64.0.2/*##http://100.64.0.2:7003/*##http://100.64.0.2/*##http://admin.localhost/*##https://admin.localhost/*##http://control.localhost/*##https://control.localhost/*##http://host.docker.internal:7003/*##http://host.docker.internal/*",
+        "post.logout.redirect.uris": "http://localhost:7002/*##https://localhost:7177/*##http://localhost/*##https://localhost/*##https://100.64.0.2:7177/*##https://100.64.0.2/*##http://100.64.0.2:7177/*##http://100.64.0.2/*##http://admin.localhost:7002/*##http://admin.localhost/*##https://admin.localhost/*",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "true",

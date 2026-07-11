@@ -1,5 +1,5 @@
 // ABOUTME: Configuration provider that loads secrets from Infisical into IConfiguration.
-// Converts Infisical secrets to .NET configuration keys (SCREAMING_SNAKE_CASE to Section:PascalCase).
+// ABOUTME: Converts Infisical secrets to canonical .NET configuration keys.
 
 namespace Explore.Secrets.Configuration;
 

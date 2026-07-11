@@ -1,5 +1,5 @@
 // ABOUTME: Configuration source for loading secrets from Infisical.
-// Used with IConfigurationBuilder.Add() to include Infisical secrets in configuration.
+// ABOUTME: Used with IConfigurationBuilder.Add() to include Infisical secrets in configuration.
 
 namespace Explore.Secrets.Configuration;
 

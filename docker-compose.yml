@@ -55,6 +55,7 @@ x-s3-env: &s3-env
 
 x-api-runtime-env: &api-runtime-env
   DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-}
+  CONTROL_PLANE_PUBLIC_ORIGIN: ${CONTROL_PLANE_PUBLIC_ORIGIN:-http://admin.localhost:7002}
   SETUP_SECRET: ${SETUP_SECRET:-}
   SETUP_SECRET_REQUIRED: ${SETUP_SECRET_REQUIRED:-true}
   USE_COMMERCIAL_LUCKYPENNY: ${USE_COMMERCIAL_LUCKYPENNY:-false}
@@ -270,8 +271,6 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KEYCLOAK_BLAZOR_CLIENT_ID: islamu-event-blazor
       KEYCLOAK_BLAZOR_CLIENT_SECRET: ${KEYCLOAK_BLAZOR_CLIENT_SECRET:-}
-      KEYCLOAK_CONTROL_PLANE_CLIENT_ID: ${KEYCLOAK_CONTROL_PLANE_CLIENT_ID:-islamu-event-control-plane}
-      KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET: ${KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET:-}
       KEYCLOAK_API_CLIENT_ID: islamu-event-api
       KEYCLOAK_API_CLIENT_SECRET: ${KEYCLOAK_API_CLIENT_SECRET:-}
       KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET: ${KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET:-false}
@@ -359,6 +358,7 @@ services:
       Keycloak__Realm: ${KEYCLOAK_REALM:-ISLAMU}
       Keycloak__ClientId: islamu-event-blazor
       Keycloak__ClientSecret: ${KEYCLOAK_BLAZOR_CLIENT_SECRET:-}
+      Bff__AdminHosts__0: ${CONTROL_PLANE_PUBLIC_ORIGIN:-http://admin.localhost:7002}
       ConnectionStrings__cache: ${REDIS_CONNECTION_STRING:-redis:6379}
     ports:
       - "${UI_HTTP_PORT:-7002}:8080"
@@ -375,37 +375,6 @@ services:
       minio:
         condition: service_healthy
         required: false
-
-  islamu-event-control-plane:
-    profiles: ["control-plane"]
-    build:
-      context: .
-      dockerfile: Event.ControlPlane.Blazor/Dockerfile
-    environment:
-      <<: [*keycloak-env, *secrets-env]
-      ASPNETCORE_URLS: http://+:8080
-      ASPNETCORE_ENVIRONMENT: Production
-      CONTROL_PLANE_API_ENDPOINT: ${CONTROL_PLANE_API_ENDPOINT:-http://islamu-event-api:8080/}
-      KEYCLOAK_CONTROL_PLANE_CLIENT_ID: ${KEYCLOAK_CONTROL_PLANE_CLIENT_ID:-islamu-event-control-plane}
-      KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET: ${KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET:-}
-      Bff__Authentication__Authority: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}
-      Bff__Authentication__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
-      Bff__Authentication__ClientId: ${KEYCLOAK_CONTROL_PLANE_CLIENT_ID:-islamu-event-control-plane}
-      Bff__Authentication__ClientSecret: ${KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET:-}
-      Bff__Authentication__RequireHttpsMetadata: ${KEYCLOAK_REQUIRE_HTTPS_METADATA:-false}
-      ExploreApi__BaseUrl: ${CONTROL_PLANE_API_ENDPOINT:-http://islamu-event-api:8080/}
-      ConnectionStrings__cache: ${REDIS_CONNECTION_STRING:-redis:6379}
-    ports:
-      - "${CONTROL_PLANE_HTTP_PORT:-7003}:8080"
-    extra_hosts:
-      - "keycloak.localhost:host-gateway"
-    depends_on:
-      islamu-event-api:
-        condition: service_started
-      keycloak:
-        condition: service_healthy
-      keycloak-init:
-        condition: service_completed_successfully
 
   minio:
     image: ghcr.io/coollabsio/minio:latest

@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for instance-level settings.
-# Only instance admins can view and modify instance settings.
+# ABOUTME: Restricts every instance-setting action to the instance-admin derived role.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -18,9 +18,3 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_instance_admin
-
-    # All authenticated users can view instance settings (read-only)
-    - actions: ["view"]
-      effect: EFFECT_ALLOW
-      roles:
-        - islamuevent_authenticated_user
