@@ -79,7 +79,7 @@ Scoped tokens for specific components, consuming semantic tokens.
 
 Located in `Explore.Blazor.Client/Components/Common/`. Each wraps a MudBlazor component with project defaults.
 
-`Event.ControlPlane.Client` does not reference `Explore.Blazor.Client`, so shared control-plane pages use local `ControlPlane*` primitives in `Event.ControlPlane.Client/Components/Common/`. These primitives follow the same token, BEM, CSS isolation, and MudBlazor v9 conventions, but remain scoped to the control-plane RCL to avoid a public-shell dependency cycle.
+Embedded control-plane pages use the local `ControlPlane*` primitives in `Explore.Blazor.Client/Components/ControlPlane/`. These primitives follow the same token, BEM, CSS isolation, and MudBlazor v9 conventions as the public and tenant surfaces.
 
 ### AppButton
 

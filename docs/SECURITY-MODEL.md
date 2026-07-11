@@ -7,14 +7,14 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 > **Status:** Mixed
 > **Owner:** Security
 > **Last Verified:** 2026-07-04
-> **Source Anchors:** `Explore.API/Extensions/AuthenticationExtensions.cs`, `Explore.API/Extensions/CorsExtensions.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffAuthenticationExtensions.cs`, `Event.Web.BffHosting/Proxy/EventApiProxyExtensions.cs`, `Event.ControlPlane.Blazor/Program.cs`, `Explore.Application/Services/ApiKeyHashing.cs`, `Explore.Application/Telemetry/BusinessMetrics.cs`, `Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs`, `Explore.Infrastructure/Services/FallbackAuthorizationService.cs`, `docs/AUTHORIZATION.md`
+> **Source Anchors:** `Explore.API/Extensions/AuthenticationExtensions.cs`, `Explore.API/Extensions/CorsExtensions.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Blazor/Components/ControlPlane/`, `Event.Web.BffHosting/Authentication/EventBffAuthenticationExtensions.cs`, `Event.Web.BffHosting/Proxy/EventApiProxyExtensions.cs`, `Explore.Application/Services/ApiKeyHashing.cs`, `Explore.Application/Telemetry/BusinessMetrics.cs`, `Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs`, `Explore.Infrastructure/Services/FallbackAuthorizationService.cs`, `docs/AUTHORIZATION.md`
 
 ## Security Model
 
 The platform uses a BFF model:
 
 - `Explore.Blazor` (server) handles OIDC and session cookies.
-- `Event.ControlPlane.Blazor` uses the same shared BFF hosting primitives for the separate self-hostable control-plane host, but with a dedicated Keycloak confidential client, a separate cookie name, and a coarse instance-admin-only control-plane policy.
+- Dedicated admin hosts use the embedded control-plane shell inside `Explore.Blazor` and the same server-owned OIDC session boundary.
 - `Explore.Blazor.Client` (WASM) does not directly manage access tokens.
 - `Explore.API` authorizes bearer-token requests and applies resource-level checks in Application layer.
 
@@ -36,7 +36,7 @@ Current security gates:
 2. The BFF stores the auth session in an HttpOnly cookie.
 3. Calls to `/api/*` are proxied by YARP from the BFF to the API.
 4. The BFF adds the server-held bearer token to proxied API requests through the shared BFF hosting token-forwarding path.
-5. `Event.ControlPlane.Blazor` uses the same flow with the `islamu-event-control-plane` Keycloak confidential client. It must not support setup-secret, API-key, or browser-stored bearer-token login for operators.
+5. Embedded control-plane routes use the same BFF session; their actions remain authorized by API/Application policies and advertised through HAL links.
 
 ## JWT Bearer Configuration (API)
 
@@ -98,21 +98,16 @@ In YARP transforms:
 
 This prevents stale outgoing proxy headers and browser-controlled privileged headers from leaking across requests. Treat the setup secret as bootstrap-only sensitive material; the BFF protects the setup cookie with ASP.NET Core Data Protection and forwards only resolver output to downstream API calls.
 
-## Control Plane BFF Boundary
+## Embedded Control Plane Boundary
 
-The separate control-plane app is a browser BFF, not a native client and not a management API. Its security boundary is:
+The control-plane UI is an admin-host shell inside the existing browser BFF, not a separate application or management API:
 
-- `Event.ControlPlane.Blazor` authenticates through Keycloak OIDC Authorization Code flow plus PKCE using a dedicated confidential client.
-- The control-plane client secret is server-side only through environment variables, appsettings, user secrets, or Infisical-compatible startup loading.
-- The separate host is Interactive Server-only: it registers only the server component render mode and applies `@rendermode="InteractiveServer"` to `HeadOutlet` and `Routes`.
-- InteractiveAuto and WebAssembly render modes must not be added to `Event.ControlPlane.Blazor`; privileged control-plane features must not ship as a WASM client bundle.
+- `Explore.Blazor` authenticates through Keycloak OIDC Authorization Code flow plus PKCE and keeps tokens server-side.
 - The browser receives only the HttpOnly BFF session cookie and display-safe page payloads. It must not receive access tokens, refresh tokens, client secrets, setup secrets, API keys, instance-admin authority claims, or raw OIDC diagnostics.
-- The BFF enforces a coarse `ControlPlaneAccess` policy before rendering the shell, but `Explore.API` and Application/MediatR authorization remain the authoritative boundary for every control-plane action.
-- Control-plane UI affordances must still come from API/HAL `_links` or server-confirmed status endpoints. Local claim checks are UX hints only and must not unlock actions.
-- Browser-supplied privileged headers are stripped before proxying. Trusted tenant hints, setup-secret forwarding, and support-access forwarding remain server-owned BFF adapter decisions.
-- The existing `Explore.Blazor` BFF can also render an embedded control-plane shell on hosts configured in `Bff:AdminHosts`. Optional `Bff:AdminHostAllowedIpRanges` restricts those admin hosts by IP/CIDR, and configured admin hosts are excluded from tenant custom-domain/subdomain resolution. This host classification is routing and shell selection only; it is not a replacement for instance-admin authorization, HAL affordance gating, or API/Application checks.
-
-A separate control-plane UI host does not guarantee operational rescue if the shared API, database, or reverse proxy is saturated. Reserved-resource management APIs/workers are a future management-plane concern, not something implied by this BFF split.
+- `Bff:AdminHosts` selects the embedded shell, and optional `Bff:AdminHostAllowedIpRanges` restricts those hosts by IP/CIDR. Configured admin hosts are excluded from tenant custom-domain/subdomain resolution.
+- Host classification is routing and shell selection only. `Explore.API` and Application/MediatR authorization remain authoritative for every action.
+- Control-plane services use generated `IEventApiClient` contracts, and UI affordances come from generated HAL `_links`; local claim checks must not unlock actions.
+- Browser-supplied privileged headers are stripped before proxying. Trusted tenant hints, setup-secret forwarding, and support-access forwarding remain server-owned BFF decisions.
 
 ## Support Access Trust Boundary
 

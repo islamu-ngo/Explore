@@ -7,7 +7,7 @@ ABOUTME: Maps implemented admin UI surfaces to roles, entry points, dangerous op
 > **Status:** Mixed
 > **Owner:** Product/Admin
 > **Last Verified:** 2026-07-05
-> **Source Anchors:** `Explore.Blazor.Client/Pages/Admin/`, `Event.ControlPlane.Client/`, `Explore.API/Controllers/ControlPlaneController.cs`, `docs/ADMIN_HIERARCHY.md`, `docs/AUTHORIZATION.md`, `docs/AUTHORIZATION_PATTERNS.md`
+> **Source Anchors:** `Explore.Blazor.Client/Pages/Admin/`, `Explore.Blazor.Client/Pages/Admin/Instance/ControlPlane/`, `Explore.API/Controllers/ControlPlaneController.cs`, `docs/ADMIN_HIERARCHY.md`, `docs/AUTHORIZATION.md`, `docs/AUTHORIZATION_PATTERNS.md`
 
 ## Scope
 

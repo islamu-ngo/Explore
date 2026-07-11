@@ -300,7 +300,7 @@ Checks:
 Checks:
 1. Confirm the foreground proof path works first: `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj --isolated`. Use that path for launch runtime evidence.
 2. Inspect the detached child log printed in the JSON output. The 2026-07-04 local `13.4.6` reproduction reached resource readiness and logged `Notifying AppHost startup readiness`, then the process disappeared before `aspire ps` could inspect it.
-3. Verify `Event.ControlPlane.Blazor` builds if AppHost startup fails during build; `Event.ControlPlane.Blazor/Components/App.razor` needs the direct `RenderMode` static import for `InteractiveServer` root render-mode attributes.
+3. Verify `Explore.Blazor` builds if AppHost startup fails during the embedded admin-shell compilation; control-plane host routing lives under `Explore.Blazor/Components/ControlPlane/`.
 4. Treat repeated empty `aspire ps` after detached startup as an Aspire CLI/tooling lifecycle issue, not as proof that the API or Blazor cannot run. Foreground FullLocal startup, health, and public smoke are the current trusted readiness evidence.
 5. Re-test detached mode only after updating the Aspire CLI or when explicitly investigating CLI lifecycle behavior.
 

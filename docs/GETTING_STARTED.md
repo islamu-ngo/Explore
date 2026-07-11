@@ -82,7 +82,7 @@ If using external infrastructure with `local-core` or `local-lite`, configure yo
 
 Mailpit starts in every Aspire profile. SMTP uses `localhost:1025`, and the capture UI is `http://localhost:8025`. Development seeding applies those values when `email.smtp_host` is empty, so registration and other email workflows can use the normal SMTP path without sending real email.
 
-Osprey starts in `local-full` with `ghcr.io/roostorg/osprey/osprey-coordinator:latest`. It exposes coordinator ports `19950` and `19951`; the application `Reporting:Osprey` HTTP adapter stays disabled unless you provide a compatible facade endpoint.
+Osprey starts in `local-full` with `ghcr.io/roostorg/osprey/osprey-coordinator:latest` plus a local `osprey-kafka` broker and `osprey.actions_input` topic for the coordinator action consumer. It exposes coordinator ports `19950` and `19951`; the application `Reporting:Osprey` HTTP adapter stays disabled unless you provide a compatible facade endpoint.
 
 For more detailed information, see [SECRETS.md](SECRETS.md) and [CONFIGURATION.md](CONFIGURATION.md).
 

@@ -7,11 +7,11 @@ ABOUTME: Keeps token handling, proxying, render policy, service state, and clien
 > **Status:** Implemented
 > **Owner:** Frontend
 > **Last Verified:** 2026-07-05
-> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Event.ControlPlane.Blazor/Program.cs`, `Event.ControlPlane.Blazor/Components/App.razor`, `Event.ControlPlane.Client/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
+> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Admin/Instance/ControlPlane/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
 
 ## Scope
 
-This document is the contributor-facing guide for `Explore.Blazor`, `Explore.Blazor.Client`, `Event.ControlPlane.Blazor`, and `Event.ControlPlane.Client`. It focuses on the BFF trust boundary, proxy behavior, render-policy consumption, service/state patterns, and generated API client workflow.
+This document is the contributor-facing guide for `Explore.Blazor` and `Explore.Blazor.Client`. It focuses on the BFF trust boundary, proxy behavior, embedded control-plane shell, render-policy consumption, service/state patterns, and generated API client workflow.
 
 Use the specialized docs for deep detail:
 
@@ -30,9 +30,7 @@ Use the specialized docs for deep detail:
 | Project | Role | Must not own |
 |---|---|---|
 | `Explore.Blazor` | Server/BFF host: OIDC login, HttpOnly cookie session, YARP proxy, BFF endpoints, token forwarding, antiforgery, rate limiting. | Raw domain logic or browser token storage. |
-| `Explore.Blazor.Client` | Razor UI, pages/components, scoped UI state, typed service layer, generated API DTO consumption. | API authorization decisions, raw access-token persistence, or direct controller logic. |
-| `Event.ControlPlane.Blazor` | Separate self-hostable control-plane BFF host: Keycloak OIDC confidential-client login, HttpOnly cookie session, shared BFF hosting, control-plane proxy, and protected root shell. | Public/tenant shell logic, browser token storage, setup-secret/API-key operator login, or WebAssembly/Auto render-mode hosting. |
-| `Event.ControlPlane.Client` | Host-neutral control-plane Razor class library shared by embedded and separate shells. | Host render-mode selection, BFF security primitives, local authorization decisions, or direct public Blazor shell dependencies. |
+| `Explore.Blazor.Client` | Razor UI, pages/components, embedded control-plane pages, scoped UI state, typed service layer, generated API DTO consumption. | API authorization decisions, raw access-token persistence, direct controller logic, or backend contract mirrors. |
 
 The browser never owns access tokens. Interactive UI calls go through the BFF or generated client services; API remains the hard authorization boundary.
 
@@ -40,13 +38,9 @@ The browser never owns access tokens. Interactive UI calls go through the BFF or
 
 `Explore.Blazor` may keep its render-policy-controlled public app behavior, including the existing configurable Interactive Server, WebAssembly, or Auto paths documented in [RENDER_POLICIES.md](RENDER_POLICIES.md).
 
-`Event.ControlPlane.Blazor` is different: the separate control-plane host is Interactive Server-only. Its `Program.cs` registers `AddInteractiveServerComponents()` and maps `AddInteractiveServerRenderMode()`, while `Components/App.razor` applies `@rendermode="InteractiveServer"` to both `HeadOutlet` and `Routes`. Do not add InteractiveAuto or InteractiveWebAssembly hosting to the separate control-plane app.
+Configured admin hosts render `Explore.Blazor/Components/ControlPlane/EmbeddedControlPlaneRoutes.razor` inside the same BFF. The embedded shell uses the host-selected effective render mode and the generated client contracts in `Explore.Blazor.Client`; it does not introduce a separate host, project, or backend dependency.
 
-`Event.ControlPlane.Client` stays render-mode neutral. Shared control-plane components must not declare `@rendermode` or depend on host-specific render-mode services; the embedding host chooses how those components are activated.
-
-The shared control-plane RCL also owns its own small `ControlPlane*` UI primitives. It may use MudBlazor and the Event design tokens directly, but it must not reference `Explore.Blazor.Client` or its `App*` wrapper components. This keeps embedded and separate control-plane shells on the same component implementation without creating a public-client dependency cycle.
-
-Hosts that render `Event.ControlPlane.Client` components must provide MudBlazor host services, providers, and static assets. The separate `Event.ControlPlane.Blazor` host registers `AddMudServices`, includes the MudBlazor CSS/JS static assets, and renders `MudThemeProvider`, `MudPopoverProvider`, `MudDialogProvider`, and `MudSnackbarProvider` in its operator layout.
+Control-plane UI primitives live under `Explore.Blazor.Client/Components/ControlPlane/`. They follow the same MudBlazor, token, CSS-isolation, and HAL affordance conventions as the rest of the client.
 
 ## BFF Endpoint Families
 

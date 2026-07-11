@@ -14,7 +14,7 @@ Data source:
 - `PublicExperienceSettingsDto` from API (`GetPublicExperienceSettingsQueryHandler`)
 - values originate from `HierarchicalSettingsResolver.ResolveEffectiveSettingsAsync()` which applies the 5-tier cascade (User → Group → Organization → Tenant → Instance).
 
-This render-policy system belongs to the existing ISLAMU Event Blazor web app (`Explore.Blazor` / `Explore.Blazor.Client`). That host defaults to Interactive Server behavior but can use the documented policy customization for public/community routes. The separate control-plane host (`Event.ControlPlane.Blazor`) must not consume these settings: it is Interactive Server-only and must not add InteractiveAuto, InteractiveWebAssembly, a WASM bundle, or a render-mode configuration switch for privileged control-plane features.
+This render-policy system belongs to the ISLAMU Event Blazor web app (`Explore.Blazor` / `Explore.Blazor.Client`). Public/community routes use the documented policy customization. Dedicated admin hosts render the embedded control-plane routes through the server-owned shell and do not create a separate application or contract boundary.
 
 ## Route Groups
 

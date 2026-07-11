@@ -83,9 +83,9 @@ Sensitive values are redacted before output. Do not add checks that print raw co
 | Launch profile | Mode | Started by Aspire |
 |---|---|---|
 | `https` | `FullLocal` | Compatibility alias for the contributor full-local topology. |
-| `local-full` | `FullLocal` | PostgreSQL `postgres` with app database `islamu_event_db`, Redis `cache`, RabbitMQ `messaging`, Mailpit, CockroachDB `crdb`, Phase Two Keycloak `keycloak`, Cerbos database/PDP, MinIO, Svix, Coop, Osprey, PgAdmin, Prometheus, Grafana, `Event.MigrationService`, `Explore.API`, `Explore.Blazor`, and `Event.ControlPlane.Blazor`. |
-| `local-core` | `LocalDataExternalPlatform` | PostgreSQL `postgres` with app database `islamu_event_db`, Redis `cache`, Mailpit, `Event.MigrationService`, `Explore.API`, `Explore.Blazor`, and `Event.ControlPlane.Blazor`. Auth, policy, storage, webhooks, and moderation providers come from Infisical/config. |
-| `local-lite` | `ExternalInfra` | Mailpit, `Explore.API`, `Explore.Blazor`, and `Event.ControlPlane.Blazor`. All other infrastructure comes from Infisical/config. |
+| `local-full` | `FullLocal` | PostgreSQL `postgres` with app database `islamu_event_db`, Redis `cache`, RabbitMQ `messaging`, Mailpit, CockroachDB `crdb`, Phase Two Keycloak `keycloak`, Cerbos database/PDP, MinIO, Svix, Coop, Osprey, PgAdmin, Prometheus, Grafana, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. |
+| `local-core` | `LocalDataExternalPlatform` | PostgreSQL `postgres` with app database `islamu_event_db`, Redis `cache`, Mailpit, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. Auth, policy, storage, webhooks, and moderation providers come from Infisical/config. |
+| `local-lite` | `ExternalInfra` | Mailpit, `Explore.API`, and `Explore.Blazor`. All other infrastructure comes from Infisical/config. |
 
 Contributor default:
 
@@ -160,15 +160,15 @@ Startup dependencies are explicit:
 3. `Event.MigrationService` receives the local database through Aspire `WithReference(database, "EventMigrationService")` and `WithReference(database, "DefaultConnection")`, then waits for PostgreSQL.
 4. `Explore.API` waits for migration completion, local data/cache, and `local-full` platform resources when those resources exist.
 5. `Explore.Blazor` waits for API readiness and receives API service discovery through Aspire.
-6. `Event.ControlPlane.Blazor` waits for API readiness, receives API service discovery through Aspire, and in `local-full` receives the dedicated local Keycloak control-plane client id/secret plus OIDC metadata settings.
+6. Dedicated admin hosts use the same `Explore.Blazor` process and generated API client boundary.
 
-The Blazor apps resolve the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Compose uses `API_ENDPOINT` for the public Blazor BFF and `CONTROL_PLANE_API_ENDPOINT` for the separate control-plane BFF, both defaulting to the internal `islamu-event-api:8080` service. Do not hardcode the Compose/API host port into AppHost documentation.
+The Blazor BFF resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Compose uses `API_ENDPOINT`, defaulting to the internal `islamu-event-api:8080` service. Do not hardcode the Compose/API host port into AppHost documentation.
 
 Aspire local development uses the local filesystem storage provider by default unless a profile supplies S3-compatible settings. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`; `local-full` also supplies MinIO-compatible `S3Settings` for workflows that exercise S3 behavior, and bootstraps the `explore` bucket before the API starts. Local Svix uses the Aspire Redis plaintext container endpoint with the generated Redis password, while .NET projects continue to consume Redis through normal Aspire references. AppHost sets a deterministic development `SVIX_JWT_SECRET`, supplies a matching `WEBHOOKS_SVIX_AUTH_TOKEN` to the API, and Development seeding binds that value to `webhooks.svix.auth_token`; rotate all local defaults outside disposable development. Local Coop uses an isolated PostgreSQL container plus development-only `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics settings so the review-queue provider can boot without external ClickHouse or production secrets.
 
 Cerbos local infrastructure uses the repository `cerbos/` folder as its source of truth. Aspire and Docker Compose mount `cerbos/config/.cerbos.yaml` into the Cerbos container, mount `cerbos/policies/` read-only for derived roles, policies, and `_schemas`, and initialize the local Cerbos PostgreSQL store from `cerbos/init/cerbos-schema.sql`. The local Cerbos PostgreSQL container uses the Postgres 18 parent data mount (`/var/lib/postgresql`) rather than the legacy direct `data` mount. Do not copy policy files into container images for local development; update the repo-owned `cerbos/` tree and restart or sync the local Cerbos service.
 
-Osprey starts in `local-full` from `ghcr.io/roostorg/osprey/osprey-coordinator:latest` and exposes coordinator ports `19950`/`19951`. The API's `Reporting:Osprey` HTTP adapter remains disabled until a compatible HTTP facade endpoint is configured.
+Osprey starts in `local-full` from `ghcr.io/roostorg/osprey/osprey-coordinator:latest` and exposes coordinator ports `19950`/`19951`. Aspire also starts `osprey-kafka`, creates the `osprey.actions_input` topic, and points the coordinator at `osprey-kafka:29092`, because the coordinator's action consumer defaults to Kafka. The API's `Reporting:Osprey` HTTP adapter remains disabled until a compatible HTTP facade endpoint is configured.
 
 Webhook operations:
 

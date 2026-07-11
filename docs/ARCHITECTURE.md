@@ -15,9 +15,10 @@ ABOUTME: Captures key runtime patterns and boundaries that are not obvious from 
 1. `Explore.Domain`: entities, enums, domain rules, no infrastructure concerns.
 2. `Explore.Application`: requests/handlers, DTOs, validators, contracts.
 3. `Explore.Persistence` + `Explore.Infrastructure`: data + external service implementations.
-4. `Explore.API` and `Explore.Blazor`: presentation and composition roots.
+4. `Explore.API`: the only composition root for Domain, Application, Persistence, and Infrastructure.
+5. `Explore.Blazor` and `Explore.Blazor.Client`: isolated presentation/BFF projects that consume generated `IEventApiClient` contracts only.
 
-Dependency direction is inward: presentation -> application -> domain.
+The API dependency direction is inward: API -> Infrastructure/Persistence -> Application -> Domain. Blazor has no project or source dependency on those layers; its backend boundary is the generated API client.
 
 ## Request Flow
 1. HTTP request enters the middleware pipeline (exception handling → security headers → correlation ID → logging → compression → HATEOAS → routing → timeouts → auth → rate limiting → authorization → output cache → ETag → idempotency).
@@ -32,6 +33,8 @@ Dependency direction is inward: presentation -> application -> domain.
 2. Session/cookie state remains in server-controlled flow.
 3. BFF forwards API calls to backend (token forwarding + tenant header propagation where needed).
 4. `Explore.Blazor.Client` focuses on UI and typed service calls; it is not a token authority.
+5. Backend/domain payloads in every Blazor runtime and test project use generated `IEventApiClient` models, never locally mirrored Application or Domain types.
+6. BFF-owned security state such as cookies, antiforgery, circuit tokens, and Data Protection keys remains inside the BFF and does not grant access to API persistence.
 
 ## Multi-Tenancy Model
 1. Runtime mode is resolved from governance settings (`SingleTenant` / `MultiTenant`).

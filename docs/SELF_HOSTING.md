@@ -22,8 +22,7 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 | Keycloak | Yes | `keycloak` | OIDC identity provider and realm import | `8080:8080` |
 | Keycloak Init | Yes | `keycloak-init` | One-shot client-secret synchronization after realm import | internal |
 | API | Yes | `islamu-event-api` | REST API, migrations, health, metrics, local storage volume | `7039:8080` |
-| Blazor BFF | Yes | `islamu-event-ui` | Server host and YARP proxy to API | `7002:8080` |
-| Control Plane BFF | Optional | `islamu-event-control-plane` | Separate self-hostable operator BFF for the Event Control Plane | `7003:8080` |
+| Blazor BFF | Yes | `islamu-event-ui` | Server host, embedded admin-host shell, and YARP proxy to API | `7002:8080` |
 | MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile when an instance selects optional S3 mode | `9005:9000`, `9006:9001` |
 | Cerbos | Optional | `cerbos` | External authorization PDP profile | `3592:3592`, `3593:3593` |
 | Svix | Optional | `svix-db`, `svix` | Outgoing webhook provider profile | `8071:8071` |
@@ -34,7 +33,6 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 Profiles:
 
 - `storage` starts MinIO and creates the configured bucket for optional S3-compatible mode. It is not required for local-first storage.
-- `control-plane` starts the optional separate `Event.ControlPlane.Blazor` BFF. It uses the same API and Keycloak realm as the public Blazor BFF, but a dedicated confidential Keycloak client and separate cookie name.
 - `authz` starts Cerbos for deployments that select Cerbos authorization. It mounts `cerbos/config/.cerbos.yaml`, `cerbos/init/cerbos-schema.sql`, and `cerbos/policies/` from this repository so local infrastructure always uses the checked-in policy package. The Cerbos PostgreSQL profile uses the Postgres 18 parent data mount (`/var/lib/postgresql`) so local upgrades do not fail on the legacy `/var/lib/postgresql/data` mount boundary.
 - `webhooks` starts local Svix and its PostgreSQL database for outgoing webhook-provider testing.
 - `moderation` starts local Coop for moderation review-queue testing with an isolated PostgreSQL database. `COOP_UI_URL` defaults to `http://localhost:8082`, matching the local Coop port; the local profile also supplies Coop's `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics adapter defaults so the provider image can boot without ClickHouse or production secrets. Keep `REPORTING_MODE=LocalOnly` unless provider endpoints are intentionally enabled.

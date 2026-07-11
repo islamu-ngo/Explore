@@ -27,14 +27,12 @@ Explore.Application     (depends on Domain - CQRS handlers, DTOs, contracts)
     ↑
 Explore.Persistence     (depends on Application - EF Core, repositories)
 Explore.Infrastructure  (depends on Application - email, storage, identity)
-Explore.Secrets         (standalone - secrets management)
+Explore.Secrets         (API-side secrets management)
     ↑
-Explore.API             (depends on all above - controllers, middleware, DI)
+Explore.API             (only composition root for Domain, Application, Persistence, Infrastructure)
 Event.Web.BffHosting    (shared BFF auth/proxy/header/admin-host primitives)
-Event.ControlPlane.Client (shared host-neutral control-plane RCL)
-Explore.Blazor          (public Blazor BFF host; can embed control-plane shell on admin hosts)
-Explore.Blazor.Client   (public interactive client, calls API via BFF)
-Event.ControlPlane.Blazor (optional separate Interactive Server-only control-plane BFF)
+Explore.Blazor          (isolated public BFF host; generated API client is its backend boundary)
+Explore.Blazor.Client   (isolated interactive client and embedded control-plane UI; generated API contracts only)
     ↑
 Explore.AppHost         (.NET Aspire orchestrator)
 Explore.ServiceDefaults (shared Aspire defaults)
@@ -308,7 +306,7 @@ Explore.Blazor/
 ├── Components/
 │   ├── App.razor                  — Root component (HTML head, body, Blazor script tags)
 │   └── Routes.razor               — Router configuration with render modes
-│   └── ControlPlane/              — Embedded admin-host shell backed by Event.ControlPlane.Client
+│   └── ControlPlane/              — Embedded admin-host shell using generated client contracts
 ├── Extensions/
 │   └── ConfigurationExtension.cs  — Configuration helpers for Blazor Server
 ├── Services/
@@ -325,7 +323,7 @@ Public interactive client. Contains pages, components, route guards, generated/H
 ```
 Explore.Blazor.Client/
 ├── Program.cs                     — WASM host builder, service registration, HttpClient setup
-├── Routes.razor                   — Route map, including embedded Event.ControlPlane.Client routes
+├── Routes.razor                   — Route map, including embedded control-plane routes
 ├── Pages/                         — Routable page components
 │   ├── Event/                     — Event pages
 │   │   ├── EventList.razor/.cs    — Event listing/discovery page
@@ -406,15 +404,9 @@ Explore.Blazor.Client/
 
 ### Event.Web.BffHosting/ — Shared BFF Hosting Primitives
 
-Shared authentication, YARP, header-sanitization, host-profile, admin-host classification, and control-plane authorization primitives used by `Explore.Blazor` and `Event.ControlPlane.Blazor`.
+Shared authentication, YARP, header-sanitization, host-profile, admin-host classification, and control-plane authorization primitives used by `Explore.Blazor`.
 
-### Event.ControlPlane.Client/ — Shared Control-Plane RCL
-
-Host-neutral Razor Class Library for Instance Console routes, contracts, local design primitives, and fail-closed service interfaces. It must not depend on API/Application/Domain/Infrastructure/Persistence or browser token storage.
-
-### Event.ControlPlane.Blazor/ — Optional Separate Control-Plane BFF
-
-Interactive Server-only Blazor BFF using the `EventBffHostProfile.ControlPlane` profile, dedicated Keycloak confidential client, dedicated cookie, and `Event.ControlPlane.Client` UI surface.
+The embedded Instance Console lives under `Explore.Blazor.Client/Pages/Admin/Instance/ControlPlane/`; host routing/layout stays under `Explore.Blazor/Components/ControlPlane/`. Both consume generated API client contracts and introduce no additional application project.
 
 ---
 
@@ -454,11 +446,9 @@ Explore.Infrastructure/
     └── TechEventStrategy.cs      — Tech module-specific event behavior
 ```
 
----
-
 ### Explore.Secrets/ — Secrets Management Library
 
-Standalone library for multi-provider secret management.
+API-side library for multi-provider secret management. The isolated Blazor BFF owns its minimal startup-only Infisical source under `Explore.Blazor/Configuration/`.
 
 ```
 Explore.Secrets/
@@ -597,7 +587,7 @@ _bmad-output/                      — BMAD workflow outputs
 | Add seed data | `Explore.Persistence/Seed/SeedData.cs` (runtime) or entity configuration `HasData()` (lookup) |
 | Multi-tenancy logic | `Explore.API/Services/TenantContext.cs` + `Explore.Persistence/ExploreDbContext.cs` |
 | Authentication | `Explore.Blazor/Program.cs` (OIDC) + `Explore.Infrastructure/Services/CurrentUserService.cs` |
-| Secret management | `Explore.Secrets/` (standalone library) |
+| Secret management | `Explore.Secrets/` (API-side) or `Explore.Blazor/Configuration/` (BFF startup only) |
 | Database migrations | `dotnet ef` via `Event.MigrationService/` |
 | Architecture tests | `Event.Architecture.Tests/` |
 | Wrapper components | `Explore.Blazor.Client/Components/Common/App*.razor` |
