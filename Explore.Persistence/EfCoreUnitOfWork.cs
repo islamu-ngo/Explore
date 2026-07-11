@@ -1,6 +1,7 @@
 // ABOUTME: EF Core implementation of IUnitOfWork using CreateExecutionStrategy for Npgsql retry compatibility.
-// ABOUTME: Wraps the transaction and all operations inside the retrying strategy's ExecuteAsync scope.
+// ABOUTME: Clears failed-attempt tracking before retry and preserves original errors during rollback cleanup.
 
+using System.Data.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Microsoft.EntityFrameworkCore;
@@ -11,8 +12,26 @@ namespace Explore.Persistence;
 public sealed class EfCoreUnitOfWork : IUnitOfWork
 {
     private readonly ExploreDbContext _dbContext;
+    private readonly Func<IExecutionStrategy> _createExecutionStrategy;
+    private readonly Func<CancellationToken, Task<IDbContextTransaction>> _beginTransaction;
 
-    public EfCoreUnitOfWork(ExploreDbContext dbContext) => _dbContext = dbContext;
+    public EfCoreUnitOfWork(ExploreDbContext dbContext)
+        : this(
+            dbContext,
+            dbContext.Database.CreateExecutionStrategy,
+            dbContext.Database.BeginTransactionAsync)
+    {
+    }
+
+    internal EfCoreUnitOfWork(
+        ExploreDbContext dbContext,
+        Func<IExecutionStrategy> createExecutionStrategy,
+        Func<CancellationToken, Task<IDbContextTransaction>> beginTransaction)
+    {
+        _dbContext = dbContext;
+        _createExecutionStrategy = createExecutionStrategy;
+        _beginTransaction = beginTransaction;
+    }
 
     // Void overload delegates to generic — single execution path, no duplication
     public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default)
@@ -43,10 +62,10 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             }
         }
 
-        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        var strategy = _createExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
+            await using var transaction = await _beginTransaction(ct);
             try
             {
                 var result = await operation(ct);
@@ -55,22 +74,35 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                await RollbackBestEffortAsync(transaction, ct);
-                throw TranslateConcurrencyException(ex);
+                var translatedException = TranslateConcurrencyException(ex);
+                await RollbackAndClearTrackingAsync(transaction);
+                throw translatedException;
             }
             catch
             {
-                await RollbackBestEffortAsync(transaction, ct);
+                await RollbackAndClearTrackingAsync(transaction);
                 throw;
             }
         });
     }
 
-    private static async Task RollbackBestEffortAsync(IDbContextTransaction transaction, CancellationToken ct)
+    private async Task RollbackAndClearTrackingAsync(IDbContextTransaction transaction)
     {
         try
         {
-            await transaction.RollbackAsync(ct);
+            await RollbackBestEffortAsync(transaction);
+        }
+        finally
+        {
+            _dbContext.ChangeTracker.Clear();
+        }
+    }
+
+    private static async Task RollbackBestEffortAsync(IDbContextTransaction transaction)
+    {
+        try
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
         }
         catch (ObjectDisposedException)
         {
@@ -79,6 +111,9 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         catch (InvalidOperationException)
         {
             // Preserve the original operation exception when the transaction is no longer rollback-ready.
+        }
+        catch (DbException)
+        {
         }
     }
 
