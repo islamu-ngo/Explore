@@ -25,7 +25,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Event.MigrationService\Event.MigrationService.csproj" />
-    <ProjectReference Include="..\Event.ControlPlane.Blazor\Event.ControlPlane.Blazor.csproj" />
     <ProjectReference Include="..\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
   </ItemGroup>

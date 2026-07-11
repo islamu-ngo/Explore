@@ -108,6 +108,7 @@ var exploreAPI = WithProfileSecretMode(
         runMode,
         builder.Configuration)
     .WithEnvironment("HttpsRedirection__Enabled", "false")
+    .WithEnvironment("CONTROL_PLANE_PUBLIC_ORIGIN", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
     .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath)
     .WithEnvironment("Storage__Local__RootPath", localStorageRootPath)
     .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
@@ -188,6 +189,7 @@ var exploreBlazor = WithProfileSecretMode(
         builder.Configuration)
     .WithReference(exploreAPI)
     .WaitFor(exploreAPI)
+    .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
     .WithEnvironment("Storage__Local__RootPath", localStorageRootPath);
 
 if (migrations is not null)
@@ -214,22 +216,6 @@ if (cache is not null)
 if (fullLocalResources is not null)
 {
     exploreBlazor = ConfigureFullLocalBlazor(exploreBlazor, fullLocalResources, builder.Configuration)
-        .WaitFor(fullLocalResources.Keycloak);
-}
-
-var controlPlaneBlazor = WithProfileSecretMode(
-        builder.AddProject<Projects.Event_ControlPlane_Blazor>(
-                "event-control-plane",
-                ExcludeProjectLaunchProfile)
-            .WithHttpEndpoint(name: "http"),
-        runMode,
-        builder.Configuration)
-    .WithReference(exploreAPI)
-    .WaitFor(exploreAPI);
-
-if (fullLocalResources is not null)
-{
-    controlPlaneBlazor = ConfigureFullLocalControlPlane(controlPlaneBlazor, fullLocalResources, builder.Configuration)
         .WaitFor(fullLocalResources.Keycloak);
 }
 
@@ -315,8 +301,6 @@ static FullLocalResources AddFullLocalPlatform(
         .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", configuration["KEYCLOAK_ADMIN_PASSWORD"] ?? "admin")
         .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_ID", configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor")
         .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? "islamu-event-blazor-secret")
-        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", configuration["KEYCLOAK_CONTROL_PLANE_CLIENT_ID"] ?? "islamu-event-control-plane")
-        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", configuration["KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET"] ?? "islamu-event-control-plane-secret")
         .WithEnvironment("KEYCLOAK_API_CLIENT_ID", configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api")
         .WithEnvironment("KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET", configuration["KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET"] ?? "true")
         .WithEnvironment("KEYCLOAK_SMTP_HOST", "mailpit")
@@ -530,16 +514,43 @@ static FullLocalResources AddFullLocalPlatform(
         pgAdmin = pgAdmin.WaitFor(appDatabase);
     }
 
+    var ospreyKafka = builder.AddContainer("osprey-kafka", "confluentinc/cp-kafka", "7.4.0")
+        .WithEnvironment("KAFKA_NODE_ID", "1")
+        .WithEnvironment("KAFKA_PROCESS_ROLES", "broker,controller")
+        .WithEnvironment("KAFKA_CONTROLLER_QUORUM_VOTERS", "1@osprey-kafka:29093")
+        .WithEnvironment("KAFKA_CONTROLLER_LISTENER_NAMES", "CONTROLLER")
+        .WithEnvironment("KAFKA_INTER_BROKER_LISTENER_NAME", "INTERNAL")
+        .WithEnvironment("KAFKA_LISTENERS", "INTERNAL://osprey-kafka:29092,CONTROLLER://osprey-kafka:29093")
+        .WithEnvironment("KAFKA_ADVERTISED_LISTENERS", "INTERNAL://osprey-kafka:29092")
+        .WithEnvironment("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", "INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT")
+        .WithEnvironment("KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR", "1")
+        .WithEnvironment("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+        .WithEnvironment("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+        .WithEnvironment("KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", "0")
+        .WithEnvironment("CLUSTER_ID", "P45WxmmWSe2CrdGoeJMcKg");
+
+    var ospreyKafkaBootstrap = builder.AddContainer("osprey-kafka-bootstrap", "confluentinc/cp-kafka", "7.4.0")
+        .WithEntrypoint("bash")
+        .WithArgs(
+            "-c",
+            "until kafka-topics --bootstrap-server osprey-kafka:29092 --list >/dev/null 2>&1; do sleep 1; done; kafka-topics --bootstrap-server osprey-kafka:29092 --create --if-not-exists --topic osprey.actions_input --partitions 3 --replication-factor 1")
+        .WaitFor(ospreyKafka);
+
     var (ospreyImage, ospreyTag) = ResolveImageAndTag(
         configuration["OSPREY_IMAGE"] ?? "ghcr.io/roostorg/osprey/osprey-coordinator:latest",
         configuration["OSPREY_TAG"] ?? "latest");
     var osprey = builder.AddContainer("osprey", ospreyImage, ospreyTag)
         .WithEnvironment("RUST_LOG", configuration["OSPREY_RUST_LOG"] ?? "info")
+        .WithEnvironment("OSPREY_COORDINATOR_CONSUMER_TYPE", "kafka")
+        .WithEnvironment("OSPREY_KAFKA_BOOTSTRAP_SERVERS", "osprey-kafka:29092")
+        .WithEnvironment("OSPREY_KAFKA_INPUT_STREAM_TOPIC", "osprey.actions_input")
+        .WithEnvironment("OSPREY_KAFKA_GROUP_ID", "osprey_coordinator_group")
         .WithEnvironment("OSPREY_COORDINATOR_BIDI_STREAM_PORT", "19950")
         .WithEnvironment("OSPREY_COORDINATOR_SYNC_ACTION_PORT", "19951")
         .WithEnvironment("POD_IP", "osprey")
         .WithEndpoint(targetPort: 19950, port: 19950, name: "bidi-stream", protocol: ProtocolType.Tcp)
-        .WithEndpoint(targetPort: 19951, port: 19951, name: "sync-action", protocol: ProtocolType.Tcp);
+        .WithEndpoint(targetPort: 19951, port: 19951, name: "sync-action", protocol: ProtocolType.Tcp)
+        .WaitForCompletion(ospreyKafkaBootstrap);
 
     var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.2.1")
         .WithBindMount(prometheusConfigPath, "/etc/prometheus/prometheus.yaml", isReadOnly: true)
@@ -727,35 +738,6 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalBlazor(
         .WithEnvironment("Keycloak__ClientId", keycloakClientId)
         .WithEnvironment("Keycloak__ClientSecret", keycloakClientSecret)
         .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
-        .WaitFor(resources.Keycloak)
-        .WaitForCompletion(resources.KeycloakInit);
-}
-
-static IResourceBuilder<ProjectResource> ConfigureFullLocalControlPlane(
-    IResourceBuilder<ProjectResource> controlPlane,
-    FullLocalResources resources,
-    IConfiguration configuration)
-{
-    var keycloakRealm = configuration["KEYCLOAK_REALM"] ?? "ISLAMU";
-    var keycloakClientId = configuration["KEYCLOAK_CONTROL_PLANE_CLIENT_ID"] ?? "islamu-event-control-plane";
-    var keycloakClientSecret = configuration["KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET"] ?? "islamu-event-control-plane-secret";
-    var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
-    var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", $"/auth/realms/{keycloakRealm}");
-    var keycloakMetadataAddress = EndpointUrl(
-        resources.Keycloak,
-        "http",
-        $"/auth/realms/{keycloakRealm}/.well-known/openid-configuration");
-
-    return controlPlane
-        .WithEnvironment("KEYCLOAK_REALM", keycloakRealm)
-        .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
-        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", keycloakClientId)
-        .WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", keycloakClientSecret)
-        .WithEnvironment("Bff__Authentication__Authority", keycloakAuthority)
-        .WithEnvironment("Bff__Authentication__MetadataAddress", keycloakMetadataAddress)
-        .WithEnvironment("Bff__Authentication__ClientId", keycloakClientId)
-        .WithEnvironment("Bff__Authentication__ClientSecret", keycloakClientSecret)
-        .WithEnvironment("Bff__Authentication__RequireHttpsMetadata", "false")
         .WaitFor(resources.Keycloak)
         .WaitForCompletion(resources.KeycloakInit);
 }
