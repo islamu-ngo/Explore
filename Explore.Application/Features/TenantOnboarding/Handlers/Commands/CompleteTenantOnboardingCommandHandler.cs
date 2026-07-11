@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Domain;
 using MediatR;
@@ -21,6 +22,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
+    private readonly IMediator _mediator;
 
     public CompleteTenantOnboardingCommandHandler(
         ITenantContext tenantContext,
@@ -29,7 +31,8 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         ITenantPolicySettingService policySettingService,
         ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
         IUnitOfWork unitOfWork,
-        IHierarchicalSettingsResolver hierarchicalSettingsResolver)
+        IHierarchicalSettingsResolver hierarchicalSettingsResolver,
+        IMediator mediator)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
@@ -38,6 +41,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
         _unitOfWork = unitOfWork;
         _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
+        _mediator = mediator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteTenantOnboardingCommand request, CancellationToken cancellationToken)
@@ -56,9 +60,10 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         var existingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
 
         // Atomic writes: policy settings + typed branding document + onboarding state
-        var onboardingStateId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        var outcome = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            await _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings);
+            IReadOnlyList<SettingChangedNotification> notifications =
+                await _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings, ct);
             await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(tenantId, cancellationToken: ct);
 
             if (existingState == null)
@@ -75,7 +80,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
                     CompletedAt = DateTime.UtcNow,
                     CompletedByUserId = request.UserId
                 });
-                return created.Id;
+                return (OnboardingStateId: created.Id, Notifications: notifications);
             }
 
             existingState.IsCompleted = true;
@@ -86,14 +91,18 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
             existingState.CompletedAt = DateTime.UtcNow;
             existingState.CompletedByUserId = request.UserId;
             await _tenantOnboardingStateRepository.Update(existingState);
-            return existingState.Id;
+            return (OnboardingStateId: existingState.Id, Notifications: notifications);
         }, cancellationToken);
 
         _hierarchicalSettingsResolver.InvalidateCache(Explore.Domain.Settings.SettingScope.Tenant, tenantId);
+        foreach (SettingChangedNotification notification in outcome.Notifications)
+        {
+            await _mediator.Publish(notification, cancellationToken);
+        }
 
         response.Success = true;
         response.Message = "Tenant onboarding completed successfully.";
-        response.Id = onboardingStateId;
+        response.Id = outcome.OnboardingStateId;
         return response;
     }
 

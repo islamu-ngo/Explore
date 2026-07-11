@@ -77,7 +77,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var analyticsConfiguration = await _analyticsConfigResolver.ResolveAsync(cancellationToken);
         var translationConfiguration = await _translationConfigResolver.ResolveAsync(cancellationToken);
 
-        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
+        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode, cancellationToken);
         var deploymentMode = DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
         var analyticsProvider = analyticsConfiguration.Provider.ToString().ToLowerInvariant();
         var analyticsPublicApiKey = analyticsConfiguration.ApiKey;

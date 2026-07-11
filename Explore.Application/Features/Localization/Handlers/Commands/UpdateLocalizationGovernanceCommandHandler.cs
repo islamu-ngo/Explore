@@ -57,50 +57,23 @@ public class UpdateLocalizationGovernanceCommandHandler
         var dto = request.Dto;
         var enabledLanguagesCsv = string.Join(",", dto.EnabledLanguages.Select(c => c.Trim().ToLowerInvariant()));
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Localization.DefaultLanguage,
-            SettingValueSerializer.Serialize(dto.DefaultLanguage.Trim().ToLowerInvariant()),
-            actor);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Localization.DefaultLanguage, SettingValueSerializer.Serialize(dto.DefaultLanguage.Trim().ToLowerInvariant()), actor, cancellationToken);
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Localization.TmsProvider,
-            SettingValueSerializer.Serialize(dto.TmsProvider.Trim().ToLowerInvariant()),
-            actor);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Localization.TmsProvider, SettingValueSerializer.Serialize(dto.TmsProvider.Trim().ToLowerInvariant()), actor, cancellationToken);
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Localization.TmsApiUrl,
-            SettingValueSerializer.Serialize(dto.TmsApiUrl ?? string.Empty),
-            actor);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Localization.TmsApiUrl, SettingValueSerializer.Serialize(dto.TmsApiUrl ?? string.Empty), actor, cancellationToken);
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Localization.TmsProjectId,
-            SettingValueSerializer.Serialize(dto.TmsProjectId ?? string.Empty),
-            actor);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Localization.TmsProjectId, SettingValueSerializer.Serialize(dto.TmsProjectId ?? string.Empty), actor, cancellationToken);
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Localization.TmsComponent,
-            SettingValueSerializer.Serialize(dto.TmsComponent ?? string.Empty),
-            actor);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Localization.TmsComponent, SettingValueSerializer.Serialize(dto.TmsComponent ?? string.Empty), actor, cancellationToken);
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Localization.EnabledLanguages,
-            SettingValueSerializer.Serialize(enabledLanguagesCsv),
-            actor);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Localization.EnabledLanguages, SettingValueSerializer.Serialize(enabledLanguagesCsv), actor, cancellationToken);
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Localization.FallbackLanguage,
-            SettingValueSerializer.Serialize(dto.FallbackLanguage.Trim().ToLowerInvariant()),
-            actor);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Localization.FallbackLanguage, SettingValueSerializer.Serialize(dto.FallbackLanguage.Trim().ToLowerInvariant()), actor, cancellationToken);
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Localization.ClientPickerEnabled,
-            dto.ClientPickerEnabled ? "true" : "false",
-            actor);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Localization.ClientPickerEnabled, dto.ClientPickerEnabled ? "true" : "false", actor, cancellationToken);
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Localization.ForceOfflineMode,
-            dto.ForceOfflineMode ? "true" : "false",
-            actor);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Localization.ForceOfflineMode, dto.ForceOfflineMode ? "true" : "false", actor, cancellationToken);
 
         _configResolver.InvalidateCache(_tenantContext.TenantId);
 

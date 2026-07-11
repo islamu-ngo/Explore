@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using FluentValidation.Results;
 using MediatR;
@@ -22,6 +23,7 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
+    private readonly IMediator _mediator;
 
     public UpdateTenantPolicySettingsCommandHandler(
         ITenantContext tenantContext,
@@ -29,7 +31,8 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
         IAdminContext adminContext,
         ITenantPolicySettingService policySettingService,
         IUnitOfWork unitOfWork,
-        IHierarchicalSettingsResolver hierarchicalSettingsResolver)
+        IHierarchicalSettingsResolver hierarchicalSettingsResolver,
+        IMediator mediator)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
@@ -37,6 +40,7 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
         _policySettingService = policySettingService;
         _unitOfWork = unitOfWork;
         _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
+        _mediator = mediator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTenantPolicySettingsCommand request, CancellationToken cancellationToken)
@@ -55,10 +59,15 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
         await EnsureLockedSettingsAreNotModifiedAsync(tenantId, request.Settings);
 
         // Atomic writes: all tenant policy settings
-        await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings), cancellationToken);
+        IReadOnlyList<SettingChangedNotification> notifications =
+            await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings, ct), cancellationToken);
 
         _hierarchicalSettingsResolver.InvalidateCache(Explore.Domain.Settings.SettingScope.Tenant, tenantId);
+        foreach (SettingChangedNotification notification in notifications)
+        {
+            await _mediator.Publish(notification, cancellationToken);
+        }
 
         var onboardingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
         response.Id = onboardingState?.Id ?? Guid.Empty;

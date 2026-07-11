@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ControlPlane;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -37,7 +38,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
 
         return await unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            var tenant = await tenantRepository.GetById(request.TenantId);
+            var tenant = await tenantRepository.GetByIdAsNoTrackingAsync(request.TenantId, ct);
             if (tenant is null)
             {
                 return Failure("Tenant was not found.");
@@ -68,30 +69,41 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
             }
 
             var oldStatusId = tenant.TenantStatusId;
-            tenant.TenantStatusId = (int)request.TargetStatus;
-            tenant.TenantStatus = null!;
-            tenant.UpdatedAt = transitionedAt;
-            tenant.UpdatedBy = userId.Value;
+            var newStatusId = (int)request.TargetStatus;
+            var transitioned = await tenantRepository.TryTransitionStatusAsync(
+                tenant.Id,
+                oldStatusId,
+                newStatusId,
+                transitionedAt,
+                userId.Value,
+                ct);
+            if (!transitioned)
+            {
+                throw new ConcurrencyConflictException(
+                    ConcurrencyConflictException.ConcurrentUpdate,
+                    "Tenant lifecycle status changed since it was loaded. Reload and retry the transition.",
+                    nameof(Tenant),
+                    tenant.Id.ToString());
+            }
 
-            await tenantRepository.Update(tenant);
-            await lifecycleLogRepository.Create(new TenantLifecycleLog
+            await lifecycleLogRepository.CreateAsync(new TenantLifecycleLog
             {
                 TenantId = tenant.Id,
                 Tenant = null!,
                 OldStatusId = oldStatusId,
-                NewStatusId = tenant.TenantStatusId,
+                NewStatusId = newStatusId,
                 NewStatus = null!,
                 TransitionedByUserId = userId.Value,
                 Reason = reason,
                 TransitionedAt = transitionedAt,
                 CreatedAt = transitionedAt,
                 CreatedBy = userId.Value
-            });
+            }, ct);
 
             return Success(ControlPlaneTenantMapper.ToTransition(
                 tenant.Id,
                 oldStatusId,
-                tenant.TenantStatusId,
+                newStatusId,
                 userId.Value,
                 reason,
                 transitionedAt),
