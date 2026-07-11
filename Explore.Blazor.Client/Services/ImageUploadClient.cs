@@ -13,7 +13,7 @@ namespace Explore.Blazor.Client.Services;
 
 public interface IImageUploadClient
 {
-    Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null);
+    Task<ImageUploadTarget?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null);
 
     Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file);
 
@@ -31,14 +31,13 @@ public sealed class ImageUploadClient(
     BffClient? bffClient = null,
     IApiClientExecutor? apiClientExecutor = null) : IImageUploadClient
 {
-    private const string GenerateUploadUrlPath = "/api/storageobject/generate-upload-url";
     private const string GenerateUploadSessionPath = "/bff/storage/upload-session";
     private const string UploadProxyPath = "/bff/storage/upload-proxy";
     private const long DefaultMaxFileSize = 10 * 1024 * 1024;
 
     private readonly IApiClientExecutor _apiClientExecutor = apiClientExecutor ?? new ApiClientExecutor();
 
-    public async Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null)
+    public async Task<ImageUploadTarget?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null)
     {
         try
         {
@@ -75,12 +74,7 @@ public sealed class ImageUploadClient(
                 return null;
             }
 
-            var response = await GetUploadUrlViaBffAsync(request);
-            if (response == null)
-            {
-                logger.LogWarning("BFF upload URL request returned no usable response. Falling back to generated API client.");
-                response = await apiClient.GenerateStorageObjectUploadUrlAsync(request);
-            }
+            var response = await apiClient.GenerateStorageObjectUploadUrlAsync(request);
 
             if (response == null)
             {
@@ -95,7 +89,7 @@ public sealed class ImageUploadClient(
             }
 
             logger.LogDebug("Got trusted direct upload URL response for content type {ContentType}", contentType);
-            return new ImageUploadResponse
+            return new ImageUploadTarget
             {
                 UploadUrl = response.UploadUrl ?? string.Empty,
                 ObjectKey = response.ObjectKey ?? string.Empty,
@@ -373,7 +367,7 @@ public sealed class ImageUploadClient(
         }
     }
 
-    private async Task<ImageUploadResponse?> GetUploadSessionViaBffAsync(
+    private async Task<ImageUploadTarget?> GetUploadSessionViaBffAsync(
         string fileName,
         string contentType,
         long expectedSizeBytes)
@@ -413,7 +407,7 @@ public sealed class ImageUploadClient(
                 return null;
             }
 
-            return new ImageUploadResponse
+            return new ImageUploadTarget
             {
                 UploadSessionId = session.UploadSessionId,
                 ObjectKey = string.Empty,
@@ -450,36 +444,4 @@ public sealed class ImageUploadClient(
         };
     }
 
-    private async Task<UploadUrlResponseDto?> GetUploadUrlViaBffAsync(UploadRequestDto request)
-    {
-        try
-        {
-            var result = await _apiClientExecutor.ReadJsonAsync<UploadUrlResponseDto>(
-                ct => httpClientFactory.CreateClient("BffClient").PostAsync(GenerateUploadUrlPath, JsonContent.Create(request), ct),
-                "BFF upload URL");
-
-            if (!result.IsSuccess)
-            {
-                if (result.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    logger.LogWarning("Upload URL request returned 401 Unauthorized");
-                    return null;
-                }
-
-                logger.LogWarning("Upload URL request failed via BFF. Status={StatusCode}, HasError={HasError}",
-                    result.StatusCode is null ? null : (int)result.StatusCode,
-                    !string.IsNullOrWhiteSpace(result.ErrorMessage));
-                return null;
-            }
-
-            return result.Value;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(
-                "Error calling upload URL endpoint via BFF. FailureType={FailureType}",
-                ImageUploadClientPolicy.GetFailureType(ex));
-            return null;
-        }
-    }
 }

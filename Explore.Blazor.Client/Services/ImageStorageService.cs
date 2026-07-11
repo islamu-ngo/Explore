@@ -35,7 +35,7 @@ public interface IImageStorageService
     /// <summary>
     /// Get a server-issued upload session or trusted pre-signed URL for uploading an image.
     /// </summary>
-    Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null);
+    Task<ImageUploadTarget?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null);
 
     /// <summary>
     /// Upload an image file using a pre-signed URL (legacy - uses IBrowserFile).
@@ -87,7 +87,7 @@ public interface IImageStorageService
     string GenerateLocalPreviewFromBytes(FileUploadData fileData);
 }
 
-public class ImageUploadResponse
+public sealed class ImageUploadTarget
 {
     public string UploadUrl { get; set; } = string.Empty;
     public string UploadSessionId { get; set; } = string.Empty;
@@ -125,13 +125,6 @@ public class ImageUploadResult
     public string ObjectKey { get; set; } = string.Empty;
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
-}
-
-public class PresignedDownloadUrlResponse
-{
-    public string PresignedUrl { get; set; } = string.Empty;
-    public string ObjectKey { get; set; } = string.Empty;
-    public int ExpiresInMinutes { get; set; }
 }
 
 /// <summary>
@@ -192,7 +185,7 @@ public class ImageStorageService : IImageStorageService
     }
 
     /// <inheritdoc />
-    public async Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null)
+    public async Task<ImageUploadTarget?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null)
     {
         return await _uploadClient.GetUploadUrlAsync(fileName, contentType, expectedSizeBytes);
     }

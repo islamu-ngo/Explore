@@ -8,9 +8,9 @@ namespace Explore.Blazor.Client.Services;
 
 public interface IImageStorageRecordClient
 {
-    Task<ImageUploadResult?> CreateRecordFromBytesAsync(ImageUploadResponse uploadResponse, FileUploadData fileData);
+    Task<ImageUploadResult?> CreateRecordFromBytesAsync(ImageUploadTarget uploadTarget, FileUploadData fileData);
 
-    Task<ImageUploadResult?> CreateRecordFromFileAsync(ImageUploadResponse uploadResponse, IBrowserFile file);
+    Task<ImageUploadResult?> CreateRecordFromFileAsync(ImageUploadTarget uploadTarget, IBrowserFile file);
 }
 
 public sealed class ImageStorageRecordClient(
@@ -18,7 +18,7 @@ public sealed class ImageStorageRecordClient(
     IImageContentClassifier contentClassifier,
     ILogger<ImageStorageRecordClient> logger) : IImageStorageRecordClient
 {
-    public async Task<ImageUploadResult?> CreateRecordFromBytesAsync(ImageUploadResponse uploadResponse, FileUploadData fileData)
+    public async Task<ImageUploadResult?> CreateRecordFromBytesAsync(ImageUploadTarget uploadResponse, FileUploadData fileData)
     {
         var createDto = BuildCreateStorageObjectDto(
             fileData.ContentType,
@@ -78,7 +78,7 @@ public sealed class ImageStorageRecordClient(
         return MapCreateResponse(createResponse, uploadResponse, logDetailedSuccess: true);
     }
 
-    public async Task<ImageUploadResult?> CreateRecordFromFileAsync(ImageUploadResponse uploadResponse, IBrowserFile file)
+    public async Task<ImageUploadResult?> CreateRecordFromFileAsync(ImageUploadTarget uploadResponse, IBrowserFile file)
     {
         var createDto = BuildCreateStorageObjectDto(
             file.ContentType,
@@ -120,7 +120,7 @@ public sealed class ImageStorageRecordClient(
 
     private ImageUploadResult? MapCreateResponse(
         BaseCommandResponseOfGuid? createResponse,
-        ImageUploadResponse uploadResponse,
+        ImageUploadTarget uploadResponse,
         bool logDetailedSuccess)
     {
         if (createResponse?.Success == true)
