@@ -16,8 +16,6 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
     public const string RealmName = "ISLAMU";
     public const string TestClientId = "islamu-event-blazor";
     public const string TestClientSecret = "test-blazor-secret";
-    public const string TestControlPlaneClientId = "islamu-event-control-plane";
-    public const string TestControlPlaneClientSecret = "test-control-plane-secret";
 
     private IContainer? _container;
 

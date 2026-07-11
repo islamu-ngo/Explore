@@ -65,7 +65,7 @@ public class MainLayoutTests : IDisposable
 
         // Override IPublicExperienceService for settings assertions
         _publicExperienceService = Substitute.For<IPublicExperienceService>();
-        _publicExperienceService.ResolveHomeRoute(Arg.Any<PublicExperienceSettingsModel?>()).Returns("/events");
+        _publicExperienceService.ResolveHomeRoute(Arg.Any<PublicExperienceSettingsDto?>()).Returns("/events");
         _ctx.Services.AddSingleton(_publicExperienceService);
 
         // Theme service — CreateTheme returns a valid MudTheme to avoid NRE
@@ -530,7 +530,7 @@ public class MainLayoutTests : IDisposable
     public async Task AiAssistantState_WhenOpened_MirrorsAiDockPanelOpenState()
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "AI Dock Bridge User");
-        PublicExperienceSettingsModel settings = new PublicExperienceSettingsBuilder().WithAiAssistant();
+        PublicExperienceSettingsDto settings = new PublicExperienceSettingsBuilder().WithAiAssistant();
         _publicExperienceService.GetCachedSettingsAsync().Returns(settings);
         _publicExperienceService.GetSettingsAsync().Returns(settings);
         var cut = RenderLayout();
@@ -562,7 +562,7 @@ public class MainLayoutTests : IDisposable
     public async Task NavMenuAiToggle_MirrorsAiDockPanelByShellId()
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "AI Dock Toggle User");
-        PublicExperienceSettingsModel settings = new PublicExperienceSettingsBuilder().WithAiAssistant();
+        PublicExperienceSettingsDto settings = new PublicExperienceSettingsBuilder().WithAiAssistant();
         _publicExperienceService.GetCachedSettingsAsync().Returns(settings);
         _publicExperienceService.GetSettingsAsync().Returns(settings);
         var cut = RenderLayout();
@@ -593,7 +593,7 @@ public class MainLayoutTests : IDisposable
     public async Task NavigateToHiddenChromeRoute_ClosesShellDockPanels()
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Hidden Chrome Dock Bridge User");
-        PublicExperienceSettingsModel settings = new PublicExperienceSettingsBuilder().WithAiAssistant();
+        PublicExperienceSettingsDto settings = new PublicExperienceSettingsBuilder().WithAiAssistant();
         _publicExperienceService.GetCachedSettingsAsync().Returns(settings);
         _publicExperienceService.GetSettingsAsync().Returns(settings);
         var cut = RenderLayout();
@@ -645,7 +645,7 @@ public class MainLayoutTests : IDisposable
     public async Task OnFirstRender_WhenAiAssistantUnavailable_HidesAiToggleAndRail()
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "AI Baseline User");
-        PublicExperienceSettingsModel settings = new PublicExperienceSettingsBuilder().WithAiAssistant(false);
+        PublicExperienceSettingsDto settings = new PublicExperienceSettingsBuilder().WithAiAssistant(false);
         _publicExperienceService.GetCachedSettingsAsync().Returns(settings);
         _publicExperienceService.GetSettingsAsync().Returns(settings);
 
@@ -664,7 +664,7 @@ public class MainLayoutTests : IDisposable
     public async Task AiToggle_WhenAvailable_OpensAndClosesAiRail()
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "AI Baseline User");
-        PublicExperienceSettingsModel settings = new PublicExperienceSettingsBuilder().WithAiAssistant();
+        PublicExperienceSettingsDto settings = new PublicExperienceSettingsBuilder().WithAiAssistant();
         _publicExperienceService.GetCachedSettingsAsync().Returns(settings);
         _publicExperienceService.GetSettingsAsync().Returns(settings);
 
@@ -738,7 +738,7 @@ public class MainLayoutTests : IDisposable
     public async Task OnFirstRender_WhenCachedSettingsMissing_ContinuesTenantAndThemeInitialization()
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Null Settings Lifecycle User");
-        _publicExperienceService.GetCachedSettingsAsync().Returns((PublicExperienceSettingsModel?)null);
+        _publicExperienceService.GetCachedSettingsAsync().Returns((PublicExperienceSettingsDto?)null);
         var tenantNavigationService = _ctx.Services.GetRequiredService<ITenantNavigationService>();
 
         var cut = RenderLayout();
@@ -760,7 +760,7 @@ public class MainLayoutTests : IDisposable
     [Test]
     public async Task OnFirstRender_WithBrandName_DisplaysBrandInSidebar()
     {
-        PublicExperienceSettingsModel settings = new PublicExperienceSettingsBuilder()
+        PublicExperienceSettingsDto settings = new PublicExperienceSettingsBuilder()
             .WithBranding("My Test Brand");
         _publicExperienceService.GetCachedSettingsAsync().Returns(settings);
         _publicExperienceService.GetSettingsAsync().Returns(settings);
@@ -781,7 +781,7 @@ public class MainLayoutTests : IDisposable
     public async Task OnFirstRender_NoSubmissionPolicies_HidesCommunityGuidelinesLink()
     {
         // Model defaults AllowUser/Org/GroupSubmittedEvents to true — must explicitly disable
-        PublicExperienceSettingsModel settings = new PublicExperienceSettingsBuilder()
+        PublicExperienceSettingsDto settings = new PublicExperienceSettingsBuilder()
             .WithUserSubmittedEvents(false)
             .WithOrganizationSubmittedEvents(false)
             .WithGroupSubmittedEvents(false);

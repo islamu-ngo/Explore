@@ -84,7 +84,7 @@ public class TenantPublicExperienceAdminServiceTests
     public async Task ApplySingleTenantPolicySettingsAsync_MapsPolicyAndAiAssistantTenantSettings()
     {
         // Arrange
-        var model = new TenantPolicySettingsModel();
+        var model = new TenantPolicySettingsDto();
 
         _apiClient.GetTenantScopedSettingsAsync(
                 "Events",
@@ -323,7 +323,7 @@ public class TenantPublicExperienceAdminServiceTests
     public async Task SaveSingleTenantPolicySettingsAsync_UsesTenantSettingBatches_WhenAiOverrideFlagIsFalse()
     {
         // Arrange
-        var model = new TenantPolicySettingsModel
+        var model = new TenantPolicySettingsDto
         {
             AllowUserSubmittedEvents = true,
             AllowOrganizationSubmittedEvents = true,
@@ -375,7 +375,7 @@ public class TenantPublicExperienceAdminServiceTests
     public async Task SaveSingleTenantPolicySettingsAsync_AllowsOpenAiCompatibleProviderWithoutApiKey()
     {
         // Arrange
-        var model = new TenantPolicySettingsModel
+        var model = new TenantPolicySettingsDto
         {
             AllowUserSubmittedEvents = true,
             AllowOrganizationSubmittedEvents = true,
@@ -415,7 +415,7 @@ public class TenantPublicExperienceAdminServiceTests
     public async Task SaveSingleTenantPolicySettingsAsync_ReturnsFailure_WhenOpenAiCompatibleConfigIsIncomplete()
     {
         // Arrange
-        var model = new TenantPolicySettingsModel
+        var model = new TenantPolicySettingsDto
         {
             AiAssistantEnabled = true,
             AiAssistantProvider = "openai-compatible",
@@ -442,7 +442,7 @@ public class TenantPublicExperienceAdminServiceTests
     public async Task SaveSingleTenantPolicySettingsAsync_ReturnsFailure_WhenFakeProviderIsSubmitted()
     {
         // Arrange
-        var model = new TenantPolicySettingsModel
+        var model = new TenantPolicySettingsDto
         {
             AiAssistantEnabled = true,
             AiAssistantProvider = "fake",
@@ -470,7 +470,7 @@ public class TenantPublicExperienceAdminServiceTests
     public async Task SaveAnnouncementBarAsync_IncrementsRevision_WhenForceRedisplayRequested()
     {
         // Arrange
-        var model = new TenantPolicySettingsModel
+        var model = new TenantPolicySettingsDto
         {
             AnnouncementBarEnabled = true,
             AnnouncementBarMessage = "New update",

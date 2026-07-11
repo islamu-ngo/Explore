@@ -9,7 +9,7 @@ public sealed class StartupRoutingServiceTests
     public async Task GetRootDecisionAsync_ReturnsPublicHome_ForAuthenticatedNonAdminInMultiTenant()
     {
         var instanceOnboarding = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboarding.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        instanceOnboarding.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true,
@@ -29,7 +29,7 @@ public sealed class StartupRoutingServiceTests
     public async Task GetRootDecisionAsync_ReturnsInstanceAdmin_ForAuthenticatedInstanceAdminInMultiTenant()
     {
         var instanceOnboarding = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboarding.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        instanceOnboarding.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true,
@@ -48,10 +48,10 @@ public sealed class StartupRoutingServiceTests
     private static IPublicExperienceService CreatePublicExperienceService()
     {
         var publicExperience = Substitute.For<IPublicExperienceService>();
-        publicExperience.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellModel?>(null));
-        publicExperience.GetCachedSettingsAsync().Returns(Task.FromResult<PublicExperienceSettingsModel?>(null));
-        publicExperience.ResolveHomeRoute(Arg.Any<PublicExperienceShellModel?>()).Returns("/events");
-        publicExperience.ResolveHomeRoute(Arg.Any<PublicExperienceSettingsModel?>()).Returns("/events");
+        publicExperience.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellDto?>(null));
+        publicExperience.GetCachedSettingsAsync().Returns(Task.FromResult<PublicExperienceSettingsDto?>(null));
+        publicExperience.ResolveHomeRoute(Arg.Any<PublicExperienceShellDto?>()).Returns("/events");
+        publicExperience.ResolveHomeRoute(Arg.Any<PublicExperienceSettingsDto?>()).Returns("/events");
         return publicExperience;
     }
 }

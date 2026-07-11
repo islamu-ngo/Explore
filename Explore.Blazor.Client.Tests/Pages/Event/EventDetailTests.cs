@@ -350,7 +350,7 @@ public sealed class EventDetailTests : IDisposable
                 {
                     Id = Guid.NewGuid(),
                     EventId = eventId,
-                    LocalDate = new DateOnly(2026, 6, 25),
+                    LocalDate = new DateTimeOffset(2026, 6, 25, 0, 0, 0, TimeSpan.Zero),
                     Label = "Day 1"
                 }
             ],
@@ -360,9 +360,9 @@ public sealed class EventDetailTests : IDisposable
                     Id = Guid.NewGuid(),
                     EventId = eventId,
                     Title = "Doors open",
-                    LocalStartDate = new DateOnly(2026, 6, 25),
-                    LocalStartTime = new TimeOnly(8, 30),
-                    LocalEndTime = new TimeOnly(9, 0),
+                    LocalStartDate = new DateTimeOffset(2026, 6, 25, 0, 0, 0, TimeSpan.Zero),
+                    LocalStartTime = new TimeSpan(8, 30, 0),
+                    LocalEndTime = new TimeSpan(9, 0, 0),
                     StartTime = new DateTimeOffset(2026, 6, 25, 8, 30, 0, TimeSpan.Zero),
                     EndTime = new DateTimeOffset(2026, 6, 25, 9, 0, 0, TimeSpan.Zero)
                 }

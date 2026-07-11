@@ -46,9 +46,9 @@ public class TenantAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusDto?)null);
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusModel?)null);
+        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusDto?)null);
         var userService = Substitute.For<IUserService>();
         userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
 
@@ -74,9 +74,9 @@ public class TenantAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusDto?)null);
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusModel?)null);
+        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusDto?)null);
         var userService = Substitute.For<IUserService>();
         userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
 
@@ -101,13 +101,13 @@ public class TenantAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusModel
+        tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusDto
         {
             IsAuthenticated = true,
             IsCurrentUserTenantAdministrator = true
         });
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsAuthenticated = true,
             IsCurrentUserInstanceAdmin = false,
@@ -137,14 +137,14 @@ public class TenantAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusModel
+        tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusDto
         {
             IsAuthenticated = true,
             IsCurrentUserPlatformAdministrator = true,
             IsCurrentUserTenantAdministrator = false
         });
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsAuthenticated = true,
             IsCurrentUserInstanceAdmin = true,
@@ -180,9 +180,9 @@ public class TenantAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusDto?)null);
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsAuthenticated = true,
             IsCurrentUserInstanceAdmin = true,
@@ -211,9 +211,9 @@ public class TenantAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusDto?)null);
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsAuthenticated = true,
             IsCurrentUserInstanceAdmin = false,

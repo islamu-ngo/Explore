@@ -1,4 +1,4 @@
-// ABOUTME: Fluent builder for PublicExperienceSettingsModel used in bUnit tests.
+// ABOUTME: Fluent builder for PublicExperienceSettingsDto used in bUnit tests.
 // ABOUTME: Makes tenant branding, module flags, analytics, and render policy configuration explicit and readable.
 
 using Explore.Blazor.Client.Services;
@@ -6,7 +6,7 @@ using Explore.Blazor.Client.Services;
 namespace Explore.Blazor.Client.Tests.Common;
 
 /// <summary>
-/// Fluent builder for constructing <see cref="PublicExperienceSettingsModel"/> in tests.
+/// Fluent builder for constructing <see cref="PublicExperienceSettingsDto"/> in tests.
 /// Provides sensible defaults matching single-tenant production behavior.
 /// </summary>
 /// <remarks>
@@ -21,7 +21,7 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// </remarks>
 public sealed class PublicExperienceSettingsBuilder
 {
-    private readonly PublicExperienceSettingsModel _model = new();
+    private readonly PublicExperienceSettingsDto _model = new();
 
     // ── Tenant Identity ─────────────────────────────────────────────────
 
@@ -282,10 +282,10 @@ public sealed class PublicExperienceSettingsBuilder
 
     // ── Build ───────────────────────────────────────────────────────────
 
-    /// <summary>Builds the configured <see cref="PublicExperienceSettingsModel"/>.</summary>
-    public PublicExperienceSettingsModel Build() => _model;
+    /// <summary>Builds the configured <see cref="PublicExperienceSettingsDto"/>.</summary>
+    public PublicExperienceSettingsDto Build() => _model;
 
     /// <summary>Implicit conversion for concise usage in method parameters.</summary>
-    public static implicit operator PublicExperienceSettingsModel(PublicExperienceSettingsBuilder builder)
+    public static implicit operator PublicExperienceSettingsDto(PublicExperienceSettingsBuilder builder)
         => builder.Build();
 }

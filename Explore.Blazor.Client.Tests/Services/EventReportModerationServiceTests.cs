@@ -167,7 +167,13 @@ public sealed class EventReportModerationServiceTests
         var result = await CreateService().TriageAsync(
             eventId,
             reportId,
-            new ModerationReportTriageActionRequest(caseId, expectedStamp, "safety", EventReportPriority.Urgent),
+            new TriageModerationReportRequestDto
+            {
+                CaseId = caseId,
+                ExpectedCaseConcurrencyStamp = expectedStamp,
+                QueueCode = "safety",
+                Priority = EventReportPriority.Urgent
+            },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
@@ -215,13 +221,14 @@ public sealed class EventReportModerationServiceTests
         var result = await CreateService().DecideAsync(
             eventId,
             reportId,
-            new ModerationReportDecisionActionRequest(
-                Guid.NewGuid(),
-                Guid.NewGuid(),
-                EventReportDecisionKind.NoViolation,
-                "spam",
-                "safe moderator note",
-                null),
+            new DecideModerationReportRequestDto
+            {
+                CaseId = Guid.NewGuid(),
+                ExpectedCaseConcurrencyStamp = Guid.NewGuid(),
+                DecisionKind = EventReportDecisionKind.NoViolation,
+                ReasonCode = "spam",
+                SafeNote = "safe moderator note"
+            },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();

@@ -1,238 +1,177 @@
-// ABOUTME: Focused tests for client-side event and session template sync HTTP service wrappers.
-// ABOUTME: Verifies ApiClientExecutor-backed routing, response parsing, and failure behavior.
+// ABOUTME: Focused tests for event and session template-sync generated-client service wrappers.
+// ABOUTME: Verifies operation selection, identifiers, versions, requests, and generated result forwarding.
 
-using System.Net;
-using System.Text;
-using System.Text.Json;
-using Explore.Blazor.Client.Models;
-using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Services.EventSessionTemplateSync;
 using Explore.Blazor.Client.Services.EventTemplateSync;
-using Refit;
-using EventApplyRequest = Explore.Blazor.Client.Models.EventTemplateSync.EventTemplateSyncApplyRequest;
-using EventHistoryItem = Explore.Blazor.Client.Models.EventTemplateSync.EventTemplateSyncHistoryItemDto;
-using EventPlan = Explore.Blazor.Client.Models.EventTemplateSync.TemplateSyncPlanDto;
-using EventTemplateDiff = Explore.Blazor.Client.Models.EventTemplateSync.TemplateDiffDto;
-using EventTemplateOutcome = Explore.Blazor.Client.Models.EventTemplateSync.TemplateSyncOutcomeDto;
-using SessionApplyRequest = Explore.Blazor.Client.Models.EventSessionTemplateSync.EventSessionTemplateSyncApplyRequest;
-using SessionHistoryItem = Explore.Blazor.Client.Models.EventSessionTemplateSync.EventSessionTemplateSyncHistoryItemDto;
-using SessionPlan = Explore.Blazor.Client.Models.EventSessionTemplateSync.TemplateSyncPlanDto;
-using SessionTemplateOutcome = Explore.Blazor.Client.Models.EventSessionTemplateSync.TemplateSyncOutcomeDto;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class TemplateSyncServiceTests
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private readonly IEventApiClient _api = Substitute.For<IEventApiClient>();
 
     [Test]
-    public async Task EventTemplateSyncService_GetDiffAsync_ReadsExpectedRoute()
+    public async Task EventTemplateSyncService_GetDiffAsync_ForwardsEventAndVersion()
     {
-        using var handler = new RecordingHandler(_ => CreateJsonResponse(CreateEventDiff()));
-        var service = new EventTemplateSyncService(CreateEventApi(handler));
         var eventId = Guid.NewGuid();
+        var expected = CreateDiff(7);
+        _api.GetEventTemplateSyncDiffAsync(
+                eventId,
+                7,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var service = new EventTemplateSyncService(_api);
 
-        EventTemplateDiff? result = await service.GetDiffAsync(eventId, 7);
+        var result = await service.GetDiffAsync(eventId, 7);
 
-        await Assert.That(result).IsNotNull();
-        await Assert.That(handler.LastRequest?.Method).IsEqualTo(HttpMethod.Get);
-        await Assert.That(handler.LastRequest?.RequestUri?.PathAndQuery)
-            .IsEqualTo($"/api/events/{eventId}/template-sync/diff?templateVersion=7");
+        await Assert.That(result).IsSameReferenceAs(expected);
     }
 
     [Test]
-    public async Task EventTemplateSyncService_ApplySyncAsync_ReadsCommandResponse()
+    public async Task EventTemplateSyncService_ApplySyncAsync_ForwardsGeneratedRequest()
     {
-        var outcome = new EventTemplateOutcome([], [], [], 8, DateTimeOffset.UtcNow);
-        var response = new BaseCommandResponse<EventTemplateOutcome>
+        var eventId = Guid.NewGuid();
+        var request = new EventTemplateSyncApplyRequest
         {
-            Success = true,
-            Message = "Applied",
-            Id = outcome
+            Plan = new TemplateSyncPlanDto { TargetTemplateVersion = 8 },
+            BaseProvenanceVersion = 7
         };
-        using var handler = new RecordingHandler(_ => CreateJsonResponse(response));
-        var service = new EventTemplateSyncService(CreateEventApi(handler));
-        var eventId = Guid.NewGuid();
+        var expected = CreateOutcome(8);
+        _api.ApplyEventTemplateSyncAsync(
+                eventId,
+                request,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var service = new EventTemplateSyncService(_api);
 
-        BaseCommandResponse<EventTemplateOutcome> result = await service.ApplySyncAsync(
+        var result = await service.ApplySyncAsync(eventId, request);
+
+        await Assert.That(result).IsSameReferenceAs(expected);
+        await _api.Received(1).ApplyEventTemplateSyncAsync(
             eventId,
-            new EventApplyRequest(new EventPlan { TargetTemplateVersion = 8 }, 7));
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(handler.LastRequest?.Method).IsEqualTo(HttpMethod.Post);
-        await Assert.That(handler.LastRequest?.RequestUri?.PathAndQuery)
-            .IsEqualTo($"/api/events/{eventId}/template-sync/apply");
+            request,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task EventTemplateSyncService_GetHistoryAsync_ThrowsWhenApiFails()
+    public async Task EventTemplateSyncService_GetHistoryAsync_ForwardsPaging()
     {
-        using var handler = new RecordingHandler(_ => CreateProblemResponse(HttpStatusCode.Conflict));
-        var service = new EventTemplateSyncService(CreateEventApi(handler));
-
-        await Assert.That(async () => await service.GetHistoryAsync(Guid.NewGuid()))
-            .Throws<InvalidOperationException>();
-    }
-
-    [Test]
-    public async Task EventTemplateSyncService_ApplySyncAsync_WithJsonNullBody_ThrowsPreviousApplyMessage()
-    {
-        using var handler = new RecordingHandler(_ => CreateJsonNullResponse());
-        var service = new EventTemplateSyncService(CreateEventApi(handler));
-
-        InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.ApplySyncAsync(
-                Guid.NewGuid(),
-                new EventApplyRequest(new EventPlan { TargetTemplateVersion = 8 }, 7)));
-
-        await Assert.That(exception).IsNotNull();
-        await Assert.That(exception!.Message).IsEqualTo("Failed to read apply response.");
-    }
-
-    [Test]
-    public async Task EventTemplateSyncService_GetHistoryAsync_WithJsonNullBody_ThrowsPreviousHistoryMessage()
-    {
-        using var handler = new RecordingHandler(_ => CreateJsonNullResponse());
-        var service = new EventTemplateSyncService(CreateEventApi(handler));
-
-        InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.GetHistoryAsync(Guid.NewGuid()));
-
-        await Assert.That(exception).IsNotNull();
-        await Assert.That(exception!.Message).IsEqualTo("Failed to read history response.");
-    }
-
-    [Test]
-    public async Task EventSessionTemplateSyncService_GetHistoryAsync_ReadsExpectedRoute()
-    {
-        var response = new PaginatedResult<SessionHistoryItem>
+        var eventId = Guid.NewGuid();
+        var expected = new PaginatedResultOfEventTemplateSyncHistoryItemDto
         {
-            Items = [],
             PageNumber = 2,
             PageSize = 5,
-            TotalCount = 0
+            TotalCount = 0,
+            Items = []
         };
-        using var handler = new RecordingHandler(_ => CreateJsonResponse(response));
-        var service = new EventSessionTemplateSyncService(CreateSessionApi(handler));
-        var sessionId = Guid.NewGuid();
+        _api.GetEventTemplateSyncHistoryAsync(
+                eventId,
+                2,
+                5,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var service = new EventTemplateSyncService(_api);
 
-        PaginatedResult<SessionHistoryItem> result = await service.GetHistoryAsync(sessionId, page: 2, pageSize: 5);
+        var result = await service.GetHistoryAsync(eventId, 2, 5);
 
-        await Assert.That(result.PageNumber).IsEqualTo(2);
-        await Assert.That(handler.LastRequest?.Method).IsEqualTo(HttpMethod.Get);
-        await Assert.That(handler.LastRequest?.RequestUri?.PathAndQuery)
-            .IsEqualTo($"/api/event-sessions/{sessionId}/template-sync/history?page=2&pageSize=5");
+        await Assert.That(result).IsSameReferenceAs(expected);
     }
 
     [Test]
-    public async Task EventSessionTemplateSyncService_ApplySyncAsync_ReadsCommandResponse()
+    public async Task EventSessionTemplateSyncService_GetDiffAsync_ForwardsSessionAndVersion()
     {
-        var outcome = new SessionTemplateOutcome([], [], [], 9, DateTimeOffset.UtcNow);
-        var response = new BaseCommandResponse<SessionTemplateOutcome>
-        {
-            Success = true,
-            Message = "Applied",
-            Id = outcome
-        };
-        using var handler = new RecordingHandler(_ => CreateJsonResponse(response));
-        var service = new EventSessionTemplateSyncService(CreateSessionApi(handler));
         var sessionId = Guid.NewGuid();
+        var expected = CreateDiff(9);
+        _api.GetEventSessionTemplateSyncDiffAsync(
+                sessionId,
+                9,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var service = new EventSessionTemplateSyncService(_api);
 
-        BaseCommandResponse<SessionTemplateOutcome> result = await service.ApplySyncAsync(
+        var result = await service.GetDiffAsync(sessionId, 9);
+
+        await Assert.That(result).IsSameReferenceAs(expected);
+    }
+
+    [Test]
+    public async Task EventSessionTemplateSyncService_ApplySyncAsync_ForwardsGeneratedRequest()
+    {
+        var sessionId = Guid.NewGuid();
+        var request = new EventSessionTemplateSyncApplyRequest
+        {
+            Plan = new TemplateSyncPlanDto { TargetTemplateVersion = 9 },
+            BaseProvenanceVersion = 8
+        };
+        var expected = CreateOutcome(9);
+        _api.ApplyEventSessionTemplateSyncAsync(
+                sessionId,
+                request,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var service = new EventSessionTemplateSyncService(_api);
+
+        var result = await service.ApplySyncAsync(sessionId, request);
+
+        await Assert.That(result).IsSameReferenceAs(expected);
+        await _api.Received(1).ApplyEventSessionTemplateSyncAsync(
             sessionId,
-            new SessionApplyRequest(new SessionPlan { TargetTemplateVersion = 9 }, 8));
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(handler.LastRequest?.Method).IsEqualTo(HttpMethod.Post);
-        await Assert.That(handler.LastRequest?.RequestUri?.PathAndQuery)
-            .IsEqualTo($"/api/event-sessions/{sessionId}/template-sync/apply");
+            request,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task EventSessionTemplateSyncService_ApplySyncAsync_WithJsonNullBody_ThrowsPreviousApplyMessage()
+    public async Task EventSessionTemplateSyncService_GetHistoryAsync_ForwardsPaging()
     {
-        using var handler = new RecordingHandler(_ => CreateJsonNullResponse());
-        var service = new EventSessionTemplateSyncService(CreateSessionApi(handler));
-
-        InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.ApplySyncAsync(
-                Guid.NewGuid(),
-                new SessionApplyRequest(new SessionPlan { TargetTemplateVersion = 9 }, 8)));
-
-        await Assert.That(exception).IsNotNull();
-        await Assert.That(exception!.Message).IsEqualTo("Failed to read apply response.");
-    }
-
-    [Test]
-    public async Task EventSessionTemplateSyncService_GetHistoryAsync_WithJsonNullBody_ThrowsPreviousHistoryMessage()
-    {
-        using var handler = new RecordingHandler(_ => CreateJsonNullResponse());
-        var service = new EventSessionTemplateSyncService(CreateSessionApi(handler));
-
-        InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.GetHistoryAsync(Guid.NewGuid()));
-
-        await Assert.That(exception).IsNotNull();
-        await Assert.That(exception!.Message).IsEqualTo("Failed to read history response.");
-    }
-
-    private static IEventTemplateSyncApi CreateEventApi(HttpMessageHandler handler) =>
-        RestService.For<IEventTemplateSyncApi>(CreateClient(handler));
-
-    private static IEventSessionTemplateSyncApi CreateSessionApi(HttpMessageHandler handler) =>
-        RestService.For<IEventSessionTemplateSyncApi>(CreateClient(handler));
-
-    private static HttpClient CreateClient(HttpMessageHandler handler)
-    {
-        return new HttpClient(handler, disposeHandler: false)
+        var sessionId = Guid.NewGuid();
+        var expected = new PaginatedResultOfEventSessionTemplateSyncHistoryItemDto
         {
-            BaseAddress = new Uri("https://bff.test/")
+            PageNumber = 2,
+            PageSize = 5,
+            TotalCount = 0,
+            Items = []
         };
+        _api.GetEventSessionTemplateSyncHistoryAsync(
+                sessionId,
+                2,
+                5,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var service = new EventSessionTemplateSyncService(_api);
+
+        var result = await service.GetHistoryAsync(sessionId, 2, 5);
+
+        await Assert.That(result).IsSameReferenceAs(expected);
     }
 
-    private static EventTemplateDiff CreateEventDiff()
+    private static HalResourceOfTemplateDiffDto CreateDiff(int targetVersion) => new()
     {
-        return new EventTemplateDiff(7, 6, [], [], [], [], [], [], []);
-    }
+        TargetTemplateVersion = targetVersion,
+        BaseProvenanceVersion = targetVersion - 1
+    };
 
-    private static HttpResponseMessage CreateJsonResponse<T>(T value)
+    private static TemplateSyncOutcomeDto CreateOutcome(int version) => new()
     {
-        var json = JsonSerializer.Serialize(value, JsonOptions);
-        return new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
-        };
-    }
-
-    private static HttpResponseMessage CreateProblemResponse(HttpStatusCode statusCode)
-    {
-        return new HttpResponseMessage(statusCode)
-        {
-            Content = new StringContent(
-                """
-                {"status":409,"title":"Conflict","detail":"Template version changed."}
-                """,
-                Encoding.UTF8,
-                "application/problem+json")
-        };
-    }
-
-    private static HttpResponseMessage CreateJsonNullResponse()
-    {
-        return new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent("null", Encoding.UTF8, "application/json")
-        };
-    }
-
-    private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
-    {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            LastRequest = request;
-            return Task.FromResult(responder(request));
-        }
-    }
+        Applied = [],
+        Skipped = [],
+        Conflicts = [],
+        NewProvenanceVersion = version,
+        SyncedAt = DateTimeOffset.UtcNow
+    };
 }

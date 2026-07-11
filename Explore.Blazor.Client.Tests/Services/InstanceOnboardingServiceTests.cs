@@ -31,7 +31,7 @@ public class InstanceOnboardingServiceTests
         {
             BaseAddress = new Uri("https://test.local")
         };
-        var api = RestService.For<IInstanceOnboardingApi>(client);
+        var api = new EventApiClient(client);
         _bffAuthApi = RestService.For<IBffAuthApi>(authClient);
         _service = new InstanceOnboardingService(api, _bffAuthApi, _logger, _navigation);
     }
@@ -47,7 +47,7 @@ public class InstanceOnboardingServiceTests
     public async Task GetSystemOnboardingStatusAsync_ReturnsStatus_WhenApiSucceeds()
     {
         // Arrange
-        var expected = new SystemOnboardingStatusModel
+        var expected = new SystemOnboardingStatusDto
         {
             RequiresOnboarding = true,
             DeploymentMode = "MultiTenant"
@@ -67,7 +67,7 @@ public class InstanceOnboardingServiceTests
     public async Task GetStatusAsync_ReturnsStatus_WhenApiSucceeds()
     {
         // Arrange
-        var expected = new InstanceOnboardingStatusModel
+        var expected = new InstanceOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true,
@@ -90,7 +90,7 @@ public class InstanceOnboardingServiceTests
     {
         // Arrange
         var startedAt = new DateTime(2026, 2, 15, 10, 0, 0, DateTimeKind.Utc);
-        var expected = new InstanceOnboardingStatusModel
+        var expected = new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsSetupModeActive = true,
@@ -132,14 +132,14 @@ public class InstanceOnboardingServiceTests
     public async Task GetDeploymentModeAsync_ReturnsMode_WhenApiSucceeds()
     {
         // Arrange
-        var expected = new DeploymentModeModel { Mode = "MultiTenant" };
+        var expected = new DeploymentModeDto { Mode = DeploymentMode.MultiTenant };
         SetupBffClient(CreateJsonResponse(expected));
 
         // Act
         var result = await _service.GetDeploymentModeAsync();
 
         // Assert
-        await Assert.That(result.Mode).IsEqualTo("MultiTenant");
+        await Assert.That(result.Mode).IsEqualTo(DeploymentMode.MultiTenant);
     }
 
     [Test]
@@ -153,7 +153,7 @@ public class InstanceOnboardingServiceTests
 
         // Assert
         await Assert.That(result).IsNotNull();
-        await Assert.That(result.Mode).IsEqualTo("SingleTenant");
+        await Assert.That(result.Mode).IsNull();
     }
 
     #endregion
@@ -164,7 +164,7 @@ public class InstanceOnboardingServiceTests
     public async Task CompleteAsync_ReturnsSuccess_WhenApiSucceeds()
     {
         // Arrange
-        var commandResponse = new InstanceCommandResponseModel
+        var commandResponse = new BaseCommandResponseOfGuid
         {
             Success = true,
             Message = "OK"
@@ -172,9 +172,9 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(CreateJsonResponse(commandResponse));
 
         // Act
-        var result = await _service.CompleteAsync(new OnboardingCompletionModel
+        var result = await _service.CompleteAsync(new CompleteInstanceOnboardingRequest
         {
-            DeploymentMode = "SingleTenant",
+            DeploymentMode = DeploymentMode.SingleTenant,
             InstanceName = "Test Instance"
         });
 
@@ -190,12 +190,12 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(_ => throw new HttpRequestException("network failed"));
 
         // Act
-        var result = await _service.CompleteAsync(new OnboardingCompletionModel());
+        var result = await _service.CompleteAsync(new CompleteInstanceOnboardingRequest());
 
         // Assert
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Request failed.");
-        await Assert.That(result.Errors).Contains("network failed");
+        await Assert.That(result.Errors).DoesNotContain("network failed");
     }
 
     [Test]
@@ -214,11 +214,11 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(CreateJsonResponse(problemDetails, HttpStatusCode.BadRequest));
 
         // Act
-        var result = await _service.CompleteAsync(new OnboardingCompletionModel());
+        var result = await _service.CompleteAsync(new CompleteInstanceOnboardingRequest());
 
         // Assert
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("Request failed.");
+        await Assert.That(result.Message).IsEqualTo("Failed with status 400.");
         await Assert.That(result.Errors).IsNotEmpty();
     }
 
@@ -234,7 +234,7 @@ public class InstanceOnboardingServiceTests
         HttpMethod? method = null;
         string? requestBody = null;
         var refreshCalled = false;
-        var commandResponse = new InstanceCommandResponseModel { Success = true, Message = "Bootstrapped" };
+        var commandResponse = new BaseCommandResponseOfGuid { Success = true, Message = "Bootstrapped" };
         SetupBffClient(async request =>
         {
             requestUri = request.RequestUri;
@@ -254,7 +254,7 @@ public class InstanceOnboardingServiceTests
         // Assert
         await Assert.That(result.Success).IsTrue();
         await Assert.That(requestUri).IsNotNull();
-        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap");
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instanceonboarding/auth-provider-configuration/keycloak-bootstrap");
         await Assert.That(method).IsEqualTo(HttpMethod.Post);
         await Assert.That(requestBody).Contains("\"blazorRedirectUris\":[\"https://localhost/*\"]");
         await Assert.That(requestBody).Contains("\"blazorWebOrigins\":[\"\\u002B\"]");
@@ -266,7 +266,7 @@ public class InstanceOnboardingServiceTests
     {
         // Arrange
         var refreshCalled = false;
-        var commandResponse = new InstanceCommandResponseModel { Success = false, Message = "Bootstrap failed" };
+        var commandResponse = new BaseCommandResponseOfGuid { Success = false, Message = "Bootstrap failed" };
         SetupBffClient(CreateJsonResponse(commandResponse, HttpStatusCode.BadRequest));
         SetupBffSelfClient(request =>
         {
@@ -354,7 +354,7 @@ public class InstanceOnboardingServiceTests
     {
         // Arrange
         Uri? requestUri = null;
-        var expected = new AuthProviderConfigurationModel
+        var expected = new AuthProviderConfigurationDto
         {
             KeycloakEnabled = true,
             KeycloakAuthority = "https://keycloak.example.com/auth/realms/ISLAMU",
@@ -373,7 +373,7 @@ public class InstanceOnboardingServiceTests
 
         // Assert
         await Assert.That(requestUri).IsNotNull();
-        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/InstanceOnboarding/auth-provider-configuration/internal");
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instanceonboarding/auth-provider-configuration/internal");
         await Assert.That(result.KeycloakDetectedFromEnvironment).IsTrue();
         await Assert.That(result.KeycloakClientSecret).IsEqualTo("runtime-secret");
     }
@@ -383,7 +383,7 @@ public class InstanceOnboardingServiceTests
     {
         // Arrange
         Uri? requestUri = null;
-        var expected = new AuthProviderConfigurationModel
+        var expected = new AuthProviderConfigurationDto
         {
             KeycloakEnabled = true,
             KeycloakAuthority = "https://keycloak.example.com/realms/ISLAMU",
@@ -413,7 +413,7 @@ public class InstanceOnboardingServiceTests
     {
         // Arrange
         Uri? requestUri = null;
-        var expected = new AuthorizationProviderConfigurationModel
+        var expected = new AuthorizationProviderConfigurationDto
         {
             Provider = "cerbos",
             CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
@@ -442,7 +442,7 @@ public class InstanceOnboardingServiceTests
         Uri? requestUri = null;
         HttpMethod? method = null;
         string? requestBody = null;
-        var commandResponse = new InstanceCommandResponseModel { Success = true, Message = "Updated" };
+        var commandResponse = new BaseCommandResponseOfGuid { Success = true, Message = "Updated" };
         SetupBffClient(async request =>
         {
             requestUri = request.RequestUri;
@@ -452,7 +452,7 @@ public class InstanceOnboardingServiceTests
         });
 
         // Act
-        var result = await _service.UpdateAuthorizationProviderConfigurationAsAdminAsync(new AuthorizationProviderConfigurationModel
+        var result = await _service.UpdateAuthorizationProviderConfigurationAsAdminAsync(new AuthorizationProviderConfigurationDto
         {
             Provider = "cerbos",
             CerbosGrpcEndpoint = "cerbosgrpc.local:3593"
@@ -472,7 +472,7 @@ public class InstanceOnboardingServiceTests
         // Arrange
         Uri? requestUri = null;
         HttpMethod? method = null;
-        var commandResponse = new InstanceCommandResponseModel { Success = true, Message = "Synced" };
+        var commandResponse = new BaseCommandResponseOfGuid { Success = true, Message = "Synced" };
         SetupBffClient(request =>
         {
             requestUri = request.RequestUri;
@@ -486,7 +486,7 @@ public class InstanceOnboardingServiceTests
         // Assert
         await Assert.That(result.Success).IsTrue();
         await Assert.That(requestUri).IsNotNull();
-        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/InstanceOnboarding/authz-provider-configuration/sync");
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instanceonboarding/authz-provider-configuration/sync");
         await Assert.That(method).IsEqualTo(HttpMethod.Post);
     }
 
@@ -496,7 +496,7 @@ public class InstanceOnboardingServiceTests
         // Arrange
         Uri? requestUri = null;
         HttpMethod? method = null;
-        var commandResponse = new InstanceCommandResponseModel { Success = true, Message = "Synced" };
+        var commandResponse = new BaseCommandResponseOfGuid { Success = true, Message = "Synced" };
         SetupBffClient(request =>
         {
             requestUri = request.RequestUri;
@@ -514,58 +514,6 @@ public class InstanceOnboardingServiceTests
         await Assert.That(method).IsEqualTo(HttpMethod.Post);
     }
 
-    [Test]
-    public async Task DownloadAuthorizationPolicyPackageAsync_UsesSetupEndpointAndMapsFile()
-    {
-        // Arrange
-        Uri? requestUri = null;
-        HttpMethod? method = null;
-        SetupBffClient(request =>
-        {
-            requestUri = request.RequestUri;
-            method = request.Method;
-            return Task.FromResult(CreateZipResponse([1, 2, 3], "setup-policy-package.zip"));
-        });
-
-        // Act
-        var result = await _service.DownloadAuthorizationPolicyPackageAsync();
-
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.FileBytes).IsEquivalentTo(new byte[] { 1, 2, 3 });
-        await Assert.That(result.FileName).IsEqualTo("setup-policy-package.zip");
-        await Assert.That(result.ContentType).IsEqualTo("application/zip");
-        await Assert.That(requestUri).IsNotNull();
-        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/InstanceOnboarding/authz-provider-configuration/package");
-        await Assert.That(method).IsEqualTo(HttpMethod.Get);
-    }
-
-    [Test]
-    public async Task DownloadAuthorizationPolicyPackageAsAdminAsync_UsesAdminEndpointAndMapsFile()
-    {
-        // Arrange
-        Uri? requestUri = null;
-        HttpMethod? method = null;
-        SetupBffClient(request =>
-        {
-            requestUri = request.RequestUri;
-            method = request.Method;
-            return Task.FromResult(CreateZipResponse([4, 5, 6], "admin-policy-package.zip"));
-        });
-
-        // Act
-        var result = await _service.DownloadAuthorizationPolicyPackageAsAdminAsync();
-
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.FileBytes).IsEquivalentTo(new byte[] { 4, 5, 6 });
-        await Assert.That(result.FileName).IsEqualTo("admin-policy-package.zip");
-        await Assert.That(result.ContentType).IsEqualTo("application/zip");
-        await Assert.That(requestUri).IsNotNull();
-        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/authz-provider/package");
-        await Assert.That(method).IsEqualTo(HttpMethod.Get);
-    }
-
     #endregion
 
     #region ValidateSecretAsync
@@ -574,7 +522,7 @@ public class InstanceOnboardingServiceTests
     public async Task ValidateSecretAsync_ReturnsValid_WhenApiSucceeds()
     {
         // Arrange
-        var expected = new SetupSecretValidationResult { Valid = true };
+        var expected = new SetupSecretValidationResultDto { Valid = true };
         SetupBffClient(CreateJsonResponse(expected));
 
         // Act
@@ -589,7 +537,7 @@ public class InstanceOnboardingServiceTests
     public async Task ValidateSecretAsync_ReturnsInvalid_WhenApiReturnsInvalid()
     {
         // Arrange
-        var expected = new SetupSecretValidationResult { Valid = false, Error = "Invalid setup secret." };
+        var expected = new SetupSecretValidationResultDto { Valid = false };
         SetupBffClient(CreateJsonResponse(expected));
 
         // Act
@@ -598,7 +546,6 @@ public class InstanceOnboardingServiceTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result.Valid).IsFalse();
-        await Assert.That(result.Error).IsEqualTo("Invalid setup secret.");
     }
 
     [Test]
@@ -623,7 +570,7 @@ public class InstanceOnboardingServiceTests
     public async Task UpdateModuleSettingsAsync_ReturnsSuccess_WhenApiSucceeds()
     {
         // Arrange
-        var commandResponse = new InstanceCommandResponseModel
+        var commandResponse = new BaseCommandResponseOfGuid
         {
             Success = true,
             Message = "Updated"
@@ -631,7 +578,7 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(CreateJsonResponse(commandResponse));
 
         // Act
-        var result = await _service.UpdateModuleSettingsAsync(new ModuleSettingsModel());
+        var result = await _service.UpdateModuleSettingsAsync(new ModuleSettingsDto());
 
         // Assert
         await Assert.That(result.Success).IsTrue();
@@ -649,7 +596,7 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(response);
 
         // Act
-        var result = await _service.UpdateModuleSettingsAsync(new ModuleSettingsModel());
+        var result = await _service.UpdateModuleSettingsAsync(new ModuleSettingsDto());
 
         // Assert
         await Assert.That(result.Success).IsFalse();
@@ -663,31 +610,31 @@ public class InstanceOnboardingServiceTests
     public async Task GetStorageSettingsAsync_MapsHalLinksAndUsage()
     {
         // Arrange
-        var payload = new Dictionary<string, object?>
+        var payload = new HalResourceOfInstanceStorageSettingsDto
         {
-            ["provider"] = "local",
-            ["defaultMaxUploadBytes"] = 10 * 1024 * 1024,
-            ["defaultTenantQuotaBytes"] = 1024L * 1024 * 1024,
-            ["instanceMaxUploadBytes"] = 100L * 1024 * 1024,
-            ["lockTenantStorage"] = false,
-            ["usage"] = new Dictionary<string, object?>
+            Provider = StorageProviderOptions.Local,
+            DefaultMaxUploadBytes = 10 * 1024 * 1024,
+            DefaultTenantQuotaBytes = 1024L * 1024 * 1024,
+            InstanceMaxUploadBytes = 100L * 1024 * 1024,
+            LockTenantStorage = false,
+            Usage = new Usage
             {
-                ["usedBytes"] = 4096,
-                ["reservedBytes"] = 2048,
-                ["quarantinedBytes"] = 0,
-                ["objectCount"] = 3
+                UsedBytes = 4096,
+                ReservedBytes = 2048,
+                QuarantinedBytes = 0,
+                ObjectCount = 3
             },
-            ["providerStatus"] = new Dictionary<string, object?>
+            ProviderStatus = new ProviderStatus
             {
-                ["provider"] = "local",
-                ["isAvailable"] = true,
-                ["message"] = "OK"
+                Provider = StorageProviderOptions.Local,
+                IsAvailable = true,
+                Message = "OK"
             },
-            ["_links"] = new Dictionary<string, object?>
+            _links = new Dictionary<string, HalLink>
             {
-                ["edit"] = new { href = "/api/instance/settings/storage", method = "PUT" },
-                ["provider-test"] = new { href = "/api/instance/settings/storage/test", method = "POST" },
-                ["recalculate-usage"] = new { href = "/api/instance/settings/storage/recalculate-usage", method = "POST" }
+                ["edit"] = new() { Href = "/api/instance/settings/storage", Method = "PUT" },
+                ["provider-test"] = new() { Href = "/api/instance/settings/storage/test", Method = "POST" },
+                ["recalculate-usage"] = new() { Href = "/api/instance/settings/storage/recalculate-usage", Method = "POST" }
             }
         };
         SetupBffClient(CreateJsonResponse(payload));
@@ -697,11 +644,11 @@ public class InstanceOnboardingServiceTests
 
         // Assert
         await Assert.That(result.Provider).IsEqualTo(StorageProviderOptions.Local);
-        await Assert.That(result.CanUpdate).IsTrue();
-        await Assert.That(result.CanTestProvider).IsTrue();
-        await Assert.That(result.CanRecalculateUsage).IsTrue();
-        await Assert.That(result.Usage.UsedBytes).IsEqualTo(4096);
-        await Assert.That(result.ProviderStatus.IsAvailable).IsTrue();
+        await Assert.That(result.HasLink("edit")).IsTrue();
+        await Assert.That(result.HasLink("provider-test")).IsTrue();
+        await Assert.That(result.HasLink("recalculate-usage")).IsTrue();
+        await Assert.That(result.Usage!.UsedBytes).IsEqualTo(4096);
+        await Assert.That(result.ProviderStatus!.IsAvailable).IsTrue();
     }
 
     [Test]
@@ -716,17 +663,20 @@ public class InstanceOnboardingServiceTests
             requestUri = request.RequestUri;
             method = request.Method;
             requestBody = await request.Content!.ReadAsStringAsync();
-            return CreateJsonResponse(new InstanceCommandResponseModel { Success = true, Message = "Updated" });
+            return CreateJsonResponse(new BaseCommandResponseOfGuid { Success = true, Message = "Updated" });
         });
 
         // Act
-        var result = await _service.UpdateStorageSettingsAsync(new InstanceStorageSettingsModel
+        var result = await _service.UpdateStorageSettingsAsync(new HalResourceOfInstanceStorageSettingsDto
         {
-            CanUpdate = true,
             Provider = StorageProviderOptions.Local,
             DefaultMaxUploadBytes = 10 * 1024 * 1024,
             DefaultTenantQuotaBytes = 1024L * 1024 * 1024,
-            InstanceMaxUploadBytes = 100L * 1024 * 1024
+            InstanceMaxUploadBytes = 100L * 1024 * 1024,
+            _links = new Dictionary<string, HalLink>
+            {
+                ["edit"] = new() { Href = "/api/instance/settings/storage", Method = "PUT" }
+            }
         });
 
         // Assert
@@ -745,11 +695,11 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(request =>
         {
             called = true;
-            return Task.FromResult(CreateJsonResponse(new InstanceCommandResponseModel { Success = true }));
+            return Task.FromResult(CreateJsonResponse(new BaseCommandResponseOfGuid { Success = true }));
         });
 
         // Act
-        var result = await _service.UpdateStorageSettingsAsync(new InstanceStorageSettingsModel { CanUpdate = false });
+        var result = await _service.UpdateStorageSettingsAsync(new HalResourceOfInstanceStorageSettingsDto());
 
         // Assert
         await Assert.That(result.Success).IsFalse();
@@ -782,7 +732,7 @@ public class InstanceOnboardingServiceTests
         return response;
     }
 
-    private static KeycloakBootstrapRequestModel CreateKeycloakBootstrapRequest() =>
+    private static KeycloakBootstrapRequestDto CreateKeycloakBootstrapRequest() =>
         new()
         {
             KeycloakBaseUrl = "https://keycloak.example.com",

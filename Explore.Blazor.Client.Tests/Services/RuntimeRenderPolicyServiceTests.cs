@@ -19,7 +19,7 @@ public class RuntimeRenderPolicyServiceTests
     [Test]
     public async Task ResolveForPathAsync_UsesPublicSeoOverride_WhenAdvancedOverridesEnabled()
     {
-        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             EnableAdvancedRenderPolicyOverrides = true,
             GlobalRenderMode = "InteractiveServer",
@@ -38,7 +38,7 @@ public class RuntimeRenderPolicyServiceTests
     [Test]
     public async Task ResolveForPathAsync_UsesGlobalFallback_WhenAdvancedOverridesDisabled()
     {
-        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             RenderPolicyPreset = "CustomAdvanced",
             EnableAdvancedRenderPolicyOverrides = false,
@@ -58,7 +58,7 @@ public class RuntimeRenderPolicyServiceTests
     [Test]
     public async Task ResolveForPathAsync_AlwaysForcesInteractiveServerForOnboarding()
     {
-        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             EnableAdvancedRenderPolicyOverrides = true,
             OnboardingRenderMode = "InteractiveAuto",
@@ -76,7 +76,7 @@ public class RuntimeRenderPolicyServiceTests
     [Test]
     public async Task ResolveForPathAsync_SeoBalancedPreset_ForcesPublicSeoPrerenderOnFallback()
     {
-        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             RenderPolicyPreset = "SeoBalanced",
             EnableAdvancedRenderPolicyOverrides = false,

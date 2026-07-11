@@ -1,14 +1,12 @@
 // ABOUTME: Security-focused BFF WebApplicationFactory that uses real OIDC against containerized Keycloak.
 // ABOUTME: Does NOT use TestAuthHandler — exercises the actual Cookie + OIDC authentication pipeline.
 
-using Explore.Application.Contracts.Services;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
-using Explore.Persistence;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -51,6 +49,7 @@ public class SecurityBlazorBffWebApplicationFactory : WebApplicationFactory<Prog
             var testConfig = new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_bff_security;Username=postgres;Password=postgres",
+                ["ConnectionStrings:cache"] = "localhost:6379,abortConnect=false,connectTimeout=100",
                 ["Keycloak:Authority"] = _keycloakAuthority,
                 ["Keycloak:Realm"] = "ISLAMU",
                 ["Keycloak:ClientId"] = _keycloakClientId,
@@ -72,20 +71,16 @@ public class SecurityBlazorBffWebApplicationFactory : WebApplicationFactory<Prog
 
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveAll<Microsoft.Extensions.Options.IConfigureOptions<Microsoft.AspNetCore.DataProtection.KeyManagement.KeyManagementOptions>>();
             services.AddDataProtection().UseEphemeralDataProtectionProvider();
-
-            services.RemoveAll(typeof(IDbContextFactory<ExploreDbContext>));
-            services.RemoveAll<ExploreDbContext>();
-            services.AddDbContext<ExploreDbContext>(options =>
-                options.UseInMemoryDatabase($"SecurityBffTestDb_{Guid.NewGuid():N}"));
 
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();
 
-            services.RemoveAll<IResolverConfigService>();
-            var mockResolverConfig = NSubstitute.Substitute.For<IResolverConfigService>();
+            services.RemoveAll<IBffResolverConfigurationProvider>();
+            var mockResolverConfig = NSubstitute.Substitute.For<IBffResolverConfigurationProvider>();
             mockResolverConfig.GetConfigurationAsync(Arg.Any<CancellationToken>())
-                .Returns(new Explore.Application.DTOs.Onboarding.ResolverConfigurationDto
+                .Returns(new ResolverConfigurationDto
                 {
                     PathEnabled = false
                 });

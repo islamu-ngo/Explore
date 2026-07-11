@@ -3,12 +3,13 @@
 
 using System.Security.Claims;
 using System.Text.Json;
-using Explore.Application.DTOs.StorageObject;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Options;
+
+using Options = Microsoft.Extensions.Options.Options;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 

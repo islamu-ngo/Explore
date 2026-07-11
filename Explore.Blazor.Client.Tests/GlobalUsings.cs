@@ -19,8 +19,6 @@ global using Explore.Blazor.Client.Contracts.Services.Lookup;
 global using Explore.Blazor.Client.Contracts.Services.Notifications;
 global using Explore.Blazor.Client.Contracts.Services.Organizations;
 global using Explore.Blazor.Client.Models;
-global using Explore.Blazor.Client.Models.EventSessionTemplates;
-global using Explore.Blazor.Client.Models.EventTemplates;
 global using Explore.Blazor.Client.Services;
 global using Explore.Blazor.Client.Services.Lookup;
 global using Explore.Blazor.Client.Tests.Common;

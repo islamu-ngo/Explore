@@ -320,14 +320,14 @@ public class NavMenuAdminTests : IDisposable
 
         var instanceOnboardingService = _ctx.Services.GetRequiredService<IInstanceOnboardingService>();
         instanceOnboardingService.GetStatusAsync().Returns(
-            new InstanceOnboardingStatusModel
+            new InstanceOnboardingStatusDto
             {
                 IsCompleted = true,
                 IsAuthenticated = true,
                 IsCurrentUserInstanceAdmin = false,
                 SelectedDeploymentMode = "SingleTenant"
             },
-            new InstanceOnboardingStatusModel
+            new InstanceOnboardingStatusDto
             {
                 IsCompleted = true,
                 IsAuthenticated = true,
@@ -367,7 +367,7 @@ public class NavMenuAdminTests : IDisposable
         });
 
         var tenantOnboardingService = _ctx.Services.GetRequiredService<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusDto?)null);
 
         // Act
         var cut = RenderNavMenu();
@@ -395,7 +395,7 @@ public class NavMenuAdminTests : IDisposable
     }
 
     private void SetupNavMenuServices(
-        PublicExperienceSettingsModel? publicExperienceSettings = null,
+        PublicExperienceSettingsDto? publicExperienceSettings = null,
         string deploymentMode = "MultiTenant",
         bool isCurrentUserInstanceAdmin = false,
         bool isCurrentUserTenantAdmin = false)

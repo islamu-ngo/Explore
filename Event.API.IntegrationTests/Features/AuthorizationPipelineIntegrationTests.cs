@@ -8,6 +8,7 @@ using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain.Enums;
 using FluentAssertions;
 using TUnit.Core;
 
@@ -29,9 +30,16 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
 
     private readonly SecurityWebApplicationFactory _instanceAdminFactory;
     private readonly HttpClient _instanceAdminClient;
+    private readonly SecurityWebApplicationFactory _instanceAdminControlPlaneFactory;
+    private readonly HttpClient _instanceAdminControlPlaneClient;
 
     private readonly SecurityWebApplicationFactory _regularUserFactory;
     private readonly HttpClient _regularUserClient;
+    private readonly SecurityWebApplicationFactory _regularUserControlPlaneFactory;
+    private readonly HttpClient _regularUserControlPlaneClient;
+
+    private readonly SecurityWebApplicationFactory _tenantAdminFactory;
+    private readonly HttpClient _tenantAdminClient;
 
     private readonly HttpClient _cerbosHttpClient;
 
@@ -55,6 +63,14 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
         };
         _instanceAdminClient = _instanceAdminFactory.CreateClient();
 
+        _instanceAdminControlPlaneFactory = CreateMultiTenantFactory(
+            new RoleAwareCerbosProvider(
+                infra.CerbosHttpEndpoint,
+                isInstanceAdmin: true,
+                tenantMemberships: new Dictionary<string, string>(),
+                orgMemberships: new Dictionary<string, string>()));
+        _instanceAdminControlPlaneClient = _instanceAdminControlPlaneFactory.CreateClient();
+
         var regularUserProvider = new RoleAwareCerbosProvider(
             infra.CerbosHttpEndpoint,
             isInstanceAdmin: false,
@@ -69,15 +85,38 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             AuthorizationProviderOverride = regularUserProvider
         };
         _regularUserClient = _regularUserFactory.CreateClient();
+
+        _regularUserControlPlaneFactory = CreateMultiTenantFactory(
+            new RoleAwareCerbosProvider(
+                infra.CerbosHttpEndpoint,
+                isInstanceAdmin: false,
+                tenantMemberships: new Dictionary<string, string>(),
+                orgMemberships: new Dictionary<string, string>()));
+        _regularUserControlPlaneClient = _regularUserControlPlaneFactory.CreateClient();
+
+        var tenantAdminProvider = new RoleAwareCerbosProvider(
+            infra.CerbosHttpEndpoint,
+            isInstanceAdmin: false,
+            tenantMemberships: new Dictionary<string, string> { ["tenant-1"] = "admin" },
+            orgMemberships: new Dictionary<string, string>());
+
+        _tenantAdminFactory = CreateMultiTenantFactory(tenantAdminProvider);
+        _tenantAdminClient = _tenantAdminFactory.CreateClient();
     }
 
     public async ValueTask DisposeAsync()
     {
         _instanceAdminClient.Dispose();
+        _instanceAdminControlPlaneClient.Dispose();
         _regularUserClient.Dispose();
+        _regularUserControlPlaneClient.Dispose();
+        _tenantAdminClient.Dispose();
         _cerbosHttpClient.Dispose();
         await _instanceAdminFactory.DisposeAsync();
+        await _instanceAdminControlPlaneFactory.DisposeAsync();
         await _regularUserFactory.DisposeAsync();
+        await _regularUserControlPlaneFactory.DisposeAsync();
+        await _tenantAdminFactory.DisposeAsync();
     }
 
     #region Instance Admin — Full Access
@@ -93,6 +132,20 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Test]
+    public async Task InstanceAdmin_GetControlPlaneTenantListAndDetail_ShouldPassAuthorization()
+    {
+        var token = await _infra.TokenClient.GetAdminTokenAsync();
+
+        using var listRequest = CreateGetRequest("/api/admin/control-plane/tenants", token);
+        using var detailRequest = CreateGetRequest($"/api/admin/control-plane/tenants/{Guid.NewGuid()}", token);
+        var listResponse = await _instanceAdminControlPlaneClient.SendAsync(listRequest);
+        var detailResponse = await _instanceAdminControlPlaneClient.SendAsync(detailRequest);
+
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        detailResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     #endregion
 
     #region Regular User — Read Access
@@ -106,6 +159,34 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
         var response = await _regularUserClient.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task RegularUser_GetControlPlaneTenantListAndDetail_ShouldReturnForbidden()
+    {
+        var token = await _infra.TokenClient.GetUserTokenAsync();
+
+        using var listRequest = CreateGetRequest("/api/admin/control-plane/tenants", token);
+        using var detailRequest = CreateGetRequest($"/api/admin/control-plane/tenants/{Guid.NewGuid()}", token);
+        var listResponse = await _regularUserControlPlaneClient.SendAsync(listRequest);
+        var detailResponse = await _regularUserControlPlaneClient.SendAsync(detailRequest);
+
+        listResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        detailResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
+    public async Task TenantAdmin_GetControlPlaneTenantListAndDetail_ShouldReturnForbidden()
+    {
+        var token = await _infra.TokenClient.GetTenantAdminTokenAsync();
+
+        using var listRequest = CreateGetRequest("/api/admin/control-plane/tenants", token);
+        using var detailRequest = CreateGetRequest($"/api/admin/control-plane/tenants/{Guid.NewGuid()}", token);
+        var listResponse = await _tenantAdminClient.SendAsync(listRequest);
+        var detailResponse = await _tenantAdminClient.SendAsync(detailRequest);
+
+        listResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        detailResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     #endregion
@@ -262,6 +343,16 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return request;
     }
+
+    private SecurityWebApplicationFactory CreateMultiTenantFactory(IAuthorizationProvider authorizationProvider) =>
+        new(
+            _infra.KeycloakAuthority,
+            _infra.KeycloakMetadataAddress,
+            _infra.CerbosGrpcEndpoint)
+        {
+            AuthorizationProviderOverride = authorizationProvider,
+            DeploymentMode = DeploymentMode.MultiTenant
+        };
 
     private async Task<Dictionary<string, string>> CheckCerbosDecision(
         bool isInstanceAdmin,

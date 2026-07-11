@@ -2,11 +2,10 @@
 // ABOUTME: Covers program-section assignment and unassignment without rendering Razor pages.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
 using Explore.Blazor.Client.Services;
 using NSubstitute;
-using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Clients.CreateEventSessionDto;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -77,9 +76,10 @@ public sealed class EventSessionSaveCoordinatorTests
         var eventId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
+        var expectedConcurrencyStamp = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        var request = new UpdateEventSessionRequest { Id = sessionId, EventId = eventId, Title = "Panel" };
-        eventService.UpdateSessionAsync(request).Returns(new BaseCommandResponseOfGuid
+        var request = CreateUpdateRequest(eventId);
+        eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -95,11 +95,12 @@ public sealed class EventSessionSaveCoordinatorTests
             request,
             eventId,
             sessionId,
+            expectedConcurrencyStamp,
             selectedSessionGroupId: null,
             initialSessionGroupId: groupId);
 
         await Assert.That(result.Success).IsTrue();
-        await eventService.Received(1).UpdateSessionAsync(request);
+        await eventService.Received(1).UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request);
         await eventService.Received(1).UnassignSessionFromGroupAsync(eventId, groupId, sessionId);
         await eventService.DidNotReceive().AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>());
     }
@@ -110,9 +111,10 @@ public sealed class EventSessionSaveCoordinatorTests
         var eventId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
+        var expectedConcurrencyStamp = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        var request = new UpdateEventSessionRequest { Id = sessionId, EventId = eventId, Title = "Panel" };
-        eventService.UpdateSessionAsync(request).Returns(new BaseCommandResponseOfGuid
+        var request = CreateUpdateRequest(eventId);
+        eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -128,6 +130,7 @@ public sealed class EventSessionSaveCoordinatorTests
             request,
             eventId,
             sessionId,
+            expectedConcurrencyStamp,
             selectedSessionGroupId: groupId,
             initialSessionGroupId: null);
 
@@ -172,9 +175,10 @@ public sealed class EventSessionSaveCoordinatorTests
         var eventId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
+        var expectedConcurrencyStamp = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        var request = new UpdateEventSessionRequest { Id = sessionId, EventId = eventId, Title = "Panel" };
-        eventService.UpdateSessionAsync(request).Returns(new BaseCommandResponseOfGuid
+        var request = CreateUpdateRequest(eventId);
+        eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -185,11 +189,12 @@ public sealed class EventSessionSaveCoordinatorTests
             request,
             eventId,
             sessionId,
+            expectedConcurrencyStamp,
             selectedSessionGroupId: groupId,
             initialSessionGroupId: groupId);
 
         await Assert.That(result.Success).IsTrue();
-        await eventService.Received(1).UpdateSessionAsync(request);
+        await eventService.Received(1).UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request);
         await eventService.DidNotReceive().AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>());
         await eventService.DidNotReceive().UnassignSessionFromGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>());
     }
@@ -201,9 +206,10 @@ public sealed class EventSessionSaveCoordinatorTests
         var oldGroupId = Guid.NewGuid();
         var newGroupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
+        var expectedConcurrencyStamp = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        var request = new UpdateEventSessionRequest { Id = sessionId, EventId = eventId, Title = "Panel" };
-        eventService.UpdateSessionAsync(request).Returns(new BaseCommandResponseOfGuid
+        var request = CreateUpdateRequest(eventId);
+        eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -219,11 +225,12 @@ public sealed class EventSessionSaveCoordinatorTests
             request,
             eventId,
             sessionId,
+            expectedConcurrencyStamp,
             selectedSessionGroupId: newGroupId,
             initialSessionGroupId: oldGroupId);
 
         await Assert.That(result.Success).IsTrue();
-        await eventService.Received(1).UpdateSessionAsync(request);
+        await eventService.Received(1).UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request);
         await eventService.Received(1).AssignSessionToGroupAsync(eventId, newGroupId, sessionId, true, 0);
         await eventService.DidNotReceive().UnassignSessionFromGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>());
     }
@@ -234,9 +241,10 @@ public sealed class EventSessionSaveCoordinatorTests
         var eventId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
+        var expectedConcurrencyStamp = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        var request = new UpdateEventSessionRequest { Id = sessionId, EventId = eventId, Title = "Panel" };
-        eventService.UpdateSessionAsync(request).Returns(new BaseCommandResponseOfGuid
+        var request = CreateUpdateRequest(eventId);
+        eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -252,6 +260,7 @@ public sealed class EventSessionSaveCoordinatorTests
             request,
             eventId,
             sessionId,
+            expectedConcurrencyStamp,
             selectedSessionGroupId: null,
             initialSessionGroupId: groupId);
 
@@ -260,4 +269,12 @@ public sealed class EventSessionSaveCoordinatorTests
         await eventService.Received(1).UnassignSessionFromGroupAsync(eventId, groupId, sessionId);
     }
 
+    private static UpdateEventSessionDto CreateUpdateRequest(Guid eventId) => new()
+    {
+        Event = new UpdateEventSessionEventDto { EventId = eventId },
+        Title = new UpdateEventSessionTitleDto
+        {
+            Value = new OptionalUpdateOfstring { HasValue = true, Value = "Panel" }
+        }
+    };
 }

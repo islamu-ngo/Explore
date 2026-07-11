@@ -1,14 +1,12 @@
 // ABOUTME: Regression tests for event-template HAL collection mapping.
 // ABOUTME: Verifies collection and row affordance links survive NSwag-to-UI model conversion.
 
-using Explore.Blazor.Client.Helpers;
-
 namespace Explore.Blazor.Client.Tests.Helpers;
 
 public sealed class EventTemplateHalResourceExtensionsTests
 {
     [Test]
-    public async Task ToEventTemplatePaginatedResult_PreservesCollectionAndItemLinks()
+    public async Task GeneratedCollection_PreservesCollectionAndItemLinks()
     {
         var templateId = Guid.NewGuid();
         var collection = new HalCollectionResourceOfEventTemplateListDto
@@ -42,22 +40,22 @@ public sealed class EventTemplateHalResourceExtensionsTests
             }
         };
 
-        var result = collection.ToEventTemplatePaginatedResult();
+        var item = collection._embedded!.Items!.Single();
 
-        await Assert.That(result.PageNumber).IsEqualTo(2);
-        await Assert.That(result.TotalCount).IsEqualTo(11);
-        await Assert.That(result.HasHalLink("create")).IsTrue();
-        await Assert.That(result.Links!["create"].Method).IsEqualTo("POST");
-        await Assert.That(result.Items.Count).IsEqualTo(1);
-        await Assert.That(result.Items[0].Id).IsEqualTo(templateId);
-        await Assert.That(result.Items[0].DefinitionsCount).IsEqualTo(4);
-        await Assert.That(result.Items[0].HasHalLink("edit")).IsTrue();
-        await Assert.That(result.Items[0].HasHalLink("delete")).IsTrue();
-        await Assert.That(result.Items[0].Links!["edit"].Method).IsEqualTo("PUT");
+        await Assert.That(collection.PageNumber).IsEqualTo(2);
+        await Assert.That(collection.TotalCount).IsEqualTo(11);
+        await Assert.That(collection._links!.ContainsKey("create")).IsTrue();
+        await Assert.That(collection._links["create"].Method).IsEqualTo("POST");
+        await Assert.That(collection._embedded.Items.Count).IsEqualTo(1);
+        await Assert.That(item.Id).IsEqualTo(templateId);
+        await Assert.That(item.DefinitionCount).IsEqualTo(4);
+        await Assert.That(item._links!.ContainsKey("edit")).IsTrue();
+        await Assert.That(item._links.ContainsKey("delete")).IsTrue();
+        await Assert.That(item._links["edit"].Method).IsEqualTo("PUT");
     }
 
     [Test]
-    public async Task ToEventTemplatePaginatedResult_PreservesCollectionLinks_WhenCollectionIsEmpty()
+    public async Task GeneratedCollection_PreservesLinks_WhenCollectionIsEmpty()
     {
         var collection = new HalCollectionResourceOfEventTemplateListDto
         {
@@ -71,9 +69,7 @@ public sealed class EventTemplateHalResourceExtensionsTests
             _embedded = new HalCollectionEmbeddedOfEventTemplateListDto { Items = [] }
         };
 
-        var result = collection.ToEventTemplatePaginatedResult();
-
-        await Assert.That(result.Items).IsEmpty();
-        await Assert.That(result.HasHalLink("create")).IsTrue();
+        await Assert.That(collection._embedded!.Items!).IsEmpty();
+        await Assert.That(collection._links!.ContainsKey("create")).IsTrue();
     }
 }

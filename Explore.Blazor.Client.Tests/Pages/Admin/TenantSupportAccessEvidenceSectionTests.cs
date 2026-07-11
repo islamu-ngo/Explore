@@ -4,6 +4,7 @@
 using AngleSharp.Dom;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.SupportAccess;
+using Explore.Blazor.Client.Models.Responses;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -49,19 +50,12 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
     {
         var sessionId = Guid.NewGuid();
         var session = CreateSessionResource(sessionId, withAuditLink: true, allowsWrites: true, isActive: true);
-        var auditEvents = new SupportAccessAuditEventCollection(
-            [CreateAuditEvent(sessionId, "SessionStarted")],
-            new Dictionary<string, SupportAccessLink>(StringComparer.OrdinalIgnoreCase),
-            1,
-            100);
+        var auditEvents = CreateAuditEventCollection(CreateAuditEvent(sessionId, "SessionStarted"));
         _supportAccessClientService.GetSessionsAsync(_tenantId, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new SupportAccessSessionCollection(
-                [session],
-                new Dictionary<string, SupportAccessLink>(StringComparer.OrdinalIgnoreCase),
-                1,
-                100));
+            .Returns(ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>.Success(
+                CreateSessionCollection(session)));
         _supportAccessClientService.GetAuditEventsAsync(_tenantId, sessionId, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(auditEvents);
+            .Returns(ServiceResult<HalCollectionResourceOfSupportAccessAuditEventDto>.Success(auditEvents));
 
         var cut = RenderEvidenceSection();
         cut.WaitForAssertion(() =>
@@ -91,11 +85,8 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
     {
         var session = CreateSessionResource(Guid.NewGuid(), withAuditLink: false, allowsWrites: true, isActive: true);
         _supportAccessClientService.GetSessionsAsync(_tenantId, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new SupportAccessSessionCollection(
-                [session],
-                new Dictionary<string, SupportAccessLink>(StringComparer.OrdinalIgnoreCase),
-                1,
-                100));
+            .Returns(ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>.Success(
+                CreateSessionCollection(session)));
 
         var cut = RenderEvidenceSection();
         cut.WaitForAssertion(() =>
@@ -117,7 +108,8 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
     public async Task TenantSettingsLayout_SupportEvidenceSection_IsReadOnlyAndRemovesSaveFooter()
     {
         _supportAccessClientService.GetSessionsAsync(_tenantId, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(SupportAccessSessionCollection.Empty());
+            .Returns(ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>.Success(
+                new HalCollectionResourceOfSupportAccessSessionDto()));
 
         var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
             parameters.Add(component => component.Type, GetComponentType("TenantAdminSettingsLayout")));
@@ -150,7 +142,7 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
     private void ConfigureDefaults()
     {
         _tenantOnboardingService.GetStatusAsync()
-            .Returns(Task.FromResult<TenantOnboardingStatusModel?>(new TenantOnboardingStatusModel
+            .Returns(Task.FromResult<TenantOnboardingStatusDto?>(new TenantOnboardingStatusDto
             {
                 IsCompleted = true,
                 IsAuthenticated = true,
@@ -158,27 +150,29 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
                 TenantId = _tenantId
             }));
         _tenantOnboardingService.GetSettingsAsync()
-            .Returns(Task.FromResult(new TenantPolicySettingsModel()));
+            .Returns(Task.FromResult(new TenantPolicySettingsDto()));
         _instanceOnboardingService.GetStatusAsync()
-            .Returns(Task.FromResult<InstanceOnboardingStatusModel?>(new InstanceOnboardingStatusModel
+            .Returns(Task.FromResult<InstanceOnboardingStatusDto?>(new InstanceOnboardingStatusDto
             {
                 IsCompleted = true,
                 IsAuthenticated = true,
                 IsCurrentUserInstanceAdmin = false,
                 SelectedDeploymentMode = "MultiTenant"
             }));
-        _publicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(Arg.Any<TenantPolicySettingsModel>(), Arg.Any<CancellationToken>())
+        _publicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(Arg.Any<TenantPolicySettingsDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new TenantPublicExperienceAdminModel()));
         _brandingSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new TenantBrandingSettingsAdminModel { Exists = true, CanReplace = true }));
         _storageSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new TenantStorageSettingsModel()));
+            .Returns(Task.FromResult(new HalResourceOfTenantStorageSettingsDto()));
         _supportAccessClientService.GetSessionsAsync(_tenantId, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(SupportAccessSessionCollection.Empty());
+            .Returns(ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>.Success(
+                new HalCollectionResourceOfSupportAccessSessionDto()));
         _supportAccessClientService.GetAuditEventsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(SupportAccessAuditEventCollection.Empty());
+            .Returns(ServiceResult<HalCollectionResourceOfSupportAccessAuditEventDto>.Success(
+                new HalCollectionResourceOfSupportAccessAuditEventDto()));
     }
 
     private IRenderedComponent<DynamicComponent> RenderEvidenceSection()
@@ -187,57 +181,72 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
             parameters.Add(component => component.Type, GetComponentType("TenantSupportAccessEvidenceSection")));
     }
 
-    private SupportAccessSessionResource CreateSessionResource(
+    private HalResourceOfSupportAccessSessionDto CreateSessionResource(
         Guid sessionId,
         bool withAuditLink,
         bool allowsWrites,
         bool isActive)
     {
-        Dictionary<string, SupportAccessLink> links = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, HalLink> links = new(StringComparer.OrdinalIgnoreCase);
         if (withAuditLink)
         {
-            links["audit-events"] = new SupportAccessLink(
-                "audit-events",
-                $"/api/support-access/tenants/{_tenantId:D}/sessions/{sessionId:D}/audit-events",
-                HttpMethod.Get.Method,
-                "Support-access audit events");
+            links["audit-events"] = new HalLink
+            {
+                Href = $"/api/support-access/tenants/{_tenantId:D}/sessions/{sessionId:D}/audit-events",
+                Method = HttpMethod.Get.Method,
+                Title = "Support-access audit events"
+            };
         }
 
-        return new SupportAccessSessionResource(
-            new SupportAccessSessionDto
-            {
-                Id = sessionId,
-                TargetTenantId = _tenantId,
-                IsActive = isActive,
-                AllowsWrites = allowsWrites,
-                ModeName = allowsWrites ? "Write" : "ReadOnly",
-                StatusName = isActive ? "Active" : "Ended",
-                ReasonCode = "customer_support",
-                TicketReference = "SUP-123",
-                StartedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10),
-                ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(20),
-                EndedAtUtc = isActive ? null : DateTimeOffset.UtcNow.AddMinutes(-1)
-            },
-            links);
+        return new HalResourceOfSupportAccessSessionDto
+        {
+            Id = sessionId,
+            TargetTenantId = _tenantId,
+            IsActive = isActive,
+            AllowsWrites = allowsWrites,
+            ModeName = allowsWrites ? "Write" : "ReadOnly",
+            StatusName = isActive ? "Active" : "Ended",
+            ReasonCode = "customer_support",
+            TicketReference = "SUP-123",
+            StartedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10),
+            ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(20),
+            EndedAtUtc = isActive ? null : DateTimeOffset.UtcNow.AddMinutes(-1),
+            _links = links
+        };
     }
 
-    private SupportAccessAuditEventResource CreateAuditEvent(Guid sessionId, string eventTypeName)
+    private HalResourceOfSupportAccessAuditEventDto CreateAuditEvent(Guid sessionId, string eventTypeName)
     {
-        return new SupportAccessAuditEventResource(
-            new SupportAccessAuditEventDto
-            {
-                Id = Guid.NewGuid(),
-                SupportAccessSessionId = sessionId,
-                TargetTenantId = _tenantId,
-                OccurredAtUtc = DateTimeOffset.UtcNow,
-                EventTypeName = eventTypeName,
-                RouteName = "ListTenantEvents",
-                Action = "read",
-                Outcome = "allowed",
-                HttpStatusCode = 200
-            },
-            new Dictionary<string, SupportAccessLink>(StringComparer.OrdinalIgnoreCase));
+        return new HalResourceOfSupportAccessAuditEventDto
+        {
+            Id = Guid.NewGuid(),
+            SupportAccessSessionId = sessionId,
+            TargetTenantId = _tenantId,
+            OccurredAtUtc = DateTimeOffset.UtcNow,
+            EventTypeName = eventTypeName,
+            RouteName = "ListTenantEvents",
+            Action = "read",
+            Outcome = "allowed",
+            HttpStatusCode = 200,
+            _links = new Dictionary<string, HalLink>(StringComparer.OrdinalIgnoreCase)
+        };
     }
+
+    private static HalCollectionResourceOfSupportAccessSessionDto CreateSessionCollection(
+        HalResourceOfSupportAccessSessionDto session) => new()
+        {
+            _embedded = new HalCollectionEmbeddedOfSupportAccessSessionDto { Items = [session] },
+            TotalCount = 1,
+            PageSize = 100
+        };
+
+    private static HalCollectionResourceOfSupportAccessAuditEventDto CreateAuditEventCollection(
+        HalResourceOfSupportAccessAuditEventDto auditEvent) => new()
+        {
+            _embedded = new HalCollectionEmbeddedOfSupportAccessAuditEventDto { Items = [auditEvent] },
+            TotalCount = 1,
+            PageSize = 100
+        };
 
     private static IReadOnlyList<IElement> FindAuditButtons(IRenderedComponent<DynamicComponent> cut) =>
         cut.FindAll("button")

@@ -15,16 +15,16 @@ public sealed class EventTemplateListPageTests
         var service = Substitute.For<IEventTemplateService>();
         var component = CreateComponent(service);
         service.GetTemplatesAsync(null, 1, 10, Arg.Any<CancellationToken>())
-            .Returns(new PaginatedResult<EventTemplateListModel>
+            .Returns(new HalCollectionResourceOfEventTemplateListDto
             {
-                Items = [],
+                _embedded = new HalCollectionEmbeddedOfEventTemplateListDto { Items = [] },
                 PageNumber = 1,
                 PageSize = 10,
                 TotalCount = 0,
-                Links = CreateLinks("create")
+                _links = CreateLinks("create")
             });
 
-        var result = await InvokeServerReloadAsync(component, new GridState<EventTemplateListModel>
+        var result = await InvokeServerReloadAsync(component, new GridState<HalResourceOfEventTemplateListDto>
         {
             Page = 0,
             PageSize = 10
@@ -40,24 +40,27 @@ public sealed class EventTemplateListPageTests
         var service = Substitute.For<IEventTemplateService>();
         var component = CreateComponent(service);
         service.GetTemplatesAsync(null, 1, 10, Arg.Any<CancellationToken>())
-            .Returns(new PaginatedResult<EventTemplateListModel>
+            .Returns(new HalCollectionResourceOfEventTemplateListDto
             {
-                Items =
-                [
-                    new EventTemplateListModel
-                    {
-                        Id = Guid.NewGuid(),
-                        TemplateKey = "conference",
-                        DisplayName = "Conference",
-                        Links = CreateLinks("create")
-                    }
-                ],
+                _embedded = new HalCollectionEmbeddedOfEventTemplateListDto
+                {
+                    Items =
+                    [
+                        new HalResourceOfEventTemplateListDto
+                        {
+                            Id = Guid.NewGuid(),
+                            TemplateKey = "conference",
+                            DisplayName = "Conference",
+                            _links = CreateLinks("create")
+                        }
+                    ]
+                },
                 PageNumber = 1,
                 PageSize = 10,
                 TotalCount = 1
             });
 
-        var result = await InvokeServerReloadAsync(component, new GridState<EventTemplateListModel>
+        var result = await InvokeServerReloadAsync(component, new GridState<HalResourceOfEventTemplateListDto>
         {
             Page = 0,
             PageSize = 10
@@ -74,16 +77,16 @@ public sealed class EventTemplateListPageTests
         return component;
     }
 
-    private static async Task<GridData<EventTemplateListModel>> InvokeServerReloadAsync(
+    private static async Task<GridData<HalResourceOfEventTemplateListDto>> InvokeServerReloadAsync(
         EventTemplateListPage component,
-        GridState<EventTemplateListModel> state)
+        GridState<HalResourceOfEventTemplateListDto> state)
     {
         var method = typeof(EventTemplateListPage).GetMethod(
             "ServerReloadAsync",
             BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("ServerReloadAsync not found.");
 
-        var task = (Task<GridData<EventTemplateListModel>>)method.Invoke(
+        var task = (Task<GridData<HalResourceOfEventTemplateListDto>>)method.Invoke(
             component,
             [state, CancellationToken.None])!;
 
@@ -106,9 +109,9 @@ public sealed class EventTemplateListPageTests
         property.SetValue(instance, value);
     }
 
-    private static IReadOnlyDictionary<string, HalLinkDto> CreateLinks(params string[] rels) =>
+    private static IDictionary<string, HalLink> CreateLinks(params string[] rels) =>
         rels.ToDictionary(
             rel => rel,
-            rel => new HalLinkDto($"/{rel}", rel == "create" ? "POST" : "GET"),
+            rel => new HalLink { Href = $"/{rel}", Method = rel == "create" ? "POST" : "GET" },
             StringComparer.Ordinal);
 }

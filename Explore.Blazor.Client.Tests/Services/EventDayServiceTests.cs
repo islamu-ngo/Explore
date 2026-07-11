@@ -24,8 +24,8 @@ public class EventDayServiceTests
         var eventId = Guid.NewGuid();
         var halResponse = CreateHalCollectionResponse(new List<EventDayListDto>
         {
-            new() { Id = Guid.NewGuid(), LocalDate = new DateOnly(2026, 6, 1), Label = "Day 1" },
-            new() { Id = Guid.NewGuid(), LocalDate = new DateOnly(2026, 6, 2), Label = "Day 2" }
+            new() { Id = Guid.NewGuid(), LocalDate = new DateTimeOffset(2026, 6, 1, 0, 0, 0, TimeSpan.Zero), Label = "Day 1" },
+            new() { Id = Guid.NewGuid(), LocalDate = new DateTimeOffset(2026, 6, 2, 0, 0, 0, TimeSpan.Zero), Label = "Day 2" }
         });
 
         _apiClient.GetEventDaysByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -67,7 +67,7 @@ public class EventDayServiceTests
         var dto = new EventDayDto
         {
             Id = dayId,
-            LocalDate = new DateOnly(2026, 6, 1),
+            LocalDate = new DateTimeOffset(2026, 6, 1, 0, 0, 0, TimeSpan.Zero),
             Label = "Day 1",
             IsPublished = true
         };

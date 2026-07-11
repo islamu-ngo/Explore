@@ -1,299 +1,186 @@
-// ABOUTME: Unit tests for PublicExperienceService covering settings fetch and home route resolution.
-// ABOUTME: Verifies typed BFF fallback behavior and route selection rules for preferred home page configuration.
-
-using System.Net;
-using System.Net.Http.Json;
-using Refit;
+// ABOUTME: Unit tests for PublicExperienceService generated-client delegation and home route resolution.
+// ABOUTME: Verifies public settings and shell fallback, caching, and generated enum route rules.
 
 namespace Explore.Blazor.Client.Tests.Services;
 
-/// <summary>
-/// Unit tests for PublicExperienceService.
-/// </summary>
 public class PublicExperienceServiceTests
 {
-    private Func<HttpRequestMessage, HttpResponseMessage> _bffHandler = _ => new HttpResponseMessage(HttpStatusCode.NotFound);
-    private readonly ILogger<PublicExperienceService> _logger;
+    private readonly IEventApiClient _apiClient;
     private readonly PublicExperienceService _service;
 
     public PublicExperienceServiceTests()
     {
-        _logger = Substitute.For<ILogger<PublicExperienceService>>();
-        var client = new HttpClient(new StubHttpMessageHandler(request => _bffHandler(request)))
-        {
-            BaseAddress = new Uri("https://example.test/")
-        };
-        var api = RestService.For<IPublicExperienceApi>(client);
-        _service = new PublicExperienceService(api, _logger);
+        _apiClient = Substitute.For<IEventApiClient>();
+        _service = new PublicExperienceService(
+            _apiClient,
+            Substitute.For<ILogger<PublicExperienceService>>());
     }
 
-    // ========== GetSettingsAsync ==========
-
-    #region GetSettingsAsync Tests
-
     [Test]
-    public async Task GetSettingsAsync_ReturnsSettings_WhenHttpSucceeds()
+    public async Task GetSettingsAsync_ReturnsGeneratedSettings_WhenApiSucceeds()
     {
-        // Arrange
-        var expected = new PublicExperienceSettingsModel
+        var expected = new PublicExperienceSettingsDto
         {
             TenantId = Guid.NewGuid(),
-            Mode = "OrganizationCentric",
+            Mode = PublicExperienceMode.OrganizationCentric,
             PreferredHomePage = "LandingPage"
         };
+        _apiClient.GetPublicExperienceSettingsAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
 
-        SetupBffClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = JsonContent.Create(expected)
-        });
-
-        // Act
         var result = await _service.GetSettingsAsync();
 
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Mode).IsEqualTo("OrganizationCentric");
-        await Assert.That(result!.PreferredHomePage).IsEqualTo("LandingPage");
+        await Assert.That(result).IsSameReferenceAs(expected);
+        await Assert.That(result!.Mode).IsEqualTo(PublicExperienceMode.OrganizationCentric);
+        await Assert.That(result.PreferredHomePage).IsEqualTo("LandingPage");
     }
 
     [Test]
-    public async Task GetSettingsAsync_ReturnsNull_WhenFactoryThrows()
+    public async Task GetSettingsAsync_ReturnsNull_WhenApiThrows()
     {
-        // Arrange
-        SetupBffClient(_ => throw new HttpRequestException("factory failure"));
+        _apiClient.GetPublicExperienceSettingsAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<PublicExperienceSettingsDto>>(_ => throw new HttpRequestException("factory failure"));
 
-        // Act
         var result = await _service.GetSettingsAsync();
 
-        // Assert
         await Assert.That(result).IsNull();
     }
 
     [Test]
-    public async Task GetSettingsAsync_ReturnsNull_WhenHttpFails()
+    public async Task GetShellAsync_ReturnsGeneratedShell_WhenApiSucceeds()
     {
-        // Arrange
-        SetupBffClient(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
-
-        // Act
-        var result = await _service.GetSettingsAsync();
-
-        // Assert
-        await Assert.That(result).IsNull();
-    }
-
-    #endregion
-
-    // ========== GetShellAsync ==========
-
-    #region GetShellAsync Tests
-
-    [Test]
-    public async Task GetShellAsync_ReturnsShell_WhenHttpSucceeds()
-    {
-        // Arrange
-        var expected = new PublicExperienceShellModel
+        var expected = new PublicExperienceShellDto
         {
-            Mode = "OrganizationCentric",
-            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            Mode = PublicExperienceMode.OrganizationCentric,
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationDto
             {
-                State = "Available",
+                State = PublicExperiencePrimaryOrganizationState.Available,
                 DisplayName = "Community Center"
             },
-            EventCatalog = new PublicExperienceEventCatalogModel
+            EventCatalog = new PublicExperienceEventCatalogDto
             {
                 Label = "Programs",
                 Url = "/events?ActorId=11111111-1111-1111-1111-111111111111"
             }
         };
+        _apiClient.GetPublicExperienceShellAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
 
-        string? requestedPath = null;
-        SetupBffClient(request =>
-        {
-            requestedPath = request.RequestUri?.PathAndQuery;
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = JsonContent.Create(expected)
-            };
-        });
-
-        // Act
         var result = await _service.GetShellAsync();
 
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Mode).IsEqualTo("OrganizationCentric");
-        await Assert.That(result.PrimaryOrganization.State).IsEqualTo("Available");
-        await Assert.That(result.EventCatalog.Label).IsEqualTo("Programs");
-        await Assert.That(requestedPath).IsEqualTo("/api/PublicExperience/shell");
+        await Assert.That(result).IsSameReferenceAs(expected);
+        await Assert.That(result!.PrimaryOrganization!.State)
+            .IsEqualTo(PublicExperiencePrimaryOrganizationState.Available);
+        await Assert.That(result.EventCatalog!.Label).IsEqualTo("Programs");
     }
 
     [Test]
-    public async Task GetShellAsync_ReturnsNull_WhenHttpFails()
+    public async Task GetShellAsync_ReturnsNull_WhenApiRejectsRequest()
     {
-        // Arrange
-        SetupBffClient(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        _apiClient.GetPublicExperienceShellAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<PublicExperienceShellDto>>(_ => throw new ApiException(
+                "Server error",
+                500,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                null));
 
-        // Act
         var result = await _service.GetShellAsync();
 
-        // Assert
         await Assert.That(result).IsNull();
     }
 
-    #endregion
-
-    // ========== ResolveHomeRoute ==========
-
-    #region ResolveHomeRoute Tests
-
     [Test]
-    public async Task ResolveHomeRoute_ReturnsHome_WhenPreferredHomePageIsLandingPage()
+    public async Task GetCachedSettingsAsync_ReusesSuccessfulResponse()
     {
-        // Arrange
-        var settings = new PublicExperienceSettingsModel
-        {
-            PreferredHomePage = "LandingPage"
-        };
+        var expected = new PublicExperienceSettingsDto { PreferredHomePage = "LandingPage" };
+        _apiClient.GetPublicExperienceSettingsAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
 
-        // Act
-        var route = _service.ResolveHomeRoute(settings);
+        var first = await _service.GetCachedSettingsAsync();
+        var second = await _service.GetCachedSettingsAsync();
 
-        // Assert
-        await Assert.That(route).IsEqualTo("/home");
+        await Assert.That(first).IsSameReferenceAs(expected);
+        await Assert.That(second).IsSameReferenceAs(expected);
+        await _apiClient.Received(1).GetPublicExperienceSettingsAsync(
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task ResolveHomeRoute_ReturnsHome_WhenPreferredHomePageIsLandingPageCaseInsensitive()
+    [Arguments("LandingPage", "/home")]
+    [Arguments("landingpage", "/home")]
+    [Arguments("EventList", "/events")]
+    public async Task ResolveHomeRoute_UsesPreferredHomePage(string preferredHomePage, string expectedRoute)
     {
-        // Arrange
-        var settings = new PublicExperienceSettingsModel
+        var route = _service.ResolveHomeRoute(new PublicExperienceSettingsDto
         {
-            PreferredHomePage = "landingpage"
-        };
+            PreferredHomePage = preferredHomePage
+        });
 
-        // Act
-        var route = _service.ResolveHomeRoute(settings);
-
-        // Assert
-        await Assert.That(route).IsEqualTo("/home");
+        await Assert.That(route).IsEqualTo(expectedRoute);
     }
 
     [Test]
-    public async Task ResolveHomeRoute_ReturnsEvents_WhenSettingsAreNull()
+    public async Task ResolveHomeRoute_ReturnsHome_ForAvailableOrganizationCentricShell()
     {
-        // Act
-        var route = _service.ResolveHomeRoute((PublicExperienceSettingsModel?)null);
-
-        // Assert
-        await Assert.That(route).IsEqualTo("/events");
-    }
-
-    [Test]
-    public async Task ResolveHomeRoute_ReturnsHome_WhenOrganizationCentricPrimaryOrganizationIsAvailable()
-    {
-        // Arrange
-        var shell = new PublicExperienceShellModel
+        var shell = new PublicExperienceShellDto
         {
-            Mode = "OrganizationCentric",
-            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            Mode = PublicExperienceMode.OrganizationCentric,
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationDto
             {
-                State = "Available"
+                State = PublicExperiencePrimaryOrganizationState.Available
             }
         };
 
-        // Act
         var route = _service.ResolveHomeRoute(shell);
 
-        // Assert
         await Assert.That(route).IsEqualTo("/home");
     }
 
     [Test]
-    public async Task ResolveHomeRoute_ReturnsHome_WhenShellPreferredHomePageIsLandingPage()
+    public async Task ResolveHomeRoute_ReturnsHome_ForShellLandingPagePreference()
     {
-        // Arrange
-        var shell = new PublicExperienceShellModel
+        var shell = new PublicExperienceShellDto
         {
-            Mode = "DiscoveryCentric",
-            Home = new PublicExperienceHomeModel
-            {
-                PreferredHomePage = "LandingPage"
-            }
+            Mode = PublicExperienceMode.DiscoveryCentric,
+            Home = new PublicExperienceHomeDto { PreferredHomePage = "LandingPage" }
         };
 
-        // Act
         var route = _service.ResolveHomeRoute(shell);
 
-        // Assert
         await Assert.That(route).IsEqualTo("/home");
     }
 
     [Test]
-    public async Task ResolveHomeRoute_ReturnsEvents_WhenOrganizationCentricPrimaryOrganizationIsUnavailable()
+    public async Task ResolveHomeRoute_ReturnsEvents_ForMissingOrganizationOrNullShell()
     {
-        // Arrange
-        var shell = new PublicExperienceShellModel
+        var shell = new PublicExperienceShellDto
         {
-            Mode = "OrganizationCentric",
-            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            Mode = PublicExperienceMode.OrganizationCentric,
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationDto
             {
-                State = "Missing"
+                State = PublicExperiencePrimaryOrganizationState.Missing
             }
         };
 
-        // Act
-        var route = _service.ResolveHomeRoute(shell);
-
-        // Assert
-        await Assert.That(route).IsEqualTo("/events");
-    }
-
-    [Test]
-    public async Task ResolveHomeRoute_ReturnsEvents_WhenShellIsNull()
-    {
-        // Act
-        var route = _service.ResolveHomeRoute((PublicExperienceShellModel?)null);
-
-        // Assert
-        await Assert.That(route).IsEqualTo("/events");
-    }
-
-    [Test]
-    public async Task ResolveHomeRoute_ReturnsEvents_WhenPreferredHomePageIsNotLandingPage()
-    {
-        // Arrange
-        var settings = new PublicExperienceSettingsModel
-        {
-            PreferredHomePage = "EventList"
-        };
-
-        // Act
-        var route = _service.ResolveHomeRoute(settings);
-
-        // Assert
-        await Assert.That(route).IsEqualTo("/events");
-    }
-
-    #endregion
-
-    private void SetupBffClient(Func<HttpRequestMessage, HttpResponseMessage> handler)
-    {
-        _bffHandler = handler;
-    }
-
-    private sealed class StubHttpMessageHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responseFactory;
-
-        public StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
-        {
-            _responseFactory = responseFactory;
-        }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(_responseFactory(request));
-        }
+        await Assert.That(_service.ResolveHomeRoute(shell)).IsEqualTo("/events");
+        await Assert.That(_service.ResolveHomeRoute((PublicExperienceShellDto?)null)).IsEqualTo("/events");
     }
 }

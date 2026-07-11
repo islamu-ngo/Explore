@@ -3,9 +3,8 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
-using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Clients.CreateEventSessionDto;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -77,7 +76,7 @@ public sealed class EventSessionFormModelMapperTests
         var sessionId = Guid.NewGuid();
         var primaryGroupId = Guid.NewGuid();
         var secondaryGroupId = Guid.NewGuid();
-        var request = new UpdateEventSessionRequest();
+        var request = new UpdateEventSessionDto();
         var source = new EventSessionDto
         {
             Id = sessionId,
@@ -99,13 +98,12 @@ public sealed class EventSessionFormModelMapperTests
 
         var state = EventSessionFormModelMapper.PopulateUpdateRequest(request, source, eventId);
 
-        await Assert.That(request.Id).IsEqualTo(sessionId);
-        await Assert.That(request.EventId).IsEqualTo(eventId);
-        await Assert.That(request.Title).IsEqualTo("Workshop");
-        await Assert.That(request.Description).IsEqualTo("Practical work");
+        await Assert.That(request.Event?.EventId).IsEqualTo(eventId);
+        await Assert.That(request.Title?.Value?.Value).IsEqualTo("Workshop");
+        await Assert.That(request.Description?.Value?.Value).IsEqualTo("Practical work");
         await Assert.That(request.IslamicAspect).IsNotNull();
-        await Assert.That(request.IslamicAspect!.ReferencePrayer).IsEqualTo((PrayerTime)2);
-        await Assert.That(request.IslamicAspect.RequiresWudu).IsTrue();
+        await Assert.That(request.IslamicAspect!.Value?.Value?.ReferencePrayer).IsEqualTo((PrayerTime)2);
+        await Assert.That(request.IslamicAspect.Value?.Value?.RequiresWudu).IsTrue();
         await Assert.That(state.PrimarySessionGroupId).IsEqualTo(primaryGroupId);
         await Assert.That(state.SessionDate).IsEqualTo(DateTimeHelper.ConvertUtcToLocal(source.StartTime)!.Value.Date);
         await Assert.That(state.StartTime).IsEqualTo(DateTimeHelper.ConvertUtcToLocal(source.StartTime)!.Value.TimeOfDay);
@@ -115,14 +113,17 @@ public sealed class EventSessionFormModelMapperTests
     [Test]
     public async Task TryPrepareUpdateRequest_RejectsMismatchedSessionContext()
     {
-        var request = new UpdateEventSessionRequest
+        var request = new UpdateEventSessionDto
         {
-            Id = Guid.NewGuid(),
-            Title = "Workshop"
+            Title = new UpdateEventSessionTitleDto
+            {
+                Value = new OptionalUpdateOfstring { HasValue = true, Value = "Workshop" }
+            }
         };
 
         var prepared = EventSessionFormModelMapper.TryPrepareUpdateRequest(
             request,
+            Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
             new DateTime(2026, 6, 1),

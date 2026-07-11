@@ -20,7 +20,7 @@ namespace Explore.Blazor.Client.Tests;
 /// </summary>
 public class ApiClientNamingTests
 {
-    private static readonly string[] ExcludedSchedulingDtoTypeNames =
+    private static readonly string[] RequiredSchedulingDtoTypeNames =
     [
         "EventAgendaItemDto",
         "EventAgendaItemListDto",
@@ -157,17 +157,17 @@ public class ApiClientNamingTests
     }
 
     [Test]
-    public async Task GeneratedClient_DoesNotEmitExcludedSchedulingDtoTypes()
+    public async Task GeneratedClient_EmitsSchedulingDtoTypes()
     {
         var generatedClientSource = GetGeneratedClientSource();
-        var offenders = ExcludedSchedulingDtoTypeNames
-            .Where(typeName => generatedClientSource.Contains($"public partial class {typeName}", StringComparison.Ordinal))
+        var missing = RequiredSchedulingDtoTypeNames
+            .Where(typeName => !generatedClientSource.Contains($"public partial class {typeName}", StringComparison.Ordinal))
             .OrderBy(name => name)
             .ToList();
 
-        await Assert.That(offenders).IsEmpty()
-            .Because("Scheduling DTOs have hand-maintained Blazor client shapes and must remain excluded from NSwag output. "
-                + $"Offenders: [{string.Join(", ", offenders)}].");
+        await Assert.That(missing).IsEmpty()
+            .Because("Scheduling contracts must be generated with IEventApiClient rather than hand-maintained in Blazor. "
+                + $"Missing: [{string.Join(", ", missing)}].");
     }
 
     [Test]
@@ -180,7 +180,7 @@ public class ApiClientNamingTests
             .ToList();
 
         await Assert.That(missing).IsEmpty()
-            .Because("The raw scheduling DTOs are excluded, but their HAL wrapper schemas must remain generated for API responses. "
+            .Because("Scheduling DTOs and their HAL wrapper schemas must remain generated for API responses. "
                 + $"Missing: [{string.Join(", ", missing)}].");
     }
 

@@ -1,19 +1,16 @@
-// ABOUTME: Unit tests for TenantNavigationService HTTP behavior and failure handling.
-// ABOUTME: Verifies endpoint contracts, success deserialization, and resilient fallback responses.
-
-using System.Net;
-using System.Text;
-using System.Text.Json;
-using Refit;
+// ABOUTME: Unit tests for TenantNavigationService generated-client delegation and failure handling.
+// ABOUTME: Verifies operation contracts, DTO forwarding, and resilient fallback responses.
 
 namespace Explore.Blazor.Client.Tests.Services;
 
 public class TenantNavigationServiceTests
 {
+    private readonly IEventApiClient _apiClient;
     private readonly ILogger<TenantNavigationService> _logger;
 
     public TenantNavigationServiceTests()
     {
+        _apiClient = Substitute.For<IEventApiClient>();
         _logger = Substitute.For<ILogger<TenantNavigationService>>();
     }
 
@@ -22,29 +19,39 @@ public class TenantNavigationServiceTests
     {
         // Arrange
         var links = new List<TenantNavigationLinkDto> { new(), new() };
-        var handler = new RecordingHttpMessageHandler(_ =>
-            Task.FromResult(CreateJsonResponse(links)));
-
-        var service = CreateService(handler);
+        _apiClient.GetTenantNavigationLinksAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(links);
+        var service = CreateService();
 
         // Act
         var result = await service.GetNavigationLinksAsync();
 
         // Assert
         await Assert.That(result.Count).IsEqualTo(2);
-        await Assert.That(handler.LastRequest).IsNotNull();
-        await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Get);
-        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation");
+        await _apiClient.Received(1).GetTenantNavigationLinksAsync(
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task GetNavigationLinksAsync_ReturnsEmpty_WhenApiReturnsFailureStatus()
     {
         // Arrange
-        var handler = new RecordingHttpMessageHandler(_ =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
-
-        var service = CreateService(handler);
+        _apiClient.GetTenantNavigationLinksAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<ICollection<TenantNavigationLinkDto>>>(_ => throw new ApiException(
+                "Server error",
+                500,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                null));
+        var service = CreateService();
 
         // Act
         var result = await service.GetNavigationLinksAsync();
@@ -57,60 +64,80 @@ public class TenantNavigationServiceTests
     public async Task CreateNavigationLinkAsync_ReturnsFailureResponse_WhenApiReturnsBadRequest()
     {
         // Arrange
-        var handler = new RecordingHttpMessageHandler(_ =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)
-            {
-                ReasonPhrase = "Bad Request"
-            }));
-
-        var service = CreateService(handler);
+        _apiClient.CreateTenantNavigationLinkAsync(
+                Arg.Any<CreateTenantNavigationLinkDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<BaseCommandResponseOfGuid>>(_ => throw new ApiException(
+                "Bad Request",
+                400,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                null));
+        var service = CreateService();
+        var dto = new CreateTenantNavigationLinkDto();
 
         // Act
-        var result = await service.CreateNavigationLinkAsync(new CreateTenantNavigationLinkDto());
+        var result = await service.CreateNavigationLinkAsync(dto);
 
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
         await Assert.That(result.Message).Contains("Error:");
-        await Assert.That(handler.LastRequest).IsNotNull();
-        await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Post);
-        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation");
+        await _apiClient.Received(1).CreateTenantNavigationLinkAsync(
+            dto,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task UpdateNavigationLinkAsync_SendsPutToIdEndpoint_AndReturnsSuccessBody()
     {
         // Arrange
-        var expected = new Explore.Blazor.Client.Models.Responses.BaseCommandResponse<bool>
+        var expected = new BaseCommandResponseOfboolean
         {
             Success = true,
             Message = "updated",
             Id = true
         };
-
-        var handler = new RecordingHttpMessageHandler(_ =>
-            Task.FromResult(CreateJsonResponse(expected)));
-
-        var service = CreateService(handler);
+        _apiClient.UpdateTenantNavigationLinkAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<UpdateTenantNavigationLinkDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var service = CreateService();
         var linkId = Guid.NewGuid();
+        var dto = new UpdateTenantNavigationLinkDto();
 
         // Act
-        var result = await service.UpdateNavigationLinkAsync(linkId, new UpdateTenantNavigationLinkDto());
+        var result = await service.UpdateNavigationLinkAsync(linkId, dto);
 
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
-        await Assert.That(handler.LastRequest).IsNotNull();
-        await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Put);
-        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo($"/api/tenant/navigation/{linkId}");
+        await _apiClient.Received(1).UpdateTenantNavigationLinkAsync(
+            linkId,
+            dto,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task DeleteNavigationLinkAsync_ReturnsFailureResponse_WhenHttpThrows()
     {
         // Arrange
-        var handler = new RecordingHttpMessageHandler(_ => throw new HttpRequestException("network failed"));
-        var service = CreateService(handler);
+        _apiClient.DeleteTenantNavigationLinkAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<BaseCommandResponseOfboolean>>(_ => throw new HttpRequestException("network failed"));
+        var service = CreateService();
         var linkId = Guid.NewGuid();
 
         // Act
@@ -127,63 +154,33 @@ public class TenantNavigationServiceTests
     public async Task ReorderNavigationLinksAsync_SendsPutToReorderEndpoint_AndReturnsSuccessBody()
     {
         // Arrange
-        var expected = new Explore.Blazor.Client.Models.Responses.BaseCommandResponse<bool>
+        var expected = new BaseCommandResponseOfboolean
         {
             Success = true,
             Message = "reordered",
             Id = true
         };
-
-        var handler = new RecordingHttpMessageHandler(_ =>
-            Task.FromResult(CreateJsonResponse(expected)));
-
-        var service = CreateService(handler);
+        _apiClient.ReorderTenantNavigationLinksAsync(
+                Arg.Any<IEnumerable<UpdateTenantNavigationLinkOrderDto>>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var service = CreateService();
+        var orders = new List<UpdateTenantNavigationLinkOrderDto> { new() };
 
         // Act
-        var result = await service.ReorderNavigationLinksAsync([new UpdateTenantNavigationLinkOrderDto()]);
+        var result = await service.ReorderNavigationLinksAsync(orders);
 
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
-        await Assert.That(handler.LastRequest).IsNotNull();
-        await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Put);
-        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation/reorder");
+        await _apiClient.Received(1).ReorderTenantNavigationLinksAsync(
+            orders,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
-    private TenantNavigationService CreateService(HttpMessageHandler handler)
-    {
-        var client = new HttpClient(handler)
-        {
-            BaseAddress = new Uri("https://test.local")
-        };
-
-        return new TenantNavigationService(RestService.For<ITenantNavigationApi>(client), _logger);
-    }
-
-    private static HttpResponseMessage CreateJsonResponse<T>(T model, HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
-        var json = JsonSerializer.Serialize(model);
-        return new HttpResponseMessage(statusCode)
-        {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
-        };
-    }
-
-    private sealed class RecordingHttpMessageHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, Task<HttpResponseMessage>> _handler;
-
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public RecordingHttpMessageHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
-        {
-            _handler = handler;
-        }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            LastRequest = request;
-            return _handler(request);
-        }
-    }
+    private TenantNavigationService CreateService() => new(_apiClient, _logger);
 }

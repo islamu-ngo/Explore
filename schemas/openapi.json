@@ -7892,6 +7892,23 @@
               "application/json": { },
               "application/hal+json": { }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
           }
         },
         "x-endpoint-class": "Admin",
@@ -8026,6 +8043,23 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -8188,6 +8222,23 @@
               "application/json": { },
               "application/hal+json": { }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
           }
         },
         "x-endpoint-class": "Admin",
@@ -8336,6 +8387,23 @@
               "application/json": { },
               "application/hal+json": { }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
           }
         },
         "x-endpoint-class": "Admin",
@@ -8470,6 +8538,23 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -29953,13 +30038,19 @@
             "description": "OK",
             "content": {
               "text/plain; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/SetupSecretValidationResultDto"
+                }
               },
               "application/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/SetupSecretValidationResultDto"
+                }
               },
               "text/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/SetupSecretValidationResultDto"
+                }
               }
             }
           },
@@ -33557,13 +33648,19 @@
             "description": "OK",
             "content": {
               "text/plain; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/SmtpConnectionTestResultDto"
+                }
               },
               "application/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/SmtpConnectionTestResultDto"
+                }
               },
               "text/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/SmtpConnectionTestResultDto"
+                }
               }
             }
           },
@@ -33597,7 +33694,7 @@
           "InstanceSettings"
         ],
         "summary": "Get Tenant Resolver Configuration",
-        "description": "Returns instance-level tenant resolver configuration.",
+        "description": "Returns the non-sensitive instance-level tenant resolver configuration used by API clients and the BFF routing bootstrap.",
         "operationId": "GetInstanceResolverConfiguration",
         "parameters": [
           {
@@ -33635,29 +33732,9 @@
                 }
               }
             }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
           }
         },
-        "x-endpoint-class": "Authenticated"
+        "x-endpoint-class": "Public"
       },
       "put": {
         "tags": [
@@ -34665,13 +34742,19 @@
             "description": "OK",
             "content": {
               "text/plain; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigurationStatusDto"
+                }
               },
               "application/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigurationStatusDto"
+                }
               },
               "text/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigurationStatusDto"
+                }
               }
             }
           }
@@ -35014,13 +35097,19 @@
             "description": "OK",
             "content": {
               "text/plain; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigurationStatusDto"
+                }
               },
               "application/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigurationStatusDto"
+                }
               },
               "text/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigurationStatusDto"
+                }
               }
             }
           }
@@ -45595,6 +45684,17 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -58565,6 +58665,15 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "_links": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
             }
           }
         }
@@ -88185,6 +88294,17 @@
         ],
         "type": "string"
       },
+      "ProviderConfigurationStatusDto": {
+        "required": [
+          "configured"
+        ],
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          }
+        }
+      },
       "PublicExperienceCtaDto": {
         "type": "object",
         "properties": {
@@ -89894,6 +90014,17 @@
           }
         }
       },
+      "SetupSecretValidationResultDto": {
+        "required": [
+          "valid"
+        ],
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          }
+        }
+      },
       "SharedContactDto": {
         "type": "object",
         "properties": {
@@ -89934,6 +90065,21 @@
           "Advanced"
         ],
         "type": "string"
+      },
+      "SmtpConnectionTestResultDto": {
+        "required": [
+          "success",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
       },
       "StartSupportAccessSessionRequestDto": {
         "type": "object",

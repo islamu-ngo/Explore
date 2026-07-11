@@ -1,18 +1,15 @@
 // ABOUTME: Browser E2E coverage for the single-tenant webhook management surface.
 // ABOUTME: Exercises LocalProvider UI actions, HAL affordances, and responsive screenshot evidence.
 
-using System.Net.Http.Headers;
 using System.Text.Json;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.E2ETests.Fixtures;
 using Explore.Blazor.Client.E2ETests.Seeds;
-using Explore.Domain;
-using Explore.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.Webhooks;
 
 [Category(E2ETestCategories.E2E)]
-[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerClass, SharedType.PerTestSession])]
 [NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
 public sealed class WebhookManagementFlowTests(
@@ -26,22 +23,15 @@ public sealed class WebhookManagementFlowTests(
     [Timeout(600_000)]
     public async Task InstanceAdminWebhooks_ManagesLocalProviderAndCapturesResponsiveScreenshots()
     {
-        await appHost.ResetDatabaseAsync();
         var adminTokens = await appHost.GetTestAdminTokensAsync();
         var adminProviderSubjects = ResolveJwtProviderSubjects(adminTokens.IdToken)
             .Concat(ResolveJwtProviderSubjects(adminTokens.AccessToken))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var adminUserId = ResolveJwtCurrentUserId(adminTokens.AccessToken) ??
-            ResolveJwtCurrentUserId(adminTokens.IdToken);
+        var adminApi = appHost.CreateApiClient(adminTokens.AccessToken);
+        var seed = await WebhookManagementScenarioSeed.SeedAsync(adminApi);
 
-        WebhookManagementScenarioSeed.Result seed;
-        await using (var context = appHost.CreateDbContext())
-        {
-            seed = await WebhookManagementScenarioSeed.SeedAsync(context, adminProviderSubjects, adminUserId);
-        }
-
-        await AssertDirectAdminAuthorityAsync(adminTokens.AccessToken, seed, adminProviderSubjects);
+        await AssertDirectAdminAuthorityAsync(adminApi, adminTokens.AccessToken, seed, adminProviderSubjects);
 
         var page = await playwright.CreatePageAsync(nameof(InstanceAdminWebhooks_ManagesLocalProviderAndCapturesResponsiveScreenshots));
         try
@@ -52,15 +42,6 @@ public sealed class WebhookManagementFlowTests(
             var apiResolvedUserId = currentUserSnapshot.ResolvedUserId ??
                 throw new InvalidOperationException(
                     $"API current-user snapshot did not resolve a user id. Snapshot={currentUserSnapshot}");
-            await using (var context = appHost.CreateDbContext())
-            {
-                await WebhookManagementScenarioSeed.GrantInstanceAdminAsync(context, syncedBrowserUserId);
-                if (apiResolvedUserId != syncedBrowserUserId)
-                {
-                    await WebhookManagementScenarioSeed.GrantInstanceAdminAsync(context, apiResolvedUserId);
-                }
-            }
-
             await InvalidateApiAdminCacheAsync(page, syncedBrowserUserId);
             if (apiResolvedUserId != syncedBrowserUserId)
             {
@@ -73,11 +54,10 @@ public sealed class WebhookManagementFlowTests(
             await AssertInitialWebhookSurfaceAsync(page, seed.DryRunEndpointUrl);
             await CreateLocalEndpointAsync(page);
             await RotateExistingEndpointSecretAsync(page, seed.ExistingEndpointUrl);
-            await RetrySeededFailedAttemptAsync(page, seed.FailedAttemptId);
+            await RetrySeededFailedAttemptAsync(page, adminApi, seed.FailedAttemptId);
             await TestExistingEndpointAsync(page, "https://hooks.example.test/islamu-created");
-            await AssertDryRunEndpointHasNoDeliveryAttemptsAsync(seed.DryRunEndpointId);
+            await AssertDryRunEndpointHasNoDeliveryAttemptsAsync(adminApi, seed.DryRunEndpointId);
             await CaptureResponsiveScreenshotsAsync(page);
-            await OpenSvixProviderPortalAsync(page, seed.SvixConsumerId);
         }
         finally
         {
@@ -182,43 +162,23 @@ public sealed class WebhookManagementFlowTests(
         }
     }
 
-    private async Task AssertDirectAdminAuthorityAsync(
+    private static async Task AssertDirectAdminAuthorityAsync(
+        IEventApiClient api,
         string accessToken,
         WebhookManagementScenarioSeed.Result seed,
         IReadOnlyCollection<string> adminProviderSubjects)
     {
-        using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        using var response = await httpClient.GetAsync($"{appHost.ApiBaseUrl}/api/user/admin-authority");
-        var content = await response.Content.ReadAsStringAsync();
+        var authority = await api.GetCurrentUserAdminAuthorityAsync();
         var tokenClaims = ResolveJwtClaimValues(
             accessToken,
             ["sub", "sid", "internal_user_id", "preferred_username", "email"]);
-        if (response.StatusCode != HttpStatusCode.OK)
-        {
-            throw new InvalidOperationException(
-                "Expected direct API admin-authority to return OK. " +
-                $"Status={(int)response.StatusCode}. " +
-                $"SeedAdminUserId={seed.AdminUserId}. " +
-                $"SeedProviderSubjects=[{string.Join(", ", adminProviderSubjects)}]. " +
-                $"AccessTokenClaims={tokenClaims}. " +
-                $"Body={content}");
-        }
-
-        using var payload = JsonDocument.Parse(content);
-        var isInstanceAdmin = payload.RootElement.TryGetProperty("isInstanceAdmin", out var value)
-            && value.ValueKind == JsonValueKind.True
-            && value.GetBoolean();
-
-        if (!isInstanceAdmin)
+        if (authority.IsInstanceAdmin != true)
         {
             throw new InvalidOperationException(
                 "Expected direct API admin-authority to report instance admin. " +
                 $"SeedAdminUserId={seed.AdminUserId}. " +
                 $"SeedProviderSubjects=[{string.Join(", ", adminProviderSubjects)}]. " +
-                $"AccessTokenClaims={tokenClaims}. " +
-                $"Body={content}");
+                $"AccessTokenClaims={tokenClaims}.");
         }
     }
 
@@ -226,11 +186,7 @@ public sealed class WebhookManagementFlowTests(
     {
         await page.GetByRole(AriaRole.Cell, new PageGetByRoleOptions { NameString = "Operations local bridge" })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
-        await page.GetByRole(AriaRole.Cell, new PageGetByRoleOptions { NameString = "Enterprise Svix bridge" })
-            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
         await page.GetByRole(AriaRole.Cell, new PageGetByRoleOptions { NameString = "DryRun verification bridge" })
-            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameString = "Open provider portal" })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
         var pageText = await page.Locator("body").InnerTextAsync();
@@ -306,25 +262,19 @@ public sealed class WebhookManagementFlowTests(
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
     }
 
-    private async Task RetrySeededFailedAttemptAsync(IPage page, Guid failedAttemptId)
+    private static async Task RetrySeededFailedAttemptAsync(
+        IPage page,
+        IEventApiClient api,
+        Guid failedAttemptId)
     {
         await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { NameString = "Deliveries" })
             .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
 
-        var deliveries = page.GetByLabel("Deliveries");
-        await deliveries.GetByText("http_non_success", new LocatorGetByTextOptions { Exact = true })
-            .First
-            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
-
-        Guid failedMessageId;
-        Guid failedEndpointId;
-        await using (var context = appHost.CreateDbContext())
-        {
-            var attempts = context.WebhookDeliveryAttempts.IgnoreQueryFilters();
-            var failedAttempt = attempts.Single(attempt => attempt.Id == failedAttemptId);
-            failedMessageId = failedAttempt.MessageId;
-            failedEndpointId = failedAttempt.EndpointId;
-        }
+        var failedAttempt = await api.GetWebhookDeliveryAttemptByIdAsync(failedAttemptId);
+        var failedMessageId = failedAttempt.MessageId
+            ?? throw new InvalidOperationException("Failed webhook attempt did not expose its message id.");
+        var failedEndpointId = failedAttempt.EndpointId
+            ?? throw new InvalidOperationException("Failed webhook attempt did not expose its endpoint id.");
 
         var retryButton = page.GetByTestId($"webhook-retry-attempt-{failedAttemptId:D}").First;
         await retryButton.ScrollIntoViewIfNeededAsync(new LocatorScrollIntoViewIfNeededOptions
@@ -333,43 +283,22 @@ public sealed class WebhookManagementFlowTests(
         });
         await retryButton.WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
-        var response = await page.Context.APIRequest.PostAsync(
-            $"{appHost.BlazorBaseUrl}/api/webhooks/delivery-attempts/{failedAttemptId:D}/retry");
-        var content = await response.TextAsync();
-        if (response.Status != (int)HttpStatusCode.OK)
-        {
-            throw new InvalidOperationException(
-                $"Expected webhook manual retry to return OK. Status={response.Status}. Body={content}");
-        }
-
-        using var payload = JsonDocument.Parse(content);
-        if (!payload.RootElement.TryGetProperty("success", out var successProperty) ||
-            successProperty.ValueKind != JsonValueKind.True ||
-            !successProperty.GetBoolean())
-        {
-            throw new InvalidOperationException($"Webhook manual retry response was not successful. Body={content}");
-        }
-
-        if (!TryGetGuidProperty(payload.RootElement, "id", out var retryAttemptId) &&
-            !TryGetGuidProperty(payload.RootElement, "Id", out retryAttemptId))
-        {
-            throw new InvalidOperationException($"Webhook manual retry response did not include an id. Body={content}");
-        }
-
-        await WaitForManualRetryAttemptAsync(retryAttemptId, failedMessageId, failedEndpointId);
+        var retry = await api.RetryWebhookDeliveryAttemptAsync(failedAttemptId);
+        var retryAttemptId = EventApiScenario.SuccessfulId(retry, "retrying the failed webhook delivery");
+        await WaitForManualRetryAttemptAsync(api, retryAttemptId, failedMessageId, failedEndpointId);
     }
 
-    private async Task WaitForManualRetryAttemptAsync(Guid retryAttemptId, Guid failedMessageId, Guid failedEndpointId)
+    private static async Task WaitForManualRetryAttemptAsync(
+        IEventApiClient api,
+        Guid retryAttemptId,
+        Guid failedMessageId,
+        Guid failedEndpointId)
     {
         var deadline = DateTimeOffset.UtcNow.AddMilliseconds(BrowserTimeoutMilliseconds);
         while (DateTimeOffset.UtcNow < deadline)
         {
-            await using var context = appHost.CreateDbContext();
-            var retryAttempt = context.WebhookDeliveryAttempts.IgnoreQueryFilters().FirstOrDefault(attempt =>
-                attempt.Id == retryAttemptId &&
-                attempt.MessageId == failedMessageId &&
-                attempt.EndpointId == failedEndpointId);
-            if (retryAttempt is not null)
+            var retryAttempt = await api.GetWebhookDeliveryAttemptByIdAsync(retryAttemptId);
+            if (retryAttempt.MessageId == failedMessageId && retryAttempt.EndpointId == failedEndpointId)
             {
                 return;
             }
@@ -380,54 +309,13 @@ public sealed class WebhookManagementFlowTests(
         Assert.Fail("Expected manual retry to create a persisted webhook delivery attempt.");
     }
 
-    private async Task AssertDryRunEndpointHasNoDeliveryAttemptsAsync(Guid dryRunEndpointId)
+    private static async Task AssertDryRunEndpointHasNoDeliveryAttemptsAsync(
+        IEventApiClient api,
+        Guid dryRunEndpointId)
     {
-        await using var context = appHost.CreateDbContext();
-        var attemptCount = context.WebhookDeliveryAttempts
-            .IgnoreQueryFilters()
-            .Count(attempt => attempt.EndpointId == dryRunEndpointId);
+        var attempts = await api.GetWebhookDeliveryAttemptsAsync(endpointId: dryRunEndpointId, limit: 100);
+        var attemptCount = attempts._embedded?.Items?.Count ?? 0;
         await Assert.That(attemptCount).IsEqualTo(0);
-    }
-
-    private async Task OpenSvixProviderPortalAsync(IPage page, Guid svixConsumerId)
-    {
-        await page.SetViewportSizeAsync(1280, 900);
-        await PrepareForVisualCaptureAsync(page);
-        await WaitForWebhookPanelAsync(page);
-
-        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { NameString = "Consumers" })
-            .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
-
-        var button = page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameString = "Open provider portal" }).First;
-        await button.WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
-
-        var response = await page.Context.APIRequest.PostAsync(
-            $"{appHost.BlazorBaseUrl}/api/webhooks/svix/app-portal",
-            new APIRequestContextOptions
-            {
-                Timeout = BrowserTimeoutMilliseconds,
-                DataObject = new
-                {
-                    consumerId = svixConsumerId,
-                    readOnly = false,
-                    expiresInSeconds = 3600
-                }
-            });
-        var content = await response.TextAsync();
-        if (response.Status != (int)HttpStatusCode.OK)
-        {
-            throw new InvalidOperationException(
-                $"Expected Svix app portal access to return OK. Status={response.Status}. Body={content}");
-        }
-
-        using var payload = JsonDocument.Parse(content);
-        if (!TryGetStringProperty(payload.RootElement, "url", out var portalUrl) &&
-            !TryGetStringProperty(payload.RootElement, "Url", out portalUrl))
-        {
-            throw new InvalidOperationException($"Svix app portal response did not include a URL. Body={content}");
-        }
-
-        await Assert.That(portalUrl).Contains("app-portal");
     }
 
     private static async Task CaptureResponsiveScreenshotsAsync(IPage page)

@@ -1,16 +1,17 @@
-// ABOUTME: Focused tests for the Blazor host adapter that maps generated control-plane API contracts to the shared RCL contracts.
-// ABOUTME: Protects HAL affordance propagation, warning remediation mapping, and safe API error translation.
+// ABOUTME: Focused tests for the Blazor control-plane adapter over generated Event API contracts.
+// ABOUTME: Protects HAL resource pass-through, generated request construction, and DI registration.
 
-using Event.ControlPlane.Client.Contracts;
+using Explore.Blazor.Client.Contracts.ControlPlane;
+using Explore.Blazor.Client.Contracts.Services.ControlPlane;
+using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Services.ControlPlane;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Explore.Blazor.Client.Tests.Services.ControlPlane;
 
 public sealed class ControlPlaneApiAdapterTests
 {
     [Test]
-    public async Task GetOverviewAsync_MapsSummaryWarningsAndLinks()
+    public async Task GetOverviewAsync_PreservesSummaryWarningsAndLinks()
     {
         var apiClient = Substitute.For<IEventApiClient>();
         var overview = new HalResourceOfControlPlaneOverviewDto
@@ -43,22 +44,25 @@ public sealed class ControlPlaneApiAdapterTests
                 }
             ]
         };
-        GeneratedHalLinkTestHelper.SetLinks(overview, (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/overview", "GET"));
+        GeneratedHalLinkTestHelper.SetLinks(
+            overview,
+            (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/overview", "GET"));
         apiClient.GetControlPlaneOverviewAsync(null, null, Arg.Any<CancellationToken>()).Returns(overview);
-        var adapter = new ControlPlaneApiAdapter(apiClient, NullLogger<ControlPlaneApiAdapter>.Instance);
+        var adapter = new ControlPlaneApiAdapter(apiClient);
 
         var result = await adapter.GetOverviewAsync();
 
-        await Assert.That(result.Kind).IsEqualTo(ControlPlaneResultKind.Success);
-        await Assert.That(result.Value!.DeploymentMode).IsEqualTo("MultiTenant");
-        await Assert.That(result.Value.AdminHost).IsEqualTo("https://admin.example.test");
-        await Assert.That(result.Value.StatusCards.Count).IsEqualTo(3);
-        await Assert.That(result.Value.Warnings.Single().Remediation).IsEqualTo("Set SMTP settings.");
-        await Assert.That(result.Value.Links[ControlPlaneLinkRelations.Self].Href).IsEqualTo("/api/admin/control-plane/overview");
+        await Assert.That(result).IsSameReferenceAs(overview);
+        await Assert.That(result.DeploymentMode).IsEqualTo("MultiTenant");
+        await Assert.That(result.AdminOrigin).IsEqualTo("https://admin.example.test");
+        await Assert.That(result.ProviderSummaries!.Single().DisplayName).IsEqualTo("SMTP");
+        await Assert.That(result.Warnings!.Single().Remediation).IsEqualTo("Set SMTP settings.");
+        await Assert.That(result._links![ControlPlaneLinkRelations.Self].Href)
+            .IsEqualTo("/api/admin/control-plane/overview");
     }
 
     [Test]
-    public async Task GetTenantsAsync_MapsEmbeddedItemsAndHalLinks()
+    public async Task GetTenantsAsync_PreservesEmbeddedItemsAndHalLinks()
     {
         var apiClient = Substitute.For<IEventApiClient>();
         var tenant = new HalResourceOfControlPlaneTenantListItemDto
@@ -68,27 +72,173 @@ public sealed class ControlPlaneApiAdapterTests
             Slug = "central",
             StatusName = "Active"
         };
-        GeneratedHalLinkTestHelper.SetLinks(tenant, (ControlPlaneLinkRelations.Suspend, "/api/admin/control-plane/tenants/central/suspend", "POST"));
+        GeneratedHalLinkTestHelper.SetLinks(
+            tenant,
+            (ControlPlaneLinkRelations.Suspend, "/api/admin/control-plane/tenants/central/suspend", "POST"));
         var collection = new HalCollectionResourceOfControlPlaneTenantListItemDto
         {
             TotalCount = 1,
             _embedded = new HalCollectionEmbeddedOfControlPlaneTenantListItemDto { Items = [tenant] }
         };
-        GeneratedHalLinkTestHelper.SetLinks(collection, (ControlPlaneLinkRelations.Create, "/api/admin/control-plane/tenants", "POST"));
+        GeneratedHalLinkTestHelper.SetLinks(
+            collection,
+            (ControlPlaneLinkRelations.Create, "/api/admin/control-plane/tenants", "POST"));
         apiClient.GetControlPlaneTenantsAsync(null, null, Arg.Any<CancellationToken>()).Returns(collection);
-        var adapter = new ControlPlaneApiAdapter(apiClient, NullLogger<ControlPlaneApiAdapter>.Instance);
+        var adapter = new ControlPlaneApiAdapter(apiClient);
 
         var result = await adapter.GetTenantsAsync();
 
-        await Assert.That(result.Kind).IsEqualTo(ControlPlaneResultKind.Success);
-        await Assert.That(result.Value!.TotalCount).IsEqualTo(1);
-        await Assert.That(result.Value.Links.ContainsKey(ControlPlaneLinkRelations.Create)).IsTrue();
-        await Assert.That(result.Value.Items.Single().Name).IsEqualTo("Central Mosque");
-        await Assert.That(result.Value.Items.Single().Links.ContainsKey(ControlPlaneLinkRelations.Suspend)).IsTrue();
+        await Assert.That(result).IsSameReferenceAs(collection);
+        await Assert.That(result.TotalCount).IsEqualTo(1);
+        await Assert.That(result._links!.ContainsKey(ControlPlaneLinkRelations.Create)).IsTrue();
+        var item = result._embedded!.Items!.Single();
+        await Assert.That(item.FullName).IsEqualTo("Central Mosque");
+        await Assert.That(item._links!.ContainsKey(ControlPlaneLinkRelations.Suspend)).IsTrue();
     }
 
     [Test]
-    public async Task GetDomainsAsync_MapsDnsRecords()
+    public async Task GetPlansAsync_PreservesCatalogItemsPricingAndHalLinks()
+    {
+        var apiClient = Substitute.For<IEventApiClient>();
+        var plan = new HalResourceOfControlPlaneTenantPlanListItemDto
+        {
+            Id = Guid.NewGuid(),
+            Key = "enterprise",
+            DisplayName = "Enterprise",
+            Description = "Enterprise tenant plan.",
+            LatestVersionNumber = 4,
+            PublishedVersionNumber = 3,
+            PriceAmount = 199.95,
+            CurrencyCode = "EUR",
+            BillingPeriod = "monthly",
+            IsActiveForProvisioning = true
+        };
+        GeneratedHalLinkTestHelper.SetLinks(
+            plan,
+            (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/plans/enterprise", "GET"));
+        var collection = new HalCollectionResourceOfControlPlaneTenantPlanListItemDto
+        {
+            TotalCount = 1,
+            _embedded = new HalCollectionEmbeddedOfControlPlaneTenantPlanListItemDto { Items = [plan] }
+        };
+        GeneratedHalLinkTestHelper.SetLinks(
+            collection,
+            (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/plans", "GET"));
+        apiClient.GetControlPlaneTenantPlansAsync(null, null, Arg.Any<CancellationToken>()).Returns(collection);
+        var adapter = new ControlPlaneApiAdapter(apiClient);
+
+        var result = await adapter.GetPlansAsync();
+
+        await Assert.That(result).IsSameReferenceAs(collection);
+        await Assert.That(result.TotalCount).IsEqualTo(1);
+        await Assert.That(result._links!.ContainsKey(ControlPlaneLinkRelations.Self)).IsTrue();
+        var item = result._embedded!.Items!.Single();
+        await Assert.That(item.Key).IsEqualTo("enterprise");
+        await Assert.That(item.PriceAmount).IsEqualTo(199.95);
+        await Assert.That(item.PublishedVersionNumber).IsEqualTo(3);
+        await Assert.That(item._links!.ContainsKey(ControlPlaneLinkRelations.Self)).IsTrue();
+    }
+
+    [Test]
+    public async Task GetPlanAsync_PreservesVersionsSettingsQuotasAndLinks()
+    {
+        var apiClient = Substitute.For<IEventApiClient>();
+        var planId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var detail = new HalResourceOfControlPlaneTenantPlanDetailDto
+        {
+            Id = planId,
+            Key = "enterprise",
+            DisplayName = "Enterprise",
+            Description = "Enterprise tenant plan.",
+            Versions =
+            [
+                new ControlPlaneTenantPlanVersionDto
+                {
+                    Id = versionId,
+                    VersionNumber = 3,
+                    StatusId = 2,
+                    StatusCode = "Published",
+                    PriceAmount = 199.95,
+                    CurrencyCode = "EUR",
+                    BillingPeriod = "monthly",
+                    IsActiveForProvisioning = true,
+                    Settings =
+                    [
+                        new ControlPlaneTenantPlanSettingDto
+                        {
+                            Key = "ai.enabled",
+                            JsonValue = "true",
+                            IsLocked = true
+                        }
+                    ],
+                    Quotas = [new ControlPlaneTenantPlanQuotaDto { Key = "storage.bytes", Limit = 10_000 }]
+                }
+            ]
+        };
+        GeneratedHalLinkTestHelper.SetLinks(
+            detail,
+            (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/plans/enterprise", "GET"));
+        apiClient.GetControlPlaneTenantPlanByKeyAsync("enterprise", null, null, Arg.Any<CancellationToken>())
+            .Returns(detail);
+        var adapter = new ControlPlaneApiAdapter(apiClient);
+
+        var result = await adapter.GetPlanAsync("enterprise");
+
+        await Assert.That(result).IsSameReferenceAs(detail);
+        await Assert.That(result.Id).IsEqualTo(planId);
+        await Assert.That(result._links!.ContainsKey(ControlPlaneLinkRelations.Self)).IsTrue();
+        var version = result.Versions!.Single();
+        await Assert.That(version.Id).IsEqualTo(versionId);
+        await Assert.That(version.Settings!.Single().Key).IsEqualTo("ai.enabled");
+        await Assert.That(version.Settings!.Single().IsLocked).IsTrue();
+        await Assert.That(version.Quotas!.Single().Limit).IsEqualTo(10_000);
+    }
+
+    [Test]
+    public async Task GetPlansAsync_WhenApiReturnsForbidden_PropagatesGeneratedApiException()
+    {
+        var apiClient = Substitute.For<IEventApiClient>();
+        apiClient.GetControlPlaneTenantPlansAsync(null, null, Arg.Any<CancellationToken>())
+            .Returns<Task<HalCollectionResourceOfControlPlaneTenantPlanListItemDto>>(_ => throw CreateApiException(403));
+        var adapter = new ControlPlaneApiAdapter(apiClient);
+
+        await Assert.ThrowsAsync<ApiException>(async () => await adapter.GetPlansAsync());
+    }
+
+    [Test]
+    public async Task GetPlanAsync_WhenCancelled_PropagatesCancellation()
+    {
+        using var source = new CancellationTokenSource();
+        source.Cancel();
+        var apiClient = Substitute.For<IEventApiClient>();
+        apiClient.GetControlPlaneTenantPlanByKeyAsync("enterprise", null, null, source.Token)
+            .Returns<Task<HalResourceOfControlPlaneTenantPlanDetailDto>>(_ =>
+                throw new OperationCanceledException(source.Token));
+        var adapter = new ControlPlaneApiAdapter(apiClient);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await adapter.GetPlanAsync("enterprise", source.Token));
+    }
+
+    [Test]
+    public async Task AddSharedApplicationServices_RegistersPlanCatalogInterfaceToScopedAdapter()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(Substitute.For<IEventApiClient>());
+        services.AddSharedApplicationServices();
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        var service = scope.ServiceProvider.GetRequiredService<IControlPlanePlanCatalogService>();
+        var adapter = scope.ServiceProvider.GetRequiredService<ControlPlaneApiAdapter>();
+
+        await Assert.That(service).IsSameReferenceAs(adapter);
+    }
+
+    [Test]
+    public async Task GetDomainsAsync_PreservesDnsRecords()
     {
         var apiClient = Substitute.For<IEventApiClient>();
         var domains = new HalResourceOfControlPlaneDomainOverviewDto
@@ -105,21 +255,24 @@ public sealed class ControlPlaneApiAdapterTests
                 }
             ]
         };
-        GeneratedHalLinkTestHelper.SetLinks(domains, (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/domains", "GET"));
+        GeneratedHalLinkTestHelper.SetLinks(
+            domains,
+            (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/domains", "GET"));
         apiClient.GetControlPlaneDomainsAsync(null, null, Arg.Any<CancellationToken>()).Returns(domains);
-        var adapter = new ControlPlaneApiAdapter(apiClient, NullLogger<ControlPlaneApiAdapter>.Instance);
+        var adapter = new ControlPlaneApiAdapter(apiClient);
 
         var result = await adapter.GetDomainsAsync();
 
-        await Assert.That(result.Kind).IsEqualTo(ControlPlaneResultKind.Success);
-        await Assert.That(result.Value!.Items.Single().Host).IsEqualTo("admin.example.test");
-        await Assert.That(result.Value.Items.Single().Purpose).IsEqualTo("Admin host");
-        await Assert.That(result.Value.Items.Single().VerificationMessage).IsEqualTo("Create a CNAME record.");
-        await Assert.That(result.Value.Links.ContainsKey(ControlPlaneLinkRelations.Self)).IsTrue();
+        await Assert.That(result).IsSameReferenceAs(domains);
+        var record = result.DnsRecords!.Single();
+        await Assert.That(record.Name).IsEqualTo("admin.example.test");
+        await Assert.That(record.Purpose).IsEqualTo("Admin host");
+        await Assert.That(record.Guidance).IsEqualTo("Create a CNAME record.");
+        await Assert.That(result._links!.ContainsKey(ControlPlaneLinkRelations.Self)).IsTrue();
     }
 
     [Test]
-    public async Task GetOperationsAsync_MapsStatusesWarningsMetricsAndLinks()
+    public async Task GetOperationsAsync_PreservesStatusesWarningsMetricsAndLinks()
     {
         var apiClient = Substitute.For<IEventApiClient>();
         var operations = new HalResourceOfControlPlaneOperationsDto
@@ -157,37 +310,30 @@ public sealed class ControlPlaneApiAdapterTests
                 }
             ]
         };
-        GeneratedHalLinkTestHelper.SetLinks(operations, (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/operations", "GET"));
+        GeneratedHalLinkTestHelper.SetLinks(
+            operations,
+            (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/operations", "GET"));
         apiClient.GetControlPlaneOperationsAsync(null, null, Arg.Any<CancellationToken>()).Returns(operations);
-        var adapter = new ControlPlaneApiAdapter(apiClient, NullLogger<ControlPlaneApiAdapter>.Instance);
+        var adapter = new ControlPlaneApiAdapter(apiClient);
 
         var result = await adapter.GetOperationsAsync();
 
-        await Assert.That(result.Kind).IsEqualTo(ControlPlaneResultKind.Success);
-        await Assert.That(result.Value!.Statuses.Single().Label).IsEqualTo("Outbox");
-        await Assert.That(result.Value.Statuses.Single().Metrics.Single().IsCapped).IsTrue();
-        await Assert.That(result.Value.Warnings.Single().Remediation).IsEqualTo("Inspect the outbox worker.");
-        await Assert.That(result.Value.Links.ContainsKey(ControlPlaneLinkRelations.Self)).IsTrue();
+        await Assert.That(result).IsSameReferenceAs(operations);
+        await Assert.That(result.Statuses!.Single().DisplayName).IsEqualTo("Outbox");
+        await Assert.That(result.Statuses!.Single().Metrics!.Single().IsCapped).IsTrue();
+        await Assert.That(result.Warnings!.Single().Remediation).IsEqualTo("Inspect the outbox worker.");
+        await Assert.That(result._links!.ContainsKey(ControlPlaneLinkRelations.Self)).IsTrue();
     }
 
     [Test]
-    public async Task GetOverviewAsync_WhenApiReturnsForbidden_FailsClosedWithoutResponseLeak()
+    public async Task GetOverviewAsync_WhenApiReturnsForbidden_PropagatesGeneratedApiException()
     {
         var apiClient = Substitute.For<IEventApiClient>();
         apiClient.GetControlPlaneOverviewAsync(null, null, Arg.Any<CancellationToken>())
-            .Returns<Task<HalResourceOfControlPlaneOverviewDto>>(_ => throw new ApiException(
-                "Forbidden",
-                403,
-                "raw secret response",
-                new Dictionary<string, IEnumerable<string>>(),
-                null));
-        var adapter = new ControlPlaneApiAdapter(apiClient, NullLogger<ControlPlaneApiAdapter>.Instance);
+            .Returns<Task<HalResourceOfControlPlaneOverviewDto>>(_ => throw CreateApiException(403));
+        var adapter = new ControlPlaneApiAdapter(apiClient);
 
-        var result = await adapter.GetOverviewAsync();
-
-        await Assert.That(result.Kind).IsEqualTo(ControlPlaneResultKind.Forbidden);
-        await Assert.That(result.Problem!.StatusCode).IsEqualTo(403);
-        await Assert.That(result.Problem.Message).DoesNotContain("raw secret response");
+        await Assert.ThrowsAsync<ApiException>(async () => await adapter.GetOverviewAsync());
     }
 
     [Test]
@@ -207,7 +353,7 @@ public sealed class ControlPlaneApiAdapterTests
                 Success = true,
                 Message = "Purge scheduled."
             });
-        var adapter = new ControlPlaneApiAdapter(apiClient, NullLogger<ControlPlaneApiAdapter>.Instance);
+        var adapter = new ControlPlaneApiAdapter(apiClient);
 
         var result = await adapter.ScheduleTenantPurgeAsync(tenantId, "cleanup", "central");
 
@@ -216,7 +362,39 @@ public sealed class ControlPlaneApiAdapterTests
     }
 
     [Test]
-    public async Task SuspendTenantAsync_WhenApiReturnsConflict_FailsWithoutResponseLeak()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task CreateTenantAsync_PassesGeneratedRequest(bool assignCurrentUserAsTenantAdmin)
+    {
+        var apiClient = Substitute.For<IEventApiClient>();
+        var request = new CreateTenantDto
+        {
+            FullName = "New Mosque",
+            Slug = "new-mosque",
+            IsActive = false,
+            AssignCurrentUserAsTenantAdmin = assignCurrentUserAsTenantAdmin
+        };
+        apiClient.CreateControlPlaneTenantAsync(request, null, null, Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Message = "Tenant created successfully."
+            });
+        var adapter = new ControlPlaneApiAdapter(apiClient);
+
+        var result = await adapter.CreateTenantAsync(request);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("Tenant created successfully.");
+        await apiClient.Received(1).CreateControlPlaneTenantAsync(
+            Arg.Is<CreateTenantDto>(actual => ReferenceEquals(actual, request)),
+            null,
+            null,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SuspendTenantAsync_WhenApiReturnsConflict_PropagatesGeneratedApiException()
     {
         var apiClient = Substitute.For<IEventApiClient>();
         apiClient.SuspendControlPlaneTenantAsync(
@@ -225,19 +403,18 @@ public sealed class ControlPlaneApiAdapterTests
                 null,
                 Arg.Any<ControlPlaneTenantLifecycleTransitionRequestDto>(),
                 Arg.Any<CancellationToken>())
-            .Returns<Task<BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto>>(_ => throw new ApiException(
-                "Conflict",
-                409,
-                "raw secret response",
-                new Dictionary<string, IEnumerable<string>>(),
-                null));
-        var adapter = new ControlPlaneApiAdapter(apiClient, NullLogger<ControlPlaneApiAdapter>.Instance);
+            .Returns<Task<BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto>>(_ => throw CreateApiException(409));
+        var adapter = new ControlPlaneApiAdapter(apiClient);
 
-        var result = await adapter.SuspendTenantAsync(Guid.NewGuid(), "maintenance");
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.StatusCode).IsEqualTo(409);
-        await Assert.That(result.FailureCode).IsEqualTo("control_plane_api_conflict");
-        await Assert.That(result.Message).DoesNotContain("raw secret response");
+        await Assert.ThrowsAsync<ApiException>(async () =>
+            await adapter.SuspendTenantAsync(Guid.NewGuid(), "maintenance"));
     }
+
+    private static ApiException CreateApiException(int statusCode) =>
+        new(
+            "Control-plane API error",
+            statusCode,
+            "response",
+            new Dictionary<string, IEnumerable<string>>(),
+            null);
 }

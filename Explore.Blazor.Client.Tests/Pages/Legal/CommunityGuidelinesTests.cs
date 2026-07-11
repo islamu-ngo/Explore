@@ -24,7 +24,7 @@ public sealed class CommunityGuidelinesTests : IDisposable
     [Test]
     public async Task Render_WhenGuidelinesContainDangerousHtml_EscapesTenantContent()
     {
-        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             CommunityGuidelinesContent = """
                 # <script>alert(1)</script>

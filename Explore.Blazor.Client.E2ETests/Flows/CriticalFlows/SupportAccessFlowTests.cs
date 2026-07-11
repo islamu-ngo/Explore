@@ -1,16 +1,15 @@
 // ABOUTME: Browser E2E coverage for instance-admin support-access lifecycle UX.
 // ABOUTME: Exercises Keycloak login, BFF antiforgery, HAL affordances, audit evidence, and screenshots.
 
-using System.Net.Http.Headers;
 using System.Text.Json;
-using Explore.Application.Constants;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.E2ETests.Fixtures;
 using Explore.Blazor.Client.E2ETests.Seeds;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
 [Category(E2ETestCategories.E2E)]
-[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerClass, SharedType.PerTestSession])]
 [NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
 public sealed class SupportAccessFlowTests(
@@ -34,22 +33,15 @@ public sealed class SupportAccessFlowTests(
     [Timeout(600_000)]
     public async Task InstanceAdminSupportAccess_StartsAuditedSessionStopsAndCapturesResponsiveScreenshots()
     {
-        await appHost.ResetDatabaseAsync();
         var adminTokens = await appHost.GetTestAdminTokensAsync();
         var adminProviderSubjects = ResolveJwtProviderSubjects(adminTokens.IdToken)
             .Concat(ResolveJwtProviderSubjects(adminTokens.AccessToken))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var adminUserId = ResolveJwtCurrentUserId(adminTokens.AccessToken) ??
-            ResolveJwtCurrentUserId(adminTokens.IdToken);
+        var adminApi = appHost.CreateApiClient(adminTokens.AccessToken);
+        var seed = await SupportAccessScenarioSeed.SeedAsync(adminApi);
 
-        SupportAccessScenarioSeed.Result seed;
-        await using (var context = appHost.CreateDbContext())
-        {
-            seed = await SupportAccessScenarioSeed.SeedAsync(context, adminProviderSubjects, adminUserId);
-        }
-
-        await AssertDirectAdminAuthorityAsync(adminTokens.AccessToken, seed, adminProviderSubjects);
+        await AssertDirectAdminAuthorityAsync(adminApi, adminTokens.AccessToken, seed, adminProviderSubjects);
 
         var page = await playwright.CreatePageAsync(nameof(InstanceAdminSupportAccess_StartsAuditedSessionStopsAndCapturesResponsiveScreenshots));
         try
@@ -60,17 +52,6 @@ public sealed class SupportAccessFlowTests(
             var apiResolvedUserId = currentUserSnapshot.ResolvedUserId ??
                 throw new InvalidOperationException(
                     $"API current-user snapshot did not resolve a user id. Snapshot={currentUserSnapshot}");
-            await using (var context = appHost.CreateDbContext())
-            {
-                await SupportAccessScenarioSeed.GrantInstanceAdminAsync(context, syncedBrowserUserId);
-                await SupportAccessScenarioSeed.GrantTenantAdminAsync(context, seed.TenantId, syncedBrowserUserId);
-                if (apiResolvedUserId != syncedBrowserUserId)
-                {
-                    await SupportAccessScenarioSeed.GrantInstanceAdminAsync(context, apiResolvedUserId);
-                    await SupportAccessScenarioSeed.GrantTenantAdminAsync(context, seed.TenantId, apiResolvedUserId);
-                }
-            }
-
             await InvalidateApiAdminCacheAsync(page, seed, syncedBrowserUserId);
             if (apiResolvedUserId != syncedBrowserUserId)
             {
@@ -223,44 +204,23 @@ public sealed class SupportAccessFlowTests(
         }
     }
 
-    private async Task AssertDirectAdminAuthorityAsync(
+    private static async Task AssertDirectAdminAuthorityAsync(
+        IEventApiClient api,
         string accessToken,
         SupportAccessScenarioSeed.Result seed,
         IReadOnlyCollection<string> adminProviderSubjects)
     {
-        using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        httpClient.DefaultRequestHeaders.Add(TenantHeaderNames.TenantSlug, seed.TenantSlug);
-
-        using var response = await httpClient.GetAsync($"{appHost.ApiBaseUrl}/api/user/admin-authority");
-        var content = await response.Content.ReadAsStringAsync();
+        var authority = await api.GetCurrentUserAdminAuthorityAsync();
         var tokenClaims = ResolveJwtClaimValues(
             accessToken,
             DiagnosticClaimNames);
-        if (response.StatusCode != HttpStatusCode.OK)
-        {
-            throw new InvalidOperationException(
-                "Expected direct API admin-authority to return OK. " +
-                $"Status={(int)response.StatusCode}. " +
-                $"SeedAdminUserId={seed.AdminUserId}. " +
-                $"SeedProviderSubjects=[{string.Join(", ", adminProviderSubjects)}]. " +
-                $"AccessTokenClaims={tokenClaims}. " +
-                $"Body={content}");
-        }
-
-        using var payload = JsonDocument.Parse(content);
-        var isInstanceAdmin = payload.RootElement.TryGetProperty("isInstanceAdmin", out var value)
-            && value.ValueKind == JsonValueKind.True
-            && value.GetBoolean();
-
-        if (!isInstanceAdmin)
+        if (authority.IsInstanceAdmin != true)
         {
             throw new InvalidOperationException(
                 "Expected direct API admin-authority to report instance admin. " +
                 $"SeedAdminUserId={seed.AdminUserId}. " +
                 $"SeedProviderSubjects=[{string.Join(", ", adminProviderSubjects)}]. " +
-                $"AccessTokenClaims={tokenClaims}. " +
-                $"Body={content}");
+                $"AccessTokenClaims={tokenClaims}.");
         }
     }
 

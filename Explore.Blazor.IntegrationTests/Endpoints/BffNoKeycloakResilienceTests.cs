@@ -4,12 +4,12 @@
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.IntegrationTests.Fixtures;
+using Explore.Blazor.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -306,7 +306,8 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
                 ["POSTGRESQL_PORT"] = "5432",
                 ["POSTGRESQL_DATABASE"] = "test_bff_no_keycloak",
                 ["POSTGRESQL_USERNAME"] = "postgres",
-                ["POSTGRESQL_PASSWORD"] = "postgres"
+                ["POSTGRESQL_PASSWORD"] = "postgres",
+                ["ConnectionStrings__cache"] = "localhost:6379,abortConnect=false,connectTimeout=100"
             };
 
         private readonly Dictionary<string, string?> _originalEnvironmentValues = new(StringComparer.Ordinal);
@@ -345,6 +346,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
                     ["Keycloak:ClientId"] = string.Empty,
                     ["Keycloak:ClientSecret"] = string.Empty,
                     ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_bff_no_keycloak;Username=postgres;Password=postgres",
+                    ["ConnectionStrings:cache"] = "localhost:6379,abortConnect=false,connectTimeout=100",
                     ["Deployment:Mode"] = "SingleTenant",
                     ["Deployment:DefaultTenantId"] = "018e4e5c-7f00-7000-8000-000000000001",
                     ["ExploreApi:BaseUrl"] = "http://localhost:9999/",
@@ -360,14 +362,17 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
 
             builder.ConfigureTestServices(services =>
             {
+                services.RemoveAll<Microsoft.Extensions.Options.IConfigureOptions<Microsoft.AspNetCore.DataProtection.KeyManagement.KeyManagementOptions>>();
                 services.AddDataProtection().UseEphemeralDataProtectionProvider();
-
-                RemoveExploreDbContextRegistrations(services);
-                services.AddDbContext<Explore.Persistence.ExploreDbContext>(options =>
-                    options.UseInMemoryDatabase($"BffNoKeycloakDb_{Guid.NewGuid():N}"));
 
                 services.RemoveAll<IDistributedCache>();
                 services.AddDistributedMemoryCache();
+
+                services.RemoveAll<IBffResolverConfigurationProvider>();
+                var mockResolverConfiguration = Substitute.For<IBffResolverConfigurationProvider>();
+                mockResolverConfiguration.GetConfigurationAsync(Arg.Any<CancellationToken>())
+                    .Returns(new ResolverConfigurationDto { PathEnabled = false });
+                services.AddSingleton(mockResolverConfiguration);
 
                 var mockOnboarding = NSubstitute.Substitute.For<Explore.Blazor.Services.IBffOnboardingStatusProvider>();
                 mockOnboarding.GetStatusAsync(Arg.Any<CancellationToken>())
@@ -378,39 +383,6 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
 
                 _configureServices?.Invoke(services);
             });
-        }
-
-        private static void RemoveExploreDbContextRegistrations(IServiceCollection services)
-        {
-            var descriptors = services
-                .Where(descriptor => IsExploreDbContextRegistration(descriptor.ServiceType) ||
-                                     IsExploreDbContextRegistration(descriptor.ImplementationType))
-                .ToList();
-
-            foreach (var descriptor in descriptors)
-            {
-                services.Remove(descriptor);
-            }
-        }
-
-        private static bool IsExploreDbContextRegistration(Type? type)
-        {
-            if (type is null)
-            {
-                return false;
-            }
-
-            if (type == typeof(Explore.Persistence.ExploreDbContext) ||
-                type == typeof(DbContextOptions) ||
-                type == typeof(DbContextOptions<Explore.Persistence.ExploreDbContext>) ||
-                type == typeof(IDbContextFactory<Explore.Persistence.ExploreDbContext>))
-            {
-                return true;
-            }
-
-            return type.IsGenericType &&
-                   type.Namespace?.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal) == true &&
-                   type.GenericTypeArguments.Contains(typeof(Explore.Persistence.ExploreDbContext));
         }
 
         protected override void Dispose(bool disposing)

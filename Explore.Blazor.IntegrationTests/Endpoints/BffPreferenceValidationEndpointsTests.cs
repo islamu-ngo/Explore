@@ -1,7 +1,7 @@
 // ABOUTME: Endpoint-level tests for browser-facing BFF preference validation.
 // ABOUTME: Proves invalid preference values are rejected before cookies or API forwarding.
 
-using Explore.Application.DTOs.Appearance;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services.Preferences;
 using FluentAssertions;
 using Microsoft.AspNetCore.Antiforgery;
@@ -101,7 +101,7 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
         var body = await response.Content.ReadAsStringAsync();
         body.Should().Contain("Theme mode must be one of");
         await forwarding.DidNotReceive().PersistPreferencesAsync(
-            Arg.Any<UserAppearancePreferencesDto>(),
+            Arg.Any<BffAppearancePreferences>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -113,18 +113,15 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
         var antiforgery = Substitute.For<IAntiforgery>();
         antiforgery.ValidateRequestAsync(Arg.Any<HttpContext>()).Returns(Task.CompletedTask);
         forwarding.GetAppearanceAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            .Returns(new ResolvedAppearanceDto
             {
-                Content = JsonContent.Create(new UserAppearancePreferencesDto
-                {
-                    ThemeMode = "system",
-                    Direction = "rtl",
-                    Language = "fr",
-                    DefaultThemeId = defaultThemeId
-                })
-            }));
-        forwarding.PersistPreferencesAsync(Arg.Any<UserAppearancePreferencesDto>(), Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+                ActiveProfileId = defaultThemeId,
+                ThemeMode = "system",
+                Direction = "rtl",
+                Language = "fr"
+            });
+        forwarding.PersistPreferencesAsync(Arg.Any<BffAppearancePreferences>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
 
         await using var factory = new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
         {
@@ -149,14 +146,14 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
         using var response = await client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<UserAppearancePreferencesDto>();
+        var body = await response.Content.ReadFromJsonAsync<BffAppearancePreferences>();
         body.Should().NotBeNull();
         body!.ThemeMode.Should().Be("dark");
         body.Direction.Should().Be("rtl");
         body.Language.Should().Be("fr");
         body.DefaultThemeId.Should().Be(defaultThemeId);
         await forwarding.Received(1).PersistPreferencesAsync(
-            Arg.Is<UserAppearancePreferencesDto>(preferences =>
+            Arg.Is<BffAppearancePreferences>(preferences =>
                 preferences.ThemeMode == "dark"
                 && preferences.Direction == "rtl"
                 && preferences.Language == "fr"

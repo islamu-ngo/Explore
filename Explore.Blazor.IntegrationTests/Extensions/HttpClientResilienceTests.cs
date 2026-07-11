@@ -24,7 +24,8 @@ public sealed class HttpClientResilienceTests
         await using var api = await DelayedApiApp.StartAsync(TimeSpan.FromSeconds(5));
         var services = CreateServices(api.BaseAddress);
         await using var provider = services.BuildServiceProvider();
-        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("BffClient");
+        var client = provider.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(IEventApiClient));
 
         using var response = await client.PostAsJsonAsync(
             $"/api/ai/assistant/conversations/{Guid.CreateVersion7()}/messages",

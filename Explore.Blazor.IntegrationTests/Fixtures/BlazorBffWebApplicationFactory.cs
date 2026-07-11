@@ -1,10 +1,8 @@
 // ABOUTME: WebApplicationFactory for Explore.Blazor BFF integration tests with deterministic test-time overrides.
-// ABOUTME: Replaces auth, resolver config, database, and cache dependencies so middleware/endpoints can run in isolation.
+// ABOUTME: Replaces auth, resolver configuration, and cache dependencies so middleware/endpoints run in isolation.
 
-using Explore.Application.Contracts.Services;
-using Explore.Application.DTOs.Onboarding;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
-using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -12,7 +10,6 @@ using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +45,7 @@ public class BlazorBffWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:DefaultConnection", "Host=localhost;Database=test_bff;Username=postgres;Password=postgres");
+        builder.UseSetting("ConnectionStrings:cache", "localhost:6379,abortConnect=false,connectTimeout=100");
         builder.UseSetting("Keycloak:Authority", "https://auth.example.com");
         builder.UseSetting("Keycloak:Realm", "explore");
         builder.UseSetting("Deployment:Mode", "SingleTenant");
@@ -58,6 +56,7 @@ public class BlazorBffWebApplicationFactory : WebApplicationFactory<Program>
             var inMemoryConfig = new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_bff;Username=postgres;Password=postgres",
+                ["ConnectionStrings:cache"] = "localhost:6379,abortConnect=false,connectTimeout=100",
                 ["Keycloak:Authority"] = "https://auth.example.com",
                 ["Keycloak:Realm"] = "explore",
                 ["Deployment:Mode"] = "SingleTenant",
@@ -69,8 +68,6 @@ public class BlazorBffWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll<DataProtectionKeyContext>();
-            services.RemoveAll<DbContextOptions<DataProtectionKeyContext>>();
             services.RemoveAll<IConfigureOptions<KeyManagementOptions>>();
             services.AddDataProtection().UseEphemeralDataProtectionProvider();
 
@@ -99,15 +96,11 @@ public class BlazorBffWebApplicationFactory : WebApplicationFactory<Program>
             mockSchemeManager.GetRegisteredProviderSchemesAsync().Returns(new List<string>());
             services.AddSingleton(mockSchemeManager);
 
-            services.RemoveAll(typeof(IDbContextFactory<ExploreDbContext>));
-            services.RemoveAll(typeof(ExploreDbContext));
-            services.AddDbContext<ExploreDbContext>(options => options.UseInMemoryDatabase("BffTestDb"));
-
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();
 
-            services.RemoveAll<IResolverConfigService>();
-            var mockResolverConfig = Substitute.For<IResolverConfigService>();
+            services.RemoveAll<IBffResolverConfigurationProvider>();
+            var mockResolverConfig = Substitute.For<IBffResolverConfigurationProvider>();
             mockResolverConfig.GetConfigurationAsync(Arg.Any<CancellationToken>())
                 .Returns(_resolverConfiguration);
             services.AddSingleton(mockResolverConfig);

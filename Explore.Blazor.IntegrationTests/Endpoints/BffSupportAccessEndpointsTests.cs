@@ -4,10 +4,8 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Explore.Application.DTOs.SupportAccess;
-using Explore.Application.Hateoas;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
-using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -99,8 +97,7 @@ public sealed class BffSupportAccessEndpointsTests
                 Arg.Is<SupportAccessSessionDto>(session =>
                     session.Id == sessionId &&
                     session.TargetTenantId == tenantId &&
-                    session.ModeName == "ReadOnly" &&
-                    session.IsActive),
+                    session.IsActive == true),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(BffSupportAccessStoreResult.Stored(new BffSupportAccessSession(
                 sessionId,
@@ -147,17 +144,18 @@ public sealed class BffSupportAccessEndpointsTests
 
         using var response = await client.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
-        using var document = JsonDocument.Parse(body);
 
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/hal+json");
+        using var document = JsonDocument.Parse(body);
         await Assert.That(document.RootElement.GetProperty("id").GetString()).IsEqualTo(sessionId.ToString("D"));
         await Assert.That(document.RootElement.TryGetProperty("data", out _)).IsFalse();
         await Assert.That(document.RootElement.TryGetProperty("_links", out _)).IsTrue();
         await Assert.That(capturedApiBody).Contains("\"mode\":\"ReadOnly\"");
         await store.Received(1).StoreAsync(
             Arg.Any<ClaimsPrincipal>(),
-            Arg.Is<SupportAccessSessionDto>(session => session.Id == sessionId && session.TargetTenantId == tenantId),
+            Arg.Is<SupportAccessSessionDto>(session =>
+                session.Id == sessionId && session.TargetTenantId == tenantId),
             Arg.Any<CancellationToken>());
     }
 
@@ -191,7 +189,7 @@ public sealed class BffSupportAccessEndpointsTests
                     ? null
                     : await request.Content.ReadAsStringAsync(token);
 
-                return JsonResponse(new HalResource<SupportAccessSessionDto>(new SupportAccessSessionDto
+                return JsonResponse(new HalResourceOfSupportAccessSessionDto
                 {
                     Id = sessionId,
                     ActorUserId = actorUserId,
@@ -201,7 +199,7 @@ public sealed class BffSupportAccessEndpointsTests
                     StartedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
                     ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(25),
                     IsActive = false
-                }));
+                });
             },
             services =>
             {
@@ -241,8 +239,8 @@ public sealed class BffSupportAccessEndpointsTests
         {
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<IHttpClientFactory>();
-                services.AddSingleton<IHttpClientFactory>(new StubHttpClientFactory(handler));
+                services.RemoveAll<IEventApiClient>();
+                services.AddSingleton<IEventApiClient>(_ => CreateApiClient(handler));
                 configureServices?.Invoke(services);
             });
         });
@@ -300,13 +298,15 @@ public sealed class BffSupportAccessEndpointsTests
         Content = JsonContent.Create(payload)
     };
 
-    private sealed class StubHttpClientFactory(
-        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) : IHttpClientFactory
+    private static IEventApiClient CreateApiClient(
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
     {
-        public HttpClient CreateClient(string name) => new(new StubHttpMessageHandler(handler))
+        var httpClient = new HttpClient(new StubHttpMessageHandler(handler))
         {
-            BaseAddress = new Uri("https://api.test")
+            BaseAddress = new Uri("https://api.test/")
         };
+
+        return new EventApiClient(httpClient);
     }
 
     private sealed class StubHttpMessageHandler(

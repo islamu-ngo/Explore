@@ -13,8 +13,8 @@ public class EventDayManagerTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private static readonly Guid TestEventId = Guid.NewGuid();
-    private static readonly DateOnly TestDate1 = new(2026, 6, 15);
-    private static readonly DateOnly TestDate2 = new(2026, 6, 16);
+    private static readonly DateTimeOffset TestDate1 = new(2026, 6, 15, 0, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset TestDate2 = new(2026, 6, 16, 0, 0, 0, TimeSpan.Zero);
 
     public EventDayManagerTests()
     {

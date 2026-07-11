@@ -1,33 +1,32 @@
-// ABOUTME: Proves BFF cookie tickets survive a host restart when Data Protection keys persist.
-// ABOUTME: Uses the real ASP.NET Core cookie middleware with the repo DataProtectionKeyContext.
+// ABOUTME: Proves BFF cookie tickets survive a host restart with the Redis Data Protection key ring.
+// ABOUTME: Uses the production BFF registration against an isolated Redis container.
 
 using System.Net;
 using System.Security.Claims;
-using Explore.Persistence;
+using Explore.Blazor.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-using ExploreDataProtection = Explore.Persistence.Extensions.DataProtectionServiceCollectionExtensions;
+using Testcontainers.Redis;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
 
 public sealed class BffDataProtectionCookieRestartTests
 {
     private const string CookieName = ".AspNetCore.RestartProof";
-    private const string DatabaseName = "bff-data-protection-restart-proof";
-    private static readonly InMemoryDatabaseRoot DatabaseRoot = new();
 
     [Test]
     public async Task CookieTicketSurvivesFreshBffHostWhenKeyRingPersists()
     {
+        await using var redis = new RedisBuilder("redis:7-alpine")
+            .Build();
+        await redis.StartAsync();
+
         string cookieHeader;
 
-        await using (var firstHost = await StartCookieHostAsync())
+        await using (var firstHost = await StartCookieHostAsync(redis.GetConnectionString()))
         {
             using var firstClient = firstHost.GetTestClient();
             using var loginResponse = await firstClient.GetAsync("/login-test");
@@ -36,7 +35,7 @@ public sealed class BffDataProtectionCookieRestartTests
             cookieHeader = GetCookieHeader(loginResponse);
         }
 
-        await using (var secondHost = await StartCookieHostAsync())
+        await using (var secondHost = await StartCookieHostAsync(redis.GetConnectionString()))
         {
             using var secondClient = secondHost.GetTestClient();
             secondClient.DefaultRequestHeaders.Add("Cookie", cookieHeader);
@@ -49,7 +48,7 @@ public sealed class BffDataProtectionCookieRestartTests
         }
     }
 
-    private static async Task<WebApplication> StartCookieHostAsync()
+    private static async Task<WebApplication> StartCookieHostAsync(string redisConnectionString)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -57,12 +56,7 @@ public sealed class BffDataProtectionCookieRestartTests
         });
 
         builder.WebHost.UseTestServer();
-        builder.Services.AddDbContext<DataProtectionKeyContext>(options =>
-            options.UseInMemoryDatabase(DatabaseName, DatabaseRoot));
-        builder.Services
-            .AddDataProtection()
-            .SetApplicationName(ExploreDataProtection.DefaultApplicationName)
-            .PersistKeysToDbContext<DataProtectionKeyContext>();
+        builder.Services.AddBffDataProtection(redisConnectionString);
         builder.Services
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
@@ -77,11 +71,6 @@ public sealed class BffDataProtectionCookieRestartTests
         builder.Services.AddAuthorization();
 
         var app = builder.Build();
-
-        await using (var scope = app.Services.CreateAsyncScope())
-        {
-            await scope.ServiceProvider.GetRequiredService<DataProtectionKeyContext>().Database.EnsureCreatedAsync();
-        }
 
         app.UseAuthentication();
         app.UseAuthorization();

@@ -10,18 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
     <ProjectReference Include="..\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
-    <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="..\Explore.Blazor\Services\CircuitTokenStore.cs" Link="Server\CircuitTokenStore.cs" />
-    <Compile Include="..\Explore.Blazor\Services\CircuitAccessTokenService.cs" Link="Server\CircuitAccessTokenService.cs" />
-    <Compile Include="..\Explore.Blazor\Services\CircuitUserContext.cs" Link="Server\CircuitUserContext.cs" />
-    <Compile Include="..\Explore.Blazor\Services\BffAuthCookieStore.cs" Link="Server\BffAuthCookieStore.cs" />
-    <Compile Include="..\Explore.Blazor\Services\ITenantRouteContextAccessor.cs" Link="Server\ITenantRouteContextAccessor.cs" />
-    <Compile Include="..\Explore.Blazor\Services\TenantRouteContextAccessor.cs" Link="Server\TenantRouteContextAccessor.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,8 +29,6 @@
     <!-- MudBlazor Testing Support (same version as client) -->
     <PackageReference Include="MudBlazor" />
 
-    <!-- Needed by linked server token service tests -->
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
   </ItemGroup>
 
   <ItemGroup>

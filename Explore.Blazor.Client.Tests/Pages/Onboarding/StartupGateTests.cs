@@ -34,7 +34,7 @@ public class StartupGateTests : IDisposable
     public async Task StartupGate_WhenSingleTenantCompleted_RedirectsToEvents()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true,
@@ -61,7 +61,7 @@ public class StartupGateTests : IDisposable
     public async Task StartupGate_WhenMultiTenantCompleted_RedirectsToInstanceAdminSettings()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true,
@@ -89,7 +89,7 @@ public class StartupGateTests : IDisposable
     public async Task StartupGate_WhenMultiTenantCompletedForNonAdmin_RedirectsToEvents()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true,

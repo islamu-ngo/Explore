@@ -30,6 +30,15 @@ public sealed class ControlPlaneTenantHateoasTests
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(self.PermissionResourceId).IsEqualTo(GetControlPlaneTenantListQuery.SettingKey);
 
+        var configuration = links.Single(link => link.Rel == "configuration");
+        await Assert.That(configuration.RouteName).IsEqualTo(RouteNames.GetControlPlaneTenantEffectiveConfiguration);
+        await Assert.That(configuration.Method).IsEqualTo("GET");
+        await Assert.That(configuration.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
+        await Assert.That(configuration.PermissionResourceId).IsEqualTo(GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey);
+        await Assert.That(configuration.PermissionResourceAttributes?["settingKey"])
+            .IsEqualTo(GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey);
+        await Assert.That(configuration.PermissionResourceAttributes?["tenantId"]).IsEqualTo(tenantId.ToString());
+
         var suspend = links.Single(link => link.Rel == "suspend");
         await Assert.That(suspend.RouteName).IsEqualTo(RouteNames.SuspendControlPlaneTenant);
         await Assert.That(suspend.Method).IsEqualTo("POST");
@@ -105,12 +114,45 @@ public sealed class ControlPlaneTenantHateoasTests
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(self.PermissionResourceAttributes?["targetTenantId"]).IsEqualTo(tenantId.ToString());
 
+        var configuration = itemLinks.Single(link => link.Rel == "configuration");
+        await Assert.That(configuration.RouteName).IsEqualTo(RouteNames.GetControlPlaneTenantEffectiveConfiguration);
+        await Assert.That(configuration.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
+        await Assert.That(configuration.PermissionResourceId).IsEqualTo(GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey);
+        await Assert.That(configuration.PermissionResourceAttributes?["tenantId"]).IsEqualTo(tenantId.ToString());
+
         var create = collectionLinks.Single(link => link.Rel == LinkRelations.Create);
         await Assert.That(create.RouteName).IsEqualTo(RouteNames.CreateControlPlaneTenant);
         await Assert.That(create.Method).IsEqualTo("POST");
         await Assert.That(create.RequiresAuth).IsTrue();
         await Assert.That(create.PermissionResourceKind).IsEqualTo(ResourceKinds.Tenant);
         await Assert.That(create.PermissionAction).IsEqualTo(AuthorizationActions.Create);
+    }
+
+    [Test]
+    [Arguments(TenantStatusEnum.Provisioning, "activate", RouteNames.ActivateControlPlaneTenant, TenantStatusEnum.Active)]
+    [Arguments(TenantStatusEnum.Active, "suspend", RouteNames.SuspendControlPlaneTenant, TenantStatusEnum.Suspended)]
+    [Arguments(TenantStatusEnum.Active, "archive", RouteNames.ArchiveControlPlaneTenant, TenantStatusEnum.Archived)]
+    [Arguments(TenantStatusEnum.Suspended, "reactivate", RouteNames.ReactivateControlPlaneTenant, TenantStatusEnum.Active)]
+    [Arguments(TenantStatusEnum.Archived, "schedule-purge", RouteNames.ScheduleControlPlaneTenantPurge, TenantStatusEnum.Purged)]
+    public async Task CollectionItemLinks_ExposeStateValidLifecycleAuthorizationMetadata(
+        TenantStatusEnum status,
+        string relation,
+        string routeName,
+        TenantStatusEnum targetStatus)
+    {
+        var tenantId = Guid.NewGuid();
+        var policy = new ControlPlaneTenantCollectionLinkPolicy();
+
+        var links = policy.GetItemLinks(CreateListItem(tenantId, status), user: null).ToArray();
+        var lifecycle = links.Single(link => link.Rel == relation);
+
+        await Assert.That(lifecycle.RouteName).IsEqualTo(routeName);
+        await Assert.That(lifecycle.Method).IsEqualTo("POST");
+        await Assert.That(lifecycle.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
+        await Assert.That(lifecycle.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
+        await Assert.That(lifecycle.PermissionResourceId).IsEqualTo(TransitionControlPlaneTenantLifecycleCommand.SettingKey);
+        await Assert.That(lifecycle.PermissionResourceAttributes?["targetTenantId"]).IsEqualTo(tenantId.ToString());
+        await Assert.That(lifecycle.PermissionResourceAttributes?["targetStatus"]).IsEqualTo(targetStatus.ToString());
     }
 
     private static ControlPlaneTenantDetailDto CreateDetail(Guid tenantId, TenantStatusEnum status) => new()
@@ -126,15 +168,17 @@ public sealed class ControlPlaneTenantHateoasTests
         LifecycleHistory = []
     };
 
-    private static ControlPlaneTenantListItemDto CreateListItem(Guid tenantId) => new()
-    {
-        Id = tenantId,
-        FullName = "Demo Tenant",
-        Slug = "demo",
-        StatusId = (int)TenantStatusEnum.Active,
-        StatusCode = nameof(TenantStatusEnum.Active).ToUpperInvariant(),
-        StatusName = nameof(TenantStatusEnum.Active),
-        IsActive = true,
-        CreatedAt = DateTime.UtcNow
-    };
+    private static ControlPlaneTenantListItemDto CreateListItem(
+        Guid tenantId,
+        TenantStatusEnum status = TenantStatusEnum.Active) => new()
+        {
+            Id = tenantId,
+            FullName = "Demo Tenant",
+            Slug = "demo",
+            StatusId = (int)status,
+            StatusCode = status.ToString().ToUpperInvariant(),
+            StatusName = status.ToString(),
+            IsActive = status == TenantStatusEnum.Active,
+            CreatedAt = DateTime.UtcNow
+        };
 }

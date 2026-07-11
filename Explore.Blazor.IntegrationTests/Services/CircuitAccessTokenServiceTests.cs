@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Options = Microsoft.Extensions.Options.Options;
 
-namespace Explore.Blazor.Client.Tests.Services;
+namespace Explore.Blazor.IntegrationTests.Services;
 
 public class CircuitAccessTokenServiceTests
 {

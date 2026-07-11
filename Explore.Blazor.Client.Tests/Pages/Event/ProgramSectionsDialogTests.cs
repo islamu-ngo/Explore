@@ -2,10 +2,8 @@
 // ABOUTME: Verifies section create mapping stays routed through IEventService wrappers.
 
 using System.Reflection;
-using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Events;
-using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
 using MudBlazor;
@@ -25,13 +23,13 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var eventService = Substitute.For<IEventService>();
         eventService.CreateSessionGroupAsync(Arg.Any<CreateEventSessionGroupRequestDto>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
-        eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<EventSessionGroupListModel>());
+        eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>());
 
         RegisterServices(eventService);
 
         var cut = _ctx.RenderMudComponent<ProgramSectionsDialog>(parameters => parameters
             .Add(component => component.EventId, eventId)
-            .Add(component => component.InitialSections, new List<EventSessionGroupListModel>()));
+            .Add(component => component.InitialSections, new List<HalResourceOfEventSessionGroupListDto>()));
 
         SetField(cut.Instance, "_name", "Main stage");
         SetField(cut.Instance, "_description", "Primary talks");
@@ -73,7 +71,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<ProgramSectionsDialog>(parameters => parameters
             .Add(component => component.EventId, eventId)
-            .Add(component => component.InitialSections, new List<EventSessionGroupListModel>()));
+            .Add(component => component.InitialSections, new List<HalResourceOfEventSessionGroupListDto>()));
 
         SetField(cut.Instance, "_roomId", oldRoomId);
 
@@ -90,7 +88,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var sectionId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
         eventService.DeleteSessionGroupAsync(eventId, sectionId).Returns(true);
-        eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<EventSessionGroupListModel>());
+        eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>());
         var dialogService = Substitute.For<IDialogService>();
         dialogService.ShowMessageBoxAsync(
                 Arg.Any<string>(),
@@ -106,7 +104,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<ProgramSectionsDialog>(parameters => parameters
             .Add(component => component.EventId, eventId)
-            .Add(component => component.InitialSections, new List<EventSessionGroupListModel> { section }));
+            .Add(component => component.InitialSections, new List<HalResourceOfEventSessionGroupListDto> { section }));
 
         await InvokePrivateAsync(cut.Instance, "DeleteSectionAsync", section);
 
@@ -133,7 +131,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<ProgramSectionsDialog>(parameters => parameters
             .Add(component => component.EventId, eventId)
-            .Add(component => component.InitialSections, new List<EventSessionGroupListModel> { section }));
+            .Add(component => component.InitialSections, new List<HalResourceOfEventSessionGroupListDto> { section }));
 
         await InvokePrivateAsync(cut.Instance, "DeleteSectionAsync", section);
 
@@ -159,7 +157,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<ProgramSectionsDialog>(parameters => parameters
             .Add(component => component.EventId, eventId)
-            .Add(component => component.InitialSections, new List<EventSessionGroupListModel> { section }));
+            .Add(component => component.InitialSections, new List<HalResourceOfEventSessionGroupListDto> { section }));
         SetField(cut.Instance, "_assignmentSection", section);
         SetField(cut.Instance, "_sessions", new List<EventSessionListDto> { session });
 
@@ -187,7 +185,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<ProgramSectionsDialog>(parameters => parameters
             .Add(component => component.EventId, eventId)
-            .Add(component => component.InitialSections, new List<EventSessionGroupListModel> { section }));
+            .Add(component => component.InitialSections, new List<HalResourceOfEventSessionGroupListDto> { section }));
         SetField(cut.Instance, "_assignmentSection", section);
 
         await InvokePrivateAsync(cut.Instance, "UnassignSessionAsync", session);
@@ -211,7 +209,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<ProgramSectionsDialog>(parameters => parameters
             .Add(component => component.EventId, eventId)
-            .Add(component => component.InitialSections, new List<EventSessionGroupListModel> { section }));
+            .Add(component => component.InitialSections, new List<HalResourceOfEventSessionGroupListDto> { section }));
         SetField(cut.Instance, "_assignmentSection", section);
 
         await InvokePrivateAsync(cut.Instance, "AssignSessionAsync", session);
@@ -241,36 +239,40 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         _ctx.Services.AddSingleton(dialogService ?? Substitute.For<IDialogService>());
     }
 
-    private static EventSessionGroupListModel CreateSection(Guid sectionId, Guid eventId, bool hasDelete, bool hasAssign = false)
+    private static HalResourceOfEventSessionGroupListDto CreateSection(Guid sectionId, Guid eventId, bool hasDelete, bool hasAssign = false)
     {
-        var section = new EventSessionGroupListModel
+        var section = new HalResourceOfEventSessionGroupListDto
         {
             Id = sectionId,
             EventId = eventId,
             Name = "Main stage",
             SortOrder = 10,
             IsPublished = true,
-            AdditionalProperties = new Dictionary<string, object>()
-        };
-
-        var links = new Dictionary<string, object>
-        {
-            ["self"] = new { href = $"/api/event-session-group/{sectionId}", method = "GET" },
-            ["edit"] = new { href = $"/api/event-session-group/{sectionId}", method = "PUT" }
+            _links = new Dictionary<string, HalLink>
+            {
+                ["self"] = new() { Href = $"/api/event-session-group/{sectionId}", Method = "GET" },
+                ["edit"] = new() { Href = $"/api/event-session-group/{sectionId}", Method = "PUT" }
+            }
         };
 
         if (hasDelete)
         {
-            links["delete"] = new { href = $"/api/event-session-group/{sectionId}?eventId={eventId}", method = "DELETE" };
+            section._links["delete"] = new()
+            {
+                Href = $"/api/event-session-group/{sectionId}?eventId={eventId}",
+                Method = "DELETE"
+            };
         }
 
         if (hasAssign)
         {
-            links["assign-session"] = new { href = $"/api/event-session-group/{sectionId}/sessions", method = "POST" };
+            section._links["assign-session"] = new()
+            {
+                Href = $"/api/event-session-group/{sectionId}/sessions",
+                Method = "POST"
+            };
         }
 
-        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(links));
-        section.AdditionalProperties["_links"] = doc.RootElement.Clone();
         return section;
     }
 

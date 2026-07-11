@@ -2,10 +2,11 @@
 // ABOUTME: Protects MCP runtime defaults and tenant-lock behavior in the tenant admin read model.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.TenantPolicy;
+using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Constants;
-using MediatR;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Services;
@@ -15,21 +16,29 @@ public sealed class TenantPolicySettingServiceTests
     private readonly ISystemSettingRepository _systemSettings = Substitute.For<ISystemSettingRepository>();
     private readonly ITenantSettingRepository _tenantSettings = Substitute.For<ITenantSettingRepository>();
     private readonly ITenantRepository _tenants = Substitute.For<ITenantRepository>();
+    private readonly RecordingSettingMutationLock _mutationLock = new();
     private readonly TenantPolicySettingService _service;
 
     public TenantPolicySettingServiceTests()
     {
-        _systemSettings.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
-        _systemSettings.GetAllSettings(Arg.Any<string?>()).Returns([]);
-        _tenantSettings.GetByTenantAndKey(Arg.Any<Guid>(), Arg.Any<string>()).Returns((TenantSetting?)null);
+        _systemSettings.GetByKey(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((SystemSetting?)null);
+        _systemSettings.GetAllSettings(
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>()).Returns([]);
+        _tenantSettings.GetByTenantAndKey(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>()).Returns((TenantSetting?)null);
         _tenantSettings.GetAllForTenant(Arg.Any<Guid>()).Returns([]);
-        _tenants.GetById(Arg.Any<Guid>()).Returns((Tenant?)null);
+        _tenants.GetByIdAsNoTrackingAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>()).Returns((Tenant?)null);
 
         _service = new TenantPolicySettingService(
             _systemSettings,
             _tenantSettings,
             _tenants,
-            Substitute.For<IMediator>());
+            _mutationLock);
     }
 
     [Test]
@@ -86,9 +95,114 @@ public sealed class TenantPolicySettingServiceTests
         await _tenantSettings.DidNotReceive().GetByTenantAndKey(Arg.Any<Guid>(), Arg.Any<string>());
     }
 
+    [Test]
+    public async Task ApplyTenantSettingsAsync_ExecutesAllReadsAndWritesInsideOneDeterministicLockBatch()
+    {
+        bool allSystemReadsInsideLock = true;
+        bool allTenantWritesInsideLock = true;
+        _systemSettings.GetAllSettings(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                allSystemReadsInsideLock &= _mutationLock.IsInsideLock;
+                return new List<SystemSetting>();
+            });
+        _tenantSettings.SetValueAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<Guid?>())
+            .Returns(callInfo =>
+            {
+                allTenantWritesInsideLock &= _mutationLock.IsInsideLock;
+                return Task.CompletedTask;
+            });
+        _tenantSettings.RemoveOverrideAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                allTenantWritesInsideLock &= _mutationLock.IsInsideLock;
+                return false;
+            });
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyTenantSettingsAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new UpdateTenantPolicyRequest());
+
+        await Assert.That(_mutationLock.Keys.Count).IsEqualTo(
+            _mutationLock.Keys.Distinct(StringComparer.Ordinal).Count());
+        await Assert.That(_mutationLock.Keys).Contains(GovernanceSettingKeys.Deployment.Mode);
+        await Assert.That(_mutationLock.Keys).Contains(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
+        await Assert.That(allSystemReadsInsideLock).IsTrue();
+        await Assert.That(allTenantWritesInsideLock).IsTrue();
+        await Assert.That(notifications).IsNotEmpty();
+    }
+
+    [Test]
+    public async Task ApplyTenantSettingsAsync_WhenCancelled_ForwardsTokenAndPerformsNoReadsOrWrites()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await _service.ApplyTenantSettingsAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                new UpdateTenantPolicyRequest(),
+                cancellation.Token));
+
+        await Assert.That(_mutationLock.LastCancellationToken).IsEqualTo(cancellation.Token);
+        await _systemSettings.DidNotReceiveWithAnyArgs().GetAllSettings(default, default);
+        await _tenantSettings.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default, default!, default!, default, default);
+        await _tenantSettings.DidNotReceiveWithAnyArgs().RemoveOverrideAsync(default, default!, default);
+    }
+
+    [Test]
+    public async Task ApplyTenantSettingsAsync_WhenInstanceLocksKey_RemovesInsteadOfUpdatingTenantOverride()
+    {
+        var tenantId = Guid.NewGuid();
+        string key = GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled;
+        _systemSettings.GetAllSettings(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(
+        [
+            new SystemSetting
+            {
+                SettingKey = key,
+                Value = "false",
+                IsLocked = true
+            }
+        ]);
+        _tenantSettings.GetByTenantAndKey(tenantId, key, Arg.Any<CancellationToken>()).Returns(
+            CreateTenantSetting(tenantId, key, "true"));
+        _tenantSettings.RemoveOverrideAsync(tenantId, key, Arg.Any<CancellationToken>()).Returns(true);
+
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyTenantSettingsAsync(
+            tenantId,
+            Guid.NewGuid(),
+            new UpdateTenantPolicyRequest { AnnouncementBarEnabled = true });
+
+        await _tenantSettings.Received(1).RemoveOverrideAsync(
+            tenantId,
+            key,
+            Arg.Any<CancellationToken>());
+        await _tenantSettings.DidNotReceive().SetValueAsync(
+            tenantId,
+            key,
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<Guid?>());
+        SettingChangedNotification removal = notifications.Single(notification => notification.Key == key);
+        await Assert.That(removal.OldValue).IsEqualTo("true");
+        await Assert.That(removal.NewValue).IsNull();
+    }
+
     private void UseSystemSettings(params SystemSetting[] settings)
     {
-        _systemSettings.GetAllSettings(Arg.Any<string?>()).Returns(settings.ToList());
+        _systemSettings.GetAllSettings(
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>()).Returns(settings.ToList());
     }
 
     private void UseTenantSettings(Guid tenantId, params TenantSetting[] settings)
@@ -109,4 +223,35 @@ public sealed class TenantPolicySettingServiceTests
         SettingKey = key,
         Value = value
     };
+
+    private sealed class RecordingSettingMutationLock : ISettingMutationLock
+    {
+        public IReadOnlyList<string> Keys { get; private set; } = [];
+        public bool IsInsideLock { get; private set; }
+        public CancellationToken LastCancellationToken { get; private set; }
+
+        public Task<T> ExecuteAsync<T>(
+            string canonicalSettingKey,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) => operation(cancellationToken);
+
+        public async Task<T> ExecuteManyAsync<T>(
+            IEnumerable<string> canonicalSettingKeys,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default)
+        {
+            Keys = canonicalSettingKeys.ToArray();
+            LastCancellationToken = cancellationToken;
+            cancellationToken.ThrowIfCancellationRequested();
+            IsInsideLock = true;
+            try
+            {
+                return await operation(cancellationToken);
+            }
+            finally
+            {
+                IsInsideLock = false;
+            }
+        }
+    }
 }

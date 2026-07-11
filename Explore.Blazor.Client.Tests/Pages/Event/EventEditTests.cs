@@ -4,14 +4,12 @@
 using System.Reflection;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Models.EventSessionGroups;
-using Explore.Blazor.Client.Models.EventSessions;
+using Explore.Blazor.Client.Models.Events;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
-using UpdateEventDraftRequestDto = Explore.Blazor.Client.Models.Events.UpdateEventDraftRequestDto;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -24,7 +22,7 @@ public sealed class EventEditTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
+        eventService.UpdateEventAsync(eventId, Arg.Any<EventDraftEditModel>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = eventId
@@ -35,7 +33,7 @@ public sealed class EventEditTests : IDisposable
         await InvokePrivateAsync(component, "AddSession");
 
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
-        await eventService.Received(1).UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>());
+        await eventService.Received(1).UpdateEventAsync(eventId, Arg.Any<EventDraftEditModel>());
         await Assert.That(navigation.Uri.EndsWith($"/events/{eventId}/sessions/create", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -44,7 +42,7 @@ public sealed class EventEditTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
+        eventService.UpdateEventAsync(eventId, Arg.Any<EventDraftEditModel>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = false,
             Message = "Draft could not be saved."
@@ -56,7 +54,7 @@ public sealed class EventEditTests : IDisposable
 
         await InvokePrivateAsync(component, "AddSession");
 
-        await eventService.Received(1).UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>());
+        await eventService.Received(1).UpdateEventAsync(eventId, Arg.Any<EventDraftEditModel>());
         await Assert.That(navigation.Uri).IsEqualTo(originalUri);
         await Assert.That(GetSubmitError(component))
             .IsEqualTo("Draft could not be saved.");
@@ -166,7 +164,7 @@ public sealed class EventEditTests : IDisposable
         {
             Sections = new List<EventProgramSectionDto>()
         });
-        SetField(component, "_programSections", new List<EventSessionGroupListModel>
+        SetField(component, "_programSections", new List<HalResourceOfEventSessionGroupListDto>
         {
             new() { Id = Guid.NewGuid(), EventId = Guid.NewGuid(), Name = "Main stage", SortOrder = 0, IsPublished = true },
             new() { Id = Guid.NewGuid(), EventId = Guid.NewGuid(), Name = "Workshop track", SortOrder = 10, IsPublished = true }
@@ -282,7 +280,7 @@ public sealed class EventEditTests : IDisposable
         var sessionId = Guid.NewGuid();
         const int registrationPolicyId = 3;
         var eventService = Substitute.For<IEventService>();
-        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
+        eventService.UpdateEventAsync(eventId, Arg.Any<EventDraftEditModel>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = eventId
@@ -313,11 +311,14 @@ public sealed class EventEditTests : IDisposable
 
         await eventService.Received(1).UpdateEventAsync(
             eventId,
-            Arg.Is<UpdateEventDraftRequestDto>(dto =>
+            Arg.Is<EventDraftEditModel>(dto =>
                 dto.RegistrationPolicyId == registrationPolicyId
                 && dto.ExpectedConcurrencyStamp == GetPrivateField<EventDto>(component, "currentEvent").ConcurrencyStamp));
-        await eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
-        await eventService.DidNotReceive().CreateSessionAsync(Arg.Any<Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest>());
+        await eventService.DidNotReceive().UpdateSessionAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<UpdateEventSessionDto>());
+        await eventService.DidNotReceive().CreateSessionAsync(Arg.Any<Explore.Blazor.Client.Clients.CreateEventSessionDto>());
     }
 
     [Test]
@@ -325,7 +326,7 @@ public sealed class EventEditTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
+        eventService.UpdateEventAsync(eventId, Arg.Any<EventDraftEditModel>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = false,
             Id = eventId,
@@ -347,7 +348,7 @@ public sealed class EventEditTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>())
+        eventService.UpdateEventAsync(eventId, Arg.Any<EventDraftEditModel>())
             .ThrowsAsync(new ApiException<ValidationProblemDetails>(
                 "Bad Request",
                 400,
@@ -376,7 +377,7 @@ public sealed class EventEditTests : IDisposable
         const string rawProviderMessage = "provider rejected <script>alert(1)</script> secret";
         var eventId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>())
+        eventService.UpdateEventAsync(eventId, Arg.Any<EventDraftEditModel>())
             .ThrowsAsync(new InvalidOperationException(rawProviderMessage));
         var component = CreateComponent(eventId, canAddSession: true, eventService);
         InvokePrivate(component, "PopulateFormFromEvent");

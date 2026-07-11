@@ -8,7 +8,7 @@ using Explore.Blazor.Client.E2ETests.Fixtures;
 namespace Explore.Blazor.Client.E2ETests.Flows;
 
 [Category(E2ETestCategories.E2E)]
-[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerClass, SharedType.PerTestSession])]
 [NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
 public class SmokeTests(
@@ -18,8 +18,6 @@ public class SmokeTests(
     [Test]
     public async Task BlazorFrontend_Loads_ReturnsHtml()
     {
-        await appHost.ResetDatabaseAsync();
-
         var page = await playwright.CreatePageAsync(nameof(BlazorFrontend_Loads_ReturnsHtml));
         try
         {
@@ -42,8 +40,6 @@ public class SmokeTests(
     [Test]
     public async Task AuthStatus_Anonymous_ReturnsNotAuthenticated()
     {
-        await appHost.ResetDatabaseAsync();
-
         var page = await playwright.CreatePageAsync(nameof(AuthStatus_Anonymous_ReturnsNotAuthenticated));
         try
         {
@@ -67,8 +63,6 @@ public class SmokeTests(
     [Test]
     public async Task AuthStatus_KeycloakLogin_ReturnsAuthenticatedWithServerCookieOnly()
     {
-        await appHost.ResetDatabaseAsync();
-
         var page = await playwright.CreatePageAsync(nameof(AuthStatus_KeycloakLogin_ReturnsAuthenticatedWithServerCookieOnly));
         try
         {
@@ -80,29 +74,4 @@ public class SmokeTests(
         }
     }
 
-    [Test]
-    public async Task ControlPlaneHost_AnonymousAdminRoute_ChallengesWithControlPlaneClient()
-    {
-        await appHost.ResetDatabaseAsync();
-
-        var page = await playwright.CreatePageAsync(nameof(ControlPlaneHost_AnonymousAdminRoute_ChallengesWithControlPlaneClient));
-        try
-        {
-            await BffCookieAuthHelper.AddSetupSecretBypassCookieAsync(page.Context, appHost.ControlPlaneBaseUrl);
-
-            var response = await page.GotoAsync($"{appHost.ControlPlaneBaseUrl}/admin/instance");
-            await Assert.That(response).IsNotNull();
-
-            await page.Locator("#username").WaitForAsync();
-
-            await Assert.That(page.Url).Contains("/protocol/openid-connect/auth");
-            await Assert.That(page.Url).Contains("client_id=islamu-event-control-plane");
-            await Assert.That(page.Url).Contains("redirect_uri=");
-            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page, appHost.ControlPlaneBaseUrl);
-        }
-        finally
-        {
-            await playwright.ClosePageAsync(page, nameof(ControlPlaneHost_AnonymousAdminRoute_ChallengesWithControlPlaneClient));
-        }
-    }
 }

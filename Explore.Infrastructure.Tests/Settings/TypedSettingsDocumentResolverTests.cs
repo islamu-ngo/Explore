@@ -232,6 +232,7 @@ public sealed class TypedSettingsDocumentResolverTests : IDisposable
         services.AddScoped(_ => Substitute.For<IOrganizationSettingRepository>());
         services.AddScoped(_ => Substitute.For<IGroupSettingRepository>());
         services.AddScoped(_ => Substitute.For<IUserPreferenceRepository>());
+        services.AddScoped(_ => Substitute.For<ISettingMutationLock>());
         services.AddScoped(_ => Substitute.For<ITenantSettingsDocumentRepository>());
         services.AddScoped(_ => Substitute.For<ILogger<HierarchicalSettingsResolver>>());
 

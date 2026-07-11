@@ -2,8 +2,8 @@
 // ABOUTME: Verifies browser support headers are stripped and only active owned sessions are forwarded.
 
 using System.Security.Claims;
-using Explore.Application.Constants;
-using Explore.Application.DTOs.SupportAccess;
+using Event.Web.BffHosting.Security;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
@@ -38,10 +38,10 @@ public class SupportAccessForwardingHandlerTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
-        await Assert.That(innerHandler.CapturedRequest!.Headers.GetValues(SupportAccessHeaderNames.SessionId).Single())
-            .IsEqualTo(session.Id.ToString("D"));
-        await Assert.That(innerHandler.CapturedRequest.Headers.Contains(SupportAccessHeaderNames.TargetTenantId)).IsFalse();
-        await Assert.That(innerHandler.CapturedRequest.Headers.Contains(SupportAccessHeaderNames.Mode)).IsFalse();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.GetValues(EventBffHeaderNames.SupportAccessSessionId).Single())
+            .IsEqualTo(session.Id!.Value.ToString("D"));
+        await Assert.That(innerHandler.CapturedRequest.Headers.Contains(EventBffHeaderNames.SupportAccessTargetTenantId)).IsFalse();
+        await Assert.That(innerHandler.CapturedRequest.Headers.Contains(EventBffHeaderNames.SupportAccessMode)).IsFalse();
         await Assert.That(innerHandler.CapturedRequest.Headers.Contains(FutureSupportHeaderName)).IsFalse();
     }
 
@@ -159,9 +159,9 @@ public class SupportAccessForwardingHandlerTests
 
     private static void AddBrowserSuppliedSupportHeaders(HttpRequestMessage request)
     {
-        request.Headers.Add(SupportAccessHeaderNames.SessionId, Guid.NewGuid().ToString("D"));
-        request.Headers.Add(SupportAccessHeaderNames.TargetTenantId, Guid.NewGuid().ToString("D"));
-        request.Headers.Add(SupportAccessHeaderNames.Mode, "Write");
+        request.Headers.Add(EventBffHeaderNames.SupportAccessSessionId, Guid.NewGuid().ToString("D"));
+        request.Headers.Add(EventBffHeaderNames.SupportAccessTargetTenantId, Guid.NewGuid().ToString("D"));
+        request.Headers.Add(EventBffHeaderNames.SupportAccessMode, "Write");
         request.Headers.Add(FutureSupportHeaderName, "tenant-admin");
     }
 
@@ -169,7 +169,7 @@ public class SupportAccessForwardingHandlerTests
     {
         foreach (var header in request.Headers)
         {
-            await Assert.That(SupportAccessHeaderNames.IsSupportAccessHeader(header.Key)).IsFalse();
+            await Assert.That(EventBffHeaderNames.IsSupportAccessHeader(header.Key)).IsFalse();
         }
     }
 

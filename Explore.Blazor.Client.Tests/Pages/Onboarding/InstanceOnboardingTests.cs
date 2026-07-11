@@ -42,14 +42,14 @@ public class InstanceOnboardingTests : IDisposable
             LastName = "Admin"
         });
 
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = true
         });
 
-        _instanceOnboardingService.CompleteAsync(Arg.Any<OnboardingCompletionModel>())
-            .Returns(new InstanceCommandResponseModel
+        _instanceOnboardingService.CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>())
+            .Returns(new BaseCommandResponseOfGuid
             {
                 Success = true,
                 Message = "ok"
@@ -162,9 +162,9 @@ public class InstanceOnboardingTests : IDisposable
         });
 
         await _instanceOnboardingService.Received(1).CompleteAsync(
-            Arg.Is<OnboardingCompletionModel>(model => model != null
-                && model.DeploymentMode == "SingleTenant"
-                && model.SiteProfile.SiteName == "ISLAMU Explore"
+            Arg.Is<CompleteInstanceOnboardingRequest>(model => model != null
+                && model.DeploymentMode == DeploymentMode.SingleTenant
+                && model.SiteProfile!.SiteName == "ISLAMU Explore"
                 && model.SiteProfile.Locale == "en"
                 && model.SiteProfile.TimeZone == "UTC"));
     }
@@ -200,9 +200,9 @@ public class InstanceOnboardingTests : IDisposable
 
         // Assert
         await _instanceOnboardingService.Received(1).CompleteAsync(
-            Arg.Is<OnboardingCompletionModel>(model => model != null
-                && model.DeploymentMode == "MultiTenant"
-                && model.SiteProfile.SiteName == "ISLAMU Explore"
+            Arg.Is<CompleteInstanceOnboardingRequest>(model => model != null
+                && model.DeploymentMode == DeploymentMode.MultiTenant
+                && model.SiteProfile!.SiteName == "ISLAMU Explore"
                 && model.AdministrationAccessMode == "Embedded"
                 && string.IsNullOrWhiteSpace(model.AdminHost)));
     }
@@ -240,26 +240,26 @@ public class InstanceOnboardingTests : IDisposable
 
     private IRenderedComponent<InstanceOnboarding> RenderForDeploymentMode(
         string deploymentMode,
-        OnboardingPreflightModel? preflight = null)
+        OnboardingPreflightDto? preflight = null)
     {
-        _instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusModel
+        _instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusDto
         {
             RequiresOnboarding = true,
             DeploymentMode = deploymentMode
         });
 
-        _instanceOnboardingService.GetBrandingSettingsAsync().Returns(new BrandingSettingsModel
+        _instanceOnboardingService.GetBrandingSettingsAsync().Returns(new BrandingSettingsDto
         {
             DefaultBrandDisplayName = "ISLAMU Explore"
         });
 
-        _instanceOnboardingService.GetOnboardingPreflightAsync().Returns(preflight ?? new OnboardingPreflightModel
+        _instanceOnboardingService.GetOnboardingPreflightAsync().Returns(preflight ?? new OnboardingPreflightDto
         {
             DeploymentMode = deploymentMode,
             IsReadyToLaunch = true,
             BlockingChecks =
             [
-                new OnboardingPreflightCheckModel
+                new OnboardingPreflightCheckDto
                 {
                     Code = "setup_secret",
                     Name = "Setup Secret",
@@ -270,7 +270,7 @@ public class InstanceOnboardingTests : IDisposable
             ],
             WarningChecks =
             [
-                new OnboardingPreflightCheckModel
+                new OnboardingPreflightCheckDto
                 {
                     Code = "smtp",
                     Name = "SMTP",
@@ -407,13 +407,13 @@ public class InstanceOnboardingTests : IDisposable
     [Test]
     public async Task ReviewAndLaunch_MultiTenant_ShowsDnsChecklistWarnings()
     {
-        var cut = RenderForDeploymentMode("MultiTenant", new OnboardingPreflightModel
+        var cut = RenderForDeploymentMode("MultiTenant", new OnboardingPreflightDto
         {
             DeploymentMode = "MultiTenant",
             IsReadyToLaunch = true,
-            BlockingChecks = new List<OnboardingPreflightCheckModel>
+            BlockingChecks = new List<OnboardingPreflightCheckDto>
             {
-                new OnboardingPreflightCheckModel
+                new OnboardingPreflightCheckDto
                 {
                     Code = "setup_secret",
                     Name = "Setup Secret",
@@ -422,9 +422,9 @@ public class InstanceOnboardingTests : IDisposable
                     Message = "Setup secret is active."
                 }
             },
-            WarningChecks = new List<OnboardingPreflightCheckModel>
+            WarningChecks = new List<OnboardingPreflightCheckDto>
             {
-                new OnboardingPreflightCheckModel
+                new OnboardingPreflightCheckDto
                 {
                     Code = "dns_public_platform",
                     Name = "Public platform DNS",
@@ -452,13 +452,13 @@ public class InstanceOnboardingTests : IDisposable
     [Test]
     public async Task ReviewAndLaunch_WithFailedBlockingCheck_PreventsLaunch()
     {
-        var cut = RenderForDeploymentMode("SingleTenant", new OnboardingPreflightModel
+        var cut = RenderForDeploymentMode("SingleTenant", new OnboardingPreflightDto
         {
             DeploymentMode = "SingleTenant",
             IsReadyToLaunch = false,
-            BlockingChecks = new List<OnboardingPreflightCheckModel>
+            BlockingChecks = new List<OnboardingPreflightCheckDto>
             {
-                new OnboardingPreflightCheckModel
+                new OnboardingPreflightCheckDto
                 {
                     Code = "setup_secret",
                     Name = "Setup Secret",
@@ -467,7 +467,7 @@ public class InstanceOnboardingTests : IDisposable
                     Message = "Setup secret is missing or invalid."
                 }
             },
-            WarningChecks = new List<OnboardingPreflightCheckModel>()
+            WarningChecks = new List<OnboardingPreflightCheckDto>()
         });
         GoToReviewAndLaunch(cut);
 
@@ -480,19 +480,19 @@ public class InstanceOnboardingTests : IDisposable
         });
 
         ClickMudButton(cut, "Launch Instance");
-        await _instanceOnboardingService.DidNotReceive().CompleteAsync(Arg.Any<OnboardingCompletionModel>());
+        await _instanceOnboardingService.DidNotReceive().CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
     }
 
     [Test]
     public async Task ReviewAndLaunch_Acknowledgements_RequiredForSeriousWarnings()
     {
-        var cut = RenderForDeploymentMode("SingleTenant", new OnboardingPreflightModel
+        var cut = RenderForDeploymentMode("SingleTenant", new OnboardingPreflightDto
         {
             DeploymentMode = "SingleTenant",
             IsReadyToLaunch = true,
-            BlockingChecks = new List<OnboardingPreflightCheckModel>
+            BlockingChecks = new List<OnboardingPreflightCheckDto>
             {
-                new OnboardingPreflightCheckModel
+                new OnboardingPreflightCheckDto
                 {
                     Code = "setup_secret",
                     Name = "Setup Secret",
@@ -501,9 +501,9 @@ public class InstanceOnboardingTests : IDisposable
                     Message = "Setup secret is active."
                 }
             },
-            WarningChecks = new List<OnboardingPreflightCheckModel>
+            WarningChecks = new List<OnboardingPreflightCheckDto>
             {
-                new OnboardingPreflightCheckModel
+                new OnboardingPreflightCheckDto
                 {
                     Code = "public_exposure",
                     Name = "Public Exposure",
@@ -525,7 +525,7 @@ public class InstanceOnboardingTests : IDisposable
         });
 
         ClickMudButton(cut, "Launch Instance");
-        await _instanceOnboardingService.DidNotReceive().CompleteAsync(Arg.Any<OnboardingCompletionModel>());
+        await _instanceOnboardingService.DidNotReceive().CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
     }
 
     private sealed class OkHttpHandler : HttpMessageHandler

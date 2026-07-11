@@ -12,7 +12,7 @@ public class MultiTenantControlPlaneRouteGuardTests
     public async Task CanActivateAsync_MultiTenant_ReturnsTrue()
     {
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusModel
+        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusDto
         {
             RequiresOnboarding = false,
             DeploymentMode = "MultiTenant"
@@ -29,7 +29,7 @@ public class MultiTenantControlPlaneRouteGuardTests
     public async Task CanActivateAsync_CompletedSingleTenant_ReturnsFalse()
     {
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusModel
+        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusDto
         {
             RequiresOnboarding = false,
             DeploymentMode = "SingleTenant"
@@ -46,7 +46,7 @@ public class MultiTenantControlPlaneRouteGuardTests
     public async Task CanActivateAsync_SingleTenantWhileOnboardingRequired_ReturnsFalse()
     {
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusModel
+        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusDto
         {
             RequiresOnboarding = true,
             DeploymentMode = "SingleTenant"
@@ -63,7 +63,7 @@ public class MultiTenantControlPlaneRouteGuardTests
     public async Task CanActivateAsync_StatusUnavailable_ReturnsFalse()
     {
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns((SystemOnboardingStatusModel?)null);
+        instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns((SystemOnboardingStatusDto?)null);
 
         var guard = new MultiTenantControlPlaneRouteGuard(instanceOnboardingService);
 

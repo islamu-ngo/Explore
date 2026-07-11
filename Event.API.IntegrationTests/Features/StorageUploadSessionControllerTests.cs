@@ -86,6 +86,27 @@ public sealed class StorageUploadSessionControllerTests
     }
 
     [Test]
+    public async Task UploadSessionContent_WithGeneratedClientMediaType_UsesReservedSessionContentType()
+    {
+        var sessionId = Guid.CreateVersion7();
+        var body = new MemoryStream(Encoding.UTF8.GetBytes("hello"));
+        _mediator.Send(Arg.Any<FinalizeStorageUploadSessionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Success(sessionId));
+        var controller = CreateController(body, "application/octet-stream", body.Length);
+
+        _ = await controller.UploadSessionContent(sessionId, CancellationToken.None);
+
+        await _mediator.Received(1).Send(
+            Arg.Is<FinalizeStorageUploadSessionCommand>(command =>
+                command.UploadSessionId == sessionId &&
+                command.Content == body &&
+                command.ContentType == null &&
+                command.ContentLength == body.Length &&
+                command.TenantId == _tenantId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task CancelUploadSession_DispatchesCommandWithTenantContext()
     {
         var sessionId = Guid.CreateVersion7();

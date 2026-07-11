@@ -210,7 +210,9 @@ public sealed class TemplateInstantiationPostgreSqlTests(PostgreSqlContainerFixt
         var statusRepository = new CustomPropertyProjectionStatusRepository(context);
         var dirtyScopeRepository = new CustomPropertyProjectionDirtyScopeRepository(context);
         var tenantSettingRepository = new TenantSettingRepository(context);
-        var systemSettingRepository = new SystemSettingRepository(context);
+        var systemSettingRepository = new SystemSettingRepository(
+            context,
+            new PostgresSettingMutationLock(context, new EfCoreUnitOfWork(context)));
         var quotaResolver = new CustomPropertyQuotaResolver(tenantSettingRepository, systemSettingRepository);
 
         return new EventCustomPropertyProjectionUpdater(
@@ -226,7 +228,9 @@ public sealed class TemplateInstantiationPostgreSqlTests(PostgreSqlContainerFixt
         var statusRepository = new CustomPropertyProjectionStatusRepository(context);
         var dirtyScopeRepository = new CustomPropertyProjectionDirtyScopeRepository(context);
         var tenantSettingRepository = new TenantSettingRepository(context);
-        var systemSettingRepository = new SystemSettingRepository(context);
+        var systemSettingRepository = new SystemSettingRepository(
+            context,
+            new PostgresSettingMutationLock(context, new EfCoreUnitOfWork(context)));
         var quotaResolver = new CustomPropertyQuotaResolver(tenantSettingRepository, systemSettingRepository);
 
         return new EventSessionCustomPropertyProjectionUpdater(

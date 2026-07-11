@@ -1,5 +1,5 @@
-// ABOUTME: Architecture guardrails for the shared Event.ControlPlane.Client Razor class library.
-// ABOUTME: Prevents host, API, business-layer, token-storage, and local-authorization dependencies from entering shared UI.
+// ABOUTME: Architecture guardrails for the control-plane surface owned by Explore.Blazor.Client.
+// ABOUTME: Enforces relocated contracts, routing, services, and local control-plane UI primitives.
 
 using System.Text.RegularExpressions;
 
@@ -8,81 +8,12 @@ namespace Event.Architecture.Tests;
 public sealed class EventControlPlaneClientArchitectureTests
 {
     private static readonly string RepoRoot = ResolveRepoRoot();
-    private static readonly string ControlPlaneClientRoot = Path.Combine(RepoRoot, "Event.ControlPlane.Client");
-
-    [Test]
-    public async Task EventControlPlaneClient_Project_MustExistAsHostNeutralRazorClassLibrary()
-    {
-        var projectPath = Path.Combine(ControlPlaneClientRoot, "Event.ControlPlane.Client.csproj");
-        await Assert.That(File.Exists(projectPath)).IsTrue()
-            .Because("Event.ControlPlane.Client must exist as the shared control-plane Razor class library.");
-
-        var projectXml = await File.ReadAllTextAsync(projectPath);
-        await Assert.That(projectXml.Contains("Microsoft.NET.Sdk.Razor", StringComparison.Ordinal)).IsTrue()
-            .Because("Event.ControlPlane.Client must be a Razor class library for shared Blazor components.");
-
-        await Assert.That(projectXml.Contains("<ProjectReference", StringComparison.OrdinalIgnoreCase)).IsFalse()
-            .Because("Event.ControlPlane.Client must stay host-neutral and cannot reference app, API, Application, Domain, Persistence, or Infrastructure projects.");
-    }
-
-    [Test]
-    public async Task EventControlPlaneClient_Source_MustNotDependOnForbiddenBoundaries()
-    {
-        var forbiddenTokens = new[]
-        {
-            "Explore.Blazor.Client",
-            "Explore.Blazor",
-            "Explore.API",
-            "Explore.Application",
-            "Explore.Domain",
-            "Explore.Infrastructure",
-            "Explore.Persistence",
-            "Event.Web.BffHosting",
-            "Event.ControlPlane.Blazor",
-            "EventApiClient",
-            "IEventApiClient",
-            "ApiException",
-            "HttpClient",
-            "IHttpClientFactory",
-            "System.Net.Http",
-            "JsonContent",
-            "ReadFromJsonAsync",
-            "GetFromJsonAsync",
-            "EnsureSuccessStatusCode",
-            "AccessToken",
-            "RefreshToken",
-            "localStorage",
-            "sessionStorage",
-            "ProtectedLocalStorage",
-            "AuthenticationStateProvider",
-            "ClaimsPrincipal",
-            "AuthorizeView",
-            "IAuthorizationService",
-            "IsInRole"
-        };
-
-        var violations = new List<string>();
-        foreach (var file in EnumerateSourceFiles(ControlPlaneClientRoot))
-        {
-            var content = await File.ReadAllTextAsync(file);
-            var relative = Path.GetRelativePath(RepoRoot, file).Replace('\\', '/');
-            foreach (var token in forbiddenTokens)
-            {
-                if (content.Contains(token, StringComparison.Ordinal))
-                {
-                    violations.Add($"{relative} contains forbidden dependency token '{token}'");
-                }
-            }
-        }
-
-        await Assert.That(violations).IsEmpty()
-            .Because(string.Join('\n', violations));
-    }
+    private static readonly string ExploreBlazorClientRoot = Path.Combine(RepoRoot, "Explore.Blazor.Client");
 
     [Test]
     public async Task ControlPlaneRoutes_MustStayUnderAdminPortalRoots()
     {
-        var routesPath = Path.Combine(ControlPlaneClientRoot, "Routing", "ControlPlaneRoutes.cs");
+        var routesPath = Path.Combine(ExploreBlazorClientRoot, "Routing", "ControlPlane", "ControlPlaneRoutes.cs");
         await Assert.That(File.Exists(routesPath)).IsTrue()
             .Because("Control-plane route constants must be centralized.");
 
@@ -126,38 +57,74 @@ public sealed class EventControlPlaneClientArchitectureTests
     }
 
     [Test]
-    public async Task EventControlPlaneClient_MustExposeSharedServiceRegistration()
+    public async Task PublicAdminHost_MustUseExplicitControlPlaneRoutesWithoutLegacyProjectReference()
     {
-        var extensionPath = Path.Combine(ControlPlaneClientRoot, "Extensions", "ServiceCollectionExtensions.cs");
+        var clientProject = await File.ReadAllTextAsync(Path.Combine(ExploreBlazorClientRoot, "Explore.Blazor.Client.csproj"));
+        var hostProject = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "Explore.Blazor", "Explore.Blazor.csproj"));
+        var router = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "Explore.Blazor", "Components", "ControlPlane", "EmbeddedControlPlaneRoutes.razor"));
+        var page = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "Explore.Blazor", "Components", "ControlPlane", "EmbeddedControlPlanePage.razor"));
+
+        await Assert.That(clientProject).DoesNotContain("Event.ControlPlane.Client.csproj");
+        await Assert.That(hostProject).DoesNotContain("Event.ControlPlane.Client.csproj");
+        await Assert.That(router).DoesNotContain("AdditionalAssemblies");
+        await Assert.That(router).DoesNotContain("ControlPlaneClientAssembly");
+        await Assert.That(Regex.Matches(page, "(?m)^@page ").Count).IsEqualTo(7);
+        await Assert.That(page).Contains("@attribute [Authorize]");
+        await Assert.That(page).Contains("<ControlPlaneOverviewPage />");
+        await Assert.That(page).Contains("<InstanceTenants />");
+        await Assert.That(page).Contains("<InstanceTenantConfiguration TenantId=\"@tenantId\" />");
+        await Assert.That(page).Contains("<InstancePlans />");
+        await Assert.That(page).Contains("<InstancePlanDetail Key=\"@Key\" />");
+        await Assert.That(page).Contains("<ControlPlaneDomainsPage />");
+        await Assert.That(page).Contains("<ControlPlaneOperationsPage />");
+    }
+
+    [Test]
+    public async Task ExploreBlazorClient_MustExposeControlPlaneServiceRegistration()
+    {
+        var extensionPath = Path.Combine(ExploreBlazorClientRoot, "Extensions", "ControlPlaneServiceCollectionExtensions.cs");
+        var sharedExtensionPath = Path.Combine(ExploreBlazorClientRoot, "Extensions", "ServiceCollectionExtensions.cs");
+        var adapterPath = Path.Combine(ExploreBlazorClientRoot, "Services", "ControlPlane", "ControlPlaneApiAdapter.cs");
         await Assert.That(File.Exists(extensionPath)).IsTrue()
             .Because("Blazor hosts need one shared registration entry point for control-plane client services.");
 
         var source = await File.ReadAllTextAsync(extensionPath);
+        var sharedSource = await File.ReadAllTextAsync(sharedExtensionPath);
+        var adapterSource = await File.ReadAllTextAsync(adapterPath);
         await Assert.That(source.Contains("AddEventControlPlaneClient", StringComparison.Ordinal)).IsTrue();
         await Assert.That(source.Contains("IControlPlaneRouteCatalog", StringComparison.Ordinal)).IsTrue()
-            .Because("The first shared service is the route catalog used by embedded and separate hosts.");
+            .Because("The embedded shell needs one shared route catalog.");
 
-        await Assert.That(source.Contains("IControlPlaneOverviewService", StringComparison.Ordinal)).IsTrue()
-            .Because("Overview pages must depend on a host-provided service contract, not a generated client.");
-        await Assert.That(source.Contains("IControlPlaneTenantService", StringComparison.Ordinal)).IsTrue()
-            .Because("Tenant pages must depend on a host-provided service contract, not a generated client.");
-        await Assert.That(source.Contains("IControlPlaneDomainService", StringComparison.Ordinal)).IsTrue()
-            .Because("Domain pages must depend on a host-provided service contract, not a generated client.");
+        foreach (var service in new[]
+        {
+            "IControlPlaneOverviewService",
+            "IControlPlaneTenantService",
+            "IControlPlaneDomainService",
+            "IControlPlaneOperationsService",
+            "IControlPlanePlanCatalogService",
+            "IControlPlaneTenantConfigurationService"
+        })
+        {
+            await Assert.That(sharedSource).Contains(service)
+                .Because("Control-plane pages use thin UI services around the generated client.");
+        }
+
+        await Assert.That(adapterSource).Contains("IEventApiClient apiClient")
+            .Because("The generated API client must be the only backend transport boundary.");
+        await Assert.That(adapterSource).DoesNotContain("Explore.Application");
+        await Assert.That(adapterSource).DoesNotContain("Explore.Domain");
     }
 
     [Test]
-    public async Task EventControlPlaneClient_MustExposeHalAndFailureContracts()
+    public async Task ExploreBlazorClient_MustUseGeneratedHalAndCommandContracts()
     {
         var requiredFiles = new[]
         {
-            Path.Combine(ControlPlaneClientRoot, "Contracts", "ControlPlaneHalLink.cs"),
-            Path.Combine(ControlPlaneClientRoot, "Contracts", "IControlPlaneHalResource.cs"),
-            Path.Combine(ControlPlaneClientRoot, "Contracts", "ControlPlaneLinkRelations.cs"),
-            Path.Combine(ControlPlaneClientRoot, "Contracts", "ControlPlaneResult.cs"),
-            Path.Combine(ControlPlaneClientRoot, "Contracts", "ControlPlaneCommandResult.cs"),
-            Path.Combine(ControlPlaneClientRoot, "Services", "IControlPlaneOverviewService.cs"),
-            Path.Combine(ControlPlaneClientRoot, "Services", "IControlPlaneTenantService.cs"),
-            Path.Combine(ControlPlaneClientRoot, "Services", "IControlPlaneDomainService.cs")
+            Path.Combine(ExploreBlazorClientRoot, "Contracts", "ControlPlane", "ControlPlaneLinkRelations.cs"),
+            Path.Combine(ExploreBlazorClientRoot, "Contracts", "ControlPlane", "ControlPlaneHal.cs"),
+            Path.Combine(ExploreBlazorClientRoot, "Contracts", "Services", "ControlPlane", "IControlPlaneOverviewService.cs"),
+            Path.Combine(ExploreBlazorClientRoot, "Contracts", "Services", "ControlPlane", "IControlPlaneTenantService.cs"),
+            Path.Combine(ExploreBlazorClientRoot, "Contracts", "Services", "ControlPlane", "IControlPlaneDomainService.cs")
         };
 
         var missing = requiredFiles
@@ -166,32 +133,121 @@ public sealed class EventControlPlaneClientArchitectureTests
             .ToArray();
 
         await Assert.That(missing).IsEmpty()
-            .Because($"Shared control-plane components need HAL, failure-state, and adapter-driven service contracts. Missing: {string.Join(", ", missing)}");
+            .Because($"Embedded control-plane components need generated HAL-aware service contracts. Missing: {string.Join(", ", missing)}");
 
-        var resultSource = await File.ReadAllTextAsync(Path.Combine(ControlPlaneClientRoot, "Contracts", "ControlPlaneResult.cs"));
-        await Assert.That(resultSource.Contains("ControlPlaneResultKind", StringComparison.Ordinal)).IsTrue()
-            .Because("Control-plane services must return explicit failure states.");
-        await Assert.That(resultSource.Contains("ControlPlaneProblem", StringComparison.Ordinal)).IsTrue()
-            .Because("Control-plane services must expose safe problem details without raw transport exceptions.");
+        var forbiddenMirrors = new[]
+        {
+            "ControlPlaneHalLink.cs",
+            "IControlPlaneHalResource.cs",
+            "ControlPlaneResult.cs",
+            "ControlPlaneCommandResult.cs"
+        };
+        foreach (var fileName in forbiddenMirrors)
+        {
+            await Assert.That(File.Exists(Path.Combine(ExploreBlazorClientRoot, "Contracts", "ControlPlane", fileName))).IsFalse()
+                .Because("HAL, result, and command contracts must come from EventApiClient.g.cs.");
+        }
 
-        var halSource = await File.ReadAllTextAsync(Path.Combine(ControlPlaneClientRoot, "Contracts", "ControlPlaneHal.cs"));
+        foreach (var file in requiredFiles.Where(file => file.Contains($"{Path.DirectorySeparatorChar}Services{Path.DirectorySeparatorChar}", StringComparison.Ordinal)))
+        {
+            var contractSource = await File.ReadAllTextAsync(file);
+            await Assert.That(contractSource).Contains("using Explore.Blazor.Client.Clients;");
+            await Assert.That(Regex.IsMatch(
+                contractSource,
+                @"\b(?:HalResource|HalCollectionResource|BaseCommandResponse)",
+                RegexOptions.CultureInvariant)).IsTrue()
+                .Because("Control-plane UI services must expose generated HAL or command-response contracts.");
+        }
+
+        var halSource = await File.ReadAllTextAsync(Path.Combine(ExploreBlazorClientRoot, "Contracts", "ControlPlane", "ControlPlaneHal.cs"));
         await Assert.That(halSource.Contains("HasLink", StringComparison.Ordinal)).IsTrue()
             .Because("Control-plane components must gate action affordances from HAL link presence.");
     }
 
     [Test]
-    public async Task EventControlPlaneClient_DesignSystem_MustUseLocalPrimitivesWithoutPublicWrapperCoupling()
+    public async Task PublicTenantConfigurationPage_MustNotDependOnPlanAssignmentService()
     {
-        var projectPath = Path.Combine(ControlPlaneClientRoot, "Event.ControlPlane.Client.csproj");
-        var importsPath = Path.Combine(ControlPlaneClientRoot, "_Imports.razor");
+        var pagePath = Path.Combine(
+            RepoRoot,
+            "Explore.Blazor.Client",
+            "Pages",
+            "Admin",
+            "Instance",
+            "InstanceTenantConfiguration.razor");
+        var source = await File.ReadAllTextAsync(pagePath);
+
+        await Assert.That(source.Contains("IControlPlaneTenantConfigurationService", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(source.Contains("IControlPlanePlanService", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(source.Contains("ControlPlaneHal.HasLink(setting", StringComparison.Ordinal)).IsTrue();
+    }
+
+    [Test]
+    public async Task PublicPlanCatalog_MustUseReadOnlyContractHalNavigationAndGuardedRoutes()
+    {
+        var catalogPath = Path.Combine(ExploreBlazorClientRoot, "Contracts", "Services", "ControlPlane", "IControlPlanePlanCatalogService.cs");
+        var planServicePath = Path.Combine(ExploreBlazorClientRoot, "Contracts", "Services", "ControlPlane", "IControlPlanePlanService.cs");
+        var listPagePath = Path.Combine(RepoRoot, "Explore.Blazor.Client", "Pages", "Admin", "Instance", "InstancePlans.razor");
+        var detailPagePath = Path.Combine(RepoRoot, "Explore.Blazor.Client", "Pages", "Admin", "Instance", "InstancePlanDetail.razor");
+        var routesPath = Path.Combine(RepoRoot, "Explore.Blazor.Client", "Routes.razor");
+
+        await Assert.That(File.Exists(catalogPath)).IsTrue()
+            .Because("public plan pages need a read-only catalog boundary separate from mutation services");
+        await Assert.That(File.Exists(listPagePath)).IsTrue();
+        await Assert.That(File.Exists(listPagePath + ".css")).IsTrue();
+        await Assert.That(File.Exists(detailPagePath)).IsTrue();
+        await Assert.That(File.Exists(detailPagePath + ".css")).IsTrue();
+
+        var catalog = await File.ReadAllTextAsync(catalogPath);
+        var listPage = await File.ReadAllTextAsync(listPagePath);
+        var listCss = await File.ReadAllTextAsync(listPagePath + ".css");
+        var detailPage = await File.ReadAllTextAsync(detailPagePath);
+        var detailCss = await File.ReadAllTextAsync(detailPagePath + ".css");
+        var routes = await File.ReadAllTextAsync(routesPath);
+
+        await Assert.That(catalog).Contains("GetPlansAsync");
+        await Assert.That(catalog).Contains("GetPlanAsync");
+        await Assert.That(catalog).DoesNotContain("CreatePlan");
+        await Assert.That(catalog).DoesNotContain("UpdatePlan");
+        await Assert.That(catalog).DoesNotContain("PublishPlan");
+        await Assert.That(catalog).DoesNotContain("ArchivePlan");
+        await Assert.That(File.Exists(planServicePath)).IsFalse()
+            .Because("The Blazor client must not retain a local plan mutation contract.");
+
+        foreach (var page in new[] { listPage, detailPage })
+        {
+            await Assert.That(page).Contains("IControlPlanePlanCatalogService");
+            await Assert.That(page).DoesNotContain("IControlPlanePlanService");
+            await Assert.That(page).DoesNotContain("CreatePlanDraftAsync");
+            await Assert.That(page).DoesNotContain("PublishPlanVersionAsync");
+            await Assert.That(page).DoesNotContain("ArchivePlanVersionAsync");
+            await Assert.That(page).DoesNotContain("ClonePlanAsync");
+        }
+
+        await Assert.That(listPage).Contains("ControlPlaneHal.HasLink(plan._links, ControlPlaneLinkRelations.Self)")
+            .Because("plan detail navigation must come only from each item's HAL self link");
+        await Assert.That(detailPage).Contains("role=\"region\"");
+        await Assert.That(detailPage).Contains("tabindex=\"0\"");
+        await Assert.That(listCss).Contains("min-inline-size: 0");
+        await Assert.That(detailCss).Contains("overflow-x: auto");
+        await Assert.That(detailCss).Contains("min-inline-size:");
+        await Assert.That(routes).Contains("Path = ControlPlaneRoutes.Plans, Component = typeof(InstancePlans), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routes).Contains("Path = \"/admin/instance/plans/:Key\", Component = typeof(InstancePlanDetail), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routes).DoesNotContain("Component = typeof(ControlPlanePlansPage)");
+        await Assert.That(routes).DoesNotContain("Component = typeof(ControlPlanePlanDetailPage)");
+    }
+
+    [Test]
+    public async Task ExploreBlazorClient_ControlPlaneDesignSystem_MustUseLocalPrimitives()
+    {
+        var importsPath = Path.Combine(ExploreBlazorClientRoot, "Pages", "Admin", "Instance", "ControlPlane", "_Imports.razor");
         var requiredFiles = new[]
         {
-            Path.Combine(ControlPlaneClientRoot, "Components", "Common", "ControlPlaneActionButton.razor"),
-            Path.Combine(ControlPlaneClientRoot, "Components", "Common", "ControlPlaneActionButton.razor.css"),
-            Path.Combine(ControlPlaneClientRoot, "Components", "Common", "ControlPlanePageHeader.razor"),
-            Path.Combine(ControlPlaneClientRoot, "Components", "Common", "ControlPlanePageHeader.razor.css"),
-            Path.Combine(ControlPlaneClientRoot, "Components", "Common", "ControlPlanePanel.razor"),
-            Path.Combine(ControlPlaneClientRoot, "Components", "Common", "ControlPlanePanel.razor.css")
+            Path.Combine(ExploreBlazorClientRoot, "Components", "ControlPlane", "ControlPlaneActionButton.razor"),
+            Path.Combine(ExploreBlazorClientRoot, "Components", "ControlPlane", "ControlPlaneActionButton.razor.css"),
+            Path.Combine(ExploreBlazorClientRoot, "Components", "ControlPlane", "ControlPlanePageHeader.razor"),
+            Path.Combine(ExploreBlazorClientRoot, "Components", "ControlPlane", "ControlPlanePageHeader.razor.css"),
+            Path.Combine(ExploreBlazorClientRoot, "Components", "ControlPlane", "ControlPlanePanel.razor"),
+            Path.Combine(ExploreBlazorClientRoot, "Components", "ControlPlane", "ControlPlanePanel.razor.css")
         };
 
         var missing = requiredFiles
@@ -202,18 +258,14 @@ public sealed class EventControlPlaneClientArchitectureTests
         await Assert.That(missing).IsEmpty()
             .Because($"The control-plane RCL needs local design-system primitives before pages are added. Missing: {string.Join(", ", missing)}");
 
-        var projectXml = await File.ReadAllTextAsync(projectPath);
-        await Assert.That(projectXml.Contains("<PackageReference Include=\"MudBlazor\" />", StringComparison.Ordinal)).IsTrue()
-            .Because("Control-plane primitives may use MudBlazor directly, but the RCL must not depend on Explore.Blazor.Client wrappers.");
-
         var imports = await File.ReadAllTextAsync(importsPath);
         await Assert.That(imports.Contains("@using MudBlazor", StringComparison.Ordinal)).IsTrue()
             .Because("Shared control-plane primitives should have a single MudBlazor import point.");
-        await Assert.That(imports.Contains("@using Event.ControlPlane.Client.Components.Common", StringComparison.Ordinal)).IsTrue()
+        await Assert.That(imports.Contains("@using Explore.Blazor.Client.Components.ControlPlane", StringComparison.Ordinal)).IsTrue()
             .Because("Shared pages should consume local ControlPlane* primitives without per-page using churn.");
 
         var componentNameViolations = new List<string>();
-        foreach (var file in EnumerateSourceFiles(Path.Combine(ControlPlaneClientRoot, "Components")))
+        foreach (var file in EnumerateSourceFiles(Path.Combine(ExploreBlazorClientRoot, "Components", "ControlPlane")))
         {
             var relative = Path.GetRelativePath(RepoRoot, file).Replace('\\', '/');
             var fileName = Path.GetFileNameWithoutExtension(file);
@@ -245,7 +297,7 @@ public sealed class EventControlPlaneClientArchitectureTests
             .Because(string.Join('\n', componentNameViolations));
 
         var cssViolations = new List<string>();
-        foreach (var file in EnumerateCssFiles(ControlPlaneClientRoot))
+        foreach (var file in EnumerateCssFiles(Path.Combine(ExploreBlazorClientRoot, "Components", "ControlPlane")))
         {
             var content = await File.ReadAllTextAsync(file);
             var relative = Path.GetRelativePath(RepoRoot, file).Replace('\\', '/');
@@ -290,6 +342,104 @@ public sealed class EventControlPlaneClientArchitectureTests
 
         await Assert.That(cssViolations).IsEmpty()
             .Because(string.Join('\n', cssViolations));
+    }
+
+    [Test]
+    public async Task TenantLifecycleVisuals_MustUseFlatRowsAdaptiveBordersAndMeaningfulHoverStates()
+    {
+        var panelCss = await File.ReadAllTextAsync(Path.Combine(
+            ExploreBlazorClientRoot, "Components", "ControlPlane", "ControlPlanePanel.razor.css"));
+        var rclButtonCss = await File.ReadAllTextAsync(Path.Combine(
+            ExploreBlazorClientRoot, "Components", "ControlPlane", "ControlPlaneActionButton.razor.css"));
+        var publicButtonCss = await File.ReadAllTextAsync(Path.Combine(
+            RepoRoot, "Explore.Blazor.Client", "Components", "Common", "AppButton.razor.css"));
+        var publicTenantCss = await File.ReadAllTextAsync(Path.Combine(
+            RepoRoot, "Explore.Blazor.Client", "Pages", "Admin", "Instance", "Components", "InstanceTenantsSection.razor.css"));
+
+        await Assert.That(panelCss).DoesNotContain(".control-plane-panel:hover")
+            .Because("non-interactive structural panels must not imply clickability through hover elevation");
+        await Assert.That(publicTenantCss).Contains("border: 1px solid var(--isl-color-text-secondary)")
+            .Because("public table and form controls need an adaptive border with at least 3:1 contrast");
+        await Assert.That(publicTenantCss).Contains("text-align: start")
+            .Because("mobile action labels must follow the document writing direction");
+
+        foreach (var buttonCss in new[] { rclButtonCss, publicButtonCss })
+        {
+            await Assert.That(buttonCss).Contains("border: 1px solid var(--isl-color-text-secondary)")
+                .Because("outlined controls need an adaptive border with at least 3:1 contrast");
+            await Assert.That(buttonCss).Contains(".mud-button-outlined-error:hover")
+                .Because("outlined destructive actions need an explicit high-contrast hover state");
+            await Assert.That(buttonCss).Contains(".mud-button-outlined-error:active")
+                .Because("outlined destructive actions need an explicit high-contrast pressed state");
+            await Assert.That(buttonCss).Contains(".mud-button-filled-error:hover")
+                .Because("filled destructive actions need an explicit high-contrast hover state");
+            await Assert.That(buttonCss).Contains(".mud-button-filled-error:active")
+                .Because("filled destructive actions need an explicit high-contrast pressed state");
+            await Assert.That(buttonCss).Contains("background-color: var(--mud-palette-error-darken)")
+                .Because("destructive hover backgrounds must use the theme's darker error state");
+            await Assert.That(buttonCss).Contains("color: var(--isl-color-background)")
+                .Because("destructive hover needs a light foreground in light mode and dark foreground in dark mode");
+            await Assert.That(buttonCss).Contains("--mud-ripple-color: transparent")
+                .Because("destructive ripple overlays must not alter the verified foreground/background contrast pair");
+        }
+    }
+
+    [Test]
+    public async Task PublicTenantConfiguration_MustOwnResponsiveOverflowAdaptiveRowsAndPostRenderFocus()
+    {
+        var pagePath = Path.Combine(
+            ExploreBlazorClientRoot,
+            "Pages", "Admin", "Instance", "InstanceTenantConfiguration.razor");
+        var cssPath = pagePath + ".css";
+        var publicTokensPath = Path.Combine(RepoRoot, "Explore.Blazor", "wwwroot", "css", "tokens.css");
+        var rclButtonCssPath = Path.Combine(
+            ExploreBlazorClientRoot,
+            "Components",
+            "ControlPlane",
+            "ControlPlaneActionButton.razor.css");
+        var publicButtonCssPath = Path.Combine(
+            ExploreBlazorClientRoot,
+            "Components",
+            "Common",
+            "AppButton.razor.css");
+        var source = await File.ReadAllTextAsync(pagePath);
+        var css = await File.ReadAllTextAsync(cssPath);
+        var publicTokens = await File.ReadAllTextAsync(publicTokensPath);
+        var rclButtonCss = await File.ReadAllTextAsync(rclButtonCssPath);
+        var publicButtonCss = await File.ReadAllTextAsync(publicButtonCssPath);
+
+        await Assert.That(source).Contains("@key=\"setting.Key\"");
+        await Assert.That(source).Contains("OnAfterRenderAsync");
+        await Assert.That(source).Contains("FocusService.RestoreFocusAsync");
+        await Assert.That(source).Contains("ControlPlaneHal.HasLink(setting");
+        await Assert.That(source).DoesNotContain("data-focus-generation");
+        await Assert.That(css).Contains("overflow-x: auto");
+        await Assert.That(css).Contains("border-block-end: 1px solid var(--isl-color-border)");
+        await Assert.That(css).Contains(".instance-tenant-config__actions:focus,")
+            .Because("the public host also restores focus programmatically to its action group");
+        await Assert.That(css).Contains("text-wrap: pretty")
+            .Because("public human descriptions and feedback must avoid orphaned RTL/CJK fragments");
+        await Assert.That(source).Contains("dir=\"auto\"");
+        await Assert.That(source).Contains("dir=\"ltr\"");
+        await Assert.That(css).Contains("color: var(--isl-color-warning-strong)")
+            .Because("public warning text is small and needs at least 4.5:1 contrast");
+        await Assert.That(css).Contains("color: var(--isl-color-success-strong)")
+            .Because("public success feedback is small and needs at least 4.5:1 contrast");
+        await Assert.That(publicTokens).Contains("--isl-color-warning-strong: color-mix(in srgb, var(--isl-color-warning) 55%, var(--isl-color-text))");
+        await Assert.That(publicTokens).Contains("--isl-color-success-strong: color-mix(in srgb, var(--isl-color-success) 55%, var(--isl-color-text))");
+
+        foreach (var buttonCss in new[] { rclButtonCss, publicButtonCss })
+        {
+            await Assert.That(buttonCss).Contains(".mud-button-filled-warning")
+                .Because("filled lock controls need an explicit verified foreground/background pair");
+            await Assert.That(buttonCss).Contains("background-color: var(--isl-color-warning-strong)");
+            await Assert.That(buttonCss).Contains("color: var(--isl-color-background)");
+            await Assert.That(buttonCss).Contains(".mud-button-outlined-warning")
+                .Because("public outlined lock controls also need strong warning text");
+        }
+
+        await Assert.That(css).Contains("background: var(--isl-color-surface)");
+        await Assert.That(css).Contains("border: 1px solid var(--isl-color-text-secondary)");
     }
 
     private static IEnumerable<string> EnumerateSourceFiles(string root) =>

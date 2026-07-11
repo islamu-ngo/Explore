@@ -6,7 +6,7 @@ using Explore.Blazor.Client.E2ETests.Fixtures;
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
 [Category(E2ETestCategories.E2E)]
-[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerClass, SharedType.PerTestSession])]
 [NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
 public class AuthorizationEnforcementFlowTests(
@@ -16,8 +16,6 @@ public class AuthorizationEnforcementFlowTests(
     [Test]
     public async Task AnonymousProtectedRoutes_ChallengeToKeycloakLogin()
     {
-        await appHost.ResetDatabaseAsync();
-
         var page1 = await playwright.CreatePageAsync($"{nameof(AnonymousProtectedRoutes_ChallengeToKeycloakLogin)}-1");
         try
         {
@@ -44,8 +42,6 @@ public class AuthorizationEnforcementFlowTests(
     [Test]
     public async Task ForbiddenErrorRoute_RendersAccessDeniedRecoveryUi()
     {
-        await appHost.ResetDatabaseAsync();
-
         var page = await playwright.CreatePageAsync(nameof(ForbiddenErrorRoute_RendersAccessDeniedRecoveryUi));
         try
         {
@@ -60,8 +56,6 @@ public class AuthorizationEnforcementFlowTests(
     [Test]
     public async Task AnonymousProtectedRoutes_DoNotCreateBrowserTokenStorage()
     {
-        await appHost.ResetDatabaseAsync();
-
         var page = await playwright.CreatePageAsync(nameof(AnonymousProtectedRoutes_DoNotCreateBrowserTokenStorage));
         try
         {
@@ -79,8 +73,6 @@ public class AuthorizationEnforcementFlowTests(
     [Test]
     public async Task AuthenticatedLowPrivilegeUser_InstanceAdminApiReturnsForbiddenWithoutBrowserTokens()
     {
-        await appHost.ResetDatabaseAsync();
-
         var page = await playwright.CreatePageAsync(
             nameof(AuthenticatedLowPrivilegeUser_InstanceAdminApiReturnsForbiddenWithoutBrowserTokens));
         try

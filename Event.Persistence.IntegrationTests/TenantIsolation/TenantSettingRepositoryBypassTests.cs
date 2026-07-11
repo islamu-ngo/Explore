@@ -54,10 +54,11 @@ public class TenantSettingRepositoryBypassTests(PostgreSqlContainerFixture fixtu
         var tenantASettings = await repository.GetAllForTenant(tenantA.Id);
         var tenantALockedSettings = await repository.GetLockedForTenant(tenantA.Id);
 
-        var lockedTenantAShared = await repository.LockAsync(tenantA.Id, sharedKey);
-        var unlockedTenantALocked = await repository.UnlockAsync(tenantA.Id, lockedKey);
-        var removedTenantASetting = await repository.RemoveOverride(tenantA.Id, removableKey);
-        var removedMissingTenantASetting = await repository.RemoveOverride(tenantA.Id, "tenant.settings.missing");
+        Guid actorId = Guid.NewGuid();
+        var lockedTenantAShared = await repository.LockAsync(tenantA.Id, sharedKey, actorId);
+        var unlockedTenantALocked = await repository.UnlockAsync(tenantA.Id, lockedKey, actorId);
+        var removedTenantASetting = await repository.RemoveOverrideAsync(tenantA.Id, removableKey);
+        var removedMissingTenantASetting = await repository.RemoveOverrideAsync(tenantA.Id, "tenant.settings.missing");
 
         await Assert.That(visibleWithoutBypass).IsEquivalentTo([tenantB.Id, tenantB.Id, tenantB.Id]);
         await Assert.That(tenantAShared).IsNotNull();

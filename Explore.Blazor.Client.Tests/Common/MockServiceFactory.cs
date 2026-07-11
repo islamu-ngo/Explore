@@ -102,7 +102,7 @@ public static class MockServiceFactory
     public static IGroupService CreateGroupService()
     {
         var mock = Substitute.For<IGroupService>();
-        mock.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
+        mock.GetMyGroupsAsync().Returns(new List<GroupListDto>());
         return mock;
     }
 

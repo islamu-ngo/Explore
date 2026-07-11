@@ -2,8 +2,7 @@
 // Tests all event-related operations including CRUD and session management.
 
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models.EventSessions;
-using UpdateEventDraftRequestDto = Explore.Blazor.Client.Models.Events.UpdateEventDraftRequestDto;
+using Explore.Blazor.Client.Models.Events;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -885,7 +884,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var updateDto = new UpdateEventDraftRequestDto
+        var updateDto = new EventDraftEditModel
         {
             ExpectedConcurrencyStamp = Guid.NewGuid(),
             Title = "Updated Title"
@@ -915,7 +914,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var updateDto = new UpdateEventDraftRequestDto
+        var updateDto = new EventDraftEditModel
         {
             ExpectedConcurrencyStamp = Guid.NewGuid(),
             Title = "Updated Title"
@@ -942,7 +941,7 @@ public class EventServiceTests
         // Arrange
         var eventId = new Guid("d415b43c-3f93-4b68-9a2d-59021d838e11");
         var concurrencyStamp = Guid.NewGuid();
-        var updateDto = new UpdateEventDraftRequestDto
+        var updateDto = new EventDraftEditModel
         {
             ExpectedConcurrencyStamp = concurrencyStamp,
             Title = "Test Title"
@@ -981,7 +980,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var updateDto = new UpdateEventDraftRequestDto
+        var updateDto = new EventDraftEditModel
         {
             ExpectedConcurrencyStamp = Guid.NewGuid(),
             Title = "Updated Title"
@@ -1030,7 +1029,7 @@ public class EventServiceTests
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var request = new Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest
+        var request = new Explore.Blazor.Client.Clients.CreateEventSessionDto
         {
             EventId = eventId,
             TenantId = tenantId,
@@ -1086,35 +1085,69 @@ public class EventServiceTests
     }
 
     [Test]
-    public async Task UpdateSessionAsync_MapsComposerRequestToGeneratedDto()
+    public async Task UpdateSessionAsync_ForwardsGeneratedDtoWithConcurrencyHeader()
     {
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
         var concurrencyStamp = Guid.NewGuid();
-        var request = new UpdateEventSessionRequest
+        var startTime = new DateTimeOffset(2026, 6, 1, 11, 0, 0, TimeSpan.Zero);
+        var endTime = new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero);
+        var request = new UpdateEventSessionDto
         {
-            Id = sessionId,
-            ExpectedConcurrencyStamp = concurrencyStamp,
-            EventId = eventId,
-            Title = "Updated workshop",
-            Description = "Updated description",
-            Slug = "updated-workshop",
-            LocationId = locationId,
-            RoomId = roomId,
-            StartTime = new DateTimeOffset(2026, 6, 1, 11, 0, 0, TimeSpan.Zero),
-            EndTime = new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero),
-            MaxAudienceAttendees = 80,
-            RegistrationModeId = 3,
-            EventSessionKindId = 2,
-            IslamicAspect = new EventSessionIslamicAspectDto
+            Event = new UpdateEventSessionEventDto { EventId = eventId },
+            Title = new UpdateEventSessionTitleDto
             {
-                StartTimeType = (SessionStartTimeType)2,
-                ReferencePrayer = (PrayerTime)3,
-                OffsetMinutes = 20,
-                RequiresWudu = false,
-                RitualRequirementsJson = "{\"note\":\"Update\"}"
+                Value = new OptionalUpdateOfstring { HasValue = true, Value = "Updated workshop" }
+            },
+            Description = new UpdateEventSessionDescriptionDto
+            {
+                Value = new OptionalUpdateOfstring { HasValue = true, Value = "Updated description" }
+            },
+            Slug = new UpdateEventSessionSlugDto
+            {
+                Value = new OptionalUpdateOfstring { HasValue = true, Value = "updated-workshop" }
+            },
+            Location = new UpdateEventSessionLocationDto
+            {
+                Value = new OptionalUpdateOfGuid { HasValue = true, Value = locationId }
+            },
+            Room = new UpdateEventSessionRoomDto
+            {
+                Value = new OptionalUpdateOfGuid { HasValue = true, Value = roomId }
+            },
+            Schedule = new UpdateEventSessionScheduleDto
+            {
+                StartTime = new OptionalUpdateOfDateTimeOffset { HasValue = true, Value = startTime },
+                EndTime = new OptionalUpdateOfDateTimeOffset { HasValue = true, Value = endTime }
+            },
+            MaxAudienceAttendees = new UpdateEventSessionMaxAudienceAttendeesDto
+            {
+                Value = new OptionalUpdateOfint { HasValue = true, Value = 80 }
+            },
+            RegistrationMode = new UpdateEventSessionRegistrationModeDto
+            {
+                Value = new OptionalUpdateOfint { HasValue = true, Value = 3 }
+            },
+            Kind = new UpdateEventSessionKindDto
+            {
+                Value = new OptionalUpdateOfint { HasValue = true, Value = 2 }
+            },
+            IslamicAspect = new UpdateEventSessionIslamicAspectUpdateDto
+            {
+                Value = new OptionalUpdateOfEventSessionIslamicAspectDto
+                {
+                    HasValue = true,
+                    Value = new EventSessionIslamicAspectDto
+                    {
+                        StartTimeType = (SessionStartTimeType)2,
+                        ReferencePrayer = (PrayerTime)3,
+                        OffsetMinutes = 20,
+                        RequiresWudu = false,
+                        RitualRequirementsJson = "{\"note\":\"Update\"}"
+                    }
+                }
             }
         };
         UpdateEventSessionDto? capturedDto = null;
@@ -1128,7 +1161,7 @@ public class EventServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = sessionId });
 
-        var result = await _service.UpdateSessionAsync(request);
+        var result = await _service.UpdateSessionAsync(sessionId, concurrencyStamp, request);
 
         await Assert.That(result.Id).IsEqualTo(sessionId);
         await _apiClient.Received(1).UpdateEventSessionAsync(
@@ -1146,8 +1179,8 @@ public class EventServiceTests
         await Assert.That(capturedDto.Slug?.Value?.Value).IsEqualTo("updated-workshop");
         await Assert.That(capturedDto.Location?.Value?.Value).IsEqualTo(locationId);
         await Assert.That(capturedDto.Room?.Value?.Value).IsEqualTo(roomId);
-        await Assert.That(capturedDto.Schedule?.StartTime?.Value).IsEqualTo(request.StartTime);
-        await Assert.That(capturedDto.Schedule?.EndTime?.Value).IsEqualTo(request.EndTime);
+        await Assert.That(capturedDto.Schedule?.StartTime?.Value).IsEqualTo(startTime);
+        await Assert.That(capturedDto.Schedule?.EndTime?.Value).IsEqualTo(endTime);
         await Assert.That(capturedDto.MaxAudienceAttendees?.Value?.Value).IsEqualTo(80);
         await Assert.That(capturedDto.RegistrationMode?.Value?.Value).IsEqualTo(3);
         await Assert.That(capturedDto.Kind?.Value?.Value).IsEqualTo(2);

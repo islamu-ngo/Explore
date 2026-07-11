@@ -91,7 +91,6 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             Scope = RoleScopeEnum.Tenant
         });
         _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
-        _systemSettingRepository.Create(Arg.Any<SystemSetting>()).Returns(callInfo => callInfo.Arg<SystemSetting>()!);
         _platformUserRoleRepository.Create(Arg.Any<PlatformUserRole>()).Returns(callInfo => callInfo.Arg<PlatformUserRole>()!);
         _tenantUserRoleGrantRepository.Create(Arg.Any<TenantUserRoleGrant>()).Returns(callInfo => callInfo.Arg<TenantUserRoleGrant>()!);
         _tenantUserRepository.Create(Arg.Any<TenantUser>()).Returns(callInfo =>
@@ -146,42 +145,43 @@ public class CompleteInstanceOnboardingCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await _bootstrapRepository.Received(1).GetCurrent(cancellationSource.Token);
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName
-            && setting.Value == JsonSerializer.Serialize("Community Events")));
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+            && setting.Value == JsonSerializer.Serialize("Community Events")), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.Email.FromAddress
-            && setting.Value == JsonSerializer.Serialize("support@example.org")));
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+            && setting.Value == JsonSerializer.Serialize("support@example.org")), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.Domains.InstanceBaseDomain
-            && setting.Value == JsonSerializer.Serialize("events.example.org")));
-        _ = _systemSettingRepository.DidNotReceive().Create(Arg.Is<SystemSetting>(setting =>
-            setting.SettingKey == GovernanceSettingKeys.Domains.AdminHost));
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+            && setting.Value == JsonSerializer.Serialize("events.example.org")), Arg.Any<CancellationToken>());
+        _ = _systemSettingRepository.DidNotReceive().UpsertAsync(
+            Arg.Is<SystemSetting>(setting => setting.SettingKey == GovernanceSettingKeys.Domains.AdminHost),
+            Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.PublicExperience.Mode
-            && setting.Value == JsonSerializer.Serialize("DiscoveryCentric")));
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+            && setting.Value == JsonSerializer.Serialize("DiscoveryCentric")), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.PublicExperience.EventCatalogLabel
-            && setting.Value == JsonSerializer.Serialize("Events")));
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+            && setting.Value == JsonSerializer.Serialize("Events")), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.Routing.DefaultPublicHomePage
-            && setting.Value == JsonSerializer.Serialize("EventList")));
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+            && setting.Value == JsonSerializer.Serialize("EventList")), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.PublicExperience.HomeBlocks
             && setting.ValueType == SettingValueType.Json
-            && ContainsDefaultHomeBlock(setting.Value, "Community Events")));
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+            && ContainsDefaultHomeBlock(setting.Value, "Community Events")), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting != null
             && setting.SettingKey == GovernanceSettingKeys.PublicExperience.Ctas
             && setting.ValueType == SettingValueType.Json
-            && ContainsDefaultCta(setting.Value)));
+            && ContainsDefaultCta(setting.Value)), Arg.Any<CancellationToken>());
         await _tenantUserRepository.Received(1).Create(Arg.Is<TenantUser>(tenantUser =>
             tenantUser != null
             && tenantUser.TenantId == PlatformDefaults.DefaultTenantId
@@ -236,9 +236,9 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             role.UserId == TestUserId
             && role.RoleId == (int)RoleEnum.Admin
             && role.GrantedBy == TestUserId));
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting.SettingKey == GovernanceSettingKeys.Deployment.Mode
-            && setting.Value == JsonSerializer.Serialize(DeploymentMode.MultiTenant.ToString())));
+            && setting.Value == JsonSerializer.Serialize(DeploymentMode.MultiTenant.ToString())), Arg.Any<CancellationToken>());
 
         _ = _tenantRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         _ = _tenantRepository.DidNotReceive().Create(Arg.Any<Tenant>());
@@ -248,8 +248,9 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             Arg.Any<Guid>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
-        _ = _systemSettingRepository.DidNotReceive().Create(Arg.Is<SystemSetting>(setting =>
-            setting.SettingKey == GovernanceSettingKeys.PublicExperience.Mode));
+        _ = _systemSettingRepository.DidNotReceive().UpsertAsync(
+            Arg.Is<SystemSetting>(setting => setting.SettingKey == GovernanceSettingKeys.PublicExperience.Mode),
+            Arg.Any<CancellationToken>());
         _setupSecretProvider.Received(1).Lock();
         _bootstrapAuditLogger.Received(1).Log(Arg.Is<InstanceBootstrapAuditEvent>(auditEvent =>
             auditEvent.EventType == InstanceBootstrapAuditEventType.SetupModeDisabled
@@ -286,9 +287,9 @@ public class CompleteInstanceOnboardingCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(setting =>
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting.SettingKey == GovernanceSettingKeys.Domains.AdminHost
-            && setting.Value == JsonSerializer.Serialize("admin.example.org")));
+            && setting.Value == JsonSerializer.Serialize("admin.example.org")), Arg.Any<CancellationToken>());
     }
 
     private static bool ContainsDefaultHomeBlock(string value, string expectedTitle)

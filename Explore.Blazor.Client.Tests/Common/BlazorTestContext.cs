@@ -1,8 +1,6 @@
 // ABOUTME: Shared bUnit test context for Blazor client tests with MudBlazor, auth, and common DI defaults.
 // ABOUTME: Centralizes JS interop stubs and test-only service registrations so component tests stay deterministic.
 
-using Explore.Application.Authentication;
-using Explore.Application.Contracts.Identity;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Services.Docking;
@@ -73,11 +71,8 @@ public class BlazorTestContext : BunitContext
         AddLocalizationMocks();
         Services.AddSingleton(Substitute.For<IHttpClientFactory>());
         Services.AddSingleton(Substitute.For<IBffAuthApi>());
-        Services.AddSingleton(Substitute.For<IUserExternalLoginApi>());
-        Services.AddSingleton(Substitute.For<IEventTeamBffApi>());
         Services.AddSingleton(Substitute.For<IBrowserActionInterop>());
         AddAccessibilityMocks();
-        AddAuthorizationSubstrateMocks();
         AddAppearanceThemeMock();
         AddPublicExperienceMock();
         Services.AddScoped(_ => Substitute.For<INotificationRefreshStreamClient>());
@@ -141,19 +136,8 @@ public class BlazorTestContext : BunitContext
     public void AddPublicExperienceMock()
     {
         var publicExperienceService = Substitute.For<Explore.Blazor.Client.Services.IPublicExperienceService>();
-        publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellModel?>(null));
+        publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellDto?>(null));
         Services.AddSingleton(publicExperienceService);
-    }
-
-    /// <summary>
-    /// Add authorization substrate defaults so expanded auth DI paths do not fail closed in UI tests.
-    /// </summary>
-    public void AddAuthorizationSubstrateMocks()
-    {
-        var machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
-        machinePrincipalAccessor.Current.Returns((ApiKeyPrincipalContext?)null);
-        machinePrincipalAccessor.IsMachineCaller.Returns(false);
-        Services.AddScoped(_ => machinePrincipalAccessor);
     }
 
     /// <summary>
@@ -194,7 +178,7 @@ public class BlazorTestContext : BunitContext
         Services.AddSingleton(MockServiceFactory.CreateNotificationService());
 
         var publicExperienceService = Substitute.For<IPublicExperienceService>();
-        publicExperienceService.GetSettingsAsync().Returns(Task.FromResult<PublicExperienceSettingsModel?>(null));
+        publicExperienceService.GetSettingsAsync().Returns(Task.FromResult<PublicExperienceSettingsDto?>(null));
         Services.AddSingleton(publicExperienceService);
 
         var userSettingsService = Substitute.For<IUserSettingsService>();
@@ -211,7 +195,7 @@ public class BlazorTestContext : BunitContext
     public void AddGroupServiceMock()
     {
         var groupService = Substitute.For<IGroupService>();
-        groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
+        groupService.GetMyGroupsAsync().Returns(new List<GroupListDto>());
         Services.AddSingleton(groupService);
     }
 

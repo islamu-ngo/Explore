@@ -116,7 +116,7 @@ public class AnalyticsInitializerTests : IDisposable
     {
         var tenantId = Guid.NewGuid();
         var settingsService = Substitute.For<IPublicExperienceService>();
-        settingsService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel
+        settingsService.GetSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             TenantId = tenantId,
             AnalyticsProvider = "posthog",
@@ -148,7 +148,7 @@ public class AnalyticsInitializerTests : IDisposable
     public async Task Renders_WithNullSettings_DoesNotInitializeInterop()
     {
         var settingsService = Substitute.For<IPublicExperienceService>();
-        settingsService.GetSettingsAsync().Returns((PublicExperienceSettingsModel?)null);
+        settingsService.GetSettingsAsync().Returns((PublicExperienceSettingsDto?)null);
 
         var analyticsInterop = Substitute.For<IAnalyticsInterop>();
         _ctx.Services.AddSingleton(settingsService);
@@ -164,7 +164,7 @@ public class AnalyticsInitializerTests : IDisposable
     public async Task Renders_WithAnalyticsDisabled_DoesNotTrackPageViews()
     {
         var settingsService = Substitute.For<IPublicExperienceService>();
-        settingsService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel
+        settingsService.GetSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             AnalyticsProvider = "none",
             AnalyticsEnabled = false,
@@ -192,7 +192,7 @@ public class AnalyticsInitializerTests : IDisposable
     {
         var tenantId = Guid.NewGuid();
         var settingsService = Substitute.For<IPublicExperienceService>();
-        settingsService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel
+        settingsService.GetSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             TenantId = tenantId,
             AnalyticsProvider = "posthog",
@@ -244,15 +244,15 @@ public class AnalyticsInitializerTests : IDisposable
         await analyticsInterop.DidNotReceiveWithAnyArgs().InitAsync(default!, default, default!, default!, default, default!, default!);
     }
 
-    private static PublicExperienceSettingsModel CreateSettingsWithConsent(
+    private static PublicExperienceSettingsDto CreateSettingsWithConsent(
         bool cookieBannerEnabled = true,
         bool canRunBeforeConsent = true,
         string declineBehavior = "cookieless",
         string consentCookieKey = "explore_cc_test",
         int cookieLifetimeDays = 180,
-        PosthogClientBootstrapModel? posthog = null)
+        PosthogClientBootstrapDto? posthog = null)
     {
-        return new PublicExperienceSettingsModel
+        return new PublicExperienceSettingsDto
         {
             TenantId = Guid.NewGuid(),
             AnalyticsProvider = "posthog",
@@ -262,7 +262,7 @@ public class AnalyticsInitializerTests : IDisposable
             AnalyticsAllowIdentify = true,
             AnalyticsPublicApiKey = "phc_test123",
             AnalyticsEndpointUrl = "https://analytics.example.com",
-            AnalyticsConsent = new AnalyticsConsentBootstrapModel
+            AnalyticsConsent = new AnalyticsConsentBootstrapDto
             {
                 CookieBannerEnabled = cookieBannerEnabled,
                 CanRunBeforeConsent = canRunBeforeConsent,
@@ -278,7 +278,7 @@ public class AnalyticsInitializerTests : IDisposable
     [Test]
     public async Task BannerEnabled_NoExistingCookie_CanRunBeforeConsent_ShowsBannerAndInitsCookieless()
     {
-        var posthog = new PosthogClientBootstrapModel { CookielessMode = "on_reject", PersonProfiles = "identified_only" };
+        var posthog = new PosthogClientBootstrapDto { CookielessMode = "on_reject", PersonProfiles = "identified_only" };
         var settings = CreateSettingsWithConsent(canRunBeforeConsent: true, posthog: posthog);
         var settingsService = Substitute.For<IPublicExperienceService>();
         settingsService.GetSettingsAsync().Returns(settings);
@@ -295,7 +295,8 @@ public class AnalyticsInitializerTests : IDisposable
             cut.Find(".cookie-consent-banner");
             analyticsInterop.Received(1).InitAsync(
                 "posthog", true, "identified", "relay", true, "phc_test123", "https://analytics.example.com",
-                Arg.Is<PosthogClientBootstrapModel?>(p => p != null && p.CookielessMode == "always"));
+                Arg.Is<Explore.Blazor.Client.Models.Analytics.PosthogClientBootstrapModel?>(
+                    p => p != null && p.CookielessMode == "always"));
             analyticsInterop.Received(1).PageViewAsync("/", Arg.Any<IDictionary<string, object>>());
         });
     }
@@ -344,7 +345,7 @@ public class AnalyticsInitializerTests : IDisposable
             analyticsInterop.Received(1).OptInCapturingAsync();
             analyticsInterop.Received(1).InitAsync(
                 "posthog", true, "identified", "relay", true, "phc_test123", "https://analytics.example.com",
-                Arg.Any<PosthogClientBootstrapModel?>());
+                Arg.Any<Explore.Blazor.Client.Models.Analytics.PosthogClientBootstrapModel?>());
             analyticsInterop.Received(1).PageViewAsync("/", Arg.Any<IDictionary<string, object>>());
         });
     }

@@ -28,8 +28,8 @@ public class TenantOnboardingTests : IDisposable
 
         _userService.SyncUserAsync().Returns(new BaseCommandResponseOfGuid { Success = true });
         _tenantOnboardingService.GetSettingsAsync().Returns(CreateSettingsModel());
-        _tenantOnboardingService.CompleteAsync(Arg.Any<TenantPolicySettingsModel>())
-            .Returns(new InstanceCommandResponseModel { Success = true, Message = "ok" });
+        _tenantOnboardingService.CompleteAsync(Arg.Any<TenantPolicySettingsDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Message = "ok" });
     }
 
     public void Dispose()
@@ -40,7 +40,7 @@ public class TenantOnboardingTests : IDisposable
     [Test]
     public async Task AlreadyCompletedTenantOnboarding_ShowsPostCompletionChoices()
     {
-        _tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusModel
+        _tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true,
@@ -57,7 +57,7 @@ public class TenantOnboardingTests : IDisposable
     [Test]
     public async Task CompleteTenantOnboarding_ShowsPostCompletionChoicesInsteadOfRedirecting()
     {
-        _tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusModel
+        _tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = true,
@@ -83,7 +83,7 @@ public class TenantOnboardingTests : IDisposable
     [Test]
     public async Task AlreadyCompletedTenantOnboarding_ForPlatformAdminOnly_LinksToInstanceAdministration()
     {
-        _tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusModel
+        _tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true,
@@ -106,7 +106,7 @@ public class TenantOnboardingTests : IDisposable
         await Assert.That(_nav.Uri).EndsWith("/");
     }
 
-    private static TenantPolicySettingsModel CreateSettingsModel() => new()
+    private static TenantPolicySettingsDto CreateSettingsModel() => new()
     {
         PreferredHomePage = "EventList",
         CanOverrideHomePagePreference = true,

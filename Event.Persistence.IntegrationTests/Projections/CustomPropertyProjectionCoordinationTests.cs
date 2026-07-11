@@ -269,7 +269,9 @@ public class CustomPropertyProjectionCoordinationTests
         var statusRepo = new CustomPropertyProjectionStatusRepository(context);
         var dirtyScopeRepo = new CustomPropertyProjectionDirtyScopeRepository(context);
         var tenantSettingRepo = new TenantSettingRepository(context);
-        var systemSettingRepo = new SystemSettingRepository(context);
+        var systemSettingRepo = new SystemSettingRepository(
+            context,
+            new PostgresSettingMutationLock(context, new EfCoreUnitOfWork(context)));
         var quotaResolver = new CustomPropertyQuotaResolver(tenantSettingRepo, systemSettingRepo);
 
         return new EventCustomPropertyProjectionUpdater(

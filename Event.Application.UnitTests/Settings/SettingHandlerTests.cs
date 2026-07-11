@@ -8,10 +8,12 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Settings;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.Settings.Handlers.Commands;
 using Explore.Application.Features.Settings.Handlers.Queries;
 using Explore.Application.Features.Settings.Requests.Commands;
 using Explore.Application.Features.Settings.Requests.Queries;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Domain;
@@ -647,6 +649,31 @@ public class SettingHandlerTests
         await _resolver.Received(1).RemoveOverrideAsync(
             TestKey, SettingScope.Tenant, TestTenantId,
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Reset_TenantScope_WhenSystemLocksDuringMutation_ReturnsStableFailure()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        SetupResolverMetadata(TestKey, false);
+        _resolver.RemoveOverrideAsync(
+                TestKey,
+                SettingScope.Tenant,
+                TestTenantId,
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new SettingSystemLockedException(TestKey));
+        var handler = CreateResetHandler();
+
+        var result = await handler.Handle(
+            new ResetSettingCommand { Key = TestKey, Scope = SettingScope.Tenant },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(SettingSystemLockedException.Code);
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
     }
 
     // ──────────────────────────────────────────────

@@ -1,7 +1,7 @@
 // ABOUTME: Unit-style DelegatingHandler tests for tenant and forwarded-host propagation behavior.
 // ABOUTME: Verifies request header forwarding based on ITenantRouteContextAccessor and HttpContext host values.
 
-using Explore.Application.Constants;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Http;
 
@@ -28,8 +28,8 @@ public class TenantHeaderForwardingHandlerTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
-        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains(TenantHeaderNames.TenantSlug)).IsTrue();
-        await Assert.That(innerHandler.CapturedRequest.Headers.GetValues(TenantHeaderNames.TenantSlug).Single()).IsEqualTo("acme");
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains(EventBffHeaderNames.TenantSlug)).IsTrue();
+        await Assert.That(innerHandler.CapturedRequest.Headers.GetValues(EventBffHeaderNames.TenantSlug).Single()).IsEqualTo("acme");
     }
 
     [Test]
@@ -50,7 +50,7 @@ public class TenantHeaderForwardingHandlerTests
         _ = await invoker.SendAsync(request, CancellationToken.None);
 
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
-        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains(TenantHeaderNames.TenantSlug)).IsFalse();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains(EventBffHeaderNames.TenantSlug)).IsFalse();
     }
 
     [Test]
@@ -96,13 +96,13 @@ public class TenantHeaderForwardingHandlerTests
 
         using var invoker = new HttpMessageInvoker(handler);
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/events");
-        request.Headers.Add(TenantHeaderNames.TenantSlug, "preset-tenant");
+        request.Headers.Add(EventBffHeaderNames.TenantSlug, "preset-tenant");
         request.Headers.Add("X-Forwarded-Host", "preset-host");
 
         _ = await invoker.SendAsync(request, CancellationToken.None);
 
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
-        await Assert.That(innerHandler.CapturedRequest!.Headers.GetValues(TenantHeaderNames.TenantSlug).Single()).IsEqualTo("preset-tenant");
+        await Assert.That(innerHandler.CapturedRequest!.Headers.GetValues(EventBffHeaderNames.TenantSlug).Single()).IsEqualTo("preset-tenant");
         await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Forwarded-Host").Single()).IsEqualTo("preset-host");
     }
 }

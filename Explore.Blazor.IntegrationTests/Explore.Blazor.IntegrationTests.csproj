@@ -1,14 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\Event.ControlPlane.Blazor\Event.ControlPlane.Blazor.csproj" Aliases="ControlPlaneBlazor" />
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="Testcontainers.Keycloak" />
+    <PackageReference Include="Testcontainers.Redis" />
     <PackageReference Include="TUnit" />
   </ItemGroup>
   <PropertyGroup>

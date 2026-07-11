@@ -1,8 +1,7 @@
 // ABOUTME: Tests BFF reverse-proxy header sanitization before API forwarding occurs.
 // ABOUTME: Verifies browser credentials are stripped while ordinary request metadata survives.
 
-using Explore.Application.Constants;
-using Explore.Blazor.Services;
+using Event.Web.BffHosting.Security;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 
@@ -16,7 +15,7 @@ public class BffProxyHeaderSanitizerTests
         request.Headers.Add("Proxy-Authorization", "Bearer proxy-token");
         request.Headers.Add("Cookie", "bff=session; setup-secret=secret");
         request.Headers.Add("X-Setup-Secret", "browser-secret");
-        request.Headers.Add(ApiAuthenticationHeaderNames.ApiKey, "browser-api-key");
+        request.Headers.Add(EventBffHeaderNames.ApiKey, "browser-api-key");
         request.Headers.Add("Access-Token", "access");
         request.Headers.Add("Refresh-Token", "refresh");
         request.Headers.Add("Identity-Token", "identity");
@@ -26,11 +25,11 @@ public class BffProxyHeaderSanitizerTests
         request.Headers.Add("X-Identity-Token", "x-identity");
         request.Headers.Add("X-Id-Token", "x-id");
         request.Headers.Add("X-Auth-Token", "x-auth");
-        request.Headers.Add(TenantHeaderNames.TenantId, Guid.NewGuid().ToString());
-        request.Headers.Add(TenantHeaderNames.TenantSlug, "attacker-tenant");
-        request.Headers.Add(SupportAccessHeaderNames.SessionId, Guid.NewGuid().ToString());
-        request.Headers.Add(SupportAccessHeaderNames.TargetTenantId, Guid.NewGuid().ToString());
-        request.Headers.Add(SupportAccessHeaderNames.Mode, "Write");
+        request.Headers.Add(EventBffHeaderNames.TenantId, Guid.NewGuid().ToString());
+        request.Headers.Add(EventBffHeaderNames.TenantSlug, "attacker-tenant");
+        request.Headers.Add(EventBffHeaderNames.SupportAccessSessionId, Guid.NewGuid().ToString());
+        request.Headers.Add(EventBffHeaderNames.SupportAccessTargetTenantId, Guid.NewGuid().ToString());
+        request.Headers.Add(EventBffHeaderNames.SupportAccessMode, "Write");
         request.Headers.Add("X-Support-Access-Future-Scope", "tenant-admin");
 
         BffProxyHeaderSanitizer.RemoveBrowserControlledHeaders(request);
@@ -39,7 +38,7 @@ public class BffProxyHeaderSanitizerTests
         await Assert.That(request.Headers.Contains("Proxy-Authorization")).IsFalse();
         await Assert.That(request.Headers.Contains("Cookie")).IsFalse();
         await Assert.That(request.Headers.Contains("X-Setup-Secret")).IsFalse();
-        await Assert.That(request.Headers.Contains(ApiAuthenticationHeaderNames.ApiKey)).IsFalse();
+        await Assert.That(request.Headers.Contains(EventBffHeaderNames.ApiKey)).IsFalse();
         await Assert.That(request.Headers.Contains("Access-Token")).IsFalse();
         await Assert.That(request.Headers.Contains("Refresh-Token")).IsFalse();
         await Assert.That(request.Headers.Contains("Identity-Token")).IsFalse();
@@ -49,11 +48,11 @@ public class BffProxyHeaderSanitizerTests
         await Assert.That(request.Headers.Contains("X-Identity-Token")).IsFalse();
         await Assert.That(request.Headers.Contains("X-Id-Token")).IsFalse();
         await Assert.That(request.Headers.Contains("X-Auth-Token")).IsFalse();
-        await Assert.That(request.Headers.Contains(TenantHeaderNames.TenantId)).IsFalse();
-        await Assert.That(request.Headers.Contains(TenantHeaderNames.TenantSlug)).IsFalse();
-        await Assert.That(request.Headers.Contains(SupportAccessHeaderNames.SessionId)).IsFalse();
-        await Assert.That(request.Headers.Contains(SupportAccessHeaderNames.TargetTenantId)).IsFalse();
-        await Assert.That(request.Headers.Contains(SupportAccessHeaderNames.Mode)).IsFalse();
+        await Assert.That(request.Headers.Contains(EventBffHeaderNames.TenantId)).IsFalse();
+        await Assert.That(request.Headers.Contains(EventBffHeaderNames.TenantSlug)).IsFalse();
+        await Assert.That(request.Headers.Contains(EventBffHeaderNames.SupportAccessSessionId)).IsFalse();
+        await Assert.That(request.Headers.Contains(EventBffHeaderNames.SupportAccessTargetTenantId)).IsFalse();
+        await Assert.That(request.Headers.Contains(EventBffHeaderNames.SupportAccessMode)).IsFalse();
         await Assert.That(request.Headers.Contains("X-Support-Access-Future-Scope")).IsFalse();
     }
 

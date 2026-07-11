@@ -3,15 +3,14 @@
 
 using System.Net;
 using System.Net.Http.Json;
-using Explore.Blazor.Client.Services.Appearance;
 using MudBlazor;
 using MudBlazor.Utilities;
-using Refit;
-using ClientAvailablePresetDto = Explore.Blazor.Client.Services.Appearance.AvailablePresetDto;
-using ClientCreateCustomProfileRequestDto = Explore.Blazor.Client.Services.Appearance.CreateCustomProfileRequestDto;
-using ClientResolvedAppearanceDto = Explore.Blazor.Client.Services.Appearance.ResolvedAppearanceDto;
-using ClientResolvedThemeDto = Explore.Blazor.Client.Services.Appearance.ResolvedThemeDto;
-using ClientUserAppearanceProfileDto = Explore.Blazor.Client.Services.Appearance.UserAppearanceProfileDto;
+using ClientAvailablePresetDto = Explore.Blazor.Client.Clients.AvailablePresetDto;
+using ClientCreateCustomProfileRequestDto = Explore.Blazor.Client.Clients.CreateCustomProfileRequestDto;
+using ClientPaletteDto = Explore.Blazor.Client.Clients.UiThemePaletteDto;
+using ClientResolvedAppearanceDto = Explore.Blazor.Client.Clients.ResolvedAppearanceDto;
+using ClientResolvedThemeDto = Explore.Blazor.Client.Clients.ResolvedThemeDto;
+using ClientUserAppearanceProfileDto = Explore.Blazor.Client.Clients.UserAppearanceProfileDto;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -176,16 +175,16 @@ public class AppearanceThemeServiceTests
 
             return request.RequestUri?.PathAndQuery switch
             {
-                "/bff/appearance" => CreateJsonResponse(new ClientResolvedAppearanceDto
+                "/api/user/appearance" => CreateJsonResponse(new ClientResolvedAppearanceDto
                 {
                     ThemeMode = "darkhighcontrast",
                     Direction = "rtl",
                     Language = "fr",
                     ServerEffectiveDarkMode = true
                 }),
-                "/bff/appearance/presets" => CreateJsonResponse<IReadOnlyList<ClientAvailablePresetDto>>(
+                "/api/user/appearance/presets" => CreateJsonResponse<IReadOnlyList<ClientAvailablePresetDto>>(
                     [CreatePreset()]),
-                "/bff/appearance/profiles" => CreateJsonResponse<IReadOnlyList<ClientUserAppearanceProfileDto>>(
+                "/api/user/appearance/profiles" => CreateJsonResponse<IReadOnlyList<ClientUserAppearanceProfileDto>>(
                     [CreateProfile(Guid.Parse("10000000-0000-0000-0000-000000000001"))]),
                 _ => new HttpResponseMessage(HttpStatusCode.NotFound)
             };
@@ -198,9 +197,9 @@ public class AppearanceThemeServiceTests
         await Assert.That(service.Current.Language).IsEqualTo("fr");
         await Assert.That(service.Current.AvailablePresets.Count).IsEqualTo(1);
         await Assert.That(service.Current.UserProfiles.Count).IsEqualTo(1);
-        await Assert.That(requests).Contains("GET /bff/appearance");
-        await Assert.That(requests).Contains("GET /bff/appearance/presets");
-        await Assert.That(requests).Contains("GET /bff/appearance/profiles");
+        await Assert.That(requests).Contains("GET /api/user/appearance");
+        await Assert.That(requests).Contains("GET /api/user/appearance/presets");
+        await Assert.That(requests).Contains("GET /api/user/appearance/profiles");
     }
 
     [Test]
@@ -223,7 +222,7 @@ public class AppearanceThemeServiceTests
 
         await Assert.That(result?.Id).IsEqualTo(profileId);
         await Assert.That(capturedRequest?.Method).IsEqualTo(HttpMethod.Post);
-        await Assert.That(capturedRequest?.RequestUri?.PathAndQuery).IsEqualTo("/bff/appearance/profiles");
+        await Assert.That(capturedRequest?.RequestUri?.PathAndQuery).IsEqualTo("/api/user/appearance/profiles");
     }
 
     [Test]
@@ -252,7 +251,7 @@ public class AppearanceThemeServiceTests
             BaseAddress = new Uri("https://example.test/")
         };
 
-        return new AppearanceThemeService(RestService.For<IAppearanceApi>(client), logger);
+        return new AppearanceThemeService(new EventApiClient(client), logger);
     }
 
     private static HttpResponseMessage CreateJsonResponse<T>(T value) => new(HttpStatusCode.OK)

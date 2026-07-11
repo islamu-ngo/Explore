@@ -319,6 +319,17 @@ public class ContractInvariantsTests
     }
 
     [Test]
+    public async Task OpenApiDocument_TenantEffectiveSettingExposesNestedHalLinks()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var links = GetSchemaProperties(document, "ControlPlaneTenantEffectiveSettingDto")
+            .GetProperty("_links");
+
+        await Assert.That(GetReference(links.GetProperty("additionalProperties")))
+            .IsEqualTo("#/components/schemas/HalLink");
+    }
+
+    [Test]
     public async Task OpenApiDocument_PublicHalDetailResourceSchemasAreNotEmpty()
     {
         using var document = await GetOpenApiDocumentAsync();

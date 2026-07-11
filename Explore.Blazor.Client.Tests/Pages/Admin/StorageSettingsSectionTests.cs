@@ -1,6 +1,9 @@
 // ABOUTME: bUnit tests for provider-neutral instance and tenant storage settings sections.
 // ABOUTME: Verifies HAL-gated actions and locked tenant storage states in admin UI components.
 
+using InstanceStorageRouteDto = Explore.Blazor.Client.Clients.Routes;
+using TenantStorageRouteDto = Explore.Blazor.Client.Clients.Routes2;
+
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
 public sealed class StorageSettingsSectionTests : IDisposable
@@ -20,12 +23,15 @@ public sealed class StorageSettingsSectionTests : IDisposable
     {
         // Arrange
         var onboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
-        var model = new InstanceStorageSettingsModel
+        var model = new HalResourceOfInstanceStorageSettingsDto
         {
-            CanUpdate = true,
-            CanTestProvider = true,
-            CanRecalculateUsage = true,
-            Provider = StorageProviderOptions.Local
+            Provider = StorageProviderOptions.Local,
+            _links = new Dictionary<string, HalLink>
+            {
+                ["edit"] = new() { Href = "/api/instance/settings/storage", Method = "PUT" },
+                ["provider-test"] = new() { Href = "/api/instance/settings/storage/test", Method = "POST" },
+                ["recalculate-usage"] = new() { Href = "/api/instance/settings/storage/recalculate-usage", Method = "POST" }
+            }
         };
 
         // Act
@@ -45,16 +51,19 @@ public sealed class StorageSettingsSectionTests : IDisposable
     public async Task InstanceStorageSection_WithRoutes_RendersHybridRouteMatrix()
     {
         // Arrange
-        var model = new InstanceStorageSettingsModel
+        var model = new HalResourceOfInstanceStorageSettingsDto
         {
-            CanUpdate = true,
             Provider = StorageProviderOptions.Local,
             Routes =
             [
-                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Images, Provider = StorageProviderOptions.Local, MaxUploadBytes = 8L * 1024 * 1024 },
-                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Documents, Provider = StorageProviderOptions.S3Compatible, MaxUploadBytes = 64L * 1024 * 1024 },
-                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.General, Provider = StorageProviderOptions.Local, MaxUploadBytes = 16L * 1024 * 1024 }
-            ]
+                new InstanceStorageRouteDto { RouteKey = StorageRouteOptions.Images, Provider = StorageProviderOptions.Local, MaxUploadBytes = 8L * 1024 * 1024 },
+                new InstanceStorageRouteDto { RouteKey = StorageRouteOptions.Documents, Provider = StorageProviderOptions.S3Compatible, MaxUploadBytes = 64L * 1024 * 1024 },
+                new InstanceStorageRouteDto { RouteKey = StorageRouteOptions.General, Provider = StorageProviderOptions.Local, MaxUploadBytes = 16L * 1024 * 1024 }
+            ],
+            _links = new Dictionary<string, HalLink>
+            {
+                ["edit"] = new() { Href = "/api/instance/settings/storage", Method = "PUT" }
+            }
         };
 
         // Act
@@ -75,11 +84,8 @@ public sealed class StorageSettingsSectionTests : IDisposable
     public async Task InstanceStorageSection_WithoutEditHalLink_RendersReadOnlyState()
     {
         // Arrange
-        var model = new InstanceStorageSettingsModel
+        var model = new HalResourceOfInstanceStorageSettingsDto
         {
-            CanUpdate = false,
-            CanTestProvider = false,
-            CanRecalculateUsage = false,
             Provider = StorageProviderOptions.Local
         };
 
@@ -100,12 +106,11 @@ public sealed class StorageSettingsSectionTests : IDisposable
     public async Task TenantStorageSection_WhenLocked_RendersReadOnlyPolicyMessage()
     {
         // Arrange
-        var model = new TenantStorageSettingsModel
+        var model = new HalResourceOfTenantStorageSettingsDto
         {
             TenantOverridesAllowed = false,
             TenantStorageLocked = true,
             IsReadOnly = true,
-            CanUpdate = false,
             Provider = StorageProviderOptions.Local
         };
 
@@ -124,19 +129,22 @@ public sealed class StorageSettingsSectionTests : IDisposable
     public async Task TenantStorageSection_WhenEditable_RendersOverrideFields()
     {
         // Arrange
-        var model = new TenantStorageSettingsModel
+        var model = new HalResourceOfTenantStorageSettingsDto
         {
             TenantOverridesAllowed = true,
             TenantStorageLocked = false,
             IsReadOnly = false,
-            CanUpdate = true,
             Provider = StorageProviderOptions.Local,
-            EffectivePolicy = new StorageEffectivePolicyModel
+            EffectivePolicy = new EffectivePolicy2
             {
                 Provider = StorageProviderOptions.Local,
                 InstanceMaxUploadBytes = 100L * 1024 * 1024,
                 MaxUploadBytes = 10L * 1024 * 1024,
                 TenantQuotaBytes = 1024L * 1024 * 1024
+            },
+            _links = new Dictionary<string, HalLink>
+            {
+                ["edit"] = new() { Href = "/api/tenant/settings/storage", Method = "PUT" }
             }
         };
 
@@ -156,20 +164,19 @@ public sealed class StorageSettingsSectionTests : IDisposable
     public async Task TenantStorageSection_WhenLocked_RendersRouteMatrixAsInheritedPolicy()
     {
         // Arrange
-        var model = new TenantStorageSettingsModel
+        var model = new HalResourceOfTenantStorageSettingsDto
         {
             TenantOverridesAllowed = false,
             TenantStorageLocked = true,
             IsReadOnly = true,
-            CanUpdate = false,
             Provider = StorageProviderOptions.Local,
             Routes =
             [
-                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Images, Provider = StorageProviderOptions.Local, MaxUploadBytes = 8L * 1024 * 1024, IsReadOnly = true },
-                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Documents, Provider = StorageProviderOptions.S3Compatible, MaxUploadBytes = 64L * 1024 * 1024, IsReadOnly = true },
-                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.General, Provider = StorageProviderOptions.Local, MaxUploadBytes = 16L * 1024 * 1024, IsReadOnly = true }
+                new TenantStorageRouteDto { RouteKey = StorageRouteOptions.Images, Provider = StorageProviderOptions.Local, MaxUploadBytes = 8L * 1024 * 1024, IsReadOnly = true },
+                new TenantStorageRouteDto { RouteKey = StorageRouteOptions.Documents, Provider = StorageProviderOptions.S3Compatible, MaxUploadBytes = 64L * 1024 * 1024, IsReadOnly = true },
+                new TenantStorageRouteDto { RouteKey = StorageRouteOptions.General, Provider = StorageProviderOptions.Local, MaxUploadBytes = 16L * 1024 * 1024, IsReadOnly = true }
             ],
-            EffectivePolicy = new StorageEffectivePolicyModel
+            EffectivePolicy = new EffectivePolicy2
             {
                 Provider = StorageProviderOptions.Local,
                 InstanceMaxUploadBytes = 100L * 1024 * 1024,
@@ -191,26 +198,28 @@ public sealed class StorageSettingsSectionTests : IDisposable
     }
 
     [Test]
-    public async Task StorageSettingsModels_ToDto_SerializesTypedRouteMatrix()
+    public async Task StorageSettingsDto_ToUpdateRequest_PreservesTypedRouteMatrix()
     {
         // Arrange
-        var model = new InstanceStorageSettingsModel
+        var model = new HalResourceOfInstanceStorageSettingsDto
         {
             Routes =
             [
-                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Images, Provider = StorageProviderOptions.Local, MaxUploadBytes = 8L * 1024 * 1024 },
-                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Documents, Provider = StorageProviderOptions.S3Compatible, MaxUploadBytes = 64L * 1024 * 1024 },
-                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.General, Provider = StorageProviderOptions.Local, MaxUploadBytes = 16L * 1024 * 1024 }
+                new InstanceStorageRouteDto { RouteKey = StorageRouteOptions.Images, Provider = StorageProviderOptions.Local, MaxUploadBytes = 8L * 1024 * 1024 },
+                new InstanceStorageRouteDto { RouteKey = StorageRouteOptions.Documents, Provider = StorageProviderOptions.S3Compatible, MaxUploadBytes = 64L * 1024 * 1024 },
+                new InstanceStorageRouteDto { RouteKey = StorageRouteOptions.General, Provider = StorageProviderOptions.Local, MaxUploadBytes = 16L * 1024 * 1024 }
             ]
         };
 
         // Act
-        var dto = model.ToDto();
+        var dto = model.ToUpdateRequest();
 
         // Assert
         await Assert.That(dto.Routes).IsNotNull();
         await Assert.That(dto.Routes!.Count).IsEqualTo(3);
         await Assert.That(dto.Routes!.Any(route => route.RouteKey == StorageRouteOptions.Documents && route.Provider == StorageProviderOptions.S3Compatible)).IsTrue();
+        await Assert.That(dto.Routes!.Single(route => route.RouteKey == StorageRouteOptions.Documents).MaxUploadBytes)
+            .IsEqualTo(64L * 1024 * 1024);
     }
 
     private IRenderedComponent<DynamicComponent> RenderComponent(string componentName, IDictionary<string, object> parameters)

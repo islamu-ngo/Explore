@@ -10,7 +10,11 @@ using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.TenantOnboarding.Handlers.Commands;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Domain;
+using Explore.Domain.Constants;
+using Explore.Domain.Settings;
+using MediatR;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -26,8 +30,9 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
     private readonly ITenantOnboardingStateRepository _onboardingStateRepository;
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ConfigurableUnitOfWork _unitOfWork;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
+    private readonly IMediator _mediator;
     private readonly UpdateTenantPolicySettingsCommandHandler _handler;
 
     public UpdateTenantPolicySettingsCommandHandlerTests()
@@ -36,19 +41,18 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
         _onboardingStateRepository = Substitute.For<ITenantOnboardingStateRepository>();
         _adminContext = Substitute.For<IAdminContext>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
-        _unitOfWork = Substitute.For<IUnitOfWork>();
+        _unitOfWork = new ConfigurableUnitOfWork();
         _hierarchicalSettingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+        _mediator = Substitute.For<IMediator>();
 
         _tenantContext.TenantId.Returns(TestTenantId);
 
         // Execute the lambda so inner service logic runs in tests
-        _unitOfWork
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var op = callInfo.Arg<Func<CancellationToken, Task>>();
-                return op(CancellationToken.None);
-            });
+        _policySettingService.ApplyTenantSettingsAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<UpdateTenantPolicyRequest>(),
+            Arg.Any<CancellationToken>()).Returns([]);
 
         _handler = new UpdateTenantPolicySettingsCommandHandler(
             _tenantContext,
@@ -56,7 +60,8 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
             _adminContext,
             _policySettingService,
             _unitOfWork,
-            _hierarchicalSettingsResolver);
+            _hierarchicalSettingsResolver,
+            _mediator);
 
         _policySettingService.ReadEffectiveTenantSettingsAsync(TestTenantId).Returns(new TenantPolicySettingsDto
         {
@@ -105,13 +110,41 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
             Tenant = null!,
             IsCompleted = true
         });
+        var notification = new SettingChangedNotification(
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled,
+            "false",
+            "true",
+            SettingSource.TenantOverride,
+            TestTenantId,
+            TestUserId,
+            DateTime.UtcNow);
+        _policySettingService.ApplyTenantSettingsAsync(
+            TestTenantId,
+            TestUserId,
+            Arg.Any<UpdateTenantPolicyRequest>(),
+            Arg.Any<CancellationToken>()).Returns([notification]);
+        bool publishedInsideTransaction = false;
+        _mediator.Publish(notification, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                publishedInsideTransaction = _unitOfWork.IsInsideTransaction;
+                return Task.CompletedTask;
+            });
 
         // Act
-        var result = await _handler.Handle(CreateCommand(), CancellationToken.None);
+        using var cancellation = new CancellationTokenSource();
+        var result = await _handler.Handle(CreateCommand(), cancellation.Token);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await _policySettingService.Received(1).ApplyTenantSettingsAsync(TestTenantId, TestUserId, Arg.Any<UpdateTenantPolicyRequest>());
+        await _policySettingService.Received(1).ApplyTenantSettingsAsync(
+            TestTenantId,
+            TestUserId,
+            Arg.Any<UpdateTenantPolicyRequest>(),
+            cancellation.Token);
+        await Assert.That(publishedInsideTransaction).IsFalse();
+        _hierarchicalSettingsResolver.Received(1).InvalidateCache(SettingScope.Tenant, TestTenantId);
+        await _mediator.Received(1).Publish(notification, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -133,7 +166,11 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await _policySettingService.Received(1).ApplyTenantSettingsAsync(TestTenantId, TestUserId, Arg.Any<UpdateTenantPolicyRequest>());
+        await _policySettingService.Received(1).ApplyTenantSettingsAsync(
+            TestTenantId,
+            TestUserId,
+            Arg.Any<UpdateTenantPolicyRequest>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -171,7 +208,7 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
 
         // Assert: settings should NOT be applied
         await _policySettingService.DidNotReceive().ApplyTenantSettingsAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateTenantPolicyRequest>());
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateTenantPolicyRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -195,6 +232,84 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
         await Assert.ThrowsAsync<ValidationException>(
             async () => await _handler.Handle(command, CancellationToken.None));
         await _policySettingService.DidNotReceive().ApplyTenantSettingsAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateTenantPolicyRequest>());
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateTenantPolicyRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenOuterTransactionRollsBack_DoesNotPublishOrInvalidate()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        var notification = new SettingChangedNotification(
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled,
+            "false",
+            "true",
+            SettingSource.TenantOverride,
+            TestTenantId,
+            TestUserId,
+            DateTime.UtcNow);
+        _policySettingService.ApplyTenantSettingsAsync(
+            TestTenantId,
+            TestUserId,
+            Arg.Any<UpdateTenantPolicyRequest>(),
+            Arg.Any<CancellationToken>()).Returns([notification]);
+        _unitOfWork.RollbackAfterOperation = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await _handler.Handle(CreateCommand(), CancellationToken.None));
+
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
+        _hierarchicalSettingsResolver.DidNotReceive().InvalidateCache(
+            Arg.Any<SettingScope>(),
+            Arg.Any<Guid?>());
+    }
+
+    private sealed class ConfigurableUnitOfWork : IUnitOfWork
+    {
+        public bool RollbackAfterOperation { get; set; }
+        public bool IsInsideTransaction { get; private set; }
+
+        public async Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default)
+        {
+            IsInsideTransaction = true;
+            try
+            {
+                await operation(ct);
+            }
+            finally
+            {
+                IsInsideTransaction = false;
+            }
+            ThrowIfRollingBack();
+        }
+
+        public async Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default)
+        {
+            IsInsideTransaction = true;
+            T result;
+            try
+            {
+                result = await operation(ct);
+            }
+            finally
+            {
+                IsInsideTransaction = false;
+            }
+            ThrowIfRollingBack();
+            return result;
+        }
+
+        private void ThrowIfRollingBack()
+        {
+            if (RollbackAfterOperation)
+            {
+                throw new InvalidOperationException("rollback");
+            }
+        }
     }
 }

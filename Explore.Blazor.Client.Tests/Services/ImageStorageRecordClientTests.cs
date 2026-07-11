@@ -21,7 +21,7 @@ public sealed class ImageStorageRecordClientTests
                 Message = "OK"
             });
         var client = CreateClient();
-        var uploadResponse = new ImageUploadResponse
+        var uploadResponse = new ImageUploadTarget
         {
             ObjectKey = "images/test",
             ViewUrl = "https://cdn.example.com/images/test",
@@ -93,7 +93,7 @@ public sealed class ImageStorageRecordClientTests
     [Test]
     public async Task CreateRecordFromBytesAsync_WithMissingUri_ReturnsMetadataFailure()
     {
-        var uploadResponse = new ImageUploadResponse();
+        var uploadResponse = new ImageUploadTarget();
 
         var result = await CreateClient().CreateRecordFromBytesAsync(uploadResponse, CreateFileData());
 
@@ -136,9 +136,9 @@ public sealed class ImageStorageRecordClientTests
         return new ImageStorageRecordClient(_apiClient, new ImageContentClassifier(), _logger);
     }
 
-    private static ImageUploadResponse CreateUploadResponse()
+    private static ImageUploadTarget CreateUploadResponse()
     {
-        return new ImageUploadResponse
+        return new ImageUploadTarget
         {
             ObjectKey = "images/test.jpg",
             ViewUrl = "https://cdn.example.com/images/test.jpg"

@@ -127,19 +127,26 @@ public class RoutesConfigurationTests
     }
 
     [Test]
-    public async Task EmbeddedControlPlaneRoutes_ShouldUseSharedPagesAndMultiTenantAdminGuard()
+    public async Task EmbeddedControlPlaneRoutes_ShouldUsePublicTenantPageAndMultiTenantAdminGuard()
     {
         var routesFilePath = FindRoutesFilePath();
         var routesContent = await File.ReadAllTextAsync(routesFilePath);
 
-        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Pages.Overview");
-        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Pages.Tenants");
-        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Pages.Domains");
-        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Pages.Operations");
-        await Assert.That(routesContent).Contains("@using Event.ControlPlane.Client.Routing");
+        await Assert.That(routesContent).Contains("@using Explore.Blazor.Client.Pages.Admin.Instance.ControlPlane");
+        await Assert.That(routesContent).DoesNotContain("@using Event.ControlPlane.Client.Pages.Tenants");
+        await Assert.That(routesContent).Contains("@using Explore.Blazor.Client.Pages.Admin.Instance.ControlPlane");
+        await Assert.That(routesContent).Contains("@using Explore.Blazor.Client.Pages.Admin.Instance.ControlPlane");
+        await Assert.That(routesContent).Contains("@using Explore.Blazor.Client.Routing.ControlPlane");
         await Assert.That(routesContent).Contains("typeof(MultiTenantControlPlaneRouteGuard)");
         await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Overview, Component = typeof(ControlPlaneOverviewPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
-        await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Tenants, Component = typeof(ControlPlaneTenantsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Tenants, Component = typeof(InstanceTenants), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routesContent).DoesNotContain("Component = typeof(ControlPlaneTenantsPage)");
+        await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.TenantConfiguration, Component = typeof(InstanceTenantConfiguration), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routesContent).DoesNotContain("Component = typeof(ControlPlaneTenantConfigurationPage)");
+        await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Plans, Component = typeof(InstancePlans), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routesContent).Contains("Path = \"/admin/instance/plans/:Key\", Component = typeof(InstancePlanDetail), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
+        await Assert.That(routesContent).DoesNotContain("Component = typeof(ControlPlanePlansPage)");
+        await Assert.That(routesContent).DoesNotContain("Component = typeof(ControlPlanePlanDetailPage)");
         await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Domains, Component = typeof(ControlPlaneDomainsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
         await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Operations, Component = typeof(ControlPlaneOperationsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
         await Assert.That(routesContent).Contains("Path = \"/admin/instance/settings\", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin()");

@@ -86,30 +86,30 @@ public class HomeTests : IDisposable
     {
         // Arrange
         _ctx.SetAnonymousUser();
-        SetupLandingPageServices(new PublicExperienceShellModel
+        SetupLandingPageServices(new PublicExperienceShellDto
         {
-            Mode = "OrganizationCentric",
-            EventCatalog = new PublicExperienceEventCatalogModel
+            Mode = PublicExperienceMode.OrganizationCentric,
+            EventCatalog = new PublicExperienceEventCatalogDto
             {
                 Label = "Programs",
                 Url = "/events?ActorId=11111111-1111-1111-1111-111111111111"
             },
-            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationDto
             {
-                State = "Available",
+                State = PublicExperiencePrimaryOrganizationState.Available,
                 DisplayName = "Northside Masjid",
                 ActorId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                 Handle = "@northside",
                 WebsiteUrl = "https://northside.example"
             },
-            Home = new PublicExperienceHomeModel
+            Home = new PublicExperienceHomeDto
             {
                 Blocks =
                 [
-                    new PublicExperienceHomeBlockModel
+                    new PublicExperienceHomeBlockDto
                     {
                         Key = "hero",
-                        Kind = "OrganizationSummary",
+                        Kind = PublicExperienceHomeBlockKind.OrganizationSummary,
                         Title = "Northside Masjid",
                         Body = "Community programs for every family.",
                         SortOrder = 0
@@ -118,7 +118,7 @@ public class HomeTests : IDisposable
             },
             EventSections =
             [
-                new PublicExperienceEventSectionModel
+                new PublicExperienceEventSectionDto
                 {
                     Key = "youth",
                     Label = "Youth Programs",
@@ -128,24 +128,24 @@ public class HomeTests : IDisposable
             ],
             Ctas =
             [
-                new PublicExperienceCtaModel
+                new PublicExperienceCtaDto
                 {
                     Key = "donate",
                     Label = "Support Us",
                     Url = "/donate"
                 }
             ],
-            Footer = new FooterConfigModel
+            Footer = new FooterConfigDto
             {
                 LinkGroups =
                 [
-                    new FooterLinkGroupModel
+                    new FooterLinkGroupDto
                     {
                         Id = Guid.NewGuid(),
                         Title = "Community",
                         Links =
                         [
-                            new FooterLinkItemModel
+                            new FooterLinkItemDto
                             {
                                 Id = Guid.NewGuid(),
                                 Label = "Volunteer",
@@ -194,28 +194,28 @@ public class HomeTests : IDisposable
     public async Task Home_OrganizationRichTextBlock_RendersTenantContentAsEncodedText()
     {
         _ctx.SetAnonymousUser();
-        SetupLandingPageServices(new PublicExperienceShellModel
+        SetupLandingPageServices(new PublicExperienceShellDto
         {
-            Mode = "OrganizationCentric",
-            EventCatalog = new PublicExperienceEventCatalogModel
+            Mode = PublicExperienceMode.OrganizationCentric,
+            EventCatalog = new PublicExperienceEventCatalogDto
             {
                 Label = "Programs",
                 Url = "/events"
             },
-            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationDto
             {
-                State = "Available",
+                State = PublicExperiencePrimaryOrganizationState.Available,
                 DisplayName = "Northside Masjid",
                 ActorId = Guid.Parse("11111111-1111-1111-1111-111111111111")
             },
-            Home = new PublicExperienceHomeModel
+            Home = new PublicExperienceHomeDto
             {
                 Blocks =
                 [
-                    new PublicExperienceHomeBlockModel
+                    new PublicExperienceHomeBlockDto
                     {
                         Key = "rich-text",
-                        Kind = "RichText",
+                        Kind = PublicExperienceHomeBlockKind.RichText,
                         Title = "<img src=x onerror=alert(1)>",
                         Subtitle = "<script>alert(1)</script>",
                         Body = "<strong>Community update</strong><script>alert(1)</script><img src=x onerror=alert(1)>",
@@ -246,11 +246,11 @@ public class HomeTests : IDisposable
     {
         // Arrange
         _ctx.SetAnonymousUser();
-        SetupLandingPageServices(new PublicExperienceShellModel
+        SetupLandingPageServices(new PublicExperienceShellDto
         {
-            Mode = "OrganizationCentric",
-            EventCatalog = new PublicExperienceEventCatalogModel { Label = "Programs", Url = "/events" },
-            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel { State = "Missing" }
+            Mode = PublicExperienceMode.OrganizationCentric,
+            EventCatalog = new PublicExperienceEventCatalogDto { Label = "Programs", Url = "/events" },
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationDto { State = PublicExperiencePrimaryOrganizationState.Missing }
         });
 
         // Act
@@ -308,7 +308,7 @@ public class HomeTests : IDisposable
     /// Sets up services required by the landing page components.
     /// </summary>
     private void SetupLandingPageServices(
-        PublicExperienceShellModel? shell = null,
+        PublicExperienceShellDto? shell = null,
         IReadOnlyList<EventListDto>? featuredEvents = null)
     {
         // LandingPageService is required by both landing pages

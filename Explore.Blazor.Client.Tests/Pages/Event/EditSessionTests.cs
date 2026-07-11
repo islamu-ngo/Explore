@@ -5,8 +5,6 @@ using System.Reflection;
 using System.Text.Json;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models.EventSessionGroups;
-using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
 using Microsoft.AspNetCore.Components.Forms;
 using ClientValidationProblemDetails = Explore.Blazor.Client.Clients.ValidationProblemDetails;
@@ -43,7 +41,7 @@ public sealed class EditSessionTests : IDisposable
             .Returns(true);
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
         _locationRoomService.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());
-        _eventService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<EventSessionGroupListModel>());
+        _eventService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<HalResourceOfEventSessionGroupListDto>());
         _eventService.GetEventSessionCreateContextAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => CreateSessionContext(call.ArgAt<Guid>(0)));
         _eventService.AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>())
@@ -110,7 +108,7 @@ public sealed class EditSessionTests : IDisposable
             new() { Id = roomId, LocationId = locationId, Name = "Breakout A", Capacity = 50 }
         });
         _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true, locationId: locationId, roomId: roomId));
-        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.UpdateSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -119,40 +117,39 @@ public sealed class EditSessionTests : IDisposable
         var cut = _ctx.Render<EditSession>(parameters => parameters
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
-        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
-        session.Title = "Updated workshop";
-        session.Description = "Updated practical session.";
-        session.LocationId = locationId;
-        session.RoomId = roomId;
-        session.EventSessionKindId = 2;
-        session.LanguageIds = [1, 2];
-        session.MaxAudienceAttendees = 50;
-        session.RegistrationModeId = 2;
+        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        session.Title!.Value!.Value = "Updated workshop";
+        session.Description!.Value!.Value = "Updated practical session.";
+        session.Location!.Value!.Value = locationId;
+        session.Room!.Value!.Value = roomId;
+        session.Kind!.Value!.Value = 2;
+        session.MaxAudienceAttendees!.Value!.Value = 50;
+        session.RegistrationMode!.Value!.Value = 2;
         SetPrivateField(cut.Instance, "_sessionDate", new DateTime(2026, 7, 3));
         SetPrivateField(cut.Instance, "_startTime", new TimeSpan(14, 0, 0));
         SetPrivateField(cut.Instance, "_endTime", new TimeSpan(15, 30, 0));
 
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
-        await _eventService.Received(1).UpdateSessionAsync(Arg.Is<UpdateEventSessionRequest>(dto =>
-            dto.Id == sessionId
-            && dto.EventId == eventId
-            && dto.Title == "Updated workshop"
-            && dto.Description == "Updated practical session."
-            && dto.Slug == "original-session"
-            && dto.LocationId == locationId
-            && dto.RoomId == roomId
-            && dto.EventSessionKindId == 2
-            && dto.LanguageIds.OrderBy(id => id).SequenceEqual(new[] { 1, 2 })
-            && dto.MaxAudienceAttendees == 50
-            && dto.RegistrationModeId == 2
-            && dto.IslamicAspect != null
-            && dto.IslamicAspect.ReferencePrayer == (PrayerTime)2
-            && dto.IslamicAspect.RequiresWudu == true
-            && dto.StartTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 14, 0, 0))
-            && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 15, 30, 0))
-            && dto.StartTime.Value.Offset == TimeSpan.Zero
-            && dto.EndTime.Value.Offset == TimeSpan.Zero));
+        await _eventService.Received(1).UpdateSessionAsync(
+            sessionId,
+            sessionId,
+            Arg.Is<UpdateEventSessionDto>(dto =>
+                dto.Event!.EventId == eventId
+                && dto.Title!.Value!.Value == "Updated workshop"
+                && dto.Description!.Value!.Value == "Updated practical session."
+                && dto.Slug!.Value!.Value == "original-session"
+                && dto.Location!.Value!.Value == locationId
+                && dto.Room!.Value!.Value == roomId
+                && dto.Kind!.Value!.Value == 2
+                && dto.MaxAudienceAttendees!.Value!.Value == 50
+                && dto.RegistrationMode!.Value!.Value == 2
+                && dto.IslamicAspect!.Value!.Value!.ReferencePrayer == (PrayerTime)2
+                && dto.IslamicAspect.Value.Value.RequiresWudu == true
+                && dto.Schedule!.StartTime!.Value == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 14, 0, 0))
+                && dto.Schedule.EndTime!.Value == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 15, 30, 0))
+                && dto.Schedule.StartTime.Value.Value.Offset == TimeSpan.Zero
+                && dto.Schedule.EndTime.Value.Value.Offset == TimeSpan.Zero));
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -164,11 +161,11 @@ public sealed class EditSessionTests : IDisposable
         var groupId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
         _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
-        _eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<EventSessionGroupListModel>
+        _eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>
         {
             new() { Id = groupId, EventId = eventId, Name = "Workshop track", SortOrder = 1, TenantId = Guid.NewGuid() }
         });
-        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.UpdateSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -182,39 +179,14 @@ public sealed class EditSessionTests : IDisposable
         var cut = _ctx.Render<EditSession>(parameters => parameters
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
-        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
-        session.Title = "Updated workshop";
+        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        session.Title!.Value!.Value = "Updated workshop";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
 
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
         await _eventService.Received(1).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
-    }
-
-    [Test]
-    public async Task SaveSessionAsync_IncludesSelectedLanguagesInUpdateRequest()
-    {
-        var eventId = Guid.NewGuid();
-        var sessionId = Guid.NewGuid();
-        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
-        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
-        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
-        {
-            Success = true,
-            Id = sessionId
-        });
-        var cut = _ctx.Render<EditSession>(parameters => parameters
-            .Add(component => component.EventId, eventId)
-            .Add(component => component.SessionId, sessionId));
-        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
-        session.Title = "Updated workshop";
-        session.LanguageIds = [1];
-
-        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
-
-        await _eventService.Received(1).UpdateSessionAsync(Arg.Is<UpdateEventSessionRequest>(dto =>
-            dto.LanguageIds.Single() == 1));
     }
 
     [Test]
@@ -225,11 +197,11 @@ public sealed class EditSessionTests : IDisposable
         var groupId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
         _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true, primaryGroupId: groupId));
-        _eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<EventSessionGroupListModel>
+        _eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>
         {
             new() { Id = groupId, EventId = eventId, Name = "Workshop track", SortOrder = 1, TenantId = Guid.NewGuid() }
         });
-        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.UpdateSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -243,8 +215,8 @@ public sealed class EditSessionTests : IDisposable
         var cut = _ctx.Render<EditSession>(parameters => parameters
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
-        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
-        session.Title = "Updated workshop";
+        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        session.Title!.Value!.Value = "Updated workshop";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)null);
 
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
@@ -268,7 +240,7 @@ public sealed class EditSessionTests : IDisposable
 
         await cut.InvokeAsync(async () => await InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
-        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
+        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateEventSessionDto>());
         var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to edit this program item.");
     }
@@ -287,7 +259,7 @@ public sealed class EditSessionTests : IDisposable
 
         await cut.InvokeAsync(async () => await InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
-        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
+        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateEventSessionDto>());
         var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to edit this program item.");
     }
@@ -299,7 +271,7 @@ public sealed class EditSessionTests : IDisposable
         var sessionId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
         _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
-        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>())
+        _eventService.UpdateSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateEventSessionDto>())
             .ThrowsAsync(new ApiException<ClientValidationProblemDetails>(
                 "Bad Request",
                 400,
@@ -332,7 +304,7 @@ public sealed class EditSessionTests : IDisposable
         var sessionId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
         _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
-        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>())
+        _eventService.UpdateSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateEventSessionDto>())
             .ThrowsAsync(new InvalidOperationException(rawProviderMessage));
 
         var cut = _ctx.Render<EditSession>(parameters => parameters
@@ -369,13 +341,13 @@ public sealed class EditSessionTests : IDisposable
         var cut = _ctx.Render<EditSession>(parameters => parameters
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
-        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
-        await Assert.That(session.RoomId).IsEqualTo(originalRoomId);
+        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        await Assert.That(session.Room?.Value?.Value).IsEqualTo(originalRoomId);
 
         await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", newLocationId);
 
-        await Assert.That(session.LocationId).IsEqualTo(newLocationId);
-        await Assert.That(session.RoomId).IsNull();
+        await Assert.That(session.Location?.Value?.Value).IsEqualTo(newLocationId);
+        await Assert.That(session.Room?.Value?.Value).IsNull();
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -407,6 +379,7 @@ public sealed class EditSessionTests : IDisposable
         var dto = new EventSessionDto
         {
             Id = sessionId,
+            ConcurrencyStamp = sessionId,
             EventId = eventId,
             EventTitle = "Program launch",
             Title = "Original session",

@@ -94,7 +94,7 @@ public class SetupTests : IDisposable
     public async Task RestorePersistedSecret_WhenStoredSecretIsInvalid_ShowsError()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = true
@@ -119,7 +119,7 @@ public class SetupTests : IDisposable
     public async Task RestorePersistedSecret_WhenStoredSecretIsValid_KeepsValidatedSessionState()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = true
@@ -144,7 +144,7 @@ public class SetupTests : IDisposable
     public async Task RestorePersistedSecret_WhenProvidersDetected_ShowsQuickActionsAndConfigureLast()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = false
@@ -180,7 +180,7 @@ public class SetupTests : IDisposable
     public async Task Setup_WhenKeycloakQuickActionClicked_NavigatesToLoginWithProvider()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = false
@@ -216,7 +216,7 @@ public class SetupTests : IDisposable
     public async Task Setup_WhenTimedOut_ShowsExpiredMessage()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = false,
@@ -245,7 +245,7 @@ public class SetupTests : IDisposable
     public async Task Setup_WhenEnvironmentSecretActive_ShowsEnvironmentGuidance()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = false,
@@ -274,7 +274,7 @@ public class SetupTests : IDisposable
     public async Task Setup_WhenGeneratedSecretActive_ShowsStartupLogGuidance()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = false,
@@ -302,7 +302,7 @@ public class SetupTests : IDisposable
     public async Task Setup_WhenCompleted_RedirectsToHome()
     {
         // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true

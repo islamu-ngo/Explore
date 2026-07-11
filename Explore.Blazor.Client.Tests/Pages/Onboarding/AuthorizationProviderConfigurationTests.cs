@@ -31,7 +31,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     public async Task Load_WhenCerbosDetectedFromEnvironment_ShowsChoiceFirstShellAndBootstrapState()
     {
         SetupIncompleteOnboardingStatus();
-        SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
+        SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
         {
             Provider = "local",
             CerbosGrpcEndpoint = "cerbosgrpc.openislamu.org:443",
@@ -66,7 +66,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
             }
         });
 
-        await _instanceOnboardingService.DidNotReceive()
+        await _instanceOnboardingService.Received(1)
             .GetAuthorizationProviderConfigurationAsync();
     }
 
@@ -74,7 +74,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     public async Task Load_WhenLocalAlreadySavedAndCerbosDetected_KeepsSavedLocalSelection()
     {
         SetupIncompleteOnboardingStatus();
-        SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
+        SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
         {
             Provider = "local",
             CerbosGrpcEndpoint = "cerbosgrpc.openislamu.org:443",
@@ -101,14 +101,14 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     public async Task VerifyCerbos_WhenBrowserCommandSucceeds_ShowsPdpReachableButPoliciesUnknown()
     {
         SetupIncompleteOnboardingStatus();
-        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
+        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
         {
             Provider = "cerbos",
             CerbosGrpcEndpoint = "cerbosgrpc.openislamu.org:443",
             CerbosDetectedFromEnvironment = false,
             CerbosEndpointVerified = false
         });
-        SetupCommand(module, "POST", "/api/InstanceOnboarding/authz-provider-configuration/verify", new InstanceCommandResponseModel
+        SetupCommand(module, "POST", "/api/InstanceOnboarding/authz-provider-configuration/verify", new BaseCommandResponseOfGuid
         {
             Success = true,
             Message = "Cerbos PDP endpoint verified successfully."
@@ -143,7 +143,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     public async Task Load_WhenLocalSelected_StillShowsCompactPolicyPackageDownload()
     {
         SetupIncompleteOnboardingStatus();
-        SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
+        SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
         {
             Provider = "local"
         });
@@ -166,11 +166,11 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     public async Task SaveLocal_WhenBrowserCommandSucceeds_RedirectsToInstanceOnboarding()
     {
         SetupIncompleteOnboardingStatus();
-        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
+        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
         {
             Provider = "local"
         });
-        SetupCommand(module, "PUT", "/api/InstanceOnboarding/authz-provider-configuration", new InstanceCommandResponseModel
+        SetupCommand(module, "PUT", "/api/InstanceOnboarding/authz-provider-configuration", new BaseCommandResponseOfGuid
         {
             Success = true,
             Message = "Authorization provider saved."
@@ -199,21 +199,22 @@ public class AuthorizationProviderConfigurationTests : IDisposable
             }
         });
 
-        await _instanceOnboardingService.DidNotReceive()
-            .SaveAuthorizationProviderConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationModel>());
+        await _instanceOnboardingService.Received(1)
+            .SaveAuthorizationProviderConfigurationAsync(
+                Arg.Is<AuthorizationProviderConfigurationDto>(request => request.Provider == "local"));
     }
 
     [Test]
     public async Task SaveCerbos_WhenPdpVerifiedAndPoliciesManuallyConfirmed_SavesWithoutBrowserPolicySyncAndRedirectsToInstanceOnboarding()
     {
         SetupIncompleteOnboardingStatus();
-        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
+        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
         {
             Provider = "cerbos",
             CerbosGrpcEndpoint = "cerbosgrpc.openislamu.org:443",
             CerbosEndpointVerified = true
         });
-        SetupCommand(module, "PUT", "/api/InstanceOnboarding/authz-provider-configuration", new InstanceCommandResponseModel
+        SetupCommand(module, "PUT", "/api/InstanceOnboarding/authz-provider-configuration", new BaseCommandResponseOfGuid
         {
             Success = true,
             Message = "Authorization provider saved."
@@ -257,7 +258,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     public async Task SyncNow_WhenServerCredentialsConfiguredAndSyncFails_ShowsSafeManualFallback()
     {
         SetupIncompleteOnboardingStatus();
-        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
+        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
         {
             Provider = "cerbos",
             CerbosGrpcEndpoint = "cerbosgrpc.openislamu.org:443",
@@ -265,7 +266,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
             CerbosAdminUsernameConfigured = true,
             CerbosAdminPasswordConfigured = true
         });
-        SetupCommand(module, "POST", "/api/InstanceOnboarding/authz-provider-configuration/sync", new InstanceCommandResponseModel
+        SetupCommand(module, "POST", "/api/InstanceOnboarding/authz-provider-configuration/sync", new BaseCommandResponseOfGuid
         {
             Success = false,
             Message = "Authorization policy package sync failed.",
@@ -301,7 +302,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     public async Task SyncPolicies_WhenServerCredentialsConfiguredAndSyncSucceeds_AllowsCerbosContinuation()
     {
         SetupIncompleteOnboardingStatus();
-        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationModel
+        var module = SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
         {
             Provider = "cerbos",
             CerbosGrpcEndpoint = "cerbosgrpc.openislamu.org:443",
@@ -309,7 +310,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
             CerbosAdminUsernameConfigured = true,
             CerbosAdminPasswordConfigured = true
         });
-        SetupCommand(module, "POST", "/api/InstanceOnboarding/authz-provider-configuration/sync", new InstanceCommandResponseModel
+        SetupCommand(module, "POST", "/api/InstanceOnboarding/authz-provider-configuration/sync", new BaseCommandResponseOfGuid
         {
             Success = true,
             Message = "Policies synced. You can continue with Cerbos."
@@ -343,40 +344,43 @@ public class AuthorizationProviderConfigurationTests : IDisposable
 
     private void SetupIncompleteOnboardingStatus()
     {
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = false
         });
     }
 
-    private BunitJSModuleInterop SetupFetchConfiguration(AuthorizationProviderConfigurationModel model)
+    private IInstanceOnboardingService SetupFetchConfiguration(AuthorizationProviderConfigurationDto model)
     {
-        var module = _ctx.JSInterop.SetupModule("/js/bff.js");
-        module.Setup<AuthorizationProviderConfigurationModel>("fetchJson", invocation =>
-                invocation.Arguments.Count > 0 &&
-                string.Equals(
-                    invocation.Arguments[0]?.ToString(),
-                    "/api/InstanceOnboarding/authz-provider-configuration/internal",
-                    StringComparison.Ordinal))
-            .SetResult(model);
-        return module;
+        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsync().Returns(model);
+        return _instanceOnboardingService;
     }
 
     private static void SetupCommand(
-        BunitJSModuleInterop module,
+        IInstanceOnboardingService service,
         string method,
         string path,
-        InstanceCommandResponseModel response)
+        BaseCommandResponseOfGuid response)
     {
-        module.Setup<InstanceCommandResponseModel>("sendCommand", invocation =>
-                invocation.Arguments.Count >= 3 &&
-                string.Equals(invocation.Arguments[0]?.ToString(), method, StringComparison.Ordinal) &&
-                string.Equals(invocation.Arguments[1]?.ToString(), path, StringComparison.Ordinal))
-            .SetResult(response);
+        if (method == "POST" && path.EndsWith("/verify", StringComparison.Ordinal))
+        {
+            service.VerifyCerbosEndpointAsync(Arg.Any<string>()).Returns(response);
+            return;
+        }
+
+        if (method == "POST" && path.EndsWith("/sync", StringComparison.Ordinal))
+        {
+            service.SyncAuthorizationPolicyPackageAsync().Returns(response);
+            return;
+        }
+
+        service.SaveAuthorizationProviderConfigurationAsync(
+                Arg.Any<AuthorizationProviderConfigurationDto>())
+            .Returns(response);
     }
 
-    private static SecretOwnershipModel BootstrapOwnership() => new()
+    private static SecretOwnershipDto BootstrapOwnership() => new()
     {
         Mode = "application-managed",
         Source = "deployment-bootstrap",

@@ -37,13 +37,35 @@ public class HierarchicalSettingsResolverTests : IDisposable
         _cache = new MemoryCache(new MemoryCacheOptions());
         _logger = Substitute.For<ILogger<HierarchicalSettingsResolver>>();
         _resolver = new HierarchicalSettingsResolver(
-            _systemRepo, _tenantRepo, _orgRepo, _groupRepo, _userPrefRepo, _cache, _logger);
+            _systemRepo,
+            _tenantRepo,
+            _orgRepo,
+            _groupRepo,
+            _userPrefRepo,
+            ImmediateSettingMutationLock.Instance,
+            _cache,
+            _logger);
     }
 
     public void Dispose()
     {
         _cache.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    private sealed class ImmediateSettingMutationLock : ISettingMutationLock
+    {
+        internal static readonly ImmediateSettingMutationLock Instance = new();
+
+        public Task<T> ExecuteAsync<T>(
+            string canonicalSettingKey,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) => operation(cancellationToken);
+
+        public Task<T> ExecuteManyAsync<T>(
+            IEnumerable<string> canonicalSettingKeys,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) => operation(cancellationToken);
     }
 
     // --- Basic resolution ---
@@ -266,22 +288,47 @@ public class HierarchicalSettingsResolverTests : IDisposable
             "email.smtp_port", "465",
             SettingScope.Instance, Guid.Empty, Guid.NewGuid());
 
-        await _systemRepo.Received(1).Create(Arg.Is<SystemSetting>(s =>
-            s.SettingKey == "email.smtp_port" && s.Value == "465"));
+        await _systemRepo.Received(1).UpsertAsync(
+            Arg.Is<SystemSetting>(s => s.SettingKey == "email.smtp_port" && s.Value == "465"),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task SetValueAsync_SucceedsAtTenantScope()
     {
         var tenantId = Guid.NewGuid();
-        _tenantRepo.GetByTenantAndKey(tenantId, "email.smtp_port").Returns((TenantSetting?)null);
+        var actorId = Guid.NewGuid();
 
         await _resolver.SetValueAsync(
             "email.smtp_port", "465",
-            SettingScope.Tenant, tenantId, Guid.NewGuid());
+            SettingScope.Tenant, tenantId, actorId);
 
-        await _tenantRepo.Received(1).Create(Arg.Is<TenantSetting>(s =>
-            s.SettingKey == "email.smtp_port" && s.Value == "465" && s.TenantId == tenantId));
+        await _tenantRepo.Received(1).SetValueAsync(
+            tenantId,
+            "email.smtp_port",
+            "465",
+            Arg.Any<CancellationToken>(),
+            actorId);
+    }
+
+    [Test]
+    public async Task RemoveOverrideAsync_WhenSystemSettingIsLocked_DoesNotRemoveTenantOverride()
+    {
+        var tenantId = Guid.NewGuid();
+        _systemRepo.IsLocked("email.smtp_port", Arg.Any<CancellationToken>()).Returns(true);
+
+        InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await _resolver.RemoveOverrideAsync(
+                "email.smtp_port",
+                SettingScope.Tenant,
+                tenantId,
+                Guid.NewGuid()));
+
+        await Assert.That(exception.Message).Contains("locked at Instance scope");
+        await _tenantRepo.DidNotReceive().RemoveOverrideAsync(
+            tenantId,
+            "email.smtp_port",
+            Arg.Any<CancellationToken>());
     }
 
     // --- Lock ---
@@ -301,18 +348,19 @@ public class HierarchicalSettingsResolverTests : IDisposable
         await _resolver.LockAsync("email.smtp_port", SettingScope.Instance, Guid.Empty, Guid.NewGuid());
 
         await Assert.That(setting.IsLocked).IsTrue();
-        await _systemRepo.Received(1).Update(setting);
+        await _systemRepo.Received(1).UpsertAsync(setting, Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task LockAsync_SucceedsAtTenantScope()
     {
         var tenantId = Guid.NewGuid();
-        _tenantRepo.LockAsync(tenantId, "email.smtp_port").Returns(true);
+        var actorId = Guid.NewGuid();
+        _tenantRepo.LockAsync(tenantId, "email.smtp_port", actorId).Returns(true);
 
-        await _resolver.LockAsync("email.smtp_port", SettingScope.Tenant, tenantId, Guid.NewGuid());
+        await _resolver.LockAsync("email.smtp_port", SettingScope.Tenant, tenantId, actorId);
 
-        await _tenantRepo.Received(1).LockAsync(tenantId, "email.smtp_port");
+        await _tenantRepo.Received(1).LockAsync(tenantId, "email.smtp_port", actorId);
     }
 
     [Test]
@@ -326,10 +374,11 @@ public class HierarchicalSettingsResolverTests : IDisposable
     public async Task LockAsync_ThrowsWhenTenantSettingNotFound()
     {
         var tenantId = Guid.NewGuid();
-        _tenantRepo.LockAsync(tenantId, "nonexistent.key").Returns(false);
+        var actorId = Guid.NewGuid();
+        _tenantRepo.LockAsync(tenantId, "nonexistent.key", actorId).Returns(false);
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _resolver.LockAsync("nonexistent.key", SettingScope.Tenant, tenantId, Guid.NewGuid()));
+            await _resolver.LockAsync("nonexistent.key", SettingScope.Tenant, tenantId, actorId));
     }
 
     // --- Unlock ---
@@ -349,18 +398,19 @@ public class HierarchicalSettingsResolverTests : IDisposable
         await _resolver.UnlockAsync("email.smtp_port", SettingScope.Instance, Guid.Empty, Guid.NewGuid());
 
         await Assert.That(setting.IsLocked).IsFalse();
-        await _systemRepo.Received(1).Update(setting);
+        await _systemRepo.Received(1).UpsertAsync(setting, Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task UnlockAsync_SucceedsAtTenantScope()
     {
         var tenantId = Guid.NewGuid();
-        _tenantRepo.UnlockAsync(tenantId, "email.smtp_port").Returns(true);
+        var actorId = Guid.NewGuid();
+        _tenantRepo.UnlockAsync(tenantId, "email.smtp_port", actorId).Returns(true);
 
-        await _resolver.UnlockAsync("email.smtp_port", SettingScope.Tenant, tenantId, Guid.NewGuid());
+        await _resolver.UnlockAsync("email.smtp_port", SettingScope.Tenant, tenantId, actorId);
 
-        await _tenantRepo.Received(1).UnlockAsync(tenantId, "email.smtp_port");
+        await _tenantRepo.Received(1).UnlockAsync(tenantId, "email.smtp_port", actorId);
     }
 
     [Test]

@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Threading.Channels;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
@@ -38,6 +39,8 @@ public class SecurityWebApplicationFactory : WebApplicationFactory<Program>
     /// </summary>
     public IAuthorizationProvider? AuthorizationProviderOverride { get; set; }
 
+    public DeploymentMode DeploymentMode { get; set; } = DeploymentMode.SingleTenant;
+
     public SecurityWebApplicationFactory(
         string keycloakAuthority,
         string keycloakMetadataAddress,
@@ -67,7 +70,7 @@ public class SecurityWebApplicationFactory : WebApplicationFactory<Program>
                 ["S3Settings:AccessKeyId"] = "test-key",
                 ["S3Settings:SecretAccessKey"] = "test-secret",
                 ["S3Settings:Endpoint"] = "https://s3.example.com",
-                ["Deployment:Mode"] = "SingleTenant",
+                ["Deployment:Mode"] = DeploymentMode.ToString(),
                 ["Deployment:DefaultTenantId"] = PlatformDefaults.DefaultTenantId.ToString(),
                 ["Testing:HostProfile"] = TestHostProfile.Security,
                 ["Cerbos:GrpcEndpoint"] = _cerbosGrpcEndpoint,

@@ -40,7 +40,7 @@ public static class NavMenuTestServices
     /// </param>
     public static void Register(
         BlazorTestContext ctx,
-        PublicExperienceSettingsModel? publicExperienceSettings = null,
+        PublicExperienceSettingsDto? publicExperienceSettings = null,
         string deploymentMode = "MultiTenant",
         bool onboardingCompleted = true,
         bool isCurrentUserInstanceAdmin = false,
@@ -67,10 +67,10 @@ public static class NavMenuTestServices
         var publicExperienceService = Substitute.For<IPublicExperienceService>();
         publicExperienceService.GetSettingsAsync()
             .Returns(Task.FromResult(publicExperienceSettings));
-        publicExperienceService.ResolveHomeRoute(Arg.Any<PublicExperienceSettingsModel?>())
+        publicExperienceService.ResolveHomeRoute(Arg.Any<PublicExperienceSettingsDto?>())
             .Returns(callInfo =>
             {
-                var settings = callInfo.Arg<PublicExperienceSettingsModel?>();
+                var settings = callInfo.Arg<PublicExperienceSettingsDto?>();
                 return settings?.PreferredHomePage?.Equals("LandingPage", StringComparison.OrdinalIgnoreCase) == true
                     ? "/home"
                     : "/events";
@@ -78,7 +78,7 @@ public static class NavMenuTestServices
         ctx.Services.AddSingleton(publicExperienceService);
 
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = onboardingCompleted,
             IsAuthenticated = isCurrentUserInstanceAdmin,
@@ -88,7 +88,7 @@ public static class NavMenuTestServices
         ctx.Services.AddSingleton(instanceOnboardingService);
 
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusModel
+        tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = isCurrentUserTenantAdmin,
@@ -109,7 +109,7 @@ public static class NavMenuTestServices
         ctx.Services.AddSingleton(organizationService);
 
         var groupService = Substitute.For<IGroupService>();
-        groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
+        groupService.GetMyGroupsAsync().Returns(new List<GroupListDto>());
         ctx.Services.AddSingleton(groupService);
 
         ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());

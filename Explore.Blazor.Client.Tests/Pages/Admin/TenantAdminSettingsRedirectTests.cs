@@ -28,7 +28,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new TenantPublicExperienceAdminModel());
         _tenantStorageSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
-            .Returns(new TenantStorageSettingsModel());
+            .Returns(new HalResourceOfTenantStorageSettingsDto());
 
         _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         _nav.NavigateTo("/admin/tenant/settings");
@@ -40,7 +40,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     public async Task TenantAdminSettings_SingleTenantMode_RedirectsToInstanceSettings()
     {
         _onboardingService.GetDeploymentModeAsync()
-            .Returns(new DeploymentModeModel { Mode = "SingleTenant" });
+            .Returns(new DeploymentModeDto { Mode = DeploymentMode.SingleTenant });
 
         var componentType = typeof(EventList).Assembly
             .GetTypes()
@@ -63,7 +63,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     public async Task TenantAdminSettings_MultiTenantMode_DoesNotRedirect()
     {
         _onboardingService.GetDeploymentModeAsync()
-            .Returns(new DeploymentModeModel { Mode = "MultiTenant" });
+            .Returns(new DeploymentModeDto { Mode = DeploymentMode.MultiTenant });
 
         var componentType = typeof(EventList).Assembly
             .GetTypes()

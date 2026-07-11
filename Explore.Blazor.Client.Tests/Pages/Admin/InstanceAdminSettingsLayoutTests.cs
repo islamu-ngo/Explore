@@ -2,6 +2,7 @@
 // ABOUTME: Verifies single-tenant administration exposes tenant-level public experience controls.
 
 using System.Reflection;
+using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Tests.Common.Authentication;
@@ -22,6 +23,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _ctx = new BlazorTestContext();
         _ctx.AddShellStateMocks();
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Instance Admin", "admin@example.com");
+        _ctx.AddMockService<IControlPlaneOperationsService>();
 
         _instanceOnboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
         _tenantOnboardingService = _ctx.AddMockService<ITenantOnboardingService>();
@@ -109,13 +111,13 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     {
         // Arrange
         _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync()
-            .Returns(new AuthProviderConfigurationModel
+            .Returns(new AuthProviderConfigurationDto
             {
                 KeycloakEnabled = true,
                 KeycloakDetectedFromEnvironment = true
             });
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
-            .Returns(new AuthorizationProviderConfigurationModel
+            .Returns(new AuthorizationProviderConfigurationDto
             {
                 Provider = "local",
                 CerbosDetectedFromEnvironment = true,
@@ -165,13 +167,13 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     {
         // Arrange
         _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync()
-            .Returns(new AuthProviderConfigurationModel { KeycloakEnabled = true });
+            .Returns(new AuthProviderConfigurationDto { KeycloakEnabled = true });
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
-            .Returns(new AuthorizationProviderConfigurationModel { Provider = "cerbos", CerbosGrpcEndpoint = "cerbosgrpc.local:3593" });
-        _instanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationModel>())
-            .Returns(new InstanceCommandResponseModel { Success = true });
-        _instanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationModel>())
-            .Returns(new InstanceCommandResponseModel { Success = true });
+            .Returns(new AuthorizationProviderConfigurationDto { Provider = "cerbos", CerbosGrpcEndpoint = "cerbosgrpc.local:3593" });
+        _instanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+        _instanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
         _instanceOnboardingService.RefreshAuthSchemesAsync().Returns(Task.CompletedTask);
 
         Type componentType = GetLayoutComponentType();
@@ -194,9 +196,9 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
 
         // Assert
         await _instanceOnboardingService.Received(1)
-            .UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationModel>());
+            .UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationDto>());
         await _instanceOnboardingService.Received(1)
-            .UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationModel>());
+            .UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
         await _instanceOnboardingService.Received(1).RefreshAuthSchemesAsync();
     }
 
@@ -205,7 +207,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     {
         // Arrange
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
-            .Returns(new AuthorizationProviderConfigurationModel
+            .Returns(new AuthorizationProviderConfigurationDto
             {
                 Provider = "cerbos",
                 CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
@@ -214,7 +216,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 CerbosAdminPasswordConfigured = true
             });
         _instanceOnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync()
-            .Returns(new InstanceCommandResponseModel
+            .Returns(new BaseCommandResponseOfGuid
             {
                 Success = true,
                 Message = "Authorization policy package synced."
@@ -243,7 +245,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     {
         // Arrange
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
-            .Returns(new AuthorizationProviderConfigurationModel
+            .Returns(new AuthorizationProviderConfigurationDto
             {
                 Provider = "cerbos",
                 CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
@@ -252,7 +254,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 CerbosAdminPasswordConfigured = true
             });
         _instanceOnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync()
-            .Returns(new InstanceCommandResponseModel
+            .Returns(new BaseCommandResponseOfGuid
             {
                 Success = false,
                 Message = "secret-token leaked by backend",
@@ -284,7 +286,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     {
         // Arrange
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
-            .Returns(new AuthorizationProviderConfigurationModel
+            .Returns(new AuthorizationProviderConfigurationDto
             {
                 Provider = "cerbos",
                 CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
@@ -303,44 +305,10 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         await _instanceOnboardingService.DidNotReceive().SyncAuthorizationPolicyPackageAsAdminAsync();
     }
 
-    [Test]
-    public async Task InstanceAdminSettingsLayout_CerbosPolicyDownload_AvailableWithoutVerifiedEndpointAndShowsSafeFailure()
-    {
-        // Arrange
-        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
-            .Returns(new AuthorizationProviderConfigurationModel
-            {
-                Provider = "cerbos",
-                CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
-                CerbosEndpointVerified = false
-            });
-        _instanceOnboardingService.DownloadAuthorizationPolicyPackageAsAdminAsync()
-            .Returns(Task.FromResult<PolicyPackageDownloadModel?>(null));
-
-        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
-
-        // Act
-        var downloadButton = cut.FindAll("button")
-            .First(button => button.TextContent.Contains("Download ZIP", StringComparison.OrdinalIgnoreCase));
-        downloadButton.Click();
-
-        // Assert
-        await Assert.That(downloadButton.HasAttribute("disabled")).IsFalse();
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Authorization policy package download failed. Try again or check server logs.", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Safe policy package download failure message was not rendered.");
-            }
-        });
-        await _instanceOnboardingService.Received(1).DownloadAuthorizationPolicyPackageAsAdminAsync();
-        await _instanceOnboardingService.DidNotReceive().SyncAuthorizationPolicyPackageAsAdminAsync();
-    }
-
     private void ConfigureSingleTenantInstanceDefaults()
     {
         _instanceOnboardingService.GetStatusAsync()
-            .Returns(new InstanceOnboardingStatusModel
+            .Returns(new InstanceOnboardingStatusDto
             {
                 IsCompleted = true,
                 IsAuthenticated = true,
@@ -355,37 +323,38 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 AdminOrganizationIds = [],
                 HasAnyAuthority = true
             });
-        _instanceOnboardingService.GetDeploymentModeAsync().Returns(new DeploymentModeModel { Mode = "SingleTenant" });
-        _instanceOnboardingService.GetModuleSettingsAsync().Returns(new ModuleSettingsModel());
-        _instanceOnboardingService.GetEventPolicyAsync().Returns(new EventPolicyModel());
-        _instanceOnboardingService.GetOrganizationPolicyAsync().Returns(new OrganizationPolicyModel());
-        _instanceOnboardingService.GetBrandingSettingsAsync().Returns(new BrandingSettingsModel());
-        _instanceOnboardingService.GetDomainSettingsAsync().Returns(new DomainSettingsModel());
-        _instanceOnboardingService.GetTenantDelegationAsync().Returns(new TenantDelegationModel());
-        _instanceOnboardingService.GetRenderPolicyAsync().Returns(new RenderPolicyModel());
-        _instanceOnboardingService.GetStorageSettingsAsync().Returns(new InstanceStorageSettingsModel());
-        _instanceOnboardingService.GetSmtpSettingsAsync().Returns(new InstanceSmtpSettingsModel());
-        _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync().Returns(new AuthProviderConfigurationModel());
+        _instanceOnboardingService.GetDeploymentModeAsync()
+            .Returns(new DeploymentModeDto { Mode = DeploymentMode.SingleTenant });
+        _instanceOnboardingService.GetModuleSettingsAsync().Returns(new ModuleSettingsDto());
+        _instanceOnboardingService.GetEventPolicyAsync().Returns(new EventPolicyDto());
+        _instanceOnboardingService.GetOrganizationPolicyAsync().Returns(new OrganizationPolicyDto());
+        _instanceOnboardingService.GetBrandingSettingsAsync().Returns(new BrandingSettingsDto());
+        _instanceOnboardingService.GetDomainSettingsAsync().Returns(new DomainSettingsDto());
+        _instanceOnboardingService.GetTenantDelegationAsync().Returns(new TenantDelegationSettingsDto());
+        _instanceOnboardingService.GetRenderPolicyAsync().Returns(new RenderPolicySettingsDto());
+        _instanceOnboardingService.GetStorageSettingsAsync().Returns(new HalResourceOfInstanceStorageSettingsDto());
+        _instanceOnboardingService.GetSmtpSettingsAsync().Returns(new InstanceSmtpSettingsDto());
+        _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync().Returns(new AuthProviderConfigurationDto());
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
-            .Returns(new AuthorizationProviderConfigurationModel { Provider = "local" });
-        _instanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationModel>())
-            .Returns(new InstanceCommandResponseModel { Success = true });
-        _instanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationModel>())
-            .Returns(new InstanceCommandResponseModel { Success = true });
+            .Returns(new AuthorizationProviderConfigurationDto { Provider = "local" });
+        _instanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+        _instanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
         _instanceOnboardingService.RefreshAuthSchemesAsync().Returns(Task.CompletedTask);
         _instanceOnboardingService.RefreshAuthSessionAsync().Returns(true);
         _instanceOnboardingService.GetAnalyticsGovernanceSettingsAsync()
-            .Returns(new Explore.Blazor.Client.Models.Analytics.AnalyticsGovernanceSettingsModel());
-        _instanceOnboardingService.GetFooterGovernanceSettingsAsync().Returns(new FooterGovernanceSettingsModel());
+            .Returns(new AnalyticsGovernanceSettingsDto());
+        _instanceOnboardingService.GetFooterGovernanceSettingsAsync().Returns(new FooterGovernanceSettingsDto());
         _instanceOnboardingService.GetActiveTenantCountAsync().Returns(1);
 
-        _tenantOnboardingService.GetSettingsAsync().Returns(new TenantPolicySettingsModel());
+        _tenantOnboardingService.GetSettingsAsync().Returns(new TenantPolicySettingsDto());
         _publicExperienceAdminService.ApplySingleTenantPolicySettingsAsync(
-                Arg.Any<TenantPolicySettingsModel>(),
+                Arg.Any<TenantPolicySettingsDto>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         _publicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(
-                Arg.Any<TenantPolicySettingsModel>(),
+                Arg.Any<TenantPolicySettingsDto>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())

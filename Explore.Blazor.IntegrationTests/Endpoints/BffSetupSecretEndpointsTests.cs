@@ -3,6 +3,7 @@
 
 using System.Text;
 using System.Threading.RateLimiting;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.Services;
 using FluentAssertions;
@@ -201,7 +202,12 @@ public sealed class BffSetupSecretEndpointsTests
         builder.Services.AddSingleton<ISetupSecretSessionService>(sp => sp.GetRequiredService<SetupSecretSessionService>());
         builder.Services.AddSingleton<ISetupSecretCookieProtector, PassThroughSetupSecretCookieProtector>();
         builder.Services.AddSingleton<ISetupSecretResolver, EmptySetupSecretResolver>();
-        builder.Services.AddSingleton<IHttpClientFactory>(new ValidateSecretHttpClientFactory(handler));
+        builder.Services.AddSingleton(new HttpClient(handler, disposeHandler: false)
+        {
+            BaseAddress = new Uri("https://api.example.test/")
+        });
+        builder.Services.AddSingleton<IEventApiClient>(services =>
+            new EventApiClient(services.GetRequiredService<HttpClient>()));
 
         var app = builder.Build();
         app.UseRouting();
@@ -230,17 +236,6 @@ public sealed class BffSetupSecretEndpointsTests
         {
             Client.Dispose();
             await app.DisposeAsync();
-        }
-    }
-
-    private sealed class ValidateSecretHttpClientFactory(ValidateSecretHandler handler) : IHttpClientFactory
-    {
-        public HttpClient CreateClient(string name)
-        {
-            return new HttpClient(handler, disposeHandler: false)
-            {
-                BaseAddress = new Uri("https://api.example.test/")
-            };
         }
     }
 

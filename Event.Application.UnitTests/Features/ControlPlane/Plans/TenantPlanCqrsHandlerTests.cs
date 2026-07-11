@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for control-plane tenant plan CQRS read and draft lifecycle handlers.
 // ABOUTME: Pins SaaS tier DTO mapping and draft creation before API or UI work begins.
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Features.ControlPlane.Handlers.Commands;
@@ -8,16 +9,21 @@ using Explore.Application.Features.ControlPlane.Handlers.Queries;
 using Explore.Application.Features.ControlPlane.Plans;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings;
+using MediatR;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.ControlPlane.Plans;
 
 public sealed class TenantPlanCqrsHandlerTests
 {
+    private readonly IHierarchicalSettingsResolver _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+    private readonly IMediator _mediator = Substitute.For<IMediator>();
     [Test]
     public async Task ListPlans_WhenPlansExist_ReturnsLatestVersionSummaries()
     {
@@ -506,7 +512,7 @@ public sealed class TenantPlanCqrsHandlerTests
         var tenantPlans = Substitute.For<ITenantPlanRepository>();
         var tenantSettings = Substitute.For<ITenantSettingRepository>();
         var systemSettings = Substitute.For<ISystemSettingRepository>();
-        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var unitOfWork = new ImmediateUnitOfWork();
         TenantPlanAssignment assignment = CreateActiveAssignment(tenantId, assignmentId);
         assignment.TenantPlanVersion.Settings.Add(new TenantPlanVersionSetting
         {
@@ -521,7 +527,8 @@ public sealed class TenantPlanCqrsHandlerTests
             tenantPlans,
             tenantSettings,
             systemSettings,
-            unitOfWork);
+            unitOfWork,
+            ImmediateSettingMutationLock.Instance, _settingsResolver, _mediator);
 
         var result = await handler.Handle(
             new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, Guid.NewGuid()),
@@ -530,8 +537,46 @@ public sealed class TenantPlanCqrsHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors ?? []).Contains("tenant_plan_setting_locked");
         await tenantSettings.DidNotReceiveWithAnyArgs().UpsertManyForTenantAsync(default, default!, default);
-        await unitOfWork.DidNotReceiveWithAnyArgs()
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), default);
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ApplyPlan_WhenPublishedPlanHasNoSettingsOrStorageQuota_SucceedsAsNoOp()
+    {
+        var tenantId = Guid.NewGuid();
+        var assignmentId = Guid.NewGuid();
+        var tenantPlans = Substitute.For<ITenantPlanRepository>();
+        var tenantSettings = Substitute.For<ITenantSettingRepository>();
+        var systemSettings = Substitute.For<ISystemSettingRepository>();
+        var unitOfWork = new ImmediateUnitOfWork();
+        var mutationLock = new RejectingEmptyBatchMutationLock();
+        TenantPlanAssignment assignment = CreateActiveAssignment(tenantId, assignmentId);
+        tenantPlans.GetAssignmentAsync(assignmentId, Arg.Any<CancellationToken>()).Returns(assignment);
+        var handler = new ApplyControlPlaneTenantPlanAssignmentCommandHandler(
+            tenantPlans,
+            tenantSettings,
+            systemSettings,
+            unitOfWork,
+            mutationLock,
+            _settingsResolver,
+            _mediator);
+
+        var result = await handler.Handle(
+            new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, Guid.NewGuid()),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(assignmentId);
+        await Assert.That(assignment.TenantPlanAssignmentStatusId)
+            .IsEqualTo((int)TenantPlanAssignmentStatusEnum.Active);
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(0);
+        await Assert.That(mutationLock.ExecutionCount).IsEqualTo(0);
+        await tenantSettings.DidNotReceiveWithAnyArgs()
+            .UpsertManyForTenantAsync(default, default!, default);
+        await tenantPlans.DidNotReceiveWithAnyArgs()
+            .UpdateAssignmentAsync(default!, default);
+        _settingsResolver.DidNotReceiveWithAnyArgs().InvalidateCache(default, default);
+        await _mediator.DidNotReceiveWithAnyArgs().Publish(default!, default);
     }
 
     [Test]
@@ -539,10 +584,11 @@ public sealed class TenantPlanCqrsHandlerTests
     {
         var tenantId = Guid.NewGuid();
         var assignmentId = Guid.NewGuid();
+        var operatorId = Guid.NewGuid();
         var tenantPlans = Substitute.For<ITenantPlanRepository>();
         var tenantSettings = Substitute.For<ITenantSettingRepository>();
         var systemSettings = Substitute.For<ISystemSettingRepository>();
-        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var unitOfWork = new ImmediateUnitOfWork();
         IReadOnlyCollection<TenantSettingOverrideUpsert>? captured = null;
         TenantPlanAssignment assignment = CreateActiveAssignment(tenantId, assignmentId);
         assignment.TenantPlanVersion.Settings.Add(new TenantPlanVersionSetting
@@ -554,23 +600,22 @@ public sealed class TenantPlanCqrsHandlerTests
         });
         tenantPlans.GetAssignmentAsync(assignmentId, Arg.Any<CancellationToken>()).Returns(assignment);
         systemSettings.IsLocked(GovernanceSettingKeys.AiAssistant.Enabled).Returns(false);
-        unitOfWork
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>()(CancellationToken.None));
         tenantSettings
             .UpsertManyForTenantAsync(
                 tenantId,
                 Arg.Do<IReadOnlyCollection<TenantSettingOverrideUpsert>>(overrides => captured = overrides),
+                operatorId,
                 Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         var handler = new ApplyControlPlaneTenantPlanAssignmentCommandHandler(
             tenantPlans,
             tenantSettings,
             systemSettings,
-            unitOfWork);
+            unitOfWork,
+            ImmediateSettingMutationLock.Instance, _settingsResolver, _mediator);
 
         var result = await handler.Handle(
-            new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, Guid.NewGuid()),
+            new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, operatorId),
             CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
@@ -579,8 +624,13 @@ public sealed class TenantPlanCqrsHandlerTests
         await Assert.That(upsert.SettingKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.Enabled);
         await Assert.That(upsert.Value).IsEqualTo("true");
         await Assert.That(upsert.IsLocked).IsTrue();
-        await unitOfWork.Received(1)
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
+        _settingsResolver.Received(1).InvalidateCache(SettingScope.Tenant, tenantId);
+        await _mediator.Received(1).Publish(
+            Arg.Is<SettingChangedNotification>(notification =>
+                notification.Key == GovernanceSettingKeys.AiAssistant.Enabled
+                && notification.TenantId == tenantId),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -591,7 +641,9 @@ public sealed class TenantPlanCqrsHandlerTests
         var tenantPlans = Substitute.For<ITenantPlanRepository>();
         var tenantSettings = Substitute.For<ITenantSettingRepository>();
         var systemSettings = Substitute.For<ISystemSettingRepository>();
-        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var unitOfWork = new ImmediateUnitOfWork();
+        var calls = new List<string>();
+        var mutationLock = new RecordingBatchMutationLock(calls);
         TenantPlanAssignment assignment = CreateActiveAssignment(tenantId, assignmentId);
         assignment.TenantPlanVersion.Quotas.Add(new TenantPlanVersionQuota
         {
@@ -600,17 +652,25 @@ public sealed class TenantPlanCqrsHandlerTests
             Limit = 2L * 1024 * 1024 * 1024
         });
         tenantPlans.GetAssignmentAsync(assignmentId, Arg.Any<CancellationToken>()).Returns(assignment);
-        systemSettings.GetByKey(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes).Returns(new SystemSetting
-        {
-            SettingKey = GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
-            Value = "1073741824",
-            ValueType = SettingValueType.Long
-        });
+        systemSettings.GetByKey(
+                GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                calls.Add("quota-read");
+                return new SystemSetting
+                {
+                    SettingKey = GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
+                    Value = "1073741824",
+                    ValueType = SettingValueType.Long
+                };
+            });
         var handler = new ApplyControlPlaneTenantPlanAssignmentCommandHandler(
             tenantPlans,
             tenantSettings,
             systemSettings,
-            unitOfWork);
+            unitOfWork,
+            mutationLock, _settingsResolver, _mediator);
 
         var result = await handler.Handle(
             new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, Guid.NewGuid()),
@@ -619,8 +679,13 @@ public sealed class TenantPlanCqrsHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors ?? []).Contains("tenant_plan_quota_ceiling_exceeded");
         await tenantSettings.DidNotReceiveWithAnyArgs().UpsertManyForTenantAsync(default, default!, default);
-        await unitOfWork.DidNotReceiveWithAnyArgs()
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), default);
+        await Assert.That(mutationLock.Keys).Contains(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes);
+        await Assert.That(calls.Count).IsEqualTo(2);
+        await Assert.That(calls[0]).IsEqualTo("lock");
+        await Assert.That(calls[1]).IsEqualTo("quota-read");
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
+        _settingsResolver.DidNotReceiveWithAnyArgs().InvalidateCache(default, default);
+        await _mediator.DidNotReceiveWithAnyArgs().Publish(default!, default);
     }
 
     private static TenantPlanDraft CreateValidDraft() => new(
@@ -691,5 +756,85 @@ public sealed class TenantPlanCqrsHandlerTests
             AssignedAt = DateTime.UtcNow,
             AssignedByUserId = Guid.NewGuid()
         };
+    }
+
+    private sealed class ImmediateSettingMutationLock : ISettingMutationLock
+    {
+        internal static readonly ImmediateSettingMutationLock Instance = new();
+
+        public Task<T> ExecuteAsync<T>(
+            string canonicalSettingKey,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) => operation(cancellationToken);
+
+        public Task<T> ExecuteManyAsync<T>(
+            IEnumerable<string> canonicalSettingKeys,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) => operation(cancellationToken);
+    }
+
+    private sealed class RecordingBatchMutationLock(List<string> calls) : ISettingMutationLock
+    {
+        public IReadOnlyList<string> Keys { get; private set; } = [];
+
+        public Task<T> ExecuteAsync<T>(
+            string canonicalSettingKey,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) => operation(cancellationToken);
+
+        public Task<T> ExecuteManyAsync<T>(
+            IEnumerable<string> canonicalSettingKeys,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default)
+        {
+            Keys = canonicalSettingKeys.ToArray();
+            calls.Add("lock");
+            return operation(cancellationToken);
+        }
+    }
+
+    private sealed class RejectingEmptyBatchMutationLock : ISettingMutationLock
+    {
+        public int ExecutionCount { get; private set; }
+
+        public Task<T> ExecuteAsync<T>(
+            string canonicalSettingKey,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) => operation(cancellationToken);
+
+        public Task<T> ExecuteManyAsync<T>(
+            IEnumerable<string> canonicalSettingKeys,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default)
+        {
+            ExecutionCount++;
+            if (!canonicalSettingKeys.Any())
+            {
+                throw new ArgumentException("At least one setting key is required.", nameof(canonicalSettingKeys));
+            }
+
+            return operation(cancellationToken);
+        }
+    }
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public int ExecutionCount { get; private set; }
+
+        public async Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default)
+        {
+            ExecutionCount++;
+            await operation(ct);
+        }
+
+        public async Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default)
+        {
+            ExecutionCount++;
+            return await operation(ct);
+        }
     }
 }

@@ -13,10 +13,10 @@ public class AgendaMillerColumnsTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private static readonly Guid TestEventId = Guid.NewGuid();
-    private static readonly DateOnly TestDate1 = new(2026, 6, 15);
-    private static readonly DateOnly TestDate2 = new(2026, 6, 16);
-    private static readonly TimeOnly TestTime0900 = new(9, 0);
-    private static readonly TimeOnly TestTime1100 = new(11, 0);
+    private static readonly DateTimeOffset TestDate1 = new(2026, 6, 15, 0, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset TestDate2 = new(2026, 6, 16, 0, 0, 0, TimeSpan.Zero);
+    private static readonly TimeSpan TestTime0900 = new(9, 0, 0);
+    private static readonly TimeSpan TestTime1100 = new(11, 0, 0);
 
     public AgendaMillerColumnsTests()
     {
@@ -105,7 +105,7 @@ public class AgendaMillerColumnsTests : IDisposable
         {
             Id = Guid.NewGuid(),
             EventId = TestEventId,
-            LocalDate = new DateOnly(2026, 6, 20),
+            LocalDate = new DateTimeOffset(2026, 6, 20, 0, 0, 0, TimeSpan.Zero),
             Label = "Empty Day",
             IsPublished = true,
             SortOrder = 0

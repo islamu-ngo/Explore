@@ -272,7 +272,7 @@ public class ImageStorageServiceTests
         };
         var storageId = Guid.NewGuid();
         uploadClient.GetUploadUrlAsync(fileData.FileName, fileData.ContentType, fileData.Size)
-            .Returns(new ImageUploadResponse
+            .Returns(new ImageUploadTarget
             {
                 UploadSessionId = "session-1",
                 ExpiresInMinutes = 15
@@ -310,7 +310,7 @@ public class ImageStorageServiceTests
             ContentType = "image/png"
         };
         uploadClient.GetUploadUrlAsync(fileData.FileName, fileData.ContentType, fileData.Size)
-            .Returns(new ImageUploadResponse
+            .Returns(new ImageUploadTarget
             {
                 UploadSessionId = "session-1",
                 ExpiresInMinutes = 15

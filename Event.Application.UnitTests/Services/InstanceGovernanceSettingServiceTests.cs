@@ -79,13 +79,13 @@ public class InstanceGovernanceSettingServiceTests
 
         await _service.ApplySettingsAsync(Guid.NewGuid(), settings, Guid.NewGuid());
 
-        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(
+        await _systemSettingRepository.Received().UpsertAsync(Arg.Is<SystemSetting>(
             s => s.SettingKey == GovernanceSettingKeys.Routing.RenderPolicy.Onboarding.RenderMode
-                 && s.Value == "\"InteractiveAuto\""));
+                 && s.Value == "\"InteractiveAuto\""), Arg.Any<CancellationToken>());
 
-        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(
+        await _systemSettingRepository.Received().UpsertAsync(Arg.Is<SystemSetting>(
             s => s.SettingKey == GovernanceSettingKeys.Routing.RenderPolicy.DisallowInteractiveServerOnOnboarding
-                 && s.Value == "true"));
+                 && s.Value == "true"), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -97,9 +97,9 @@ public class InstanceGovernanceSettingServiceTests
 
         await _service.ApplySettingsAsync(Guid.NewGuid(), settings, Guid.NewGuid());
 
-        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(
             s => s.SettingKey == GovernanceSettingKeys.Routing.DefaultPublicHomePage
-                 && s.Value == "\"EventList\""));
+                 && s.Value == "\"EventList\""), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -251,12 +251,12 @@ public class InstanceGovernanceSettingServiceTests
             AllowTenantAdminAccess = true
         }, actorId);
 
-        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
-            s.SettingKey == GovernanceSettingKeys.AdminPortal.Enabled && s.Value == "false"));
-        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
-            s.SettingKey == GovernanceSettingKeys.AdminPortal.PublicUrl && s.Value == "\"https://admin.example.org\""));
-        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
-            s.SettingKey == GovernanceSettingKeys.AdminPortal.AllowTenantAdminAccess && s.Value == "true"));
+        await _systemSettingRepository.Received().UpsertAsync(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.AdminPortal.Enabled && s.Value == "false"), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received().UpsertAsync(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.AdminPortal.PublicUrl && s.Value == "\"https://admin.example.org\""), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received().UpsertAsync(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.AdminPortal.AllowTenantAdminAccess && s.Value == "true"), Arg.Any<CancellationToken>());
     }
 
 
@@ -298,14 +298,14 @@ public class InstanceGovernanceSettingServiceTests
             LockTenantMcpLegacySse = false
         }, actorId);
 
-        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
-            s.SettingKey == GovernanceSettingKeys.Mcp.Enabled && s.Value == "true" && s.IsLocked));
-        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
-            s.SettingKey == GovernanceSettingKeys.Mcp.EnableLegacySse && s.Value == "true" && !s.IsLocked));
-        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
-            s.SettingKey == GovernanceSettingKeys.TenantDelegation.LockMcp && s.Value == "true"));
-        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
-            s.SettingKey == GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse && s.Value == "false"));
+        await _systemSettingRepository.Received().UpsertAsync(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.Mcp.Enabled && s.Value == "true" && s.IsLocked), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received().UpsertAsync(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.Mcp.EnableLegacySse && s.Value == "true" && !s.IsLocked), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received().UpsertAsync(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.TenantDelegation.LockMcp && s.Value == "true"), Arg.Any<CancellationToken>());
+        await _systemSettingRepository.Received().UpsertAsync(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse && s.Value == "false"), Arg.Any<CancellationToken>());
     }
 
     [Test]

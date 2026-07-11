@@ -24,11 +24,11 @@ public class EventAgendaItemServiceTests
     public async Task GetAgendaItemsByEventAsync_ReturnsItems_WhenApiSucceeds()
     {
         var eventId = Guid.NewGuid();
-        var eventDate = new DateOnly(2026, 5, 7);
+        var eventDate = new DateTimeOffset(2026, 5, 7, 0, 0, 0, TimeSpan.Zero);
         var halResponse = CreateHalCollectionResponse(new List<EventAgendaItemListDto>
         {
-            CreateAgendaItemListDto("Keynote", 1, eventDate, new TimeOnly(9, 0), new TimeOnly(10, 0)),
-            CreateAgendaItemListDto("Workshop", 2, eventDate, new TimeOnly(10, 30), new TimeOnly(12, 0))
+            CreateAgendaItemListDto("Keynote", 1, eventDate, new TimeSpan(9, 0, 0), new TimeSpan(10, 0, 0)),
+            CreateAgendaItemListDto("Workshop", 2, eventDate, new TimeSpan(10, 30, 0), new TimeSpan(12, 0, 0))
         });
 
         _apiClient.GetEventAgendaItemsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -73,10 +73,10 @@ public class EventAgendaItemServiceTests
             Title = "Keynote Speech",
             StartTime = DateTimeOffset.Parse("2026-05-07T09:00:00+00:00", CultureInfo.InvariantCulture),
             EndTime = DateTimeOffset.Parse("2026-05-07T10:00:00+00:00", CultureInfo.InvariantCulture),
-            LocalStartDate = new DateOnly(2026, 5, 7),
-            LocalEndDate = new DateOnly(2026, 5, 7),
-            LocalStartTime = new TimeOnly(9, 0),
-            LocalEndTime = new TimeOnly(10, 0)
+            LocalStartDate = new DateTimeOffset(2026, 5, 7, 0, 0, 0, TimeSpan.Zero),
+            LocalEndDate = new DateTimeOffset(2026, 5, 7, 0, 0, 0, TimeSpan.Zero),
+            LocalStartTime = new TimeSpan(9, 0, 0),
+            LocalEndTime = new TimeSpan(10, 0, 0)
         };
         var halResponse = CreateHalResourceResponse(dto);
 
@@ -240,9 +240,9 @@ public class EventAgendaItemServiceTests
     private static EventAgendaItemListDto CreateAgendaItemListDto(
         string title,
         int sortOrder,
-        DateOnly localDate,
-        TimeOnly localStartTime,
-        TimeOnly localEndTime)
+        DateTimeOffset localDate,
+        TimeSpan localStartTime,
+        TimeSpan localEndTime)
     {
         return new EventAgendaItemListDto
         {
@@ -253,8 +253,8 @@ public class EventAgendaItemServiceTests
             LocalStartDate = localDate,
             LocalStartTime = localStartTime,
             LocalEndTime = localEndTime,
-            StartTime = new DateTimeOffset(localDate.ToDateTime(localStartTime), TimeSpan.Zero),
-            EndTime = new DateTimeOffset(localDate.ToDateTime(localEndTime), TimeSpan.Zero)
+            StartTime = new DateTimeOffset(localDate.Date + localStartTime, TimeSpan.Zero),
+            EndTime = new DateTimeOffset(localDate.Date + localEndTime, TimeSpan.Zero)
         };
     }
 

@@ -1,6 +1,7 @@
 // ABOUTME: Regression tests for Aspire service-discovery URL resolution in the Blazor BFF.
 // ABOUTME: Ensures BFF HTTP clients prefer AppHost references over standalone localhost defaults.
 
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.Services;
 using FluentAssertions;
@@ -38,7 +39,8 @@ public sealed class ApiServiceDiscoveryTests
         services.AddApiHttpClients(configuration, environment);
 
         using var provider = services.BuildServiceProvider();
-        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("BffClient");
+        var client = provider.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(IEventApiClient));
 
         client.BaseAddress.Should().Be(new Uri("https://localhost:7211/"));
     }

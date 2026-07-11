@@ -4,8 +4,6 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Models;
-using Explore.Blazor.Client.Models.CustomProperties;
-using Explore.Blazor.Client.Models.Responses;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -40,19 +38,19 @@ public class CustomPropertyGovernanceTests : IDisposable
         return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, type));
     }
 
-    private static CustomPropertyDefinitionListModel SampleDefinition(string key = "venue_capacity") => new()
+    private static CustomPropertyDefinitionListDto SampleDefinition(string key = "venue_capacity") => new()
     {
         Id = Guid.NewGuid(),
-        EntityTypeName = EntityTypeName.Event,
+        EntityTypeName = (int)EntityTypeName.Event,
         Namespace = "tenant",
         Key = key,
         DisplayName = "Venue Capacity",
-        PropertyType = PropertyType.Number,
+        PropertyType = (int)PropertyType.Number,
         IsRequired = false,
         IsMulti = false,
         IsActive = true,
         SortOrder = 0,
-        ExposureLevel = ExposureLevel.Public,
+        ExposureLevel = (int)ExposureLevel.Public,
         IsSearchable = true,
         IsFilterable = true,
         IsExportable = false,
@@ -67,7 +65,7 @@ public class CustomPropertyGovernanceTests : IDisposable
     [Test]
     public async Task ExposureSection_ShowsLoadingState_WhilePending()
     {
-        var pending = new TaskCompletionSource<PaginatedResult<CustomPropertyDefinitionListModel>>();
+        var pending = new TaskCompletionSource<PaginatedResult<CustomPropertyDefinitionListDto>>();
         _adminService.GetDefinitionsAsync(Arg.Any<EntityTypeName>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(pending.Task);
 
@@ -75,15 +73,15 @@ public class CustomPropertyGovernanceTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("Loading definitions");
 
-        pending.TrySetResult(PaginatedResult<CustomPropertyDefinitionListModel>.Empty());
+        pending.TrySetResult(PaginatedResult<CustomPropertyDefinitionListDto>.Empty());
     }
 
     [Test]
     public async Task ExposureSection_RendersDefinitions_AfterLoad()
     {
-        var items = new List<CustomPropertyDefinitionListModel> { SampleDefinition() };
+        var items = new List<CustomPropertyDefinitionListDto> { SampleDefinition() };
         _adminService.GetDefinitionsAsync(Arg.Any<EntityTypeName>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new PaginatedResult<CustomPropertyDefinitionListModel>
+            .Returns(new PaginatedResult<CustomPropertyDefinitionListDto>
             {
                 Items = items,
                 PageNumber = 1,
@@ -115,7 +113,7 @@ public class CustomPropertyGovernanceTests : IDisposable
     [Test]
     public async Task GovernanceReport_ShowsLoadingState_WhilePending()
     {
-        var pending = new TaskCompletionSource<PaginatedResult<CustomPropertyGovernanceRowModel>>();
+        var pending = new TaskCompletionSource<PaginatedResult<CustomPropertyGovernanceRowDto>>();
         _adminService.GetGovernanceReportAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<PromotionRecommendation?>(),
             Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(pending.Task);
 
@@ -123,7 +121,7 @@ public class CustomPropertyGovernanceTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("Generating governance report");
 
-        pending.TrySetResult(PaginatedResult<CustomPropertyGovernanceRowModel>.Empty());
+        pending.TrySetResult(PaginatedResult<CustomPropertyGovernanceRowDto>.Empty());
     }
 
     [Test]
@@ -141,7 +139,7 @@ public class CustomPropertyGovernanceTests : IDisposable
     [Test]
     public async Task GovernanceReport_RendersRow_AfterLoad()
     {
-        var row = new CustomPropertyGovernanceRowModel
+        var row = new CustomPropertyGovernanceRowDto
         {
             TenantId = Guid.NewGuid(),
             Namespace = "tenant",
@@ -163,9 +161,9 @@ public class CustomPropertyGovernanceTests : IDisposable
 
         _adminService.GetGovernanceReportAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<PromotionRecommendation?>(),
             Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new PaginatedResult<CustomPropertyGovernanceRowModel>
+            .Returns(new PaginatedResult<CustomPropertyGovernanceRowDto>
             {
-                Items = new List<CustomPropertyGovernanceRowModel> { row },
+                Items = new List<CustomPropertyGovernanceRowDto> { row },
                 PageNumber = 1,
                 PageSize = 50,
                 TotalCount = 1
@@ -184,7 +182,7 @@ public class CustomPropertyGovernanceTests : IDisposable
     public async Task ProjectionStatus_ShowsBothProjectionCards_WhenLoaded()
     {
         _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>
+            .Returns(new List<HalResourceOfProjectionStatusDto>
             {
                 new()
                 {
@@ -195,7 +193,7 @@ public class CustomPropertyGovernanceTests : IDisposable
                 }
             });
         _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>
+            .Returns(new List<HalResourceOfProjectionStatusDto>
             {
                 new()
                 {
@@ -206,7 +204,7 @@ public class CustomPropertyGovernanceTests : IDisposable
                 }
             });
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+            .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
         var cut = Render("ProjectionStatusSection");
         cut.WaitForState(() => cut.Markup.Contains("Event Projection") && cut.Markup.Contains("Session Projection"),
@@ -222,7 +220,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         const string dangerousError = "<img src=x onerror=alert(1)><script>alert(2)</script>";
 
         _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>
+            .Returns(new List<HalResourceOfProjectionStatusDto>
             {
                 new()
                 {
@@ -233,9 +231,9 @@ public class CustomPropertyGovernanceTests : IDisposable
                 }
             });
         _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>());
+            .Returns(new List<HalResourceOfProjectionStatusDto>());
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+            .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
         var cut = Render("ProjectionStatusSection");
         cut.WaitForState(() => cut.Markup.Contains("Last error:", StringComparison.OrdinalIgnoreCase),
@@ -252,7 +250,7 @@ public class CustomPropertyGovernanceTests : IDisposable
     public async Task ProjectionStatus_HidesActions_WhenHalLinksAreMissing()
     {
         _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>
+            .Returns(new List<HalResourceOfProjectionStatusDto>
             {
                 new()
                 {
@@ -262,7 +260,7 @@ public class CustomPropertyGovernanceTests : IDisposable
                 }
             });
         _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>
+            .Returns(new List<HalResourceOfProjectionStatusDto>
             {
                 new()
                 {
@@ -272,7 +270,7 @@ public class CustomPropertyGovernanceTests : IDisposable
                 }
             });
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+            .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
         var cut = Render("ProjectionStatusSection");
         cut.WaitForState(() => cut.Markup.Contains("Event Projection") && cut.Markup.Contains("Session Projection"),
@@ -286,29 +284,29 @@ public class CustomPropertyGovernanceTests : IDisposable
     public async Task ProjectionStatus_RendersActions_WhenHalLinksArePresent()
     {
         _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>
+            .Returns(new List<HalResourceOfProjectionStatusDto>
             {
                 new()
                 {
                     ProjectionName = "event_custom_property_projection",
                     ProjectionVersion = 1,
                     RowsProcessed = 100,
-                    LinkRelations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "rebuild", "drain-dirty-scopes" }
+                    _links = CreateLinks("rebuild", "drain-dirty-scopes")
                 }
             });
         _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>
+            .Returns(new List<HalResourceOfProjectionStatusDto>
             {
                 new()
                 {
                     ProjectionName = "event_session_custom_property_projection",
                     ProjectionVersion = 1,
                     RowsProcessed = 50,
-                    LinkRelations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "rebuild" }
+                    _links = CreateLinks("rebuild")
                 }
             });
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+            .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
         var cut = Render("ProjectionStatusSection");
         cut.WaitForState(() => cut.Markup.Contains("Drain dirty scopes"), TimeSpan.FromSeconds(3));
@@ -323,19 +321,19 @@ public class CustomPropertyGovernanceTests : IDisposable
     {
         const string projectionName = "event_custom_property_projection";
         _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>
+            .Returns(new List<HalResourceOfProjectionStatusDto>
             {
                 new()
                 {
                     ProjectionName = projectionName,
                     ProjectionVersion = 1,
-                    LinkRelations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "dirty-scopes" }
+                    _links = CreateLinks("dirty-scopes")
                 }
             });
         _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>());
+            .Returns(new List<HalResourceOfProjectionStatusDto>());
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+            .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
         var cut = Render("ProjectionStatusSection");
         cut.WaitForState(() => cut.Markup.Contains("Event Projection"), TimeSpan.FromSeconds(3));
@@ -348,24 +346,24 @@ public class CustomPropertyGovernanceTests : IDisposable
     {
         const string projectionName = "event_custom_property_projection";
         _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>
+            .Returns(new List<HalResourceOfProjectionStatusDto>
             {
                 new()
                 {
                     ProjectionName = projectionName,
                     ProjectionVersion = 1,
-                    LinkRelations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "drain-dirty-scopes", "dirty-scopes" }
+                    _links = CreateLinks("drain-dirty-scopes", "dirty-scopes")
                 }
             });
         _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>());
+            .Returns(new List<HalResourceOfProjectionStatusDto>());
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+            .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
         _adminService.DrainDirtyScopesAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<DrainDirtyScopesResult>
+            .Returns(new BaseCommandResponseOfDrainDirtyScopesResponseDto
             {
                 Success = true,
-                Id = new DrainDirtyScopesResult { DrainedCount = 3 }
+                Id = new DrainDirtyScopesResponseDto { DrainedCount = 3 }
             });
 
         var cut = Render("ProjectionStatusSection");
@@ -382,9 +380,9 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("status unavailable"));
         _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ProjectionStatusModel>());
+            .Returns(new List<HalResourceOfProjectionStatusDto>());
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+            .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
         var cut = Render("ProjectionStatusSection");
         cut.WaitForState(() => cut.Markup.Contains("status unavailable", StringComparison.OrdinalIgnoreCase),
@@ -392,4 +390,10 @@ public class CustomPropertyGovernanceTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("status unavailable");
     }
+
+    private static Dictionary<string, HalLink> CreateLinks(params string[] relations) =>
+        relations.ToDictionary(
+            relation => relation,
+            relation => new HalLink { Href = $"/api/projections/{relation}", Method = "POST" },
+            StringComparer.OrdinalIgnoreCase);
 }

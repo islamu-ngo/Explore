@@ -5,12 +5,10 @@ using System.Reflection;
 using System.Text.Json;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models.EventSessionGroups;
-using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
 using Microsoft.AspNetCore.Components.Forms;
 using ClientValidationProblemDetails = Explore.Blazor.Client.Clients.ValidationProblemDetails;
-using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest;
+using ComposerCreateEventSessionRequest = Explore.Blazor.Client.Clients.CreateEventSessionDto;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
@@ -42,7 +40,7 @@ public sealed class CreateSessionTests : IDisposable
             .Returns(true);
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
         _locationRoomService.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());
-        _eventService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<EventSessionGroupListModel>());
+        _eventService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<HalResourceOfEventSessionGroupListDto>());
         _eventService.GetEventSessionCreateContextAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => CreateSessionContext(call.ArgAt<Guid>(0), Guid.NewGuid()));
         _eventService.AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>())
@@ -141,7 +139,6 @@ public sealed class CreateSessionTests : IDisposable
         session.LocationId = locationId;
         session.RoomId = roomId;
         session.EventSessionKindId = 1;
-        session.LanguageIds = [1, 2];
         session.RegistrationModeId = 2;
         SetPrivateField(cut.Instance, "_sessionDate", new DateTime(2026, 6, 1));
         SetPrivateField(cut.Instance, "_startTime", new TimeSpan(9, 30, 0));
@@ -157,7 +154,6 @@ public sealed class CreateSessionTests : IDisposable
             && dto.LocationId == locationId
             && dto.RoomId == roomId
             && dto.EventSessionKindId == 1
-            && dto.LanguageIds.OrderBy(id => id).SequenceEqual(new[] { 1, 2 })
             && dto.RegistrationModeId == 2
             && dto.StartTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 9, 30, 0))
             && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 10, 30, 0))
@@ -324,28 +320,6 @@ public sealed class CreateSessionTests : IDisposable
         await Assert.That(submitError).IsEqualTo("Program item could not be saved. Please try again.");
         await Assert.That(submitError).DoesNotContain(rawProviderMessage);
         await Assert.That(submitError).DoesNotContain("<script>");
-    }
-
-    [Test]
-    public async Task SaveSessionAsync_IncludesSelectedLanguagesInCreateRequest()
-    {
-        var eventId = Guid.NewGuid();
-        var sessionId = Guid.NewGuid();
-        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
-        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
-        {
-            Success = true,
-            Id = sessionId
-        });
-        var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<ComposerCreateEventSessionRequest>(cut.Instance, "_session");
-        session.Title = "Opening talk";
-        session.LanguageIds = [1];
-
-        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
-
-        await _eventService.Received(1).CreateSessionAsync(Arg.Is<ComposerCreateEventSessionRequest>(dto =>
-            dto.LanguageIds.Single() == 1));
     }
 
     [Test]

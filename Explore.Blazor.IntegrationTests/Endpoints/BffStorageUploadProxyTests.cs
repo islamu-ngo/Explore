@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
 using FluentAssertions;
@@ -50,8 +51,8 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
             {
                 services.RemoveAll<IAntiforgery>();
                 services.AddSingleton(antiforgery);
-                services.RemoveAll<IHttpClientFactory>();
-                services.AddSingleton<IHttpClientFactory>(new StorageHttpClientFactory(_apiHandler));
+                services.RemoveAll<IEventApiClient>();
+                services.AddSingleton<IEventApiClient>(_ => CreateApiClient(_apiHandler));
             });
         });
 
@@ -442,8 +443,8 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         {
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<IHttpClientFactory>();
-                services.AddSingleton<IHttpClientFactory>(new StorageHttpClientFactory(apiHandler));
+                services.RemoveAll<IEventApiClient>();
+                services.AddSingleton<IEventApiClient>(_ => CreateApiClient(apiHandler));
             });
         });
     }
@@ -476,16 +477,13 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         ],
         "Test"));
 
-    private sealed class StorageHttpClientFactory(
-        StorageApiHandler apiHandler) : IHttpClientFactory
+    private static IEventApiClient CreateApiClient(StorageApiHandler apiHandler)
     {
-        public HttpClient CreateClient(string name)
+        var httpClient = new HttpClient(apiHandler, disposeHandler: false)
         {
-            return new HttpClient(apiHandler, disposeHandler: false)
-            {
-                BaseAddress = new Uri("https://api.example.test/")
-            };
-        }
+            BaseAddress = new Uri("https://api.example.test/")
+        };
+        return new EventApiClient(httpClient);
     }
 
     private sealed class StorageApiHandler : HttpMessageHandler

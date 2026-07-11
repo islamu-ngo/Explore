@@ -64,12 +64,12 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(new FeatureStateContainer());
 
         SetupDefaultLookupResponses();
-        _publicExperienceService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel
+        _publicExperienceService.GetSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             IsIslamicModuleEnabled = true,
             IsTechModuleEnabled = true
         });
-        _publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellModel?>(null));
+        _publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellDto?>(null));
     }
 
     public void Dispose()
@@ -533,12 +533,12 @@ public class EventListTests : IDisposable
     public async Task Render_WithShellEventSections_ShowsCuratedFilterLinks()
     {
         SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-        _publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellModel?>(new PublicExperienceShellModel
+        _publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellDto?>(new PublicExperienceShellDto
         {
-            EventCatalog = new PublicExperienceEventCatalogModel { Label = "Programs", Url = "/events" },
+            EventCatalog = new PublicExperienceEventCatalogDto { Label = "Programs", Url = "/events" },
             EventSections =
             [
-                new PublicExperienceEventSectionModel
+                new PublicExperienceEventSectionDto
                 {
                     Key = "youth",
                     Label = "Youth Programs",
@@ -546,7 +546,7 @@ public class EventListTests : IDisposable
                     Icon = "youth",
                     SortOrder = 20
                 },
-                new PublicExperienceEventSectionModel
+                new PublicExperienceEventSectionDto
                 {
                     Key = "education",
                     Label = "Education",
@@ -554,7 +554,7 @@ public class EventListTests : IDisposable
                     Icon = "education",
                     SortOrder = 10
                 },
-                new PublicExperienceEventSectionModel
+                new PublicExperienceEventSectionDto
                 {
                     Key = "hidden",
                     Label = "",

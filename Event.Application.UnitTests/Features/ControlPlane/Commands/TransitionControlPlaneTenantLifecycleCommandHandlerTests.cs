@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ControlPlane;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.ControlPlane.Handlers.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Responses;
@@ -28,20 +29,28 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors ?? []).Contains("Suspended requires a reason.");
-        await tenantRepository.DidNotReceiveWithAnyArgs().Update(default!);
-        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
+        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
     [Test]
-    public async Task Handle_WhenActiveTenantIsSuspended_UpdatesTenantAndWritesLifecycleLog()
+    public async Task Handle_WhenActiveTenantIsSuspended_UsesCompareAndSwapAndWritesLifecycleLog()
     {
         var operatorId = Guid.NewGuid();
         var tenant = CreateTenant(TenantStatusEnum.Active);
         var tenantRepository = Substitute.For<ITenantRepository>();
         var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
         TenantLifecycleLog? capturedLog = null;
-        tenantRepository.GetById(tenant.Id).Returns(tenant);
-        lifecycleLogRepository.Create(Arg.Do<TenantLifecycleLog>(log => capturedLog = log))
+        tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+        tenantRepository.TryTransitionStatusAsync(
+                tenant.Id,
+                (int)TenantStatusEnum.Active,
+                (int)TenantStatusEnum.Suspended,
+                Arg.Any<DateTime>(),
+                operatorId,
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        lifecycleLogRepository.CreateAsync(Arg.Do<TenantLifecycleLog>(log => capturedLog = log), Arg.Any<CancellationToken>())
             .Returns(callInfo => Task.FromResult(callInfo.Arg<TenantLifecycleLog>()));
         var handler = CreateSut(tenantRepository, lifecycleLogRepository, operatorId);
 
@@ -53,10 +62,16 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         await Assert.That(result.Id.OldStatusId).IsEqualTo((int)TenantStatusEnum.Active);
         await Assert.That(result.Id.NewStatusId).IsEqualTo((int)TenantStatusEnum.Suspended);
         await Assert.That(result.Id.Reason).IsEqualTo("policy breach");
-        await Assert.That(tenant.TenantStatusId).IsEqualTo((int)TenantStatusEnum.Suspended);
-        await Assert.That(tenant.UpdatedBy).IsEqualTo(operatorId);
-        await tenantRepository.Received(1).Update(tenant);
-        await lifecycleLogRepository.Received(1).Create(Arg.Any<TenantLifecycleLog>());
+        await Assert.That(tenant.TenantStatusId).IsEqualTo((int)TenantStatusEnum.Active);
+        await tenantRepository.Received(1).TryTransitionStatusAsync(
+            tenant.Id,
+            (int)TenantStatusEnum.Active,
+            (int)TenantStatusEnum.Suspended,
+            Arg.Any<DateTime>(),
+            operatorId,
+            Arg.Any<CancellationToken>());
+        await tenantRepository.DidNotReceiveWithAnyArgs().Update(default!);
+        await lifecycleLogRepository.Received(1).CreateAsync(Arg.Any<TenantLifecycleLog>(), Arg.Any<CancellationToken>());
         await Assert.That(capturedLog).IsNotNull();
         await Assert.That(capturedLog!.TenantId).IsEqualTo(tenant.Id);
         await Assert.That(capturedLog.OldStatusId).IsEqualTo((int)TenantStatusEnum.Active);
@@ -71,7 +86,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         var tenant = CreateTenant(TenantStatusEnum.Purged);
         var tenantRepository = Substitute.For<ITenantRepository>();
         var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
-        tenantRepository.GetById(tenant.Id).Returns(tenant);
+        tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
         var handler = CreateSut(tenantRepository, lifecycleLogRepository);
 
         var result = await handler.Handle(
@@ -80,8 +95,8 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("Cannot transition tenant from Purged to Active.");
-        await tenantRepository.DidNotReceiveWithAnyArgs().Update(default!);
-        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
+        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
     [Test]
@@ -97,8 +112,8 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors ?? []).Contains("Purged requires a reason.");
-        await tenantRepository.DidNotReceiveWithAnyArgs().Update(default!);
-        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
+        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
     [Test]
@@ -107,7 +122,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         var tenant = CreateTenant(TenantStatusEnum.Archived);
         var tenantRepository = Substitute.For<ITenantRepository>();
         var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
-        tenantRepository.GetById(tenant.Id).Returns(tenant);
+        tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
         var handler = CreateSut(tenantRepository, lifecycleLogRepository);
 
         var result = await handler.Handle(
@@ -120,20 +135,28 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains($"Purged requires confirmation with tenant slug '{tenant.Slug}'.");
-        await tenantRepository.DidNotReceiveWithAnyArgs().Update(default!);
-        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
+        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
     [Test]
-    public async Task Handle_WhenArchivedTenantPurgeIsScheduled_UpdatesStatusAndWritesLifecycleLog()
+    public async Task Handle_WhenArchivedTenantPurgeIsScheduled_UsesCompareAndSwapAndWritesLifecycleLog()
     {
         var operatorId = Guid.NewGuid();
         var tenant = CreateTenant(TenantStatusEnum.Archived);
         var tenantRepository = Substitute.For<ITenantRepository>();
         var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
         TenantLifecycleLog? capturedLog = null;
-        tenantRepository.GetById(tenant.Id).Returns(tenant);
-        lifecycleLogRepository.Create(Arg.Do<TenantLifecycleLog>(log => capturedLog = log))
+        tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+        tenantRepository.TryTransitionStatusAsync(
+                tenant.Id,
+                (int)TenantStatusEnum.Archived,
+                (int)TenantStatusEnum.Purged,
+                Arg.Any<DateTime>(),
+                operatorId,
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        lifecycleLogRepository.CreateAsync(Arg.Do<TenantLifecycleLog>(log => capturedLog = log), Arg.Any<CancellationToken>())
             .Returns(callInfo => Task.FromResult(callInfo.Arg<TenantLifecycleLog>()));
         var handler = CreateSut(tenantRepository, lifecycleLogRepository, operatorId);
 
@@ -150,9 +173,16 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         await Assert.That(result.Id.OldStatusId).IsEqualTo((int)TenantStatusEnum.Archived);
         await Assert.That(result.Id.NewStatusId).IsEqualTo((int)TenantStatusEnum.Purged);
         await Assert.That(result.Id.Reason).IsEqualTo("operator confirmed backup");
-        await Assert.That(tenant.TenantStatusId).IsEqualTo((int)TenantStatusEnum.Purged);
-        await tenantRepository.Received(1).Update(tenant);
-        await lifecycleLogRepository.Received(1).Create(Arg.Any<TenantLifecycleLog>());
+        await Assert.That(tenant.TenantStatusId).IsEqualTo((int)TenantStatusEnum.Archived);
+        await tenantRepository.Received(1).TryTransitionStatusAsync(
+            tenant.Id,
+            (int)TenantStatusEnum.Archived,
+            (int)TenantStatusEnum.Purged,
+            Arg.Any<DateTime>(),
+            operatorId,
+            Arg.Any<CancellationToken>());
+        await tenantRepository.DidNotReceiveWithAnyArgs().Update(default!);
+        await lifecycleLogRepository.Received(1).CreateAsync(Arg.Any<TenantLifecycleLog>(), Arg.Any<CancellationToken>());
         await Assert.That(capturedLog).IsNotNull();
         await Assert.That(capturedLog!.OldStatusId).IsEqualTo((int)TenantStatusEnum.Archived);
         await Assert.That(capturedLog.NewStatusId).IsEqualTo((int)TenantStatusEnum.Purged);
@@ -165,7 +195,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         var tenant = CreateTenant(TenantStatusEnum.Active);
         var tenantRepository = Substitute.For<ITenantRepository>();
         var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
-        tenantRepository.GetById(tenant.Id).Returns(tenant);
+        tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
         var handler = CreateSut(tenantRepository, lifecycleLogRepository);
 
         var result = await handler.Handle(
@@ -174,8 +204,92 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("Cannot transition tenant from Active to Purged.");
-        await tenantRepository.DidNotReceiveWithAnyArgs().Update(default!);
-        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
+        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Test]
+    public async Task Handle_WhenTenantAlreadyHasTargetStatus_DoesNotCompareAndSwapOrWriteLog()
+    {
+        var tenant = CreateTenant(TenantStatusEnum.Active);
+        var tenantRepository = Substitute.For<ITenantRepository>();
+        var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
+        tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+        var handler = CreateSut(tenantRepository, lifecycleLogRepository);
+
+        var result = await handler.Handle(
+            new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Active, reason: null),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("Tenant already has the requested lifecycle status.");
+        await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
+        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Test]
+    public async Task Handle_WhenCompareAndSwapLoses_ThrowsConflictAndDoesNotWriteLog()
+    {
+        var tenant = CreateTenant(TenantStatusEnum.Active);
+        var tenantRepository = Substitute.For<ITenantRepository>();
+        var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
+        tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+        tenantRepository.TryTransitionStatusAsync(
+                tenant.Id,
+                (int)TenantStatusEnum.Active,
+                (int)TenantStatusEnum.Suspended,
+                Arg.Any<DateTime>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        var handler = CreateSut(tenantRepository, lifecycleLogRepository);
+
+        var exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(() => handler.Handle(
+            new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Suspended, "policy breach"),
+            CancellationToken.None));
+
+        await Assert.That(exception!.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+        await Assert.That(exception.Message).IsEqualTo("Tenant lifecycle status changed since it was loaded. Reload and retry the transition.");
+        await Assert.That(exception.EntityType).IsEqualTo(nameof(Tenant));
+        await Assert.That(exception.EntityId).IsEqualTo(tenant.Id.ToString());
+        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Test]
+    public async Task Handle_ForwardsTransactionCancellationTokenToEveryRepositoryCall()
+    {
+        var operatorId = Guid.NewGuid();
+        var tenant = CreateTenant(TenantStatusEnum.Active);
+        var tenantRepository = Substitute.For<ITenantRepository>();
+        var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
+        using var cancellationSource = new CancellationTokenSource();
+        var cancellationToken = cancellationSource.Token;
+        tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, cancellationToken).Returns(tenant);
+        tenantRepository.TryTransitionStatusAsync(
+                tenant.Id,
+                (int)TenantStatusEnum.Active,
+                (int)TenantStatusEnum.Suspended,
+                Arg.Any<DateTime>(),
+                operatorId,
+                cancellationToken)
+            .Returns(true);
+        lifecycleLogRepository.CreateAsync(Arg.Any<TenantLifecycleLog>(), cancellationToken)
+            .Returns(callInfo => Task.FromResult(callInfo.Arg<TenantLifecycleLog>()));
+        var handler = CreateSut(tenantRepository, lifecycleLogRepository, operatorId);
+
+        await handler.Handle(
+            new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Suspended, "policy breach"),
+            cancellationToken);
+
+        await tenantRepository.Received(1).GetByIdAsNoTrackingAsync(tenant.Id, cancellationToken);
+        await tenantRepository.Received(1).TryTransitionStatusAsync(
+            tenant.Id,
+            (int)TenantStatusEnum.Active,
+            (int)TenantStatusEnum.Suspended,
+            Arg.Any<DateTime>(),
+            operatorId,
+            cancellationToken);
+        await lifecycleLogRepository.Received(1).CreateAsync(Arg.Any<TenantLifecycleLog>(), cancellationToken);
     }
 
     private static TransitionControlPlaneTenantLifecycleCommandHandler CreateSut(
@@ -192,7 +306,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             .Returns(callInfo =>
             {
                 var operation = callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>>>();
-                return operation(CancellationToken.None);
+                return operation(callInfo.Arg<CancellationToken>());
             });
 
         return new TransitionControlPlaneTenantLifecycleCommandHandler(

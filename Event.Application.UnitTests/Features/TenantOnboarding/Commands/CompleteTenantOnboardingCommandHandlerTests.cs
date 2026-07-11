@@ -9,8 +9,10 @@ using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Features.TenantOnboarding.Handlers.Commands;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Domain;
 using Explore.Domain.Settings.Documents;
+using MediatR;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -29,6 +31,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
+    private readonly IMediator _mediator;
     private readonly CompleteTenantOnboardingCommandHandler _handler;
 
     public CompleteTenantOnboardingCommandHandlerTests()
@@ -43,17 +46,25 @@ public class CompleteTenantOnboardingCommandHandlerTests
             .EnsureTenantBrandingDocumentAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(TenantBrandingSettingsDocumentDefaults.Create(call.ArgAt<Guid>(0), call.ArgAt<string?>(1))));
         _hierarchicalSettingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+        _mediator = Substitute.For<IMediator>();
 
         _tenantContext.TenantId.Returns(TestTenantId);
 
         // Execute the lambda so inner repo logic runs in tests
         _unitOfWork
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<Guid>>>(), Arg.Any<CancellationToken>())
+            .ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<(Guid OnboardingStateId, IReadOnlyList<SettingChangedNotification> Notifications)>>>(),
+                Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var op = callInfo.Arg<Func<CancellationToken, Task<Guid>>>();
-                return op(CancellationToken.None);
+                var op = callInfo.Arg<Func<CancellationToken, Task<(Guid OnboardingStateId, IReadOnlyList<SettingChangedNotification> Notifications)>>>();
+                return op(callInfo.ArgAt<CancellationToken>(1));
             });
+        _policySettingService.ApplyTenantSettingsAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<UpdateTenantPolicyRequest>(),
+            Arg.Any<CancellationToken>()).Returns([]);
 
         _handler = new CompleteTenantOnboardingCommandHandler(
             _tenantContext,
@@ -62,7 +73,8 @@ public class CompleteTenantOnboardingCommandHandlerTests
             _policySettingService,
             _tenantBrandingProvisioningService,
             _unitOfWork,
-            _hierarchicalSettingsResolver);
+            _hierarchicalSettingsResolver,
+            _mediator);
     }
 
     private static CompleteTenantOnboardingCommand CreateCommand() => new()
@@ -100,11 +112,16 @@ public class CompleteTenantOnboardingCommandHandlerTests
         });
 
         // Act
-        var result = await _handler.Handle(CreateCommand(), CancellationToken.None);
+        using var cancellation = new CancellationTokenSource();
+        var result = await _handler.Handle(CreateCommand(), cancellation.Token);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await _policySettingService.Received(1).ApplyTenantSettingsAsync(TestTenantId, TestUserId, Arg.Any<UpdateTenantPolicyRequest>());
+        await _policySettingService.Received(1).ApplyTenantSettingsAsync(
+            TestTenantId,
+            TestUserId,
+            Arg.Any<UpdateTenantPolicyRequest>(),
+            cancellation.Token);
         await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(TestTenantId, null, Arg.Any<CancellationToken>());
     }
 
@@ -141,7 +158,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
 
         // Assert: settings should NOT be applied
         await _policySettingService.DidNotReceive().ApplyTenantSettingsAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateTenantPolicyRequest>());
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateTenantPolicyRequest>(), Arg.Any<CancellationToken>());
         await _tenantBrandingProvisioningService.DidNotReceive().EnsureTenantBrandingDocumentAsync(
             Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }

@@ -42,6 +42,16 @@ public sealed class ControlPlaneOverviewHateoasTests
         await Assert.That(operations.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(operations.PermissionResourceId).IsEqualTo(GetControlPlaneOperationsQuery.SettingKey);
 
+        var plans = links.Single(link => link.Rel == "plans");
+        await Assert.That(plans.RouteName).IsEqualTo(RouteNames.GetControlPlaneTenantPlans);
+        await Assert.That(plans.Method).IsEqualTo("GET");
+        await Assert.That(plans.RequiresAuth).IsTrue();
+        await Assert.That(plans.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
+        await Assert.That(plans.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
+        await Assert.That(plans.PermissionResourceId).IsEqualTo(GetControlPlaneTenantPlanListQuery.SettingKey);
+        await Assert.That(plans.PermissionResourceAttributes?["settingKey"])
+            .IsEqualTo(GetControlPlaneTenantPlanListQuery.SettingKey);
+
         var storage = links.Single(link => link.Rel == "storage");
         await Assert.That(storage.RouteName).IsEqualTo(RouteNames.GetInstanceStorageSettings);
         await Assert.That(storage.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);

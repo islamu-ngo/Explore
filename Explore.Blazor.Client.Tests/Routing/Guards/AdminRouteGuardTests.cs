@@ -206,7 +206,7 @@ public class AdminRouteGuardTests
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsAuthenticated = true,
             IsCurrentUserInstanceAdmin = true
@@ -234,7 +234,7 @@ public class AdminRouteGuardTests
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsAuthenticated = false,
             IsCurrentUserInstanceAdmin = false
@@ -270,7 +270,7 @@ public class AdminRouteGuardTests
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusModel?)null);
+        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusDto?)null);
         var userService = Substitute.For<IUserService>();
         userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
         {
@@ -302,7 +302,7 @@ public class AdminRouteGuardTests
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusModel?)null);
+        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusDto?)null);
 
         var guard = CreateGuard(authStateProvider, instanceOnboardingService);
 
@@ -321,7 +321,7 @@ public class AdminRouteGuardTests
         if (instanceOnboardingService is null)
         {
             instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-            instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusModel?)null);
+            instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusDto?)null);
         }
 
         if (userService is null)

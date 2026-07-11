@@ -6,7 +6,7 @@ using Explore.Blazor.Client.E2ETests.Fixtures;
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
 [Category(E2ETestCategories.E2E)]
-[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerClass, SharedType.PerTestSession])]
 [NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
 public class BffTokenForwardingChainFlowTests(
@@ -16,7 +16,6 @@ public class BffTokenForwardingChainFlowTests(
     [Test]
     public async Task LoginBffYarpApiUsesServerSideTokenWithoutBrowserStorage()
     {
-        await appHost.ResetDatabaseAsync();
 
         var page = await playwright.CreatePageAsync(nameof(LoginBffYarpApiUsesServerSideTokenWithoutBrowserStorage));
         try

@@ -6,9 +6,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Explore.Blazor.Client.Contracts.Services.SupportAccess;
 using Explore.Blazor.Client.Services.Http;
-using ApiHalLink = Explore.Application.Hateoas.HalLink;
-using ApiHalResource = Explore.Application.Hateoas.HalResource<Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto>;
-using ApiSupportAccessSessionDto = Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -72,11 +69,13 @@ public sealed class SupportAccessClientServiceTests
         var result = await _service.GetSessionsAsync(tenantId, 25);
 
         await Assert.That(capturedPath).IsEqualTo($"/bff/support-access/tenants/{tenantId:D}/sessions?limit=25");
-        await Assert.That(result.CanStart).IsTrue();
-        await Assert.That(result.Items.Count).IsEqualTo(1);
-        await Assert.That(result.Items[0].CanViewAudit).IsTrue();
-        await Assert.That(result.Items[0].CanForceStop).IsTrue();
-        await Assert.That(result.Items[0].CanStop).IsFalse();
+        var collection = result.Data!;
+        var item = collection._embedded!.Items!.Single();
+        await Assert.That(collection._links!.ContainsKey("start")).IsTrue();
+        await Assert.That(collection._embedded.Items.Count).IsEqualTo(1);
+        await Assert.That(item._links!.ContainsKey("audit-events")).IsTrue();
+        await Assert.That(item._links.ContainsKey("force-stop")).IsTrue();
+        await Assert.That(item._links.ContainsKey("stop")).IsFalse();
     }
 
     [Test]
@@ -104,10 +103,12 @@ public sealed class SupportAccessClientServiceTests
 
         var result = await _service.GetSessionsAsync(tenantId, 100);
 
-        await Assert.That(result.CanStart).IsFalse();
-        await Assert.That(result.Items[0].CanViewAudit).IsFalse();
-        await Assert.That(result.Items[0].CanForceStop).IsFalse();
-        await Assert.That(result.Items[0].CanStop).IsFalse();
+        var collection = result.Data!;
+        var item = collection._embedded!.Items!.Single();
+        await Assert.That(collection._links?.ContainsKey("start") == true).IsFalse();
+        await Assert.That(item._links?.ContainsKey("audit-events") == true).IsFalse();
+        await Assert.That(item._links?.ContainsKey("force-stop") == true).IsFalse();
+        await Assert.That(item._links?.ContainsKey("stop") == true).IsFalse();
     }
 
     [Test]
@@ -192,24 +193,25 @@ public sealed class SupportAccessClientServiceTests
         var sessionId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
 
-        _handler = (_, _) => Task.FromResult(JsonResponse(new ApiHalResource(
-            new ApiSupportAccessSessionDto
+        _handler = (_, _) => Task.FromResult(JsonResponse(new HalResourceOfSupportAccessSessionDto
+        {
+            Id = sessionId,
+            TargetTenantId = tenantId,
+            ModeName = "ReadOnly",
+            StatusName = "Active",
+            AllowsWrites = false,
+            IsActive = true,
+            ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(30),
+            _links = new Dictionary<string, HalLink>
             {
-                Id = sessionId,
-                TargetTenantId = tenantId,
-                ModeName = "ReadOnly",
-                StatusName = "Active",
-                AllowsWrites = false,
-                IsActive = true,
-                ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(30)
-            },
-            new Dictionary<string, ApiHalLink>
-            {
-                ["self"] = ApiHalLink.Create("/api/support-access/current"),
-                ["stop"] = ApiHalLink.CreateAction(
-                    $"/api/support-access/sessions/{sessionId:D}/stop",
-                    "POST")
-            })));
+                ["self"] = new() { Href = "/api/support-access/current", Method = "GET" },
+                ["stop"] = new()
+                {
+                    Href = $"/api/support-access/sessions/{sessionId:D}/stop",
+                    Method = "POST"
+                }
+            }
+        }));
 
         var result = await _service.StartAsync(new StartSupportAccessSessionRequestDto
         {

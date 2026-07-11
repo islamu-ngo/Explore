@@ -78,7 +78,7 @@ public sealed class ModerationReportQueuePageTests : IDisposable
         await service.DidNotReceive().AssignAsync(
             Arg.Any<Guid>(),
             Arg.Any<Guid>(),
-            Arg.Any<ModerationReportAssignActionRequest>(),
+            Arg.Any<AssignModerationReportRequestDto>(),
             Arg.Any<CancellationToken>());
         await Assert.That(GetPrivateField<string?>(cut.Instance, "_detailErrorMessage"))
             .IsEqualTo("Assignee user id is required.");

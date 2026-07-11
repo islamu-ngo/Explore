@@ -42,9 +42,9 @@ public sealed class CustomPropertyAdminServiceTests
 
         var status = result.Single();
         await Assert.That(status.RowsProcessed).IsEqualTo(7);
-        await Assert.That(status.HasLink("rebuild")).IsTrue();
-        await Assert.That(status.HasLink("drain-dirty-scopes")).IsTrue();
-        await Assert.That(status.HasLink("missing")).IsFalse();
+        await Assert.That(status._links?.ContainsKey("rebuild") == true).IsTrue();
+        await Assert.That(status._links?.ContainsKey("drain-dirty-scopes") == true).IsTrue();
+        await Assert.That(status._links?.ContainsKey("missing") == true).IsFalse();
     }
 
     [Test]
@@ -85,7 +85,7 @@ public sealed class CustomPropertyAdminServiceTests
         await Assert.That(result.TotalCount).IsEqualTo(1);
         var scope = result.Items.Single();
         await Assert.That(scope.Id).IsEqualTo(42);
-        await Assert.That(scope.HasLink("drain")).IsTrue();
+        await Assert.That(scope._links?.ContainsKey("drain") == true).IsTrue();
     }
 
     private static IDictionary<string, TLink> CreateLinks<TLink>(

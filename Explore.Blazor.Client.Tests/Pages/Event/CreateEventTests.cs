@@ -3,7 +3,6 @@
 
 using System.Reflection;
 using Blazouter.Services;
-using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Services;
@@ -211,7 +210,14 @@ public class CreateEventTests : IDisposable
                 Arg.Any<int>(),
                 Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
-            .Returns(PaginatedResult<EventTemplateListModel>.Empty(pageSize: 100));
+            .Returns(new HalCollectionResourceOfEventTemplateListDto
+            {
+                PageNumber = 1,
+                PageSize = 100,
+                TotalCount = 0,
+                TotalPages = 0,
+                _embedded = new HalCollectionEmbeddedOfEventTemplateListDto { Items = [] }
+            });
     }
 
     public void Dispose()
@@ -339,8 +345,8 @@ public class CreateEventTests : IDisposable
 
         // Assert
         var dto = GetPrivateField<CreateEventDraftRequestDto>(cut.Instance, "createDto");
-        var templates = GetPrivateField<IReadOnlyList<EventTemplateListModel>>(cut.Instance, "eventTemplates");
-        var selectedDetail = GetPrivateField<EventTemplateDetailModel?>(cut.Instance, "_selectedEventTemplate");
+        var templates = GetPrivateField<IReadOnlyList<HalResourceOfEventTemplateListDto>>(cut.Instance, "eventTemplates");
+        var selectedDetail = GetPrivateField<HalResourceOfEventTemplateDto?>(cut.Instance, "_selectedEventTemplate");
 
         await Assert.That(dto.EventTypeId).IsEqualTo(2);
         await Assert.That(dto.TemplateId).IsNull();
@@ -356,7 +362,7 @@ public class CreateEventTests : IDisposable
         // Arrange
         var missingTemplateId = Guid.NewGuid();
         _eventTemplateService.GetTemplateByIdAsync(missingTemplateId, Arg.Any<CancellationToken>())
-            .Returns((EventTemplateDetailModel?)null);
+            .Returns((HalResourceOfEventTemplateDto?)null);
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
         var cut = _ctx.RenderMudComponent<CreateEvent>();
@@ -381,7 +387,7 @@ public class CreateEventTests : IDisposable
         // Arrange
         var slowTemplateId = Guid.NewGuid();
         var fastTemplateId = Guid.NewGuid();
-        var slowPreview = new TaskCompletionSource<EventTemplateDetailModel?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var slowPreview = new TaskCompletionSource<HalResourceOfEventTemplateDto?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var fastPreview = CreateTemplateDetailModel(fastTemplateId, "Fast Template", eventTypeId: 1);
 
         _eventTemplateService.GetTemplateByIdAsync(slowTemplateId, Arg.Any<CancellationToken>())
@@ -403,7 +409,7 @@ public class CreateEventTests : IDisposable
 
         // Assert
         var dto = GetPrivateField<CreateEventDraftRequestDto>(cut.Instance, "createDto");
-        var selectedDetail = GetPrivateField<EventTemplateDetailModel?>(cut.Instance, "_selectedEventTemplate");
+        var selectedDetail = GetPrivateField<HalResourceOfEventTemplateDto?>(cut.Instance, "_selectedEventTemplate");
 
         await Assert.That(dto.TemplateId).IsEqualTo(fastTemplateId);
         await Assert.That(selectedDetail?.Id).IsEqualTo(fastTemplateId);
@@ -415,7 +421,7 @@ public class CreateEventTests : IDisposable
         // Arrange
         var slowTemplate = CreateTemplateListModel(Guid.NewGuid(), "Conference Template", eventTypeId: 1);
         var fastTemplate = CreateTemplateListModel(Guid.NewGuid(), "Workshop Template", eventTypeId: 2);
-        var slowTemplates = new TaskCompletionSource<PaginatedResult<EventTemplateListModel>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var slowTemplates = new TaskCompletionSource<HalCollectionResourceOfEventTemplateListDto>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         _eventTemplateService.GetTemplatesAsync(1, 1, 100, Arg.Any<CancellationToken>())
             .Returns(slowTemplates.Task);
@@ -436,7 +442,7 @@ public class CreateEventTests : IDisposable
 
         // Assert
         var dto = GetPrivateField<CreateEventDraftRequestDto>(cut.Instance, "createDto");
-        var templates = GetPrivateField<IReadOnlyList<EventTemplateListModel>>(cut.Instance, "eventTemplates");
+        var templates = GetPrivateField<IReadOnlyList<HalResourceOfEventTemplateListDto>>(cut.Instance, "eventTemplates");
 
         await Assert.That(dto.EventTypeId).IsEqualTo(2);
         await Assert.That(templates.Count).IsEqualTo(1);
@@ -468,7 +474,7 @@ public class CreateEventTests : IDisposable
     {
         // Arrange
         var templateId = Guid.NewGuid();
-        var preview = new TaskCompletionSource<EventTemplateDetailModel?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var preview = new TaskCompletionSource<HalResourceOfEventTemplateDto?>(TaskCreationOptions.RunContinuationsAsynchronously);
         _eventTemplateService.GetTemplateByIdAsync(templateId, Arg.Any<CancellationToken>())
             .Returns(preview.Task);
 
@@ -544,7 +550,7 @@ public class CreateEventTests : IDisposable
         var newParentTemplateId = Guid.NewGuid();
         _eventTemplateService.GetTemplateByIdAsync(newParentTemplateId, Arg.Any<CancellationToken>())
             .Returns(CreateTemplateDetailModel(newParentTemplateId, "New Parent Template", eventTypeId: 1));
-        _eventService.CreateSessionAsync(Arg.Any<Explore.Blazor.Client.Models.EventSessions.CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<Explore.Blazor.Client.Clients.CreateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = Guid.NewGuid()
@@ -1175,15 +1181,16 @@ public class CreateEventTests : IDisposable
 
     #endregion
 
-    private static PaginatedResult<EventTemplateListModel> CreateTemplatePage(params EventTemplateListModel[] templates) => new()
+    private static HalCollectionResourceOfEventTemplateListDto CreateTemplatePage(params HalResourceOfEventTemplateListDto[] templates) => new()
     {
-        Items = templates.ToList(),
+        _embedded = new HalCollectionEmbeddedOfEventTemplateListDto { Items = templates.ToList() },
         PageNumber = 1,
         PageSize = 100,
-        TotalCount = templates.Length
+        TotalCount = templates.Length,
+        TotalPages = templates.Length == 0 ? 0 : 1
     };
 
-    private static EventTemplateListModel CreateTemplateListModel(Guid id, string displayName, int eventTypeId) => new()
+    private static HalResourceOfEventTemplateListDto CreateTemplateListModel(Guid id, string displayName, int eventTypeId) => new()
     {
         Id = id,
         TemplateKey = displayName.ToLowerInvariant().Replace(' ', '-'),
@@ -1192,10 +1199,10 @@ public class CreateEventTests : IDisposable
         Version = 1,
         IsActive = true,
         IsPublished = true,
-        DefinitionsCount = 1
+        DefinitionCount = 1
     };
 
-    private static EventTemplateDetailModel CreateTemplateDetailModel(Guid id, string displayName, int eventTypeId) => new()
+    private static HalResourceOfEventTemplateDto CreateTemplateDetailModel(Guid id, string displayName, int eventTypeId) => new()
     {
         Id = id,
         TemplateKey = displayName.ToLowerInvariant().Replace(' ', '-'),
@@ -1204,7 +1211,7 @@ public class CreateEventTests : IDisposable
         Version = 1,
         IsActive = true,
         IsPublished = true,
-        Definitions = new List<EventTemplateDefinitionModel>
+        Definitions = new List<Definitions4>
         {
             new()
             {

@@ -1,8 +1,8 @@
 // ABOUTME: Component tests for InstanceGovernanceSection render-policy preset UX behavior and single-tenant visibility rules.
 // ABOUTME: Verifies recommended default preselection, highlighted styling, advanced preset selection, and self-service toggle visibility.
 
-using Event.ControlPlane.Client.Contracts;
-using Event.ControlPlane.Client.Services;
+using Explore.Blazor.Client.Contracts.ControlPlane;
+using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -17,7 +17,7 @@ public class InstanceGovernanceSectionTests : IDisposable
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Instance Admin", "admin@example.com");
         _operationsService = Substitute.For<IControlPlaneOperationsService>();
         _operationsService.GetDeploymentModeRunbookAsync(Arg.Any<CancellationToken>())
-            .Returns(ControlPlaneResult.Success(ControlPlaneDeploymentModeRunbook.Empty()));
+            .Returns(new HalResourceOfControlPlaneDeploymentModeRunbookDto());
         _ctx.Services.AddSingleton(_operationsService);
     }
 
@@ -29,7 +29,7 @@ public class InstanceGovernanceSectionTests : IDisposable
     [Test]
     public async Task RenderPolicyPreset_DefaultsToRecommendedAndHighlightsCard()
     {
-        var renderPolicy = new RenderPolicyModel
+        var renderPolicy = new RenderPolicySettingsDto
         {
             RenderPolicyPreset = string.Empty,
             EnableAdvancedRenderPolicyOverrides = false
@@ -37,7 +37,7 @@ public class InstanceGovernanceSectionTests : IDisposable
 
         var cut = RenderGovernanceSection(renderPolicy: renderPolicy);
 
-        await Assert.That(renderPolicy.RenderPolicyPreset).IsEqualTo("AllInteractiveServer");
+        await Assert.That(renderPolicy.RenderPolicyPreset).IsEmpty();
 
         var selectedCard = cut.FindAll(".instance-governance__preset-card--selected")
             .Single(x => x.TextContent.Contains("All Interactive Server", StringComparison.OrdinalIgnoreCase));
@@ -49,7 +49,7 @@ public class InstanceGovernanceSectionTests : IDisposable
     [Test]
     public async Task RenderPolicyPreset_SelectCustomAdvanced_EnablesAdvancedPanel()
     {
-        var renderPolicy = new RenderPolicyModel
+        var renderPolicy = new RenderPolicySettingsDto
         {
             RenderPolicyPreset = "SeoBalanced",
             EnableAdvancedRenderPolicyOverrides = false
@@ -70,7 +70,7 @@ public class InstanceGovernanceSectionTests : IDisposable
     [Test]
     public async Task RenderPolicyPreset_RendersPresetHelpTooltipTriggers()
     {
-        var renderPolicy = new RenderPolicyModel
+        var renderPolicy = new RenderPolicySettingsDto
         {
             RenderPolicyPreset = "SeoBalanced",
             EnableAdvancedRenderPolicyOverrides = false
@@ -114,13 +114,17 @@ public class InstanceGovernanceSectionTests : IDisposable
     public async Task GovernanceSection_DeploymentModeRunbook_RendersHalGatedTransitionAndSubmitsTypedConfirmation()
     {
         _operationsService.GetDeploymentModeRunbookAsync(Arg.Any<CancellationToken>())
-            .Returns(ControlPlaneResult.Success(CreateRunbook(Links(ControlPlaneLinkRelations.TransitionToMultiTenant))));
+            .Returns(CreateRunbook(Links(ControlPlaneLinkRelations.TransitionToMultiTenant)));
         _operationsService.TransitionDeploymentModeAsync(
                 "MultiTenant",
                 "ENABLE MULTI_TENANT",
                 "tenant launch",
                 Arg.Any<CancellationToken>())
-            .Returns(ControlPlaneCommandResult.Succeeded("Deployment mode transition accepted."));
+            .Returns(new BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto
+            {
+                Success = true,
+                Message = "Deployment mode transition accepted."
+            });
 
         var cut = RenderGovernanceSection(displayMode: "advanced");
 
@@ -158,7 +162,7 @@ public class InstanceGovernanceSectionTests : IDisposable
     public async Task GovernanceSection_DeploymentModeRunbook_WithoutTransitionLink_HidesTransitionControl()
     {
         _operationsService.GetDeploymentModeRunbookAsync(Arg.Any<CancellationToken>())
-            .Returns(ControlPlaneResult.Success(CreateRunbook(ControlPlaneHal.EmptyLinks)));
+            .Returns(CreateRunbook(new Dictionary<string, HalLink>()));
 
         var cut = RenderGovernanceSection(displayMode: "advanced");
 
@@ -180,10 +184,10 @@ public class InstanceGovernanceSectionTests : IDisposable
     }
 
     private IRenderedComponent<DynamicComponent> RenderGovernanceSection(
-        TenantDelegationModel? delegation = null,
-        EventPolicyModel? eventPolicy = null,
-        OrganizationPolicyModel? orgPolicy = null,
-        RenderPolicyModel? renderPolicy = null,
+        TenantDelegationSettingsDto? delegation = null,
+        EventPolicyDto? eventPolicy = null,
+        OrganizationPolicyDto? orgPolicy = null,
+        RenderPolicySettingsDto? renderPolicy = null,
         string deploymentMode = "SingleTenant",
         string displayMode = "full")
     {
@@ -194,40 +198,48 @@ public class InstanceGovernanceSectionTests : IDisposable
              p.Add(x => x.Type, componentType)
              .Add(x => x.Parameters, new Dictionary<string, object>
              {
-                 ["Delegation"] = delegation ?? new TenantDelegationModel(),
-                 ["EventPolicy"] = eventPolicy ?? new EventPolicyModel(),
-                 ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyModel(),
-                 ["RenderPolicy"] = renderPolicy ?? new RenderPolicyModel(),
+                 ["Delegation"] = delegation ?? new TenantDelegationSettingsDto(),
+                 ["EventPolicy"] = eventPolicy ?? new EventPolicyDto(),
+                 ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyDto(),
+                 ["RenderPolicy"] = renderPolicy ?? new RenderPolicySettingsDto(),
                  ["DeploymentMode"] = deploymentMode,
                  ["DisplayMode"] = displayMode
              }));
     }
 
-    private static ControlPlaneDeploymentModeRunbook CreateRunbook(
-        IReadOnlyDictionary<string, ControlPlaneHalLink> links) => new(
-            "SingleTenant",
-            1,
-            new DateTimeOffset(2026, 7, 10, 12, 0, 0, TimeSpan.Zero),
+    private static HalResourceOfControlPlaneDeploymentModeRunbookDto CreateRunbook(
+        IDictionary<string, HalLink> links) => new()
+        {
+            CurrentMode = "SingleTenant",
+            ActiveTenantCount = 1,
+            GeneratedAtUtc = new DateTimeOffset(2026, 7, 10, 12, 0, 0, TimeSpan.Zero),
+            TargetOptions =
             [
-                new ControlPlaneDeploymentModeTargetOption(
-                    "MultiTenant",
-                    "Multi-Tenant",
-                    "Allow tenant routing and tenant self-service administration.",
-                    true,
-                    "ENABLE MULTI_TENANT")
+                new ControlPlaneDeploymentModeTargetOptionDto
+                {
+                    TargetMode = "MultiTenant",
+                    Label = "Multi-Tenant",
+                    Description = "Allow tenant routing and tenant self-service administration.",
+                    Allowed = true,
+                    ConfirmationText = "ENABLE MULTI_TENANT"
+                }
             ],
+            Steps =
             [
-                new ControlPlaneDeploymentModeRunbookStep(
-                    "backup",
-                    "Back up instance data",
-                    "Create a fresh backup before changing tenant routing.",
-                    ControlPlaneSeverity.Warning)
+                new ControlPlaneDeploymentModeRunbookStepDto
+                {
+                    Key = "backup",
+                    Title = "Back up instance data",
+                    Description = "Create a fresh backup before changing tenant routing.",
+                    Severity = "warning"
+                }
             ],
-            links);
+            _links = links
+        };
 
-    private static IReadOnlyDictionary<string, ControlPlaneHalLink> Links(params string[] relations) =>
+    private static IDictionary<string, HalLink> Links(params string[] relations) =>
         relations.ToDictionary(
             relation => relation,
-            relation => new ControlPlaneHalLink($"/api/control-plane/deployment-mode/{relation}", "POST"),
+            relation => new HalLink { Href = $"/api/control-plane/deployment-mode/{relation}", Method = "POST" },
             StringComparer.OrdinalIgnoreCase);
 }

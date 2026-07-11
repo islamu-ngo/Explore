@@ -16,7 +16,7 @@ public sealed class AppSideNavTests : IDisposable
     public AppSideNavTests()
     {
         _publicExperienceService = Substitute.For<IPublicExperienceService>();
-        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel());
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto());
         _ctx.Services.AddSingleton(_publicExperienceService);
 
         _tenantNavLinksState = new TenantNavLinksState();
@@ -44,7 +44,7 @@ public sealed class AppSideNavTests : IDisposable
     [Test]
     public async Task Render_WithBrandName_ShowsBrandLabel()
     {
-        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             BrandDisplayName = "Community Hub"
         });
@@ -63,7 +63,7 @@ public sealed class AppSideNavTests : IDisposable
     [Test]
     public async Task Render_WhenCommunityGuidelinesDisabled_HidesCommunityGuidelinesLink()
     {
-        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
         {
             AllowUserSubmittedEvents = false,
             AllowOrganizationSubmittedEvents = false,
@@ -122,17 +122,17 @@ public sealed class AppSideNavTests : IDisposable
     [Test]
     public async Task Render_WithOrganizationCentricShell_UsesCatalogLabelAndHidesDiscoveryShortcuts()
     {
-        _publicExperienceService.GetCachedShellAsync().Returns(new PublicExperienceShellModel
+        _publicExperienceService.GetCachedShellAsync().Returns(new PublicExperienceShellDto
         {
-            Mode = "OrganizationCentric",
-            EventCatalog = new PublicExperienceEventCatalogModel
+            Mode = PublicExperienceMode.OrganizationCentric,
+            EventCatalog = new PublicExperienceEventCatalogDto
             {
                 Label = "Programs",
                 Url = "/events?ActorId=11111111-1111-1111-1111-111111111111"
             },
-            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationDto
             {
-                State = "Available"
+                State = PublicExperiencePrimaryOrganizationState.Available
             }
         });
 

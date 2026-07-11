@@ -3,15 +3,12 @@
 
 using System.Globalization;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
-using Explore.Domain;
-using Explore.Domain.Constants;
-using Explore.Domain.Enums;
-using Explore.Domain.Secrets;
-using Explore.Persistence;
+using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Blazor.Client.E2ETests.Fixtures;
@@ -23,10 +20,13 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     private const string LocalSvixAuthToken =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJvcmdfMjNyYjhZZEdxTVQwcUl6cGdHd2RYZkhpck11In0.8DdxojyqoHnAeZBEL6M1Tcf5i5hnbAmezaRlPxuBXp8";
     private const string LocalSvixOperationalWebhookSecret = "whsec_bG9jYWwtZGV2LXN2aXgtb3BlcmF0aW9uYWwtc2VjcmV0";
+    private const string SvixAuthTokenSecretRef = "webhooks.svix.auth_token";
+    private const string SvixOperationalWebhookSecretRef = "webhooks.svix.operational_webhook_secret";
 
     private readonly PostgreSqlContainerFixture _database = new();
     private readonly BffKeycloakFixture _keycloak = new();
     private readonly MailpitContainerFixture _mailpit = new();
+    private readonly List<HttpClient> _apiHttpClients = [];
     private DistributedApplication? _app;
 
     public string BlazorBaseUrl => _app?.GetEndpoint("explore-blazor", "http")?.ToString().TrimEnd('/')
@@ -35,14 +35,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     public string ApiBaseUrl => _app?.GetEndpoint("explore-api", "http")?.ToString().TrimEnd('/')
         ?? throw new InvalidOperationException("API app not started");
 
-    public string ControlPlaneBaseUrl => _app?.GetEndpoint("event-control-plane", "http")?.ToString().TrimEnd('/')
-        ?? throw new InvalidOperationException("Control-plane app not started");
-
     public string KeycloakBaseUrl => _keycloak.BaseUrl;
-
-    public Task ResetDatabaseAsync() => _database.ResetAsync();
-
-    public ExploreDbContext CreateDbContext() => _database.CreateDbContext();
 
     public Task ClearMailpitMessagesAsync(CancellationToken cancellationToken = default)
         => _mailpit.ClearMessagesAsync(cancellationToken);
@@ -68,12 +61,31 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     public Task<BffKeycloakFixture.TokenSet> GetTestAdminTokensAsync(CancellationToken cancellationToken = default)
         => _keycloak.GetTestAdminTokensAsync(cancellationToken);
 
+    public IEventApiClient CreateApiClient(
+        string accessToken,
+        string? tenantSlug = null,
+        bool includeSetupSecret = false)
+    {
+        var httpClient = new HttpClient { BaseAddress = new Uri(ApiBaseUrl + "/", UriKind.Absolute) };
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        if (!string.IsNullOrWhiteSpace(tenantSlug))
+        {
+            httpClient.DefaultRequestHeaders.Add("X-Tenant-Slug", tenantSlug);
+        }
+
+        if (includeSetupSecret)
+        {
+            httpClient.DefaultRequestHeaders.Add("X-Setup-Secret", SetupSecret);
+        }
+
+        _apiHttpClients.Add(httpClient);
+        return new EventApiClient(httpClient);
+    }
+
     public async Task InitializeAsync()
     {
         await _database.InitializeAsync();
         await _mailpit.InitializeAsync();
-        await PreconfigureTenantRoutingAsync();
-        await PreconfigureMailpitSmtpAsync();
         await _keycloak.InitializeAsync();
 
         var previousAspireMode = Environment.GetEnvironmentVariable("ISLAMU_ASPIRE_MODE");
@@ -82,7 +94,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         IDistributedApplicationTestingBuilder builder;
         try
         {
-            builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Explore_AppHost>();
+            builder = await DistributedApplicationTestingBuilder.CreateAsync(LoadAppHostEntryPoint());
 
             builder.Services.ConfigureHttpClientDefaults(c =>
                 c.ConfigureHttpClient(h => h.BaseAddress = null));
@@ -96,7 +108,6 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
             ConfigureDiagnostics(builder);
             ConfigureProjectHttpEndpoint(builder, "explore-api");
             ConfigureProjectHttpEndpoint(builder, "explore-blazor");
-            ConfigureProjectHttpEndpoint(builder, "event-control-plane");
             ConfigureApiEndpoint(builder);
 
             _app = await builder.BuildAsync();
@@ -114,19 +125,22 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
             "explore-api",
             apiHealthTimeout.Token);
 
+        await BootstrapInstanceAsync();
+
         using var blazorHealthTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         await resourceNotificationService.WaitForResourceHealthyAsync(
             "explore-blazor",
             blazorHealthTimeout.Token);
 
-        using var controlPlaneHealthTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-        await resourceNotificationService.WaitForResourceHealthyAsync(
-            "event-control-plane",
-            controlPlaneHealthTimeout.Token);
     }
 
     public async ValueTask DisposeAsync()
     {
+        foreach (var httpClient in _apiHttpClients)
+        {
+            httpClient.Dispose();
+        }
+
         if (_app is not null)
         {
             using var stopTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
@@ -161,28 +175,6 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     {
         ConfigureProjectKeycloak(builder, "explore-blazor", keycloak, includeClientCredentials: true);
         ConfigureProjectKeycloak(builder, "explore-api", keycloak, includeClientCredentials: false);
-        ConfigureControlPlaneKeycloak(builder, keycloak);
-    }
-
-    private static void ConfigureControlPlaneKeycloak(
-        IDistributedApplicationTestingBuilder builder,
-        BffKeycloakFixture keycloak)
-    {
-        var resource = builder.CreateResourceBuilder<ProjectResource>("event-control-plane");
-
-        resource.WithEnvironment("Bff__Authentication__Authority", keycloak.Authority);
-        resource.WithEnvironment("Bff__Authentication__MetadataAddress", keycloak.MetadataAddress);
-        resource.WithEnvironment("Bff__Authentication__ClientId", BffKeycloakFixture.TestControlPlaneClientId);
-        resource.WithEnvironment("Bff__Authentication__ClientSecret", BffKeycloakFixture.TestControlPlaneClientSecret);
-        resource.WithEnvironment("Bff__Authentication__RequireHttpsMetadata", "false");
-        resource.WithEnvironment("KEYCLOAK_REALM", BffKeycloakFixture.RealmName);
-        resource.WithEnvironment("KEYCLOAK_ENDPOINT", keycloak.BaseUrl + "/auth");
-        resource.WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_ID", BffKeycloakFixture.TestControlPlaneClientId);
-        resource.WithEnvironment("KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET", BffKeycloakFixture.TestControlPlaneClientSecret);
-        resource.WithEnvironment("Infisical__ProjectId", string.Empty);
-        resource.WithEnvironment("Infisical__ClientId", string.Empty);
-        resource.WithEnvironment("Infisical__ClientSecret", string.Empty);
-        resource.WithEnvironment("SETUP_SECRET", SetupSecret);
     }
 
     private static void ConfigureProjectKeycloak(
@@ -216,6 +208,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
             resource.WithEnvironment("Infisical__ProjectId", string.Empty);
             resource.WithEnvironment("Infisical__ClientId", string.Empty);
             resource.WithEnvironment("Infisical__ClientSecret", string.Empty);
+            resource.WithEnvironment("Keycloak__Audience", "islamu-event-api");
             resource.WithEnvironment("Keycloak__ValidAudiences__0", "islamu-event-api");
             resource.WithEnvironment("Keycloak__ValidAudiences__1", "islamu-event-blazor");
             resource.WithEnvironment("KeycloakBootstrap__AllowLocalUrls", "true");
@@ -226,11 +219,9 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     {
         var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
         var blazor = builder.CreateResourceBuilder<ProjectResource>("explore-blazor");
-        var controlPlane = builder.CreateResourceBuilder<ProjectResource>("event-control-plane");
 
         api.WithEnvironment("SETUP_SECRET", SetupSecret);
         blazor.WithEnvironment("SETUP_SECRET", SetupSecret);
-        controlPlane.WithEnvironment("SETUP_SECRET", SetupSecret);
     }
 
     private static void ConfigureDatabase(
@@ -238,7 +229,6 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         string connectionString)
     {
         ConfigureProjectDatabase(builder, "explore-api", connectionString);
-        ConfigureProjectDatabase(builder, "explore-blazor", connectionString);
     }
 
     private static void ConfigureProjectDatabase(
@@ -292,8 +282,8 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
         api.WithEnvironment("Webhooks__Provider", "Composite");
         api.WithEnvironment("Webhooks__Svix__BaseUrl", svix.GetEndpoint("http"));
-        api.WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken);
-        api.WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", SecretDefinitionRegistry.Keys.Webhooks.SvixOperationalWebhookSecret);
+        api.WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", SvixAuthTokenSecretRef);
+        api.WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", SvixOperationalWebhookSecretRef);
         api.WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", LocalSvixAuthToken);
         api.WithEnvironment("WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET", LocalSvixOperationalWebhookSecret);
         api.WaitFor(svix);
@@ -324,120 +314,85 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     {
         var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
         var blazor = builder.CreateResourceBuilder<ProjectResource>("explore-blazor");
-        var controlPlane = builder.CreateResourceBuilder<ProjectResource>("event-control-plane");
         var apiEndpoint = api.GetEndpoint("http");
 
         blazor.WithEnvironment("API_ENDPOINT", apiEndpoint);
         blazor.WithEnvironment("ExploreApi__BaseUrl", apiEndpoint);
-        controlPlane.WithEnvironment("API_ENDPOINT", apiEndpoint);
-        controlPlane.WithEnvironment("ExploreApi__BaseUrl", apiEndpoint);
     }
 
-    private async Task PreconfigureTenantRoutingAsync()
+    private async Task BootstrapInstanceAsync()
     {
-        await using var context = _database.CreateDbContext();
-
-        UpsertSystemSetting(
-            context,
-            GovernanceSettingKeys.Deployment.Mode,
-            $"\"{DeploymentMode.MultiTenant}\"",
-            SettingValueType.String,
-            "System");
-
-        UpsertSystemSetting(
-            context,
-            GovernanceSettingKeys.Routing.ResolverPathEnabled,
-            "true",
-            SettingValueType.Boolean,
-            "Routing");
-
-        UpsertSystemSetting(
-            context,
-            GovernanceSettingKeys.Routing.PathPrefix,
-            "\"/t\"",
-            SettingValueType.String,
-            "Routing");
-
-        await context.SaveChangesAsync();
-    }
-
-    private async Task PreconfigureMailpitSmtpAsync()
-    {
-        await using var context = _database.CreateDbContext();
-
-        UpsertSystemSetting(
-            context,
-            GovernanceSettingKeys.Email.SmtpHost,
-            $"\"{_mailpit.SmtpHost}\"",
-            SettingValueType.String,
-            "Email");
-
-        UpsertSystemSetting(
-            context,
-            GovernanceSettingKeys.Email.SmtpPort,
-            _mailpit.SmtpPort.ToString(CultureInfo.InvariantCulture),
-            SettingValueType.Integer,
-            "Email");
-
-        UpsertSystemSetting(
-            context,
-            GovernanceSettingKeys.Email.SmtpSecurity,
-            "\"None\"",
-            SettingValueType.String,
-            "Email");
-
-        UpsertSystemSetting(
-            context,
-            GovernanceSettingKeys.Email.FromAddress,
-            "\"noreply@registration-e2e.test\"",
-            SettingValueType.String,
-            "Email");
-
-        UpsertSystemSetting(
-            context,
-            GovernanceSettingKeys.Email.FromName,
-            "\"ISLAMU Event E2E\"",
-            SettingValueType.String,
-            "Email");
-
-        UpsertSystemSetting(
-            context,
-            GovernanceSettingKeys.Email.SmtpTimeoutSeconds,
-            "10",
-            SettingValueType.Integer,
-            "Email");
-
-        await context.SaveChangesAsync();
-    }
-
-    private static void UpsertSystemSetting(
-        ExploreDbContext context,
-        string settingKey,
-        string value,
-        SettingValueType valueType,
-        string category)
-    {
-        var setting = context.SystemSettings.Local.FirstOrDefault(x => x.SettingKey == settingKey)
-            ?? context.SystemSettings.FirstOrDefault(x => x.SettingKey == settingKey);
-
-        if (setting is null)
+        var tokens = await GetTestAdminTokensAsync();
+        var api = CreateApiClient(tokens.AccessToken, includeSetupSecret: true);
+        var onboarding = await api.CompleteInstanceOnboardingAsync(new CompleteInstanceOnboardingRequest
         {
-            context.SystemSettings.Add(new SystemSetting
-            {
-                Id = Guid.NewGuid(),
-                SettingKey = settingKey,
-                Value = value,
-                ValueType = valueType,
-                Category = category,
-                CreatedAt = DateTime.UtcNow
-            });
+            DeploymentMode = DeploymentMode.SingleTenant,
+            InstanceName = "ISLAMU Event E2E"
+        });
+        EnsureSuccess(onboarding, "completing E2E instance onboarding");
 
-            return;
+        var sync = await api.SyncUserAsync();
+        EnsureSuccess(sync, "syncing the E2E instance administrator");
+
+        var smtp = await api.UpdateInstanceSmtpSettingsAsync(new InstanceSmtpSettingsDto
+        {
+            Host = _mailpit.SmtpHost,
+            Port = _mailpit.SmtpPort,
+            Security = "None",
+            FromAddress = "noreply@registration-e2e.test",
+            FromName = "ISLAMU Event E2E",
+            TimeoutSeconds = 10
+        });
+        EnsureSuccess(smtp, "configuring E2E SMTP");
+    }
+
+    private static Type LoadAppHostEntryPoint()
+    {
+        var repositoryRoot = FindRepositoryRoot(AppContext.BaseDirectory);
+        var configuration = IsDebugBuild() ? "Debug" : "Release";
+        var assemblyPath = Path.Combine(
+            repositoryRoot,
+            "Explore.AppHost",
+            "bin",
+            configuration,
+            "net10.0",
+            "Explore.AppHost.dll");
+        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+        return assembly.EntryPoint?.DeclaringType
+            ?? throw new InvalidOperationException($"AppHost entry point was not found in '{assemblyPath}'.");
+    }
+
+    private static string FindRepositoryRoot(string startPath)
+    {
+        var current = new DirectoryInfo(startPath);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "Event.slnx")) ||
+                Directory.Exists(Path.Combine(current.FullName, ".git")))
+            {
+                return current.FullName;
+            }
+
+            current = current.Parent;
         }
 
-        setting.Value = value;
-        setting.ValueType = valueType;
-        setting.Category ??= category;
-        setting.UpdatedAt = DateTime.UtcNow;
+        throw new DirectoryNotFoundException("Could not locate the repository root for the E2E AppHost.");
+    }
+
+    private static bool IsDebugBuild()
+    {
+#if DEBUG
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    private static void EnsureSuccess(BaseCommandResponseOfGuid response, string operation)
+    {
+        if (response.Success != true)
+        {
+            throw new InvalidOperationException($"API failed while {operation}: {response.Message}");
+        }
     }
 }

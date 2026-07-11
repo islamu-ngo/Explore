@@ -75,7 +75,7 @@ public class KeycloakRealmDoctorSourceTests
         await Assert.That(source).Contains("Keycloak client-secret rotation");
         await Assert.That(source).Contains("Rotate Client Secret");
         await Assert.That(source).Contains("OnboardingService.RotateKeycloakClientSecretAsync");
-        await Assert.That(source).Contains("SecretOwnershipMode = Model.KeycloakClientSecretOwnership.Mode");
+        await Assert.That(source).Contains("SecretOwnershipMode = Model.KeycloakClientSecretOwnership?.Mode");
     }
 
     [Test]

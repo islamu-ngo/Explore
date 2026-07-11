@@ -25,7 +25,7 @@ public class InstanceSectionLockToggleTests : IDisposable
             parameters.Add(component => component.Type, GetComponentType("InstanceStorageSection"))
                       .Add(component => component.Parameters, new Dictionary<string, object>
                       {
-                          ["Model"] = new InstanceStorageSettingsModel(),
+                          ["Model"] = new HalResourceOfInstanceStorageSettingsDto(),
                           ["IsSingleTenant"] = true,
                           ["LockForTenants"] = false
                       }));
@@ -40,7 +40,7 @@ public class InstanceSectionLockToggleTests : IDisposable
             parameters.Add(component => component.Type, GetComponentType("InstanceSmtpSection"))
                       .Add(component => component.Parameters, new Dictionary<string, object>
                       {
-                          ["Model"] = new InstanceSmtpSettingsModel(),
+                          ["Model"] = new InstanceSmtpSettingsDto(),
                           ["IsSingleTenant"] = true,
                           ["LockForTenants"] = false
                       }));
@@ -55,7 +55,7 @@ public class InstanceSectionLockToggleTests : IDisposable
             parameters.Add(component => component.Type, GetComponentType("InstanceAnalyticsPrivacySection"))
                       .Add(component => component.Parameters, new Dictionary<string, object>
                       {
-                          ["Model"] = new AnalyticsGovernanceSettingsModel(),
+                          ["Model"] = new AnalyticsGovernanceSettingsDto(),
                           ["IsSingleTenant"] = true,
                           ["LockForTenants"] = false
                       }));
@@ -70,7 +70,7 @@ public class InstanceSectionLockToggleTests : IDisposable
             parameters.Add(component => component.Type, GetComponentType("InstanceStorageSection"))
                       .Add(component => component.Parameters, new Dictionary<string, object>
                       {
-                          ["Model"] = new InstanceStorageSettingsModel(),
+                          ["Model"] = new HalResourceOfInstanceStorageSettingsDto(),
                           ["IsSingleTenant"] = false,
                           ["LockForTenants"] = false
                       }));
