@@ -10,6 +10,7 @@ using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
 using Explore.Application.Hateoas;
+using Explore.Domain.Settings;
 
 public sealed class ControlPlaneTenantEffectiveConfigurationLinkPolicy
     : ILinkPolicy<ControlPlaneTenantEffectiveConfigurationDto>
@@ -68,51 +69,6 @@ public sealed class ControlPlaneTenantEffectiveConfigurationLinkPolicy
             dto.TenantId,
             dto.PlanAssignment.Id);
 
-        foreach (var setting in dto.Settings)
-        {
-            if (setting.IsSensitive)
-            {
-                continue;
-            }
-
-            yield return UpdateLink(
-                "override",
-                RouteNames.SetControlPlaneTenantSetting,
-                new { tenantId = dto.TenantId, key = setting.Key },
-                "PUT",
-                $"Override setting '{setting.Key}'",
-                LockControlPlaneTenantSettingCommand.SettingKey,
-                dto.TenantId,
-                null,
-                setting.Key);
-
-            if (setting.IsLocked)
-            {
-                yield return UpdateLink(
-                    "unlock",
-                    RouteNames.UnlockControlPlaneTenantSetting,
-                    new { tenantId = dto.TenantId, key = setting.Key },
-                    "DELETE",
-                    $"Unlock setting '{setting.Key}'",
-                    UnlockControlPlaneTenantSettingCommand.SettingKey,
-                    dto.TenantId,
-                    null,
-                    setting.Key);
-            }
-            else
-            {
-                yield return UpdateLink(
-                    "lock",
-                    RouteNames.LockControlPlaneTenantSetting,
-                    new { tenantId = dto.TenantId, key = setting.Key },
-                    "POST",
-                    $"Lock setting '{setting.Key}'",
-                    LockControlPlaneTenantSettingCommand.SettingKey,
-                    dto.TenantId,
-                    null,
-                    setting.Key);
-            }
-        }
     }
 
     private static LinkDefinition ViewLink(
@@ -168,6 +124,85 @@ public sealed class ControlPlaneTenantEffectiveConfigurationLinkPolicy
 
         return attributes;
     }
+}
+
+internal static class ControlPlaneTenantEffectiveSettingLinks
+{
+    public static IEnumerable<LinkDefinition> GetLinks(
+        Guid tenantId,
+        ControlPlaneTenantEffectiveSettingDto setting)
+    {
+        SettingDefinition? definition = SettingRegistry.Get(setting.Key);
+        if (definition is null
+            || SettingScope.Tenant < definition.MinScope
+            || SettingScope.Tenant > definition.MaxScope
+            || definition.IsSensitive
+            || setting.IsSensitive
+            || string.Equals(setting.ValueSource, "SystemLocked", StringComparison.Ordinal)
+            || string.Equals(setting.LockSource, "SystemLocked", StringComparison.Ordinal))
+        {
+            yield break;
+        }
+
+        yield return UpdateLink(
+            "override",
+            RouteNames.SetControlPlaneTenantSetting,
+            "PUT",
+            $"Override setting '{setting.Key}'",
+            SetControlPlaneTenantSettingCommand.SettingKey,
+            tenantId,
+            setting.Key);
+
+        if (definition.IsLockable
+            && string.Equals(setting.ValueSource, "TenantLocked", StringComparison.Ordinal))
+        {
+            yield return UpdateLink(
+                "unlock",
+                RouteNames.UnlockControlPlaneTenantSetting,
+                "DELETE",
+                $"Unlock setting '{setting.Key}'",
+                UnlockControlPlaneTenantSettingCommand.SettingKey,
+                tenantId,
+                setting.Key);
+        }
+        else if (definition.IsLockable
+            && string.Equals(setting.ValueSource, "TenantOverride", StringComparison.Ordinal))
+        {
+            yield return UpdateLink(
+                "lock",
+                RouteNames.LockControlPlaneTenantSetting,
+                "POST",
+                $"Lock setting '{setting.Key}'",
+                LockControlPlaneTenantSettingCommand.SettingKey,
+                tenantId,
+                setting.Key);
+        }
+    }
+
+    private static LinkDefinition UpdateLink(
+        string relation,
+        string routeName,
+        string method,
+        string title,
+        string resourceId,
+        Guid tenantId,
+        string settingKey) =>
+        new LinkDefinition(
+            relation,
+            routeName,
+            new { tenantId, key = settingKey },
+            method,
+            title,
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.InstanceSettings.Update,
+                ResourceKinds.InstanceSetting,
+                resourceId,
+                new Dictionary<string, object>
+                {
+                    ["settingKey"] = resourceId,
+                    ["tenantId"] = tenantId.ToString(),
+                    ["targetKey"] = settingKey
+                });
 }
 
 public sealed class ControlPlaneTenantEffectiveConfigurationCollectionLinkPolicy

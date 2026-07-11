@@ -571,6 +571,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>> ActivateTenant(
         Guid tenantId,
         [FromBody] ControlPlaneTenantLifecycleTransitionRequestDto? dto,
@@ -587,6 +588,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>> SuspendTenant(
         Guid tenantId,
         [FromBody] ControlPlaneTenantLifecycleTransitionRequestDto? dto,
@@ -603,6 +605,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>> ArchiveTenant(
         Guid tenantId,
         [FromBody] ControlPlaneTenantLifecycleTransitionRequestDto? dto,
@@ -619,6 +622,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>> ReactivateTenant(
         Guid tenantId,
         [FromBody] ControlPlaneTenantLifecycleTransitionRequestDto? dto,
@@ -635,6 +639,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>> ScheduleTenantPurge(
         Guid tenantId,
         [FromBody] ControlPlaneTenantLifecycleTransitionRequestDto? dto,

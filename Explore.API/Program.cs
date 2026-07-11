@@ -257,6 +257,7 @@ builder.Services.AddOpenApi("event-api", options =>
     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.OperationIdInvariantTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.EndpointClassificationTransformer>();
+    options.AddOperationTransformer<Explore.API.OpenApi.StorageUploadRequestBodyTransformer>();
 });
 
 // Register PDS sync background worker for AT Protocol federation

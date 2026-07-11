@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Identity;
@@ -476,9 +477,9 @@ public class InstanceSettingsController : ExploreControllerBase
     [HttpPost("smtp/test", Name = RouteNames.TestInstanceSmtpConnection)]
     [EndpointSummary("Test SMTP Connection")]
     [EndpointDescription("Tests the SMTP connection using current settings.")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SmtpConnectionTestResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult> TestSmtpConnection(CancellationToken cancellationToken = default)
+    public async Task<ActionResult<SmtpConnectionTestResultDto>> TestSmtpConnection(CancellationToken cancellationToken = default)
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return this.ToForbiddenProblem(detail: "Instance administrator or active setup secret authority is required for this operation.");
 
@@ -489,17 +490,17 @@ public class InstanceSettingsController : ExploreControllerBase
             ? (string.IsNullOrWhiteSpace(result.Message) ? "Connection successful." : result.Message)
             : (string.IsNullOrWhiteSpace(result.ErrorMessage) ? "Connection failed. Please verify your SMTP settings." : result.ErrorMessage);
 
-        return Ok(new { success = result.Success, message });
+        return Ok(new SmtpConnectionTestResultDto(result.Success, message));
     }
 
     [HttpGet("resolver-config", Name = RouteNames.GetInstanceResolverConfiguration)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [EndpointSummary("Get Tenant Resolver Configuration")]
-    [EndpointDescription("Returns instance-level tenant resolver configuration.")]
+    [EndpointDescription("Returns the non-sensitive instance-level tenant resolver configuration used by API clients and the BFF routing bootstrap.")]
     [ProducesResponseType(typeof(ResolverConfigurationDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ResolverConfigurationDto>> GetResolverConfiguration(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return this.ToForbiddenProblem(detail: "Instance administrator or active setup secret authority is required for this operation.");
         var configuration = await _mediator.Send(new GetResolverConfigurationQuery(), cancellationToken);
         return Ok(configuration);
     }
@@ -681,12 +682,12 @@ public class InstanceSettingsController : ExploreControllerBase
     [AllowAnonymous]
     [EndpointSummary("Check Auth Provider Configuration Status")]
     [EndpointDescription("Returns whether any auth provider has been configured.")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    public async Task<ActionResult> IsAuthProviderConfigured(CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(ProviderConfigurationStatusDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ProviderConfigurationStatusDto>> IsAuthProviderConfigured(CancellationToken cancellationToken = default)
     {
         var service = HttpContext.RequestServices.GetRequiredService<IAuthProviderConfigurationService>();
         var isConfigured = await service.IsConfiguredAsync();
-        return Ok(new { configured = isConfigured });
+        return Ok(new ProviderConfigurationStatusDto(isConfigured));
     }
 
     [HttpGet("authz-provider", Name = RouteNames.GetInstanceAuthorizationProviderConfiguration)]
@@ -760,12 +761,12 @@ public class InstanceSettingsController : ExploreControllerBase
     [AllowAnonymous]
     [EndpointSummary("Check Authorization Provider Configuration Status")]
     [EndpointDescription("Returns whether an authorization provider has been configured.")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    public async Task<ActionResult> IsAuthorizationProviderConfigured(CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(ProviderConfigurationStatusDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ProviderConfigurationStatusDto>> IsAuthorizationProviderConfigured(CancellationToken cancellationToken = default)
     {
         var service = HttpContext.RequestServices.GetRequiredService<IAuthorizationProviderConfigurationService>();
         var isConfigured = await service.IsConfiguredAsync();
-        return Ok(new { configured = isConfigured });
+        return Ok(new ProviderConfigurationStatusDto(isConfigured));
     }
 
     private ActionResult AuthorizationPolicyPackageUnavailableProblem() =>

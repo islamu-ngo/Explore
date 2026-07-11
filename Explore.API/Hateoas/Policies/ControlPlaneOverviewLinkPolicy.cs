@@ -39,6 +39,13 @@ public sealed class ControlPlaneOverviewLinkPolicy : ILinkPolicy<ControlPlaneOve
             GetControlPlaneOperationsQuery.SettingKey);
 
         yield return InstanceSettingLink(
+            "plans",
+            RouteNames.GetControlPlaneTenantPlans,
+            "GET",
+            "Tenant plan catalog",
+            GetControlPlaneTenantPlanListQuery.SettingKey);
+
+        yield return InstanceSettingLink(
             "storage",
             RouteNames.GetInstanceStorageSettings,
             "GET",

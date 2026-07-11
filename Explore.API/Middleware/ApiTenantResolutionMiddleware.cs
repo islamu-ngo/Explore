@@ -167,7 +167,11 @@ public sealed class ApiTenantResolutionMiddleware
     private static bool IsTenantExemptPath(PathString path)
     {
         return path.StartsWithSegments("/api/InstanceOnboarding", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWithSegments("/api/System", StringComparison.OrdinalIgnoreCase);
+            || path.StartsWithSegments("/api/System", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                path.Value,
+                "/api/instance/settings/resolver-config",
+                StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsEnabledMcpPath(HttpContext context, McpAdapterSettings settings)

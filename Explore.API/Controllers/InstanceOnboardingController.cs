@@ -8,6 +8,7 @@ using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
@@ -157,10 +158,10 @@ public class InstanceOnboardingController : ExploreControllerBase
     [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointSummary("Validate Setup Secret")]
     [EndpointDescription("Validates the provided setup secret. Returns whether the secret is correct. Rate limited to 5 attempts per minute.")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SetupSecretValidationResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public ActionResult ValidateSecret([FromBody] ValidateSetupSecretRequest request)
+    public ActionResult<SetupSecretValidationResultDto> ValidateSecret([FromBody] ValidateSetupSecretRequest request)
     {
         if (!_setupSecretProvider.IsSetupModeActive)
         {
@@ -182,7 +183,7 @@ public class InstanceOnboardingController : ExploreControllerBase
             isValid ? "accepted" : "rejected",
             isValid ? null : "invalid_setup_secret");
 
-        return Ok(new { valid = isValid });
+        return Ok(new SetupSecretValidationResultDto(isValid));
     }
 
     [AllowAnonymous]

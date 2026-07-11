@@ -270,7 +270,12 @@ public class StorageObjectController : ControllerBase
         {
             UploadSessionId = uploadSessionId,
             Content = Request.Body,
-            ContentType = Request.ContentType,
+            ContentType = string.Equals(
+                Request.ContentType,
+                "application/octet-stream",
+                StringComparison.OrdinalIgnoreCase)
+                ? null
+                : Request.ContentType,
             ContentLength = Request.ContentLength,
             TenantId = _tenantContext.TenantId
         };

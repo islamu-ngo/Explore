@@ -36,39 +36,25 @@ public sealed class ControlPlaneTenantDetailLinkPolicy : ILinkPolicy<ControlPlan
             null,
             "Control-plane overview");
 
-        foreach (var link in LifecycleLinks(dto.Id, dto.StatusId))
+        yield return new LinkDefinition(
+            "configuration",
+            RouteNames.GetControlPlaneTenantEffectiveConfiguration,
+            new { tenantId = dto.Id },
+            "GET",
+            "Tenant effective configuration",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.InstanceSettings.View,
+                ResourceKinds.InstanceSetting,
+                GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey,
+                new Dictionary<string, object>
+                {
+                    ["settingKey"] = GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey,
+                    ["tenantId"] = dto.Id.ToString()
+                });
+
+        foreach (var link in ControlPlaneTenantLifecycleLinks.GetLinks(dto.Id, dto.StatusId))
         {
             yield return link;
-        }
-    }
-
-    private static IEnumerable<LinkDefinition> LifecycleLinks(Guid tenantId, int statusId)
-    {
-        var status = (TenantStatusEnum)statusId;
-
-        if (status is TenantStatusEnum.Provisioning)
-        {
-            yield return UpdateLink("activate", RouteNames.ActivateControlPlaneTenant, tenantId, "Activate tenant");
-        }
-
-        if (status is TenantStatusEnum.Active or TenantStatusEnum.Provisioning)
-        {
-            yield return UpdateLink("suspend", RouteNames.SuspendControlPlaneTenant, tenantId, "Suspend tenant");
-        }
-
-        if (status is TenantStatusEnum.Active or TenantStatusEnum.Provisioning or TenantStatusEnum.Suspended)
-        {
-            yield return UpdateLink(LinkRelations.Archive, RouteNames.ArchiveControlPlaneTenant, tenantId, "Archive tenant");
-        }
-
-        if (status is TenantStatusEnum.Suspended or TenantStatusEnum.Archived)
-        {
-            yield return UpdateLink("reactivate", RouteNames.ReactivateControlPlaneTenant, tenantId, "Reactivate tenant");
-        }
-
-        if (status is TenantStatusEnum.Archived)
-        {
-            yield return UpdateLink("schedule-purge", RouteNames.ScheduleControlPlaneTenantPurge, tenantId, "Schedule tenant purge");
         }
     }
 
@@ -78,13 +64,6 @@ public sealed class ControlPlaneTenantDetailLinkPolicy : ILinkPolicy<ControlPlan
                 ResourceKinds.InstanceSetting,
                 GetControlPlaneTenantListQuery.SettingKey,
                 InstanceSettingAttributes(GetControlPlaneTenantListQuery.SettingKey));
-
-    private static LinkDefinition UpdateLink(string rel, string routeName, Guid tenantId, string title) =>
-        new LinkDefinition(rel, routeName, new { tenantId }, "POST", title, RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.InstanceSettings.Update,
-                ResourceKinds.InstanceSetting,
-                TransitionControlPlaneTenantLifecycleCommand.SettingKey,
-                InstanceSettingAttributes(TransitionControlPlaneTenantLifecycleCommand.SettingKey, tenantId));
 
     private static IReadOnlyDictionary<string, object> InstanceSettingAttributes(string settingKey, Guid? tenantId = null)
     {
@@ -123,6 +102,27 @@ public sealed class ControlPlaneTenantCollectionLinkPolicy : ICollectionLinkPoli
                     ["settingKey"] = GetControlPlaneTenantListQuery.SettingKey,
                     ["targetTenantId"] = dto.Id.ToString()
                 });
+
+        yield return new LinkDefinition(
+            "configuration",
+            RouteNames.GetControlPlaneTenantEffectiveConfiguration,
+            new { tenantId = dto.Id },
+            "GET",
+            "Tenant effective configuration",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.InstanceSettings.View,
+                ResourceKinds.InstanceSetting,
+                GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey,
+                new Dictionary<string, object>
+                {
+                    ["settingKey"] = GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey,
+                    ["tenantId"] = dto.Id.ToString()
+                });
+
+        foreach (var link in ControlPlaneTenantLifecycleLinks.GetLinks(dto.Id, dto.StatusId))
+        {
+            yield return link;
+        }
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
@@ -138,4 +138,54 @@ public sealed class ControlPlaneTenantCollectionLinkPolicy : ICollectionLinkPoli
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Create, ResourceKinds.Tenant);
     }
+}
+
+internal static class ControlPlaneTenantLifecycleLinks
+{
+    public static IEnumerable<LinkDefinition> GetLinks(Guid tenantId, int statusId)
+    {
+        var status = (TenantStatusEnum)statusId;
+
+        if (status is TenantStatusEnum.Provisioning)
+        {
+            yield return UpdateLink("activate", RouteNames.ActivateControlPlaneTenant, tenantId, TenantStatusEnum.Active, "Activate tenant");
+        }
+
+        if (status is TenantStatusEnum.Active or TenantStatusEnum.Provisioning)
+        {
+            yield return UpdateLink("suspend", RouteNames.SuspendControlPlaneTenant, tenantId, TenantStatusEnum.Suspended, "Suspend tenant");
+        }
+
+        if (status is TenantStatusEnum.Active or TenantStatusEnum.Provisioning or TenantStatusEnum.Suspended)
+        {
+            yield return UpdateLink(LinkRelations.Archive, RouteNames.ArchiveControlPlaneTenant, tenantId, TenantStatusEnum.Archived, "Archive tenant");
+        }
+
+        if (status is TenantStatusEnum.Suspended or TenantStatusEnum.Archived)
+        {
+            yield return UpdateLink("reactivate", RouteNames.ReactivateControlPlaneTenant, tenantId, TenantStatusEnum.Active, "Reactivate tenant");
+        }
+
+        if (status is TenantStatusEnum.Archived)
+        {
+            yield return UpdateLink("schedule-purge", RouteNames.ScheduleControlPlaneTenantPurge, tenantId, TenantStatusEnum.Purged, "Schedule tenant purge");
+        }
+    }
+
+    private static LinkDefinition UpdateLink(
+        string rel,
+        string routeName,
+        Guid tenantId,
+        TenantStatusEnum targetStatus,
+        string title) =>
+        new LinkDefinition(rel, routeName, new { tenantId }, "POST", title, RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.InstanceSettings.Update,
+                ResourceKinds.InstanceSetting,
+                TransitionControlPlaneTenantLifecycleCommand.SettingKey,
+                new Dictionary<string, object>
+                {
+                    ["settingKey"] = TransitionControlPlaneTenantLifecycleCommand.SettingKey,
+                    ["targetTenantId"] = tenantId.ToString(),
+                    ["targetStatus"] = targetStatus.ToString()
+                });
 }
