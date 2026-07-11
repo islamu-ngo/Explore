@@ -108,23 +108,23 @@ jobs:
 
       - name: Generate OpenAPI Document
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal
+        run: dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal
 
       - name: Build API Contract Tests
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
+        run: dotnet build tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
 
       - name: Run Stable OpenAPI Invariants
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet run --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/OpenApiDocument_*" --minimum-expected-tests 5 --no-progress --report-trx --report-trx-filename openapi-invariants.trx
+        run: dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/OpenApiDocument_*" --minimum-expected-tests 5 --no-progress --report-trx --report-trx-filename openapi-invariants.trx
 
       - name: Regenerate API Contract Inventory
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet run --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename api-contract-inventory.trx
+        run: dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename api-contract-inventory.trx
 
       - name: Regenerate Blazor API Client
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
+        run: dotnet build src/Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
 
       - name: Check Generated Contract Drift
         if: steps.changes.outputs.relevant == 'true'
@@ -133,17 +133,17 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/openapi-contract
 
-          git diff -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/generated-contract.diff
+          git diff -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md src/Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/generated-contract.diff
           cp schemas/openapi.json artifacts/openapi-contract/openapi.json
           cp docs/API_CONTRACT_INVENTORY.md artifacts/openapi-contract/API_CONTRACT_INVENTORY.md
-          cp Explore.Blazor.Client/Clients/EventApiClient.g.cs artifacts/openapi-contract/EventApiClient.g.cs
+          cp src/Explore.Blazor.Client/Clients/EventApiClient.g.cs artifacts/openapi-contract/EventApiClient.g.cs
 
           if [ -e schemas/openapi_event-api.json ]; then
             echo "Unexpected generated OpenAPI suffix artifact exists: schemas/openapi_event-api.json" >&2
             exit 1
           fi
 
-          if git diff --quiet -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
+          if git diff --quiet -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md src/Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
             {
               echo "## OpenAPI Contract Drift"
               echo
@@ -157,7 +157,7 @@ jobs:
               echo
               echo "- \`schemas/openapi.json\`"
               echo "- \`docs/API_CONTRACT_INVENTORY.md\`"
-              echo "- \`Explore.Blazor.Client/Clients/EventApiClient.g.cs\`"
+              echo "- \`src/Explore.Blazor.Client/Clients/EventApiClient.g.cs\`"
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
@@ -302,29 +302,29 @@ jobs:
 
       - name: Verify OpenAPI Determinism
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity quiet
+        run: dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity quiet
 
       - name: Verify API Contract Inventory Determinism
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet run --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename api-contract-inventory-determinism.trx
+        run: dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename api-contract-inventory-determinism.trx
 
       - name: Verify Client Determinism
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
+        run: dotnet build src/Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
 
       - name: Check Deterministic Second Run
         if: steps.changes.outputs.relevant == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          git diff -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/determinism.diff
+          git diff -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md src/Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/determinism.diff
 
           if [ -e schemas/openapi_event-api.json ]; then
             echo "Unexpected generated OpenAPI suffix artifact exists after deterministic rebuild: schemas/openapi_event-api.json" >&2
             exit 1
           fi
 
-          if git diff --quiet -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
+          if git diff --quiet -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md src/Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
             {
               echo "## OpenAPI Determinism"
               echo

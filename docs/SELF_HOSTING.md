@@ -94,13 +94,7 @@ Email dispatch modes:
    docker compose --profile osprey up -d
    ```
 
-8. Add the optional separate control-plane BFF only for multi-tenant operator deployments that want a distinct process/host:
-
-   ```bash
-   docker compose --profile control-plane up -d islamu-event-control-plane
-   ```
-
-9. Open Blazor at `http://localhost:7002`, the optional control plane at `http://localhost:7003`, and API at `http://localhost:7039`.
+8. Open Blazor at `http://localhost:7002` and API at `http://localhost:7039`.
 
 ## Required Environment Keys
 
@@ -129,8 +123,6 @@ Compose derives the local `postgres` container bootstrap values from `POSTGRESQL
 | `KEYCLOAK_ENDPOINT` | Base Keycloak endpoint used to derive API/Blazor authority values. |
 | `KEYCLOAK_REALM` | Realm name. |
 | `KEYCLOAK_BLAZOR_CLIENT_SECRET` | Required Blazor confidential client secret. `keycloak-init` writes this into the `islamu-event-blazor` Keycloak client after realm import. |
-| `KEYCLOAK_CONTROL_PLANE_CLIENT_ID` | Optional separate control-plane confidential client id. Default: `islamu-event-control-plane`. |
-| `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` | Required only when the optional control-plane profile is enabled. `keycloak-init` writes this into the `islamu-event-control-plane` Keycloak client after realm import. |
 | `KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future API resource-server client secret. Current bearer-token validation does not require it, and the checked-in realm export does not include a static API client secret. Set it only if a deployment intentionally makes the API client confidential. |
 | `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET` | Optional local-development escape hatch. Set to `true` only for throwaway local stacks that intentionally use the static realm-export default secret. |
 
@@ -198,11 +190,8 @@ Enable destructive cleanup only after reviewing dry-run output, confirming backu
 | `SETUP_SECRET_REQUIRED` | API | Optional. Defaults to `true`; `false` only takes effect with trusted managed-provider provisioning keys and never makes setup endpoints anonymous. |
 | `USE_COMMERCIAL_LUCKYPENNY`, `LUCKYPENNY_LICENSE_KEY`, `AUTOMAPPER_COMMERCIAL_VERSION`, `MEDIATR_COMMERCIAL_VERSION` | API | Optional commercial package/license controls. Keep disabled unless intentionally using commercial AutoMapper/MediatR builds. |
 | `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
-| `CONTROL_PLANE_API_ENDPOINT` | Control Plane BFF | API base URL fallback for the optional separate control-plane BFF outside Aspire. Defaults to `http://islamu-event-api:8080/` in Compose. |
 
 `docker-compose.yml` sets Blazor `API_ENDPOINT` with a default of `http://islamu-event-api:8080/`, matching the Compose API service name. Operators only need to override `API_ENDPOINT` when routing the BFF to a different API host.
-
-`docker-compose.yml` sets the separate control-plane BFF `CONTROL_PLANE_API_ENDPOINT` and `ExploreApi__BaseUrl` with the same internal API default. Operators only need to override this when the control-plane BFF talks to a different API host.
 
 ### Multi-Tenant Hostnames And Reverse Proxy
 
@@ -291,7 +280,9 @@ Managed hosting operators that provision through the authorized managed-provider
 
 ## Keycloak Realm
 
-The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak, then runs the one-shot `keycloak-init` service. Aspire `local-full` imports the same checked-in realm export. The init job authenticates with the Compose Keycloak admin account, locates clients by `clientId`, and synchronizes the confidential public Blazor BFF client secret from `KEYCLOAK_BLAZOR_CLIENT_SECRET`. When the optional control-plane profile is used, it also synchronizes the dedicated `islamu-event-control-plane` confidential client from `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET`. Operators should set BFF client secrets once in environment variables or the configured secret provider; they should not manually edit the Keycloak UI to match the BFF secret. The API client is a bearer-only audience target in the checked-in realm export and has no static client secret by default.
+The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak, then runs the one-shot `keycloak-init` service. Aspire `local-full` imports the same checked-in realm export. The init job authenticates with the Compose Keycloak admin account, locates clients by `clientId`, and synchronizes the confidential public Blazor BFF client secret from `KEYCLOAK_BLAZOR_CLIENT_SECRET`. Operators should set the BFF client secret once in environment variables or the configured secret provider; they should not manually edit the Keycloak UI to match it. The API client is a bearer-only audience target in the checked-in realm export and has no static client secret by default.
+
+The core realm export intentionally contains only `islamu-event-blazor` and `islamu-event-api`. The optional commercial Event Control Plane is deployed from its private repository and applies its own additive realm extension; do not add its clients, scopes, roles, or secrets to this export.
 
 Keycloak startup import is not a migration system. When a realm with the same name already exists in the persistent Keycloak database, startup import is skipped to avoid overwriting existing data. For disposable local stacks, remove the Keycloak database volume before expecting changes in `docker/keycloak/realm-export.json` to reapply.
 
@@ -299,11 +290,10 @@ For production, verify:
 
 - realm name matches `KEYCLOAK_REALM`;
 - Blazor client ID matches the configured client (`islamu-event-blazor` in Compose);
-- control-plane client ID matches the configured client (`islamu-event-control-plane` in Compose) when the optional control-plane profile is enabled;
 - redirect URIs and web origins match the public reverse-proxy host;
 - API audience and metadata address match the Keycloak endpoint exposed to the API.
 
-`KEYCLOAK_BLAZOR_CLIENT_SECRET` is fail-closed for Compose startup: `keycloak-init` exits non-zero when it is missing. `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` is optional until the separate control-plane profile is enabled; the control-plane BFF itself fails closed at startup when neither environment nor Infisical supplies a client secret. To use the repository's static local defaults in disposable development, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true`. Do not enable that flag in production or shared environments. Rerun `docker compose run --rm keycloak-init` after rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET` or `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET`. If a deployment intentionally sets `KEYCLOAK_API_CLIENT_SECRET` for a non-bearer-only API client, rerun the init job after rotating that value too.
+`KEYCLOAK_BLAZOR_CLIENT_SECRET` is fail-closed for Compose startup: `keycloak-init` exits non-zero when it is missing. To use the repository's static local default in disposable development, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true`. Do not enable that flag in production or shared environments. Rerun `docker compose run --rm keycloak-init` after rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET`. If a deployment intentionally sets `KEYCLOAK_API_CLIENT_SECRET` for a non-bearer-only API client, rerun the init job after rotating that value too.
 
 ### External Keycloak Bootstrap
 

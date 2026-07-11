@@ -293,7 +293,7 @@ services:
   islamu-event-api:
     build:
       context: .
-      dockerfile: Explore.API/Dockerfile
+      dockerfile: src/Explore.API/Dockerfile
     environment:
       <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *postgres-bootstrap-env, *api-runtime-env, *ai-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
       ASPNETCORE_URLS: http://+:8080
@@ -347,7 +347,7 @@ services:
   islamu-event-ui:
     build:
       context: .
-      dockerfile: Explore.Blazor/Dockerfile
+      dockerfile: src/Explore.Blazor/Dockerfile
     environment:
       <<: [*keycloak-env, *secrets-env, *postgres-bootstrap-env]
       ASPNETCORE_URLS: http://+:8080
@@ -627,7 +627,7 @@ services:
     profiles: ["moderation"]
     restart: unless-stopped
     volumes:
-      - ./Explore.AppHost/Config/coop/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./src/Explore.AppHost/Config/coop/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "${COOP_CLIENT_HTTP_PORT:-3001}:80"
     depends_on:

@@ -84,7 +84,7 @@ jobs:
           while IFS= read -r changed_file; do
             [[ -z "$changed_file" ]] && continue
             case "$changed_file" in
-              cerbos/*|Explore.Application/Authorization/*|Explore.Infrastructure/Services/CerbosAuthorizationService.cs|Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs|Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs|Explore.Infrastructure/Services/LocalAuthorizationProvider.cs|.github/workflows/cerbos-policy-check.yml)
+              cerbos/*|src/Explore.Application/Authorization/*|src/Explore.Infrastructure/Services/CerbosAuthorizationService.cs|src/Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs|src/Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs|src/Explore.Infrastructure/Services/LocalAuthorizationProvider.cs|.github/workflows/cerbos-policy-check.yml)
                 relevant_files="${relevant_files}${changed_file}"$'\n'
                 ;;
             esac

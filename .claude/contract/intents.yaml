@@ -19,8 +19,8 @@ intents:
     load_rules:
       - .claude/rules/api-controllers.md
     paths_in_scope:
-      - "Explore.API/Controllers/**/*.cs"
-      - "Explore.Application/Features/**/Queries/**/*.cs"
+      - "src/Explore.API/Controllers/**/*.cs"
+      - "src/Explore.Application/Features/**/Queries/**/*.cs"
     minimum_tests:
       - Event.API.IntegrationTests
       - Event.Architecture.Tests
@@ -54,8 +54,8 @@ intents:
     load_rules:
       - .claude/rules/api-controllers.md
     paths_in_scope:
-      - "Explore.API/Controllers/**/*.cs"
-      - "Explore.Application/Features/**/Commands/**/*.cs"
+      - "src/Explore.API/Controllers/**/*.cs"
+      - "src/Explore.Application/Features/**/Commands/**/*.cs"
     minimum_tests:
       - Event.API.IntegrationTests
       - Event.Architecture.Tests
@@ -87,8 +87,8 @@ intents:
     load_rules:
       - .claude/rules/api-hateoas.md
     paths_in_scope:
-      - "Explore.API/Hateoas/**/*.cs"
-      - "Explore.Blazor.Client/**/*.razor"
+      - "src/Explore.API/Hateoas/**/*.cs"
+      - "src/Explore.Blazor.Client/**/*.razor"
     minimum_tests:
       - Event.API.IntegrationTests
       - Explore.Blazor.Client.Tests
@@ -116,7 +116,7 @@ intents:
     load_rules:
       - .claude/rules/application-layer.md
     paths_in_scope:
-      - "Explore.Application/Features/**/*.cs"
+      - "src/Explore.Application/Features/**/*.cs"
     minimum_tests:
       - Event.Application.UnitTests
       - Event.Architecture.Tests
@@ -143,8 +143,8 @@ intents:
     load_rules:
       - .claude/rules/efcore-migrations.md
     paths_in_scope:
-      - "Explore.Persistence/Migrations/**/*.cs"
-      - "Explore.Domain/**/*.cs"
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Domain/**/*.cs"
     minimum_tests:
       - Event.Persistence.IntegrationTests
       - Event.Architecture.Tests
@@ -172,7 +172,7 @@ intents:
     load_rules:
       - .claude/rules/efcore-persistence.md
     paths_in_scope:
-      - "Explore.Persistence/Repositories/**/*.cs"
+      - "src/Explore.Persistence/Repositories/**/*.cs"
     minimum_tests:
       - Event.Persistence.IntegrationTests
       - Event.Architecture.Tests
@@ -200,7 +200,7 @@ intents:
     load_rules:
       - .claude/rules/blazor-client.md
     paths_in_scope:
-      - "Explore.Blazor.Client/**/*.razor"
+      - "src/Explore.Blazor.Client/**/*.razor"
     minimum_tests:
       - Explore.Blazor.Client.Tests
     docs_to_update: []
@@ -226,7 +226,7 @@ intents:
     load_rules:
       - .claude/rules/blazor-server.md
     paths_in_scope:
-      - "Explore.Blazor/**/*.cs"
+      - "src/Explore.Blazor/**/*.cs"
     minimum_tests:
       - Explore.Blazor.IntegrationTests
     docs_to_update: []
@@ -279,7 +279,7 @@ intents:
     load_rules:
       - .claude/rules/api-controllers.md
     paths_in_scope:
-      - "Explore.API/Controllers/**/*.cs"
+      - "src/Explore.API/Controllers/**/*.cs"
       - "docs/API_CHANGELOG.md"
     minimum_tests:
       - Event.API.IntegrationTests
@@ -313,8 +313,8 @@ intents:
     load_rules: []
     paths_in_scope:
       - ".github/**"
-      - "Explore.API/Dockerfile"
-      - "Explore.Blazor/Dockerfile"
+      - "src/Explore.API/Dockerfile"
+      - "src/Explore.Blazor/Dockerfile"
       - "Directory.Packages.props"
       - "global.json"
       - "docs/CI_CD_GOVERNANCE.md"
@@ -370,17 +370,17 @@ intents:
     paths_in_scope:
       - "docker-compose.yml"
       - "docker/**"
-      - "Explore.Application/Contracts/Services/**/*.cs"
-      - "Explore.Application/DTOs/Onboarding/**/*.cs"
-      - "Explore.Application/Features/InstanceOnboarding/**/*.cs"
-      - "Explore.Infrastructure/Services/**/*.cs"
-      - "Explore.Infrastructure/InfrastructureServicesRegistration.cs"
-      - "Explore.API/Controllers/**/*Settings*.cs"
-      - "Explore.API/Controllers/**/*Onboarding*.cs"
-      - "Explore.API/Hateoas/RouteNames.cs"
-      - "Explore.Blazor/**/*.cs"
-      - "Explore.Blazor.Client/**/*.razor"
-      - "Explore.Blazor.Client/Services/**/*.cs"
+      - "src/Explore.Application/Contracts/Services/**/*.cs"
+      - "src/Explore.Application/DTOs/Onboarding/**/*.cs"
+      - "src/Explore.Application/Features/InstanceOnboarding/**/*.cs"
+      - "src/Explore.Infrastructure/Services/**/*.cs"
+      - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "src/Explore.API/Controllers/**/*Settings*.cs"
+      - "src/Explore.API/Controllers/**/*Onboarding*.cs"
+      - "src/Explore.API/Hateoas/RouteNames.cs"
+      - "src/Explore.Blazor/**/*.cs"
+      - "src/Explore.Blazor.Client/**/*.razor"
+      - "src/Explore.Blazor.Client/Services/**/*.cs"
       - "Event.*Tests/**/*.cs"
       - "Explore.*Tests/**/*.cs"
       - "docs/CONFIGURATION.md"
@@ -441,7 +441,7 @@ intents:
     paths_in_scope:
       - ".agents/skills/"
       - ".claude/contract/"
-      - "Event.Architecture.Tests/"
+      - "tests/Event.Architecture.Tests/"
       - "dev/active/"
     minimum_tests:
       - Event.Architecture.Tests
@@ -490,23 +490,23 @@ intents:
       - .claude/rules/efcore-persistence.md
       - .claude/rules/tests.md
     paths_in_scope:
-      - Explore.Domain/Enums/Ai*.cs
-      - Explore.Domain/AiConsentGrant.cs
-      - Explore.Application/Features/AiAssistant/Disclosure/**
-      - Explore.Application/Features/AiAssistant/Requests/Commands/Grant*Consent*.cs
-      - Explore.Application/Features/AiAssistant/Requests/Commands/Revoke*Consent*.cs
-      - Explore.Application/Features/AiAssistant/Handlers/Commands/Grant*Consent*.cs
-      - Explore.Application/Features/AiAssistant/Handlers/Commands/Revoke*Consent*.cs
-      - Explore.Application/Contracts/Persistence/IAiConsentGrantRepository.cs
-      - Explore.Persistence/Repositories/AiConsentGrantRepository.cs
-      - Explore.Persistence/EntityTypeConfigurations/AiConsentGrantConfiguration.cs
-      - Explore.Application/Features/AiAssistant/Handlers/Commands/ProcessAiRunCommandHandler.cs
-      - Explore.Application/Settings/Groups/AiAssistantSettingGroup.cs
-      - Explore.Domain/Constants/GovernanceSettingKeys.cs
-      - Explore.API/Mcp/AiAssistantMcp*.cs
-      - Explore.API/Mcp/McpAdapterTelemetry.cs
-      - Event.Architecture.Tests/AiContextDisclosureSchemaTests.cs
-      - Event.Architecture.Tests/AiContextGatewayBypassTests.cs
+      - src/Explore.Domain/Enums/Ai*.cs
+      - src/Explore.Domain/AiConsentGrant.cs
+      - src/Explore.Application/Features/AiAssistant/Disclosure/**
+      - src/Explore.Application/Features/AiAssistant/Requests/Commands/Grant*Consent*.cs
+      - src/Explore.Application/Features/AiAssistant/Requests/Commands/Revoke*Consent*.cs
+      - src/Explore.Application/Features/AiAssistant/Handlers/Commands/Grant*Consent*.cs
+      - src/Explore.Application/Features/AiAssistant/Handlers/Commands/Revoke*Consent*.cs
+      - src/Explore.Application/Contracts/Persistence/IAiConsentGrantRepository.cs
+      - src/Explore.Persistence/Repositories/AiConsentGrantRepository.cs
+      - src/Explore.Persistence/EntityTypeConfigurations/AiConsentGrantConfiguration.cs
+      - src/Explore.Application/Features/AiAssistant/Handlers/Commands/ProcessAiRunCommandHandler.cs
+      - src/Explore.Application/Settings/Groups/AiAssistantSettingGroup.cs
+      - src/Explore.Domain/Constants/GovernanceSettingKeys.cs
+      - src/Explore.API/Mcp/AiAssistantMcp*.cs
+      - src/Explore.API/Mcp/McpAdapterTelemetry.cs
+      - tests/Event.Architecture.Tests/AiContextDisclosureSchemaTests.cs
+      - tests/Event.Architecture.Tests/AiContextGatewayBypassTests.cs
       - docs/AI_CONTEXT_SECURITY.md
       - docs/adr/ADR-012-ai-context-disclosure-policy.md
     minimum_tests:
@@ -518,7 +518,7 @@ intents:
     unique_acceptance:
       - "AiContextDisclosureRegistry.CreateDefault() covers every public persisted property on every *Pii entity (reflection test passes)"
       - "IAiContextGateway is the only path to disclose entity fields to the AI prompt (bypass test passes)"
-      - "No direct PII entity references in Features/AiAssistant/** or Explore.API/Mcp/** (architecture test passes)"
+      - "No direct PII entity references in Features/AiAssistant/** or src/Explore.API/Mcp/** (architecture test passes)"
       - "MaxAiContextSensitivity and PiiDisclosureEnabled settings exist and default to restrictive values"
       - "Build is green across Domain, Application, Persistence, and Architecture.Tests"
     forbidden_without_approval:

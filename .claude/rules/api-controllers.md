@@ -2,7 +2,7 @@
 name: api-controllers
 description: Apply when editing Explore.API controller actions and route contracts.
 paths:
-  - "Explore.API/Controllers/**/*.cs"
+  - "src/Explore.API/Controllers/**/*.cs"
 related_skills: [cqrs-mediatr-guidelines, auth-patterns]
 related_docs: [docs/API.md, docs/GOVERNANCE.md, docs/AUTHORIZATION.md, docs/QUICK_REFERENCE.md]
 minimum_tests: [Event.API.IntegrationTests, Event.Architecture.Tests]
@@ -12,7 +12,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, openapi-contract-change,
 # API Controller Rules
 
 ## Applies To
-- `Explore.API/Controllers/**/*.cs`
+- `src/Explore.API/Controllers/**/*.cs`
 
 ## Path-Specific Constraints
 - **Logic Thinning**: Controller actions must be limited to: dispatching MediatR, assembling HAL links (via policies), and returning the `ActionResult`. No business logic.

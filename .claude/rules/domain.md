@@ -2,7 +2,7 @@
 name: domain
 description: Apply when editing Explore.Domain entities, value objects, enums, or domain services.
 paths:
-  - "Explore.Domain/**/*.cs"
+  - "src/Explore.Domain/**/*.cs"
 related_skills: [clean-architecture-rules]
 related_docs: [docs/DOMAIN.md, docs/ARCHITECTURE.md, docs/QUICK_REFERENCE.md]
 minimum_tests: [Event.Domain.UnitTests, Event.Architecture.Tests]
@@ -12,7 +12,7 @@ related_intents: [add-ef-migration]
 # Domain Rules
 
 ## Applies To
-- `Explore.Domain/**/*.cs`
+- `src/Explore.Domain/**/*.cs`
 
 ## Path-Specific Constraints
 - **Domain Purity**: Zero dependencies on Infrastructure, Persistence, or Presentation layers. No `using` statements pointing to other layers.

@@ -82,7 +82,7 @@ jobs:
           while IFS= read -r changed_file; do
             [[ -z "$changed_file" ]] && continue
             case "$changed_file" in
-              AGENTS.md|.github/copilot-instructions.md|.claude/*|docs/*|dev/_journal/README.md|dev/_journal/FINDING_TEMPLATE.md|dev/_journal/PROMOTION_RULES.md|Event.Architecture.Tests/AgentContext*.cs|Event.Architecture.Tests/ContextSystemHelpers.cs|.github/workflows/agent-context.yml)
+              AGENTS.md|.github/copilot-instructions.md|.claude/*|docs/*|dev/_journal/README.md|dev/_journal/FINDING_TEMPLATE.md|dev/_journal/PROMOTION_RULES.md|tests/Event.Architecture.Tests/AgentContext*.cs|tests/Event.Architecture.Tests/ContextSystemHelpers.cs|.github/workflows/agent-context.yml)
                 relevant_files="${relevant_files}${changed_file}"$'\n'
                 ;;
             esac
@@ -123,15 +123,15 @@ jobs:
 
       - name: Restore
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
-        run: dotnet restore Event.Architecture.Tests/Event.Architecture.Tests.csproj --locked-mode
+        run: dotnet restore tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --locked-mode
 
       - name: Build
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
-        run: dotnet build Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-restore --verbosity quiet
+        run: dotnet build tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-restore --verbosity quiet
 
       # TUnit runs as an executable; we run only this project.
       # Non-context tests in this project are expected to pass as well; if any unrelated failure blocks the PR,
       # fix those in a dedicated change rather than relaxing this gate.
       - name: Run Event.Architecture.Tests
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
-        run: dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity quiet
+        run: dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity quiet

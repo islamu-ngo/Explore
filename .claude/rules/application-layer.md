@@ -2,7 +2,7 @@
 name: application-layer
 description: Apply when editing Explore.Application CQRS handlers, requests, DTOs, and validators.
 paths:
-  - "Explore.Application/**/*.cs"
+  - "src/Explore.Application/**/*.cs"
 related_skills: [cqrs-mediatr-guidelines, clean-architecture-rules]
 related_docs: [docs/ARCHITECTURE.md, docs/GOVERNANCE.md, docs/QUICK_REFERENCE.md]
 minimum_tests: [Event.Application.UnitTests, Event.Architecture.Tests]
@@ -12,7 +12,7 @@ related_intents: [add-cqrs-handler, add-get-endpoint, add-write-endpoint, update
 # Application Layer Rules
 
 ## Applies To
-- `Explore.Application/**/*.cs`
+- `src/Explore.Application/**/*.cs`
 
 ## Path-Specific Constraints
 - **Handler Purity**: Handlers must stay single-purpose (one Command/Query per handler). No mixing of read/write concerns.

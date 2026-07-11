@@ -2,9 +2,9 @@
 name: blazor-client
 description: Apply when editing Explore.Blazor.Client components, styles, or UI services.
 paths:
-  - "Explore.Blazor.Client/**/*.cs"
-  - "Explore.Blazor.Client/**/*.razor"
-  - "Explore.Blazor.Client/**/*.razor.css"
+  - "src/Explore.Blazor.Client/**/*.cs"
+  - "src/Explore.Blazor.Client/**/*.razor"
+  - "src/Explore.Blazor.Client/**/*.razor.css"
 related_skills: [blazor-ui-conventions, blazor-css-isolation, design-system]
 related_docs: [docs/BLAZOR.md, docs/ACCESSIBILITY.md, docs/DESIGN_SYSTEM.md, docs/QUICK_REFERENCE.md]
 minimum_tests: [Explore.Blazor.Client.Tests, Event.Architecture.Tests]
@@ -14,7 +14,7 @@ related_intents: [blazor-component-affordance, add-hal-link]
 # Blazor Client Rules
 
 ## Applies To
-- `Explore.Blazor.Client/**/*.{cs,razor,razor.css}`
+- `src/Explore.Blazor.Client/**/*.{cs,razor,razor.css}`
 
 ## Path-Specific Constraints
 - **Render Mode**: Default to `InteractiveAuto`. Avoid assumptions about server-only state in shared client components.

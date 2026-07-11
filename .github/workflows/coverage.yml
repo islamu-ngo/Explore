@@ -42,7 +42,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/coverage
-          dotnet build Event.Domain.UnitTests/Event.Domain.UnitTests.csproj \
+          dotnet build tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj \
             --configuration Release \
             --no-restore \
             --verbosity minimal \
@@ -54,7 +54,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/coverage
-          dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj \
+          dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj \
             --configuration Release \
             --no-build \
             --verbosity minimal \
@@ -100,7 +100,7 @@ jobs:
           name: coverage-evidence
           path: |
             artifacts/coverage/**
-            Event.Domain.UnitTests/**/TestResults/**/*.trx
-            Event.Domain.UnitTests/**/TestResults/**/*.html
+            tests/Event.Domain.UnitTests/**/TestResults/**/*.trx
+            tests/Event.Domain.UnitTests/**/TestResults/**/*.html
           if-no-files-found: warn
           retention-days: 30

@@ -2,8 +2,8 @@
 name: efcore-persistence
 description: Apply when editing Explore.Persistence repositories, DbContext, filters, or entity configurations outside migrations.
 paths:
-  - "Explore.Persistence/**/*.cs"
-  - "!Explore.Persistence/Migrations/**/*.cs"
+  - "src/Explore.Persistence/**/*.cs"
+  - "!src/Explore.Persistence/Migrations/**/*.cs"
 related_skills: [dotnet-efcore-guidelines, clean-architecture-rules]
 related_docs: [docs/MULTI_TENANCY.md, docs/CODEBASE_INSIGHTS.md, docs/ARCHITECTURE.md, docs/QUICK_REFERENCE.md]
 minimum_tests: [Event.Persistence.IntegrationTests, Event.Architecture.Tests]
@@ -13,7 +13,7 @@ related_intents: [update-repository-query, add-ef-migration, add-cqrs-handler]
 # EF Core Persistence Rules
 
 ## Applies To
-- `Explore.Persistence/**/*.cs` (excluding Migrations)
+- `src/Explore.Persistence/**/*.cs` (excluding Migrations)
 
 ## Path-Specific Constraints
 - **Context Pooling**: Use property injection for scoped context data; do not add scoped dependencies to `ExploreDbContext` constructor.

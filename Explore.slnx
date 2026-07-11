@@ -1,0 +1,42 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/API/">
+    <Project Path="src/Event.MigrationService/Event.MigrationService.csproj" />
+    <Project Path="src/Explore.API/Explore.API.csproj" />
+  </Folder>
+  <Folder Name="/Core/">
+    <Project Path="src/Explore.Application/Explore.Application.csproj" />
+    <Project Path="src/Explore.Domain/Explore.Domain.csproj" />
+  </Folder>
+  <Folder Name="/Infrastructure/">
+    <Project Path="src/Explore.Infrastructure/Explore.Infrastructure.csproj" />
+    <Project Path="src/Explore.Persistence/Explore.Persistence.csproj" />
+    <Project Path="src/Explore.Secrets/Explore.Secrets.csproj" />
+  </Folder>
+  <Folder Name="/Test/">
+    <Project Path="tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" />
+    <Project Path="tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj" />
+    <Project Path="tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj" />
+    <Project Path="tests/Event.Benchmarks/Event.Benchmarks.csproj" />
+    <Project Path="tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj" />
+    <Project Path="tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj" />
+    <Project Path="tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" />
+    <Project Path="tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/UI/">
+    <Project Path="src/Explore.Blazor.Client/Explore.Blazor.Client.csproj" />
+    <Project Path="src/Explore.Blazor/Explore.Blazor.csproj" />
+  </Folder>
+  <Project Path="src/Event.Web.BffHosting/Event.Web.BffHosting.csproj" />
+  <Project Path="src/Explore.AppHost/Explore.AppHost.csproj" />
+  <Project Path="src/Explore.Diagnostic/Explore.Diagnostic.csproj" />
+  <Project Path="src/Explore.ServiceDefaults/Explore.ServiceDefaults.csproj" />
+  <Project Path="tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj" />
+  <Project Path="tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj" />
+  <Project Path="tests/Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj" />
+</Solution>

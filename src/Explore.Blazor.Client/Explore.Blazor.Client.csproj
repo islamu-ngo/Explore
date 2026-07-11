@@ -1,0 +1,148 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+    <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+    <!-- Strip .NET IL after AOT compilation for smaller WASM bundles (20-50% reduction).
+         DISABLED: Can cause WASM runtime failures when IL interpreter is needed (reflection, late-bound calls).
+         Only enable in Release after thorough testing. See: https://learn.microsoft.com/en-us/aspnet/core/blazor/performance/webassembly-runtime-performance -->
+    <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Blazored.FluentValidation" />
+    <PackageReference Include="Blazouter" />
+    <PackageReference Include="Blazouter.WebAssembly" />
+    <PackageReference Include="DiffPlex" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Client">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="MudBlazor" />
+    <!-- Newtonsoft.Json removed: NSwag client + HalResourceExtensions migrated to System.Text.Json -->
+    <PackageReference Include="Refit.HttpClientFactory" />
+  </ItemGroup>
+
+  <!--
+    OpenAPI Client Generation (NSwag)
+    ==================================
+    WORKFLOW:
+    1. Refresh the canonical OpenAPI schema when the backend contract changes
+    2. Build Blazor.Client → NSwag regenerates EventApiClient.g.cs BEFORE compilation
+
+    KEY DESIGN: Generation happens BEFORE CoreCompile, so:
+    - If openapi.json changed, client regenerates first
+    - Then compiler sees the fresh generated code
+    - You can regenerate even if your other code has build errors
+
+    The openapi.json is checked into source control for CI/CD builds and is not written by API runtime startup.
+
+    To manually regenerate (bypasses build):
+      dotnet nswag run nswag.json
+
+    INPUTS/OUTPUTS: MSBuild skips generation if openapi.json hasn't changed
+  -->
+
+  <!-- Custom inline task for regex text replacement (avoids PowerShell escaping issues) -->
+  <UsingTask TaskName="ReplaceFileText" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <InputFilename ParameterType="System.String" Required="true" />
+      <MatchExpression ParameterType="System.String" Required="true" />
+      <ReplacementText ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        if (File.Exists(InputFilename))
+        {
+            var content = File.ReadAllText(InputFilename);
+            var newContent = Regex.Replace(content, MatchExpression, ReplacementText);
+            if (content != newContent)
+            {
+                File.WriteAllText(InputFilename, newContent);
+                Log.LogMessage(MessageImportance.High, "Fixed NSwag void returns in {0}", Path.GetFileName(InputFilename));
+            }
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <!-- NSwag Client Generation - Runs BEFORE compilation -->
+  <Target Name="GenerateApiClient" BeforeTargets="CoreCompile" Inputs="..\..\schemas\openapi.json;nswag.json" Outputs="Clients\EventApiClient.g.cs" Condition="Exists('..\..\schemas\openapi.json')">
+    <Message Importance="high" Text="NSwag: Regenerating API client from openapi.json..." />
+    <Exec Command="dotnet nswag run nswag.json" WorkingDirectory="$(ProjectDir)" ConsoleToMSBuild="true" />
+    <!-- Fix NSwag bug: 'return default(void)!;' is invalid C# for void methods (204 No Content responses) -->
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
+    <Message Importance="high" Text="NSwag: API client regenerated and patched successfully." />
+  </Target>
+
+  <!-- Fix NSwag void return bug - ALWAYS runs before compilation (no Inputs/Outputs skip) -->
+  <Target Name="FixNSwagVoidReturns" BeforeTargets="CoreCompile">
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
+  </Target>
+
+  <!-- Exclude generated file from source analysis (it's auto-generated) -->
+  <ItemGroup>
+    <Compile Update="Clients\EventApiClient.g.cs">
+      <AutoGen>true</AutoGen>
+      <DependentUpon>nswag.json</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <!-- Blazor WASM Lazy Loading Configuration
+       
+       IMPLEMENTATION NOTES:
+       =====================
+       
+       To enable lazy loading in Blazor WASM, pages must be in separate class libraries.
+       Currently, all pages are compiled into Explore.Blazor.Client.dll.
+       
+       To implement lazy loading:
+       1. Create separate class libraries:
+          - Explore.Blazor.Client.Pages.Admin
+          - Explore.Blazor.Client.Pages.Onboarding
+          - Explore.Blazor.Client.Pages.Organization
+       
+       2. Move pages to respective libraries:
+          - Pages/Admin/* → Explore.Blazor.Client.Pages.Admin/Pages/*
+          - Pages/Onboarding/* → Explore.Blazor.Client.Pages.Onboarding/Pages/*
+          - Pages/Organization/* → Explore.Blazor.Client.Pages.Organization/Pages/*
+       
+       3. Add project references to Explore.Blazor.Client:
+          <ProjectReference Include="Explore.Blazor.Client.Pages.Admin.csproj" />
+          <ProjectReference Include="Explore.Blazor.Client.Pages.Onboarding.csproj" />
+          <ProjectReference Include="Explore.Blazor.Client.Pages.Organization.csproj" />
+       
+       4. Add BlazorWebAssemblyLazyLoad items:
+          <BlazorWebAssemblyLazyLoad Include="Explore.Blazor.Client.Pages.Admin.dll" />
+          <BlazorWebAssemblyLazyLoad Include="Explore.Blazor.Client.Pages.Onboarding.dll" />
+          <BlazorWebAssemblyLazyLoad Include="Explore.Blazor.Client.Pages.Organization.dll" />
+       
+       5. Update Routes.razor to load assemblies on-demand via ILazyAssemblyLoader
+       
+       CURRENT STATUS:
+       ===============
+       - ILazyAssemblyLoader service created and registered
+       - Routes.razor updated to call PreloadLazyAssemblies()
+       - Ready for library separation when refactoring is planned
+       
+       BENEFITS:
+       =========
+       - Reduces initial WASM bundle size by 10-20%
+       - Improves Time to Interactive (TTI)
+       - Admin/Onboarding/Organization pages load on-demand
+       - Core pages (EventList, Home, EventDetail) load immediately
+  -->
+
+</Project>

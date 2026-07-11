@@ -42,20 +42,20 @@ on:
       # Local dev infrastructure
       - "docker/**"
       - "docker-compose.yml"
-      - "Explore.AppHost/**"
-      - "Event.Benchmarks/**"
+      - "src/Explore.AppHost/**"
+      - "tests/Event.Benchmarks/**"
       # Empty / unused directories
       - "amp/**"
       # Test projects (test-only changes don't affect deployed artifacts)
-      - "Event.Application.UnitTests/**"
-      - "Event.Domain.UnitTests/**"
-      - "Event.Architecture.Tests/**"
-      - "Event.Persistence.IntegrationTests/**"
-      - "Event.API.IntegrationTests/**"
-      - "Explore.Secrets.UnitTests/**"
-      - "Explore.Blazor.Client.Tests/**"
-      - "Explore.Blazor.IntegrationTests/**"
-      - "Explore.Blazor.Client.E2ETests/**"
+      - "tests/Event.Application.UnitTests/**"
+      - "tests/Event.Domain.UnitTests/**"
+      - "tests/Event.Architecture.Tests/**"
+      - "tests/Event.Persistence.IntegrationTests/**"
+      - "tests/Event.API.IntegrationTests/**"
+      - "tests/Explore.Secrets.UnitTests/**"
+      - "tests/Explore.Blazor.Client.Tests/**"
+      - "tests/Explore.Blazor.IntegrationTests/**"
+      - "tests/Explore.Blazor.Client.E2ETests/**"
       # Markdown & root meta files
       - "**.md"
       - "LICENSE"
@@ -103,24 +103,24 @@ jobs:
           base: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           filters: |
             ui:
-              - 'Explore.Blazor/**'
-              - 'Explore.Blazor.Client/**'
-              - 'Explore.ServiceDefaults/**'
+              - 'src/Explore.Blazor/**'
+              - 'src/Explore.Blazor.Client/**'
+              - 'src/Explore.ServiceDefaults/**'
               - 'Directory.Build.props'
               - 'Directory.Packages.props'
               - 'global.json'
               - 'Explore.sln'
 
             api:
-              - 'Explore.API/**'
-              - 'Explore.Application/**'
-              - 'Explore.Domain/**'
-              - 'Explore.Infrastructure/**'
-              - 'Explore.Persistence/**'
-              - 'Explore.Diagnostic/**'
-              - 'Explore.Secrets/**'
-              - 'Event.MigrationService/**'
-              - 'Explore.ServiceDefaults/**'
+              - 'src/Explore.API/**'
+              - 'src/Explore.Application/**'
+              - 'src/Explore.Domain/**'
+              - 'src/Explore.Infrastructure/**'
+              - 'src/Explore.Persistence/**'
+              - 'src/Explore.Diagnostic/**'
+              - 'src/Explore.Secrets/**'
+              - 'src/Event.MigrationService/**'
+              - 'src/Explore.ServiceDefaults/**'
               - 'Directory.Build.props'
               - 'Directory.Packages.props'
               - 'global.json'
@@ -150,11 +150,11 @@ jobs:
           MATRIX_JSON="[]"
 
           if [ "$API_CHANGED" == "true" ] || [ "$REF_TYPE" == "tag" ]; then
-            MATRIX_JSON=$(echo "$MATRIX_JSON" | jq '. + [{"image-name": "islamu-event-api", "dockerfile": "Explore.API/Dockerfile", "context": "."}]')
+            MATRIX_JSON=$(echo "$MATRIX_JSON" | jq '. + [{"image-name": "islamu-event-api", "dockerfile": "src/Explore.API/Dockerfile", "context": "."}]')
           fi
 
           if [ "$UI_CHANGED" == "true" ] || [ "$REF_TYPE" == "tag" ]; then
-            MATRIX_JSON=$(echo "$MATRIX_JSON" | jq '. + [{"image-name": "islamu-event-ui", "dockerfile": "Explore.Blazor/Dockerfile", "context": "."}]')
+            MATRIX_JSON=$(echo "$MATRIX_JSON" | jq '. + [{"image-name": "islamu-event-ui", "dockerfile": "src/Explore.Blazor/Dockerfile", "context": "."}]')
           fi
 
           echo "matrix=$(echo "$MATRIX_JSON" | tr -d '\n')" >> "$GITHUB_OUTPUT"

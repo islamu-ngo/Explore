@@ -57,7 +57,7 @@ Commonly consumed sections in code:
 - `Keycloak:*` (authority, metadata, client IDs/secrets)
 - `AccountAuthorityLifecycleEmail:*` (Application-level identity-email delegation switch)
 - `KeycloakLifecycleEmail:*` (Keycloak Admin REST required-action email adapter)
-- `Bff:Authentication:*` (separate control-plane BFF authority, metadata, client ID/secret, callback paths, cookie policy)
+- `Bff:Authentication:*` (explicit browser-BFF authority, metadata, client ID/secret, callback paths, and cookie policy overrides)
 - `ConnectionStrings:DefaultConnection`
 - `Cors:AllowedOrigins`
 - `ForwardedHeadersTrust:*`
@@ -613,7 +613,7 @@ External bootstrap URL safety is enforced before network calls. Keycloak base UR
 
 The control-plane shell uses the existing `Explore.Blazor` BFF authentication, API service discovery, cookie, and proxy configuration. `Bff:AdminHosts` selects dedicated hostnames that render the embedded operator shell; `Bff:AdminHostAllowedIpRanges` can further restrict those hosts. There is no separate control-plane client secret, Infisical path, API endpoint, or application project.
 
-The control-plane BFF uses a dedicated cookie name from the `ControlPlane` BFF profile and never serializes access tokens, refresh tokens, client secrets, or instance-admin authority claims into browser-visible authentication state. Browser-visible control-plane actions must still come from API/HAL/status endpoints, not local role inspection.
+The embedded control-plane shell uses the same server-side BFF session as the public host and never serializes access tokens, refresh tokens, client secrets, or instance-admin authority claims into browser-visible authentication state. Browser-visible control-plane actions must still come from API/HAL/status endpoints, not local role inspection.
 
 ## Governance Settings (Database)
 

@@ -99,17 +99,14 @@ Check:
 
 Cause:
 - the Blazor BFF confidential client secret does not match the `islamu-event-blazor` client secret stored in Keycloak.
-- for the separate control-plane BFF, `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` does not match the `islamu-event-control-plane` client secret stored in Keycloak, or the operator host callback/logout URI is missing from that client.
 
 Checks:
 1. Confirm `KEYCLOAK_BLAZOR_CLIENT_SECRET` is set for the Compose environment. Production/self-hosted deployments should not rely on the realm export's static default.
-2. When using `docker compose --profile control-plane`, confirm `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET` is set and `KEYCLOAK_CONTROL_PLANE_CLIENT_ID` matches the Keycloak client, normally `islamu-event-control-plane`.
-3. Check `docker compose logs keycloak-init` for successful redacted sync messages. The log must not include raw secret values.
-4. Rerun `docker compose run --rm keycloak-init` after changing or rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET` or `KEYCLOAK_CONTROL_PLANE_CLIENT_SECRET`.
-5. If this is a disposable local stack and no secret is configured, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true` intentionally, then rerun `keycloak-init`. Do not use that flag in production.
-6. If the client is missing, verify `docker/keycloak/realm-export.json` imported successfully and that `KEYCLOAK_REALM` matches the imported realm name. Existing Keycloak realms are not overwritten by startup import; reset the disposable Keycloak database volume before expecting realm-export changes to apply.
-7. For external Keycloak setup, rerun `/onboarding/auth-provider` bootstrap mode with the same Blazor client ID and the intended runtime client secret. The setup flow updates existing clients by `clientId`; it does not require manually editing the Keycloak UI when the bootstrap credential has client-secret update permission.
-8. For a dedicated control-plane hostname, confirm the Keycloak control-plane client allows the public callback path `/signin-oidc` and logout callback path `/signout-callback-oidc` for the operator host.
+2. Check `docker compose logs keycloak-init` for successful redacted sync messages. The log must not include raw secret values.
+3. Rerun `docker compose run --rm keycloak-init` after changing or rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET`.
+4. If this is a disposable local stack and no secret is configured, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true` intentionally, then rerun `keycloak-init`. Do not use that flag in production.
+5. If the client is missing, verify `docker/keycloak/realm-export.json` imported successfully and that `KEYCLOAK_REALM` matches the imported realm name. Existing Keycloak realms are not overwritten by startup import; reset the disposable Keycloak database volume before expecting realm-export changes to apply.
+6. For external Keycloak setup, rerun `/onboarding/auth-provider` bootstrap mode with the same Blazor client ID and the intended runtime client secret. The setup flow updates existing clients by `clientId`; it does not require manually editing the Keycloak UI when the bootstrap credential has client-secret update permission.
 
 ### External Keycloak bootstrap fails before contacting Keycloak
 

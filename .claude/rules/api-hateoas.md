@@ -2,7 +2,7 @@
 name: api-hateoas
 description: Apply when editing Explore.API HAL assemblers, link policies, or related HATEOAS infrastructure.
 paths:
-  - "Explore.API/Hateoas/**/*.cs"
+  - "src/Explore.API/Hateoas/**/*.cs"
 related_skills: [clean-architecture-rules, auth-patterns]
 related_docs: [docs/API.md, docs/AUTHORIZATION.md, docs/QUICK_REFERENCE.md]
 minimum_tests: [Event.API.IntegrationTests, Explore.Blazor.Client.Tests, Event.Architecture.Tests]
@@ -12,7 +12,7 @@ related_intents: [add-hal-link, add-get-endpoint, add-write-endpoint, blazor-com
 # API HATEOAS Rules
 
 ## Applies To
-- `Explore.API/Hateoas/**/*.cs`
+- `src/Explore.API/Hateoas/**/*.cs`
 
 ## Path-Specific Constraints
 - **Yield Return Pattern**: Always use the `yield return` pattern for link emission. Do not build mutable lists.

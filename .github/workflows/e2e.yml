@@ -41,7 +41,7 @@ jobs:
 
       - name: Build E2E test project
         run: >-
-          dotnet build Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj
+          dotnet build tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj
           --configuration Release
           --no-restore
           --verbosity minimal
@@ -50,7 +50,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pwsh Explore.Blazor.Client.E2ETests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+          pwsh tests/Explore.Blazor.Client.E2ETests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Run Aspire-backed Playwright E2E tests
         id: e2e_tests
@@ -59,7 +59,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/e2e
 
-          dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj \
+          dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj \
             --configuration Release \
             --no-build \
             --verbosity minimal \
@@ -106,8 +106,8 @@ jobs:
             echo "| E2E test outcome | ${E2E_OUTCOME} |"
             echo "| Artifact | e2e-runtime-evidence |"
             echo "| Test log | artifacts/e2e/e2e-test.log |"
-            echo "| TRX | Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/**/*.trx |"
-            echo "| Playwright artifacts | Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/playwright-artifacts/** |"
+            echo "| TRX | tests/Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/**/*.trx |"
+            echo "| Playwright artifacts | tests/Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/playwright-artifacts/** |"
             echo "| Docker diagnostics | artifacts/e2e/docker/** |"
             echo "| Reliability inventory | docs/TEST_RELIABILITY.md |"
             echo
@@ -121,7 +121,7 @@ jobs:
           name: e2e-runtime-evidence
           path: |
             artifacts/e2e/**
-            Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/**/*.trx
-            Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/playwright-artifacts/**
+            tests/Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/**/*.trx
+            tests/Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/playwright-artifacts/**
           if-no-files-found: warn
           retention-days: 30

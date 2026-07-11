@@ -2,8 +2,8 @@
 name: blazor-server
 description: Apply when editing Explore.Blazor server-side BFF, auth, proxy, or SSR code.
 paths:
-  - "Explore.Blazor/**/*.cs"
-  - "Explore.Blazor/**/*.razor"
+  - "src/Explore.Blazor/**/*.cs"
+  - "src/Explore.Blazor/**/*.razor"
 related_skills: [blazor-bff-patterns, auth-patterns]
 related_docs: [docs/BLAZOR.md, docs/SECURITY-MODEL.md, docs/ARCHITECTURE.md]
 minimum_tests: [Explore.Blazor.IntegrationTests, Event.Architecture.Tests]
@@ -13,7 +13,7 @@ related_intents: [bff-auth-bug]
 # Blazor Server / BFF Rules
 
 ## Applies To
-- `Explore.Blazor/**/*.cs`, `Explore.Blazor/**/*.razor`
+- `src/Explore.Blazor/**/*.cs`, `src/Explore.Blazor/**/*.razor`
 
 ## Path-Specific Constraints
 - **BFF Boundary**: Tokens must stay server-side. Use YARP to proxy `/api/*` requests. Never expose raw bearer tokens to the client.

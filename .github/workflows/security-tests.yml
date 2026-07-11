@@ -83,7 +83,7 @@ jobs:
           while IFS= read -r changed_file; do
             [[ -z "$changed_file" ]] && continue
             case "$changed_file" in
-              cerbos/*|docker/keycloak/*|Explore.Application/Authorization/*|Explore.API/Program.cs|Explore.API/Extensions/*|Explore.API/Middleware/*|Explore.Blazor/Program.cs|Explore.Blazor/Services/*|Explore.Blazor/Yarp/*|Explore.Infrastructure/Services/CerbosAuthorizationService.cs|Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs|Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs|Explore.Infrastructure/Services/LocalAuthorizationProvider.cs|docs/SECURITY-MODEL.md|docs/AUTHORIZATION.md|Event.API.IntegrationTests/Fixtures/*|Event.API.IntegrationTests/Features/Security*|Event.API.IntegrationTests/Features/Cerbos*|Event.API.IntegrationTests/Features/Token*|Event.API.IntegrationTests/Features/Authorization*|Event.API.IntegrationTests/Features/Cloud*|.github/workflows/security-tests.yml)
+              cerbos/*|docker/keycloak/*|src/Explore.Application/Authorization/*|src/Explore.API/Program.cs|src/Explore.API/Extensions/*|src/Explore.API/Middleware/*|src/Explore.Blazor/Program.cs|src/Explore.Blazor/Services/*|src/Explore.Blazor/Yarp/*|src/Explore.Infrastructure/Services/CerbosAuthorizationService.cs|src/Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs|src/Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs|src/Explore.Infrastructure/Services/LocalAuthorizationProvider.cs|docs/SECURITY-MODEL.md|docs/AUTHORIZATION.md|tests/Event.API.IntegrationTests/Fixtures/*|tests/Event.API.IntegrationTests/Features/Security*|tests/Event.API.IntegrationTests/Features/Cerbos*|tests/Event.API.IntegrationTests/Features/Token*|tests/Event.API.IntegrationTests/Features/Authorization*|tests/Event.API.IntegrationTests/Features/Cloud*|.github/workflows/security-tests.yml)
                 relevant_files="${relevant_files}${changed_file}"$'\n'
                 ;;
             esac
@@ -128,7 +128,7 @@ jobs:
 
       - name: Build
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
-        run: dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
+        run: dotnet build tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
 
       - name: Security Integration Tests
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
@@ -137,7 +137,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/security-tests
-          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*/*/*[Category=Security]" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename security-integration-tests.trx 2>&1 | tee artifacts/security-tests/security-integration-tests.log
+          dotnet test tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*/*/*[Category=Security]" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename security-integration-tests.trx 2>&1 | tee artifacts/security-tests/security-integration-tests.log
 
       - name: Cerbos Policy Contract Tests
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
@@ -146,7 +146,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/security-tests
-          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*/*/*[Category=PolicyContract]" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename cerbos-policy-contract-tests.trx 2>&1 | tee artifacts/security-tests/cerbos-policy-contract-tests.log
+          dotnet test tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*/*/*[Category=PolicyContract]" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename cerbos-policy-contract-tests.trx 2>&1 | tee artifacts/security-tests/cerbos-policy-contract-tests.log
 
       - name: Upload Security Test Evidence
         if: ${{ always() && steps.changes.outputs.run-tests == 'true' }}
@@ -155,7 +155,7 @@ jobs:
           name: security-test-evidence
           path: |
             artifacts/security-tests/**
-            Event.API.IntegrationTests/**/TestResults/**/*.trx
+            tests/Event.API.IntegrationTests/**/TestResults/**/*.trx
           if-no-files-found: warn
           retention-days: 30
 

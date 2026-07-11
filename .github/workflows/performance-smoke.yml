@@ -42,7 +42,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/performance
-          dotnet build Event.Benchmarks/Event.Benchmarks.csproj \
+          dotnet build tests/Event.Benchmarks/Event.Benchmarks.csproj \
             --configuration Release \
             --no-restore \
             --verbosity minimal \
@@ -54,7 +54,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/performance/benchmarkdotnet
-          dotnet run --project Event.Benchmarks/Event.Benchmarks.csproj \
+          dotnet run --project tests/Event.Benchmarks/Event.Benchmarks.csproj \
             --configuration Release \
             --no-build \
             -- \

@@ -2,7 +2,7 @@
 name: efcore-migrations
 description: Apply when editing Explore.Persistence migration files or model snapshots.
 paths:
-  - "Explore.Persistence/Migrations/**/*.cs"
+  - "src/Explore.Persistence/Migrations/**/*.cs"
 related_skills: [dotnet-efcore-guidelines]
 related_docs: [docs/CODEBASE_INSIGHTS.md, docs/QUICK_REFERENCE.md, docs/DOMAIN.md]
 minimum_tests: [Event.Persistence.IntegrationTests, Event.Architecture.Tests]
@@ -12,7 +12,7 @@ related_intents: [add-ef-migration]
 # EF Core Migration Rules
 
 ## Applies To
-- `Explore.Persistence/Migrations/**/*.cs`
+- `src/Explore.Persistence/Migrations/**/*.cs`
 
 ## Path-Specific Constraints
 - **Reversibility**: Always provide a valid `Down` method that correctly reverses the `Up` migration.
