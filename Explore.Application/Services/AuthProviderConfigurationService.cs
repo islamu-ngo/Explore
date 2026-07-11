@@ -193,34 +193,18 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
         int displayOrder,
         string description)
     {
-        var existing = await _systemSettingRepository.GetByKey(settingKey);
-
-        if (existing == null)
+        await _systemSettingRepository.UpsertAsync(new SystemSetting
         {
-            await _systemSettingRepository.Create(new SystemSetting
-            {
-                SettingKey = settingKey,
-                Value = value,
-                ValueType = valueType,
-                IsLocked = isLocked,
-                Description = description,
-                Category = category,
-                DisplayOrder = displayOrder,
-                CreatedAt = DateTime.UtcNow
-            });
-
-            return;
-        }
-
-        existing.Value = value;
-        existing.ValueType = valueType;
-        existing.IsLocked = isLocked;
-        existing.Description = description;
-        existing.Category = category;
-        existing.DisplayOrder = displayOrder;
-        existing.UpdatedAt = DateTime.UtcNow;
-
-        await _systemSettingRepository.Update(existing);
+            SettingKey = settingKey,
+            Value = value,
+            ValueType = valueType,
+            IsLocked = isLocked,
+            Description = description,
+            Category = category,
+            DisplayOrder = displayOrder,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
     }
 
     private bool IsDeploymentManaged(string key)

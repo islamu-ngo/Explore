@@ -44,20 +44,20 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
 
     public async Task<InstanceStorageSettingsDto> ReadSettingsAsync(CancellationToken cancellationToken = default)
     {
-        var provider = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Provider);
-        var defaultMaxUploadBytes = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.DefaultMaxUploadBytes);
-        var defaultTenantQuotaBytes = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes);
-        var instanceMaxUploadBytes = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.InstanceMaxUploadBytes);
-        var routeMatrix = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.RouteMatrix);
-        var lockTenantStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockStorage);
-        var endpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Endpoint);
-        var publicEndpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.PublicEndpoint);
-        var bucketName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.BucketName);
-        var accessKeyId = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.AccessKeyId);
-        var secretAccessKey = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.SecretAccessKey);
-        var region = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Region);
-        var forcePathStyle = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.ForcePathStyle);
-        var uploadExpiration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes);
+        var provider = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Provider, cancellationToken);
+        var defaultMaxUploadBytes = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.DefaultMaxUploadBytes, cancellationToken);
+        var defaultTenantQuotaBytes = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes, cancellationToken);
+        var instanceMaxUploadBytes = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.InstanceMaxUploadBytes, cancellationToken);
+        var routeMatrix = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.RouteMatrix, cancellationToken);
+        var lockTenantStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockStorage, cancellationToken);
+        var endpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Endpoint, cancellationToken);
+        var publicEndpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.PublicEndpoint, cancellationToken);
+        var bucketName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.BucketName, cancellationToken);
+        var accessKeyId = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.AccessKeyId, cancellationToken);
+        var secretAccessKey = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.SecretAccessKey, cancellationToken);
+        var region = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Region, cancellationToken);
+        var forcePathStyle = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.ForcePathStyle, cancellationToken);
+        var uploadExpiration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes, cancellationToken);
 
         var policy = await _storagePolicyResolver.ResolveAsync(null, cancellationToken);
         var envBackedS3Config = _s3ConfigResolver is null ? null : await _s3ConfigResolver.ResolveAsync(cancellationToken);
@@ -444,33 +444,17 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
         int displayOrder,
         string description)
     {
-        var existing = await _systemSettingRepository.GetByKey(settingKey);
-
-        if (existing == null)
+        await _systemSettingRepository.UpsertAsync(new SystemSetting
         {
-            await _systemSettingRepository.Create(new SystemSetting
-            {
-                SettingKey = settingKey,
-                Value = value,
-                ValueType = valueType,
-                IsLocked = isLocked,
-                Description = description,
-                Category = category,
-                DisplayOrder = displayOrder,
-                CreatedAt = DateTime.UtcNow
-            });
-
-            return;
-        }
-
-        existing.Value = value;
-        existing.ValueType = valueType;
-        existing.IsLocked = isLocked;
-        existing.Description = description;
-        existing.Category = category;
-        existing.DisplayOrder = displayOrder;
-        existing.UpdatedAt = DateTime.UtcNow;
-
-        await _systemSettingRepository.Update(existing);
+            SettingKey = settingKey,
+            Value = value,
+            ValueType = valueType,
+            IsLocked = isLocked,
+            Description = description,
+            Category = category,
+            DisplayOrder = displayOrder,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
     }
 }

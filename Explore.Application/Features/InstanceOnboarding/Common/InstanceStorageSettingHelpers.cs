@@ -105,33 +105,17 @@ internal static class InstanceStorageSettingHelpers
         int displayOrder,
         string description)
     {
-        var existing = await systemSettingRepository.GetByKey(settingKey);
-
-        if (existing == null)
+        await systemSettingRepository.UpsertAsync(new SystemSetting
         {
-            await systemSettingRepository.Create(new SystemSetting
-            {
-                SettingKey = settingKey,
-                Value = value,
-                ValueType = valueType,
-                IsLocked = isLocked,
-                Description = description,
-                Category = category,
-                DisplayOrder = displayOrder,
-                CreatedAt = DateTime.UtcNow
-            });
-
-            return;
-        }
-
-        existing.Value = value;
-        existing.ValueType = valueType;
-        existing.IsLocked = isLocked;
-        existing.Description = description;
-        existing.Category = category;
-        existing.DisplayOrder = displayOrder;
-        existing.UpdatedAt = DateTime.UtcNow;
-
-        await systemSettingRepository.Update(existing);
+            SettingKey = settingKey,
+            Value = value,
+            ValueType = valueType,
+            IsLocked = isLocked,
+            Description = description,
+            Category = category,
+            DisplayOrder = displayOrder,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
     }
 }

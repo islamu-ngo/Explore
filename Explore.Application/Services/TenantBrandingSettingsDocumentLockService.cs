@@ -14,7 +14,7 @@ public sealed class TenantBrandingSettingsDocumentLockService(ISystemSettingRepo
 {
     public async Task<TenantBrandingSettingsDocumentLockState> GetLockStateAsync(CancellationToken cancellationToken = default)
     {
-        var deploymentMode = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
+        var deploymentMode = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode, cancellationToken);
         var isMultiTenant = DeserializeString(deploymentMode?.Value, "SingleTenant")
             .Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
@@ -23,12 +23,12 @@ public sealed class TenantBrandingSettingsDocumentLockService(ISystemSettingRepo
             return TenantBrandingSettingsDocumentLockState.AllowAll;
         }
 
-        var whiteLabeling = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Tenants.WhiteLabelingEnabled);
+        var whiteLabeling = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Tenants.WhiteLabelingEnabled, cancellationToken);
         var isWhiteLabelingEnabled = DeserializeBoolean(whiteLabeling?.Value, false);
-        var displayName = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.DisplayName);
-        var logoUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.LogoUrl);
-        var faviconUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.FaviconUrl);
-        var customCssUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.CustomCssUrl);
+        var displayName = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.DisplayName, cancellationToken);
+        var logoUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.LogoUrl, cancellationToken);
+        var faviconUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.FaviconUrl, cancellationToken);
+        var customCssUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.CustomCssUrl, cancellationToken);
 
         return new TenantBrandingSettingsDocumentLockState(
             CanChangeDisplayName: displayName?.IsLocked != true,

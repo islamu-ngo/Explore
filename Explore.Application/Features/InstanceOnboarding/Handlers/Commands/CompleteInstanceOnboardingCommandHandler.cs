@@ -346,29 +346,19 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     {
         var key = GovernanceSettingKeys.Deployment.Mode;
         var value = JsonSerializer.Serialize(mode.ToString());
-        var existing = await _systemSettingRepository.GetByKey(key);
-
-        if (existing == null)
+        await _systemSettingRepository.UpsertAsync(new SystemSetting
         {
-            await _systemSettingRepository.Create(new SystemSetting
-            {
-                SettingKey = key,
-                Value = value,
-                ValueType = SettingValueType.String,
-                IsLocked = true,
-                Category = "System",
-                DisplayOrder = 1,
-                Description = "Deployment mode of the application",
-                AllowedValues = "[\"SingleTenant\", \"MultiTenant\"]",
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-        else
-        {
-            existing.Value = value;
-            existing.UpdatedAt = DateTime.UtcNow;
-            await _systemSettingRepository.Update(existing);
-        }
+            SettingKey = key,
+            Value = value,
+            ValueType = SettingValueType.String,
+            IsLocked = true,
+            Category = "System",
+            DisplayOrder = 1,
+            Description = "Deployment mode of the application",
+            AllowedValues = "[\"SingleTenant\", \"MultiTenant\"]",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
     }
 
     private async Task PersistSiteProfileSettingsAsync(SelfHostOnboardingProfileDto siteProfile, bool isSingleTenant)
@@ -523,29 +513,19 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         bool isLocked = false,
         string? allowedValues = null)
     {
-        var existing = await _systemSettingRepository.GetByKey(key);
-
-        if (existing == null)
+        await _systemSettingRepository.UpsertAsync(new SystemSetting
         {
-            await _systemSettingRepository.Create(new SystemSetting
-            {
-                SettingKey = key,
-                Value = value,
-                ValueType = valueType,
-                IsLocked = isLocked,
-                Category = category,
-                DisplayOrder = displayOrder,
-                Description = description,
-                AllowedValues = allowedValues,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-        else
-        {
-            existing.Value = value;
-            existing.UpdatedAt = DateTime.UtcNow;
-            await _systemSettingRepository.Update(existing);
-        }
+            SettingKey = key,
+            Value = value,
+            ValueType = valueType,
+            IsLocked = isLocked,
+            Category = category,
+            DisplayOrder = displayOrder,
+            Description = description,
+            AllowedValues = allowedValues,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
     }
 
     private static SelfHostOnboardingProfileDto NormalizeSiteProfile(CompleteInstanceOnboardingRequest settings)

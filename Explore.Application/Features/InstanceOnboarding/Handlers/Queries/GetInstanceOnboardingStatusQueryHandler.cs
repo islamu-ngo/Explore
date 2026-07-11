@@ -41,7 +41,7 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
     public async Task<InstanceOnboardingStatusDto> Handle(GetInstanceOnboardingStatusQuery request, CancellationToken cancellationToken)
     {
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent(cancellationToken);
-        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
+        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode, cancellationToken);
         var selectedDeploymentMode = await ResolveDeploymentModeAsync(bootstrap?.SelectedDeploymentMode, bootstrap?.IsCompleted == true, deploymentModeSetting?.Value, cancellationToken);
 
         var response = new InstanceOnboardingStatusDto
