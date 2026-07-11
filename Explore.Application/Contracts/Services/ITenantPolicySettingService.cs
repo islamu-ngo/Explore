@@ -3,6 +3,7 @@
 
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.TenantPolicy;
+using Explore.Application.Notifications;
 
 namespace Explore.Application.Contracts.Services;
 
@@ -21,5 +22,9 @@ public interface ITenantPolicySettingService
     /// Applies tenant policy setting overrides while enforcing instance-level delegation constraints.
     /// Only writable fields from UpdateTenantPolicyRequest are persisted.
     /// </summary>
-    Task ApplyTenantSettingsAsync(Guid tenantId, Guid? actorUserId, UpdateTenantPolicyRequest settings);
+    Task<IReadOnlyList<SettingChangedNotification>> ApplyTenantSettingsAsync(
+        Guid tenantId,
+        Guid? actorUserId,
+        UpdateTenantPolicyRequest settings,
+        CancellationToken cancellationToken = default);
 }

@@ -18,7 +18,9 @@ public class SettingUpsertService
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly IMediator _mediator;
 
-    public SettingUpsertService(ISystemSettingRepository systemSettingRepository, IMediator mediator)
+    public SettingUpsertService(
+        ISystemSettingRepository systemSettingRepository,
+        IMediator mediator)
     {
         _systemSettingRepository = systemSettingRepository;
         _mediator = mediator;
@@ -35,87 +37,65 @@ public class SettingUpsertService
         string category,
         int displayOrder,
         string description,
-        Guid? actorId = null)
+        Guid? actorId = null,
+        CancellationToken cancellationToken = default)
     {
-        var existing = await _systemSettingRepository.GetByKey(settingKey);
-
-        var oldValue = existing?.Value;
-
-        if (existing is null)
+        string? oldValue = await _systemSettingRepository.UpsertAsync(new SystemSetting
         {
-            await _systemSettingRepository.Create(new SystemSetting
-            {
-                SettingKey = settingKey,
-                Value = value,
-                ValueType = valueType,
-                IsLocked = isLocked,
-                Description = description,
-                Category = category,
-                DisplayOrder = displayOrder,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = actorId
-            });
-        }
-        else
-        {
-            existing.Value = value;
-            existing.ValueType = valueType;
-            existing.IsLocked = isLocked;
-            existing.Description = description;
-            existing.Category = category;
-            existing.DisplayOrder = displayOrder;
-            existing.UpdatedAt = DateTime.UtcNow;
-            existing.UpdatedBy = actorId;
+            SettingKey = settingKey,
+            Value = value,
+            ValueType = valueType,
+            IsLocked = isLocked,
+            Description = description,
+            Category = category,
+            DisplayOrder = displayOrder,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = actorId,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = actorId
+        }, cancellationToken);
 
-            await _systemSettingRepository.Update(existing);
-        }
-
-        // Fire-and-forget: audit notification should not block the write path
-        _ = _mediator.Publish(new SettingChangedNotification(
-            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow));
+        await _mediator.Publish(new SettingChangedNotification(
+            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow), cancellationToken);
     }
 
     /// <summary>
     /// Upserts a system setting with minimal parameters (uses existing metadata if updating).
     /// </summary>
-    public async Task UpsertValueAsync(string settingKey, string value, Guid? actorId = null)
-        => await UpsertValueAsync(settingKey, value, isLocked: false, actorId);
+    public async Task UpsertValueAsync(
+        string settingKey,
+        string value,
+        Guid? actorId = null,
+        CancellationToken cancellationToken = default)
+        => await UpsertValueAsync(settingKey, value, isLocked: false, actorId, cancellationToken);
 
     /// <summary>
     /// Upserts a system setting with lock control. Pulls metadata from SettingRegistry (Guardrail 2).
     /// </summary>
-    public async Task UpsertValueAsync(string settingKey, string value, bool isLocked, Guid? actorId)
+    public async Task UpsertValueAsync(
+        string settingKey,
+        string value,
+        bool isLocked,
+        Guid? actorId,
+        CancellationToken cancellationToken = default)
     {
-        var existing = await _systemSettingRepository.GetByKey(settingKey);
-        var oldValue = existing?.Value;
         var definition = Domain.Settings.SettingRegistry.Get(settingKey);
-
-        if (existing is null)
+        string? oldValue = await _systemSettingRepository.UpsertAsync(new SystemSetting
         {
-            await _systemSettingRepository.Create(new SystemSetting
-            {
-                SettingKey = settingKey,
-                Value = value,
-                ValueType = definition?.ValueType ?? SettingValueType.String,
-                IsLocked = isLocked,
-                Description = definition?.Description,
-                Category = definition?.Category ?? "Unknown",
-                DisplayOrder = 0,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = actorId
-            });
-        }
-        else
-        {
-            existing.Value = value;
-            existing.IsLocked = isLocked;
-            existing.UpdatedAt = DateTime.UtcNow;
-            existing.UpdatedBy = actorId;
+            SettingKey = settingKey,
+            Value = value,
+            ValueType = definition?.ValueType ?? SettingValueType.String,
+            IsLocked = isLocked,
+            Description = definition?.Description,
+            Category = definition?.Category ?? "Unknown",
+            DisplayOrder = 0,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = actorId,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = actorId
+        }, cancellationToken);
 
-            await _systemSettingRepository.Update(existing);
-        }
-
-        _ = _mediator.Publish(new SettingChangedNotification(
-            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow));
+        await _mediator.Publish(new SettingChangedNotification(
+            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow), cancellationToken);
     }
 }

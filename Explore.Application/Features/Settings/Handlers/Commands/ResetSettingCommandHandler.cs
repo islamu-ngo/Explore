@@ -6,6 +6,7 @@ namespace Explore.Application.Features.Settings.Handlers.Commands;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.Settings.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
@@ -104,8 +105,19 @@ public class ResetSettingCommandHandler
         }
         else
         {
-            await _resolver.RemoveOverrideAsync(
-                request.Key, request.Scope, scopeId, actorId, cancellationToken);
+            try
+            {
+                await _resolver.RemoveOverrideAsync(
+                    request.Key, request.Scope, scopeId, actorId, cancellationToken);
+            }
+            catch (SettingSystemLockedException exception)
+            {
+                response.Success = false;
+                response.FailureCode = SettingSystemLockedException.Code;
+                response.Message = exception.Message;
+                return response;
+            }
+
             _resolver.InvalidateCache(request.Scope, scopeId);
             CerbosSettingsCacheInvalidation.InvalidateIfCerbosSettingChanged(
                 _cerbosConfigResolver, request.Key, request.Scope, scopeId);

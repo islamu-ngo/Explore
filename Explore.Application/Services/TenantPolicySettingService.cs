@@ -4,7 +4,6 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
-using MediatR;
 
 namespace Explore.Application.Services;
 
@@ -53,18 +52,18 @@ public partial class TenantPolicySettingService : ITenantPolicySettingService
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ITenantSettingRepository _tenantSettingRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly IMediator _mediator;
+    private readonly ISettingMutationLock _mutationLock;
 
     public TenantPolicySettingService(
         ISystemSettingRepository systemSettingRepository,
         ITenantSettingRepository tenantSettingRepository,
         ITenantRepository tenantRepository,
-        IMediator mediator)
+        ISettingMutationLock mutationLock)
     {
         _systemSettingRepository = systemSettingRepository;
         _tenantSettingRepository = tenantSettingRepository;
         _tenantRepository = tenantRepository;
-        _mediator = mediator;
+        _mutationLock = mutationLock;
     }
 
     private static bool ResolveBoolean(string? tenantOverrideValue, string? systemValue, bool fallback, bool allowTenantOverride)

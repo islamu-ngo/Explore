@@ -64,13 +64,18 @@ public sealed class GetControlPlaneTenantEffectiveConfigurationQueryHandler(
         {
             SettingDefinition definition = definitions[index];
             ResolvedSetting resolved = resolvedSettings[index];
-            LookupReference valueType = NormalizedLookupMetadata.SettingValueType((int)resolved.ValueType);
+            LookupReference valueType = NormalizedLookupMetadata.SettingValueType((int)definition.ValueType);
 
             settings.Add(new ControlPlaneTenantEffectiveSettingDto
             {
                 Key = definition.Key,
                 Category = definition.Category,
-                Value = definition.IsSensitive ? string.Empty : resolved.Value ?? definition.DefaultValue,
+                Value = definition.IsSensitive
+                    ? string.Empty
+                    : SettingValueSerializer.ToDisplayValue(
+                        resolved.Value,
+                        definition.ValueType,
+                        definition.DefaultValue),
                 SettingValueTypeId = valueType.Id,
                 SettingValueTypeCode = valueType.Code,
                 SettingValueTypeName = valueType.Name,

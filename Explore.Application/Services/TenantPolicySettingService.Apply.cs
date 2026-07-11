@@ -14,31 +14,128 @@ namespace Explore.Application.Services;
 
 public partial class TenantPolicySettingService
 {
-    public async Task ApplyTenantSettingsAsync(Guid tenantId, Guid? actorUserId, UpdateTenantPolicyRequest settings)
+    private static readonly string[] TenantPolicySettingKeys =
+    [
+        GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
+        GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+        GovernanceSettingKeys.AiAssistant.ApiKey,
+        GovernanceSettingKeys.AiAssistant.Enabled,
+        GovernanceSettingKeys.AiAssistant.EndpointUrl,
+        GovernanceSettingKeys.AiAssistant.ModelId,
+        GovernanceSettingKeys.AiAssistant.Provider,
+        GovernanceSettingKeys.Deployment.Mode,
+        GovernanceSettingKeys.Domains.AllowTenantCustomDomain,
+        GovernanceSettingKeys.Domains.TenantCustomDomain,
+        GovernanceSettingKeys.Domains.TenantSubdomain,
+        GovernanceSettingKeys.Events.CardClickOpensDetailPage,
+        GovernanceSettingKeys.Events.GroupSubmissionEnabled,
+        GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
+        GovernanceSettingKeys.Events.RequireApproval,
+        GovernanceSettingKeys.Events.UserSubmissionEnabled,
+        GovernanceSettingKeys.Groups.SelfRegistrationEnabled,
+        GovernanceSettingKeys.Mcp.EnableLegacySse,
+        GovernanceSettingKeys.Mcp.Enabled,
+        GovernanceSettingKeys.Organizations.SelfRegistrationEnabled,
+        GovernanceSettingKeys.Organizations.TenantCanOmitVerification,
+        GovernanceSettingKeys.Organizations.VerificationRequired,
+        GovernanceSettingKeys.Policies.CommunityGuidelinesContent,
+        GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled,
+        GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkText,
+        GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkUrl,
+        GovernanceSettingKeys.PublicExperience.AnnouncementBarMessage,
+        GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision,
+        GovernanceSettingKeys.Routing.DefaultPublicHomePage,
+        GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled,
+        GovernanceSettingKeys.Routing.RenderPolicy.Admin.RenderMode,
+        GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled,
+        GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride,
+        GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled,
+        GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode,
+        GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin,
+        GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational,
+        GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo,
+        GovernanceSettingKeys.Routing.RenderPolicy.Operational.PrerenderEnabled,
+        GovernanceSettingKeys.Routing.RenderPolicy.Operational.RenderMode,
+        GovernanceSettingKeys.Routing.RenderPolicy.Preset,
+        GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.PrerenderEnabled,
+        GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.RenderMode,
+        GovernanceSettingKeys.TenantDelegation.LockAiAssistant,
+        GovernanceSettingKeys.TenantDelegation.LockMcp,
+        GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse
+    ];
+
+    public Task<IReadOnlyList<SettingChangedNotification>> ApplyTenantSettingsAsync(
+        Guid tenantId,
+        Guid? actorUserId,
+        UpdateTenantPolicyRequest settings,
+        CancellationToken cancellationToken = default)
     {
-        var userSubmissionSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.UserSubmissionEnabled);
-        var orgSubmissionSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
-        var groupSubmissionSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
-        var requireApprovalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.RequireApproval);
-        var eventCardClickSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
-        var requireVerificationSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.VerificationRequired);
-        var canOmitVerificationSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
-        var orgSelfRegSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
-        var groupSelfRegSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
-        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
-        var homePageSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
-        var allowCustomDomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
-        var subdomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantSubdomain);
-        var customDomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantCustomDomain);
-        var communityGuidelinesSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
-        var allowTenantRenderOverrideSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride);
-        var lockPublicSeoSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo);
-        var lockOperationalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational);
-        var lockAdminSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin);
-        var lockAiAssistantSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
-        var lockMcpSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcp);
-        var lockMcpLegacySseSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse);
-        var tenant = await _tenantRepository.GetById(tenantId);
+        return _mutationLock.ExecuteManyAsync(
+            TenantPolicySettingKeys,
+            token => ApplyTenantSettingsInsideLocksAsync(tenantId, actorUserId, settings, token),
+            cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<SettingChangedNotification>> ApplyTenantSettingsInsideLocksAsync(
+        Guid tenantId,
+        Guid? actorUserId,
+        UpdateTenantPolicyRequest settings,
+        CancellationToken cancellationToken)
+    {
+        var notifications = new List<SettingChangedNotification>();
+        Dictionary<string, SystemSetting> systemSettings = (await _systemSettingRepository
+                .GetAllSettings(cancellationToken: cancellationToken))
+            .Where(setting => TenantPolicySettingKeys.Contains(setting.SettingKey, StringComparer.Ordinal))
+            .ToDictionary(setting => setting.SettingKey, StringComparer.Ordinal);
+
+        bool CanOverride(string key, bool allowed) =>
+            allowed && systemSettings.GetValueOrDefault(key)?.IsLocked != true;
+
+        Task SetBooleanTenantOverrideAsync(Guid id, string key, bool value, bool allowed, Guid? actor) =>
+            SetBooleanTenantOverrideCoreAsync(
+                id, key, value, CanOverride(key, allowed), actor, notifications, cancellationToken);
+        Task SetStringTenantOverrideAsync(Guid id, string key, string? value, bool allowed, Guid? actor) =>
+            SetStringTenantOverrideCoreAsync(
+                id, key, value, CanOverride(key, allowed), actor, notifications, cancellationToken);
+        Task SetStringListTenantOverrideAsync(Guid id, string key, IReadOnlyList<string> values, bool allowed, Guid? actor) =>
+            SetStringListTenantOverrideCoreAsync(
+                id, key, values, CanOverride(key, allowed), actor, notifications, cancellationToken);
+        async Task UpsertTenantOverrideAsync(Guid id, string key, string value, Guid? actor)
+        {
+            if (!CanOverride(key, true))
+            {
+                await RemoveTenantOverrideCoreAsync(
+                    id, key, actor, notifications, cancellationToken);
+                return;
+            }
+
+            await UpsertTenantOverrideCoreAsync(
+                id, key, value, actor, notifications, cancellationToken);
+        }
+
+        var userSubmissionSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        var orgSubmissionSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        var groupSubmissionSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        var requireApprovalSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.RequireApproval);
+        var eventCardClickSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
+        var requireVerificationSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Organizations.VerificationRequired);
+        var canOmitVerificationSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
+        var orgSelfRegSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
+        var groupSelfRegSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
+        var deploymentModeSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Deployment.Mode);
+        var homePageSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
+        var allowCustomDomainSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
+        var subdomainSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Domains.TenantSubdomain);
+        var customDomainSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Domains.TenantCustomDomain);
+        var communityGuidelinesSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
+        var allowTenantRenderOverrideSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride);
+        var lockPublicSeoSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo);
+        var lockOperationalSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational);
+        var lockAdminSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin);
+        var lockAiAssistantSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
+        var lockMcpSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.TenantDelegation.LockMcp);
+        var lockMcpLegacySseSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse);
+        var tenant = await _tenantRepository.GetByIdAsNoTrackingAsync(tenantId, cancellationToken);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
         var isMultiTenant = DeserializeString(deploymentModeSetting?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
@@ -157,7 +254,8 @@ public partial class TenantPolicySettingService
         {
             var revisionSetting = await _tenantSettingRepository.GetByTenantAndKey(
                 tenantId,
-                GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision);
+                GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision,
+                cancellationToken);
             var nextRevision = DeserializeInteger(revisionSetting?.Value, 0) + 1;
 
             await UpsertTenantOverrideAsync(
@@ -328,68 +426,85 @@ public partial class TenantPolicySettingService
             settings.McpEnableLegacySse,
             canOverrideMcpLegacySse,
             actorUserId);
+
+        return notifications;
     }
 
-    private async Task SetBooleanTenantOverrideAsync(
+    private async Task SetBooleanTenantOverrideCoreAsync(
         Guid tenantId,
         string settingKey,
         bool value,
         bool allowTenantOverride,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        ICollection<SettingChangedNotification> notifications,
+        CancellationToken cancellationToken)
     {
         if (!allowTenantOverride)
         {
-            await _tenantSettingRepository.RemoveOverride(tenantId, settingKey);
+            await RemoveTenantOverrideCoreAsync(
+                tenantId, settingKey, actorUserId, notifications, cancellationToken);
             return;
         }
 
-        await UpsertTenantOverrideAsync(
+        await UpsertTenantOverrideCoreAsync(
             tenantId,
             settingKey,
             JsonSerializer.Serialize(value),
-            actorUserId);
+            actorUserId,
+            notifications,
+            cancellationToken);
     }
 
-    private async Task SetStringTenantOverrideAsync(
+    private async Task SetStringTenantOverrideCoreAsync(
         Guid tenantId,
         string settingKey,
         string? value,
         bool allowTenantOverride,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        ICollection<SettingChangedNotification> notifications,
+        CancellationToken cancellationToken)
     {
         if (!allowTenantOverride || string.IsNullOrWhiteSpace(value))
         {
-            await _tenantSettingRepository.RemoveOverride(tenantId, settingKey);
+            await RemoveTenantOverrideCoreAsync(
+                tenantId, settingKey, actorUserId, notifications, cancellationToken);
             return;
         }
 
-        await UpsertTenantOverrideAsync(
+        await UpsertTenantOverrideCoreAsync(
             tenantId,
             settingKey,
             JsonSerializer.Serialize(value.Trim()),
-            actorUserId);
+            actorUserId,
+            notifications,
+            cancellationToken);
     }
 
-    private async Task SetStringListTenantOverrideAsync(
+    private async Task SetStringListTenantOverrideCoreAsync(
         Guid tenantId,
         string settingKey,
         IReadOnlyList<string> values,
         bool allowTenantOverride,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        ICollection<SettingChangedNotification> notifications,
+        CancellationToken cancellationToken)
     {
         var normalizedValues = NormalizeAiModelIds(values);
 
         if (!allowTenantOverride || normalizedValues.Count == 0)
         {
-            await _tenantSettingRepository.RemoveOverride(tenantId, settingKey);
+            await RemoveTenantOverrideCoreAsync(
+                tenantId, settingKey, actorUserId, notifications, cancellationToken);
             return;
         }
 
-        await UpsertTenantOverrideAsync(
+        await UpsertTenantOverrideCoreAsync(
             tenantId,
             settingKey,
             JsonSerializer.Serialize(normalizedValues),
-            actorUserId);
+            actorUserId,
+            notifications,
+            cancellationToken);
     }
 
     private static void ValidateAiAssistantSettings(UpdateTenantPolicyRequest settings, string provider)
@@ -470,36 +585,54 @@ public partial class TenantPolicySettingService
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 
-    private async Task UpsertTenantOverrideAsync(
+    private async Task UpsertTenantOverrideCoreAsync(
         Guid tenantId,
         string settingKey,
         string value,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        ICollection<SettingChangedNotification> notifications,
+        CancellationToken cancellationToken)
     {
-        var existing = await _tenantSettingRepository.GetByTenantAndKey(tenantId, settingKey);
+        var existing = await _tenantSettingRepository.GetByTenantAndKey(tenantId, settingKey, cancellationToken);
         var oldValue = existing?.Value;
 
-        if (existing == null)
+        await _tenantSettingRepository.SetValueAsync(
+            tenantId,
+            settingKey,
+            value,
+            cancellationToken,
+            actorUserId);
+
+        notifications.Add(new SettingChangedNotification(
+            settingKey, oldValue, value, SettingSource.TenantOverride, tenantId, actorUserId, DateTime.UtcNow));
+    }
+
+    private async Task RemoveTenantOverrideCoreAsync(
+        Guid tenantId,
+        string settingKey,
+        Guid? actorUserId,
+        ICollection<SettingChangedNotification> notifications,
+        CancellationToken cancellationToken)
+    {
+        TenantSetting? existing = await _tenantSettingRepository.GetByTenantAndKey(
+            tenantId,
+            settingKey,
+            cancellationToken);
+        if (existing is null || !await _tenantSettingRepository.RemoveOverrideAsync(
+                tenantId,
+                settingKey,
+                cancellationToken))
         {
-            await _tenantSettingRepository.Create(new TenantSetting
-            {
-                TenantId = tenantId,
-                Tenant = null!,
-                SettingKey = settingKey,
-                Value = value,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = actorUserId
-            });
-        }
-        else
-        {
-            existing.Value = value;
-            existing.UpdatedAt = DateTime.UtcNow;
-            existing.UpdatedBy = actorUserId;
-            await _tenantSettingRepository.Update(existing);
+            return;
         }
 
-        _ = _mediator.Publish(new SettingChangedNotification(
-            settingKey, oldValue, value, SettingSource.TenantOverride, tenantId, actorUserId, DateTime.UtcNow));
+        notifications.Add(new SettingChangedNotification(
+            settingKey,
+            existing.Value,
+            null,
+            SettingSource.TenantOverride,
+            tenantId,
+            actorUserId,
+            DateTime.UtcNow));
     }
 }

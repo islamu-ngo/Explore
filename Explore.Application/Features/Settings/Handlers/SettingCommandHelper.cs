@@ -3,6 +3,7 @@
 
 namespace Explore.Application.Features.Settings.Handlers;
 
+using System.Text.Json;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Settings;
@@ -55,7 +56,15 @@ internal static class SettingCommandHelper
                 return (true, SettingValueSerializer.Serialize(decValue), null);
 
             case SettingValueType.Json:
-                return (true, plainValue, null);
+                try
+                {
+                    using JsonDocument _ = JsonDocument.Parse(plainValue);
+                    return (true, plainValue, null);
+                }
+                catch (JsonException)
+                {
+                    return (false, null, "Value is not valid JSON.");
+                }
 
             case SettingValueType.DateTime:
                 if (!DateTime.TryParse(plainValue, System.Globalization.CultureInfo.InvariantCulture,

@@ -3,7 +3,9 @@
 
 namespace Explore.Application.Settings;
 
+using System.Globalization;
 using System.Text.Json;
+using Explore.Domain;
 
 /// <summary>
 /// Centralizes all setting value serialization/deserialization logic.
@@ -42,6 +44,18 @@ public static class SettingValueSerializer
     public static string Serialize<T>(T value)
     {
         return JsonSerializer.Serialize(value, Options);
+    }
+
+    public static string ToDisplayValue(
+        string? rawValue,
+        SettingValueType valueType,
+        string defaultRawValue)
+    {
+        return TryToDisplayValue(rawValue, valueType, out string? displayValue)
+            ? displayValue
+            : TryToDisplayValue(defaultRawValue, valueType, out displayValue)
+                ? displayValue
+                : SafeDisplayDefault(valueType);
     }
 
     /// <summary>
@@ -86,6 +100,143 @@ public static class SettingValueSerializer
     /// </summary>
     public static decimal DeserializeDecimal(string? rawValue, decimal defaultValue = 0m)
         => Deserialize(rawValue, defaultValue);
+
+    private static bool TryToDisplayValue(
+        string? rawValue,
+        SettingValueType valueType,
+        out string displayValue)
+    {
+        displayValue = string.Empty;
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return false;
+        }
+
+        string candidate = rawValue.Trim();
+        switch (valueType)
+        {
+            case SettingValueType.String:
+                try
+                {
+                    string? value = JsonSerializer.Deserialize<string>(candidate, Options);
+                    if (value is not null)
+                    {
+                        displayValue = value;
+                        return true;
+                    }
+                }
+                catch (JsonException)
+                {
+                    if (candidate.StartsWith('"') || candidate.EndsWith('"'))
+                    {
+                        return false;
+                    }
+                }
+
+                displayValue = candidate;
+                return true;
+
+            case SettingValueType.DateTime:
+                if (TryParseDateTime(candidate, out DateTime dateTime))
+                {
+                    displayValue = dateTime.ToString("O", CultureInfo.InvariantCulture);
+                    return true;
+                }
+
+                return false;
+
+            case SettingValueType.Boolean:
+                if (TryParseJsonScalar(candidate, out bool booleanValue))
+                {
+                    displayValue = booleanValue ? "true" : "false";
+                    return true;
+                }
+
+                return false;
+
+            case SettingValueType.Integer:
+                if (TryParseJsonScalar(candidate, out int integerValue))
+                {
+                    displayValue = integerValue.ToString(CultureInfo.InvariantCulture);
+                    return true;
+                }
+
+                return false;
+
+            case SettingValueType.Long:
+                if (TryParseJsonScalar(candidate, out long longValue))
+                {
+                    displayValue = longValue.ToString(CultureInfo.InvariantCulture);
+                    return true;
+                }
+
+                return false;
+
+            case SettingValueType.Decimal:
+                if (TryParseJsonScalar(candidate, out decimal decimalValue))
+                {
+                    displayValue = decimalValue.ToString(CultureInfo.InvariantCulture);
+                    return true;
+                }
+
+                return false;
+
+            case SettingValueType.Json:
+                try
+                {
+                    using JsonDocument document = JsonDocument.Parse(candidate);
+                    displayValue = candidate;
+                    return true;
+                }
+                catch (JsonException)
+                {
+                    return false;
+                }
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryParseDateTime(string candidate, out DateTime value)
+    {
+        try
+        {
+            value = JsonSerializer.Deserialize<DateTime>(candidate, Options);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return DateTime.TryParse(
+                candidate,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind,
+                out value);
+        }
+    }
+
+    private static bool TryParseJsonScalar<T>(string candidate, out T value)
+        where T : struct
+    {
+        try
+        {
+            value = JsonSerializer.Deserialize<T>(candidate, Options);
+            return true;
+        }
+        catch (JsonException)
+        {
+            value = default;
+            return false;
+        }
+    }
+
+    private static string SafeDisplayDefault(SettingValueType valueType) => valueType switch
+    {
+        SettingValueType.Boolean => "false",
+        SettingValueType.Integer or SettingValueType.Long or SettingValueType.Decimal => "0",
+        SettingValueType.Json => "{}",
+        _ => string.Empty
+    };
 
     private static T TryParseFallback<T>(string rawValue, T defaultValue)
     {

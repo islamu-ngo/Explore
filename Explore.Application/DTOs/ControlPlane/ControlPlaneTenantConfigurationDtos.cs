@@ -3,6 +3,9 @@
 
 namespace Explore.Application.DTOs.ControlPlane;
 
+using System.Text.Json.Serialization;
+using Explore.Application.Hateoas;
+
 public sealed class ControlPlaneTenantEffectiveConfigurationDto
 {
     public Guid TenantId { get; set; }
@@ -25,6 +28,10 @@ public sealed class ControlPlaneTenantEffectiveSettingDto
     public string? Description { get; set; }
     public bool IsSensitive { get; set; }
     public IReadOnlyList<string> AllowedValues { get; set; } = [];
+
+    [JsonPropertyName("_links")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, HalLink>? Links { get; set; }
 }
 
 public sealed class ControlPlaneTenantQuotaUsageDto
