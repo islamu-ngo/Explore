@@ -7,6 +7,7 @@ using System.Text;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Domain;
 using Explore.Persistence.Caching;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.Repositories;
@@ -109,9 +110,14 @@ public static class PersistenceServicesRegistration
 
         // Unit of Work (wraps EF Core transactions)
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
+        services.AddScoped<ISettingMutationLock, PostgresSettingMutationLock>();
 
-        // Generic Repository
-        services.AddScoped(typeof(IGenericRepository<,>), typeof(GenericRepository<,>));
+        services.AddScoped<IGenericRepository<EventReportDecision, Guid>, GenericRepository<EventReportDecision, Guid>>();
+        services.AddScoped<IGenericRepository<EventReportTarget, Guid>, GenericRepository<EventReportTarget, Guid>>();
+        services.AddScoped<IGenericRepository<EventReportEvidence, Guid>, GenericRepository<EventReportEvidence, Guid>>();
+        services.AddScoped<IGenericRepository<EventReportCase, Guid>, GenericRepository<EventReportCase, Guid>>();
+        services.AddScoped<IGenericRepository<UserPii, Guid>, GenericRepository<UserPii, Guid>>();
+        services.AddScoped<IGenericRepository<ActorPii, Guid>, GenericRepository<ActorPii, Guid>>();
 
         // Lookup cache
         services.AddSingleton<ILookupDataCache, LookupDataCache>();
