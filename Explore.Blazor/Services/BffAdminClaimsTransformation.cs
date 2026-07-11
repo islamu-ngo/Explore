@@ -4,6 +4,7 @@
 
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -33,8 +34,6 @@ public sealed class BffAdminClaimsTransformation
     internal const string CacheKeyPrefix = "BffAdminClaims_";
     internal const string HttpClientName = "AdminAuthority";
 
-    // Claim types matching Explore.Application.Authorization.AdminClaimTypes constants.
-    // Duplicated here to avoid adding a project reference from the BFF to Application layer.
     private const string InstanceAdminClaim = "explore:admin:instance";
     private const string TenantAdminClaim = "explore:admin:tenant";
     private const string OrganizationAdminClaim = "explore:admin:organization";
@@ -95,7 +94,7 @@ public sealed class BffAdminClaimsTransformation
             if (cached.Authority is not null)
             {
                 ReplaceAdminClaims(principal, cached.Authority);
-                return cached.Authority.HasAnyAuthority;
+                return cached.Authority.HasAnyAuthority == true;
             }
 
             return HasAnyAdminClaims(principal);
@@ -111,17 +110,17 @@ public sealed class BffAdminClaimsTransformation
         var authority = await FetchAdminAuthorityAsync(sub, accessToken, cancellationToken);
         if (authority is not null)
         {
-            var ttl = authority.HasAnyAuthority ? PositiveCacheDuration : NegativeCacheDuration;
+            var ttl = authority.HasAnyAuthority == true ? PositiveCacheDuration : NegativeCacheDuration;
             _cache.Set(cacheKey, BffAdminAuthorityCacheEntry.Success(authority), ttl);
             ReplaceAdminClaims(principal, authority);
-            return authority.HasAnyAuthority;
+            return authority.HasAnyAuthority == true;
         }
 
         _cache.Set(cacheKey, BffAdminAuthorityCacheEntry.Failure, FailureCacheDuration);
         return HasAnyAdminClaims(principal);
     }
 
-    private async Task<BffAdminAuthorityResponse?> FetchAdminAuthorityAsync(
+    private async Task<AdminAuthorityDto?> FetchAdminAuthorityAsync(
         string userId,
         string accessToken,
         CancellationToken cancellationToken)
@@ -129,24 +128,9 @@ public sealed class BffAdminClaimsTransformation
         try
         {
             var client = _httpClientFactory.CreateClient(HttpClientName);
-            using var request = new HttpRequestMessage(HttpMethod.Get, "api/User/admin-authority");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-            using var response = await client.SendAsync(
-                request,
-                HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning(
-                    "BffAdminClaimsTransformation: API returned {StatusCode} for user {UserId}",
-                    response.StatusCode, userId);
-                return null;
-            }
-
-            var authority = await response.Content.ReadFromJsonAsync<BffAdminAuthorityResponse>(cancellationToken: cancellationToken);
-            return authority;
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            var apiClient = new EventApiClient(client);
+            return await apiClient.GetCurrentUserAdminAuthorityAsync(cancellationToken: cancellationToken);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -164,28 +148,28 @@ public sealed class BffAdminClaimsTransformation
         }
     }
 
-    private static void ReplaceAdminClaims(ClaimsPrincipal principal, BffAdminAuthorityResponse authority)
+    private static void ReplaceAdminClaims(ClaimsPrincipal principal, AdminAuthorityDto authority)
     {
         RemoveAdminClaims(principal);
 
-        if (!authority.HasAnyAuthority)
+        if (authority.HasAnyAuthority != true)
         {
             return;
         }
 
         var identity = new ClaimsIdentity();
 
-        if (authority.IsInstanceAdmin)
+        if (authority.IsInstanceAdmin == true)
         {
             identity.AddClaim(new Claim(InstanceAdminClaim, "true"));
         }
 
-        foreach (var tenantId in authority.AdminTenantIds)
+        foreach (var tenantId in authority.AdminTenantIds ?? [])
         {
             identity.AddClaim(new Claim(TenantAdminClaim, tenantId.ToString()));
         }
 
-        foreach (var orgId in authority.AdminOrganizationIds)
+        foreach (var orgId in authority.AdminOrganizationIds ?? [])
         {
             identity.AddClaim(new Claim(OrganizationAdminClaim, orgId.ToString()));
         }
@@ -224,21 +208,9 @@ public sealed class BffAdminClaimsTransformation
     }
 }
 
-internal sealed record BffAdminAuthorityCacheEntry(BffAdminAuthorityResponse? Authority)
+internal sealed record BffAdminAuthorityCacheEntry(AdminAuthorityDto? Authority)
 {
-    public static readonly BffAdminAuthorityCacheEntry Failure = new((BffAdminAuthorityResponse?)null);
+    public static readonly BffAdminAuthorityCacheEntry Failure = new((AdminAuthorityDto?)null);
 
-    public static BffAdminAuthorityCacheEntry Success(BffAdminAuthorityResponse authority) => new(authority);
-}
-
-/// <summary>
-/// BFF-local deserialization model for the API's admin-authority response.
-/// Mirrors Explore.Application.DTOs.User.AdminAuthorityDto without requiring a project reference.
-/// </summary>
-internal sealed class BffAdminAuthorityResponse
-{
-    public bool IsInstanceAdmin { get; set; }
-    public List<Guid> AdminTenantIds { get; set; } = [];
-    public List<Guid> AdminOrganizationIds { get; set; } = [];
-    public bool HasAnyAuthority => IsInstanceAdmin || AdminTenantIds.Count > 0 || AdminOrganizationIds.Count > 0;
+    public static BffAdminAuthorityCacheEntry Success(AdminAuthorityDto authority) => new(authority);
 }

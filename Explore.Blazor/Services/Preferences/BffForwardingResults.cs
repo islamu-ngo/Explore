@@ -3,8 +3,55 @@
 
 namespace Explore.Blazor.Services.Preferences;
 
+using Explore.Blazor.Client.Clients;
+
 public static class BffForwardingResults
 {
+    public static async Task<IResult> ApiOrFallbackAsync<T>(
+        Func<Task<T>> operation,
+        T fallback)
+    {
+        try
+        {
+            return Results.Ok(await operation());
+        }
+        catch (ApiException)
+        {
+            return Results.Ok(fallback);
+        }
+    }
+
+    public static async Task<IResult> ApiOrProblemAsync<T>(
+        Func<Task<T>> operation,
+        string failureDetail,
+        string failureTitle)
+    {
+        try
+        {
+            return Results.Ok(await operation());
+        }
+        catch (ApiException ex)
+        {
+            return Problem(ex, failureDetail, failureTitle);
+        }
+    }
+
+    public static async Task<IResult> ApiOrProblemAsync(
+        Func<Task> operation,
+        string failureDetail,
+        string failureTitle)
+    {
+        try
+        {
+            await operation();
+            return Results.Ok();
+        }
+        catch (ApiException ex)
+        {
+            return Problem(ex, failureDetail, failureTitle);
+        }
+    }
+
     public static async Task<IResult> JsonStreamOrFallbackAsync<TFallback>(
         HttpResponseMessage response,
         TFallback fallback,
@@ -72,6 +119,18 @@ public static class BffForwardingResults
         return Results.Problem(
             detail: failureDetail,
             statusCode: (int)response.StatusCode,
+            title: failureTitle);
+    }
+
+    public static IResult Problem(ApiException exception, string failureDetail, string failureTitle)
+    {
+        var statusCode = exception.StatusCode is >= 400 and <= 599
+            ? exception.StatusCode
+            : StatusCodes.Status502BadGateway;
+
+        return Results.Problem(
+            detail: failureDetail,
+            statusCode: statusCode,
             title: failureTitle);
     }
 

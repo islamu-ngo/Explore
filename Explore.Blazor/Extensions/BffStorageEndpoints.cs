@@ -1,14 +1,10 @@
 // ABOUTME: Storage BFF endpoints issue upload sessions and proxy files to server-approved destinations.
 // ABOUTME: Requires antiforgery or a protected same-process self-call token before accepting upload mutations.
 
-using System.Net;
-using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using Explore.Application.DTOs.StorageObject;
-using Explore.Application.Responses;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
-using Explore.Domain;
+using Explore.Blazor.Services.Preferences;
 
 namespace Explore.Blazor.Extensions;
 
@@ -17,6 +13,8 @@ public static class BffStorageEndpoints
     private const int MaxUploadFileNameLength = 500;
     private const int MaxUploadContentTypeLength = 100;
     private const int UploadSessionIdLength = 32;
+    private const string LegacyImagePurpose = "legacy_image";
+    private const string PublicImageVisibility = "public_image";
     private static readonly HashSet<string> ReservedFileNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "CON",
@@ -64,7 +62,7 @@ public static class BffStorageEndpoints
     private static async Task<IResult> HandleStorageUploadSessionAsync(
         StorageUploadSessionRequest? request,
         HttpContext ctx,
-        IHttpClientFactory clientFactory,
+        IEventApiClient apiClient,
         IStorageUploadSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -77,28 +75,29 @@ public static class BffStorageEndpoints
             return validationProblem;
         }
 
-        using var apiClient = clientFactory.CreateClient("BffClient");
-        using var response = await apiClient.PostAsJsonAsync("api/storageobject/upload-sessions", normalizedRequest, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        BaseCommandResponseOfStorageUploadSessionDto uploadResponse;
+        try
+        {
+            uploadResponse = await apiClient.CreateStorageUploadSessionAsync(
+                normalizedRequest,
+                cancellationToken: cancellationToken);
+        }
+        catch (ApiException ex)
         {
             logger.LogWarning(
-                "Storage upload session generation failed. Status={StatusCode}, HasBody={HasBody}",
-                (int)response.StatusCode,
-                response.Content.Headers.ContentLength.GetValueOrDefault() > 0);
-
-            return Results.Problem(
-                detail: "Failed to create a storage upload session.",
-                statusCode: response.StatusCode == HttpStatusCode.Unauthorized
-                    ? StatusCodes.Status401Unauthorized
-                    : StatusCodes.Status502BadGateway);
+                "Storage upload session generation failed. Status={StatusCode}",
+                ex.StatusCode);
+            return BffForwardingResults.Problem(
+                ex,
+                "Failed to create a storage upload session.",
+                "Storage upload session failed");
         }
 
-        var uploadResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponse<StorageUploadSessionDto>>(cancellationToken);
-        if (uploadResponse?.Success != true || uploadResponse.Id is null)
+        if (uploadResponse.Success != true || uploadResponse.Id is null)
         {
             return Results.Problem(
                 detail: "Storage service returned an invalid upload session response.",
-            statusCode: StatusCodes.Status502BadGateway);
+                statusCode: StatusCodes.Status502BadGateway);
         }
 
         var issueResult = await sessionStore.IssueAsync(ctx.User, uploadResponse.Id, normalizedRequest.ContentType, cancellationToken);
@@ -121,7 +120,7 @@ public static class BffStorageEndpoints
 
     private static async Task<IResult> HandleStorageUploadProxyAsync(
         HttpContext ctx,
-        IHttpClientFactory clientFactory,
+        IEventApiClient apiClient,
         IStorageUploadSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -179,14 +178,14 @@ public static class BffStorageEndpoints
             ? file.ContentType
             : declaredContentType;
 
-        if (!TryNormalizeContentType(candidateContentType, out var contentType, out var mediaTypeHeader, out var contentTypeProblem))
+        if (!TryNormalizeContentType(candidateContentType, out var contentType, out var contentTypeProblem))
         {
             return InvalidStorageUploadRequest(contentTypeProblem);
         }
 
         if (!string.IsNullOrWhiteSpace(declaredContentType) &&
             !string.IsNullOrWhiteSpace(file.ContentType) &&
-            (!TryNormalizeContentType(file.ContentType, out var fileContentType, out _, out contentTypeProblem) ||
+            (!TryNormalizeContentType(file.ContentType, out var fileContentType, out contentTypeProblem) ||
                 !string.Equals(contentType, fileContentType, StringComparison.OrdinalIgnoreCase)))
         {
             return InvalidStorageUploadRequest("File content type must match declared content type.");
@@ -199,7 +198,7 @@ public static class BffStorageEndpoints
                 resolution.FailureCode);
             return Results.Problem(
                 detail: "A valid server-issued upload session is required.",
-            statusCode: StatusCodes.Status400BadRequest);
+                statusCode: StatusCodes.Status400BadRequest);
         }
 
         if (file.Length != resolution.Session.ExpectedSizeBytes)
@@ -209,30 +208,12 @@ public static class BffStorageEndpoints
 
         try
         {
-            using var apiClient = clientFactory.CreateClient("BffClient");
             await using var stream = file.OpenReadStream();
-            using var content = new StreamContent(stream);
-            content.Headers.ContentType = mediaTypeHeader;
-            content.Headers.ContentLength = file.Length;
-
-            using var response = await apiClient.PutAsync(
-                $"api/storageobject/upload-sessions/{resolution.Session.ApiUploadSessionId}/content",
-                content,
-                cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogWarning(
-                    "Upload proxy failed for a resolved API upload session. Status={StatusCode}, HasBody={HasBody}",
-                    (int)response.StatusCode,
-                    response.Content.Headers.ContentLength.GetValueOrDefault() > 0);
-
-                return Results.Problem(
-                    detail: "Storage upload failed.",
-                    statusCode: StatusCodes.Status502BadGateway);
-            }
-
-            var uploadResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponse<StorageUploadSessionDto>>(cancellationToken);
-            if (uploadResponse?.Success != true || uploadResponse.Id?.StorageObjectId is null)
+            var uploadResponse = await apiClient.UploadStorageUploadSessionContentAsync(
+                resolution.Session.ApiUploadSessionId,
+                stream,
+                cancellationToken: cancellationToken);
+            if (uploadResponse.Success != true || uploadResponse.Id?.StorageObjectId is null)
             {
                 logger.LogWarning(
                     "Upload proxy received invalid finalization response for a resolved API upload session.");
@@ -244,7 +225,7 @@ public static class BffStorageEndpoints
             await sessionStore.ConsumeAsync(resolution.Session.SessionId, cancellationToken);
             var storageObjectId = uploadResponse.Id.StorageObjectId.Value;
             var contentUrl = $"/api/storageobject/{storageObjectId}/content";
-            var publicUrl = string.Equals(uploadResponse.Id.Visibility, StorageObjectVisibilities.PublicImage, StringComparison.Ordinal)
+            var publicUrl = string.Equals(uploadResponse.Id.Visibility, PublicImageVisibility, StringComparison.Ordinal)
                 ? $"/api/storageobject/{storageObjectId}/public"
                 : contentUrl;
 
@@ -289,8 +270,8 @@ public static class BffStorageEndpoints
             OriginalFileName = request?.FileName?.Trim(),
             SafeDisplayName = request?.FileName?.Trim(),
             Extension = Path.GetExtension(request?.FileName ?? string.Empty).TrimStart('.'),
-            Purpose = StorageObjectPurposes.LegacyImage,
-            Visibility = StorageObjectVisibilities.PublicImage,
+            Purpose = LegacyImagePurpose,
+            Visibility = PublicImageVisibility,
             IdempotencyKey = $"bff:{Guid.CreateVersion7():N}"
         };
 
@@ -309,7 +290,7 @@ public static class BffStorageEndpoints
             return InvalidStorageUploadRequest(fileNameProblem);
         }
 
-        if (!TryNormalizeContentType(normalizedRequest.ContentType, out var contentType, out _, out var contentTypeProblem))
+        if (!TryNormalizeContentType(normalizedRequest.ContentType, out var contentType, out var contentTypeProblem))
         {
             return InvalidStorageUploadRequest(contentTypeProblem);
         }
@@ -321,11 +302,9 @@ public static class BffStorageEndpoints
     private static bool TryNormalizeContentType(
         string? value,
         out string contentType,
-        out MediaTypeHeaderValue? mediaTypeHeader,
         out string problem)
     {
         contentType = string.Empty;
-        mediaTypeHeader = null;
         problem = string.Empty;
 
         var candidate = value?.Trim() ?? string.Empty;
@@ -343,7 +322,7 @@ public static class BffStorageEndpoints
 
         if (ContainsControlCharacters(candidate) ||
             candidate.Count(static character => character == '/') != 1 ||
-            !MediaTypeHeaderValue.TryParse(candidate, out mediaTypeHeader) ||
+            !MediaTypeHeaderValue.TryParse(candidate, out var mediaTypeHeader) ||
             string.IsNullOrWhiteSpace(mediaTypeHeader.MediaType) ||
             mediaTypeHeader.MediaType.Count(static character => character == '/') != 1 ||
             mediaTypeHeader.MediaType.Contains('*', StringComparison.Ordinal))
@@ -412,6 +391,7 @@ public static class BffStorageEndpoints
         exception switch
         {
             OperationCanceledException => "canceled",
+            ApiException => "api_rejected",
             HttpRequestException => "api_unavailable",
             IOException => "stream_io",
             InvalidOperationException => "proxy_invalid_operation",

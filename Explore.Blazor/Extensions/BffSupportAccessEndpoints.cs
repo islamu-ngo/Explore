@@ -1,14 +1,11 @@
 // ABOUTME: Support-access BFF endpoints for current-session UX, start, and actor-owned stop.
 // ABOUTME: Keeps impersonation session references server-side while streaming API HAL responses to the browser.
 
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Explore.Application.DTOs.SupportAccess;
-using Explore.Application.Hateoas;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Preferences;
-using Explore.Domain.Enums;
 
 namespace Explore.Blazor.Extensions;
 
@@ -54,24 +51,24 @@ public static class BffSupportAccessEndpoints
 
     private static async Task<IResult> HandleCurrentAsync(
         HttpContext ctx,
-        IHttpClientFactory clientFactory,
+        IEventApiClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
-        using var apiClient = clientFactory.CreateClient("BffClient");
-        using var response = await apiClient.GetAsync("api/support-access/current", cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        CurrentSupportAccessSessionDto current;
+        try
+        {
+            current = await apiClient.GetCurrentSupportAccessSessionAsync(cancellationToken: cancellationToken);
+        }
+        catch (ApiException ex)
         {
             return BffForwardingResults.Problem(
-                response,
+                ex,
                 "Could not resolve the current support-access session.",
                 "Support access status failed");
         }
 
-        var current = await response.Content.ReadFromJsonAsync<CurrentSupportAccessSessionDto>(
-            JsonOptions,
-            cancellationToken);
         var bindResult = await BindCurrentSessionAsync(
             ctx,
             sessionStore,
@@ -83,50 +80,61 @@ public static class BffSupportAccessEndpoints
             return bindResult;
         }
 
-        return Results.Json(current ?? new CurrentSupportAccessSessionDto(), JsonOptions);
+        return Results.Json(current, JsonOptions);
     }
 
     private static async Task<IResult> HandleListSessionsAsync(
         Guid targetTenantId,
         int limit,
-        IHttpClientFactory clientFactory,
+        IEventApiClient apiClient,
         CancellationToken cancellationToken)
     {
-        using var apiClient = clientFactory.CreateClient("BffClient");
-        using var response = await apiClient.GetAsync(
-            $"api/support-access/tenants/{targetTenantId:D}/sessions?limit={ClampLimit(limit)}",
-            cancellationToken);
-
-        return await BffForwardingResults.ContentOrProblemAsync(
-            response,
-            "Could not load support-access sessions.",
-            "Support access session history failed",
-            cancellationToken);
+        try
+        {
+            var sessions = await apiClient.ListSupportAccessSessionsAsync(
+                targetTenantId,
+                ClampLimit(limit),
+                cancellationToken: cancellationToken);
+            return Results.Json(sessions, JsonOptions, contentType: HalJsonContentType);
+        }
+        catch (ApiException ex)
+        {
+            return BffForwardingResults.Problem(
+                ex,
+                "Could not load support-access sessions.",
+                "Support access session history failed");
+        }
     }
 
     private static async Task<IResult> HandleAuditEventsAsync(
         Guid targetTenantId,
         Guid sessionId,
         int limit,
-        IHttpClientFactory clientFactory,
+        IEventApiClient apiClient,
         CancellationToken cancellationToken)
     {
-        using var apiClient = clientFactory.CreateClient("BffClient");
-        using var response = await apiClient.GetAsync(
-            $"api/support-access/tenants/{targetTenantId:D}/sessions/{sessionId:D}/audit-events?limit={ClampLimit(limit)}",
-            cancellationToken);
-
-        return await BffForwardingResults.ContentOrProblemAsync(
-            response,
-            "Could not load support-access audit events.",
-            "Support access audit failed",
-            cancellationToken);
+        try
+        {
+            var auditEvents = await apiClient.GetSupportAccessAuditEventsAsync(
+                targetTenantId,
+                sessionId,
+                ClampLimit(limit),
+                cancellationToken: cancellationToken);
+            return Results.Json(auditEvents, JsonOptions, contentType: HalJsonContentType);
+        }
+        catch (ApiException ex)
+        {
+            return BffForwardingResults.Problem(
+                ex,
+                "Could not load support-access audit events.",
+                "Support access audit failed");
+        }
     }
 
     private static async Task<IResult> HandleStartAsync(
         StartSupportAccessSessionRequestDto? request,
         HttpContext ctx,
-        IHttpClientFactory clientFactory,
+        IEventApiClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -139,28 +147,28 @@ public static class BffSupportAccessEndpoints
                 title: "Invalid support access request");
         }
 
-        using var apiClient = clientFactory.CreateClient("BffClient");
-        using var response = await apiClient.PostAsJsonAsync(
-            "api/support-access/sessions",
-            request,
-            JsonOptions,
-            cancellationToken);
-        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        HalResourceOfSupportAccessSessionDto resource;
+        try
+        {
+            resource = await apiClient.StartSupportAccessSessionAsync(
+                request,
+                cancellationToken: cancellationToken);
+        }
+        catch (ApiException ex)
         {
             return BffForwardingResults.Problem(
-                response,
+                ex,
                 "Could not start support access.",
                 "Support access start failed");
         }
 
-        var resource = ReadSessionResource(responseBody);
-        if (resource?.Data is null)
+        var session = ToSession(resource);
+        if (session is null)
         {
             return InvalidApiSessionResponse();
         }
 
-        var storeResult = await sessionStore.StoreAsync(ctx.User, resource.Data, cancellationToken);
+        var storeResult = await sessionStore.StoreAsync(ctx.User, session, cancellationToken);
         if (!storeResult.Success)
         {
             loggerFactory.CreateLogger("SupportAccessBff").LogWarning(
@@ -169,18 +177,17 @@ public static class BffSupportAccessEndpoints
             return InvalidApiSessionResponse();
         }
 
-        return ApiHalContent(response, responseBody);
+        return Results.Json(resource, JsonOptions, contentType: HalJsonContentType);
     }
 
     private static async Task<IResult> HandleStopCurrentAsync(
         StopSupportAccessSessionRequestDto? request,
         HttpContext ctx,
-        IHttpClientFactory clientFactory,
+        IEventApiClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
-        using var apiClient = clientFactory.CreateClient("BffClient");
         var currentSession = await ResolveCurrentSessionAsync(
             ctx,
             apiClient,
@@ -195,52 +202,57 @@ public static class BffSupportAccessEndpoints
                 title: "Support access is not active");
         }
 
-        using var response = await apiClient.PostAsJsonAsync(
-            $"api/support-access/sessions/{currentSession.Id}/stop",
-            request ?? new StopSupportAccessSessionRequestDto(),
-            JsonOptions,
-            cancellationToken);
-        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (currentSession.Id is not Guid currentSessionId || currentSessionId == Guid.Empty)
+        {
+            return InvalidApiSessionResponse();
+        }
 
-        if (!response.IsSuccessStatusCode)
+        HalResourceOfSupportAccessSessionDto resource;
+        try
+        {
+            resource = await apiClient.StopSupportAccessSessionAsync(
+                currentSessionId,
+                request ?? new StopSupportAccessSessionRequestDto(),
+                cancellationToken: cancellationToken);
+        }
+        catch (ApiException ex)
         {
             return BffForwardingResults.Problem(
-                response,
+                ex,
                 "Could not stop support access.",
                 "Support access stop failed");
         }
 
-        var resource = ReadSessionResource(responseBody);
-        if (resource?.Data is null)
+        if (resource.Id is null)
         {
             await sessionStore.ClearAsync(ctx.User, cancellationToken);
             return InvalidApiSessionResponse();
         }
 
         await sessionStore.ClearAsync(ctx.User, cancellationToken);
-        return ApiHalContent(response, responseBody);
+        return Results.Json(resource, JsonOptions, contentType: HalJsonContentType);
     }
 
     private static async Task<IResult> HandleForceStopAsync(
         Guid sessionId,
         ForceStopSupportAccessSessionRequestDto? request,
         HttpContext ctx,
-        IHttpClientFactory clientFactory,
+        IEventApiClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         CancellationToken cancellationToken)
     {
-        using var apiClient = clientFactory.CreateClient("BffClient");
-        using var response = await apiClient.PostAsJsonAsync(
-            $"api/support-access/sessions/{sessionId:D}/force-stop",
-            request ?? new ForceStopSupportAccessSessionRequestDto(),
-            JsonOptions,
-            cancellationToken);
-        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        HalResourceOfSupportAccessSessionDto resource;
+        try
+        {
+            resource = await apiClient.ForceStopSupportAccessSessionAsync(
+                sessionId,
+                request ?? new ForceStopSupportAccessSessionRequestDto(),
+                cancellationToken: cancellationToken);
+        }
+        catch (ApiException ex)
         {
             return BffForwardingResults.Problem(
-                response,
+                ex,
                 "Could not force-stop support access.",
                 "Support access force-stop failed");
         }
@@ -251,15 +263,14 @@ public static class BffSupportAccessEndpoints
             await sessionStore.ClearAsync(ctx.User, cancellationToken);
         }
 
-        var resource = ReadSessionResource(responseBody);
-        return resource?.Data is null
+        return resource.Id is null
             ? InvalidApiSessionResponse()
-            : ApiHalContent(response, responseBody);
+            : Results.Json(resource, JsonOptions, contentType: HalJsonContentType);
     }
 
     private static async Task<SupportAccessSessionDto?> ResolveCurrentSessionAsync(
         HttpContext ctx,
-        HttpClient apiClient,
+        IEventApiClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -278,15 +289,16 @@ public static class BffSupportAccessEndpoints
             };
         }
 
-        using var response = await apiClient.GetAsync("api/support-access/current", cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        CurrentSupportAccessSessionDto current;
+        try
+        {
+            current = await apiClient.GetCurrentSupportAccessSessionAsync(cancellationToken: cancellationToken);
+        }
+        catch (ApiException)
         {
             return null;
         }
 
-        var current = await response.Content.ReadFromJsonAsync<CurrentSupportAccessSessionDto>(
-            JsonOptions,
-            cancellationToken);
         var bindResult = await BindCurrentSessionAsync(
             ctx,
             sessionStore,
@@ -294,7 +306,7 @@ public static class BffSupportAccessEndpoints
             loggerFactory,
             cancellationToken);
 
-        return bindResult is null && current?.IsActive == true
+        return bindResult is null && current.IsActive == true
             ? current.Session
             : null;
     }
@@ -324,20 +336,22 @@ public static class BffSupportAccessEndpoints
         return InvalidApiSessionResponse();
     }
 
-    private static HalResource<SupportAccessSessionDto>? ReadSessionResource(string responseBody)
+    private static SupportAccessSessionDto? ToSession(HalResourceOfSupportAccessSessionDto resource)
     {
-        return string.IsNullOrWhiteSpace(responseBody)
-            ? null
-            : JsonSerializer.Deserialize<HalResource<SupportAccessSessionDto>>(responseBody, JsonOptions);
-    }
+        if (resource.Id is not Guid id || id == Guid.Empty)
+        {
+            return null;
+        }
 
-    private static IResult ApiHalContent(HttpResponseMessage response, string responseBody)
-    {
-        var contentType = response.Content.Headers.ContentType?.ToString() ?? HalJsonContentType;
-        return Results.Content(
-            responseBody,
-            contentType,
-            statusCode: (int)response.StatusCode);
+        return new SupportAccessSessionDto
+        {
+            Id = id,
+            TargetTenantId = resource.TargetTenantId,
+            ModeId = resource.ModeId,
+            AllowsWrites = resource.AllowsWrites,
+            ExpiresAtUtc = resource.ExpiresAtUtc,
+            IsActive = resource.IsActive
+        };
     }
 
     private static IResult InvalidApiSessionResponse()

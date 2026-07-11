@@ -5,7 +5,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Explore.Application.DTOs.SupportAccess;
+using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Caching.Distributed;
 
 namespace Explore.Blazor.Services;
@@ -71,13 +71,13 @@ public sealed class BffSupportAccessSessionStore(
         }
 
         var trustedSession = new BffSupportAccessSession(
-            SessionId: session.Id,
+            SessionId: session.Id!.Value,
             OwnerUserId: owner.UserId,
             OwnerSessionId: owner.SessionId,
-            TargetTenantId: session.TargetTenantId,
-            ModeId: session.ModeId,
-            AllowsWrites: session.AllowsWrites,
-            ExpiresAtUtc: session.ExpiresAtUtc);
+            TargetTenantId: session.TargetTenantId!.Value,
+            ModeId: session.ModeId ?? 0,
+            AllowsWrites: session.AllowsWrites == true,
+            ExpiresAtUtc: session.ExpiresAtUtc!.Value);
 
         await cache.SetStringAsync(
             BuildCacheKey(owner),
@@ -185,22 +185,22 @@ public sealed class BffSupportAccessSessionStore(
 
     private static string? ValidateSession(SupportAccessSessionDto session)
     {
-        if (session.Id == Guid.Empty)
+        if (session.Id is not Guid sessionId || sessionId == Guid.Empty)
         {
             return "missing_session_id";
         }
 
-        if (session.TargetTenantId == Guid.Empty)
+        if (session.TargetTenantId is not Guid targetTenantId || targetTenantId == Guid.Empty)
         {
             return "missing_target_tenant";
         }
 
-        if (!session.IsActive)
+        if (session.IsActive != true)
         {
             return "session_not_active";
         }
 
-        return session.ExpiresAtUtc <= DateTimeOffset.UtcNow
+        return session.ExpiresAtUtc is not DateTimeOffset expiresAtUtc || expiresAtUtc <= DateTimeOffset.UtcNow
             ? "session_expired"
             : null;
     }

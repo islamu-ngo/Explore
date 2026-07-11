@@ -1,7 +1,7 @@
 // ABOUTME: Configuration extensions for the Blazor Server project.
 // ABOUTME: Adds Infisical as configuration source and maps Infisical secret names to .NET config keys.
 
-using Explore.Secrets.Extensions;
+using Explore.Blazor.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Extensions;
@@ -20,6 +20,43 @@ public static class ConfigurationExtensions
     private static readonly ILogger BootstrapLogger =
         BootstrapLoggerFactory.CreateLogger("Explore.Blazor.Bootstrap.Infisical");
 
+    public static IConfigurationBuilder AddInfisical(
+        this IConfigurationBuilder builder,
+        IConfiguration configuration,
+        Action<InfisicalConfigurationSource>? configure = null)
+    {
+        var projectId = configuration["Infisical:ProjectId"];
+        var clientId = configuration["Infisical:ClientId"];
+        var clientSecret = configuration["Infisical:ClientSecret"];
+
+        if (string.IsNullOrEmpty(projectId)
+            || string.IsNullOrEmpty(clientId)
+            || string.IsNullOrEmpty(clientSecret))
+        {
+            BootstrapLogger.LogInformation("Infisical bootstrap credentials are not configured; skipping source.");
+            return builder;
+        }
+
+        var source = new InfisicalConfigurationSource
+        {
+            Url = configuration["Infisical:Url"] ?? "https://app.infisical.com",
+            ProjectId = projectId,
+            ClientId = clientId,
+            ClientSecret = clientSecret,
+            Environment = configuration["Infisical:Environment"] ?? "dev",
+        };
+
+        var paths = configuration.GetSection("Infisical:Paths").Get<List<string>>();
+        if (paths is { Count: > 0 })
+        {
+            source.Paths.Clear();
+            source.Paths.AddRange(paths);
+        }
+
+        configure?.Invoke(source);
+        return builder.Add(source);
+    }
+
     /// <summary>
     /// Adds Infisical secrets and maps them to canonical .NET configuration keys for Blazor Server.
     /// </summary>
@@ -37,7 +74,7 @@ public static class ConfigurationExtensions
         configBuilder.AddInfisical(bootstrapConfig, source =>
         {
             source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/blazor", "/postgresql"]);
+            source.Paths.AddRange(["/keycloak", "/blazor"]);
             source.ThrowOnFirstLoadFailure = false;
         });
 

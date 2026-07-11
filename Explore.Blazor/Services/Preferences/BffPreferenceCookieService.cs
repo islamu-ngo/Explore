@@ -4,15 +4,15 @@
 namespace Explore.Blazor.Services.Preferences;
 
 using System.Globalization;
-using Explore.Application.DTOs.Appearance;
-using Explore.Domain.Common.Localization;
+using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Localization;
+using Api = Explore.Blazor.Client.Clients;
 
 public interface IBffPreferenceCookieService
 {
-    ResolvedAppearanceDto BuildDefaultResolvedAppearance(HttpContext context);
+    Api.ResolvedAppearanceDto BuildDefaultResolvedAppearance(HttpContext context);
 
-    UserAppearancePreferencesDto ReadCookiePreferences(HttpContext context);
+    BffAppearancePreferences ReadCookiePreferences(HttpContext context);
 
     void PersistThemeCookie(HttpContext context, string themeMode);
 
@@ -37,18 +37,18 @@ public sealed class BffPreferenceCookieService(IWebHostEnvironment environment) 
 
     private static readonly TimeSpan PreferenceCookieLifetime = TimeSpan.FromDays(365);
 
-    public ResolvedAppearanceDto BuildDefaultResolvedAppearance(HttpContext context)
+    public Api.ResolvedAppearanceDto BuildDefaultResolvedAppearance(HttpContext context)
     {
         var theme = context.Request.Cookies["theme"];
         var direction = context.Request.Cookies["direction"];
         var lang = context.Request.Cookies["lang"];
         var resolvedMode = ValidThemeModes.Contains(theme) ? theme! : "system";
 
-        return new ResolvedAppearanceDto
+        return new Api.ResolvedAppearanceDto
         {
             ThemeMode = resolvedMode,
             Direction = direction is "ltr" or "rtl" ? direction : "auto",
-            Language = CultureRegistry.TryGetEntry(lang ?? string.Empty, out var entry) ? entry.Code : "en",
+            Language = BffCultureRegistry.TryNormalize(lang, out var normalizedLanguage) ? normalizedLanguage : "en",
             ServerEffectiveDarkMode = resolvedMode switch
             {
                 "dark" => true,
@@ -60,19 +60,17 @@ public sealed class BffPreferenceCookieService(IWebHostEnvironment environment) 
         };
     }
 
-    public UserAppearancePreferencesDto ReadCookiePreferences(HttpContext context)
+    public BffAppearancePreferences ReadCookiePreferences(HttpContext context)
     {
         var theme = context.Request.Cookies["theme"];
         var direction = context.Request.Cookies["direction"];
         var lang = context.Request.Cookies["lang"];
 
-        return new UserAppearancePreferencesDto
-        {
-            ThemeMode = theme is "dark" or "light" ? theme : "system",
-            Direction = direction is "ltr" or "rtl" ? direction : "auto",
-            Language = CultureRegistry.TryGetEntry(lang ?? string.Empty, out var entry) ? entry.Code : "en",
-            DefaultThemeId = null
-        };
+        return new BffAppearancePreferences(
+            theme is "dark" or "light" ? theme : "system",
+            direction is "ltr" or "rtl" ? direction : "auto",
+            BffCultureRegistry.TryNormalize(lang, out var normalizedLanguage) ? normalizedLanguage : "en",
+            DefaultThemeId: null);
     }
 
     public void PersistThemeCookie(HttpContext context, string themeMode)
@@ -136,3 +134,9 @@ public sealed class BffPreferenceCookieService(IWebHostEnvironment environment) 
         };
     }
 }
+
+public sealed record BffAppearancePreferences(
+    string ThemeMode,
+    string Direction,
+    string Language,
+    Guid? DefaultThemeId);

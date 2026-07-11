@@ -3,7 +3,7 @@
 
 namespace Explore.Blazor.Services.Preferences;
 
-using Explore.Domain.Common.Localization;
+using Explore.Blazor.Services;
 
 public interface IBffPreferenceValidationService
 {
@@ -41,8 +41,8 @@ public sealed class BffPreferenceValidationService : IBffPreferenceValidationSer
 
     public string? NormalizeLanguage(string? languageCode)
     {
-        return CultureRegistry.TryGetEntry(languageCode ?? string.Empty, out var entry)
-            ? entry.Code
+        return BffCultureRegistry.TryNormalize(languageCode, out var normalized)
+            ? normalized
             : null;
     }
 

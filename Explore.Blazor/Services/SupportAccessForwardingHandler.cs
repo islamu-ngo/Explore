@@ -1,7 +1,7 @@
 // ABOUTME: DelegatingHandler that forwards BFF-owned support-access context to API requests.
 // ABOUTME: Strips browser-controlled support headers and injects only the cached trusted session ID.
 
-using Explore.Application.Constants;
+using Event.Web.BffHosting.Security;
 
 namespace Explore.Blazor.Services;
 
@@ -23,7 +23,7 @@ public sealed class SupportAccessForwardingHandler(
         if (resolution.Success && resolution.Session is not null)
         {
             request.Headers.TryAddWithoutValidation(
-                SupportAccessHeaderNames.SessionId,
+                EventBffHeaderNames.SupportAccessSessionId,
                 resolution.Session.SessionId.ToString("D"));
         }
 
@@ -36,7 +36,7 @@ public sealed class SupportAccessForwardingHandler(
 
         var headerNames = request.Headers
             .Select(header => header.Key)
-            .Where(SupportAccessHeaderNames.IsSupportAccessHeader)
+            .Where(EventBffHeaderNames.IsSupportAccessHeader)
             .ToArray();
 
         foreach (var headerName in headerNames)

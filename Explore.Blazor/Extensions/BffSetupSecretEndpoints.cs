@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Text.Json;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -262,7 +263,7 @@ public static class BffSetupSecretEndpoints
         string detail)
     {
         ctx.Response.StatusCode = statusCode;
-        await ctx.Response.WriteAsJsonAsync(new ProblemDetails
+        await ctx.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails
         {
             Status = statusCode,
             Title = title,
@@ -275,84 +276,17 @@ public static class BffSetupSecretEndpoints
         string secret,
         CancellationToken cancellationToken)
     {
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        var apiClient = ctx.RequestServices.GetRequiredService<IEventApiClient>();
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("SetupSecretGateway");
 
         try
         {
-            var client = clientFactory.CreateClient("BffClient");
-            var payload = new SetupSecretCookieRequest { Secret = secret };
-            using var response = await client.PostAsJsonAsync(
-                "api/InstanceOnboarding/validate-secret", payload, cancellationToken);
+            var body = await apiClient.ValidateInstanceSetupSecretAsync(
+                new ValidateSetupSecretRequest { Secret = secret },
+                cancellationToken: cancellationToken);
 
-            SetupSecretValidationResponse? body = null;
-            try
-            {
-                body = await response.Content.ReadFromJsonAsync<SetupSecretValidationResponse>(
-                    cancellationToken: cancellationToken);
-            }
-            catch (JsonException ex)
-            {
-                logger.LogDebug(
-                    "Could not parse setup secret validation response body. StatusCode: {StatusCode}; ExceptionType: {ExceptionType}",
-                    (int)response.StatusCode,
-                    ex.GetType().Name);
-            }
-            catch (NotSupportedException ex)
-            {
-                logger.LogDebug(
-                    "Unsupported setup secret validation response body. StatusCode: {StatusCode}; ExceptionType: {ExceptionType}",
-                    (int)response.StatusCode,
-                    ex.GetType().Name);
-            }
-
-            // Preserve upstream meaning: previously every non-2xx (incl. 429 from rate limiter and
-            // 403 from invalid secret) was flattened to a generic 502, masking the real failure
-            // and confusing UX during onboarding flows that re-validate frequently.
-            if (response.StatusCode == System.Net.HttpStatusCode.Gone)
-            {
-                return new SetupSecretValidationResult(
-                    false, StatusCodes.Status410Gone,
-                    SetupAlreadyCompletedDetail);
-            }
-
-            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            {
-                return new SetupSecretValidationResult(
-                    false, StatusCodes.Status429TooManyRequests,
-                    TooManyAttemptsDetail);
-            }
-
-            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
-            {
-                return new SetupSecretValidationResult(
-                    false, StatusCodes.Status403Forbidden,
-                    InvalidSetupSecretDetail);
-            }
-
-            if ((int)response.StatusCode >= 500)
-            {
-                return new SetupSecretValidationResult(
-                    false, StatusCodes.Status502BadGateway,
-                    ValidationUnavailableDetail);
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return new SetupSecretValidationResult(
-                    false, (int)response.StatusCode,
-                    ResolveSafeValidationFailureDetail(response.StatusCode));
-            }
-
-            if (body is null)
-            {
-                return new SetupSecretValidationResult(
-                    false, StatusCodes.Status502BadGateway,
-                    ValidationUnavailableDetail);
-            }
-
-            if (body?.Valid == true)
+            if (body.Valid)
             {
                 return new SetupSecretValidationResult(true, StatusCodes.Status200OK, string.Empty);
             }
@@ -360,6 +294,17 @@ public static class BffSetupSecretEndpoints
             return new SetupSecretValidationResult(
                 false, StatusCodes.Status400BadRequest,
                 InvalidSetupSecretDetail);
+        }
+        catch (ApiException ex)
+        {
+            return ex.StatusCode switch
+            {
+                StatusCodes.Status410Gone => new(false, StatusCodes.Status410Gone, SetupAlreadyCompletedDetail),
+                StatusCodes.Status429TooManyRequests => new(false, StatusCodes.Status429TooManyRequests, TooManyAttemptsDetail),
+                StatusCodes.Status403Forbidden => new(false, StatusCodes.Status403Forbidden, InvalidSetupSecretDetail),
+                >= 500 => new(false, StatusCodes.Status502BadGateway, ValidationUnavailableDetail),
+                _ => new(false, ex.StatusCode, ResolveSafeValidationFailureDetail((HttpStatusCode)ex.StatusCode))
+            };
         }
         catch (HttpRequestException ex)
         {
@@ -473,12 +418,6 @@ public static class BffSetupSecretEndpoints
     internal sealed class SetupSecretCookieRequest
     {
         public string? Secret { get; set; }
-    }
-
-    internal sealed class SetupSecretValidationResponse
-    {
-        public bool Valid { get; set; }
-        public string? Error { get; set; }
     }
 
     internal sealed class SetupSecretStatusResponse

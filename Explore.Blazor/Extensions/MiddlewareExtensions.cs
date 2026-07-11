@@ -1,7 +1,6 @@
 // ABOUTME: Centralizes middleware pipeline configuration and graceful shutdown for the Blazor BFF server.
 // ABOUTME: Extracts forwarded headers, XSRF token distribution, startup redirect, and access token capture.
 
-using Explore.Application.Contracts.Services;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Middleware;
 using Explore.Blazor.Services;

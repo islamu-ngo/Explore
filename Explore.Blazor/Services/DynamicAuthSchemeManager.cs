@@ -2,8 +2,8 @@
 // ABOUTME: Reads auth config from API + env vars, registers Keycloak/Google/ATProto schemes without restart.
 
 using Event.Web.BffHosting.Authentication;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Constants;
-using Explore.Blazor.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.DataProtection;
@@ -15,7 +15,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
 {
     private readonly IAuthenticationSchemeProvider _schemeProvider;
     private readonly IOptionsMonitorCache<OpenIdConnectOptions> _oidcOptionsCache;
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
     private readonly IDataProtectionProvider _dataProtection;
     private readonly IEventBffOidcOptionsFactory _oidcOptionsFactory;
@@ -35,7 +35,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     public DynamicAuthSchemeManager(
         IAuthenticationSchemeProvider schemeProvider,
         IOptionsMonitorCache<OpenIdConnectOptions> oidcOptionsCache,
-        IHttpClientFactory httpClientFactory,
+        IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
         IDataProtectionProvider dataProtection,
         IEventBffOidcOptionsFactory oidcOptionsFactory,
@@ -43,7 +43,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     {
         _schemeProvider = schemeProvider;
         _oidcOptionsCache = oidcOptionsCache;
-        _httpClientFactory = httpClientFactory;
+        _scopeFactory = scopeFactory;
         _configuration = configuration;
         _dataProtection = dataProtection;
         _oidcOptionsFactory = oidcOptionsFactory;
@@ -93,7 +93,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             //    At startup, the setup secret is not available, so we read without secrets.
             //    Env-var Keycloak is the only scheme that works at cold start.
             //    After setup flow, RefreshSchemesAsync is called with secrets from the cookie.
-            AuthProviderConfigurationResponse? dbConfig = null;
+            AuthProviderConfigurationDto? dbConfig = null;
             try
             {
                 dbConfig = await FetchConfigFromApiAsync(includeSecrets: false, setupSecret: null);
@@ -159,40 +159,31 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         }
     }
 
-    private async Task<AuthProviderConfigurationResponse?> FetchConfigFromApiAsync(
+    private async Task<AuthProviderConfigurationDto?> FetchConfigFromApiAsync(
         bool includeSecrets,
         string? setupSecret)
     {
-        var client = _httpClientFactory.CreateClient("BffClient");
-
-        var endpoint = includeSecrets && !string.IsNullOrEmpty(setupSecret)
-            ? "api/InstanceOnboarding/auth-provider-configuration/internal"
-            : "api/InstanceOnboarding/auth-provider-configuration";
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
-
-        if (!string.IsNullOrEmpty(setupSecret))
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var apiClient = scope.ServiceProvider.GetRequiredService<IEventApiClient>();
+        try
         {
-            request.Headers.TryAddWithoutValidation("X-Setup-Secret", setupSecret);
+            return includeSecrets && !string.IsNullOrEmpty(setupSecret)
+                ? await apiClient.GetInstanceOnboardingAuthProviderConfigurationInternalAsync()
+                : await apiClient.GetInstanceOnboardingAuthProviderConfigurationAsync();
         }
-
-        using var response = await client.SendAsync(request);
-
-        if (!response.IsSuccessStatusCode)
+        catch (ApiException ex)
         {
             _logger.LogDebug(
-                "Auth config API returned {StatusCode} for {Endpoint}",
-                (int)response.StatusCode, endpoint);
+                "Auth config API returned {StatusCode}; keeping the current provider configuration.",
+                ex.StatusCode);
             return null;
         }
-
-        return await response.Content.ReadFromJsonAsync<AuthProviderConfigurationResponse>();
     }
 
-    private void ApplyConfiguration(AuthProviderConfigurationResponse config)
+    private void ApplyConfiguration(AuthProviderConfigurationDto config)
     {
         // Keycloak: register if enabled and has credentials (env vars may already have registered it)
-        if (config.KeycloakEnabled &&
+        if (config.KeycloakEnabled == true &&
             !string.IsNullOrEmpty(config.KeycloakAuthority) &&
             !string.IsNullOrEmpty(config.KeycloakClientId))
         {
@@ -218,7 +209,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                     effectiveSecret);
             }
         }
-        else if (!config.KeycloakEnabled && _registeredSchemes.Contains(AuthSchemeNames.Keycloak))
+        else if (config.KeycloakEnabled != true && _registeredSchemes.Contains(AuthSchemeNames.Keycloak))
         {
             // Only remove if NOT configured via env vars (env vars take priority)
             var envAuthority = _configuration["Keycloak:Authority"];
@@ -234,7 +225,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         }
 
         // Google: register if enabled and has credentials
-        if (config.GoogleSsoEnabled && !string.IsNullOrEmpty(config.GoogleClientId))
+        if (config.GoogleSsoEnabled == true && !string.IsNullOrEmpty(config.GoogleClientId))
         {
             if (!_registeredSchemes.Contains(AuthSchemeNames.Google))
             {
@@ -245,7 +236,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                 UpdateGoogleSchemeOptions(config.GoogleClientId, config.GoogleClientSecret);
             }
         }
-        else if (!config.GoogleSsoEnabled && _registeredSchemes.Contains(AuthSchemeNames.Google))
+        else if (config.GoogleSsoEnabled != true && _registeredSchemes.Contains(AuthSchemeNames.Google))
         {
             // Only remove if NOT configured via env vars (env vars take priority)
             var envGoogleClientId = _configuration["Google:ClientId"];
@@ -261,14 +252,14 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         }
 
         // ATProto: register handler if enabled (no OIDC — custom handler)
-        if (config.AtprotoLoginEnabled)
+        if (config.AtprotoLoginEnabled == true)
         {
             if (!_registeredSchemes.Contains(AuthSchemeNames.Atproto))
             {
-                RegisterAtprotoScheme(config.AtprotoPublicUrl);
+                RegisterAtprotoScheme(config.AtprotoPublicUrl ?? string.Empty);
             }
         }
-        else if (!config.AtprotoLoginEnabled && _registeredSchemes.Contains(AuthSchemeNames.Atproto))
+        else if (config.AtprotoLoginEnabled != true && _registeredSchemes.Contains(AuthSchemeNames.Atproto))
         {
             RemoveScheme(AuthSchemeNames.Atproto);
         }

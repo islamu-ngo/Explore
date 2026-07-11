@@ -3,18 +3,16 @@
 
 using Blazouter.Extensions;
 using Blazouter.Server.Extensions;
-using Event.ControlPlane.Client.Extensions;
 using Event.Web.BffHosting.Authentication;
 using Event.Web.BffHosting.Extensions;
 using Event.Web.BffHosting.Proxy;
 using Event.Web.BffHosting.Security;
 using Explore.Blazor;
+using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Components;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.HealthChecks;
 using Explore.Blazor.Services;
-using Explore.Persistence;
-using Explore.Secrets.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MudBlazor.Services;
@@ -52,8 +50,6 @@ builder.AddServiceDefaults();
 builder.AddResilientDistributedCache(connectionName: "cache");
 builder.AddDistributedCacheReadinessCheck();
 builder.AddOidcDiscoveryReadinessCheck();
-
-builder.Services.AddSecretManagement(builder.Configuration);
 
 // ──────────────────────────────────────────────
 // Service Registration
@@ -106,8 +102,8 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddLocalization();
 builder.Services.Configure<Microsoft.AspNetCore.Builder.RequestLocalizationOptions>(options =>
 {
-    var cultures = Explore.Domain.Common.Localization.CultureRegistry.GetAll()
-        .Select(entry => new System.Globalization.CultureInfo(entry.Code))
+    var cultures = BffCultureRegistry.GetSupportedCultureCodes()
+        .Select(code => new System.Globalization.CultureInfo(code))
         .ToArray();
 
     options.SupportedCultures = cultures;
@@ -129,11 +125,10 @@ builder.Services.AddHealthChecks()
             return HealthCheckResult.Unhealthy("Application is shutting down");
         return HealthCheckResult.Healthy();
     }, tags: ["live", "ready"])
-    .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"])
     .AddCheck<DataProtectionKeyStoreHealthCheck>(
         "data-protection-keys",
         failureStatus: HealthStatus.Unhealthy,
-        tags: ["ready", "data-protection", "database"])
+        tags: ["ready", "data-protection", "redis"])
     .AddCheck<ApiReadinessHealthCheck>(
         "explore-api",
         failureStatus: HealthStatus.Unhealthy,
@@ -145,7 +140,6 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Initialize dynamic auth schemes from DB + env vars (Keycloak, Google, ATProto).
 // Must run after Build() so that IAuthenticationSchemeProvider and DI are available.
 await app.InitializeDynamicAuthSchemesAsync();
 

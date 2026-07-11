@@ -18,12 +18,8 @@ WORKDIR /src
 COPY ["global.json", "Directory.Build.props", "Directory.Packages.props", "dotnet-tools.json", "./"]
 COPY ["Explore.Blazor/Explore.Blazor.csproj", "Explore.Blazor/packages.lock.json", "Explore.Blazor/"]
 COPY ["Explore.Blazor.Client/Explore.Blazor.Client.csproj", "Explore.Blazor.Client/packages.lock.json", "Explore.Blazor.Client/"]
-COPY ["Explore.Application/Explore.Application.csproj", "Explore.Application/packages.lock.json", "Explore.Application/"]
-COPY ["Explore.Domain/Explore.Domain.csproj", "Explore.Domain/packages.lock.json", "Explore.Domain/"]
-COPY ["Explore.Infrastructure/Explore.Infrastructure.csproj", "Explore.Infrastructure/packages.lock.json", "Explore.Infrastructure/"]
-COPY ["Explore.Persistence/Explore.Persistence.csproj", "Explore.Persistence/packages.lock.json", "Explore.Persistence/"]
-COPY ["Explore.Secrets/Explore.Secrets.csproj", "Explore.Secrets/packages.lock.json", "Explore.Secrets/"]
 COPY ["Explore.ServiceDefaults/Explore.ServiceDefaults.csproj", "Explore.ServiceDefaults/packages.lock.json", "Explore.ServiceDefaults/"]
+COPY ["Event.Web.BffHosting/Event.Web.BffHosting.csproj", "Event.Web.BffHosting/packages.lock.json", "Event.Web.BffHosting/"]
 
 # Restore: FOSS uses locked-mode for determinism; commercial re-resolves
 RUN if [ "$USE_COMMERCIAL_LUCKYPENNY_LIBS" = "true" ]; then \

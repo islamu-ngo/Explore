@@ -1,8 +1,7 @@
 // ABOUTME: Short-TTL cached onboarding status probe shared by middleware, cookie events, and admin enrichment.
 // ABOUTME: Fetches GET /api/InstanceOnboarding/status (AllowAnonymous, fast) and caches the result to avoid request storms.
 
-using System.Net.Http.Json;
-using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Explore.Blazor.Services;
@@ -40,18 +39,16 @@ public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
 {
     private const string CacheKey = "BffOnboardingStatus";
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(10);
-    private const string HttpClientName = "BffClient";
-
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMemoryCache _cache;
     private readonly ILogger<BffOnboardingStatusProvider> _logger;
 
     public BffOnboardingStatusProvider(
-        IHttpClientFactory httpClientFactory,
+        IServiceScopeFactory scopeFactory,
         IMemoryCache cache,
         ILogger<BffOnboardingStatusProvider> logger)
     {
-        _httpClientFactory = httpClientFactory;
+        _scopeFactory = scopeFactory;
         _cache = cache;
         _logger = logger;
     }
@@ -65,32 +62,14 @@ public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
 
         try
         {
-            var client = _httpClientFactory.CreateClient(HttpClientName);
-            var response = await client.GetAsync(
-                "api/InstanceOnboarding/status",
-                HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogDebug(
-                    "Onboarding status probe returned {StatusCode}; treating as unknown (incomplete).",
-                    (int)response.StatusCode);
-                return BffOnboardingStatus.Unknown;
-            }
-
-            var dto = await response.Content
-                .ReadFromJsonAsync<InstanceOnboardingStatusModel>(cancellationToken)
-                .ConfigureAwait(false);
-
-            if (dto is null)
-            {
-                return BffOnboardingStatus.Unknown;
-            }
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var apiClient = scope.ServiceProvider.GetRequiredService<IEventApiClient>();
+            var dto = await apiClient.GetInstanceOnboardingStatusAsync(
+                cancellationToken: cancellationToken).ConfigureAwait(false);
 
             var status = new BffOnboardingStatus(
-                IsCompleted: dto.IsCompleted,
-                IsSetupModeActive: dto.IsSetupModeActive,
+                IsCompleted: dto.IsCompleted == true,
+                IsSetupModeActive: dto.IsSetupModeActive == true,
                 Known: true);
 
             _cache.Set(CacheKey, status, CacheTtl);

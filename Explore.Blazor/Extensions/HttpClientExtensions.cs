@@ -3,8 +3,6 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
-using Explore.Blazor.Client.Contracts.Services.Footer;
-using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.HealthChecks;
@@ -12,7 +10,6 @@ using Explore.Blazor.Services;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using Polly.Timeout;
-using Refit;
 
 namespace Explore.Blazor.Extensions;
 
@@ -38,10 +35,6 @@ public static class HttpClientExtensions
         services.AddTransient<SupportAccessForwardingHandler>();
         services.AddTransient<BffCookieForwardingHandler>();
 
-        // Named "BffClient" — used by raw HTTP services (InstanceOnboarding, TenantOnboarding, etc.)
-        services.AddApiClient("BffClient", apiBaseUrl, environment)
-            .AddInteractiveResilience();
-
         // Named "BffSelfClient" — used by InteractiveServer components calling BFF endpoints on this server.
         // No BaseAddress here; components set it from NavigationManager.BaseUri at runtime.
         services.AddHttpClient("BffSelfClient")
@@ -60,14 +53,6 @@ public static class HttpClientExtensions
         services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment)
             .AddInteractiveResilience();
 
-        services.AddRefitClient<ILocalizationAdminApi>(RefitClientRegistrationExtensions.CreateDefaultRefitSettings())
-            .ConfigureHttpClient(client => client.BaseAddress = new Uri(apiBaseUrl))
-            .AddHttpMessageHandler<AccessTokenForwardingHandler>()
-            .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
-            .AddHttpMessageHandler<SetupSecretForwardingHandler>()
-            .AddHttpMessageHandler<SupportAccessForwardingHandler>()
-            .ConfigureDevCertBypass(environment)
-            .AddInteractiveResilience();
         services.AddScoped<ILocalizationAdminService, LocalizationAdminService>();
 
         // Admin claims transformation client (shorter timeout, no token forwarding handler)
@@ -78,31 +63,7 @@ public static class HttpClientExtensions
         }).ConfigureDevCertBypass(environment)
           .AddAdminResilience();
 
-        services.AddHttpClient(ApiReadinessHealthCheck.HttpClientName, client =>
-        {
-            client.BaseAddress = new Uri(apiBaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(5);
-        }).ConfigureDevCertBypass(environment)
-          .AddAdminResilience();
-
         return services;
-    }
-
-    private static IHttpClientBuilder AddApiClient(
-        this IServiceCollection services,
-        string name,
-        string baseUrl,
-        IWebHostEnvironment environment)
-    {
-        return services.AddHttpClient(name, client =>
-        {
-            client.BaseAddress = new Uri(baseUrl);
-        })
-        .AddHttpMessageHandler<AccessTokenForwardingHandler>()
-        .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
-        .AddHttpMessageHandler<SetupSecretForwardingHandler>()
-        .AddHttpMessageHandler<SupportAccessForwardingHandler>()
-        .ConfigureDevCertBypass(environment);
     }
 
     private static IHttpClientBuilder AddTypedApiClient<TInterface, TImplementation>(

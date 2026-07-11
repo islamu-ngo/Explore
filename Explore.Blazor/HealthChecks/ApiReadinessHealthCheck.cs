@@ -1,37 +1,34 @@
 // ABOUTME: Blazor BFF readiness health check for the downstream Explore API dependency.
-// ABOUTME: Uses a dedicated no-token HttpClient so health probing never forwards user credentials.
+// ABOUTME: Uses a scoped generated API client probe so readiness follows the isolated backend boundary.
 
+using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Explore.Blazor.HealthChecks;
 
-public sealed class ApiReadinessHealthCheck(IHttpClientFactory httpClientFactory) : IHealthCheck
+public sealed class ApiReadinessHealthCheck(IServiceScopeFactory scopeFactory) : IHealthCheck
 {
-    public const string HttpClientName = "ExploreApiHealth";
-
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var client = httpClientFactory.CreateClient(HttpClientName);
-            using var response = await client.GetAsync("health", cancellationToken).ConfigureAwait(false);
-            var data = new Dictionary<string, object>
-            {
-                ["statusCode"] = (int)response.StatusCode
-            };
-
-            if (response.IsSuccessStatusCode)
-            {
-                return HealthCheckResult.Healthy("Explore API readiness endpoint is reachable.", data);
-            }
-
-            return HealthCheckResult.Unhealthy("Explore API readiness endpoint returned a non-success status code.", data: data);
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var apiClient = scope.ServiceProvider.GetRequiredService<IEventApiClient>();
+            _ = await apiClient.GetInstanceResolverConfigurationAsync(
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+            return HealthCheckResult.Healthy("Explore API generated-client probe succeeded.");
+        }
+        catch (ApiException ex)
+        {
+            return HealthCheckResult.Unhealthy(
+                "Explore API generated-client probe returned a non-success status code.",
+                data: new Dictionary<string, object> { ["statusCode"] = ex.StatusCode });
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            return HealthCheckResult.Unhealthy("Explore API readiness endpoint is unreachable.", ex);
+            return HealthCheckResult.Unhealthy("Explore API generated-client probe is unreachable.", ex);
         }
     }
 }

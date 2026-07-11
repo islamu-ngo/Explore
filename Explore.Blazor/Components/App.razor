@@ -1,6 +1,5 @@
 @* ABOUTME: Root Blazor host document that wires render mode, CSP, auth state, and routing.
    ABOUTME: Provides global error-boundary fallback UI and logs unhandled component exceptions. *@
-@using Explore.Domain.Common.Localization
 @using Explore.Blazor.Components.ControlPlane
 @using Explore.Blazor.Client.Layout
 @using Explore.Blazor.Client.Services
@@ -32,10 +31,10 @@
     // Raw cookie values are never trusted: we resolve through CultureRegistry, which is the
     // compile-time allowlist. Anything outside it degrades to the canonical default ("en").
     var langCookie = HttpContextAccessor.HttpContext?.Request.Cookies["lang"];
-    var pageLang = CultureRegistry.TryGetEntry(langCookie, out var resolvedEntry)
-        ? resolvedEntry.Code
+    var pageLang = BffCultureRegistry.TryNormalize(langCookie, out var resolvedLanguage)
+        ? resolvedLanguage
         : "en";
-    var pageDir = RtlLanguages.IsRtl(pageLang) ? "rtl" : "ltr";
+    var pageDir = BffCultureRegistry.IsRtl(pageLang) ? "rtl" : "ltr";
 }
 
 <!DOCTYPE html>

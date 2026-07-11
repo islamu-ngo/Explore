@@ -1,4 +1,4 @@
-// ABOUTME: BFF-local authentication scheme name constants (mirrors Explore.Domain.Constants.AuthSchemeNames).
+// ABOUTME: BFF-local authentication scheme names shared by the host's login and refresh flows.
 // ABOUTME: BFF cannot reference Domain directly; these must stay in sync with the Domain version.
 
 namespace Explore.Blazor.Constants;

@@ -1,14 +1,14 @@
 // ABOUTME: Readiness health check for the Blazor BFF Data Protection key store.
-// ABOUTME: Verifies the persisted key-ring table is reachable without exposing key material.
+// ABOUTME: Verifies the Redis key-ring store is reachable without exposing key material.
 
-using Explore.Persistence;
-using Microsoft.EntityFrameworkCore;
+using Explore.Blazor.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using StackExchange.Redis;
 
 namespace Explore.Blazor.HealthChecks;
 
 public sealed class DataProtectionKeyStoreHealthCheck(
-    IServiceScopeFactory scopeFactory,
+    IConnectionMultiplexer connectionMultiplexer,
     ILogger<DataProtectionKeyStoreHealthCheck> logger) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
@@ -17,16 +17,20 @@ public sealed class DataProtectionKeyStoreHealthCheck(
     {
         try
         {
-            await using var scope = scopeFactory.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<DataProtectionKeyContext>();
-            var keyCount = await db.DataProtectionKeys.CountAsync(cancellationToken).ConfigureAwait(false);
+            var database = connectionMultiplexer.GetDatabase();
+            var latency = await database.PingAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+            var keyRingPresent = await database
+                .KeyExistsAsync(BffDataProtectionExtensions.KeyRingName)
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
 
             return HealthCheckResult.Healthy(
                 "Data Protection key store is reachable.",
                 new Dictionary<string, object>
                 {
-                    ["keyCount"] = keyCount,
-                    ["store"] = "database"
+                    ["keyRingPresent"] = keyRingPresent,
+                    ["latencyMilliseconds"] = latency.TotalMilliseconds,
+                    ["store"] = "redis"
                 });
         }
         catch (Exception ex)
@@ -40,7 +44,7 @@ public sealed class DataProtectionKeyStoreHealthCheck(
                 new Dictionary<string, object>
                 {
                     ["failureType"] = failureType,
-                    ["store"] = "database"
+                    ["store"] = "redis"
                 });
         }
     }

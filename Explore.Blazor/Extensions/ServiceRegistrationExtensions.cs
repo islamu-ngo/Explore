@@ -1,10 +1,6 @@
 // ABOUTME: Registers server-specific services on top of the shared application services.
 // ABOUTME: Shared services live in Explore.Blazor.Client.Extensions.ServiceCollectionExtensions.
 
-using System.Text.Json.Serialization;
-using Explore.Application.Contracts.Identity;
-using Explore.Application.Contracts.Persistence;
-using Explore.Application.Contracts.Services;
 using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Services.Events;
@@ -15,16 +11,8 @@ using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Preferences;
-using Explore.Infrastructure.Services;
-using Explore.Persistence;
-using Explore.Persistence.Extensions;
-using Explore.Persistence.Repositories;
-using Explore.Secrets.Bootstrap;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Server.Circuits;
-using Microsoft.AspNetCore.Http.Json;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Extensions;
 
@@ -107,16 +95,12 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<IStorageUploadSessionStore, StorageUploadSessionStore>();
         services.AddScoped<IBffSupportAccessSessionStore, BffSupportAccessSessionStore>();
         services.AddSingleton<IBffSelfCallTokenService, BffSelfCallTokenService>();
-        services.ConfigureHttpJsonOptions(options =>
-        {
-            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<Explore.Domain.Enums.SupportAccessModeEnum>());
-        });
         services.AddSingleton<IBffPreferenceCookieService, BffPreferenceCookieService>();
         services.AddSingleton<IBffPreferenceValidationService, BffPreferenceValidationService>();
-        services.AddSingleton<IBffPreferenceForwardingService, BffPreferenceForwardingService>();
+        services.AddScoped<IBffPreferenceForwardingService, BffPreferenceForwardingService>();
         services.AddMemoryCache();
-        RegisterResolverConfigDataServices(services, configuration);
-        services.AddScoped<IResolverConfigService, ResolverConfigService>();
+        RegisterBffDataProtection(services, configuration);
+        services.AddScoped<IBffResolverConfigurationProvider, BffResolverConfigurationProvider>();
         services.AddScoped<ITenantRouteContextAccessor, TenantRouteContextAccessor>();
         services.AddScoped<CircuitHandler, TenantCircuitHandler>();
         services.AddScoped<CircuitHandler, TokenCircuitHandler>();
@@ -134,51 +118,15 @@ public static class ServiceRegistrationExtensions
         return services;
     }
 
-    private static void RegisterResolverConfigDataServices(IServiceCollection services, IConfiguration configuration)
+    private static void RegisterBffDataProtection(IServiceCollection services, IConfiguration configuration)
     {
-        // Precedence: explicit ConnectionStrings:DefaultConnection (tests / overrides)
-        // -> BootstrapSecretLoader (Infisical -> POSTGRESQL_* env -> Postgresql:* config). No URL form.
-        var connectionString = configuration["ConnectionStrings:DefaultConnection"];
+        var connectionString = configuration.GetConnectionString("cache");
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            using var bootstrapLoggerFactory = LoggerFactory.Create(static builder =>
-            {
-                builder.AddSimpleConsole(static options =>
-                {
-                    options.SingleLine = true;
-                    options.TimestampFormat = "HH:mm:ss.fff ";
-                });
-                builder.SetMinimumLevel(LogLevel.Information);
-            });
-            var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("Explore.Blazor.Bootstrap");
-
-            var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(configuration, bootstrapLogger);
-            connectionString = credentials.ConnectionString;
+            throw new InvalidOperationException(
+                "ConnectionStrings:cache is required for the Blazor Data Protection key store.");
         }
 
-        services.AddPooledDbContextFactory<ExploreDbContext>(options =>
-        {
-            options.UseNpgsql(connectionString, npgsqlOptions =>
-                {
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 3,
-                        maxRetryDelay: TimeSpan.FromSeconds(5),
-                        errorCodesToAdd: null);
-                    npgsqlOptions.CommandTimeout(30);
-                    npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                })
-                .UseSnakeCaseNamingConvention();
-        });
-
-        services.AddScoped(sp =>
-        {
-            var factory = sp.GetRequiredService<IDbContextFactory<ExploreDbContext>>();
-            return factory.CreateDbContext();
-        });
-
-        services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
-        services.AddScoped<ISecretBindingRepository, SecretBindingRepository>();
-
-        services.AddExploreDataProtection(connectionString);
+        services.AddBffDataProtection(connectionString);
     }
 }

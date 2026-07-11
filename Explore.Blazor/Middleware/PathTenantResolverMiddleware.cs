@@ -1,7 +1,6 @@
 // ABOUTME: Extracts tenant slugs from configured path prefixes and rewrites the request path for Blazor routing.
 // ABOUTME: Keeps tenant authority out of the UI host by storing only slug context, not resolved tenant identity.
 
-using Explore.Application.Contracts.Services;
 using Explore.Blazor.Services;
 
 namespace Explore.Blazor.Middleware;
@@ -15,10 +14,13 @@ public class PathTenantResolverMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, IResolverConfigService resolverConfigService, ITenantRouteContextAccessor tenantRouteContextAccessor)
+    public async Task InvokeAsync(
+        HttpContext context,
+        IBffResolverConfigurationProvider resolverConfigurationProvider,
+        ITenantRouteContextAccessor tenantRouteContextAccessor)
     {
-        var configuration = await resolverConfigService.GetConfigurationAsync(context.RequestAborted);
-        if (!configuration.PathEnabled)
+        var configuration = await resolverConfigurationProvider.GetConfigurationAsync(context.RequestAborted);
+        if (configuration.PathEnabled != true)
         {
             await _next(context);
             return;

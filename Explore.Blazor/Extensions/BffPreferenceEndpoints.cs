@@ -3,9 +3,8 @@
 
 namespace Explore.Blazor.Extensions;
 
-using System.Net.Http.Json;
-using Explore.Application.DTOs.Appearance;
 using Explore.Blazor.Services.Preferences;
+using Api = Explore.Blazor.Client.Clients;
 
 public static class BffPreferenceEndpoints
 {
@@ -83,41 +82,59 @@ public static class BffPreferenceEndpoints
             return Results.Ok(fallback);
         }
 
-        using var response = await GetPreferenceForwarding(ctx).GetAppearanceAsync(cancellationToken);
-        return await BffForwardingResults.JsonStreamOrFallbackAsync(response, fallback, cancellationToken);
+        try
+        {
+            return Results.Ok(await GetPreferenceForwarding(ctx).GetAppearanceAsync(cancellationToken));
+        }
+        catch (Api.ApiException)
+        {
+            return Results.Ok(fallback);
+        }
     }
 
     private static async Task<IResult> HandleGetPresetsAsync(HttpContext ctx, CancellationToken cancellationToken)
     {
         if (ctx.User.Identity?.IsAuthenticated != true)
         {
-            return Results.Ok(Array.Empty<AvailablePresetDto>());
+            return Results.Ok(Array.Empty<Api.AvailablePresetDto>());
         }
 
-        using var response = await GetPreferenceForwarding(ctx).GetPresetsAsync(cancellationToken);
-        return await BffForwardingResults.JsonStreamOrFallbackAsync(response, Array.Empty<AvailablePresetDto>(), cancellationToken);
+        return await BffForwardingResults.ApiOrFallbackAsync<ICollection<Api.AvailablePresetDto>>(
+            () => GetPreferenceForwarding(ctx).GetPresetsAsync(cancellationToken),
+            Array.Empty<Api.AvailablePresetDto>());
     }
 
     private static async Task<IResult> HandleGetProfilesAsync(HttpContext ctx, CancellationToken cancellationToken)
     {
         if (ctx.User.Identity?.IsAuthenticated != true)
         {
-            return Results.Ok(Array.Empty<UserAppearanceProfileDto>());
+            return Results.Ok(Array.Empty<Api.UserAppearanceProfileDto>());
         }
 
-        using var response = await GetPreferenceForwarding(ctx).GetProfilesAsync(cancellationToken);
-        return await BffForwardingResults.JsonStreamOrFallbackAsync(response, Array.Empty<UserAppearanceProfileDto>(), cancellationToken);
+        return await BffForwardingResults.ApiOrFallbackAsync<ICollection<Api.UserAppearanceProfileDto>>(
+            () => GetPreferenceForwarding(ctx).GetProfilesAsync(cancellationToken),
+            Array.Empty<Api.UserAppearanceProfileDto>());
     }
 
-    private static async Task<IResult> HandleSetActiveProfileAsync(HttpContext ctx, SetActiveProfileRequestDto request, CancellationToken cancellationToken)
+    private static async Task<IResult> HandleSetActiveProfileAsync(HttpContext ctx, Api.SetActiveProfileRequestDto request, CancellationToken cancellationToken)
     {
         if (ctx.User.Identity?.IsAuthenticated != true)
         {
             return Results.Unauthorized();
         }
 
-        using var response = await GetPreferenceForwarding(ctx).SetActiveProfileAsync(request.ProfileId, cancellationToken);
-        return BffForwardingResults.OkOrProblem(response, "Could not set active profile.", "Active profile update failed");
+        if (request.ProfileId is not { } profileId || profileId == Guid.Empty)
+        {
+            return Results.Problem(
+                detail: "Profile ID is required.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid active profile");
+        }
+
+        return await BffForwardingResults.ApiOrProblemAsync(
+            () => GetPreferenceForwarding(ctx).SetActiveProfileAsync(profileId, cancellationToken),
+            "Could not set active profile.",
+            "Active profile update failed");
     }
 
     private static async Task<IResult> HandleClonePresetAsync(HttpContext ctx, Guid presetId, CancellationToken cancellationToken)
@@ -127,33 +144,39 @@ public static class BffPreferenceEndpoints
             return Results.Unauthorized();
         }
 
-        using var response = await GetPreferenceForwarding(ctx).ClonePresetAsync(presetId, cancellationToken);
-        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not clone preset.", "Preset clone failed", cancellationToken);
+        return await BffForwardingResults.ApiOrProblemAsync(
+            () => GetPreferenceForwarding(ctx).ClonePresetAsync(presetId, cancellationToken),
+            "Could not clone preset.",
+            "Preset clone failed");
     }
 
-    private static async Task<IResult> HandleCreateProfileAsync(HttpContext ctx, CreateCustomProfileRequestDto request, CancellationToken cancellationToken)
+    private static async Task<IResult> HandleCreateProfileAsync(HttpContext ctx, Api.CreateCustomProfileRequestDto request, CancellationToken cancellationToken)
     {
         if (ctx.User.Identity?.IsAuthenticated != true)
         {
             return Results.Unauthorized();
         }
 
-        using var response = await GetPreferenceForwarding(ctx).CreateProfileAsync(request, cancellationToken);
-        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not create custom profile.", "Profile creation failed", cancellationToken);
+        return await BffForwardingResults.ApiOrProblemAsync(
+            () => GetPreferenceForwarding(ctx).CreateProfileAsync(request, cancellationToken),
+            "Could not create custom profile.",
+            "Profile creation failed");
     }
 
-    private static async Task<IResult> HandleUpdateProfileAsync(HttpContext ctx, Guid profileId, UpdateAppearanceProfileRequestDto request, CancellationToken cancellationToken)
+    private static async Task<IResult> HandleUpdateProfileAsync(HttpContext ctx, Guid profileId, Api.UpdateAppearanceProfileRequestDto request, CancellationToken cancellationToken)
     {
         if (ctx.User.Identity?.IsAuthenticated != true)
         {
             return Results.Unauthorized();
         }
 
-        using var response = await GetPreferenceForwarding(ctx).UpdateProfileAsync(profileId, request, cancellationToken);
-        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not update profile.", "Profile update failed", cancellationToken);
+        return await BffForwardingResults.ApiOrProblemAsync(
+            () => GetPreferenceForwarding(ctx).UpdateProfileAsync(profileId, request, cancellationToken),
+            "Could not update profile.",
+            "Profile update failed");
     }
 
-    private static async Task<IResult> HandleSetThemeModeAsync(HttpContext ctx, SetThemeModeRequestDto request, CancellationToken cancellationToken)
+    private static async Task<IResult> HandleSetThemeModeAsync(HttpContext ctx, Api.SetThemeModeRequestDto request, CancellationToken cancellationToken)
     {
         var preferenceValidation = GetPreferenceValidation(ctx);
         var mode = preferenceValidation.NormalizeThemeMode(request.ThemeMode);
@@ -188,8 +211,10 @@ public static class BffPreferenceEndpoints
             return Results.Unauthorized();
         }
 
-        using var response = await GetPreferenceForwarding(ctx).GeneratePaletteAsync(naturalColor, brandColor, isDark, cancellationToken);
-        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not generate palette.", "Palette generation failed", cancellationToken);
+        return await BffForwardingResults.ApiOrProblemAsync(
+            () => GetPreferenceForwarding(ctx).GeneratePaletteAsync(naturalColor, brandColor, isDark, cancellationToken),
+            "Could not generate palette.",
+            "Palette generation failed");
     }
 
     private static async Task<IResult> HandleArchiveProfileAsync(HttpContext ctx, Guid profileId, CancellationToken cancellationToken)
@@ -199,8 +224,10 @@ public static class BffPreferenceEndpoints
             return Results.Unauthorized();
         }
 
-        using var response = await GetPreferenceForwarding(ctx).ArchiveProfileAsync(profileId, cancellationToken);
-        return BffForwardingResults.OkOrProblem(response, "Could not archive profile.", "Archive profile failed");
+        return await BffForwardingResults.ApiOrProblemAsync(
+            () => GetPreferenceForwarding(ctx).ArchiveProfileAsync(profileId, cancellationToken),
+            "Could not archive profile.",
+            "Archive profile failed");
     }
 
     private static async Task<IResult> HandleDuplicateProfileAsync(HttpContext ctx, Guid profileId, CancellationToken cancellationToken)
@@ -210,8 +237,10 @@ public static class BffPreferenceEndpoints
             return Results.Unauthorized();
         }
 
-        using var response = await GetPreferenceForwarding(ctx).DuplicateProfileAsync(profileId, cancellationToken);
-        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not duplicate profile.", "Duplicate profile failed", cancellationToken);
+        return await BffForwardingResults.ApiOrProblemAsync(
+            () => GetPreferenceForwarding(ctx).DuplicateProfileAsync(profileId, cancellationToken),
+            "Could not duplicate profile.",
+            "Duplicate profile failed");
     }
 
     private static async Task<IResult> HandleThemePreference(HttpContext ctx, CancellationToken cancellationToken)
@@ -325,15 +354,13 @@ public static class BffPreferenceEndpoints
                 title: "Authentication required");
         }
 
-        using var response = await GetPreferenceForwarding(ctx).GetAvailableThemesAsync(cancellationToken);
-        return await BffForwardingResults.ContentOrProblemAsync(
-            response,
+        return await BffForwardingResults.ApiOrProblemAsync(
+            () => GetPreferenceForwarding(ctx).GetAvailableThemesAsync(cancellationToken),
             "Available themes could not be fetched from the API.",
-            "Theme catalog unavailable",
-            cancellationToken);
+            "Theme catalog unavailable");
     }
 
-    private static async Task<UserAppearancePreferencesDto> ReadCurrentPreferencesAsync(HttpContext ctx, CancellationToken cancellationToken)
+    private static async Task<BffAppearancePreferences> ReadCurrentPreferencesAsync(HttpContext ctx, CancellationToken cancellationToken)
     {
         if (ctx.User.Identity?.IsAuthenticated == true)
         {
@@ -347,27 +374,41 @@ public static class BffPreferenceEndpoints
         return GetPreferenceCookies(ctx).ReadCookiePreferences(ctx);
     }
 
-    private static async Task<UserAppearancePreferencesDto?> ReadAuthenticatedAsync(HttpContext ctx, CancellationToken cancellationToken)
+    private static async Task<BffAppearancePreferences?> ReadAuthenticatedAsync(HttpContext ctx, CancellationToken cancellationToken)
     {
-        using var response = await GetPreferenceForwarding(ctx).GetAppearanceAsync(cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        try
+        {
+            var response = await GetPreferenceForwarding(ctx).GetAppearanceAsync(cancellationToken);
+            return new BffAppearancePreferences(
+                response.ThemeMode ?? "system",
+                response.Direction ?? "auto",
+                response.Language ?? "en",
+                response.ActiveProfileId);
+        }
+        catch (Api.ApiException)
         {
             return null;
         }
-
-        return await response.Content.ReadFromJsonAsync<UserAppearancePreferencesDto>(cancellationToken: cancellationToken);
     }
 
     private static async Task<IResult?> PersistAuthenticatedAsync(
         HttpContext ctx,
-        UserAppearancePreferencesDto preferences,
+        BffAppearancePreferences preferences,
         string failureTitle,
         CancellationToken cancellationToken)
     {
-        using var response = await GetPreferenceForwarding(ctx).PersistPreferencesAsync(preferences, cancellationToken);
-
-        return BffForwardingResults.ProblemOrNull(response, "Authenticated preference could not be persisted.", failureTitle);
+        try
+        {
+            await GetPreferenceForwarding(ctx).PersistPreferencesAsync(preferences, cancellationToken);
+            return null;
+        }
+        catch (Api.ApiException ex)
+        {
+            return BffForwardingResults.Problem(
+                ex,
+                "Authenticated preference could not be persisted.",
+                failureTitle);
+        }
     }
 
     private static IResult HandleGetCurrentUser(HttpContext ctx)

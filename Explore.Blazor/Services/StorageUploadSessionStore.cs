@@ -4,7 +4,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
-using Explore.Application.DTOs.StorageObject;
+using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Caching.Distributed;
 
 namespace Explore.Blazor.Services;
@@ -80,7 +80,7 @@ public sealed class StorageUploadSessionStore(IDistributedCache cache) : IStorag
             return StorageUploadSessionIssueResult.Failed("missing_user");
         }
 
-        if (response.Id == Guid.Empty)
+        if (response.Id is not Guid apiUploadSessionId || apiUploadSessionId == Guid.Empty)
         {
             return StorageUploadSessionIssueResult.Failed("missing_upload_session_id");
         }
@@ -90,15 +90,18 @@ public sealed class StorageUploadSessionStore(IDistributedCache cache) : IStorag
             return StorageUploadSessionIssueResult.Failed("missing_content_type");
         }
 
-        if (response.ExpectedSizeBytes <= 0)
+        if (response.ExpectedSizeBytes is not long expectedSizeBytes || expectedSizeBytes <= 0)
         {
             return StorageUploadSessionIssueResult.Failed("missing_expected_size");
         }
 
-        var expiresAtUtc = response.ExpiresAt.Kind == DateTimeKind.Unspecified
-            ? DateTime.SpecifyKind(response.ExpiresAt, DateTimeKind.Utc)
-            : response.ExpiresAt.ToUniversalTime();
-        var nowUtc = DateTime.UtcNow;
+        if (response.ExpiresAt is not DateTimeOffset expiresAt)
+        {
+            return StorageUploadSessionIssueResult.Failed("missing_expiration");
+        }
+
+        var expiresAtUtc = expiresAt.ToUniversalTime();
+        var nowUtc = DateTimeOffset.UtcNow;
         if (expiresAtUtc <= nowUtc)
         {
             return StorageUploadSessionIssueResult.Failed("upload_session_expired");
@@ -108,10 +111,10 @@ public sealed class StorageUploadSessionStore(IDistributedCache cache) : IStorag
         var session = new StorageUploadSession(
             SessionId: RandomNumberGenerator.GetHexString(32).ToLowerInvariant(),
             OwnerUserId: ownerUserId,
-            ApiUploadSessionId: response.Id,
+            ApiUploadSessionId: apiUploadSessionId,
             ContentType: contentType.Trim(),
-            ExpectedSizeBytes: response.ExpectedSizeBytes,
-            ExpiresAtUtc: new DateTimeOffset(expiresAtUtc));
+            ExpectedSizeBytes: expectedSizeBytes,
+            ExpiresAtUtc: expiresAtUtc);
 
         var payload = JsonSerializer.Serialize(session, JsonOptions);
         await cache.SetStringAsync(

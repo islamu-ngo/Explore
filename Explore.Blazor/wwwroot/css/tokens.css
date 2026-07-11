@@ -58,6 +58,8 @@
     --isl-color-error: var(--mud-palette-error);
     --isl-color-success: var(--mud-palette-success);
     --isl-color-warning: var(--mud-palette-warning);
+    --isl-color-success-strong: color-mix(in srgb, var(--isl-color-success) 55%, var(--isl-color-text));
+    --isl-color-warning-strong: color-mix(in srgb, var(--isl-color-warning) 55%, var(--isl-color-text));
     --isl-color-info: var(--mud-palette-info);
 
     /* ── Spacing Semantics ── */
