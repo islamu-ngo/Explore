@@ -37,7 +37,7 @@ public sealed class AdminRouteGuard(
         }
 
         var instanceStatus = await instanceOnboardingService.GetStatusAsync().ConfigureAwait(false);
-        return instanceStatus?.IsAuthenticated == true && instanceStatus.IsCurrentUserInstanceAdmin;
+        return instanceStatus?.IsAuthenticated == true && instanceStatus.IsCurrentUserInstanceAdmin == true;
     }
 
     public async Task<string?> GetRedirectPathAsync(RouteMatch match)

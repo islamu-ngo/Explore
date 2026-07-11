@@ -1,0 +1,164 @@
+/* ABOUTME: Scoped layout for tenant effective settings, actions, and quota usage. */
+/* ABOUTME: Uses product tokens and logical properties for responsive LTR and RTL rendering. */
+
+.instance-tenant-config {
+    display: grid;
+    gap: var(--isl-space-5);
+}
+
+.instance-tenant-config__header,
+.instance-tenant-config__setting-heading,
+.instance-tenant-config__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+    flex-wrap: wrap;
+}
+
+.instance-tenant-config__header h1,
+.instance-tenant-config__header p,
+.instance-tenant-config__section h2,
+.instance-tenant-config__setting h3,
+.instance-tenant-config__setting p {
+    margin: 0;
+}
+
+.instance-tenant-config__header p,
+.instance-tenant-config__setting p {
+    color: var(--isl-color-text-secondary);
+}
+
+.instance-tenant-config__setting p,
+.instance-tenant-config ::deep .mud-alert-message {
+    text-wrap: pretty;
+}
+
+.instance-tenant-config__state {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-3);
+    min-block-size: 8rem;
+}
+
+.instance-tenant-config__section,
+.instance-tenant-config__settings {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.instance-tenant-config__assignment-facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--isl-space-3);
+    margin: 0;
+}
+
+.instance-tenant-config__assignment-facts dt {
+    color: var(--isl-color-text-secondary);
+    font-size: 0.8125rem;
+}
+
+.instance-tenant-config__assignment-facts dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.instance-tenant-config__setting {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--isl-space-4);
+    padding-block: var(--isl-space-4);
+    border-block-end: 1px solid var(--isl-color-border);
+}
+
+.instance-tenant-config__setting-body,
+.instance-tenant-config__setting dl {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.instance-tenant-config__setting dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+}
+
+.instance-tenant-config__setting dt {
+    color: var(--isl-color-text-secondary);
+    font-size: 0.8125rem;
+}
+
+.instance-tenant-config__setting dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.instance-tenant-config__setting input {
+    inline-size: min(100%, 30rem);
+    padding: var(--isl-space-2) var(--isl-space-3);
+    border: 1px solid var(--isl-color-text-secondary);
+    border-radius: var(--isl-radius-input);
+    color: var(--isl-color-text);
+    background: var(--isl-color-surface);
+    font: inherit;
+}
+
+.instance-tenant-config__setting input:focus,
+.instance-tenant-config__actions:focus,
+.instance-tenant-config__actions:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-text-secondary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.instance-tenant-config__badge {
+    padding: var(--isl-space-1) var(--isl-space-2);
+    border: 1px solid var(--isl-color-warning-strong);
+    border-radius: var(--isl-radius-sm);
+    color: var(--isl-color-warning-strong);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.instance-tenant-config ::deep .mud-alert-text-success,
+.instance-tenant-config ::deep .mud-alert-outlined-success {
+    color: var(--isl-color-success-strong);
+}
+
+.instance-tenant-config ::deep .mud-alert-filled-success {
+    color: var(--isl-color-background);
+    background-color: var(--isl-color-success-strong);
+}
+
+.instance-tenant-config__table-wrap {
+    overflow-x: auto;
+}
+
+.instance-tenant-config table {
+    inline-size: 100%;
+    border-collapse: collapse;
+}
+
+.instance-tenant-config th,
+.instance-tenant-config td {
+    padding: var(--isl-space-3);
+    border-block-end: 1px solid var(--isl-color-border);
+    text-align: start;
+}
+
+@media (max-width: 40rem) {
+    .instance-tenant-config__assignment-facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .instance-tenant-config__setting {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .instance-tenant-config__setting dl {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .instance-tenant-config__actions {
+        justify-content: flex-start;
+    }
+}

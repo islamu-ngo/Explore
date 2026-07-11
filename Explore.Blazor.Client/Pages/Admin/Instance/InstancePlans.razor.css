@@ -1,0 +1,132 @@
+/* ABOUTME: Scoped operational layout for the public read-only tenant plan catalog. */
+/* ABOUTME: Keeps dense plan facts responsive with logical sizing and clear status contrast. */
+
+.instance-plans {
+    display: grid;
+    gap: var(--isl-space-8);
+    min-inline-size: 0;
+}
+
+.instance-plans__header,
+.instance-plans__section-heading,
+.instance-plans__item,
+.instance-plans__title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+}
+
+.instance-plans__header > div,
+.instance-plans__item-main {
+    min-inline-size: 0;
+}
+
+.instance-plans h1,
+.instance-plans h2,
+.instance-plans h3,
+.instance-plans p,
+.instance-plans dl,
+.instance-plans dd {
+    margin: 0;
+}
+
+.instance-plans__eyebrow {
+    color: var(--isl-color-primary);
+    font-weight: 700;
+}
+
+.instance-plans__description,
+.instance-plans__item-description,
+.instance-plans__section-heading span {
+    color: var(--isl-color-text-secondary);
+}
+
+.instance-plans__description {
+    margin-block-start: var(--isl-space-2);
+}
+
+.instance-plans__state {
+    display: grid;
+    gap: var(--isl-space-3);
+    color: var(--isl-color-text-secondary);
+}
+
+.instance-plans__catalog,
+.instance-plans__list {
+    display: grid;
+    gap: var(--isl-space-4);
+    min-inline-size: 0;
+}
+
+.instance-plans__list {
+    border-block-start: 1px solid var(--isl-color-divider);
+}
+
+.instance-plans__item {
+    padding-block: var(--isl-space-5);
+    border-block-end: 1px solid var(--isl-color-divider);
+}
+
+.instance-plans__item-main {
+    display: grid;
+    flex: 1;
+    gap: var(--isl-space-3);
+}
+
+.instance-plans__status {
+    flex: none;
+    padding: var(--isl-space-1) var(--isl-space-2);
+    border: 1px solid currentColor;
+    border-radius: var(--isl-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.instance-plans__status--active {
+    color: var(--isl-color-success-strong);
+}
+
+.instance-plans__status--inactive {
+    color: var(--isl-color-warning-strong);
+}
+
+.instance-plans__facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--isl-space-4);
+}
+
+.instance-plans__facts div {
+    min-inline-size: 0;
+}
+
+.instance-plans__facts dt {
+    color: var(--isl-color-text-secondary);
+    font-size: 0.75rem;
+}
+
+.instance-plans__facts dd {
+    margin-block-start: var(--isl-space-1);
+    overflow-wrap: anywhere;
+    font-weight: 600;
+}
+
+@media (max-width: 52rem) {
+    .instance-plans__facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 36rem) {
+    .instance-plans__header,
+    .instance-plans__item,
+    .instance-plans__title-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .instance-plans__facts {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

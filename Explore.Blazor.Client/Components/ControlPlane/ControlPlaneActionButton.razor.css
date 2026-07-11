@@ -1,0 +1,62 @@
+/* ABOUTME: Scoped styles for ControlPlaneActionButton using Event design tokens. */
+/* ABOUTME: Uses BEM scoping and ::deep only for the direct MudButton child. */
+
+.control-plane-action-button {
+    display: contents;
+}
+
+.control-plane-action-button ::deep .mud-button-root {
+    border-radius: var(--isl-button-border-radius);
+    padding: var(--isl-button-padding-y) var(--isl-button-padding-x);
+    font-size: var(--isl-button-font-size);
+    min-height: var(--isl-target-min);
+    transition: var(--isl-button-transition);
+}
+
+.control-plane-action-button ::deep .mud-button-filled,
+.control-plane-action-button ::deep .mud-button-filled:hover {
+    box-shadow: none;
+}
+
+.control-plane-action-button ::deep .mud-button-outlined {
+    border: 1px solid var(--isl-color-text-secondary);
+}
+
+.control-plane-action-button ::deep .mud-button-outlined:hover {
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 0 0 1px var(--isl-button-ring);
+}
+
+.control-plane-action-button ::deep .mud-button-outlined-warning,
+.control-plane-action-button ::deep .mud-button-outlined-warning:hover,
+.control-plane-action-button ::deep .mud-button-outlined-warning:active {
+    color: var(--isl-color-warning-strong);
+    border-color: var(--isl-color-warning-strong);
+    box-shadow: none;
+    --mud-ripple-color: transparent;
+}
+
+.control-plane-action-button ::deep .mud-button-filled-warning,
+.control-plane-action-button ::deep .mud-button-filled-warning:hover,
+.control-plane-action-button ::deep .mud-button-filled-warning:active {
+    color: var(--isl-color-background);
+    border-color: var(--isl-color-warning-strong);
+    background-color: var(--isl-color-warning-strong);
+    box-shadow: none;
+    --mud-ripple-color: transparent;
+}
+
+.control-plane-action-button ::deep .mud-button-outlined-error,
+.control-plane-action-button ::deep .mud-button-filled-error {
+    --mud-ripple-color: transparent;
+}
+
+.control-plane-action-button ::deep .mud-button-outlined-error:hover,
+.control-plane-action-button ::deep .mud-button-outlined-error:active,
+.control-plane-action-button ::deep .mud-button-filled-error:hover,
+.control-plane-action-button ::deep .mud-button-filled-error:active {
+    color: var(--isl-color-background);
+    border-color: var(--mud-palette-error-darken);
+    background-color: var(--mud-palette-error-darken);
+    box-shadow: none;
+}

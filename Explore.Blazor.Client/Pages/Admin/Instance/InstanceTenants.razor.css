@@ -1,0 +1,11 @@
+/* ABOUTME: Scoped layout for the public instance tenant administration page. */
+/* ABOUTME: Separates the page heading from the embedded lifecycle section. */
+
+.instance-tenants-page {
+    display: grid;
+    gap: var(--isl-space-5);
+}
+
+.instance-tenants-page h1 {
+    margin: 0;
+}

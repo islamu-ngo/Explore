@@ -1,0 +1,362 @@
+@* ABOUTME: Public instance-admin page for one tenant's effective settings and quota usage. *@
+@* ABOUTME: Gates override and lock actions exclusively through per-setting HAL links. *@
+
+@page "/admin/instance/tenants/{TenantId:guid}/configuration"
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.ControlPlane
+@using Explore.Blazor.Client.Routing.ControlPlane
+@using Explore.Blazor.Client.Contracts.Services.ControlPlane
+@using Explore.Blazor.Client.Components.Forms
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IControlPlaneTenantConfigurationService ConfigurationService
+@inject IAccessibilityFocusService FocusService
+@inject IAccessibilityAnnouncerService Announcer
+
+<PageTitle>Tenant configuration</PageTitle>
+
+<main class="instance-tenant-config">
+    <header class="instance-tenant-config__header">
+        <div>
+            <h1>Tenant configuration</h1>
+            <p dir="auto">Effective settings and quota usage for tenant <code dir="ltr">@TenantId</code>.</p>
+        </div>
+        <AppButton Variant="Variant.Outlined" Href="@ControlPlaneRoutes.Tenants" aria-label="Back to tenants">Back to tenants</AppButton>
+    </header>
+
+    @if (_loading)
+    {
+        <div class="instance-tenant-config__state" role="status" aria-live="polite">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <span>Loading tenant configuration...</span>
+        </div>
+    }
+    else if (_configuration is null)
+    {
+        <MudAlert Severity="Severity.Error" role="alert" aria-live="assertive">@LoadError</MudAlert>
+    }
+    else
+    {
+        @if (_configuration.PlanAssignment is { } assignment)
+        {
+            <section class="instance-tenant-config__section"
+                     aria-labelledby="tenant-plan-assignment-title">
+                <h2 id="tenant-plan-assignment-title">Plan assignment</h2>
+                <dl class="instance-tenant-config__assignment-facts">
+                    <div><dt>Plan</dt><dd dir="ltr"><code dir="ltr">@assignment.PlanKey</code></dd></div>
+                    <div><dt>Version</dt><dd dir="ltr">@($"v{assignment.VersionNumber}")</dd></div>
+                    <div><dt>Status</dt><dd dir="ltr">@assignment.StatusCode</dd></div>
+                    <div><dt>Assigned</dt><dd dir="ltr">@assignment.AssignedAt?.ToString("yyyy-MM-dd HH:mm UTC")</dd></div>
+                </dl>
+            </section>
+        }
+
+        @if (Settings.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No effective settings were returned for this tenant.</MudAlert>
+        }
+        else
+        {
+            @foreach (var group in GroupedSettings)
+            {
+                <section class="instance-tenant-config__section" aria-labelledby="@CategoryId(group.Key)">
+                    <h2 id="@CategoryId(group.Key)" dir="auto">@group.Key</h2>
+                    <div class="instance-tenant-config__settings" role="list">
+                        @foreach (var setting in group)
+                        {
+                            <article class="instance-tenant-config__setting"
+                                     role="listitem"
+                                     data-setting-key="@setting.Key"
+                                     @key="setting.Key">
+                                <div class="instance-tenant-config__setting-body">
+                                    <div class="instance-tenant-config__setting-heading">
+                                        <h3><code dir="ltr">@setting.Key</code></h3>
+                                        @if (setting.IsLocked == true)
+                                        {
+                                            <span class="instance-tenant-config__badge">Locked</span>
+                                        }
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(setting.Description))
+                                    {
+                                        <p dir="auto">@setting.Description</p>
+                                    }
+                                    <dl>
+                                        <div>
+                                            <dt>Value</dt>
+                                            <dd>
+                                                @if (setting.IsSensitive == true)
+                                                {
+                                                    <span aria-label="Sensitive value hidden">••••••••</span>
+                                                }
+                                                else if (_editingKey == setting.Key)
+                                                {
+                                                    <input id="instance-tenant-config-edit-value"
+                                                           aria-label="@($"Edit value for {setting.Key}")"
+                                                           autocomplete="off"
+                                                           dir="auto"
+                                                           disabled="@IsBusy"
+                                                           @bind="_editingValue" />
+                                                }
+                                                else
+                                                {
+                                                    <span dir="auto">@(string.IsNullOrEmpty(setting.Value) ? "(empty)" : setting.Value)</span>
+                                                }
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Source</dt>
+                                            <dd data-value-source dir="ltr">@setting.ValueSource</dd>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(setting.LockSource))
+                                        {
+                                            <div>
+                                                <dt>Lock source</dt>
+                                                <dd data-lock-source dir="ltr">@setting.LockSource</dd>
+                                            </div>
+                                        }
+                                    </dl>
+                                </div>
+
+                                @if (HasActions(setting))
+                                {
+                                    <div id="@ActionTargetId(setting.Key)"
+                                         class="instance-tenant-config__actions"
+                                         role="group"
+                                         tabindex="-1"
+                                         aria-label="@($"Actions for {setting.Key}")">
+                                        @if (_editingKey == setting.Key)
+                                        {
+                                            <AppButton Size="Size.Small" Disabled="@IsBusy"
+                                                       aria-label="@($"Save override for {setting.Key}")"
+                                                       OnClick="@(() => SaveOverrideAsync(setting))">Save</AppButton>
+                                            <AppButton Size="Size.Small" Variant="Variant.Text" Disabled="@IsBusy"
+                                                       aria-label="@($"Cancel override for {setting.Key}")"
+                                                       OnClick="CancelEditAsync">Cancel</AppButton>
+                                        }
+                                        else
+                                        {
+                                            @if (ControlPlaneHal.HasLink(setting._links, ControlPlaneLinkRelations.Override))
+                                            {
+                                                <AppButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@IsBusy"
+                                                           aria-label="@($"Override {setting.Key}")"
+                                                           OnClick="@(() => StartEditAsync(setting))">Override</AppButton>
+                                            }
+                                            @if (ControlPlaneHal.HasLink(setting._links, ControlPlaneLinkRelations.Lock))
+                                            {
+                                                <AppButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Disabled="@IsBusy"
+                                                           aria-label="@($"Lock {setting.Key}")"
+                                                           OnClick="@(() => RunSettingCommandAsync(setting, ControlPlaneLinkRelations.Lock))">Lock</AppButton>
+                                            }
+                                            @if (ControlPlaneHal.HasLink(setting._links, ControlPlaneLinkRelations.Unlock))
+                                            {
+                                                <AppButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@IsBusy"
+                                                           aria-label="@($"Unlock {setting.Key}")"
+                                                           OnClick="@(() => RunSettingCommandAsync(setting, ControlPlaneLinkRelations.Unlock))">Unlock</AppButton>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+        }
+
+        @if (Quotas.Count > 0)
+        {
+            <section class="instance-tenant-config__section" aria-labelledby="tenant-quota-title">
+                <h2 id="tenant-quota-title">Quota usage</h2>
+                <div class="instance-tenant-config__table-wrap" dir="ltr">
+                    <table>
+                        <thead><tr><th scope="col">Quota</th><th scope="col">Used</th><th scope="col">Limit</th><th scope="col">Available</th></tr></thead>
+                        <tbody>
+                            @foreach (var quota in Quotas)
+                            {
+                                <tr><td><code dir="ltr">@quota.Key</code></td><td>@quota.Used</td><td>@quota.Limit</td><td>@quota.Available</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+    }
+
+    @if (_commandMessage is not null)
+    {
+        <MudAlert Severity="@(_commandSucceeded ? Severity.Success : Severity.Error)"
+                  role="@(_commandSucceeded ? "status" : "alert")"
+                  aria-live="@(_commandSucceeded ? "polite" : "assertive")">
+            <span dir="auto">@_commandMessage</span>
+        </MudAlert>
+    }
+</main>
+
+@code {
+    [Parameter] public Guid TenantId { get; set; }
+
+    private readonly FormSubmitState _submitState = new();
+    private HalResourceOfControlPlaneTenantEffectiveConfigurationDto? _configuration;
+    private bool _loading = true;
+    private string? _editingKey;
+    private string _editingValue = string.Empty;
+    private string? _pendingFocusId;
+    private string? _commandMessage;
+    private bool _commandSucceeded;
+
+    private bool IsBusy => _submitState.IsSubmitting;
+    private const string LoadError = "Tenant configuration is currently unavailable.";
+    private IReadOnlyList<ControlPlaneTenantEffectiveSettingDto> Settings => _configuration?.Settings?.ToArray() ?? [];
+    private IReadOnlyList<ControlPlaneTenantQuotaUsageDto> Quotas => _configuration?.Quotas?.ToArray() ?? [];
+    private IEnumerable<IGrouping<string, ControlPlaneTenantEffectiveSettingDto>> GroupedSettings =>
+        Settings.OrderBy(setting => setting.Category, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(setting => setting.Key, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(setting => string.IsNullOrWhiteSpace(setting.Category) ? "General" : setting.Category);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingFocusId is null)
+        {
+            return;
+        }
+
+        var id = _pendingFocusId;
+        _pendingFocusId = null;
+        await FocusService.FocusByIdAsync(id);
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _configuration = await ConfigurationService.GetEffectiveConfigurationAsync(TenantId);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            _configuration = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task StartEditAsync(ControlPlaneTenantEffectiveSettingDto setting)
+    {
+        await FocusService.SaveFocusAsync();
+        _editingKey = setting.Key;
+        _editingValue = setting.Value;
+        ClearCommandMessage();
+        _pendingFocusId = "instance-tenant-config-edit-value";
+    }
+
+    private async Task CancelEditAsync()
+    {
+        var target = _editingKey is null ? null : $"#{ActionTargetId(_editingKey)}";
+        _editingKey = null;
+        _editingValue = string.Empty;
+        if (target is not null)
+        {
+            await FocusService.RestoreFocusAsync(target);
+        }
+    }
+
+    private async Task SaveOverrideAsync(ControlPlaneTenantEffectiveSettingDto setting)
+    {
+        await RunCommandAsync(
+            setting,
+            () => ConfigurationService.SetSettingAsync(TenantId, setting.Key, _editingValue.Trim()),
+            closeEditorOnSuccess: true);
+    }
+
+    private Task RunSettingCommandAsync(ControlPlaneTenantEffectiveSettingDto setting, string relation) =>
+        RunCommandAsync(
+            setting,
+            relation == ControlPlaneLinkRelations.Lock
+                ? () => ConfigurationService.LockSettingAsync(TenantId, setting.Key)
+                : () => ConfigurationService.UnlockSettingAsync(TenantId, setting.Key),
+            closeEditorOnSuccess: false,
+            saveFocus: true);
+
+    private async Task RunCommandAsync(
+        ControlPlaneTenantEffectiveSettingDto setting,
+        Func<Task<BaseCommandResponseOfGuid>> command,
+        bool closeEditorOnSuccess,
+        bool saveFocus = false)
+    {
+        if (saveFocus)
+        {
+            await FocusService.SaveFocusAsync();
+        }
+
+        _submitState.Start();
+        ClearCommandMessage();
+        try
+        {
+            var result = await command();
+            _commandMessage = result.Message;
+            _commandSucceeded = result.Success == true;
+
+            if (result.Success == true)
+            {
+                _submitState.Complete();
+                if (closeEditorOnSuccess)
+                {
+                    _editingKey = null;
+                    _editingValue = string.Empty;
+                }
+
+                await LoadAsync();
+                await FocusService.RestoreFocusAsync($"#{ActionTargetId(setting.Key)}");
+                await Announcer.AnnouncePoliteAsync(result.Message ?? "Tenant setting updated.");
+            }
+            else
+            {
+                var message = result.Message ?? "The tenant setting action could not be completed.";
+                _submitState.Fail(message);
+                await Announcer.AnnounceAssertiveAsync(message);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            const string message = "The tenant setting action could not be completed.";
+            _commandMessage = message;
+            _commandSucceeded = false;
+            _submitState.Fail(message);
+            await Announcer.AnnounceAssertiveAsync(message);
+        }
+        finally
+        {
+            if (_submitState.IsSubmitting)
+            {
+                _submitState.Fail(_commandMessage ?? "The tenant setting action could not be completed.");
+            }
+        }
+    }
+
+    private static bool HasActions(ControlPlaneTenantEffectiveSettingDto setting) =>
+        setting.IsSensitive != true && (ControlPlaneHal.HasLink(setting._links, ControlPlaneLinkRelations.Override)
+            || ControlPlaneHal.HasLink(setting._links, ControlPlaneLinkRelations.Lock)
+            || ControlPlaneHal.HasLink(setting._links, ControlPlaneLinkRelations.Unlock));
+
+    private static string ActionTargetId(string key) => $"instance-tenant-config-actions-{key.Replace('.', '-')}";
+    private static string CategoryId(string category) => $"instance-tenant-config-category-{category.Replace(' ', '-').ToLowerInvariant()}";
+
+    private void ClearCommandMessage()
+    {
+        _commandMessage = null;
+        _commandSucceeded = false;
+        _submitState.Reset();
+    }
+}

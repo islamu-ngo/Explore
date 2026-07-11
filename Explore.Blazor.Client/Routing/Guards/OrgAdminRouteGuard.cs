@@ -16,7 +16,7 @@ namespace Explore.Blazor.Client.Routing.Guards;
 /// </summary>
 public sealed partial class OrgAdminRouteGuard(AuthenticationStateProvider authStateProvider) : IRouteGuard
 {
-    // Claim type constants matching Explore.Application.Authorization.AdminClaimTypes.
+    // Claim names are part of the authenticated API/BFF protocol.
     // Duplicated here because Blazor.Client does not reference Application.
     private const string OrgAdminClaim = "explore:admin:organization";
 

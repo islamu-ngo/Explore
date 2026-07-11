@@ -25,7 +25,7 @@ public sealed class TenantAdminRouteGuard(
 
         var instanceStatus = await instanceOnboardingService.GetStatusAsync().ConfigureAwait(false);
         var isSingleTenant = IsSingleTenant(instanceStatus?.SelectedDeploymentMode);
-        if (isSingleTenant && instanceStatus?.IsAuthenticated == true && instanceStatus.IsCurrentUserInstanceAdmin)
+        if (isSingleTenant && instanceStatus?.IsAuthenticated == true && instanceStatus.IsCurrentUserInstanceAdmin == true)
         {
             return true;
         }
@@ -47,7 +47,7 @@ public sealed class TenantAdminRouteGuard(
         }
 
         var tenantStatus = await tenantOnboardingService.GetStatusAsync().ConfigureAwait(false);
-        return tenantStatus?.IsAuthenticated == true && tenantStatus.IsCurrentUserTenantAdministrator;
+        return tenantStatus?.IsAuthenticated == true && tenantStatus.IsCurrentUserTenantAdministrator == true;
     }
 
     public async Task<string?> GetRedirectPathAsync(RouteMatch match)

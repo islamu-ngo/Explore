@@ -1,0 +1,101 @@
+/* ABOUTME: Scoped BEM styles for the public instance tenant lifecycle section. */
+/* ABOUTME: Keeps the inventory, actions, and destructive confirmation responsive. */
+
+.instance-tenants {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.instance-tenants__loading {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-3);
+    padding-block: var(--isl-space-6);
+}
+
+.instance-tenants__table {
+    overflow-x: auto;
+    border: 1px solid var(--isl-color-text-secondary);
+    border-radius: var(--isl-radius-sm);
+}
+
+.instance-tenants__table ::deep .mud-table-cell {
+    border-block-end-color: var(--isl-color-text-secondary);
+}
+
+.instance-tenants__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+}
+
+.instance-tenants__action-focus-target:focus-visible,
+.instance-tenants ::deep #instance-tenants-create-trigger:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.instance-tenants__count {
+    margin: 0;
+    color: var(--isl-color-text-secondary);
+    font-size: 0.8125rem;
+}
+
+.instance-tenants__confirmation {
+    display: grid;
+    gap: var(--isl-space-2);
+    max-inline-size: 36rem;
+    padding: var(--isl-space-4);
+    border: 1px solid var(--isl-color-text-secondary);
+    border-radius: var(--isl-radius-sm);
+}
+
+.instance-tenants__purge {
+    border-color: var(--isl-color-error);
+}
+
+.instance-tenants__confirmation h3,
+.instance-tenants__confirmation p {
+    margin: 0;
+}
+
+.instance-tenants__confirmation label {
+    font-weight: 600;
+}
+
+.instance-tenants__confirmation input {
+    inline-size: 100%;
+    padding: var(--isl-space-2) var(--isl-space-3);
+    border: 1px solid var(--isl-color-text-secondary);
+    border-radius: var(--isl-radius-input);
+    color: var(--isl-color-text);
+    background: var(--isl-color-surface);
+    font: inherit;
+}
+
+.instance-tenants__confirmation input:focus {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.instance-tenants__checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+}
+
+.instance-tenants__checkbox input {
+    inline-size: auto;
+    margin: 0;
+    accent-color: var(--isl-color-primary);
+}
+
+@media (max-width: 37.5rem) {
+    .instance-tenants__table ::deep .mud-table-cell[data-label="Actions"] {
+        text-align: start;
+    }
+
+    .instance-tenants__actions {
+        justify-content: flex-start;
+    }
+}

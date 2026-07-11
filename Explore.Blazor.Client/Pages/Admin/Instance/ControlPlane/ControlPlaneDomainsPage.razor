@@ -1,0 +1,124 @@
+@* ABOUTME: Shared domain overview page for the embedded Event control plane. *@
+@* ABOUTME: Displays generated DNS records and gates actions with generated HAL links. *@
+
+@using Explore.Blazor.Client.Clients
+@inject IControlPlaneDomainService DomainService
+
+<PageTitle>Control Plane Domains</PageTitle>
+
+<div class="control-plane-domains">
+    <ControlPlanePageHeader Title="Domains"
+                            Eyebrow="Instance console"
+                            Description="Review public/admin host routing and domain verification affordances.">
+    </ControlPlanePageHeader>
+
+    @if (_loading)
+    {
+        <ControlPlanePanel Title="Loading domains">
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        </ControlPlanePanel>
+    }
+    else if (_domains is null)
+    {
+        <ControlPlanePanel Title="Control-plane API unavailable" Description="Domain data is hidden until the host registers a control-plane API adapter.">
+            <p class="control-plane-domains__message" role="alert">@_problemMessage</p>
+        </ControlPlanePanel>
+    }
+    else if (DomainRecords.Count == 0)
+    {
+        <ControlPlanePanel Title="No domains reported" Description="The control-plane API did not return public or admin domain records.">
+            <p class="control-plane-domains__message">Verification controls will appear only when advertised by HAL.</p>
+        </ControlPlanePanel>
+    }
+    else
+    {
+        <ControlPlanePanel Title="Domain inventory" Description="@DomainCountLabel">
+            <div class="control-plane-domains__list" role="list">
+                @foreach (var domain in DomainRecords)
+                {
+                    <article class="control-plane-domains__item" role="listitem" @key="domain.Name">
+                        <div class="control-plane-domains__item-main">
+                            <h2 class="control-plane-domains__host">@domain.Name</h2>
+                            <dl class="control-plane-domains__facts">
+                                <div>
+                                    <dt>Purpose</dt>
+                                    <dd>@domain.Purpose</dd>
+                                </div>
+                                <div>
+                                    <dt>Status</dt>
+                                    <dd>@domain.Status</dd>
+                                </div>
+                                <div>
+                                    <dt>Target</dt>
+                                    <dd>@DisplayValue(domain.Target)</dd>
+                                </div>
+                            </dl>
+                            @if (!string.IsNullOrWhiteSpace(domain.Guidance))
+                            {
+                                <p class="control-plane-domains__verification">@domain.Guidance</p>
+                            }
+                        </div>
+
+                        @if (HasDomainAction(domain))
+                        {
+                            <div class="control-plane-domains__actions" aria-label="@($"Domain actions for {domain.Name}")">
+                                @if (HasLink(ControlPlaneLinkRelations.Verify))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Verify {domain.Name}")">Verify</ControlPlaneActionButton>
+                                }
+                                @if (HasLink(ControlPlaneLinkRelations.Test))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Test {domain.Name}")">Test</ControlPlaneActionButton>
+                                }
+                                @if (HasLink(ControlPlaneLinkRelations.Retry))
+                                {
+                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Retry {domain.Name}")">Retry</ControlPlaneActionButton>
+                                }
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        </ControlPlanePanel>
+    }
+</div>
+
+@code {
+    private HalResourceOfControlPlaneDomainOverviewDto? _domains;
+    private bool _loading = true;
+    private string _problemMessage = "The control-plane API is currently unavailable.";
+    private IReadOnlyList<ControlPlaneDnsRecordDto> DomainRecords => _domains?.DnsRecords?.ToArray() ?? [];
+    private string DomainCountLabel => DomainRecords.Count == 1
+        ? "1 domain returned by the control-plane API."
+        : $"{DomainRecords.Count} domains returned by the control-plane API.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _domains = await DomainService.GetDomainsAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            _problemMessage = "Domain data is currently unavailable.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool HasDomainAction(ControlPlaneDnsRecordDto domain) =>
+        HasLink(ControlPlaneLinkRelations.Verify)
+        || HasLink(ControlPlaneLinkRelations.Test)
+        || HasLink(ControlPlaneLinkRelations.Retry);
+
+    private bool HasLink(string relation) => ControlPlaneHal.HasLink(_domains?._links, relation);
+
+    private static string DisplayValue(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Not configured" : value;
+}

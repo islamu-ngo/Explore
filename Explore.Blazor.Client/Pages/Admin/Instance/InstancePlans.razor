@@ -1,0 +1,138 @@
+@* ABOUTME: Public read-only tenant plan catalog for multi-tenant instance administrators. *@
+@* ABOUTME: Gates plan detail navigation exclusively from each plan's HAL self relation. *@
+
+@page "/admin/instance/plans"
+@using System.Globalization
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.ControlPlane
+@using Explore.Blazor.Client.Routing.ControlPlane
+@using Explore.Blazor.Client.Contracts.Services.ControlPlane
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IControlPlanePlanCatalogService PlanCatalog
+
+<PageTitle>Tenant Plans</PageTitle>
+
+<main class="instance-plans">
+    <header class="instance-plans__header">
+        <div>
+            <p class="instance-plans__eyebrow" dir="auto">Instance console</p>
+            <h1 dir="auto">Plans</h1>
+            <p class="instance-plans__description" dir="auto">Review the tenant plans and current versions available for provisioning.</p>
+        </div>
+        <AppButton Variant="Variant.Outlined" Href="@ControlPlaneRoutes.Overview" aria-label="Back to instance overview" dir="auto">
+            Back to overview
+        </AppButton>
+    </header>
+
+    @if (_loading)
+    {
+        <div class="instance-plans__state" role="status" aria-live="polite">
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            <span dir="auto">Loading plans</span>
+        </div>
+    }
+    else if (_loadFailed)
+    {
+        <MudAlert Severity="Severity.Error" role="alert" aria-live="assertive">
+            <span dir="auto">Tenant plans are currently unavailable.</span>
+        </MudAlert>
+    }
+    else if (_plans.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info"><span dir="auto">No tenant plans are available.</span></MudAlert>
+    }
+    else
+    {
+        <section class="instance-plans__catalog" aria-labelledby="plan-catalog-heading">
+            <div class="instance-plans__section-heading">
+                <h2 id="plan-catalog-heading" dir="auto">Plan catalog</h2>
+                <span dir="ltr">@PlanCountLabel</span>
+            </div>
+
+            <div class="instance-plans__list" role="list">
+                @foreach (var plan in _plans)
+                {
+                    <article class="instance-plans__item" role="listitem" data-plan-key="@plan.Key" @key="plan.Id">
+                        <div class="instance-plans__item-main">
+                            <div class="instance-plans__title-row">
+                                <h3 dir="auto">@plan.DisplayName</h3>
+                                <span class="instance-plans__status instance-plans__status--@(plan.IsActiveForProvisioning == true ? "active" : "inactive")" dir="auto">
+                                    @(plan.IsActiveForProvisioning == true ? "Provisioning enabled" : "Provisioning disabled")
+                                </span>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(plan.Description))
+                            {
+                                <p class="instance-plans__item-description" data-plan-description dir="auto">@plan.Description</p>
+                            }
+
+                            <dl class="instance-plans__facts">
+                                <div>
+                                    <dt dir="auto">Key</dt>
+                                    <dd><code dir="ltr">@plan.Key</code></dd>
+                                </div>
+                                <div>
+                                    <dt dir="auto">Pricing</dt>
+                                    <dd dir="ltr">@FormatPricing(plan)</dd>
+                                </div>
+                                <div>
+                                    <dt dir="auto">Latest version</dt>
+                                    <dd dir="ltr">v@plan.LatestVersionNumber</dd>
+                                </div>
+                                <div>
+                                    <dt dir="auto">Current version</dt>
+                                    <dd dir="ltr">@(plan.PublishedVersionNumber is { } version ? $"v{version}" : "None")</dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        @if (ControlPlaneHal.HasLink(plan._links, ControlPlaneLinkRelations.Self))
+                        {
+                            <AppButton Variant="Variant.Outlined"
+                                       Href="@PlanHref(plan.Key)"
+                                       aria-label="@($"View plan {plan.DisplayName}")"
+                                       dir="auto">
+                                View details
+                            </AppButton>
+                        }
+                    </article>
+                }
+            </div>
+        </section>
+    }
+</main>
+
+@code {
+    private IReadOnlyList<HalResourceOfControlPlaneTenantPlanListItemDto> _plans = [];
+    private bool _loading = true;
+    private bool _loadFailed;
+
+    private string PlanCountLabel => _plans.Count == 1 ? "1 plan" : $"{_plans.Count} plans";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await PlanCatalog.GetPlansAsync();
+            _plans = result._embedded?.Items?.ToArray() ?? [];
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            _loadFailed = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string FormatPricing(HalResourceOfControlPlaneTenantPlanListItemDto plan) =>
+        $"{(plan.PriceAmount ?? 0).ToString("0.##", CultureInfo.InvariantCulture)} {plan.CurrencyCode} / {plan.BillingPeriod}";
+
+    private static string PlanHref(string key) => $"{ControlPlaneRoutes.Plans}/{Uri.EscapeDataString(key)}";
+}

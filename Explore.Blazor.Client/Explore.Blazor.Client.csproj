@@ -13,11 +13,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Event.ControlPlane.Client\Event.ControlPlane.Client.csproj" />
-    <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Blazored.FluentValidation" />
     <PackageReference Include="Blazouter" />
     <PackageReference Include="Blazouter.WebAssembly" />
@@ -39,7 +34,7 @@
     OpenAPI Client Generation (NSwag)
     ==================================
     WORKFLOW:
-    1. Build Explore.API → ASP.NET Core build-time OpenAPI regenerates openapi.json
+    1. Refresh the canonical OpenAPI schema when the backend contract changes
     2. Build Blazor.Client → NSwag regenerates EventApiClient.g.cs BEFORE compilation
 
     KEY DESIGN: Generation happens BEFORE CoreCompile, so:

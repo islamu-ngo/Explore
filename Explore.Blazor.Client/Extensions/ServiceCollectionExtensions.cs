@@ -1,12 +1,12 @@
 // ABOUTME: Shared service registrations used by both Blazor Server (BFF) and WASM host.
 // ABOUTME: Eliminates duplication between server Program.cs and client Program.cs (DRY).
 
-using Event.ControlPlane.Client.Services;
 using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Ai;
+using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.EventReporting;
 using Explore.Blazor.Client.Contracts.Services.Events;
@@ -50,13 +50,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IControlPlaneTenantService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IControlPlaneDomainService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IControlPlaneOperationsService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
+        services.AddScoped<IControlPlanePlanCatalogService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
+        services.AddScoped<IControlPlaneTenantConfigurationService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IWebhookManagementService, WebhookManagementService>();
         services.AddScoped<IListmonkIntegrationSettingsService, ListmonkIntegrationSettingsService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
-        services.AddBffRefitClient<IGroupApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
         services.AddScoped<IAdminService, AdminService>();
@@ -65,22 +65,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICustomPropertyValueService, CustomPropertyValueService>();
         services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventTemplates.IEventTemplateService, EventTemplateService>();
         services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventSessionTemplates.IEventSessionTemplateService, EventSessionTemplateService>();
-        services.AddBffRefitClient<IEventTemplateSyncApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<Explore.Blazor.Client.Services.EventTemplateSync.IEventTemplateSyncService, EventTemplateSyncService>();
-        services.AddBffRefitClient<IEventSessionTemplateSyncApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<Explore.Blazor.Client.Services.EventSessionTemplateSync.IEventSessionTemplateSyncService, EventSessionTemplateSyncService>();
         services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISupportAccessClientService, SupportAccessClientService>();
         services.AddScoped<IAiAssistantClientService, AiAssistantClientService>();
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
-        services.AddBffRefitClient<ITenantNavigationApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<ITenantNavigationService, TenantNavigationService>();
-        services.AddBffRefitClient<IFooterAdminApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IFooterAdminService, FooterAdminService>();
         services.AddBffRefitClient<IMapsApi>(configureBffRefitClient)
             .ConfigureBffRefitClient(configureBffRefitClientBuilder);
@@ -122,8 +114,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILocationRoomService, LocationRoomService>();
         services.AddScoped<IActorService, ActorService>();
         services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
-        services.AddBffRefitClient<IEventTeamBffApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IEventTeamService, EventTeamService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
 
@@ -136,24 +126,12 @@ public static class ServiceCollectionExtensions
         // BFF / onboarding services (use named HttpClient "BffClient")
         services.AddBffRefitClient<IBffAuthApi>(configureBffRefitClient)
             .ConfigureBffRefitClient(configureBffRefitClientBuilder);
-        services.AddBffRefitClient<IInstanceOnboardingApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
-        services.AddBffRefitClient<ITenantOnboardingApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
-        services.AddBffRefitClient<IPublicExperienceApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
         services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
         services.AddScoped<IPublicExperienceService, PublicExperienceService>();
         services.AddScoped<ITenantPublicExperienceAdminService, TenantPublicExperienceAdminService>();
-        services.AddBffRefitClient<ITenantBrandingSettingsApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<ITenantBrandingSettingsAdminService, TenantBrandingSettingsAdminService>();
-        services.AddBffRefitClient<ITenantStorageSettingsApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<ITenantStorageSettingsAdminService, TenantStorageSettingsAdminService>();
-        services.AddBffRefitClient<IAppearanceApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IAppearanceThemeService, AppearanceThemeService>();
         services.AddScoped<IUserAppearancePreferencesService, UserAppearancePreferencesService>();
 
@@ -163,8 +141,7 @@ public static class ServiceCollectionExtensions
 
         // Auth state
         services.AddScoped<IAuthStateService, AuthStateService>();
-        services.AddBffRefitClient<IUserExternalLoginApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
+        services.AddScoped<IUserExternalLoginService, UserExternalLoginService>();
 
         // Localization
         services.AddScoped<ITranslationService, TranslationService>();
@@ -185,8 +162,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDockLayoutPersistence, Explore.Blazor.Client.Services.Interop.LocalStorageDockLayoutPersistence>();
 
         // User-scoped settings (auth-branching: API for authenticated, localStorage for anonymous)
-        services.AddBffRefitClient<IUserSettingsApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IUserSettingsService, UserSettingsService>();
 
         // Accessibility services (ARIA announcements + focus management)
@@ -196,8 +171,6 @@ public static class ServiceCollectionExtensions
 
         // Feature flags (hydrated from API, no OpenFeature SDK dependency)
         services.AddScoped<FeatureStateContainer>();
-        services.AddBffRefitClient<IFeatureFlagApi>(configureBffRefitClient)
-            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IFeatureFlagClientService, FeatureFlagClientService>();
 
         return services;

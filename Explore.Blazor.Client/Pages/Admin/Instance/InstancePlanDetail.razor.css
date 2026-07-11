@@ -1,0 +1,150 @@
+/* ABOUTME: Scoped read-only layout for tenant plan versions, settings, and quota tables. */
+/* ABOUTME: Provides responsive facts and keyboard-focusable local table overflow. */
+
+.instance-plan-detail {
+    display: grid;
+    gap: var(--isl-space-8);
+    min-inline-size: 0;
+}
+
+.instance-plan-detail__header,
+.instance-plan-detail__version-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+}
+
+.instance-plan-detail__header > div {
+    min-inline-size: 0;
+}
+
+.instance-plan-detail h1,
+.instance-plan-detail h2,
+.instance-plan-detail h3,
+.instance-plan-detail h4,
+.instance-plan-detail p,
+.instance-plan-detail dl,
+.instance-plan-detail dd {
+    margin: 0;
+}
+
+.instance-plan-detail__eyebrow {
+    color: var(--isl-color-primary);
+    font-weight: 700;
+}
+
+.instance-plan-detail__description,
+.instance-plan-detail__empty {
+    color: var(--isl-color-text-secondary);
+}
+
+.instance-plan-detail__description {
+    margin-block-start: var(--isl-space-2);
+}
+
+.instance-plan-detail__state {
+    display: grid;
+    gap: var(--isl-space-3);
+    color: var(--isl-color-text-secondary);
+}
+
+.instance-plan-detail__identity {
+    padding-block: var(--isl-space-4);
+    border-block: 1px solid var(--isl-color-divider);
+}
+
+.instance-plan-detail__identity dl,
+.instance-plan-detail__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-4);
+}
+
+.instance-plan-detail dt {
+    color: var(--isl-color-text-secondary);
+    font-size: 0.75rem;
+}
+
+.instance-plan-detail dd {
+    margin-block-start: var(--isl-space-1);
+    overflow-wrap: anywhere;
+    font-weight: 600;
+}
+
+.instance-plan-detail__versions,
+.instance-plan-detail__version-list,
+.instance-plan-detail__version,
+.instance-plan-detail__data-section {
+    display: grid;
+    gap: var(--isl-space-4);
+    min-inline-size: 0;
+}
+
+.instance-plan-detail__version-list {
+    border-block-start: 1px solid var(--isl-color-divider);
+}
+
+.instance-plan-detail__version {
+    padding-block: var(--isl-space-6);
+    border-block-end: 1px solid var(--isl-color-divider);
+}
+
+.instance-plan-detail__status {
+    flex: none;
+    padding: var(--isl-space-1) var(--isl-space-2);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-sm);
+    color: var(--isl-color-text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.instance-plan-detail__table-wrap {
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    overflow-x: auto;
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-sm);
+}
+
+.instance-plan-detail__table-wrap:focus-visible {
+    outline: 3px solid var(--isl-state-focus-ring);
+    outline-offset: 2px;
+}
+
+.instance-plan-detail table {
+    inline-size: 100%;
+    min-inline-size: 36rem;
+    border-collapse: collapse;
+}
+
+.instance-plan-detail th,
+.instance-plan-detail td {
+    padding: var(--isl-space-3) var(--isl-space-4);
+    border-block-end: 1px solid var(--isl-color-divider);
+    text-align: start;
+    vertical-align: top;
+}
+
+.instance-plan-detail th {
+    color: var(--isl-color-text-secondary);
+    font-size: 0.75rem;
+}
+
+.instance-plan-detail__lock-state {
+    white-space: nowrap;
+}
+
+@media (max-width: 36rem) {
+    .instance-plan-detail__header,
+    .instance-plan-detail__version-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .instance-plan-detail__identity dl,
+    .instance-plan-detail__facts {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

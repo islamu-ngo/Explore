@@ -1,0 +1,200 @@
+@* ABOUTME: Public read-only tenant plan detail page for multi-tenant instance administrators. *@
+@* ABOUTME: Presents plan versions, settings, and quotas without importing mutation capabilities. *@
+
+@page "/admin/instance/plans/{Key}"
+@using System.Globalization
+@using Blazouter.Services
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.ControlPlane
+@using Explore.Blazor.Client.Routing.ControlPlane
+@using Explore.Blazor.Client.Contracts.Services.ControlPlane
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IControlPlanePlanCatalogService PlanCatalog
+@inject RouterStateService RouterState
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<main class="instance-plan-detail">
+    <header class="instance-plan-detail__header">
+        <div>
+            <p class="instance-plan-detail__eyebrow" dir="auto">Instance console / Plans</p>
+            <h1 dir="auto">@(_plan?.DisplayName ?? "Plan detail")</h1>
+            @if (!string.IsNullOrWhiteSpace(_plan?.Description))
+            {
+                <p class="instance-plan-detail__description" data-plan-description dir="auto">@_plan.Description</p>
+            }
+        </div>
+        <AppButton Variant="Variant.Outlined" Href="@ControlPlaneRoutes.Plans" aria-label="Back to tenant plans" dir="auto">
+            Back to plans
+        </AppButton>
+    </header>
+
+    @if (_loading)
+    {
+        <div class="instance-plan-detail__state" role="status" aria-live="polite">
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            <span dir="auto">Loading plan details</span>
+        </div>
+    }
+    else if (_loadFailed)
+    {
+        <MudAlert Severity="Severity.Error" role="alert" aria-live="assertive">
+            <span dir="auto">Tenant plan details are currently unavailable.</span>
+        </MudAlert>
+    }
+    else if (_plan is { } plan)
+    {
+        <section class="instance-plan-detail__identity" aria-label="Plan identity">
+            <dl>
+                <div>
+                    <dt dir="auto">Plan key</dt>
+                    <dd><code data-plan-key dir="ltr">@plan.Key</code></dd>
+                </div>
+                <div>
+                    <dt dir="auto">Versions</dt>
+                    <dd dir="ltr">@plan.Versions.Count</dd>
+                </div>
+            </dl>
+        </section>
+
+        @if (plan.Versions.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info"><span dir="auto">No plan versions are available.</span></MudAlert>
+        }
+        else
+        {
+            <section class="instance-plan-detail__versions" aria-labelledby="plan-versions-heading">
+                <h2 id="plan-versions-heading" dir="auto">Plan versions</h2>
+
+                <div class="instance-plan-detail__version-list" role="list">
+                    @foreach (var version in plan.Versions.OrderByDescending(item => item.VersionNumber))
+                    {
+                        <article class="instance-plan-detail__version" role="listitem" data-plan-version="@version.VersionNumber" @key="version.Id">
+                            <div class="instance-plan-detail__version-heading">
+                                <h3 dir="ltr">Version @version.VersionNumber</h3>
+                                <span class="instance-plan-detail__status" dir="ltr">@version.StatusCode</span>
+                            </div>
+
+                            <dl class="instance-plan-detail__facts">
+                                <div>
+                                    <dt dir="auto">Pricing</dt>
+                                    <dd dir="ltr">@FormatPricing(version)</dd>
+                                </div>
+                                <div>
+                                    <dt dir="auto">Provisioning</dt>
+                                    <dd dir="auto">@(version.IsActiveForProvisioning == true ? "Eligible" : "Disabled")</dd>
+                                </div>
+                            </dl>
+
+                            <section class="instance-plan-detail__data-section" aria-labelledby="settings-heading-@version.VersionNumber">
+                                <h4 id="settings-heading-@version.VersionNumber" dir="auto">Settings</h4>
+                                @if (version.Settings?.Count is not > 0)
+                                {
+                                    <p class="instance-plan-detail__empty" dir="auto">No settings in this version.</p>
+                                }
+                                else
+                                {
+                                    <div class="instance-plan-detail__table-wrap"
+                                         role="region"
+                                         aria-label="@($"Version {version.VersionNumber} settings")"
+                                         tabindex="0"
+                                         dir="ltr">
+                                        <table>
+                                            <thead>
+                                                <tr><th scope="col">Key</th><th scope="col">Value</th><th class="instance-plan-detail__lock-state" scope="col">Lock state</th></tr>
+                                            </thead>
+                                            <tbody>
+                                        @foreach (var setting in version.Settings ?? [])
+                                                {
+                                                    <tr @key="setting.Key">
+                                                        <td><code dir="ltr">@setting.Key</code></td>
+                                                        <td><code dir="ltr">@setting.JsonValue</code></td>
+                                                        <td class="instance-plan-detail__lock-state">@(setting.IsLocked == true ? "Locked" : "Unlocked")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </section>
+
+                            <section class="instance-plan-detail__data-section" aria-labelledby="quotas-heading-@version.VersionNumber">
+                                <h4 id="quotas-heading-@version.VersionNumber" dir="auto">Quotas</h4>
+                                @if (version.Quotas?.Count is not > 0)
+                                {
+                                    <p class="instance-plan-detail__empty" dir="auto">No quotas in this version.</p>
+                                }
+                                else
+                                {
+                                    <div class="instance-plan-detail__table-wrap"
+                                         role="region"
+                                         aria-label="@($"Version {version.VersionNumber} quotas")"
+                                         tabindex="0"
+                                         dir="ltr">
+                                        <table>
+                                            <thead>
+                                                <tr><th scope="col">Key</th><th scope="col">Limit</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var quota in version.Quotas ?? [])
+                                                {
+                                                    <tr @key="quota.Key">
+                                                        <td><code dir="ltr">@quota.Key</code></td>
+                                                        <td><code dir="ltr">@((quota.Limit ?? 0).ToString("N0", CultureInfo.InvariantCulture))</code></td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </section>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
+    }
+</main>
+
+@code {
+    [Parameter, EditorRequired] public string Key { get; set; } = string.Empty;
+
+    private HalResourceOfControlPlaneTenantPlanDetailDto? _plan;
+    private bool _loading = true;
+    private bool _loadFailed;
+    private string PageTitleText => _plan is null ? "Tenant Plan" : $"Plan: {_plan.DisplayName}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var key = Key;
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            key = RouterState.GetParam("Key") ?? string.Empty;
+        }
+
+        _loading = true;
+        _loadFailed = false;
+        _plan = null;
+
+        try
+        {
+            _plan = await PlanCatalog.GetPlanAsync(key);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            _loadFailed = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string FormatPricing(ControlPlaneTenantPlanVersionDto version) =>
+        $"{(version.PriceAmount ?? 0).ToString("0.##", CultureInfo.InvariantCulture)} {version.CurrencyCode} / {version.BillingPeriod}";
+}

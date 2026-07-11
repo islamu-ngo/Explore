@@ -3,11 +3,8 @@
 @using Blazouter.Models
 @using Blazouter.Enums
 @using Blazouter.Interfaces
-@using Event.ControlPlane.Client.Pages.Domains
-@using Event.ControlPlane.Client.Pages.Operations
-@using Event.ControlPlane.Client.Pages.Overview
-@using Event.ControlPlane.Client.Pages.Tenants
-@using Event.ControlPlane.Client.Routing
+@using Explore.Blazor.Client.Pages.Admin.Instance.ControlPlane
+@using Explore.Blazor.Client.Routing.ControlPlane
 @using Explore.Blazor.Client.Layout
 @using Explore.Blazor.Client.Pages
 @using Explore.Blazor.Client.Pages.Auth
@@ -133,7 +130,10 @@
 
             // Admin settings routes
             new RouteConfig { Path = ControlPlaneRoutes.Overview, Component = typeof(ControlPlaneOverviewPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
-            new RouteConfig { Path = ControlPlaneRoutes.Tenants, Component = typeof(ControlPlaneTenantsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
+            new RouteConfig { Path = ControlPlaneRoutes.Tenants, Component = typeof(InstanceTenants), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
+            new RouteConfig { Path = ControlPlaneRoutes.TenantConfiguration, Component = typeof(InstanceTenantConfiguration), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
+            new RouteConfig { Path = ControlPlaneRoutes.Plans, Component = typeof(InstancePlans), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
+            new RouteConfig { Path = "/admin/instance/plans/:Key", Component = typeof(InstancePlanDetail), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
             new RouteConfig { Path = ControlPlaneRoutes.Domains, Component = typeof(ControlPlaneDomainsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
             new RouteConfig { Path = ControlPlaneRoutes.Operations, Component = typeof(ControlPlaneOperationsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
             new RouteConfig { Path = "/admin/instance/settings", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
