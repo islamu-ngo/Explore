@@ -10,12 +10,22 @@ public sealed record TenantSettingOverrideUpsert(string SettingKey, string Value
 /// <summary>
 /// Repository for tenant-specific setting overrides.
 /// </summary>
-public interface ITenantSettingRepository : IGenericRepository<TenantSetting, Guid>
+public interface ITenantSettingRepository
 {
     /// <summary>
     /// Gets a tenant's override for a specific setting key.
     /// </summary>
-    Task<TenantSetting?> GetByTenantAndKey(Guid tenantId, string key);
+    Task<TenantSetting?> GetByTenantAndKey(
+        Guid tenantId,
+        string key,
+        CancellationToken cancellationToken = default);
+
+    Task SetValueAsync(
+        Guid tenantId,
+        string key,
+        string value,
+        CancellationToken cancellationToken = default,
+        Guid? actorId = null);
 
     /// <summary>
     /// Gets all overrides for a tenant.
@@ -25,21 +35,32 @@ public interface ITenantSettingRepository : IGenericRepository<TenantSetting, Gu
     /// <summary>
     /// Removes a tenant's override for a specific setting key.
     /// </summary>
-    Task<bool> RemoveOverride(Guid tenantId, string key);
+    Task<bool> RemoveOverrideAsync(
+        Guid tenantId,
+        string key,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Locks a tenant setting, preventing lower-scope overrides from taking effect.
     /// Lower-scope values remain in storage but become non-effective while locked.
     /// </summary>
     /// <returns>True if the setting existed and was locked; false if not found.</returns>
-    Task<bool> LockAsync(Guid tenantId, string key);
+    Task<bool> LockAsync(
+        Guid tenantId,
+        string key,
+        Guid actorId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Unlocks a tenant setting, restoring normal cascade resolution.
     /// Lower-scope overrides that were non-effective during lock become active again.
     /// </summary>
     /// <returns>True if the setting existed and was unlocked; false if not found.</returns>
-    Task<bool> UnlockAsync(Guid tenantId, string key);
+    Task<bool> UnlockAsync(
+        Guid tenantId,
+        string key,
+        Guid actorId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all locked settings for a tenant.
@@ -49,5 +70,6 @@ public interface ITenantSettingRepository : IGenericRepository<TenantSetting, Gu
     Task UpsertManyForTenantAsync(
         Guid tenantId,
         IReadOnlyCollection<TenantSettingOverrideUpsert> overrides,
+        Guid actorId,
         CancellationToken cancellationToken = default);
 }

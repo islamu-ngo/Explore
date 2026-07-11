@@ -10,6 +10,10 @@ namespace Explore.Application.Contracts.Persistence;
 /// </summary>
 public interface ITenantLifecycleLogRepository : IGenericRepository<TenantLifecycleLog, Guid>
 {
+    Task<TenantLifecycleLog> CreateAsync(
+        TenantLifecycleLog lifecycleLog,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets all lifecycle transition logs for a specific tenant, ordered by most recent first.
     /// </summary>

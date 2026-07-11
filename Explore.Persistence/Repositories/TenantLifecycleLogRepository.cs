@@ -16,6 +16,15 @@ public class TenantLifecycleLogRepository : GenericRepository<TenantLifecycleLog
         _dbContext = dbContext;
     }
 
+    public async Task<TenantLifecycleLog> CreateAsync(
+        TenantLifecycleLog lifecycleLog,
+        CancellationToken cancellationToken = default)
+    {
+        await _dbContext.TenantLifecycleLogs.AddAsync(lifecycleLog, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return lifecycleLog;
+    }
+
     public async Task<List<TenantLifecycleLog>> GetByTenantIdAsync(
         Guid tenantId,
         int limit = 50,

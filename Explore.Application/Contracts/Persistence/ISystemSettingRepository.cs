@@ -8,20 +8,24 @@ using Explore.Domain;
 /// <summary>
 /// Repository for system-wide settings.
 /// </summary>
-public interface ISystemSettingRepository : IGenericRepository<SystemSetting, Guid>
+public interface ISystemSettingRepository
 {
     /// <summary>
     /// Gets a setting by its unique key.
     /// </summary>
-    Task<SystemSetting?> GetByKey(string key);
+    Task<SystemSetting?> GetByKey(string key, CancellationToken cancellationToken = default);
+
+    Task<string?> UpsertAsync(SystemSetting setting, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all settings, optionally filtered by category.
     /// </summary>
-    Task<List<SystemSetting>> GetAllSettings(string? category = null);
+    Task<List<SystemSetting>> GetAllSettings(
+        string? category = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a setting exists and is locked.
     /// </summary>
-    Task<bool> IsLocked(string key);
+    Task<bool> IsLocked(string key, CancellationToken cancellationToken = default);
 }
