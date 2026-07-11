@@ -6,6 +6,7 @@ namespace Explore.Infrastructure.Services;
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Settings;
@@ -24,6 +25,7 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
     private readonly IOrganizationSettingRepository _organizationSettingRepository;
     private readonly IGroupSettingRepository _groupSettingRepository;
     private readonly IUserPreferenceRepository _userPreferenceRepository;
+    private readonly ISettingMutationLock _mutationLock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<HierarchicalSettingsResolver> _logger;
     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
@@ -40,6 +42,7 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         IOrganizationSettingRepository organizationSettingRepository,
         IGroupSettingRepository groupSettingRepository,
         IUserPreferenceRepository userPreferenceRepository,
+        ISettingMutationLock mutationLock,
         IMemoryCache cache,
         ILogger<HierarchicalSettingsResolver> logger)
     {
@@ -48,6 +51,7 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         _organizationSettingRepository = organizationSettingRepository;
         _groupSettingRepository = groupSettingRepository;
         _userPreferenceRepository = userPreferenceRepository;
+        _mutationLock = mutationLock;
         _cache = cache;
         _logger = logger;
     }
@@ -163,11 +167,30 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         switch (scope)
         {
             case SettingScope.Instance:
-                await UpsertSystemSettingAsync(key, value, actorId);
+                await _mutationLock.ExecuteAsync(
+                    key,
+                    async token =>
+                    {
+                        await UpsertSystemSettingAsync(key, value, actorId, token);
+                        return true;
+                    },
+                    ct);
                 break;
 
             case SettingScope.Tenant:
-                await UpsertTenantSettingAsync(key, value, scopeId, actorId);
+                await _mutationLock.ExecuteAsync(
+                    key,
+                    async token =>
+                    {
+                        if (await _systemSettingRepository.IsLocked(key, token))
+                        {
+                            throw new InvalidOperationException($"Setting '{key}' is locked at Instance scope.");
+                        }
+
+                        await _tenantSettingRepository.SetValueAsync(scopeId, key, value, token, actorId);
+                        return true;
+                    },
+                    ct);
                 break;
 
             case SettingScope.Organization:
@@ -195,7 +218,18 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         switch (scope)
         {
             case SettingScope.Tenant:
-                await _tenantSettingRepository.RemoveOverride(scopeId, key);
+                await _mutationLock.ExecuteAsync(
+                    key,
+                    async token =>
+                    {
+                        if (await _systemSettingRepository.IsLocked(key, token))
+                        {
+                            throw new SettingSystemLockedException(key);
+                        }
+
+                        return await _tenantSettingRepository.RemoveOverrideAsync(scopeId, key, token);
+                    },
+                    ct);
                 break;
 
             case SettingScope.Organization:
@@ -221,21 +255,39 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         {
             case SettingScope.Instance:
                 {
-                    var setting = await _systemSettingRepository.GetByKey(key);
-                    if (setting is null)
-                        throw new InvalidOperationException($"Setting '{key}' does not exist at Instance scope.");
+                    await _mutationLock.ExecuteAsync(
+                        key,
+                        async token =>
+                        {
+                            SystemSetting? setting = await _systemSettingRepository.GetByKey(key, token);
+                            if (setting is null)
+                                throw new InvalidOperationException($"Setting '{key}' does not exist at Instance scope.");
 
-                    setting.IsLocked = true;
-                    setting.UpdatedAt = DateTime.UtcNow;
-                    setting.UpdatedBy = actorId;
-                    await _systemSettingRepository.Update(setting);
+                            setting.IsLocked = true;
+                            setting.UpdatedAt = DateTime.UtcNow;
+                            setting.UpdatedBy = actorId;
+                            await _systemSettingRepository.UpsertAsync(setting, token);
+                            return true;
+                        },
+                        ct);
                     InvalidateCache(SettingScope.Instance);
                     break;
                 }
 
             case SettingScope.Tenant:
                 {
-                    var locked = await _tenantSettingRepository.LockAsync(scopeId, key);
+                    bool locked = await _mutationLock.ExecuteAsync(
+                        key,
+                        async token =>
+                        {
+                            if (await _systemSettingRepository.IsLocked(key, token))
+                            {
+                                throw new InvalidOperationException($"Setting '{key}' is locked at Instance scope.");
+                            }
+
+                            return await _tenantSettingRepository.LockAsync(scopeId, key, actorId, token);
+                        },
+                        ct);
                     if (!locked)
                         throw new InvalidOperationException($"Setting '{key}' does not exist for tenant '{scopeId}'.");
 
@@ -259,21 +311,39 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         {
             case SettingScope.Instance:
                 {
-                    var setting = await _systemSettingRepository.GetByKey(key);
-                    if (setting is null)
-                        throw new InvalidOperationException($"Setting '{key}' does not exist at Instance scope.");
+                    await _mutationLock.ExecuteAsync(
+                        key,
+                        async token =>
+                        {
+                            SystemSetting? setting = await _systemSettingRepository.GetByKey(key, token);
+                            if (setting is null)
+                                throw new InvalidOperationException($"Setting '{key}' does not exist at Instance scope.");
 
-                    setting.IsLocked = false;
-                    setting.UpdatedAt = DateTime.UtcNow;
-                    setting.UpdatedBy = actorId;
-                    await _systemSettingRepository.Update(setting);
+                            setting.IsLocked = false;
+                            setting.UpdatedAt = DateTime.UtcNow;
+                            setting.UpdatedBy = actorId;
+                            await _systemSettingRepository.UpsertAsync(setting, token);
+                            return true;
+                        },
+                        ct);
                     InvalidateCache(SettingScope.Instance);
                     break;
                 }
 
             case SettingScope.Tenant:
                 {
-                    var unlocked = await _tenantSettingRepository.UnlockAsync(scopeId, key);
+                    bool unlocked = await _mutationLock.ExecuteAsync(
+                        key,
+                        async token =>
+                        {
+                            if (await _systemSettingRepository.IsLocked(key, token))
+                            {
+                                throw new InvalidOperationException($"Setting '{key}' is locked at Instance scope.");
+                            }
+
+                            return await _tenantSettingRepository.UnlockAsync(scopeId, key, actorId, token);
+                        },
+                        ct);
                     if (!unlocked)
                         throw new InvalidOperationException($"Setting '{key}' does not exist for tenant '{scopeId}'.");
 
@@ -457,20 +527,24 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         }) ?? [];
     }
 
-    private async Task UpsertSystemSettingAsync(string key, string value, Guid actorId)
+    private async Task UpsertSystemSettingAsync(
+        string key,
+        string value,
+        Guid actorId,
+        CancellationToken cancellationToken)
     {
-        var existing = await _systemSettingRepository.GetByKey(key);
+        SystemSetting? existing = await _systemSettingRepository.GetByKey(key, cancellationToken);
         if (existing is not null)
         {
             existing.Value = value;
             existing.UpdatedAt = DateTime.UtcNow;
             existing.UpdatedBy = actorId;
-            await _systemSettingRepository.Update(existing);
+            await _systemSettingRepository.UpsertAsync(existing, cancellationToken);
         }
         else
         {
             var definition = SettingRegistry.Get(key);
-            await _systemSettingRepository.Create(new SystemSetting
+            await _systemSettingRepository.UpsertAsync(new SystemSetting
             {
                 SettingKey = key,
                 Value = value,
@@ -481,31 +555,7 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
                 DisplayOrder = 0,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = actorId
-            });
-        }
-    }
-
-    private async Task UpsertTenantSettingAsync(string key, string value, Guid tenantId, Guid actorId)
-    {
-        var existing = await _tenantSettingRepository.GetByTenantAndKey(tenantId, key);
-        if (existing is not null)
-        {
-            existing.Value = value;
-            existing.UpdatedAt = DateTime.UtcNow;
-            existing.UpdatedBy = actorId;
-            await _tenantSettingRepository.Update(existing);
-        }
-        else
-        {
-            await _tenantSettingRepository.Create(new TenantSetting
-            {
-                TenantId = tenantId,
-                Tenant = null!,
-                SettingKey = key,
-                Value = value,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = actorId
-            });
+            }, cancellationToken);
         }
     }
 

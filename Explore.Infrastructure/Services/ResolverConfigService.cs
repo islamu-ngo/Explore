@@ -36,13 +36,13 @@ public class ResolverConfigService : IResolverConfigService
 
         var configuration = new ResolverConfigurationDto
         {
-            HeaderEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverHeaderEnabled))?.Value, true),
-            SubdomainEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverSubdomainEnabled))?.Value, false),
-            CustomDomainEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverCustomDomainEnabled))?.Value, false),
-            PathEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverPathEnabled))?.Value, true),
-            PathPrefix = NormalizePathPrefix(DeserializeString((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.PathPrefix))?.Value, "/t")),
-            InstanceBaseDomain = NormalizeHost(DeserializeString((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.InstanceBaseDomain))?.Value, string.Empty)),
-            AllowTenantCustomDomains = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain))?.Value, true)
+            HeaderEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverHeaderEnabled, cancellationToken))?.Value, true),
+            SubdomainEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverSubdomainEnabled, cancellationToken))?.Value, false),
+            CustomDomainEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverCustomDomainEnabled, cancellationToken))?.Value, false),
+            PathEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverPathEnabled, cancellationToken))?.Value, true),
+            PathPrefix = NormalizePathPrefix(DeserializeString((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.PathPrefix, cancellationToken))?.Value, "/t")),
+            InstanceBaseDomain = NormalizeHost(DeserializeString((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.InstanceBaseDomain, cancellationToken))?.Value, string.Empty)),
+            AllowTenantCustomDomains = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain, cancellationToken))?.Value, true)
         };
 
         configuration.HeaderEnabled = true;
@@ -142,34 +142,20 @@ public class ResolverConfigService : IResolverConfigService
         string description,
         Guid? actorUserId)
     {
-        var existing = await _systemSettingRepository.GetByKey(settingKey);
-        if (existing == null)
+        await _systemSettingRepository.UpsertAsync(new SystemSetting
         {
-            await _systemSettingRepository.Create(new SystemSetting
-            {
-                SettingKey = settingKey,
-                Value = value,
-                ValueType = valueType,
-                IsLocked = isLocked,
-                Description = description,
-                Category = category,
-                DisplayOrder = displayOrder,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = actorUserId
-            });
-
-            return;
-        }
-
-        existing.Value = value;
-        existing.ValueType = valueType;
-        existing.IsLocked = isLocked;
-        existing.Description = description;
-        existing.Category = category;
-        existing.DisplayOrder = displayOrder;
-        existing.UpdatedAt = DateTime.UtcNow;
-        existing.UpdatedBy = actorUserId;
-        await _systemSettingRepository.Update(existing);
+            SettingKey = settingKey,
+            Value = value,
+            ValueType = valueType,
+            IsLocked = isLocked,
+            Description = description,
+            Category = category,
+            DisplayOrder = displayOrder,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = actorUserId,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = actorUserId
+        });
     }
 
     private static ResolverConfigurationDto Normalize(ResolverConfigurationDto configuration)
