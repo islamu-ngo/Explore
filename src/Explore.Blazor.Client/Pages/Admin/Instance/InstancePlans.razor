@@ -1,5 +1,5 @@
-@* ABOUTME: Public read-only tenant plan catalog for multi-tenant instance administrators. *@
-@* ABOUTME: Gates plan detail navigation exclusively from each plan's HAL self relation. *@
+@* ABOUTME: Public tenant plan catalog and draft-creation page for instance administrators. *@
+@* ABOUTME: Gates plan creation and detail navigation exclusively through API HAL relations. *@
 
 @page "/admin/instance/plans"
 @using System.Globalization
@@ -7,9 +7,13 @@
 @using Explore.Blazor.Client.Contracts.ControlPlane
 @using Explore.Blazor.Client.Routing.ControlPlane
 @using Explore.Blazor.Client.Contracts.Services.ControlPlane
+@using Explore.Blazor.Client.Components.ControlPlane
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject IControlPlanePlanCatalogService PlanCatalog
+@inject IAccessibilityFocusService FocusService
+@inject IAccessibilityAnnouncerService Announcer
 
 <PageTitle>Tenant Plans</PageTitle>
 
@@ -20,9 +24,20 @@
             <h1 dir="auto">Plans</h1>
             <p class="instance-plans__description" dir="auto">Review the tenant plans and current versions available for provisioning.</p>
         </div>
-        <AppButton Variant="Variant.Outlined" Href="@ControlPlaneRoutes.Overview" aria-label="Back to instance overview" dir="auto">
-            Back to overview
-        </AppButton>
+        <div class="instance-plans__header-actions">
+            @if (CanCreatePlan)
+            {
+                <AppButton id="plans-create"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Disabled="@IsBusy"
+                           OnClick="StartCreateAsync">
+                    Create plan
+                </AppButton>
+            }
+            <AppButton Variant="Variant.Outlined" Href="@ControlPlaneRoutes.Overview" aria-label="Back to instance overview" dir="auto">
+                Back to overview
+            </AppButton>
+        </div>
     </header>
 
     @if (_loading)
@@ -38,13 +53,31 @@
             <span dir="auto">Tenant plans are currently unavailable.</span>
         </MudAlert>
     }
-    else if (_plans.Count == 0)
-    {
-        <MudAlert Severity="Severity.Info"><span dir="auto">No tenant plans are available.</span></MudAlert>
-    }
     else
     {
-        <section class="instance-plans__catalog" aria-labelledby="plan-catalog-heading">
+        @if (_draft is not null)
+        {
+            <section class="instance-plans__editor" aria-labelledby="create-plan-heading">
+                <h2 id="create-plan-heading">Create plan draft</h2>
+                <ControlPlanePlanDraftEditor @key="_draft"
+                                             Draft="_draft"
+                                             Busy="@IsBusy"
+                                             CanValidate="@CanValidateDraft"
+                                             SubmitLabel="Create draft"
+                                             ValidationErrors="_validationErrors"
+                                             OnValidate="ValidateDraftAsync"
+                                             OnSubmit="CreateDraftAsync"
+                                             OnCancel="CancelCreateAsync" />
+            </section>
+        }
+
+        @if (_plans.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info"><span dir="auto">No tenant plans are available.</span></MudAlert>
+        }
+        else
+        {
+            <section class="instance-plans__catalog" aria-labelledby="plan-catalog-heading">
             <div class="instance-plans__section-heading">
                 <h2 id="plan-catalog-heading" dir="auto">Plan catalog</h2>
                 <span dir="ltr">@PlanCountLabel</span>
@@ -99,23 +132,42 @@
                     </article>
                 }
             </div>
-        </section>
+            </section>
+        }
+    }
+
+    @if (_commandMessage is not null)
+    {
+        <MudAlert Severity="@(_commandSucceeded ? Severity.Success : Severity.Error)"
+                  role="@(_commandSucceeded ? "status" : "alert")"
+                  aria-live="@(_commandSucceeded ? "polite" : "assertive")">
+            <span dir="auto">@_commandMessage</span>
+        </MudAlert>
     }
 </main>
 
 @code {
+    private HalCollectionResourceOfControlPlaneTenantPlanListItemDto? _catalog;
     private IReadOnlyList<HalResourceOfControlPlaneTenantPlanListItemDto> _plans = [];
+    private TenantPlanDraft? _draft;
+    private IReadOnlyList<TenantPlanValidationError> _validationErrors = [];
     private bool _loading = true;
     private bool _loadFailed;
+    private bool _busy;
+    private bool _focusEditor;
+    private string? _commandMessage;
+    private bool _commandSucceeded;
 
     private string PlanCountLabel => _plans.Count == 1 ? "1 plan" : $"{_plans.Count} plans";
+    private bool IsBusy => _busy;
+    private bool CanCreatePlan => ControlPlaneHal.HasLink(_catalog?._links, ControlPlaneLinkRelations.Create);
+    private bool CanValidateDraft => ControlPlaneHal.HasLink(_catalog?._links, ControlPlaneLinkRelations.Validate);
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var result = await PlanCatalog.GetPlansAsync();
-            _plans = result._embedded?.Items?.ToArray() ?? [];
+            await LoadPlansAsync();
         }
         catch (OperationCanceledException)
         {
@@ -130,6 +182,121 @@
             _loading = false;
         }
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusEditor)
+        {
+            return;
+        }
+
+        _focusEditor = false;
+        await FocusService.FocusAsync(".control-plane-plan-editor input");
+    }
+
+    private async Task LoadPlansAsync()
+    {
+        _catalog = await PlanCatalog.GetPlansAsync();
+        _plans = _catalog._embedded?.Items?.ToArray() ?? [];
+    }
+
+    private async Task StartCreateAsync()
+    {
+        await FocusService.SaveFocusAsync();
+        _draft = NewDraft();
+        _validationErrors = [];
+        ClearCommandMessage();
+        _focusEditor = true;
+    }
+
+    private async Task CancelCreateAsync()
+    {
+        _draft = null;
+        _validationErrors = [];
+        ClearCommandMessage();
+        await FocusService.RestoreFocusAsync("#plans-create");
+    }
+
+    private async Task ValidateDraftAsync(TenantPlanDraft draft)
+    {
+        await RunDraftActionAsync(async () =>
+        {
+            TenantPlanValidationResult result = await PlanCatalog.ValidateDraftAsync(draft);
+            _validationErrors = result.Errors.ToArray();
+            _commandSucceeded = result.IsValid == true;
+            _commandMessage = result.IsValid == true ? "Draft is valid." : "Draft validation found issues.";
+            return false;
+        });
+    }
+
+    private async Task CreateDraftAsync(TenantPlanDraft draft)
+    {
+        await RunDraftActionAsync(async () =>
+        {
+            BaseCommandResponseOfGuid result = await PlanCatalog.CreatePlanDraftAsync(draft);
+            _commandSucceeded = result.Success == true;
+            _commandMessage = result.Message ?? (result.Success == true ? "Plan draft created." : "Plan draft could not be created.");
+            if (result.Success != true)
+            {
+                return false;
+            }
+
+            _draft = null;
+            _validationErrors = [];
+            await LoadPlansAsync();
+            await FocusService.RestoreFocusAsync("#plans-create");
+            return true;
+        });
+    }
+
+    private async Task RunDraftActionAsync(Func<Task<bool>> action)
+    {
+        _busy = true;
+        ClearCommandMessage();
+        try
+        {
+            bool succeeded = await action();
+            string message = _commandMessage ?? (succeeded ? "Plan action completed." : "Plan action could not be completed.");
+            if (_commandSucceeded)
+            {
+                await Announcer.AnnouncePoliteAsync(message);
+            }
+            else
+            {
+                await Announcer.AnnounceAssertiveAsync(message);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            _commandSucceeded = false;
+            _commandMessage = "The plan action could not be completed.";
+            await Announcer.AnnounceAssertiveAsync(_commandMessage);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ClearCommandMessage()
+    {
+        _commandMessage = null;
+        _commandSucceeded = false;
+    }
+
+    private static TenantPlanDraft NewDraft() => new()
+    {
+        Pricing = new TenantPlanPricing
+        {
+            CurrencyCode = "EUR",
+            BillingPeriod = "monthly"
+        },
+        IsActiveForProvisioning = true
+    };
 
     private static string FormatPricing(HalResourceOfControlPlaneTenantPlanListItemDto plan) =>
         $"{(plan.PriceAmount ?? 0).ToString("0.##", CultureInfo.InvariantCulture)} {plan.CurrencyCode} / {plan.BillingPeriod}";

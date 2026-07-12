@@ -1,5 +1,5 @@
-// ABOUTME: Defines read-only tenant-plan catalog operations for control-plane pages.
-// ABOUTME: Returns generated API HAL resources without local plan mirrors.
+// ABOUTME: Defines tenant-plan catalog and version-governance operations for control-plane pages.
+// ABOUTME: Returns generated API HAL resources and command responses without local plan mirrors.
 
 using Explore.Blazor.Client.Clients;
 
@@ -12,5 +12,43 @@ public interface IControlPlanePlanCatalogService
 
     Task<HalResourceOfControlPlaneTenantPlanDetailDto> GetPlanAsync(
         string key,
+        CancellationToken cancellationToken = default);
+
+    Task<BaseCommandResponseOfGuid> CreatePlanDraftAsync(
+        TenantPlanDraft draft,
+        CancellationToken cancellationToken = default);
+
+    Task<BaseCommandResponseOfGuid> CreateVersionDraftAsync(
+        string key,
+        TenantPlanDraft draft,
+        CancellationToken cancellationToken = default);
+
+    Task<BaseCommandResponseOfGuid> UpdateVersionDraftAsync(
+        Guid versionId,
+        TenantPlanDraft draft,
+        CancellationToken cancellationToken = default);
+
+    Task<BaseCommandResponseOfGuid> PublishVersionAsync(
+        Guid versionId,
+        int existingTenantPolicy,
+        CancellationToken cancellationToken = default);
+
+    Task<BaseCommandResponseOfGuid> ArchiveVersionAsync(
+        Guid versionId,
+        CancellationToken cancellationToken = default);
+
+    Task<BaseCommandResponseOfGuid> ClonePlanAsync(
+        Guid sourceVersionId,
+        string key,
+        string name,
+        CancellationToken cancellationToken = default);
+
+    Task<TenantPlanValidationResult> ValidateDraftAsync(
+        TenantPlanDraft draft,
+        CancellationToken cancellationToken = default);
+
+    Task<TenantPlanDiffResult> PreviewDiffAsync(
+        TenantPlanEffectiveConfiguration current,
+        TenantPlanDraft draft,
         CancellationToken cancellationToken = default);
 }

@@ -1,0 +1,114 @@
+/* ABOUTME: Scoped layout for the structured control-plane tenant plan draft editor. */
+/* ABOUTME: Keeps dense pricing, setting, quota, and diff controls responsive and tokenized. */
+
+.control-plane-plan-editor,
+.control-plane-plan-editor__section,
+.control-plane-plan-editor__rows,
+.control-plane-plan-editor__diff {
+    display: grid;
+    gap: var(--isl-space-4);
+    min-inline-size: 0;
+}
+
+.control-plane-plan-editor {
+    padding-block: var(--isl-space-5);
+}
+
+.control-plane-plan-editor__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--isl-space-4);
+}
+
+.control-plane-plan-editor__section {
+    padding-block-start: var(--isl-space-4);
+    border-block-start: 1px solid var(--isl-color-divider);
+}
+
+.control-plane-plan-editor__section-heading,
+.control-plane-plan-editor__actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+    flex-wrap: wrap;
+}
+
+.control-plane-plan-editor h3,
+.control-plane-plan-editor p,
+.control-plane-plan-editor__issues {
+    margin: 0;
+}
+
+.control-plane-plan-editor__section-heading p,
+.control-plane-plan-editor__empty {
+    color: var(--isl-color-text-secondary);
+}
+
+.control-plane-plan-editor__row {
+    display: grid;
+    align-items: center;
+    gap: var(--isl-space-3);
+    padding-block-end: var(--isl-space-3);
+    border-block-end: 1px solid var(--isl-color-divider);
+}
+
+.control-plane-plan-editor__row--setting {
+    grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 2fr) auto auto;
+}
+
+.control-plane-plan-editor__row--quota {
+    grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) auto;
+}
+
+.control-plane-plan-editor__issues {
+    padding-inline-start: var(--isl-space-5);
+}
+
+.control-plane-plan-editor__table-wrap {
+    max-inline-size: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-sm);
+}
+
+.control-plane-plan-editor__table-wrap:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-state-focus-ring);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.control-plane-plan-editor table {
+    inline-size: 100%;
+    min-inline-size: 42rem;
+    border-collapse: collapse;
+}
+
+.control-plane-plan-editor th,
+.control-plane-plan-editor td {
+    padding: var(--isl-space-3);
+    border-block-end: 1px solid var(--isl-color-divider);
+    text-align: start;
+    vertical-align: top;
+}
+
+.control-plane-plan-editor th {
+    color: var(--isl-color-text-secondary);
+    font-size: 0.75rem;
+}
+
+@media (max-width: 56rem) {
+    .control-plane-plan-editor__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .control-plane-plan-editor__row--setting,
+    .control-plane-plan-editor__row--quota {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 36rem) {
+    .control-plane-plan-editor__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

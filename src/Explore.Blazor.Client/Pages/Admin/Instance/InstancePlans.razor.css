@@ -1,5 +1,5 @@
-/* ABOUTME: Scoped operational layout for the public read-only tenant plan catalog. */
-/* ABOUTME: Keeps dense plan facts responsive with logical sizing and clear status contrast. */
+/* ABOUTME: Scoped operational layout for the public tenant plan catalog and draft editor. */
+/* ABOUTME: Keeps plan actions and dense facts responsive with logical sizing and clear contrast. */
 
 .instance-plans {
     display: grid;
@@ -8,6 +8,7 @@
 }
 
 .instance-plans__header,
+.instance-plans__header-actions,
 .instance-plans__section-heading,
 .instance-plans__item,
 .instance-plans__title-row {
@@ -15,6 +16,11 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--isl-space-4);
+}
+
+.instance-plans__header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .instance-plans__header > div,
@@ -53,6 +59,7 @@
 }
 
 .instance-plans__catalog,
+.instance-plans__editor,
 .instance-plans__list {
     display: grid;
     gap: var(--isl-space-4);
@@ -120,10 +127,15 @@
 
 @media (max-width: 36rem) {
     .instance-plans__header,
+    .instance-plans__header-actions,
     .instance-plans__item,
     .instance-plans__title-row {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .instance-plans__header-actions {
+        align-items: stretch;
     }
 
     .instance-plans__facts {

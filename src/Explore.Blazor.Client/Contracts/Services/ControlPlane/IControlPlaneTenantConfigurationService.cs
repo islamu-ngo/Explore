@@ -26,4 +26,19 @@ public interface IControlPlaneTenantConfigurationService
         Guid tenantId,
         string key,
         CancellationToken cancellationToken = default);
+
+    Task<BaseCommandResponseOfGuid> SwitchPlanAsync(
+        Guid tenantId,
+        Guid tenantPlanVersionId,
+        CancellationToken cancellationToken = default);
+
+    Task<BaseCommandResponseOfGuid> ApplyPlanAsync(
+        Guid tenantId,
+        Guid assignmentId,
+        CancellationToken cancellationToken = default);
+
+    Task<BaseCommandResponseOfGuid> RollbackPlanAsync(
+        Guid tenantId,
+        Guid assignmentId,
+        CancellationToken cancellationToken = default);
 }

@@ -112,6 +112,60 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         CancellationToken cancellationToken = default) =>
         apiClient.GetControlPlaneTenantPlanByKeyAsync(key, cancellationToken: cancellationToken);
 
+    public Task<BaseCommandResponseOfGuid> CreatePlanDraftAsync(
+        TenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        apiClient.CreateControlPlaneTenantPlanDraftAsync(draft, cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> CreateVersionDraftAsync(
+        string key,
+        TenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        apiClient.CreateControlPlaneTenantPlanVersionDraftAsync(key, draft, cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> UpdateVersionDraftAsync(
+        Guid versionId,
+        TenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        apiClient.UpdateControlPlaneTenantPlanVersionDraftAsync(versionId, draft, cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> PublishVersionAsync(
+        Guid versionId,
+        int existingTenantPolicy,
+        CancellationToken cancellationToken = default) =>
+        apiClient.PublishControlPlaneTenantPlanVersionAsync(
+            versionId,
+            new PublishTenantPlanVersionRequest { ExistingTenantPolicy = existingTenantPolicy },
+            cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> ArchiveVersionAsync(
+        Guid versionId,
+        CancellationToken cancellationToken = default) =>
+        apiClient.ArchiveControlPlaneTenantPlanVersionAsync(versionId, cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> ClonePlanAsync(
+        Guid sourceVersionId,
+        string key,
+        string name,
+        CancellationToken cancellationToken = default) =>
+        apiClient.CloneControlPlaneTenantPlanAsync(
+            sourceVersionId,
+            new CloneTenantPlanRequest { Key = key, Name = name },
+            cancellationToken: cancellationToken);
+
+    public Task<TenantPlanValidationResult> ValidateDraftAsync(
+        TenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        apiClient.ValidateControlPlaneTenantPlanDraftAsync(draft, cancellationToken: cancellationToken);
+
+    public Task<TenantPlanDiffResult> PreviewDiffAsync(
+        TenantPlanEffectiveConfiguration current,
+        TenantPlanDraft draft,
+        CancellationToken cancellationToken = default) =>
+        apiClient.PreviewControlPlaneTenantPlanDiffAsync(
+            new PreviewTenantPlanDiffRequest { Current = current, Draft = draft },
+            cancellationToken: cancellationToken);
+
     public Task<HalResourceOfControlPlaneTenantEffectiveConfigurationDto> GetEffectiveConfigurationAsync(
         Guid tenantId,
         CancellationToken cancellationToken = default) =>
@@ -139,4 +193,31 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         string key,
         CancellationToken cancellationToken = default) =>
         apiClient.UnlockControlPlaneTenantSettingAsync(tenantId, key, cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> SwitchPlanAsync(
+        Guid tenantId,
+        Guid tenantPlanVersionId,
+        CancellationToken cancellationToken = default) =>
+        apiClient.SwitchControlPlaneTenantPlanAssignmentAsync(
+            tenantId,
+            new SwitchTenantPlanAssignmentRequest { TenantPlanVersionId = tenantPlanVersionId },
+            cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> ApplyPlanAsync(
+        Guid tenantId,
+        Guid assignmentId,
+        CancellationToken cancellationToken = default) =>
+        apiClient.ApplyControlPlaneTenantPlanAssignmentAsync(
+            tenantId,
+            assignmentId,
+            cancellationToken: cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> RollbackPlanAsync(
+        Guid tenantId,
+        Guid assignmentId,
+        CancellationToken cancellationToken = default) =>
+        apiClient.RollbackControlPlaneTenantPlanAssignmentAsync(
+            tenantId,
+            assignmentId,
+            cancellationToken: cancellationToken);
 }
