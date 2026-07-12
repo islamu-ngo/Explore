@@ -1,9 +1,9 @@
-// ABOUTME: Unit-style tests for API zero-touch Cerbos policy package boot synchronization.
-// ABOUTME: Verifies boot sync gates on complete Admin API configuration and never requires direct Admin API calls in API.
+// ABOUTME: Unit-style tests for deployment-selected authorization reconciliation at API startup.
+// ABOUTME: Verifies successful delegation, bounded retries, and non-fatal failure behavior.
 
 using Explore.API.BackgroundServices;
 using Explore.Application.Authorization;
-using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,122 +15,97 @@ namespace Event.Api.IntegrationTests.Features;
 public class CerbosPolicyBootSyncRunnerTests
 {
     [Test]
-    public async Task RunOnceAsync_WithCompleteAdminConfiguration_PublishesPackageOnce()
+    public async Task RunOnceAsync_WithDeploymentIntent_ReconcilesOnce()
     {
-        var packageService = Substitute.For<IPolicyPackageService>();
-        packageService.PublishAsync(Arg.Any<CancellationToken>())
-            .Returns(CreateSuccessResult());
-        var runner = CreateRunner(packageService, CreateAdminSettings(
-            endpoints: ["https://cerbos.example"],
-            username: "admin",
-            password: "secret"));
+        var configurationService = Substitute.For<IAuthorizationProviderConfigurationService>();
+        configurationService.ReconcileDeploymentProviderAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateResult(attempted: true, succeeded: true));
+        var runner = CreateRunner(configurationService);
 
         await runner.RunOnceAsync(CancellationToken.None);
 
-        await packageService.Received(1).PublishAsync(Arg.Any<CancellationToken>());
+        await configurationService.Received(1)
+            .ReconcileDeploymentProviderAsync(Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task RunOnceAsync_WithoutAdminEndpoint_SkipsPublish()
+    public async Task RunOnceAsync_WithoutDeploymentIntent_CompletesWithoutFailure()
     {
-        var packageService = Substitute.For<IPolicyPackageService>();
-        var runner = CreateRunner(packageService, CreateAdminSettings(
-            endpoints: [],
-            username: "admin",
-            password: "secret"));
+        var configurationService = Substitute.For<IAuthorizationProviderConfigurationService>();
+        configurationService.ReconcileDeploymentProviderAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateResult(attempted: false, succeeded: false));
+        var runner = CreateRunner(configurationService);
 
         await runner.RunOnceAsync(CancellationToken.None);
 
-        await packageService.DidNotReceive().PublishAsync(Arg.Any<CancellationToken>());
+        await configurationService.Received(1)
+            .ReconcileDeploymentProviderAsync(Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task RunOnceAsync_WithPartialAdminCredentials_SkipsPublish()
+    public async Task RunOnceAsync_WhenReconciliationFails_DoesNotThrow()
     {
-        var packageService = Substitute.For<IPolicyPackageService>();
-        var runner = CreateRunner(packageService, CreateAdminSettings(
-            endpoints: ["https://cerbos.example"],
-            username: "admin",
-            password: string.Empty));
+        var configurationService = Substitute.For<IAuthorizationProviderConfigurationService>();
+        configurationService.ReconcileDeploymentProviderAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateResult(attempted: true, succeeded: false));
+        var runner = CreateRunner(configurationService);
 
         await runner.RunOnceAsync(CancellationToken.None);
 
-        await packageService.DidNotReceive().PublishAsync(Arg.Any<CancellationToken>());
+        await configurationService.Received(1)
+            .ReconcileDeploymentProviderAsync(Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task RunOnceAsync_WhenPublisherReturnsFailure_DoesNotThrow()
+    public async Task RunOnceAsync_WhenReconciliationRecovers_RetriesUntilSuccess()
     {
-        var packageService = Substitute.For<IPolicyPackageService>();
-        packageService.PublishAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new PolicyPackagePublishResult(
-                Succeeded: false,
-                PackageId: "islamuevent-authorization-policies",
-                ContentHash: "abc123",
-                Message: "safe failure",
-                PublishedAt: DateTimeOffset.UtcNow,
-                Warnings: ["safe warning"])));
-        var runner = CreateRunner(packageService, CreateAdminSettings(
-            endpoints: ["https://cerbos.example"],
-            username: "admin",
-            password: "secret"));
+        var configurationService = Substitute.For<IAuthorizationProviderConfigurationService>();
+        configurationService.ReconcileDeploymentProviderAsync(Arg.Any<CancellationToken>())
+            .Returns(
+                CreateResult(attempted: true, succeeded: false),
+                CreateResult(attempted: true, succeeded: true));
+        var runner = CreateRunner(configurationService, new CerbosPolicyBootSyncOptions
+        {
+            InitialDelaySeconds = 0,
+            RetryDelaySeconds = 0,
+            MaxAttempts = 2,
+            TimeoutSeconds = 5
+        });
 
         await runner.RunOnceAsync(CancellationToken.None);
 
-        await packageService.Received(1).PublishAsync(Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task RunOnceAsync_WhenDisabled_SkipsPublish()
-    {
-        var packageService = Substitute.For<IPolicyPackageService>();
-        var runner = CreateRunner(
-            packageService,
-            CreateAdminSettings(endpoints: ["https://cerbos.example"], username: "admin", password: "secret"),
-            new CerbosPolicyBootSyncOptions { Enabled = false, InitialDelaySeconds = 0, TimeoutSeconds = 5 });
-
-        await runner.RunOnceAsync(CancellationToken.None);
-
-        await packageService.DidNotReceive().PublishAsync(Arg.Any<CancellationToken>());
+        await configurationService.Received(2)
+            .ReconcileDeploymentProviderAsync(Arg.Any<CancellationToken>());
     }
 
     private static CerbosPolicyBootSyncRunner CreateRunner(
-        IPolicyPackageService packageService,
-        CerbosAdminApiSettings adminSettings,
+        IAuthorizationProviderConfigurationService configurationService,
         CerbosPolicyBootSyncOptions? options = null)
     {
         var services = new ServiceCollection();
-        services.AddScoped(_ => packageService);
+        services.AddScoped(_ => configurationService);
         var serviceProvider = services.BuildServiceProvider();
 
         return new CerbosPolicyBootSyncRunner(
             serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            Options.Create(adminSettings),
-            Options.Create(options ?? new CerbosPolicyBootSyncOptions { InitialDelaySeconds = 0, TimeoutSeconds = 5 }),
+            Options.Create(options ?? new CerbosPolicyBootSyncOptions
+            {
+                InitialDelaySeconds = 0,
+                RetryDelaySeconds = 0,
+                MaxAttempts = 1,
+                TimeoutSeconds = 5
+            }),
+            new AuthorizationProviderBootstrapState(),
             Substitute.For<ILogger<CerbosPolicyBootSyncRunner>>());
     }
 
-    private static CerbosAdminApiSettings CreateAdminSettings(
-        IReadOnlyList<string> endpoints,
-        string username,
-        string password)
+    private static AuthorizationProviderReconciliationResult CreateResult(bool attempted, bool succeeded)
     {
-        return new CerbosAdminApiSettings
-        {
-            Endpoints = [.. endpoints],
-            AdminUsername = username,
-            AdminPassword = password
-        };
-    }
-
-    private static Task<PolicyPackagePublishResult> CreateSuccessResult()
-    {
-        return Task.FromResult(new PolicyPackagePublishResult(
-            Succeeded: true,
-            PackageId: "islamuevent-authorization-policies",
-            ContentHash: "abc123",
-            Message: "published",
-            PublishedAt: DateTimeOffset.UtcNow,
-            Warnings: []));
+        return new AuthorizationProviderReconciliationResult(
+            Attempted: attempted,
+            Succeeded: succeeded,
+            EndpointVerified: succeeded,
+            PoliciesSynchronized: succeeded,
+            Message: succeeded ? "ready" : "not ready");
     }
 }

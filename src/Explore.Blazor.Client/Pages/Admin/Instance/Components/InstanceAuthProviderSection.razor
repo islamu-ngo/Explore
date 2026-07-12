@@ -307,6 +307,13 @@
                     </MudText>
                 </div>
 
+                @if (IsDeploymentAuthorizationProvider)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Authorization is managed by deployment configuration. Change <code>AUTHORIZATION_PROVIDER</code> and related Cerbos settings at the deployment source; authentication-provider management remains available here.
+                    </MudAlert>
+                }
+
                 <MudPaper Outlined="true" Class="pa-4" Style="@GetAuthorizationCardStyle(LocalProvider)">
                     <MudStack Spacing="2">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
@@ -317,12 +324,15 @@
                                 </MudTooltip>
                                 @ProviderStatusChip(IsAuthorizationProviderSelected(LocalProvider))
                             </MudStack>
-                            <MudButton Variant="@(IsAuthorizationProviderSelected(LocalProvider) ? Variant.Outlined : Variant.Filled)"
-                                       Color="Color.Primary"
-                                       Disabled="@IsAuthorizationProviderSelected(LocalProvider)"
-                                       OnClick="@(() => SelectAuthorizationProviderAsync(LocalProvider))">
-                                @(IsAuthorizationProviderSelected(LocalProvider) ? "Enabled" : "Enable Local Authorization")
-                            </MudButton>
+                            @if (!IsDeploymentAuthorizationProvider)
+                            {
+                                <MudButton Variant="@(IsAuthorizationProviderSelected(LocalProvider) ? Variant.Outlined : Variant.Filled)"
+                                           Color="Color.Primary"
+                                           Disabled="@IsAuthorizationProviderSelected(LocalProvider)"
+                                           OnClick="@(() => SelectAuthorizationProviderAsync(LocalProvider))">
+                                    @(IsAuthorizationProviderSelected(LocalProvider) ? "Enabled" : "Enable Local Authorization")
+                                </MudButton>
+                            }
                         </MudStack>
                     </MudStack>
                 </MudPaper>
@@ -346,12 +356,15 @@
                                 }
                                 @ProviderStatusChip(IsAuthorizationProviderSelected(CerbosProvider))
                             </MudStack>
-                            <MudButton Variant="@(IsAuthorizationProviderSelected(CerbosProvider) ? Variant.Outlined : Variant.Filled)"
-                                       Color="Color.Primary"
-                                       Disabled="@IsAuthorizationProviderSelected(CerbosProvider)"
-                                       OnClick="@(() => SelectAuthorizationProviderAsync(CerbosProvider))">
-                                @(IsAuthorizationProviderSelected(CerbosProvider) ? "Enabled" : "Enable Cerbos Authorization")
-                            </MudButton>
+                            @if (!IsDeploymentAuthorizationProvider)
+                            {
+                                <MudButton Variant="@(IsAuthorizationProviderSelected(CerbosProvider) ? Variant.Outlined : Variant.Filled)"
+                                           Color="Color.Primary"
+                                           Disabled="@IsAuthorizationProviderSelected(CerbosProvider)"
+                                           OnClick="@(() => SelectAuthorizationProviderAsync(CerbosProvider))">
+                                    @(IsAuthorizationProviderSelected(CerbosProvider) ? "Enabled" : "Enable Cerbos Authorization")
+                                </MudButton>
+                            }
                         </MudStack>
 
                         @if (IsAuthorizationProviderSelected(CerbosProvider))
@@ -413,7 +426,7 @@
                                                        StartIcon="@(_isSyncing ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Sync)"
                                                        Disabled="@(!CanSyncCerbosPolicies)"
                                                        OnClick="SyncCerbosPoliciesAsync">
-                                                @(_isSyncing ? "Syncing..." : "Sync Policies")
+                                                @(_isSyncing ? "Syncing..." : IsDeploymentAuthorizationProvider ? "Retry Authorization Setup" : "Sync Policies")
                                             </MudButton>
                                         </MudStack>
                                     </MudStack>
@@ -421,7 +434,9 @@
                                     @if (AuthorizationModel.CerbosEndpointVerified != true)
                                     {
                                         <MudAlert Severity="Severity.Info" Dense="true">
-                                            Save and verify the Cerbos endpoint before syncing authorization policies.
+                                            @(IsDeploymentAuthorizationProvider
+                                                ? "Fix the deployment-managed Cerbos settings, then retry endpoint verification and policy synchronization."
+                                                : "Save and verify the Cerbos endpoint before syncing authorization policies.")
                                         </MudAlert>
                                     }
 
@@ -541,6 +556,9 @@
     private bool IsAuthorizationProviderSelected(string provider) =>
         string.Equals(AuthorizationModel.Provider, provider, StringComparison.OrdinalIgnoreCase);
 
+    private bool IsDeploymentAuthorizationProvider =>
+        AuthorizationModel.AuthorizationProviderManagedByDeployment == true;
+
     private string GetAuthorizationCardStyle(string provider) =>
         IsAuthorizationProviderSelected(provider)
             ? "border: 2px solid var(--mud-palette-primary);"
@@ -565,9 +583,10 @@
         !_isSyncing
         && OnboardingService is not null
         && IsAuthorizationProviderSelected(CerbosProvider)
-        && AuthorizationModel.CerbosEndpointVerified == true
-        && AuthorizationModel.CerbosAdminUsernameConfigured == true
-        && AuthorizationModel.CerbosAdminPasswordConfigured == true;
+        && (IsDeploymentAuthorizationProvider
+            || (AuthorizationModel.CerbosEndpointVerified == true
+                && AuthorizationModel.CerbosAdminUsernameConfigured == true
+                && AuthorizationModel.CerbosAdminPasswordConfigured == true));
 
     private bool IsCerbosEndpointReadOnly => AuthorizationModel.CerbosEndpointOwnership?.Editable != true;
 
@@ -659,7 +678,7 @@
 
     private async Task SelectAuthorizationProviderAsync(string provider)
     {
-        if (IsAuthorizationProviderSelected(provider))
+        if (IsDeploymentAuthorizationProvider || IsAuthorizationProviderSelected(provider))
         {
             return;
         }
@@ -874,6 +893,11 @@
         try
         {
             var response = await OnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync();
+            if (response.Success == true && IsDeploymentAuthorizationProvider)
+            {
+                AuthorizationModel = await OnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync();
+            }
+
             _syncResult = response.Success == true
                 ? new BaseCommandResponseOfGuid
                 {

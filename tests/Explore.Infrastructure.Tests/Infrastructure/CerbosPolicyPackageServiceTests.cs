@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for building provider-neutral manifests from bundled Cerbos policy artifacts.
-// ABOUTME: Verifies namespaced package validation and stable manifest hashing before Admin API upload is added.
+// ABOUTME: Tests manifest construction and Admin API publishing for bundled Cerbos policy artifacts.
+// ABOUTME: Verifies tenant-aware and instance-only targets stay isolated during policy synchronization.
 
 using System.IO.Compression;
 using System.Net;
@@ -219,6 +219,37 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         await Assert.That(authorization?.Scheme).IsEqualTo("Basic");
         var decodedCredentials = Encoding.UTF8.GetString(Convert.FromBase64String(authorization?.Parameter ?? string.Empty));
         await Assert.That(decodedCredentials).IsEqualTo("tenant-user:tenant-secret");
+    }
+
+    [Test]
+    public async Task PublishInstanceAsync_WithByoAdminConfiguration_UsesInstanceTargetOnly()
+    {
+        var policiesRoot = CreatePackageRoot();
+        await File.WriteAllTextAsync(Path.Combine(policiesRoot, "islamuevent_event.yaml"), CreatePolicyYaml("islamuevent_event"));
+        await File.WriteAllTextAsync(Path.Combine(policiesRoot, "_schemas", "islamuevent_event.json"), "{\"type\":\"object\"}");
+
+        var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var configResolver = Substitute.For<ICerbosConfigResolver>();
+        configResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new CerbosConfiguration
+        {
+            Endpoint = "tenant-grpc.example:3593",
+            Mode = CerbosMode.CustomEndpoint,
+            FailureMode = CerbosFailureMode.Closed,
+            AdminEndpoint = "https://tenant-cerbos.example/base",
+            AdminUsername = "tenant-user",
+            AdminPassword = "tenant-secret",
+            IsInstanceDefault = false
+        });
+        var service = CreateService(policiesRoot, handler: handler, configResolver: configResolver);
+
+        var result = await service.PublishInstanceAsync();
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(handler.Requests.All(request => request.RequestUri?.Host == "cerbos.example")).IsTrue();
+        var credentials = Encoding.UTF8.GetString(
+            Convert.FromBase64String(handler.Requests[0].Authorization?.Parameter ?? string.Empty));
+        await Assert.That(credentials).IsEqualTo("admin:secret");
+        await configResolver.DidNotReceive().ResolveAsync(Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -495,7 +526,8 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         string policiesRoot,
         int maxPoliciesPerRequest = 100,
         RecordingMessageHandler? handler = null,
-        CerbosConfiguration? resolvedConfiguration = null)
+        CerbosConfiguration? resolvedConfiguration = null,
+        ICerbosConfigResolver? configResolver = null)
     {
         var options = Options.Create(new CerbosPolicyPackageOptions
         {
@@ -512,7 +544,7 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         });
 
         handler ??= new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
-        var configResolver = Substitute.For<ICerbosConfigResolver>();
+        configResolver ??= Substitute.For<ICerbosConfigResolver>();
         configResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(resolvedConfiguration ?? new CerbosConfiguration
         {
             Endpoint = "instance-cerbos.example:3593",

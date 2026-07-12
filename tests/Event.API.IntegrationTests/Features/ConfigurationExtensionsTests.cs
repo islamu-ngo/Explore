@@ -2,6 +2,7 @@
 // ABOUTME: Ensures Infisical deployment keys bind to canonical .NET configuration sections.
 
 using Explore.API.Extensions;
+using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -76,6 +77,41 @@ public sealed class ConfigurationExtensionsTests
         await Assert.That(configuration["Cerbos:PlaintextMode"]).IsEqualTo("false");
         await Assert.That(configuration["Cerbos:AdminApi:AdminUsername"]).IsEqualTo("cerbos-admin");
         await Assert.That(configuration["Cerbos:AdminApi:AdminPassword"]).IsEqualTo("server-side-password");
+    }
+
+    [Test]
+    public async Task AddInfisicalCompatibility_MapsAuthorizationProviderIntentWithoutOverridingCanonicalValue()
+    {
+        var mapped = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["AUTHORIZATION_PROVIDER"] = "cerbos"
+        });
+        var canonical = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["AUTHORIZATION_PROVIDER"] = "cerbos",
+            ["Authorization:Provider"] = "local"
+        });
+
+        await Assert.That(mapped["Authorization:Provider"]).IsEqualTo("cerbos");
+        await Assert.That(canonical["Authorization:Provider"]).IsEqualTo("local");
+    }
+
+    [Test]
+    [Arguments(null, true)]
+    [Arguments("", true)]
+    [Arguments("local", true)]
+    [Arguments("CERBOS", true)]
+    [Arguments("fallback", false)]
+    public async Task AuthorizationProviderDeploymentOptions_ValidatesOnlySupportedIntent(
+        string? provider,
+        bool expected)
+    {
+        var result = AuthorizationProviderDeploymentOptions.IsValid(new()
+        {
+            Provider = provider
+        });
+
+        await Assert.That(result).IsEqualTo(expected);
     }
 
     [Test]

@@ -203,6 +203,40 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     }
 
     [Test]
+    public async Task InstanceAdminSettingsLayout_DeploymentManagedAuthorization_KeepsAuthenticationSaveAvailable()
+    {
+        _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync()
+            .Returns(new AuthProviderConfigurationDto { KeycloakEnabled = true });
+        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
+            .Returns(new AuthorizationProviderConfigurationDto
+            {
+                Provider = "local",
+                AuthorizationProviderManagedByDeployment = true,
+                AuthorizationProviderBootstrapStatus = "ready"
+            });
+
+        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Authorization is managed by deployment configuration", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Enable Cerbos Authorization", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected read-only deployment authorization with authentication controls intact.");
+            }
+        });
+
+        object layout = GetRenderedLayout(cut);
+        await InvokePrivateTaskAsync(layout, "SaveAsync");
+
+        await _instanceOnboardingService.Received(1)
+            .UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationDto>());
+        await _instanceOnboardingService.DidNotReceive()
+            .UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
+        await _instanceOnboardingService.Received(1).RefreshAuthSchemesAsync();
+    }
+
+    [Test]
     public async Task InstanceAdminSettingsLayout_CerbosPolicySync_InvokesAdminBffSync()
     {
         // Arrange
@@ -305,6 +339,103 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         await _instanceOnboardingService.DidNotReceive().SyncAuthorizationPolicyPackageAsAdminAsync();
     }
 
+    [Test]
+    public async Task InstanceAdminSettingsLayout_DeploymentManagedCerbosFailure_EnablesServerRetry()
+    {
+        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
+            .Returns(new AuthorizationProviderConfigurationDto
+            {
+                Provider = "cerbos",
+                AuthorizationProviderManagedByDeployment = true,
+                AuthorizationProviderBootstrapStatus = "failed",
+                AuthorizationProviderBootstrapMessage = "The deployment-managed Cerbos PDP endpoint could not be reached.",
+                CerbosGrpcEndpoint = "http://cerbos:3593",
+                CerbosEndpointVerified = false,
+                CerbosEndpointOwnership = new SecretOwnershipDto
+                {
+                    Mode = "deployment-managed",
+                    Badge = "Managed by Deployment",
+                    Editable = false
+                }
+            });
+        _instanceOnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync()
+            .Returns(new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Automatic Cerbos setup did not complete."
+            });
+
+        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+        var retryButton = cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Retry Authorization Setup", StringComparison.OrdinalIgnoreCase));
+
+        await Assert.That(retryButton.HasAttribute("disabled")).IsFalse();
+        retryButton.Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Authorization policy package sync failed", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected safe retry failure feedback.");
+            }
+        });
+        await _instanceOnboardingService.Received(1).SyncAuthorizationPolicyPackageAsAdminAsync();
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_DeploymentManagedCerbosRetry_RefreshesReadiness()
+    {
+        var failed = new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            AuthorizationProviderManagedByDeployment = true,
+            AuthorizationProviderBootstrapStatus = "failed",
+            CerbosGrpcEndpoint = "http://cerbos:3593",
+            CerbosEndpointVerified = false,
+            CerbosEndpointOwnership = new SecretOwnershipDto
+            {
+                Mode = "deployment-managed",
+                Badge = "Managed by Deployment",
+                Editable = false
+            }
+        };
+        var ready = new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            AuthorizationProviderManagedByDeployment = true,
+            AuthorizationProviderConfigured = true,
+            AuthorizationProviderBootstrapStatus = "ready",
+            CerbosGrpcEndpoint = "http://cerbos:3593",
+            CerbosEndpointVerified = true,
+            CerbosPoliciesSynchronized = true,
+            CerbosEndpointOwnership = failed.CerbosEndpointOwnership
+        };
+        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
+            .Returns(failed, ready);
+        _instanceOnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync()
+            .Returns(new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Message = "Cerbos endpoint verification and policy synchronization completed."
+            });
+
+        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+        cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Retry Authorization Setup", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Verified", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Cerbos endpoint verification and policy synchronization completed.", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected refreshed deployment readiness after a successful retry.");
+            }
+        });
+        await _instanceOnboardingService.Received(2)
+            .GetAuthorizationProviderConfigurationAsAdminAsync();
+    }
+
     private void ConfigureSingleTenantInstanceDefaults()
     {
         _instanceOnboardingService.GetStatusAsync()
@@ -391,9 +522,9 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Policy package sync", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Exactly one authorization provider is active", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Policy sync affordance was not rendered.");
+                throw new InvalidOperationException("Authorization provider settings were not rendered.");
             }
         });
 

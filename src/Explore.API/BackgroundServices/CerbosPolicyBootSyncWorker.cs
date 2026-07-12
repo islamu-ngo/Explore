@@ -1,12 +1,12 @@
-// ABOUTME: Non-blocking API hosted service that triggers one Cerbos policy package publish after startup.
-// ABOUTME: Delegates to CerbosPolicyBootSyncRunner so startup remains resilient when Cerbos is unavailable.
+// ABOUTME: Non-blocking hosted service that triggers deployment authorization reconciliation after startup.
+// ABOUTME: Delegates bounded retry handling to CerbosPolicyBootSyncRunner so API startup remains available.
 
 using Microsoft.Extensions.Options;
 
 namespace Explore.API.BackgroundServices;
 
 /// <summary>
-/// Background hosted service that performs zero-touch Cerbos policy package publishing once per process boot.
+/// Background hosted service that performs zero-touch authorization reconciliation once per process boot.
 /// </summary>
 public sealed class CerbosPolicyBootSyncWorker(
     CerbosPolicyBootSyncRunner runner,

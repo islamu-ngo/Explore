@@ -21,6 +21,11 @@ public interface IPolicyPackageService
     Task<PolicyPackagePublishResult> PublishAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Publishes the current authorization policy package to the instance-managed provider target.
+    /// </summary>
+    Task<PolicyPackagePublishResult> PublishInstanceAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets an operator-safe status summary for the current authorization policy package target.
     /// </summary>
     Task<PolicyPackageStatusResult> GetStatusAsync(CancellationToken cancellationToken = default);

@@ -224,7 +224,7 @@ public class InstanceOnboardingServiceTests
 
         // Assert
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("Failed with status 400.");
+        await Assert.That(result.Message).IsEqualTo("Validation failed.");
         await Assert.That(result.Errors).IsNotEmpty();
     }
 
@@ -439,6 +439,39 @@ public class InstanceOnboardingServiceTests
         await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/authz-provider");
         await Assert.That(result.Provider).IsEqualTo("cerbos");
         await Assert.That(result.CerbosEndpointVerified).IsTrue();
+    }
+
+    [Test]
+    [Arguments(true, false, "pending", true)]
+    [Arguments(true, false, "failed", false)]
+    [Arguments(false, true, null, true)]
+    [Arguments(false, false, null, false)]
+    public async Task ShouldSkipAuthorizationProviderStepAsync_UsesDeploymentOwnershipOrReadiness(
+        bool managedByDeployment,
+        bool configured,
+        string? bootstrapStatus,
+        bool expected)
+    {
+        SetupBffClient(CreateJsonResponse(new ProviderConfigurationStatusDto
+        {
+            AuthorizationProviderManagedByDeployment = managedByDeployment,
+            Configured = configured,
+            AuthorizationProviderBootstrapStatus = bootstrapStatus
+        }));
+
+        var result = await _service.ShouldSkipAuthorizationProviderStepAsync();
+
+        await Assert.That(result).IsEqualTo(expected);
+    }
+
+    [Test]
+    public async Task ShouldSkipAuthorizationProviderStepAsync_WhenReadFails_ReturnsFalse()
+    {
+        SetupBffClient(_ => throw new HttpRequestException("unavailable"));
+
+        var result = await _service.ShouldSkipAuthorizationProviderStepAsync();
+
+        await Assert.That(result).IsFalse();
     }
 
     [Test]

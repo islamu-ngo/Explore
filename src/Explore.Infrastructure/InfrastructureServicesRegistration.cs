@@ -218,7 +218,13 @@ public static class InfrastructureServicesRegistration
         .ConfigurePrimaryHttpMessageHandler(CreateKeycloakBootstrapHttpHandler);
         services.AddScoped<IAccountAuthorityLifecycleEmailService, KeycloakAccountAuthorityLifecycleEmailService>();
 
-        // Authorization providers (runtime-switchable via SystemSetting "authorization.provider")
+        services.AddOptions<AuthorizationProviderDeploymentOptions>()
+            .Bind(configuration.GetSection(AuthorizationProviderDeploymentOptions.SectionName))
+            .Validate(AuthorizationProviderDeploymentOptions.IsValid,
+                "Authorization:Provider must be blank, 'local', or 'cerbos'.")
+            .ValidateOnStart();
+        services.AddSingleton<AuthorizationProviderBootstrapState>();
+
         // Both concrete providers are always registered; RuntimeAuthorizationProvider delegates at runtime.
         services.Configure<CerbosSettings>(configuration.GetSection(CerbosSettings.SectionName));
         services.Configure<CerbosAdminApiSettings>(configuration.GetSection(CerbosAdminApiSettings.SectionName));

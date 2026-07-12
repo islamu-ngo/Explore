@@ -1,6 +1,7 @@
 // ABOUTME: Service contract for managing instance-level authorization provider configuration.
 // ABOUTME: Handles reading, applying, and verifying authorization provider settings (Cerbos or Local).
 
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.Onboarding;
 
 namespace Explore.Application.Contracts.Services;
@@ -33,4 +34,11 @@ public interface IAuthorizationProviderConfigurationService
     Task<bool> VerifyCerbosEndpointAsync(string grpcEndpoint, CancellationToken cancellationToken = default);
 
     Task<bool> VerifyCerbosAdminEndpointAsync(string adminEndpoint, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reconciles an explicit deployment-selected provider. Local becomes ready immediately;
+    /// Cerbos is ready only after PDP verification and policy publication both succeed.
+    /// </summary>
+    Task<AuthorizationProviderReconciliationResult> ReconcileDeploymentProviderAsync(
+        CancellationToken cancellationToken = default);
 }

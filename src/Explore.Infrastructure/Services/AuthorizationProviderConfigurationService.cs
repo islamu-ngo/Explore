@@ -1,7 +1,8 @@
-// ABOUTME: Service implementation for managing instance-level authorization provider configuration.
-// ABOUTME: Reads/writes authz provider settings via SystemSettings and verifies Cerbos gRPC endpoints via health check.
+// ABOUTME: Manages application-owned and deployment-selected instance authorization provider configuration.
+// ABOUTME: Reconciles explicit Cerbos intent by verifying its PDP before publishing to the instance Admin API.
 
 using System.Text.Json;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -16,6 +17,7 @@ using Grpc.Health.V1;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Services;
 
@@ -26,6 +28,9 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
     private readonly CerbosAdminEndpointValidator _adminEndpointValidator;
     private readonly IAuthorizationProviderModeCacheInvalidator _providerModeCacheInvalidator;
     private readonly ICerbosConfigResolver _cerbosConfigResolver;
+    private readonly IPolicyPackageService _policyPackageService;
+    private readonly AuthorizationProviderDeploymentOptions _deploymentOptions;
+    private readonly AuthorizationProviderBootstrapState _bootstrapState;
     private readonly ILogger<AuthorizationProviderConfigurationService> _logger;
 
     public AuthorizationProviderConfigurationService(
@@ -34,6 +39,9 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         CerbosAdminEndpointValidator adminEndpointValidator,
         IAuthorizationProviderModeCacheInvalidator providerModeCacheInvalidator,
         ICerbosConfigResolver cerbosConfigResolver,
+        IPolicyPackageService policyPackageService,
+        IOptions<AuthorizationProviderDeploymentOptions> deploymentOptions,
+        AuthorizationProviderBootstrapState bootstrapState,
         ILogger<AuthorizationProviderConfigurationService> logger)
     {
         _systemSettingRepository = systemSettingRepository;
@@ -41,6 +49,9 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         _adminEndpointValidator = adminEndpointValidator;
         _providerModeCacheInvalidator = providerModeCacheInvalidator;
         _cerbosConfigResolver = cerbosConfigResolver;
+        _policyPackageService = policyPackageService;
+        _deploymentOptions = deploymentOptions.Value;
+        _bootstrapState = bootstrapState;
         _logger = logger;
     }
 
@@ -54,17 +65,24 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 
         // Preserve operator's raw bootstrap value end-to-end. Deployment values prefill setup/admin
         // screens, but application-managed saved settings take precedence after an explicit save.
+        var deploymentProvider = _deploymentOptions.GetProvider();
         var rawEnvEndpoint = _configuration["Cerbos:GrpcEndpoint"]?.Trim() ?? string.Empty;
-        var detectedFromEnv = !string.IsNullOrWhiteSpace(rawEnvEndpoint)
-                              && !GrpcEndpointNormalizer.Normalize(rawEnvEndpoint)
-                                  .Equals("http://localhost:3593", StringComparison.OrdinalIgnoreCase);
-
-        var providerConfigured = providerSetting is not null && !string.IsNullOrWhiteSpace(providerSetting.Value);
-        var provider = DeserializeString(providerSetting?.Value, "local");
+        var detectedFromEnv = !string.IsNullOrWhiteSpace(rawEnvEndpoint);
+        var storedProviderConfigured = providerSetting is not null && !string.IsNullOrWhiteSpace(providerSetting.Value);
+        var provider = deploymentProvider ?? DeserializeString(providerSetting?.Value, "local");
+        var bootstrap = ResolveBootstrapSnapshot(deploymentProvider);
+        var providerConfigured = deploymentProvider switch
+        {
+            AuthorizationProviderDeploymentOptions.LocalProvider => true,
+            AuthorizationProviderDeploymentOptions.CerbosProvider => bootstrap.Status == AuthorizationProviderBootstrapState.Ready,
+            _ => storedProviderConfigured
+        };
         var storedGrpcEndpoint = DeserializeString(grpcEndpointSetting?.Value, string.Empty);
-        var endpointDeploymentManaged = IsDeploymentManaged(GovernanceSettingKeys.Cerbos.GrpcEndpoint)
+        var endpointDeploymentManaged = deploymentProvider == AuthorizationProviderDeploymentOptions.CerbosProvider
+                                        || IsDeploymentManaged(GovernanceSettingKeys.Cerbos.GrpcEndpoint)
                                         || IsDeploymentManaged(Explore.Domain.Secrets.SecretDefinitionRegistry.Keys.Cerbos.GrpcEndpoint);
-        var credentialsDeploymentManaged = IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername)
+        var credentialsDeploymentManaged = deploymentProvider == AuthorizationProviderDeploymentOptions.CerbosProvider
+                                           || IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername)
                                            || IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword)
                                            || IsDeploymentManaged("Cerbos:AdminApi:AdminUsername")
                                            || IsDeploymentManaged("Cerbos:AdminApi:AdminPassword");
@@ -101,7 +119,12 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
                 ? configuredAdminPasswordConfigured
                 : storedAdminPasswordConfigured || configuredAdminPasswordConfigured,
             CerbosDetectedFromEnvironment = detectedFromEnv,
+            CerbosEndpointVerified = bootstrap.EndpointVerified,
+            CerbosPoliciesSynchronized = bootstrap.PoliciesSynchronized,
             AuthorizationProviderConfigured = providerConfigured,
+            AuthorizationProviderManagedByDeployment = deploymentProvider is not null,
+            AuthorizationProviderBootstrapStatus = bootstrap.Status,
+            AuthorizationProviderBootstrapMessage = bootstrap.Message,
             CerbosEndpointOwnership = CreateOwnershipMetadata(
                 endpointDeploymentManaged,
                 configured: !string.IsNullOrWhiteSpace(grpcEndpoint),
@@ -122,6 +145,20 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 
     public async Task ApplyConfigurationAsync(AuthorizationProviderConfigurationDto configuration)
     {
+        var deploymentProvider = _deploymentOptions.GetProvider();
+        if (deploymentProvider is not null)
+        {
+            if (!configuration.Provider.Equals(deploymentProvider, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "The authorization provider is managed by deployment configuration and cannot be changed in the application.");
+            }
+
+            _cerbosConfigResolver.InvalidateCache();
+            _providerModeCacheInvalidator.InvalidateInstanceMode();
+            return;
+        }
+
         var isCerbosProvider = configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase);
         var normalizedGrpcEndpoint = isCerbosProvider
             ? GrpcEndpointNormalizer.Normalize(configuration.CerbosGrpcEndpoint)
@@ -214,14 +251,128 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 
     public async Task<bool> IsConfiguredAsync()
     {
+        var deploymentProvider = _deploymentOptions.GetProvider();
+        if (deploymentProvider == AuthorizationProviderDeploymentOptions.LocalProvider)
+        {
+            return true;
+        }
+
+        if (deploymentProvider == AuthorizationProviderDeploymentOptions.CerbosProvider)
+        {
+            return ResolveBootstrapSnapshot(deploymentProvider).Status == AuthorizationProviderBootstrapState.Ready;
+        }
+
         var providerSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider);
         return providerSetting is not null && !string.IsNullOrWhiteSpace(providerSetting.Value);
+    }
+
+    public async Task<AuthorizationProviderReconciliationResult> ReconcileDeploymentProviderAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var provider = _deploymentOptions.GetProvider();
+        if (provider is null)
+        {
+            return new(false, false, false, false, "No deployment-managed authorization provider is configured.");
+        }
+
+        if (provider == AuthorizationProviderDeploymentOptions.LocalProvider)
+        {
+            const string message = "Local authorization is ready from deployment configuration.";
+            _bootstrapState.MarkReady(provider, endpointVerified: false, policiesSynchronized: false, message);
+            _providerModeCacheInvalidator.InvalidateInstanceMode();
+            return new(true, true, false, false, message);
+        }
+
+        return await _bootstrapState.RunSingleFlightAsync(
+            token => ReconcileCerbosDeploymentProviderAsync(provider, token),
+            cancellationToken);
+    }
+
+    private async Task<AuthorizationProviderReconciliationResult> ReconcileCerbosDeploymentProviderAsync(
+        string provider,
+        CancellationToken cancellationToken)
+    {
+        var endpointVerified = false;
+        try
+        {
+            var current = _bootstrapState.Read();
+            if (current.Provider == provider && current.Status == AuthorizationProviderBootstrapState.Ready)
+            {
+                return new(
+                    Attempted: true,
+                    Succeeded: true,
+                    EndpointVerified: current.EndpointVerified,
+                    PoliciesSynchronized: current.PoliciesSynchronized,
+                    Message: current.Message ?? "Cerbos authorization is ready.");
+            }
+
+            _bootstrapState.MarkPending(provider);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var endpoint = _configuration["Cerbos:GrpcEndpoint"];
+            if (string.IsNullOrWhiteSpace(endpoint))
+            {
+                return MarkReconciliationFailed(
+                    provider,
+                    endpointVerified: false,
+                    "Cerbos is selected by deployment configuration, but no PDP endpoint is configured.");
+            }
+
+            endpointVerified = await VerifyCerbosEndpointAsync(endpoint, cancellationToken);
+            if (!endpointVerified)
+            {
+                return MarkReconciliationFailed(
+                    provider,
+                    endpointVerified: false,
+                    "The deployment-managed Cerbos PDP endpoint could not be reached.");
+            }
+
+            try
+            {
+                var publishResult = await _policyPackageService.PublishInstanceAsync(cancellationToken);
+                if (!publishResult.Succeeded)
+                {
+                    return MarkReconciliationFailed(
+                        provider,
+                        endpointVerified: true,
+                        string.IsNullOrWhiteSpace(publishResult.Message)
+                            ? "The Cerbos policy package could not be synchronized."
+                            : publishResult.Message);
+                }
+
+                const string message = "Cerbos endpoint verification and policy synchronization completed.";
+                _bootstrapState.MarkReady(provider, endpointVerified: true, policiesSynchronized: true, message);
+                _cerbosConfigResolver.InvalidateCache();
+                _providerModeCacheInvalidator.InvalidateInstanceMode();
+                return new(true, true, true, true, message);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(
+                    "Deployment-managed Cerbos reconciliation failed. FailureType={FailureType}",
+                    ex.GetType().Name);
+                return MarkReconciliationFailed(
+                    provider,
+                    endpointVerified: true,
+                    "The Cerbos policy package could not be synchronized.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            MarkReconciliationFailed(
+                provider,
+                endpointVerified,
+                endpointVerified
+                    ? "Automatic Cerbos setup was canceled before policy synchronization completed."
+                    : "Automatic Cerbos setup was canceled before completion.");
+            throw;
+        }
     }
 
     public async Task<bool> VerifyCerbosEndpointAsync(string grpcEndpoint, CancellationToken cancellationToken = default)
     {
         var normalizedEndpoint = GrpcEndpointNormalizer.Normalize(grpcEndpoint);
-        if (string.IsNullOrWhiteSpace(normalizedEndpoint))
+        if (!GrpcEndpointNormalizer.IsValid(normalizedEndpoint))
         {
             return false;
         }
@@ -239,27 +390,29 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
                 cancellationToken: cancellationToken);
 
             var isHealthy = response.Status == HealthCheckResponse.Types.ServingStatus.Serving;
-            _logger.LogInformation("Cerbos gRPC health check for {Endpoint}: {Status}", normalizedEndpoint, response.Status);
+            _logger.LogInformation("Cerbos gRPC health check completed with status {Status}", response.Status);
             return isHealthy;
+        }
+        catch (RpcException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
         }
         catch (RpcException rpcEx)
         {
             _logger.LogWarning(
-                rpcEx,
-                "Cerbos gRPC health check failed for endpoint {Endpoint}: gRPC status={GrpcStatusCode} detail={GrpcStatusDetail}",
-                normalizedEndpoint,
-                rpcEx.StatusCode,
-                rpcEx.Status.Detail);
+                "Cerbos gRPC health check failed. GrpcStatusCode={GrpcStatusCode}",
+                rpcEx.StatusCode);
             return false;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(
-                ex,
-                "Cerbos gRPC health check failed for endpoint {Endpoint}: exception={ExceptionType} message={ExceptionMessage}",
-                normalizedEndpoint,
-                ex.GetType().FullName,
-                ex.Message);
+                "Cerbos gRPC health check failed. FailureType={FailureType}",
+                ex.GetType().Name);
             return false;
         }
     }
@@ -282,6 +435,39 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         return configuredKeys.Any(candidate =>
             candidate.Equals("*", StringComparison.OrdinalIgnoreCase)
             || candidate.Equals(key, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private AuthorizationProviderBootstrapSnapshot ResolveBootstrapSnapshot(string? deploymentProvider)
+    {
+        if (deploymentProvider is null)
+        {
+            return new(null, AuthorizationProviderBootstrapState.NotApplicable, false, false, null);
+        }
+
+        if (deploymentProvider == AuthorizationProviderDeploymentOptions.LocalProvider)
+        {
+            return new(
+                deploymentProvider,
+                AuthorizationProviderBootstrapState.Ready,
+                false,
+                false,
+                "Local authorization is ready from deployment configuration.");
+        }
+
+        var snapshot = _bootstrapState.Read();
+        return snapshot.Provider == deploymentProvider
+            ? snapshot
+            : new(deploymentProvider, AuthorizationProviderBootstrapState.Pending, false, false, null);
+    }
+
+    private AuthorizationProviderReconciliationResult MarkReconciliationFailed(
+        string provider,
+        bool endpointVerified,
+        string message)
+    {
+        _bootstrapState.MarkFailed(provider, endpointVerified, message);
+        _providerModeCacheInvalidator.InvalidateInstanceMode();
+        return new(true, false, endpointVerified, false, message);
     }
 
     private static SecretOwnershipDto CreateOwnershipMetadata(

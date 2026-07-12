@@ -27,6 +27,19 @@ public sealed class AspireLocalInfrastructureArchitectureTests
         await Assert.That(appHost).Contains(".WithEnvironment(\"CERBOS_GRPC_ENDPOINT\", cerbosGrpcEndpoint)");
     }
 
+    [Test]
+    public async Task CerbosAdminApi_MustUseMutablePostgresStore()
+    {
+        var cerbosConfig = await File.ReadAllTextAsync(
+            Path.Combine(RepoRoot, "cerbos", "config", ".cerbos.yaml"));
+        var appHost = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));
+        var compose = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "docker-compose.yml"));
+
+        await Assert.That(cerbosConfig).Contains("storage:\n  driver: \"postgres\"");
+        await Assert.That(appHost).Contains("\"CERBOS_PG_URL\"");
+        await Assert.That(compose).Contains("CERBOS_PG_URL:");
+    }
+
     private static string ResolveRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

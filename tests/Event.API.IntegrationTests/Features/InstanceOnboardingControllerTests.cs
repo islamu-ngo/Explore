@@ -34,6 +34,7 @@ public class InstanceOnboardingControllerTests
     private const string BaseUrl = "/api/instanceonboarding";
     private const string SettingsBaseUrl = "/api/instance/settings";
     private const string SetupSecret = "integration-setup-secret";
+    private const string CerbosBootstrapEndpoint = "http://cerbos-bootstrap.test:3593";
 
     [Test]
     public async Task GetStatus_Anonymous_ShouldReturnOk()
@@ -428,6 +429,8 @@ public class InstanceOnboardingControllerTests
         var configuredPayload = await configuredResponse.Content.ReadFromJsonAsync<AuthProviderConfiguredResponse>();
         await Assert.That(configuredPayload).IsNotNull();
         await Assert.That(configuredPayload!.Configured).IsTrue();
+        await Assert.That(configuredPayload.AuthorizationProviderManagedByDeployment).IsFalse();
+        await Assert.That(configuredPayload.AuthorizationProviderBootstrapStatus).IsEqualTo("not-applicable");
 
         var completePayload = CreateValidOnboardingRequest();
         using var completeRequest = CreateInstanceAdminRequest(
@@ -689,7 +692,11 @@ public class InstanceOnboardingControllerTests
     [Test]
     public async Task UpdateAuthorizationProviderConfiguration_WhenUserIsInstanceAdmin_ShouldUpdateAndReturnConfiguration()
     {
-        using var factory = CreateFactoryWithSetupSecret();
+        using var factory = CreateFactoryWithSetupSecret(new Dictionary<string, string?>
+        {
+            ["Authorization:Provider"] = string.Empty,
+            ["Cerbos:GrpcEndpoint"] = CerbosBootstrapEndpoint
+        });
         using var client = factory.CreateClient();
 
         var userId = Guid.NewGuid();
@@ -723,7 +730,27 @@ public class InstanceOnboardingControllerTests
         var config = await getResponse.Content.ReadFromJsonAsync<AuthorizationProviderConfigurationDto>();
         await Assert.That(config).IsNotNull();
         await Assert.That(config!.Provider).IsEqualTo("local");
-        await Assert.That(config.CerbosGrpcEndpoint).IsEqualTo(string.Empty);
+        await Assert.That(config.AuthorizationProviderManagedByDeployment).IsFalse();
+        await Assert.That(config.CerbosGrpcEndpoint).IsEqualTo(CerbosBootstrapEndpoint);
+    }
+
+    [Test]
+    public async Task AuthorizationProviderStatus_WhenDeploymentSelectsLocal_ExposesManagedReadyState()
+    {
+        using var factory = CreateFactoryWithSetupSecret(new Dictionary<string, string?>
+        {
+            ["Authorization:Provider"] = "local"
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"{SettingsBaseUrl}/authz-provider/status");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var payload = await response.Content.ReadFromJsonAsync<AuthProviderConfiguredResponse>();
+        await Assert.That(payload).IsNotNull();
+        await Assert.That(payload!.Configured).IsTrue();
+        await Assert.That(payload.AuthorizationProviderManagedByDeployment).IsTrue();
+        await Assert.That(payload.AuthorizationProviderBootstrapStatus).IsEqualTo("ready");
     }
 
     [Test]
@@ -780,7 +807,11 @@ public class InstanceOnboardingControllerTests
     [Test]
     public async Task GetAuthorizationProviderConfigurationInternal_WithSetupSecret_ShouldReturnConfiguration()
     {
-        using var factory = CreateFactoryWithSetupSecret();
+        using var factory = CreateFactoryWithSetupSecret(new Dictionary<string, string?>
+        {
+            ["Authorization:Provider"] = string.Empty,
+            ["Cerbos:GrpcEndpoint"] = CerbosBootstrapEndpoint
+        });
         using var client = factory.CreateClient();
 
         var userId = Guid.NewGuid();
@@ -808,7 +839,8 @@ public class InstanceOnboardingControllerTests
         var internalConfig = await internalWithSecretResponse.Content.ReadFromJsonAsync<AuthorizationProviderConfigurationDto>();
         await Assert.That(internalConfig).IsNotNull();
         await Assert.That(internalConfig!.Provider).IsEqualTo("local");
-        await Assert.That(internalConfig.CerbosGrpcEndpoint).IsEqualTo(string.Empty);
+        await Assert.That(internalConfig.AuthorizationProviderManagedByDeployment).IsFalse();
+        await Assert.That(internalConfig.CerbosGrpcEndpoint).IsEqualTo(CerbosBootstrapEndpoint);
     }
 
     private static async Task EnsureInstanceAdminRoleAsync(AuthenticatedWebApplicationFactory factory, Guid userId)
@@ -1057,6 +1089,10 @@ public class InstanceOnboardingControllerTests
     private sealed class AuthProviderConfiguredResponse
     {
         public bool Configured { get; set; }
+
+        public bool AuthorizationProviderManagedByDeployment { get; set; }
+
+        public string? AuthorizationProviderBootstrapStatus { get; set; }
     }
 
     private static bool HasProblemDetailsResponse(System.Reflection.MethodInfo action, int statusCode)

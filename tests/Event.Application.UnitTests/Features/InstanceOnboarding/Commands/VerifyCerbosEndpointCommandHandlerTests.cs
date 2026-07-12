@@ -49,6 +49,23 @@ public class VerifyCerbosEndpointCommandHandlerTests
     }
 
     [Test]
+    [Arguments("https://user:password@cerbosgrpc.example.com:443")]
+    [Arguments("https://cerbosgrpc.example.com:443/health")]
+    [Arguments("https://cerbosgrpc.example.com:443?tenant=other")]
+    [Arguments("https://cerbosgrpc.example.com:443#fragment")]
+    public async Task Handle_WhenEndpointContainsUnsafeUriComponents_ReturnsFailure(string endpoint)
+    {
+        var result = await _handler.Handle(new VerifyCerbosEndpointCommand
+        {
+            GrpcEndpoint = endpoint
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _configurationService.DidNotReceive()
+            .VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WhenEndpointIsUnreachable_ReturnsFailure()
     {
         _configurationService.VerifyCerbosEndpointAsync("https://cerbosgrpc.example.com:443", Arg.Any<CancellationToken>())

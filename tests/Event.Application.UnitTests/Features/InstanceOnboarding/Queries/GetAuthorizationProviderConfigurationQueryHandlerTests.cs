@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for reading authorization provider configuration for setup and admin flows.
-// ABOUTME: Verifies Cerbos auto-selection happens when detected from environment and not yet configured.
+// ABOUTME: Verifies endpoint presence never overrides the provider intent resolved by the server.
 
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
@@ -30,8 +30,6 @@ public class GetAuthorizationProviderConfigurationQueryHandlerTests
         };
 
         _configurationService.ReadConfigurationAsync().Returns(configuration);
-        _configurationService.IsConfiguredAsync().Returns(true);
-
         var result = await _handler.Handle(new GetAuthorizationProviderConfigurationQuery(), CancellationToken.None);
 
         await Assert.That(result.Provider).IsEqualTo("local");
@@ -39,7 +37,7 @@ public class GetAuthorizationProviderConfigurationQueryHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenDetectedFromEnvironmentAndNotConfigured_AutoSelectsCerbos()
+    public async Task Handle_WhenEndpointPrefillExistsAndProviderIsUnconfigured_KeepsLocalIntent()
     {
         var configuration = new AuthorizationProviderConfigurationDto
         {
@@ -49,31 +47,31 @@ public class GetAuthorizationProviderConfigurationQueryHandlerTests
         };
 
         _configurationService.ReadConfigurationAsync().Returns(configuration);
-        _configurationService.IsConfiguredAsync().Returns(false);
+        var result = await _handler.Handle(new GetAuthorizationProviderConfigurationQuery(), CancellationToken.None);
+
+        await Assert.That(result.Provider).IsEqualTo("local");
+        await Assert.That(result.CerbosEndpointVerified).IsFalse();
+        await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _configurationService.DidNotReceive().IsConfiguredAsync();
+    }
+
+    [Test]
+    public async Task Handle_WhenDeploymentExplicitlySelectsCerbos_KeepsCerbosIntent()
+    {
+        var configuration = new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "https://cerbosgrpc.example.com:443",
+            CerbosDetectedFromEnvironment = true,
+            AuthorizationProviderManagedByDeployment = true,
+            AuthorizationProviderBootstrapStatus = "pending"
+        };
+
+        _configurationService.ReadConfigurationAsync().Returns(configuration);
 
         var result = await _handler.Handle(new GetAuthorizationProviderConfigurationQuery(), CancellationToken.None);
 
         await Assert.That(result.Provider).IsEqualTo("cerbos");
-        await Assert.That(result.CerbosEndpointVerified).IsFalse();
-        await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task Handle_WhenAlreadyConfigured_KeepsStoredProvider()
-    {
-        var configuration = new AuthorizationProviderConfigurationDto
-        {
-            Provider = "local",
-            CerbosGrpcEndpoint = "https://cerbosgrpc.example.com:443",
-            CerbosDetectedFromEnvironment = true
-        };
-
-        _configurationService.ReadConfigurationAsync().Returns(configuration);
-        _configurationService.IsConfiguredAsync().Returns(true);
-
-        var result = await _handler.Handle(new GetAuthorizationProviderConfigurationQuery(), CancellationToken.None);
-
-        await Assert.That(result.Provider).IsEqualTo("local");
         await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

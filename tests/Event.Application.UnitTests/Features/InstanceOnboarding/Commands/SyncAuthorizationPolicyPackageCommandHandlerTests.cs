@@ -3,6 +3,8 @@
 
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Microsoft.Extensions.Logging;
@@ -13,13 +15,38 @@ namespace Event.Application.UnitTests.Features.InstanceOnboarding.Commands;
 public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
 {
     private readonly IPolicyPackageService _policyPackageService = Substitute.For<IPolicyPackageService>();
+    private readonly IAuthorizationProviderConfigurationService _configurationService = Substitute.For<IAuthorizationProviderConfigurationService>();
     private readonly SyncAuthorizationPolicyPackageCommandHandler _handler;
 
     public SyncAuthorizationPolicyPackageCommandHandlerTests()
     {
+        _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto());
         _handler = new SyncAuthorizationPolicyPackageCommandHandler(
             _policyPackageService,
+            _configurationService,
             Substitute.For<ILogger<SyncAuthorizationPolicyPackageCommandHandler>>());
+    }
+
+    [Test]
+    public async Task Handle_WithDeploymentManagedProvider_UsesServerReconciliation()
+    {
+        _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            AuthorizationProviderManagedByDeployment = true
+        });
+        _configurationService.ReconcileDeploymentProviderAsync(Arg.Any<CancellationToken>())
+            .Returns(new AuthorizationProviderReconciliationResult(
+                Attempted: true,
+                Succeeded: true,
+                EndpointVerified: true,
+                PoliciesSynchronized: true,
+                Message: "ready"));
+
+        var result = await _handler.Handle(new SyncAuthorizationPolicyPackageCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _policyPackageService.DidNotReceive().PublishAsync(Arg.Any<CancellationToken>());
     }
 
     [Test]

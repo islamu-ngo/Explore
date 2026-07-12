@@ -1,95 +1,97 @@
-// ABOUTME: Runs the one-shot Cerbos policy package boot synchronization through the provider-neutral package service.
-// ABOUTME: Gates startup publishing on complete Admin API configuration without logging endpoints or credentials.
+// ABOUTME: Reconciles an explicit deployment-selected authorization provider during API startup.
+// ABOUTME: Retries bounded Cerbos verification and policy publishing without logging endpoints or credentials.
 
-using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Options;
 
 namespace Explore.API.BackgroundServices;
 
 /// <summary>
-/// Executes a single boot-time Cerbos policy package publish when Admin API configuration is complete.
+/// Executes bounded deployment-selected authorization reconciliation during API startup.
 /// </summary>
 public sealed class CerbosPolicyBootSyncRunner(
     IServiceScopeFactory scopeFactory,
-    IOptions<CerbosAdminApiSettings> adminApiSettings,
     IOptions<CerbosPolicyBootSyncOptions> options,
+    AuthorizationProviderBootstrapState bootstrapState,
     ILogger<CerbosPolicyBootSyncRunner> logger)
 {
-    private readonly CerbosAdminApiSettings _adminApiSettings = adminApiSettings.Value;
     private readonly CerbosPolicyBootSyncOptions _options = options.Value;
 
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
-        if (!_options.Enabled)
+        var maxAttempts = Math.Max(1, _options.MaxAttempts);
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            logger.LogInformation("Cerbos policy boot sync is disabled");
-            return;
-        }
+            var shouldRetry = await RunAttemptAsync(cancellationToken).ConfigureAwait(false);
+            if (!shouldRetry || attempt == maxAttempts)
+            {
+                return;
+            }
 
-        if (!HasAnyAdminEndpoint())
-        {
-            logger.LogDebug("Cerbos policy boot sync skipped because no Admin API endpoint is configured");
-            return;
-        }
+            bootstrapState.MarkPendingAfterFailure();
 
-        if (!HasCompleteAdminCredentials())
-        {
-            logger.LogWarning(
-                "Cerbos policy boot sync skipped because Admin API credentials are incomplete. " +
-                "Configure both username and password to enable zero-touch package publishing.");
-            return;
+            logger.LogInformation(
+                "Authorization provider boot reconciliation will retry. Attempt={Attempt} MaxAttempts={MaxAttempts}",
+                attempt + 1,
+                maxAttempts);
+            await Task.Delay(GetRetryDelay(), cancellationToken).ConfigureAwait(false);
         }
+    }
 
+    private async Task<bool> RunAttemptAsync(CancellationToken cancellationToken)
+    {
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(GetTimeout());
 
         try
         {
             await using var scope = scopeFactory.CreateAsyncScope();
-            var policyPackageService = scope.ServiceProvider.GetRequiredService<IPolicyPackageService>();
+            var configurationService = scope.ServiceProvider
+                .GetRequiredService<IAuthorizationProviderConfigurationService>();
 
-            var result = await policyPackageService.PublishAsync(timeoutCts.Token).ConfigureAwait(false);
-            if (result.Succeeded)
+            var result = await configurationService
+                .ReconcileDeploymentProviderAsync(timeoutCts.Token)
+                .ConfigureAwait(false);
+            if (!result.Attempted)
             {
-                logger.LogInformation(
-                    "Cerbos policy boot sync published package {PackageId} with content hash {ContentHash}",
-                    result.PackageId,
-                    result.ContentHash);
-                return;
+                logger.LogDebug("Authorization provider boot reconciliation skipped because deployment intent is unset");
+                return false;
             }
 
-            logger.LogWarning(
-                "Cerbos policy boot sync did not publish package {PackageId}: {Message}. Warnings={Warnings}",
-                result.PackageId,
-                result.Message,
-                result.Warnings);
+            if (result.Succeeded)
+            {
+                logger.LogInformation("Authorization provider boot reconciliation completed successfully");
+                return false;
+            }
+
+            logger.LogWarning("Authorization provider boot reconciliation did not complete: {Message}", result.Message);
+            return true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             logger.LogDebug("Cerbos policy boot sync cancelled during shutdown");
+            return false;
         }
         catch (OperationCanceledException)
         {
             logger.LogWarning(
                 "Cerbos policy boot sync timed out after {TimeoutSeconds}s",
                 GetTimeout().TotalSeconds);
+            return true;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Cerbos policy boot sync failed with an unexpected error");
+            logger.LogError(
+                "Cerbos policy boot sync failed with an unexpected error. FailureType={FailureType}",
+                ex.GetType().Name);
+            return true;
         }
     }
 
-    private bool HasAnyAdminEndpoint()
+    private TimeSpan GetRetryDelay()
     {
-        return _adminApiSettings.Endpoints.Any(endpoint => !string.IsNullOrWhiteSpace(endpoint));
-    }
-
-    private bool HasCompleteAdminCredentials()
-    {
-        return !string.IsNullOrWhiteSpace(_adminApiSettings.AdminUsername) &&
-            !string.IsNullOrWhiteSpace(_adminApiSettings.AdminPassword);
+        return TimeSpan.FromSeconds(Math.Max(0, _options.RetryDelaySeconds));
     }
 
     private TimeSpan GetTimeout()

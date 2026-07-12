@@ -36,6 +36,15 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler : IRequestHa
             return response;
         }
 
+        var currentConfiguration = await _configurationService.ReadConfigurationAsync();
+        if (currentConfiguration.AuthorizationProviderManagedByDeployment)
+        {
+            response.Success = false;
+            response.Message = "Authorization provider configuration is managed by the deployment.";
+            response.Errors = ["Change AUTHORIZATION_PROVIDER and the related server-side settings, then restart the deployment."];
+            return response;
+        }
+
         var validator = new AuthorizationProviderConfigurationDtoValidator();
         var validationResult = await validator.ValidateAsync(request.Configuration, cancellationToken);
         if (!validationResult.IsValid)

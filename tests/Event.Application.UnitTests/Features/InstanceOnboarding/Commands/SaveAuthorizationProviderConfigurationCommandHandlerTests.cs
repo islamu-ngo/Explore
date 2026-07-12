@@ -20,6 +20,7 @@ public class SaveAuthorizationProviderConfigurationCommandHandlerTests
     {
         _configurationService = Substitute.For<IAuthorizationProviderConfigurationService>();
         _logger = Substitute.For<ILogger<SaveAuthorizationProviderConfigurationCommandHandler>>();
+        _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto());
 
         _handler = new SaveAuthorizationProviderConfigurationCommandHandler(_configurationService, _logger);
     }
@@ -59,6 +60,25 @@ public class SaveAuthorizationProviderConfigurationCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _configurationService.Received(1).ApplyConfigurationAsync(configuration);
+    }
+
+    [Test]
+    public async Task Handle_WhenDeploymentOwnsProvider_RejectsBrowserOverride()
+    {
+        _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            AuthorizationProviderManagedByDeployment = true
+        });
+
+        var result = await _handler.Handle(new SaveAuthorizationProviderConfigurationCommand
+        {
+            Configuration = new AuthorizationProviderConfigurationDto { Provider = "local" }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("managed by the deployment");
+        await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
     }
 
     [Test]

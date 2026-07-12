@@ -637,6 +637,8 @@
         {
             var completion = new CompleteInstanceOnboardingRequest
             {
+                DeploymentMode = IsSingleTenantMode ? DeploymentMode.SingleTenant : DeploymentMode.MultiTenant,
+                AdministrationAccessMode = "Embedded",
                 SiteProfile = new SelfHostOnboardingProfileDto
                 {
                     SiteName = _siteProfile.SiteName?.Trim(),

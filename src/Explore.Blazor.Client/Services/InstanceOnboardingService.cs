@@ -70,6 +70,7 @@ public interface IInstanceOnboardingService
     Task<BaseCommandResponseOfGuid> VerifyCerbosEndpointAsync(string grpcEndpoint);
     Task<bool> IsAuthorizationProviderConfiguredAsync();
     Task<bool?> GetAuthorizationProviderConfiguredStateAsync();
+    Task<bool> ShouldSkipAuthorizationProviderStepAsync();
 
     Task<AnalyticsGovernanceSettingsDto> GetAnalyticsGovernanceSettingsAsync();
     Task<BaseCommandResponseOfGuid> UpdateAnalyticsGovernanceSettingsAsync(AnalyticsGovernanceSettingsDto settings);
@@ -126,6 +127,11 @@ public sealed class InstanceOnboardingService(
         try
         {
             return await api.CompleteInstanceOnboardingAsync(completion, cancellationToken: CancellationToken.None);
+        }
+        catch (ApiException<ValidationProblemDetails> ex)
+        {
+            logger.LogError(ex, "Failed to complete onboarding due to validation errors. HTTP Status={StatusCode}", ex.StatusCode);
+            return MapValidationProblemDetails(ex.Result);
         }
         catch (ApiException ex) when (ex.StatusCode == 401)
         {
@@ -354,12 +360,10 @@ public sealed class InstanceOnboardingService(
     }
 
     public Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsync() =>
-        GetSettingsAsync(
-            ct => api.GetInstanceOnboardingAuthorizationProviderConfigurationInternalAsync(cancellationToken: ct),
-            () => new());
+        api.GetInstanceOnboardingAuthorizationProviderConfigurationInternalAsync(cancellationToken: CancellationToken.None);
 
     public Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsAdminAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceAuthorizationProviderConfigurationAsync(cancellationToken: ct), () => new());
+        api.GetInstanceAuthorizationProviderConfigurationAsync(cancellationToken: CancellationToken.None);
 
     public Task<BaseCommandResponseOfGuid> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationDto config) =>
         SendCommandAsync(ct => api.SaveInstanceOnboardingAuthorizationProviderConfigurationAsync(config, cancellationToken: ct));
@@ -379,6 +383,34 @@ public sealed class InstanceOnboardingService(
 
     public async Task<bool> IsAuthorizationProviderConfiguredAsync() =>
         await GetAuthorizationProviderConfiguredStateAsync() ?? false;
+
+    public async Task<bool> ShouldSkipAuthorizationProviderStepAsync()
+    {
+        // Use the lightweight, non-rate-limited status endpoint rather than the full
+        // GetAuthorizationProviderConfigurationAsync() call, which hits the
+        // SetupSecretPolicy-rate-limited /internal endpoint (5 req/60s per IP).
+        // Both this method and the authz-provider page fire on the same render pass,
+        // so using the full config endpoint here causes 429s.
+        try
+        {
+            var status = await api.GetInstanceAuthorizationProviderConfigurationStatusAsync(
+                cancellationToken: CancellationToken.None);
+            var deploymentFailed = string.Equals(
+                status.AuthorizationProviderBootstrapStatus,
+                "failed",
+                StringComparison.OrdinalIgnoreCase);
+
+            return status.Configured == true ||
+                   (status.AuthorizationProviderManagedByDeployment == true && !deploymentFailed);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                "Failed to resolve the authorization-provider setup destination. FailureType={FailureType}",
+                ex.GetType().Name);
+            return false;
+        }
+    }
 
     public async Task<bool?> GetAuthorizationProviderConfiguredStateAsync()
     {
@@ -489,6 +521,15 @@ public sealed class InstanceOnboardingService(
         {
             return await apiCall(CancellationToken.None);
         }
+        catch (ApiException<ValidationProblemDetails> ex)
+        {
+            // NSwag generates typed ApiException<ValidationProblemDetails> for 400 responses
+            // declared as [ProducesResponseType(typeof(ValidationProblemDetails), 400)].
+            // The base ApiException.Response string may be empty when the typed result is populated;
+            // extract errors from the strongly-typed result instead.
+            logger.LogError(ex, "Failed to send command. HTTP Status={StatusCode}", ex.StatusCode);
+            return MapValidationProblemDetails(ex.Result);
+        }
         catch (ApiException ex)
         {
             logger.LogError(ex, "Failed to send command.");
@@ -499,6 +540,34 @@ public sealed class InstanceOnboardingService(
             logger.LogError(ex, "Failed to send command.");
             return FailedCommandResponse(ex.Message);
         }
+    }
+
+    private static BaseCommandResponseOfGuid MapValidationProblemDetails(ValidationProblemDetails? details)
+    {
+        if (details is null)
+        {
+            return FailedCommandResponse("Request failed with validation errors.");
+        }
+
+        var result = FailedCommandResponse(details.Detail ?? details.Title ?? "Validation failed.");
+        result.Message = details.Detail ?? details.Title ?? result.Message;
+
+        if (details.Errors is { Count: > 0 })
+        {
+            var fieldErrors = details.Errors
+                .Values
+                .Where(msgs => msgs is { Count: > 0 })
+                .SelectMany(msgs => msgs)
+                .Where(msg => !string.IsNullOrWhiteSpace(msg))
+                .ToArray();
+
+            if (fieldErrors.Length > 0)
+            {
+                result.Errors = fieldErrors;
+            }
+        }
+
+        return result;
     }
 
     private static BaseCommandResponseOfGuid MapCommandApiException(ApiException exception)

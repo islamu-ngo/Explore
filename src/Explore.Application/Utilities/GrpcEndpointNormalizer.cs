@@ -30,7 +30,11 @@ public static class GrpcEndpointNormalizer
         var normalized = Normalize(endpoint);
         return Uri.TryCreate(normalized, UriKind.Absolute, out var uri)
                && !string.IsNullOrWhiteSpace(uri.Host)
-               && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+               && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+               && string.IsNullOrEmpty(uri.UserInfo)
+               && string.IsNullOrEmpty(uri.Query)
+               && string.IsNullOrEmpty(uri.Fragment)
+               && uri.AbsolutePath == "/";
     }
 
     public static bool IsLocalEndpoint(string? endpoint)

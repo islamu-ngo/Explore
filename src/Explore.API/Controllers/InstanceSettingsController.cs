@@ -760,13 +760,16 @@ public class InstanceSettingsController : ExploreControllerBase
     [HttpGet("authz-provider/status", Name = RouteNames.GetInstanceAuthorizationProviderConfigurationStatus)]
     [AllowAnonymous]
     [EndpointSummary("Check Authorization Provider Configuration Status")]
-    [EndpointDescription("Returns whether an authorization provider has been configured.")]
+    [EndpointDescription("Returns authorization readiness plus deployment ownership and bootstrap state for onboarding routing.")]
     [ProducesResponseType(typeof(ProviderConfigurationStatusDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ProviderConfigurationStatusDto>> IsAuthorizationProviderConfigured(CancellationToken cancellationToken = default)
     {
         var service = HttpContext.RequestServices.GetRequiredService<IAuthorizationProviderConfigurationService>();
-        var isConfigured = await service.IsConfiguredAsync();
-        return Ok(new ProviderConfigurationStatusDto(isConfigured));
+        var configuration = await service.ReadConfigurationAsync();
+        return Ok(new ProviderConfigurationStatusDto(
+            configuration.AuthorizationProviderConfigured,
+            configuration.AuthorizationProviderManagedByDeployment,
+            configuration.AuthorizationProviderBootstrapStatus));
     }
 
     private ActionResult AuthorizationPolicyPackageUnavailableProblem() =>

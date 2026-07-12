@@ -88,6 +88,177 @@ public class AuthorizationProviderConfigurationServiceTests
         await Assert.That(result.CerbosEndpointOwnership.BootstrapAvailable).IsTrue();
         await Assert.That(result.CerbosEndpointOwnership.Description)
             .Contains("If you modify them, saved application settings will be used from now on");
+        await Assert.That(result.Provider).IsEqualTo("local");
+        await Assert.That(result.AuthorizationProviderConfigured).IsFalse();
+        await Assert.That(result.AuthorizationProviderManagedByDeployment).IsFalse();
+    }
+
+    [Test]
+    public async Task ReadConfigurationAsync_WithExplicitLocalProvider_IsReadyWithoutCerbos()
+    {
+        var repository = Substitute.For<ISystemSettingRepository>();
+        repository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateSetting(GovernanceSettingKeys.Security.AuthorizationProvider, "cerbos"));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Authorization:Provider"] = "local",
+                ["Cerbos:GrpcEndpoint"] = "https://unused.example.test:443"
+            })
+            .Build();
+        var packageService = Substitute.For<IPolicyPackageService>();
+        var service = CreateService(repository, configuration: configuration, packageService: packageService);
+
+        var result = await service.ReadConfigurationAsync();
+        var reconciliation = await service.ReconcileDeploymentProviderAsync();
+
+        await Assert.That(result.Provider).IsEqualTo("local");
+        await Assert.That(result.AuthorizationProviderManagedByDeployment).IsTrue();
+        await Assert.That(result.AuthorizationProviderConfigured).IsTrue();
+        await Assert.That(result.AuthorizationProviderBootstrapStatus).IsEqualTo(AuthorizationProviderBootstrapState.Ready);
+        await Assert.That(reconciliation.Succeeded).IsTrue();
+        await packageService.DidNotReceive().PublishAsync(Arg.Any<CancellationToken>());
+        await packageService.DidNotReceive().PublishInstanceAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ReadConfigurationAsync_WithExplicitCerbosProvider_RemainsPendingUntilServerReconciliationSucceeds()
+    {
+        var repository = Substitute.For<ISystemSettingRepository>();
+        repository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateSetting(GovernanceSettingKeys.Security.AuthorizationProvider, "local"));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Authorization:Provider"] = "cerbos",
+                ["Cerbos:GrpcEndpoint"] = "https://cerbos.example.test:443"
+            })
+            .Build();
+        var state = new AuthorizationProviderBootstrapState();
+        var service = CreateService(repository, configuration: configuration, bootstrapState: state);
+
+        var pending = await service.ReadConfigurationAsync();
+        state.MarkReady("cerbos", endpointVerified: true, policiesSynchronized: true, "ready");
+        var ready = await service.ReadConfigurationAsync();
+
+        await Assert.That(pending.Provider).IsEqualTo("cerbos");
+        await Assert.That(pending.AuthorizationProviderManagedByDeployment).IsTrue();
+        await Assert.That(pending.AuthorizationProviderConfigured).IsFalse();
+        await Assert.That(pending.AuthorizationProviderBootstrapStatus).IsEqualTo(AuthorizationProviderBootstrapState.Pending);
+        await Assert.That(ready.AuthorizationProviderConfigured).IsTrue();
+        await Assert.That(ready.CerbosEndpointVerified).IsTrue();
+        await Assert.That(ready.CerbosPoliciesSynchronized).IsTrue();
+    }
+
+    [Test]
+    public async Task ReconcileDeploymentProviderAsync_WhenCanceled_RecordsSafeFailedState()
+    {
+        var repository = Substitute.For<ISystemSettingRepository>();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Authorization:Provider"] = "cerbos",
+                ["Cerbos:GrpcEndpoint"] = "https://cerbos.example.test:443"
+            })
+            .Build();
+        var packageService = Substitute.For<IPolicyPackageService>();
+        var service = CreateService(repository, configuration: configuration, packageService: packageService);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            service.ReconcileDeploymentProviderAsync(cancellation.Token));
+        var result = await service.ReadConfigurationAsync();
+
+        await Assert.That(result.AuthorizationProviderBootstrapStatus)
+            .IsEqualTo(AuthorizationProviderBootstrapState.Failed);
+        await Assert.That(result.AuthorizationProviderConfigured).IsFalse();
+        await Assert.That(result.AuthorizationProviderBootstrapMessage)
+            .IsEqualTo("Automatic Cerbos setup was canceled before completion.");
+        await packageService.DidNotReceive().PublishAsync(Arg.Any<CancellationToken>());
+        await packageService.DidNotReceive().PublishInstanceAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task BootstrapState_ConcurrentCallersShareOneReconciliation()
+    {
+        var state = new AuthorizationProviderBootstrapState();
+        var operationStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseOperation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var executions = 0;
+
+        async Task<Explore.Application.Authorization.AuthorizationProviderReconciliationResult> Reconcile(
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref executions);
+            operationStarted.TrySetResult();
+            await releaseOperation.Task.WaitAsync(cancellationToken);
+            return new(true, true, true, true, "ready");
+        }
+
+        var owner = state.RunSingleFlightAsync(Reconcile, CancellationToken.None);
+        await operationStarted.Task;
+        var joiner = state.RunSingleFlightAsync(Reconcile, CancellationToken.None);
+        releaseOperation.TrySetResult();
+
+        var results = await Task.WhenAll(owner, joiner);
+
+        await Assert.That(executions).IsEqualTo(1);
+        await Assert.That(results.All(result => result.Succeeded)).IsTrue();
+    }
+
+    [Test]
+    public async Task BootstrapState_CanceledJoinerDoesNotCancelOwner()
+    {
+        var state = new AuthorizationProviderBootstrapState();
+        var operationStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseOperation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var executions = 0;
+
+        async Task<Explore.Application.Authorization.AuthorizationProviderReconciliationResult> Reconcile(
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref executions);
+            operationStarted.TrySetResult();
+            await releaseOperation.Task.WaitAsync(cancellationToken);
+            return new(true, true, true, true, "ready");
+        }
+
+        var owner = state.RunSingleFlightAsync(Reconcile, CancellationToken.None);
+        await operationStarted.Task;
+        using var joinerCancellation = new CancellationTokenSource();
+        var joiner = state.RunSingleFlightAsync(Reconcile, joinerCancellation.Token);
+        joinerCancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => joiner);
+        releaseOperation.TrySetResult();
+        var ownerResult = await owner;
+
+        await Assert.That(executions).IsEqualTo(1);
+        await Assert.That(ownerResult.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task ApplyConfigurationAsync_WithDeploymentManagedProvider_RejectsApplicationOverride()
+    {
+        var repository = Substitute.For<ISystemSettingRepository>();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Authorization:Provider"] = "local"
+            })
+            .Build();
+        var service = CreateService(repository, configuration: configuration);
+
+        await Assert.That(() => service.ApplyConfigurationAsync(new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "https://cerbos.example.test:443"
+        })).Throws<InvalidOperationException>();
+
+        await repository.DidNotReceive().UpsertAsync(
+            Arg.Any<SystemSetting>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -333,7 +504,9 @@ public class AuthorizationProviderConfigurationServiceTests
         ISystemSettingRepository repository,
         IAuthorizationProviderModeCacheInvalidator? invalidator = null,
         ICerbosConfigResolver? cerbosConfigResolver = null,
-        IConfiguration? configuration = null)
+        IConfiguration? configuration = null,
+        IPolicyPackageService? packageService = null,
+        AuthorizationProviderBootstrapState? bootstrapState = null)
     {
         configuration ??= new ConfigurationBuilder().Build();
         var options = Options.Create(new CerbosPolicyPackageOptions());
@@ -343,6 +516,12 @@ public class AuthorizationProviderConfigurationServiceTests
             new CerbosAdminEndpointValidator(options),
             invalidator ?? Substitute.For<IAuthorizationProviderModeCacheInvalidator>(),
             cerbosConfigResolver ?? Substitute.For<ICerbosConfigResolver>(),
+            packageService ?? Substitute.For<IPolicyPackageService>(),
+            Options.Create(new AuthorizationProviderDeploymentOptions
+            {
+                Provider = configuration["Authorization:Provider"]
+            }),
+            bootstrapState ?? new AuthorizationProviderBootstrapState(),
             Substitute.For<ILogger<AuthorizationProviderConfigurationService>>());
     }
 

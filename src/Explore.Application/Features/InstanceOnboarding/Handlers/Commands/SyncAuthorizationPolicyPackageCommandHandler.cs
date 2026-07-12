@@ -3,6 +3,7 @@
 
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -12,6 +13,7 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
 public sealed class SyncAuthorizationPolicyPackageCommandHandler(
     IPolicyPackageService policyPackageService,
+    IAuthorizationProviderConfigurationService configurationService,
     ILogger<SyncAuthorizationPolicyPackageCommandHandler> logger)
     : IRequestHandler<SyncAuthorizationPolicyPackageCommand, BaseCommandResponse<Guid>>
 {
@@ -21,6 +23,19 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandler(
     {
         try
         {
+            var configuration = await configurationService.ReadConfigurationAsync();
+            if (configuration.AuthorizationProviderManagedByDeployment)
+            {
+                var reconciliation = await configurationService
+                    .ReconcileDeploymentProviderAsync(cancellationToken);
+                return new BaseCommandResponse<Guid>
+                {
+                    Success = reconciliation.Succeeded,
+                    Message = reconciliation.Message,
+                    Errors = reconciliation.Succeeded ? [] : [reconciliation.Message]
+                };
+            }
+
             var result = await policyPackageService.PublishAsync(cancellationToken);
             if (result.Succeeded)
             {

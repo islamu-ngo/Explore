@@ -28,6 +28,15 @@ public class SaveAuthorizationProviderConfigurationCommandHandler : IRequestHand
     {
         var response = new BaseCommandResponse<Guid>();
 
+        var currentConfiguration = await _configurationService.ReadConfigurationAsync();
+        if (currentConfiguration.AuthorizationProviderManagedByDeployment)
+        {
+            response.Success = false;
+            response.Message = "Authorization provider configuration is managed by the deployment.";
+            response.Errors = ["Change AUTHORIZATION_PROVIDER and the related server-side settings, then restart the deployment."];
+            return response;
+        }
+
         var validator = new AuthorizationProviderConfigurationDtoValidator();
         var validationResult = await validator.ValidateAsync(request.Configuration, cancellationToken);
         if (!validationResult.IsValid)
@@ -76,9 +85,8 @@ public class SaveAuthorizationProviderConfigurationCommandHandler : IRequestHand
         await _configurationService.ApplyConfigurationAsync(request.Configuration);
 
         _logger.LogInformation(
-            "Authorization provider configuration saved. Provider: {Provider}, CerbosDetectedFromEnvironment: {Detected}",
-            request.Configuration.Provider,
-            request.Configuration.CerbosDetectedFromEnvironment);
+            "Authorization provider configuration saved. Provider={Provider}",
+            request.Configuration.Provider);
 
         response.Success = true;
         response.Message = "Authorization provider configuration saved successfully.";

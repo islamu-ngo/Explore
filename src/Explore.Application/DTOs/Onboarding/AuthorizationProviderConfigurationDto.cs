@@ -48,8 +48,8 @@ public class AuthorizationProviderConfigurationDto
     public bool CerbosAdminPasswordConfigured { get; set; }
 
     /// <summary>
-    /// Whether the Cerbos gRPC endpoint was detected from environment variables (not manually entered).
-    /// When true, the UI locks the endpoint field and shows an auto-detected chip.
+    /// Whether a Cerbos gRPC endpoint is available from deployment configuration.
+    /// The endpoint can prefill application-managed setup without selecting Cerbos or locking the provider choice.
     /// </summary>
     public bool CerbosDetectedFromEnvironment { get; set; }
 
@@ -62,6 +62,26 @@ public class AuthorizationProviderConfigurationDto
     /// Whether an authorization provider choice has already been saved.
     /// </summary>
     public bool AuthorizationProviderConfigured { get; set; }
+
+    /// <summary>
+    /// Whether the provider choice is authoritative deployment configuration rather than an application setting.
+    /// </summary>
+    public bool AuthorizationProviderManagedByDeployment { get; set; }
+
+    /// <summary>
+    /// Server-owned deployment reconciliation state: not-applicable, pending, ready, or failed.
+    /// </summary>
+    public string AuthorizationProviderBootstrapStatus { get; set; } = "not-applicable";
+
+    /// <summary>
+    /// Whether the deployment reconciliation published the bundled Cerbos policies.
+    /// </summary>
+    public bool CerbosPoliciesSynchronized { get; set; }
+
+    /// <summary>
+    /// Operator-safe deployment reconciliation guidance. Never contains endpoints or credentials.
+    /// </summary>
+    public string? AuthorizationProviderBootstrapMessage { get; set; }
 
     /// <summary>
     /// Ownership metadata for the Cerbos PDP endpoint/bootstrap value.

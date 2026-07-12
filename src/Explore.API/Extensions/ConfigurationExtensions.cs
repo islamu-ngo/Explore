@@ -102,6 +102,7 @@ public static class ConfigurationExtensions
                 "CERBOS__PLAINTEXT_MODE"));
         var cerbosAdminUsername = ReadFirst(config, "Cerbos:AdminApi:AdminUsername", "CERBOS_ADMIN_USERNAME");
         var cerbosAdminPassword = ReadFirst(config, "Cerbos:AdminApi:AdminPassword", "CERBOS_ADMIN_PASSWORD");
+        var authorizationProvider = ReadFirst(config, "Authorization:Provider", "AUTHORIZATION_PROVIDER")?.Trim();
         var deploymentMode = NormalizeDeploymentMode(config["DEPLOYMENT_MODE"]);
         var managedControlPlaneEnabled = NormalizeBoolean(ReadFirst(
             config,
@@ -249,6 +250,7 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Cerbos:PlaintextMode", cerbosPlaintextMode);
         TrySet(mappedConfig, config, "Cerbos:AdminApi:AdminUsername", cerbosAdminUsername);
         TrySet(mappedConfig, config, "Cerbos:AdminApi:AdminPassword", cerbosAdminPassword);
+        TrySet(mappedConfig, config, "Authorization:Provider", authorizationProvider);
 
         // Deployment
         TrySet(mappedConfig, config, "Deployment:Mode", deploymentMode);

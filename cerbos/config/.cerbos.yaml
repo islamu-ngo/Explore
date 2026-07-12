@@ -1,17 +1,16 @@
 # ABOUTME: Cerbos PDP runtime configuration for local and self-hosted authorization.
-# ABOUTME: Enables policy storage, audit logging, schema validation, and tenant-scope fallback.
+# ABOUTME: Uses mutable PostgreSQL policy storage for Admin API synchronization and fail-closed startup.
 # ============================================================================
 # Cerbos Policy Decision Point (PDP) Configuration
 # ============================================================================
 # 
 # This configuration sets up Cerbos as the authorization engine for the
-# ISLAMU Event platform. It uses an overlay storage driver that reads policies
-# from PostgreSQL (for dynamically pushed policies via Admin API) with disk
-# as a fallback for base policies.
+# ISLAMU Event platform. It uses PostgreSQL so the Admin API can publish the
+# application-owned policy package during deployment-managed reconciliation.
 #
 # Key Features:
 # - Admin API enabled for PolicySyncService to push role-based policies
-# - Overlay storage: PostgreSQL primary + disk fallback
+# - Mutable PostgreSQL storage for Admin API policy synchronization
 # - Audit logging for compliance and debugging
 # - Policy compilation caching for performance
 #
@@ -33,24 +32,8 @@ server:
       passwordHash: "${CERBOS_ADMIN_PASSWORD_HASH}"
 
 storage:
-  driver: "overlay"
-  
-  overlay:
-    # Base driver: PostgreSQL (for Admin API pushed policies)
-    baseDriver: "postgres"
-    # Fallback driver: Disk (for base policies)
-    fallbackDriver: "disk"
-    # Number of errors before falling back to disk
-    fallbackErrorThreshold: 5
-    # Rolling window in which errors are aggregated
-    fallbackErrorWindow: 5s
-  
-  disk:
-    # Base policies directory (mounted from ./cerbos/policies)
-    directory: /policies
-    # Watch for changes to reload policies without restart
-    watchForChanges: true
-  
+  driver: "postgres"
+
   postgres:
     # PostgreSQL connection string with environment variable support
     url: "${CERBOS_PG_URL:postgres://cerbos_user:cerbos_password@postgres:5432/cerbos?search_path=cerbos&sslmode=disable}"

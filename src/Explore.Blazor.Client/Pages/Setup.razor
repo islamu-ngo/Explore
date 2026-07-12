@@ -150,7 +150,7 @@
                         {
                             <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
                                        StartIcon="@Icons.Material.Filled.Login"
-                                       OnClick="@(() => ContinueToProviderLogin(provider))"
+                                       OnClick="@(() => ContinueToProviderLoginAsync(provider))"
                                        Class="mb-2">
                                 Continue with @provider.DisplayName
                             </MudButton>
@@ -300,7 +300,7 @@
         Navigation.NavigateTo("/onboarding/auth-provider", forceLoad: true);
     }
 
-    private void ContinueToProviderLogin(AuthProviderQuickAction provider)
+    private async Task ContinueToProviderLoginAsync(AuthProviderQuickAction provider)
     {
         var providerQuery = provider.Name.ToLowerInvariant() switch
         {
@@ -309,7 +309,10 @@
             _ => provider.Name.ToLowerInvariant()
         };
 
-        Navigation.NavigateTo($"/login?provider={Uri.EscapeDataString(providerQuery)}&returnUrl=/onboarding/authz-provider", forceLoad: true);
+        var returnUrl = await GetAuthorizationProviderDestinationAsync();
+        Navigation.NavigateTo(
+            $"/login?provider={Uri.EscapeDataString(providerQuery)}&returnUrl={returnUrl}",
+            forceLoad: true);
     }
 
     private async Task RestorePersistedSecretAsync()
@@ -323,10 +326,6 @@
             _validationSucceeded = false;
             _secret = string.Empty;
             _detectedProviders = [];
-            if (!string.IsNullOrWhiteSpace(status?.Error))
-            {
-                _errorMessage = status.Error;
-            }
 
             StateHasChanged();
             return;
@@ -421,9 +420,13 @@
             _hasAttemptedAuthenticatedSecretSync = true;
         }
 
-        var authorizationProviderConfigured = await InstanceOnboardingService.IsAuthorizationProviderConfiguredAsync();
-        Navigation.NavigateTo(authorizationProviderConfigured ? "/onboarding/instance" : "/onboarding/authz-provider");
+        Navigation.NavigateTo(await GetAuthorizationProviderDestinationAsync());
     }
+
+    private async Task<string> GetAuthorizationProviderDestinationAsync() =>
+        await InstanceOnboardingService.ShouldSkipAuthorizationProviderStepAsync()
+            ? "/onboarding/instance"
+            : "/onboarding/authz-provider";
 
     private async Task EnsureSecretSyncedForAuthenticatedSessionAsync()
     {

@@ -5,9 +5,11 @@
 @rendermode InteractiveServer
 @layout SetupLayout
 @using Explore.Blazor.Client.Components.Forms
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject NavigationManager Navigation
-@inject IJSRuntime JSRuntime
+@inject IAccessibilityFocusService AccessibilityFocusService
+@inject IAccessibilityAnnouncerService AccessibilityAnnouncer
 @inject IBffAuthApi BffAuthApi
 @inject ILogger<AuthProviderConfiguration> Logger
 
@@ -62,7 +64,7 @@
                             @:Continue with Keycloak
                         }
                     </MudButton>
-                    <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="@(() => _showAdvancedConfig = true)">
+                    <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="ShowAdvancedConfiguration">
                         Configure Authentication Providers
                     </MudButton>
                 </MudPaper>
@@ -72,7 +74,8 @@
                 <div class="auth-provider-configuration__providers">
                     @* ── Keycloak ── *@
                     <details class="auth-provider-configuration__provider" open>
-                        <summary class="auth-provider-configuration__provider-summary"
+                        <summary id="keycloak-provider-summary"
+                                 class="auth-provider-configuration__provider-summary"
                                  aria-labelledby="keycloak-provider-title"
                                  aria-describedby="keycloak-provider-description"
                                  title="Self-hosted identity provider. Full control over user accounts, passwords, and SSO. Requires running a separate Keycloak server."
@@ -291,7 +294,7 @@
 
                 @* ── Actions ── *@
                 <MudStack Row="true" Spacing="2" Class="mt-2">
-                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)"
+                    <AppButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)"
                                OnClick="SaveAndContinueAsync">
                         @if (_submitState.IsSubmitting)
                         {
@@ -302,7 +305,7 @@
                         {
                             @:Save & Continue to Login
                         }
-                    </MudButton>
+                    </AppButton>
                 </MudStack>
             }
         }
@@ -319,6 +322,7 @@
     private string? _errorMessage;
     private string? _successMessage;
     private bool _showAdvancedConfig = false;
+    private bool _focusAdvancedConfiguration;
     private bool _googleSecretAlreadyConfigured;
     private bool HasAnyProviderEnabled =>
         _model.KeycloakEnabled == true || _model.AtprotoLoginEnabled == true || _model.GoogleSsoEnabled == true;
@@ -375,6 +379,24 @@
         }
 
         _isLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusAdvancedConfiguration)
+        {
+            return;
+        }
+
+        _focusAdvancedConfiguration = false;
+        await AccessibilityFocusService.FocusByIdAsync("keycloak-provider-summary");
+        await AccessibilityAnnouncer.AnnouncePoliteAsync("Authentication provider configuration opened.");
+    }
+
+    private void ShowAdvancedConfiguration()
+    {
+        _showAdvancedConfig = true;
+        _focusAdvancedConfiguration = true;
     }
 
     private void OnKeycloakToggled(bool enabled)
@@ -450,8 +472,10 @@
 
         _submitState.Complete();
 
-        // Navigate to login so the admin can authenticate with the chosen provider
-        Navigation.NavigateTo("/onboarding/authz-provider", forceLoad: true);
+        var skipAuthorizationProvider = await InstanceOnboardingService.ShouldSkipAuthorizationProviderStepAsync();
+        Navigation.NavigateTo(
+            skipAuthorizationProvider ? "/onboarding/instance" : "/onboarding/authz-provider",
+            forceLoad: true);
     }
 
     private async Task<BaseCommandResponseOfGuid> BootstrapKeycloakWithSecretCleanupAsync()

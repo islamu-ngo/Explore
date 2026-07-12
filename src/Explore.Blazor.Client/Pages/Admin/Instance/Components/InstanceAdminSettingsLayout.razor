@@ -418,7 +418,10 @@
                 break;
             case "auth-providers":
                 tasks.Add(InstanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(_authProviderModel));
-                tasks.Add(InstanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(_authorizationProviderModel));
+                if (_authorizationProviderModel.AuthorizationProviderManagedByDeployment != true)
+                {
+                    tasks.Add(InstanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(_authorizationProviderModel));
+                }
                 break;
             case "modules":
                 tasks.Add(InstanceOnboardingService.UpdateModuleSettingsAsync(_modules));

@@ -118,6 +118,26 @@ public class AuthProviderConfigurationSourceTests
         await Assert.That(styles).Contains("var(--mud-palette-text-primary)");
     }
 
+    [Test]
+    public async Task AuthProviderConfiguration_ShouldKeepKeycloakManagementAndUseAuthoritativeAuthorizationHandoff()
+    {
+        var source = await ReadAuthProviderConfigurationAsync();
+
+        await Assert.That(source).Contains("ShouldSkipAuthorizationProviderStepAsync()");
+        await Assert.That(source).Contains("skipAuthorizationProvider ? \"/onboarding/instance\" : \"/onboarding/authz-provider\"");
+        await Assert.That(source).Contains("You can still patch the external realm during setup before the first admin account exists.");
+    }
+
+    [Test]
+    public async Task AuthProviderConfiguration_ShouldMoveFocusIntoExpandedProviderManagement()
+    {
+        var source = await ReadAuthProviderConfigurationAsync();
+
+        await Assert.That(source).Contains("id=\"keycloak-provider-summary\"");
+        await Assert.That(source).Contains("FocusByIdAsync(\"keycloak-provider-summary\")");
+        await Assert.That(source).Contains("AnnouncePoliteAsync(\"Authentication provider configuration opened.\")");
+    }
+
     private static async Task<string> ReadAuthProviderConfigurationAsync()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

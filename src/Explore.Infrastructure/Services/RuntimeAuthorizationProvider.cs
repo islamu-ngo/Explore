@@ -14,6 +14,7 @@ using Explore.Application.Telemetry;
 using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Services;
 
@@ -51,6 +52,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
     private readonly ISupportAccessSessionService? _supportAccessSessionService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<RuntimeAuthorizationProvider> _logger;
+    private readonly AuthorizationProviderDeploymentOptions _deploymentOptions;
     private readonly BusinessMetrics? _metrics;
 
     private const string InstanceModeCacheKey = "AuthorizationProvider_Mode";
@@ -63,6 +65,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         ISystemSettingRepository systemSettingRepository,
         IMemoryCache cache,
         ILogger<RuntimeAuthorizationProvider> logger,
+        IOptions<AuthorizationProviderDeploymentOptions> deploymentOptions,
         ISupportAccessSessionService? supportAccessSessionService = null,
         BusinessMetrics? metrics = null)
     {
@@ -73,6 +76,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         _supportAccessSessionService = supportAccessSessionService;
         _cache = cache;
         _logger = logger;
+        _deploymentOptions = deploymentOptions.Value;
         _metrics = metrics;
     }
 
@@ -558,6 +562,17 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
     /// </summary>
     private async Task<IAuthorizationProvider> ResolveInstanceProviderAsync(CancellationToken cancellationToken)
     {
+        var deploymentProvider = _deploymentOptions.GetProvider();
+        if (deploymentProvider is not null)
+        {
+            _logger.LogDebug(
+                "Authorization provider resolved from deployment configuration: {Provider}",
+                deploymentProvider);
+            return deploymentProvider == AuthorizationProviderDeploymentOptions.CerbosProvider
+                ? _cerbosProvider
+                : _localProvider;
+        }
+
         var mode = await _cache.GetOrCreateAsync(InstanceModeCacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = InstanceModeCacheDuration;

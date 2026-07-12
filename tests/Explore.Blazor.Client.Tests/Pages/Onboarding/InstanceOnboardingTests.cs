@@ -247,7 +247,7 @@ public class InstanceOnboardingTests : IDisposable
                 request != null
                 && request.SiteProfile != null
                 && request.SiteProfile.SiteName == "ISLAMU Explore"
-                && request.AdministrationAccessMode == requestDefaults.AdministrationAccessMode
+                && request.AdministrationAccessMode == "Embedded"
                 && request.AdminHost == requestDefaults.AdminHost));
     }
 

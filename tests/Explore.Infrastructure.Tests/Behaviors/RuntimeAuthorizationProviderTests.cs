@@ -93,7 +93,8 @@ public class RuntimeAuthorizationProviderTests
             Substitute.For<ICerbosConfigResolver>(),
             repository,
             new MemoryCache(new MemoryCacheOptions()),
-            Substitute.For<ILogger<RuntimeAuthorizationProvider>>());
+            Substitute.For<ILogger<RuntimeAuthorizationProvider>>(),
+            Options.Create(new AuthorizationProviderDeploymentOptions()));
 
         runtimeProvider.InvalidateInstanceMode();
 
@@ -676,7 +677,7 @@ public class RuntimeAuthorizationProviderTests
         return entry;
     }
 
-    private static RuntimeProviderFixture CreateRuntimeProviderFixture()
+    private static RuntimeProviderFixture CreateRuntimeProviderFixture(string? deploymentProvider = null)
     {
         var adminContext = Substitute.For<IAdminContext>();
         adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
@@ -734,6 +735,7 @@ public class RuntimeAuthorizationProviderTests
             systemSettingRepository,
             new MemoryCache(new MemoryCacheOptions()),
             runtimeLogger,
+            Options.Create(new AuthorizationProviderDeploymentOptions { Provider = deploymentProvider }),
             supportAccessSessionService);
 
         return new RuntimeProviderFixture(
@@ -785,6 +787,43 @@ public class RuntimeAuthorizationProviderTests
             && rendered.Contains("FailureType=InvalidOperationException", StringComparison.Ordinal)
             && !rendered.Contains(exceptionMessage, StringComparison.Ordinal)
             && !rendered.Contains("abc123", StringComparison.Ordinal);
+    }
+
+    [Test]
+    public async Task IsAllowedAsync_WithDeploymentCerbos_OverridesStoredLocalProvider()
+    {
+        var fixture = CreateRuntimeProviderFixture("cerbos");
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns<CheckResourcesResponse>(_ => throw CreateUnavailableRpcException());
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            ResourceKinds.Tenant,
+            TestTenantId.ToString(),
+            AuthorizationActions.Create);
+
+        await Assert.That(result).IsFalse();
+        await fixture.CerbosClient.Received(1)
+            .CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedAsync_WithDeploymentLocal_OverridesStoredCerbosProvider()
+    {
+        var fixture = CreateRuntimeProviderFixture("local");
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        await fixture.RuntimeProvider.IsAllowedAsync(
+            ResourceKinds.Tenant,
+            TestTenantId.ToString(),
+            AuthorizationActions.Create);
+
+        await fixture.CerbosClient.DidNotReceive()
+            .CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
     }
 
     private sealed record RuntimeProviderFixture(

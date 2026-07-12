@@ -1,51 +1,124 @@
-/* ABOUTME: Scoped layout styles for the authorization-provider onboarding step. */
-/* ABOUTME: Creates the desktop step rail, decision area, and readiness summary shell. */
+/* ABOUTME: Scoped single-column styles for authorization-provider onboarding and remediation. */
+/* ABOUTME: Uses logical spacing, native disclosure focus, and responsive action flow. */
 
-.authz-shell {
-    max-width: min(1180px, calc(100vw - 48px));
-    margin-inline: auto;
+.authz-page {
+    inline-size: 100%;
 }
 
-.authz-shell__grid {
-    align-items: flex-start;
+.authz-page__content {
+    display: grid;
+    gap: var(--isl-space-8);
 }
 
-.authz-shell__rail,
-.authz-shell__summary {
-    position: sticky;
-    top: var(--isl-space-6, 24px);
+.authz-page__header,
+.authz-page__section,
+.authz-page__loading,
+.authz-page__package,
+.authz-page__footer {
+    display: grid;
+    gap: var(--isl-space-3);
 }
 
-.authz-shell__step {
-    min-height: 32px;
+.authz-page__intro {
+    max-inline-size: 65ch;
 }
 
-.authz-provider-card {
-    min-height: 190px;
-    transition: border-color 160ms ease, transform 160ms ease;
+.authz-page__announcements:empty {
+    display: none;
 }
 
-.authz-provider-card:hover {
-    transform: translateY(-1px);
+.authz-page__section {
+    padding-block-start: var(--isl-space-6);
+    border-block-start: var(--isl-card-border);
 }
 
-.authz-provider-card__chips,
-.authz-shell__actions {
-    flex-wrap: wrap;
+.authz-page ::deep .authz-page__provider-group .mud-radio-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--isl-space-4);
 }
 
-.authz-shell__endpoint-action {
-    display: flex;
+.authz-page__local-choice {
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+    background: var(--isl-color-surface);
+}
+
+.authz-page__local-choice--selected {
+    background: color-mix(in srgb, var(--isl-color-surface) 94%, var(--isl-color-success));
+}
+
+.authz-page__choice-copy {
+    padding-inline-start: var(--isl-space-8);
+}
+
+.authz-page__advanced {
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+    background: var(--isl-color-surface);
+}
+
+.authz-page__advanced summary {
+    min-block-size: var(--isl-target-min);
+    padding: var(--isl-space-4);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.authz-page__advanced summary:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+    outline-offset: var(--isl-space-1);
+}
+
+.authz-page__advanced-body {
+    padding: 0 var(--isl-space-4) var(--isl-space-4);
+}
+
+.authz-page__endpoint-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--isl-space-3);
     align-items: center;
 }
 
-@media (max-width: 1279px) {
-    .authz-shell {
-        max-width: min(920px, calc(100vw - 32px));
+.authz-page__status-list {
+    display: grid;
+    margin: 0;
+}
+
+.authz-page__status-list > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--isl-space-4);
+    align-items: center;
+    padding-block: var(--isl-space-3);
+    border-block-end: var(--isl-card-border);
+}
+
+.authz-page__status-list dt,
+.authz-page__status-list dd {
+    margin: 0;
+}
+
+.authz-page__secondary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+}
+
+@media (max-width: 599px) {
+    .authz-page__content {
+        gap: var(--isl-space-6);
     }
 
-    .authz-shell__rail,
-    .authz-shell__summary {
-        position: static;
+    .authz-page__endpoint-row,
+    .authz-page__status-list > div {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .authz-page__secondary-actions {
+        flex-direction: column;
+        align-items: stretch;
     }
 }

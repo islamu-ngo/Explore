@@ -99,7 +99,7 @@ public class SetupTests : IDisposable
             IsCompleted = false,
             IsAuthenticated = true
         });
-        SetupBffJsModule(hasPersistedSecret: false, isValid: false, error: "Invalid setup secret.");
+        SetupBffJsModule(hasPersistedSecret: true, isValid: false, error: "Invalid setup secret.");
 
         // Act
         var cut = _ctx.Render<DynamicComponent>(parameters =>
@@ -177,7 +177,11 @@ public class SetupTests : IDisposable
     }
 
     [Test]
-    public async Task Setup_WhenKeycloakQuickActionClicked_NavigatesToLoginWithProvider()
+    [Arguments(false, "/onboarding/authz-provider")]
+    [Arguments(true, "/onboarding/instance")]
+    public async Task Setup_WhenKeycloakQuickActionClicked_UsesAuthoritativeAuthorizationDestination(
+        bool skipAuthorizationProvider,
+        string returnUrl)
     {
         // Arrange
         _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
@@ -185,6 +189,7 @@ public class SetupTests : IDisposable
             IsCompleted = false,
             IsAuthenticated = false
         });
+        _instanceOnboardingService.ShouldSkipAuthorizationProviderStepAsync().Returns(skipAuthorizationProvider);
         SetupBffJsModule(hasPersistedSecret: true, isValid: true);
 
         var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
@@ -208,8 +213,15 @@ public class SetupTests : IDisposable
 
         keycloakButton.Click();
 
-        // Assert
-        await Assert.That(nav.Uri).EndsWith("/login?provider=keycloak&returnUrl=/onboarding/authz-provider");
+        cut.WaitForAssertion(() =>
+        {
+            if (!nav.Uri.EndsWith($"/login?provider=keycloak&returnUrl={returnUrl}", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Unexpected login return URL: '{nav.Uri}'.");
+            }
+        });
+
+        await _instanceOnboardingService.Received(1).ShouldSkipAuthorizationProviderStepAsync();
     }
 
     [Test]

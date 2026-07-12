@@ -1,5 +1,5 @@
-// ABOUTME: Builds provider-neutral manifests from the bundled Cerbos policy and schema artifacts.
-// ABOUTME: Validates namespaced package content before later Admin API upload or manual fallback packaging.
+// ABOUTME: Builds and publishes provider-neutral manifests from bundled Cerbos policy and schema artifacts.
+// ABOUTME: Keeps tenant-aware publishing separate from deployment bootstrap against the instance Admin API.
 
 using System.IO.Compression;
 using System.Net.Http.Headers;
@@ -126,7 +126,16 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     }
 
     /// <inheritdoc />
-    public async Task<PolicyPackagePublishResult> PublishAsync(CancellationToken cancellationToken = default)
+    public Task<PolicyPackagePublishResult> PublishAsync(CancellationToken cancellationToken = default) =>
+        PublishCoreAsync(instanceTargetOnly: false, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<PolicyPackagePublishResult> PublishInstanceAsync(CancellationToken cancellationToken = default) =>
+        PublishCoreAsync(instanceTargetOnly: true, cancellationToken);
+
+    private async Task<PolicyPackagePublishResult> PublishCoreAsync(
+        bool instanceTargetOnly,
+        CancellationToken cancellationToken)
     {
         var manifest = CreateUnavailableManifest();
 
@@ -134,7 +143,9 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         {
             var packageRoot = ResolvePolicyRoot();
             manifest = await BuildManifestAsync(cancellationToken);
-            var targetResolution = await ResolveAdminApiTargetAsync(cancellationToken);
+            var targetResolution = instanceTargetOnly
+                ? ResolveInstanceAdminApiTarget()
+                : await ResolveAdminApiTargetAsync(cancellationToken);
             if (!targetResolution.Succeeded || targetResolution.Target is null)
             {
                 return new PolicyPackagePublishResult(
@@ -364,6 +375,11 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
                 Source: AdminApiTargetSource.Byo));
         }
 
+        return ResolveInstanceAdminApiTarget();
+    }
+
+    private AdminApiTargetResolution ResolveInstanceAdminApiTarget()
+    {
         if (_adminApiSettings.Endpoints.Count == 0)
             return AdminApiTargetResolution.Failed("Configure Cerbos:AdminApi:Endpoints before publishing the policy package.");
 

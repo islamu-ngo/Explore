@@ -22,6 +22,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
     {
         _adminContext = Substitute.For<IAdminContext>();
         _configurationService = Substitute.For<IAuthorizationProviderConfigurationService>();
+        _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto());
 
         _handler = new UpdateAuthorizationProviderConfigurationCommandHandler(_adminContext, _configurationService);
     }
@@ -72,6 +73,26 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _configurationService.Received(1).ApplyConfigurationAsync(configuration);
+    }
+
+    [Test]
+    public async Task Handle_WhenDeploymentOwnsProvider_RejectsAdminOverride()
+    {
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
+        _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            AuthorizationProviderManagedByDeployment = true
+        });
+
+        var result = await _handler.Handle(CreateCommand(new AuthorizationProviderConfigurationDto
+        {
+            Provider = "local"
+        }), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("managed by the deployment");
+        await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
     }
 
     [Test]

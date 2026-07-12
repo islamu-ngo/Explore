@@ -639,6 +639,7 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
     var keycloakApiClientId = configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api";
     var keycloakBlazorClientId = configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor";
     var keycloakBlazorClientSecret = configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? "islamu-event-blazor-secret";
+    var authorizationProvider = configuration["AUTHORIZATION_PROVIDER"] ?? "cerbos";
     var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
     var cerbosAdminPassword = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD", "cerbos");
     var cerbosAdminPasswordHash = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD_HASH", LocalCerbosAdminPasswordHash);
@@ -667,6 +668,7 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
         .WithEnvironment("Keycloak__ValidAudiences__0", keycloakApiClientId)
         .WithEnvironment("Keycloak__ValidAudiences__1", keycloakBlazorClientId)
         .WithEnvironment("KeycloakBootstrap__AllowLocalUrls", "true")
+        .WithEnvironment("AUTHORIZATION_PROVIDER", authorizationProvider)
         .WithEnvironment("Cerbos__GrpcEndpoint", cerbosGrpcEndpoint)
         .WithEnvironment("CERBOS_GRPC_ENDPOINT", cerbosGrpcEndpoint)
         .WithEnvironment("Cerbos__HttpEndpoint", cerbosHttpEndpoint)
@@ -707,6 +709,7 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
         .WithEnvironment("WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET", configuration["WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET"] ?? string.Empty);
 
     api = api
+        .WaitFor(resources.Cerbos)
         .WaitFor(resources.Svix)
         .WaitFor(resources.Weblate)
         .WaitFor(resources.Coop)
