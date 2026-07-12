@@ -114,6 +114,8 @@ Contributor rules:
 6. All onboarding copy is resolved through `ITranslationService`. Preserve semantic headings, labeled controls, keyboard focus, and live status announcements through the existing accessibility announcer service for validation, refresh, provider verification, preflight, and launch outcomes.
 7. Setup-secret authority, platform-admin authority, tenant context, tenant-admin authority, and provider readiness are server decisions. Never derive onboarding actions or handoffs from serialized claims or configured-credential flags; use server status and HAL links. Missing or errored authoritative task/provider state fails closed and must not produce a locally synthesized completion state or management affordance.
 8. Access/refresh/provider tokens, setup secrets, provider administrator credentials, and raw provider responses never enter browser storage, browser-facing DTOs, logs, traces, or support diagnostics.
+9. Authorization onboarding is one responsive column. Blank deployment intent renders native Local/Cerbos radio controls with Local selected and Cerbos behind a native `<details>` disclosure. Explicit Local and successfully reconciling/ready Cerbos skip the chooser from server status; final Cerbos failure opens a locked remediation view. Endpoint presence alone must not select Cerbos, and the browser must not start automatic verification or policy publication.
+10. Authorization-page skipping is independent from authentication management. Deployment-provided Keycloak metadata or secrets never remove the pre-launch provider editor or the post-launch HAL-authorized admin route used for realm creation, diagnosis, repair, reconciliation, and secret rotation.
 
 ## Support Access Boundary
 
@@ -182,7 +184,7 @@ The browser authentication state is intentionally display-only:
 3. The Blazor client build regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
 4. Pages/components consume application services, not `EventApiClient` directly.
 
-Generated DTOs preserve HAL `_links` through extension data. Per-resource UI affordances must be gated by HAL links from the API, not by duplicating role checks in Razor components. Admin authorization-provider setup/sync UI surfaces server-confirmed status, sync, and manual-package download affordances; the browser never owns Cerbos Admin API credentials or access tokens.
+Generated DTOs preserve HAL `_links` through extension data. Per-resource UI affordances must be gated by HAL links from the API, not by duplicating role checks in Razor components. Admin authorization-provider setup/sync UI surfaces server-confirmed status, sync, and manual-package download affordances; deployment-managed retry refreshes the authoritative DTO after the server completes reconciliation, and the browser never owns Cerbos Admin API credentials or access tokens.
 
 ### Localization Admin Service Boundary
 

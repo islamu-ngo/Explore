@@ -3,8 +3,8 @@
 
 # Onboarding UX Refactor — Implementation Plan
 
-> **Implementation update (2026-07-12):** Production Keycloak environment detection, configured-state resolution, canonical API mapping, and server-side secret ownership enforcement are implemented with focused green service and HTTP coverage. Tasks 8.1 and 8.2 remain open for required-suite and authenticated/runtime verification.
-> **Scope expansion recorded:** The production fix necessarily touches the shared Application service and validator, API configuration compatibility, AppHost/Compose propagation, and their tests in addition to the original Blazor-first paths. This is the smallest shared-source change that makes the approved detected-provider UX real.
+> **Implementation update (2026-07-12):** Production Keycloak management remains reachable with deployment secrets. Explicit authorization-provider intent, bounded instance-only Local/Cerbos reconciliation, runtime precedence, server-authoritative route skipping, the single-column Local-default UI, and canonical docs are implemented with focused green coverage. Tasks 6.3, 8.1, 8.2, and 8.3 remain open for live QA, required suites, and final handoff.
+> **Scope expansion recorded:** The production fixes necessarily touch shared Application/Infrastructure provider services, API configuration and background reconciliation, AppHost/Compose propagation, generated contracts, and focused tests in addition to the original Blazor-first paths. This is the smallest shared-source change that makes both detected-provider behaviors authoritative.
 
 Last Updated: 2026-07-12 Europe/Brussels
 
@@ -12,11 +12,11 @@ Last Updated: 2026-07-12 Europe/Brussels
 
 - **Request:** Implement the user-approved coherent administrator launch journey for SingleTenant and MultiTenant deployments and keep its three persistent workstream documents synchronized.
 - **Task directory:** `dev/active/onboarding-ux-refactor/`
-- **Planning status:** User-approved — core UI and production environment detection are implemented; final required-suite and authenticated runtime verification remain open
+- **Planning status:** User-approved — implementation, focused tests, and canonical docs are complete; live authorization QA, required suites, authenticated runtime verification, and final handoff remain open
 - **Primary matched intent:** `external-infrastructure-bootstrap` — Automate external infrastructure bootstrap or onboarding
 - **Relevant skills loaded:** `senior-cto-feedback`, `auth-patterns`, `blazor-bff-patterns`, `clean-architecture-rules`, `blazor-ui-conventions`, `accessibility`, `ponytail`
 - **Relevant rules loaded:** `.claude/rules/api-controllers.md`, `.claude/rules/api-hateoas.md`, `.claude/rules/application-layer.md`, `.claude/rules/blazor-server.md`, `.claude/rules/blazor-client.md`, `.claude/rules/tests.md`
-- **Layers touched:** API HAL/controllers, Blazor BFF, Blazor Client, generated OpenAPI client/contracts, Tests, Docs, and dev workstream records. Domain, Persistence, and deployment configuration were not changed by this workstream.
+- **Layers touched:** API HAL/controllers/background services/configuration, Application, Infrastructure, Blazor BFF, Blazor Client, AppHost/Compose deployment configuration, generated OpenAPI client/contracts, Tests, Docs, and dev workstream records. Domain and Persistence are unchanged.
 - **Estimated complexity:** XL. The visual refactor is moderate, but the work crosses a pre-auth setup-secret boundary, authenticated platform and tenant authority scopes, two deployment modes, Cerbos/local authorization, generated API contracts, BFF forwarding, accessibility, operator documentation, and five mandatory test projects.
 - **Implementation boundary:** The user approved full implementation on 2026-07-12. The baseline Release build passed before product edits; unrelated managed-control-plane work and any `.codex` changes remain outside this workstream.
 
@@ -67,6 +67,7 @@ The implementation should compose existing endpoints initially. A new aggregate 
 - Existing instance and tenant status endpoints are HAL resources. Server policies emit permission/setup-secret-checked `complete` and management relations; Blazor exposes actions only when those relations are present.
 - A configured Keycloak task stays complete and nonblocking while retaining **Manage authentication**. It opens `/onboarding/auth-provider` before launch and `/admin/instance/settings?section=auth-providers` after launch so operators can create, diagnose, repair, reconcile, or rotate the realm/client configuration.
 - Deployment-detected Keycloak retains an explicit **Configure Authentication Providers** action instead of forcing login. The focused editor exposes manual realm values plus additive patch-existing/create-if-missing bootstrap actions, reads only a redacted contract, and never prefills stored secrets into browser controls.
+- `AUTHORIZATION_PROVIDER=local|cerbos` is a validated deployment-owned selector shared by onboarding and runtime authorization. Local skips the choice page without contacting Cerbos. Cerbos uses bounded single-flight background work to verify the instance PDP and publish only to the instance Admin API, stays fail-closed until ready, skips the chooser while pending/ready, and exposes locked remediation after final failure. Blank/unset keeps manual onboarding with Local selected and Cerbos behind native progressive disclosure.
 - Completion remains server-authoritative: both pages submit through existing commands, re-fetch status, and reject unconfirmed completion or tenant drift.
 - The BFF always removes browser-controlled setup-secret headers and forwards the trusted server/session secret only to exact or slash-delimited instance-onboarding endpoint paths; query-string and near-route lookalikes fail closed.
 - Endpoint composition was retained after request-count and overlapping-refresh tests reproduced no snapshot escalation trigger.
@@ -229,7 +230,8 @@ Post-auth Setup Overview (server-derived conditional task list)
 - Errors render RFC 7807 detail and field validation without exposing credentials.
 - Actions appear only when the server contract/HAL affordance permits them.
 - Completion status does not remove an independently authorized ongoing-management action. In particular, a configured authentication-provider task keeps a HAL-authorized **Manage authentication** affordance to the focused setup page before launch and the admin provider editor after launch so operators can diagnose, repair, or reconcile the Keycloak realm; missing or failed authoritative state still fails closed.
-- Configuration or secret presence never bypasses the provider-management surface. A detected fast path must retain the full setup editor, and postlaunch management remains the HAL-authorized admin editor.
+- Authentication configuration or secret presence never removes the provider-management surface. A detected Keycloak fast path retains the full setup editor, and postlaunch management remains the HAL-authorized admin editor.
+- Authorization uses separate semantics: explicit deployment intent bypasses the provider-choice page, while blank/unset intent renders the Local default and advanced Cerbos disclosure. Failed deployment-managed Cerbos remains reachable as locked remediation from the authoritative instance task.
 
 ### 3.3 Authority Matrix
 
@@ -239,7 +241,7 @@ Post-auth Setup Overview (server-derived conditional task list)
 | Authentication provider and first admin | Instance onboarding/setup endpoints | Setup secret until OIDC handoff; authenticated platform administrator for ongoing provider management | None | Both | No provider token/secret materialized to client; safe problem details; completed configuration retains a HAL-authorized **Manage authentication** affordance for realm creation, repair, or reconciliation. |
 | Setup Overview read state | System/instance onboarding status, provider status, preflight | Authenticated platform administrator after login; public status only where current endpoint permits | No arbitrary tenant context | Both | Read-only state; absent affordance/state fails closed. |
 | Site profile and instance configuration | Existing onboarding completion/settings operations | Platform administrator | Instance; SingleTenant handler may bind default tenant internally | Both | Write requires authorized action; validation uses RFC 7807. |
-| Authorization provider | Instance onboarding/settings authz endpoints | Setup secret before auth where currently supported; platform administrator after auth | Instance | Both | Cerbos credentials write-only/redacted; health/sync errors safe. |
+| Authorization provider | Instance onboarding/settings authz endpoints plus startup reconciliation | Deployment intent is server-owned; setup secret before auth where currently supported; platform administrator after auth | Instance | Both | Explicit Local/Cerbos skips choice; Cerbos runtime stays fail-closed until endpoint verification and policy sync succeed; credentials remain write-only/redacted; failures expose safe task remediation. |
 | Platform review and launch | Existing preflight and instance completion | Platform administrator plus any current setup constraints | Instance | Both | Required checks block; retry is idempotent; launch affordance server-authoritative. |
 | First-tenant handoff | Existing tenant creation/onboarding routes only when server authorizes | Platform administrator may initiate allowed platform action; tenant tasks require tenant administrator authority | Explicit resolved tenant | MultiTenant only | No role-derived local elevation; missing tenant/link fails closed. |
 | Tenant profile/policy/branding completion | Tenant onboarding/status/settings endpoints | Tenant administrator or explicitly supported instance-admin operation in handler | Required, trusted tenant resolution | MultiTenant and default-tenant paths where current API permits | Locked settings remain server-enforced; errors RFC 7807; actions HAL-gated. |
@@ -306,10 +308,11 @@ Post-auth Setup Overview (server-derived conditional task list)
 - **Why:** Shared validation, HAL, localization, and post-launch maintenance remain consistent.
 - **Consequence:** Embed only components proven safe across setup and post-launch contexts. Treat completion and ongoing manageability as separate server-authoritative properties: a completed task may retain a HAL-authorized management link, including **Manage authentication** for Keycloak realm repair/reconciliation.
 
-### D7 — Cerbos Scope Is Configuration, Health, And Package Sync
+### D7 — Authorization Intent Is Explicit; Cerbos Scope Is Health And Package Sync
 
-- **Decision:** Keep existing selection, endpoint verification, readiness, package download, and sync. Do not add inventory or arbitrary decision testing.
-- **Why:** No current implementation or accepted operator workflow justifies those APIs.
+- **Decision:** Treat `AUTHORIZATION_PROVIDER=local|cerbos` as deployment-owned intent and blank/unset as manual onboarding. Endpoint or credential presence is a prerequisite, never provider intent. Reuse existing endpoint verification, readiness, package download, and sync; do not add inventory or arbitrary decision testing.
+- **Why:** Compose and Aspire can supply Cerbos endpoints even when Local is desired, so inference is ambiguous. The explicit selector gives runtime and onboarding one source of truth without expanding Cerbos product scope.
+- **Consequence:** Local performs no Cerbos call. Cerbos is selected at runtime immediately and therefore fails closed; bounded single-flight background work verifies the instance PDP then publishes to the instance Admin API before configured status becomes ready. Automatic navigation skips the choice page while pending/ready, and final failure is repaired through a locked remediation view. Manual blank/unset onboarding defaults to Local and reveals Cerbos progressively.
 
 ### D8 — Recovery Is A First-Class UX State
 
@@ -482,6 +485,26 @@ Post-auth Setup Overview (server-derived conditional task list)
 - **Effort:** S/M
 - **Validation:** decision and evidence entered in all three dev docs.
 
+#### Task 6.2 — Add Aggregate Snapshot Only If Evidence Requires It
+- **Type:** conditional modify/test
+- **Layer:** Application/API/Blazor
+- **Files:** new snapshot DTO/query/controller/client paths only after D5 is triggered
+- **Description:** Introduce one secret-free aggregate read only if contradictory state, unacceptable amplification, duplicated derivation, or required server atomicity is reproduced.
+- **Acceptance Criteria:** full endpoint/CQRS/HAL/OpenAPI contracts are reclassified and verified; otherwise this task remains deferred.
+- **Dependencies:** 6.1 and a demonstrated escalation trigger
+- **Effort:** L
+- **Validation:** intent-specific tests and generated-client verification.
+
+#### Task 6.3 — Reconcile Deployment Authorization And Simplify Its UI
+- **Type:** modify/test/docs/ops
+- **Layer:** API/Application/Infrastructure/Blazor/Deployment
+- **Files:** authorization provider options/state/services/handlers; Cerbos boot runner/package service; AppHost/Compose/env; onboarding/admin components; generated contracts; focused tests and canonical docs
+- **Description:** Use explicit blank/Local/Cerbos intent, reconcile deployment Cerbos in the background, and replace the three-column chooser with a Local-first single-column disclosure.
+- **Acceptance Criteria:** Local makes zero Cerbos calls; Cerbos verifies and publishes to the same instance target with bounded single-flight retries; pending/ready skips the chooser; final failure is safe remediation; blank defaults Local; Keycloak management remains independently reachable.
+- **Dependencies:** 3.1, 5.1, 7.1
+- **Effort:** L
+- **Validation:** focused cross-layer tests, contract verification, Compose/Aspire smoke, and desktop/mobile visual QA.
+
 ### Phase 7: Documentation And Operations
 
 - **Goal:** Make deployment, rerun, recovery, and authority boundaries clear to self-hosters.
@@ -612,6 +635,7 @@ Functional:
 - Completed authentication-provider setup remains manageable through the focused provider page when authorized, so operators can create, repair, or reconcile the Keycloak realm without making the task appear incomplete.
 - Deployment-only Keycloak produces sanitized detected/enabled/authority/client-ID state and configured status without returning its client secret; the operator can still enter the full provider editor.
 - Existing Cerbos/local configuration and post-launch editors are reused.
+- Explicit Local skips authorization setup with zero Cerbos calls; explicit Cerbos is ready only after instance PDP verification and instance Admin API policy publication, while Keycloak management remains independently reachable.
 
 Quality gates:
 
@@ -626,7 +650,7 @@ dotnet build --configuration Release --verbosity quiet
 
 Also required: clean diagnostics on modified files; docs/context tests; manual keyboard, screen-reader, RTL, dark/light, refresh/retry, SingleTenant, MultiTenant-zero-tenant, first-tenant, and provider-failure smoke tests. Run `docker compose config` and an Aspire smoke only if deployment configuration changes.
 
-Current evidence: the current Release build previously passed with zero errors; Application previously passed 2,170/2,170; serialized Client passed 1,618 with one governed skip; and Blazor Integration passed 241/241 with real containerized Keycloak. API passed 1,721 with six unrelated failures and three governed skips. Architecture passed 263 with four unrelated managed-control-plane failures and one governed skip. The current producer slice adds six passing `AuthProviderConfigurationServiceTests`, two passing confidential-client validator tests, five passing rotation-handler tests, one API compatibility-mapping test, and one real TestServer HTTP projection test. Save/update handler coverage additionally verifies that redacted existing secrets are accepted only from server-derived configured state and forged browser ownership cannot waive the confidential-client credential. The HTTP test proves public setup, configured status, and authenticated administrator reads expose sanitized detected authority/client-ID state without serializing the deployment secret. Final Playwright base/detected desktop/mobile/RTL/dark/long-text/focus/disclosure runs exit zero and the independent visual gate is `PASS`, but that browser run used a stubbed detected response and is not a full deployment/login E2E proof. Tasks 8.1/8.2 remain open because the required post-change suites are still being rerun, API/Architecture retain unrelated failures, authenticated/assisted-screen-reader journeys are incomplete, and Aspire is blocked by `.slnx` root discovery plus unrelated local migration drift.
+Current evidence: the latest broad Release build passed with zero errors; Application passed 2,205/2,205; serialized Client passed 1,618 with one governed skip; and Blazor Integration passed 241/241. API passed 1,722/1,733 with eight failures and three skips; Architecture passed 263/268 with four failures and one governed skip. Current authorization-focused coverage passes 13 configuration/options, 19 provider/single-flight, 22 policy-package target-isolation, 23 runtime-provider, four boot-runner, 13 page, 34 client-service, ten admin-layout, nine Setup, and ten authentication-source tests; Client/API/Infrastructure Release builds have zero errors. Keycloak producer/service/TestServer coverage also remains green and proves secret-free reads plus persistent management access. Previous Playwright Keycloak-focused desktop/mobile/RTL/dark/long-text/focus/disclosure runs passed with an independent `PASS`, but fresh authorization-page real-stack QA is still required. The prior `EMFILE`, `.slnx`, and migration blockers are resolved; remaining runtime issues are S3 readiness, a stale E2E AppHost path, unavailable assisted screen-reader tooling, and incomplete authenticated journeys.
 
 ## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
@@ -654,4 +678,4 @@ The most likely hard part is not rendering a task list; it is deriving a stable,
 
 The current working tree contains unrelated managed-control-plane changes. They remain preserved and outside this workstream; `.codex/config.toml` currently has no diff. Final verification evidence must continue to distinguish unrelated baseline failures from onboarding behavior.
 
-The production environment-detection path is now implemented in `src/Explore.Application/Services/AuthProviderConfigurationService.cs`, with API compatibility mapping in `ConfigurationExtensions`, deployment propagation in Compose/Aspire, server-derived rotation ownership, and producer/API regression coverage. This expands the implementation beyond the original Blazor-first path list; it is recorded explicitly as the smallest shared-service change needed to make the approved detected-provider UX real. The producer/service boundary is resolved, while a real deployed Keycloak plus browser login/realm-repair journey remains an open runtime gate.
+The production authentication detection path is implemented in `AuthProviderConfigurationService`, while authorization intent/reconciliation is implemented across `AuthorizationProviderConfigurationService`, `AuthorizationProviderBootstrapState`, `CerbosPolicyBootSyncRunner`, and `CerbosPolicyPackageService`. API compatibility mapping, Compose/Aspire propagation, generated contracts, server-derived ownership, and focused regression coverage make both environment-driven journeys authoritative. The service boundaries are resolved; real deployed Keycloak/browser realm management and fresh authorization bootstrap/browser journeys remain open runtime gates.

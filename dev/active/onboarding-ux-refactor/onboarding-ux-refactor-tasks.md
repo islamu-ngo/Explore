@@ -3,21 +3,21 @@
 
 # Onboarding UX Refactor — Task Checklist
 
-> **Current status (2026-07-12):** Core UI and production environment-detection implementation are complete; required-suite and authenticated runtime verification remain open.
-> **Progress:** 13/15 tasks complete. Tasks 8.1 and 8.2 remain unchecked.
-> **Current priority:** Finish confidential-client handler verification and required post-change suites, restore the real Aspire/authenticated journey, and complete assisted screen-reader verification. The production Keycloak producer gap is resolved.
-> **Final review gate:** INCONCLUSIVE. Goal, QA, code-quality, security, and context lanes could not independently inspect or execute after the host reached persistent `EMFILE`; no PASS is inferred.
+> **Current status (2026-07-12):** Keycloak producer work is complete. Authorization-provider deployment intent, bounded background Cerbos reconciliation, server-authoritative skips, the single-column Local-default UX, and canonical docs are implemented with focused green tests; live visual QA, required suites, and authenticated runtime verification remain open.
+> **Progress:** 12/16 tasks complete. Tasks 6.3, 8.1, 8.2, and 8.3 remain unchecked.
+> **Current priority:** Finish Task 6.3 real Aspire/browser evidence, then rerun required and final-review gates.
+> **Final review gate:** Fresh goal, QA, code-quality, security, and context review is pending after the authorization-provider slice.
 
 Last Updated: 2026-07-12 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Core UI and production environment-detection implementation are complete; required-suite and authenticated runtime verification remain open
-- **Checklist completed:** 13/15 unconditional tasks; conditional Task 6.2 remains deferred
+- **Overall status:** Authorization-provider implementation, focused tests, and canonical docs are complete; live QA, required-suite, and authenticated runtime verification remain open
+- **Checklist completed:** 12/16 unconditional tasks; conditional Task 6.2 remains deferred
 - **Planning completed:** Repository evidence, decisions, phases, context, and checklist created
-- **Current priority:** Tasks 8.1 and 8.2 — finish required post-change suites, then complete authenticated runtime and assisted screen-reader journeys
-- **Next recommended slice:** Restore the real Aspire stack, verify SingleTenant and MultiTenant journeys against deployment-supplied Keycloak, and complete assisted screen-reader checks
-- **Implementation has started:** Yes — core implementation and focused verification are complete; only Tasks 8.1 and 8.2 remain open
+- **Current priority:** Task 6.3 — finish live visual/runtime proof for the implemented deployment automation and one-column page
+- **Next recommended slice:** Verify the regenerated API contract, then run Aspire/browser and required project gates
+- **Implementation has started:** Yes — Keycloak and task-overview work is complete; authorization-provider automation/UI and final verification remain open
 
 ## Implementation Maintenance Rules
 
@@ -137,7 +137,15 @@ Last Updated: 2026-07-12 Europe/Brussels
   - **Dependencies:** 6.1 and demonstrated escalation trigger
   - **Default:** Deferred/not required
 
-## Phase 7: Documentation And Operations ✅ COMPLETE
+- [ ] **6.3 Reconcile deployment-selected authorization and simplify its onboarding surface**
+  - **Files:** API configuration compatibility and existing Cerbos boot-sync worker; shared authorization-provider configuration/runtime services and DTO; AppHost/Compose/env examples; `Setup.razor`, `AuthProviderConfiguration.razor`, `AuthorizationProviderConfiguration.razor` plus scoped CSS; focused API/Infrastructure/Application/Client tests; canonical configuration/secrets/self-hosting docs.
+  - **Acceptance:** `AUTHORIZATION_PROVIDER=local` selects deployment-managed Local and skips authorization onboarding without any Cerbos call; `cerbos` keeps runtime fail-closed, verifies the configured PDP, publishes the bundled policies server-side, never sends the automatic journey through the provider-choice page, and is considered configured only after both checks succeed; blank/unset does not infer intent from Cerbos endpoints or credentials and renders Local by default with Cerbos behind native progressive disclosure; invalid explicit values fail startup; deployment-managed values cannot be overridden by browser DTO flags; failure is visible as safe remediation from the instance task without secrets; the page is one responsive column with no step rail, side summary, nested provider cards, or mouse-only choice controls.
+  - **Validation:** focused compatibility, service, runtime-provider, boot-sync, navigation, and bUnit tests; Release build; Client/API/Architecture gates; Compose validation; real Aspire Local/Cerbos readiness and browser QA at desktop/mobile, LTR/RTL, light/dark, keyboard, focus, and long text.
+  - **Evidence:** Implementation and canonical docs are complete; live Aspire/browser QA remains. Added validated `AUTHORIZATION_PROVIDER` compatibility mapping and deployment precedence shared by onboarding and `RuntimeAuthorizationProvider`. The background runner makes Local ready without Cerbos, or verifies the instance PDP before publishing only to the instance Admin API; it uses bounded retries and singleton single-flight state so startup/admin attempts cannot double-publish or overwrite ready state. Deployment-managed writes fail closed, pending/ready providers bypass the choice page, and final Cerbos failure exposes locked retry-only remediation. The Blazor page is one centered column with a real Local radio default and native Cerbos `<details>` disclosure; failed routing and post-launch retry refresh are server-authoritative, while Keycloak management remains available. Focused evidence passes: configuration mapping/options 13/13, provider service/single-flight 19/19, policy package target isolation 22/22, runtime provider 23/23, boot runner 4/4, authorization page 13/13, instance onboarding service 34/34, admin provider layout 10/10, Setup 9/9, authentication source 10/10, and Client/API/Infrastructure Release builds with zero errors.
+  - **Effort:** L
+  - **Dependencies:** 3.1, 5.1, 7.1
+
+## Phase 7: Documentation And Operations ⏳ UPDATE REQUIRED
 
 - [x] **7.1 Update operator and developer documentation**
   - **Files:** existing `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/SELF_HOSTING.md`, `docs/TROUBLESHOOTING.md`, `docs/DEPLOYMENT_MODES.md`, `docs/BLAZOR.md`; conditional `docs/API_CHANGELOG.md`
@@ -153,7 +161,7 @@ Last Updated: 2026-07-12 Europe/Brussels
   - **Files:** all modified files
   - **Acceptance:** clean diagnostics and all five intent minimum test projects pass; no solution-level `dotnet test`.
   - **Validation:** exact commands from plan §14 recorded in context.
-  - **Evidence (in progress):** Before the producer slice, the Release build passed with zero errors; full `Event.Application.UnitTests` passed 2,170/2,170; serialized `Explore.Blazor.Client.Tests` passed 1,618 with one governed skip and zero failures; and `Explore.Blazor.IntegrationTests` passed 241/241 with real containerized Keycloak. The latest broad `Event.API.IntegrationTests` run completed with 1,721 passed, six failed, and three governed skips; the six failures are outside this workstream. `Event.Architecture.Tests` completed with 263 passed, four unrelated managed-control-plane failures, and one governed skip. Current-source focused producer coverage now passes: 6/6 `AuthProviderConfigurationServiceTests`, 2/2 confidential-client validator tests, 5/5 rotation-handler tests, 1/1 API compatibility-mapping test, and 1/1 TestServer onboarding projection test. Save/update handler regression cases for server-derived configured-secret state and forged request ownership compile but still need focused execution. The HTTP projection proves public setup, configured status, and authenticated administrator reads expose sanitized deployment metadata without serializing the client secret. Post-change broad suites remain pending because the execution host remains intermittently constrained by `EMFILE`; Task 8.1 remains open.
+  - **Evidence (in progress):** The latest broad Release build passed with zero errors. `Event.Application.UnitTests` passed 2,205/2,205; serialized `Explore.Blazor.Client.Tests` passed 1,618 with one governed skip; and `Explore.Blazor.IntegrationTests` passed 241/241. `Event.API.IntegrationTests` completed with 1,722/1,733 passed, eight failed, and three skipped; `Event.Architecture.Tests` completed with 263/268 passed, four failed, and one governed skip. Those failures still require attribution before Task 8.1 can close. Compose configuration passed. Current authorization focused coverage is green at 13 configuration/options, 19 provider/single-flight, 22 policy-package target-isolation, 23 runtime-provider, four boot-runner, 13 page, 34 client-service, ten admin-layout, nine Setup, and ten authentication-source tests. Current Client/API/Infrastructure Release builds have zero errors; post-change broad reruns remain pending.
   - **Effort:** L
   - **Dependencies:** 7.1
 
@@ -161,11 +169,11 @@ Last Updated: 2026-07-12 Europe/Brussels
   - **Files:** all modified files and affected deployment config
   - **Acceptance:** Release build; SingleTenant; MultiTenant zero-tenant; optional first tenant; provider failure/retry; keyboard; screen reader; RTL; dark/light; long translations. `docker compose config`/Aspire smoke only if deployment config changed.
   - **Validation:** evidence and residual risks recorded in context.
-  - **Runtime evidence:** `aspire doctor` passes all four environment checks, but a real full-stack replay remains blocked by two unrelated runtime defects: `FindRepositoryRoot` recognizes obsolete `Explore.sln` instead of `Explore.slnx`, and the concurrent managed-control-plane migrations leave the local provisioning-operation relation inconsistent with EF migration history. A temporary root marker proved the first diagnosis and was removed; no product workaround or database-destructive repair was retained. Final Playwright QA therefore used the production Blazor UI/CSS with a temporary read-only API stub. Base and deployment-detected runs both exited zero at 1440x900 and 390x844, including LTR, Arabic RTL, dark mode, long text, native Enter/Space disclosures, one h1, visible 2px focus, and zero horizontal overflow, duplicate IDs, unlabeled visible inputs, sub-24px targets, or switcher/heading collisions. Both **Patch existing realm** and **Create realm if missing** are present, and detected Keycloak retains **Configure Authentication Providers**. The first independent review returned `REVISE`; fixes moved the mobile switchers into document flow, shortened visible labels while preserving full accessible names, restored native disclosures, isolated fallback direction, raised scoped contrast, added the rendered switch focus ring, kept mobile markers with their headings, made credential gating mode-specific, sanitized exception logging, and cleared all transient bootstrap fields in `finally`. The final independent visual-fidelity gate is `PASS`. The setup page now reads the public redacted provider endpoint, clears returned secret fields before render, and never prefills an existing Keycloak secret into bootstrap controls. The production producer/service boundary is now covered by passing shared-service and TestServer HTTP tests, including sanitized detected/configured state. Authenticated postlaunch instance/tenant and real deployed Keycloak realm-management journeys remain untested; the stubbed browser run is not claimed as end-to-end deployment proof.
+  - **Runtime evidence:** `aspire doctor` passes all four environment checks. The `.slnx` root-discovery and migration blockers recorded earlier are resolved: AppHost recognizes `Explore.slnx`, migration and `keycloak-init` exited zero, and API, Blazor, Keycloak, database, cache, and Cerbos resources ran. The last health probe was `503` only because S3 storage readiness was unhealthy. Previous Playwright base/detected runs passed at 1440x900 and 390x844 across LTR, Arabic RTL, dark mode, long text, keyboard disclosure/focus, and overflow/label/target checks; the independent visual gate was `PASS`. Those runs predate the authorization-page refactor and used a stubbed detected response, so fresh real-stack authorization screenshots and routing evidence remain required. Authenticated postlaunch instance/tenant, real deployed Keycloak realm-management, and assisted screen-reader journeys also remain open.
   - **Effort:** L
   - **Dependencies:** 8.1
 
-- [x] **8.3 Refresh dev docs and create final handoff**
+- [ ] **8.3 Refresh dev docs and create final handoff**
   - **Files:** this plan/context/tasks
   - **Acceptance:** completed boxes, decisions, changed files, validation, risks, remaining/deferred work, and next action match reality.
   - **Validation:** cold-agent resume review.
@@ -177,7 +185,7 @@ Last Updated: 2026-07-12 Europe/Brussels
 
 - [x] Production Keycloak detection resolves complete deployment metadata, applies stored/deployment precedence, reports configured state consistently, and keeps client secrets out of public/admin responses.
   - Current focused evidence: 6/6 `AuthProviderConfigurationServiceTests`, 2/2 confidential-client validator tests, 5/5 `RotateKeycloakClientSecretCommandHandlerTests`, 1/1 API compatibility mapping test, and 1/1 TestServer onboarding projection test pass.
-  - Save/update handler regression cases compile and cover server-derived configured-secret state versus forged request ownership; their focused run remains pending.
+  - Save/update handler regression cases pass and cover server-derived configured-secret state versus forged request ownership.
   - The HTTP test covers public setup read, configured status, and authenticated administrator read, and asserts the deployment secret is absent from serialized responses.
   - The existing detected-provider browser visual run used a stubbed response; it is not a full deployed Keycloak login or realm-repair E2E proof.
 
@@ -196,13 +204,13 @@ Last Updated: 2026-07-12 Europe/Brussels
 - [ ] Manual SingleTenant and MultiTenant journeys pass.
 - [ ] Keyboard, focus/live regions, screen reader, contrast, RTL, dark/light, and localization checks pass (browser keyboard/focus/contrast/RTL/theme/long-text evidence and visual gate pass; assisted screen-reader coverage remains open).
 - [x] Docs updated for behavior/configuration/operations/API changes; documentation verification remains open.
-- [ ] `docker compose config` and Aspire smoke pass if deployment files changed (Aspire application resources are healthy through a temporary, removed root-marker toggle; the pre-existing `.slnx` root-discovery defect remains).
-- [x] Dev docs refreshed with final state.
+- [ ] `docker compose config` and Aspire smoke pass if deployment files changed (`docker compose config` passed; fresh post-change Aspire reconciliation and UI evidence remain).
+- [ ] Dev docs receive their final refresh after live QA, broad suites, and the final five-lane review (this interim checkpoint is current).
 - [x] Unrelated working-tree changes remain untouched.
 
 ## Remaining / Deferred Work
 
-- Final visual QA is green and current-source focused producer/API tests pass. The last broad build/client/Application/BFF baseline was green; six unrelated API failures and four unrelated Architecture failures remained. Post-change broad reruns are pending during host `EMFILE`.
+- Current-source focused authorization tests pass. The last broad build/client/Application/BFF baseline was green; eight API failures and four Architecture failures remain to be attributed. Fresh authorization visual/runtime QA and post-change broad reruns are pending.
 - Deployment-only Keycloak is now implemented and proved at the shared service/API boundary: complete metadata sets sanitized detected/enabled/configured state, partial tuples fail closed, stored/deployment precedence is explicit, and public/admin responses omit the secret. HAL management navigation remains available before and after launch so operators can still create, repair, or reconcile the realm. A real deployed browser login and realm-management journey is still required before Tasks 8.1/8.2 can close.
 - Tenant invitations, lifecycle transitions, self-service registration, and public tenant creation remain in `dev/pause/tenant-onboarding-enterprise/`.
 - Cerbos inventory and arbitrary policy decision-test APIs are deferred without an accepted operator workflow and threat model.

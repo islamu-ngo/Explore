@@ -73,8 +73,10 @@ Email dispatch modes:
 4. Add optional Cerbos when using the Cerbos provider:
 
    ```bash
-   docker compose --profile authz up -d
+   AUTHORIZATION_PROVIDER=cerbos docker compose --profile authz up -d
    ```
+
+   Set `AUTHORIZATION_PROVIDER=local` to make Local RBAC deployment-owned and skip authorization-provider onboarding without starting Cerbos. Leave it blank to choose during onboarding; endpoint or credential presence alone never selects Cerbos.
 
 5. Add optional Svix when using the outgoing webhook provider:
 
@@ -141,6 +143,7 @@ For Coolify-managed external Cerbos, use [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) 
 
 | Key | Purpose |
 |---|---|
+| `AUTHORIZATION_PROVIDER` | Blank for manual Local-first onboarding, `local` for deployment-owned Local RBAC, or `cerbos` for deployment-owned background PDP verification and policy sync. Invalid explicit values fail startup. |
 | `CERBOS_GRPC_ENDPOINT` | API PDP endpoint. Local profile default is `http://cerbos:3593`. |
 | `CERBOS_HTTP_ENDPOINT` | API/Admin endpoint. Local profile default is `http://cerbos:3592`. |
 | `CERBOS_USE_TLS` / `CERBOS_PLAINTEXT_MODE` | TLS posture for runtime API connections. Keep local defaults for Compose; use TLS in production. |
@@ -270,7 +273,7 @@ Operational notes:
 If `SETUP_SECRET` is unset and setup mode is active, the API generates a 32-character setup secret, logs it at startup, and accepts it for 60 minutes. Use that secret to complete the setup flow:
 
 1. Open `/setup` and submit the operator setup secret through the BFF-mediated gateway. The browser must not store it or send a privileged header directly to the API.
-2. Complete provider verification and administrator authentication. After authentication, the UI renders one task overview derived from the server onboarding status, provider, and preflight endpoints.
+2. Complete authentication-provider verification and administrator authentication. After authentication, the UI renders one task overview derived from the server onboarding status, provider, and preflight endpoints. Authorization is conditional: explicit deployment intent skips its choice page, while blank intent opens a Local-first single-column page with advanced Cerbos configuration.
 3. Resolve every blocking preflight check. Ordinary warnings and remediation guidance do not block launch; a warning classified as serious can require explicit operator acknowledgement.
 4. Launch once. Single-tenant setup provisions the configured default-tenant state and hands off to the events/instance-settings experience. Multi-tenant platform setup does not require a tenant and hands off to `/admin/instance`; creating and onboarding the first tenant remains optional and separately tenant-scoped.
 
@@ -279,6 +282,8 @@ The validation endpoint is `POST /api/InstanceOnboarding/validate-secret`. The s
 If the generated secret expires before launch, restart `islamu-event-api` and use the newly logged secret.
 
 Refresh and retry actions always re-fetch authoritative server state; do not resume from a stale browser step. Completion is idempotent and server-guarded, so a retry after a lost response must return the completed state rather than repeat destructive provisioning. Once launch completes, the pre-authentication setup gate locks and further setup-secret attempts are rejected. Use authenticated instance/tenant administration for later changes.
+
+Authorization onboarding follows deployment intent. With `AUTHORIZATION_PROVIDER=local`, the server marks Local RBAC ready and the authenticated journey goes directly to instance setup without contacting Cerbos. With `AUTHORIZATION_PROVIDER=cerbos`, start the `authz` profile or provide an external Cerbos deployment; the API tests the instance PDP gRPC health service in the background and publishes the bundled policies to the instance Admin API through server-held credentials. FullLocal Aspire waits for Cerbos health before starting the API; Compose is also protected by bounded API retries when service startup ordering is slower. The journey skips the provider-choice page while reconciliation is pending or ready, but readiness remains blocked and runtime authorization remains fail-closed until both operations succeed. A final failure appears as a locked authorization task where the operator can fix deployment values and retry. When the selector is blank, the one-column page defaults to Local RBAC and reveals Cerbos only through **Advanced: use Cerbos PDP**.
 
 Managed hosting operators that provision through the authorized managed-provider endpoint can set `SETUP_SECRET_REQUIRED=false` only together with `PROVISIONING_TRUSTED=true`, a managed `PROVISIONING_MODE`, `MANAGED_CLIENT_EXTERNAL_PROVIDER`, and `PHYSICAL_TENANCY_MODE`. In that mode the interactive setup-secret lane is not public: setup-secret-protected endpoints still reject missing or invalid secrets, and provider automation must authenticate as the platform/operator path.
 
@@ -394,6 +399,8 @@ Operational controls:
 | `/metrics` | API | Prometheus metrics endpoint. |
 
 Treat `Unhealthy` as non-deployable. Treat `Degraded` as acceptable only when the response identifies an optional dependency that is intentionally disabled.
+
+For explicit `AUTHORIZATION_PROVIDER=cerbos`, PDP reachability alone is not onboarding readiness. The authorization status is ready only after the background reconciliation also publishes the bundled policy package. A failed verification or publish remains fail-closed and must be repaired from the deployment-owned authorization task before launch.
 
 Basic Email Dispatch readiness is reported by the API `email-dispatch` health check. `Degraded` means dispatch is intentionally disabled. `Unhealthy` means the selected trigger is not usable, for example `EmailDispatchProcessor:Mode=TickerQ` while `Scheduler:TickerQ:Enabled=false`. RabbitMQ is not part of Basic Dispatch Mode readiness.
 

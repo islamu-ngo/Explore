@@ -179,7 +179,7 @@ Refresh before every recovery action. The setup UI is a projection of server sta
 |---|---|---|---|
 | Invalid or expired setup secret | Validation fails, the source is reported as `Expired`, or the API returns the setup-secret failure response before authentication. | Re-enter the configured secret, or restart the API and use the newly generated startup secret. Do not retry blindly or move the value into browser storage. | Rotate a configured/deployment-managed secret at its owning source if disclosure is suspected. No data restore is required. |
 | Provider verification interrupted | The task overview still reports provider verification incomplete/unknown after a redirect, timeout, or lost response. | Refresh authoritative state, then rerun the same verification. Existing provider resources are located and repaired additively. | Rotate temporary provider admin credentials when their handling is uncertain. Take a provider/database backup before any apply operation that changes shared provider state. |
-| Authorization provider unavailable | Provider status or preflight reports the configured PDP/Admin API unavailable. | Restore the configured provider, or explicitly select the supported local authorization path where policy permits. Cerbos recovery is limited to endpoint verification, package download/sync, and local fallback. | Operator intervention is required. Do not add or use an inventory endpoint or arbitrary policy-decision test as a recovery shortcut. |
+| Authorization provider unavailable | Provider status or preflight reports the configured PDP/Admin API unavailable. | For application-managed configuration, restore Cerbos or explicitly save Local. For deployment-managed `cerbos`, fix `AUTHORIZATION_PROVIDER`/Cerbos deployment values and retry; the browser cannot override deployment intent. | Operator intervention is required. Cerbos remains fail-closed. Do not add or use an inventory endpoint or arbitrary policy-decision test as a recovery shortcut. |
 | Blocking preflight check | Preflight classifies an item as blocking. | Fix the named dependency and refresh. Do not bypass completion. Ordinary warnings remain non-blocking; a serious warning may require explicit acknowledgement. | Follow the linked subsystem runbook. Restore from backup only when the blocker identifies corrupted or missing persisted state. |
 | Completion submitted repeatedly | The server reports completed/already completed, the response was lost after launch, or retry reaches the completion guard. | Treat the completed state as authoritative and follow the mode-specific handoff. Completion is idempotent; do not reset resources to make it run again. | No secret rotation or restore is needed unless a separate compromise/failure is detected. |
 | Refresh after partial success | The refreshed overview shows some tasks complete and a remaining provider/preflight failure. | Preserve successful resources, repair the failed dependency, and retry only the incomplete server-guarded operation. | Back up affected provider/database state before a repair apply. Destructive delete/reimport requires explicit approval. |
@@ -229,9 +229,16 @@ The instance control plane exposes warning codes with operator remediation text.
 | `deployment_mode_not_multi_tenant` | Control-plane overview was reached outside multi-tenant mode. | Switch to a configured multi-tenant deployment; do not toggle mode casually from runtime settings. |
 | `public_host_missing` | No public origin or instance base domain is configured. | Set `PublicBaseUrl` or the instance base domain before creating tenant DNS records. |
 | `authentication_provider_missing` | No authentication provider is configured. | Complete authentication-provider setup and verify OIDC discovery before tenant onboarding. |
-| `authorization_provider_missing` | No explicit authorization provider configuration has been saved. | Save the intended authorization provider configuration; local authorization remains the default until changed. |
+| `authorization_provider_missing` | Manual provider intent is unsaved, or explicit Cerbos reconciliation has not completed. | With blank intent, save Local or configure Cerbos. With deployment-managed Cerbos, repair the PDP/Admin API configuration and retry background reconciliation. |
 
 ## Cerbos / Authorization Provider Issues
+
+### Deployment Provider Selection
+
+- `AUTHORIZATION_PROVIDER` accepts blank, `local`, or `cerbos`. Invalid explicit values fail startup options validation.
+- Blank means manual onboarding. Cerbos endpoint or credential variables are bootstrap prerequisites and do not select the provider; Local RBAC remains the default until the operator opens the advanced Cerbos disclosure and saves it.
+- `local` is deployment-owned, skips the provider-choice page, and performs no Cerbos call.
+- `cerbos` is deployment-owned, skips the automatic choice page while background work is pending or ready, and selects Cerbos at runtime immediately. The API worker retries PDP verification before publishing the package to the instance Admin API. Until both succeed, configured status remains false and authorization fails closed. After the retry bound is exhausted, use the instance authorization task to view safe failure guidance and retry after fixing deployment settings.
 
 ### Instance Cerbos PDP Unavailable
 
@@ -253,8 +260,8 @@ The instance control plane exposes warning codes with operator remediation text.
 
 - Use the safe issue code first: Admin API not configured, auth failure, unavailable/rejected package, reload failure, or package-status unknown.
 - Verify endpoint TLS/safety and credentials without logging or copying raw secrets into support artifacts.
-- If Admin API sync is unavailable, download the manual ZIP package from setup/admin UI and install it with `cerbosctl put`.
-- Zero-touch boot sync skips safely when Admin API endpoint or credentials are incomplete; use setup/admin UI sync after configuration is complete.
+- For blank/application-managed provider intent, if Admin API sync is unavailable, download the manual ZIP package from setup/admin UI and install it with `cerbosctl put`.
+- With explicit `AUTHORIZATION_PROVIDER=cerbos`, missing or rejected Admin API configuration makes reconciliation fail safely and leaves readiness blocked. Fix the server-side values and use the locked remediation retry; credentials are never entered or returned on that page.
 - Troubleshooting scope is endpoint verification, package download/sync, and the configured local fallback only. There is no supported Cerbos resource-inventory or arbitrary policy-decision test API.
 
 ## 429 / 504 Responses

@@ -74,6 +74,7 @@ Commonly consumed sections in code:
 - `RateLimiting:*`
 - `RequestTimeouts:*`
 - `Cerbos:*`
+- `Authorization:Provider` (deployment-owned `local`/`cerbos` selector; blank means manual onboarding)
 - `Deployment:*`
 - `PublicBaseUrl`, `App:PublicBaseUrl`, or `Application:PublicBaseUrl`
 - `Bff:AdminHosts` and `Bff:AdminHostAllowedIpRanges`
@@ -419,14 +420,27 @@ The `ai-provider` readiness check reports safe booleans such as `endpointConfigu
 
 Cerbos runtime settings are the first implemented consumer of the shared secrets ownership metadata:
 
+- `Authorization:Provider` is the authoritative deployment selector. `AUTHORIZATION_PROVIDER` maps to it without overriding an existing canonical value. Accepted values are blank, `local`, and `cerbos`; any other explicit value fails startup validation.
+- Blank/unset provider intent does not infer Cerbos from endpoint or credential presence. The onboarding page selects Local RBAC by default and keeps Cerbos behind the native **Advanced: use Cerbos PDP** disclosure.
+- Explicit `local` is deployment-managed, reports authorization ready, skips the provider-choice page, and performs no Cerbos endpoint or policy call.
+- Explicit `cerbos` is deployment-managed and selected by runtime authorization immediately, so failures deny rather than falling back to Local. The API background worker verifies the instance PDP gRPC health service and then publishes the bundled policy package specifically to the instance Admin API, never an ambient tenant BYO target. It retries transient startup failures within the configured bound. Configured status becomes ready only after both operations succeed; automatic navigation skips the choice page while reconciliation is pending or ready, and a final failure is exposed as locked remediation from the instance setup task.
 - `Cerbos:GrpcEndpoint` can prefill onboarding/admin forms as deployment bootstrap. Once an operator saves an application-managed endpoint, the saved setting takes precedence unless the key is explicitly deployment-managed.
 - `Cerbos:UsePolicyScope` defaults to `false`. Keep it false for bundled root policies; enable it only when the PDP has tenant-scoped policy files and `engine.lenientScopeSearch=true`.
 - `Cerbos:AdminApi:*` configures policy package sync/status operations, not runtime authorization checks. Admin API credentials are secret-bearing and must be treated as write-only/redacted in UI and API responses.
 - `Secrets:Ownership:DeploymentManagedKeys` can mark `cerbos.grpc_endpoint`, `Cerbos:AdminApi:AdminUsername`, `Cerbos:AdminApi:AdminPassword`, or `*` as deployment-managed. Deployment-managed fields are read-only in UI and ignore application-managed DB values for that field.
 - Setup and post-onboarding administration reuse the existing endpoint verification, package download/sync, and local-fallback capabilities. They do not add a Cerbos resource inventory or an arbitrary policy-decision test API.
 
+Background reconciliation binds from `Cerbos:PolicyBootSync`:
+
+| Key | Default | Description |
+|---|---:|---|
+| `InitialDelaySeconds` | `5` | Delay after API startup before deployment-provider reconciliation begins. |
+| `RetryDelaySeconds` | `3` | Delay between failed automatic reconciliation attempts. |
+| `MaxAttempts` | `5` | Maximum automatic attempts per process start. |
+| `TimeoutSeconds` | `60` | Maximum time for each verification-and-publish attempt. |
+
 For a Coolify-managed external Cerbos PDP, use [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) for the Docker Image tag, PostgreSQL schema bootstrap, Admin API password hash, gRPC routing, and `cerbosctl` upload flow. Compose and Aspire local infrastructure use the repository `cerbos/` folder directly.
-- Governance settings select the active provider (`AuthorizationProvider`), whether tenant customization is enabled, and per-tenant BYO values such as `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, custom Admin API endpoint, and custom Admin API credentials.
+- When `Authorization:Provider` is blank, governance settings select the active provider (`AuthorizationProvider`). Explicit deployment intent takes precedence. Governance still owns whether tenant customization is enabled and per-tenant BYO values such as `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, custom Admin API endpoint, and custom Admin API credentials.
 
 Endpoint and secret safety rules:
 
@@ -583,6 +597,7 @@ After authentication, onboarding is presented as one server-derived task overvie
 - `MCP_ENABLED`, `MCP_ENDPOINT_PATH`, `MCP_STATELESS`, `MCP_ENABLE_LEGACY_SSE` (Infisical `/api` or `/mcp`) -> `Mcp:Enabled`, `Mcp:EndpointPath`, `Mcp:Stateless`, `Mcp:EnableLegacySse`; when absent, defaults are `true`, `/mcp`, `true`, and `true`; bare endpoint paths such as `mcp` normalize to `/mcp`, and `MCP_ENABLE_LEGACY_SSE` is a startup ceiling only
 - `KEYCLOAK_ENDPOINT` + `KEYCLOAK_REALM` (Infisical `/keycloak`) -> `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:AuthorizationUrl`
 - Keycloak mapper defaults -> `Keycloak:Audience=islamu-event-api`, `Keycloak:RequireHttpsMetadata=true`
+- `AUTHORIZATION_PROVIDER` (Infisical `/api` or `/cerbos`) -> `Authorization:Provider` (blank, `local`, or `cerbos`)
 - `CERBOS_GRPC_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:GrpcEndpoint`
 - `CERBOS_USE_POLICY_SCOPE` (Infisical `/cerbos`) -> `Cerbos:UsePolicyScope` (`true`/`false`, also accepts `1`/`0`, `yes`/`no`, `on`/`off`)
 - S3 runtime values:
