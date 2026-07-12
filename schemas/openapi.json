@@ -35088,7 +35088,7 @@
           "InstanceSettings"
         ],
         "summary": "Check Authorization Provider Configuration Status",
-        "description": "Returns whether an authorization provider has been configured.",
+        "description": "Returns authorization readiness plus deployment ownership and bootstrap state for onboarding routing.",
         "operationId": "GetInstanceAuthorizationProviderConfigurationStatus",
         "parameters": [
           {
@@ -58513,6 +58513,21 @@
           },
           "authorizationProviderConfigured": {
             "type": "boolean"
+          },
+          "authorizationProviderManagedByDeployment": {
+            "type": "boolean"
+          },
+          "authorizationProviderBootstrapStatus": {
+            "type": "string"
+          },
+          "cerbosPoliciesSynchronized": {
+            "type": "boolean"
+          },
+          "authorizationProviderBootstrapMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "cerbosEndpointOwnership": {
             "$ref": "#/components/schemas/SecretOwnershipDto"
@@ -90879,6 +90894,16 @@
         "properties": {
           "configured": {
             "type": "boolean"
+          },
+          "authorizationProviderManagedByDeployment": {
+            "type": "boolean",
+            "default": false
+          },
+          "authorizationProviderBootstrapStatus": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

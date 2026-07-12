@@ -3517,7 +3517,7 @@ namespace Explore.Blazor.Client.Clients
         /// Check Authorization Provider Configuration Status
         /// </summary>
         /// <remarks>
-        /// Returns whether an authorization provider has been configured.
+        /// Returns authorization readiness plus deployment ownership and bootstrap state for onboarding routing.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -45406,7 +45406,7 @@ namespace Explore.Blazor.Client.Clients
         /// Check Authorization Provider Configuration Status
         /// </summary>
         /// <remarks>
-        /// Returns whether an authorization provider has been configured.
+        /// Returns authorization readiness plus deployment ownership and bootstrap state for onboarding routing.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -72488,6 +72488,18 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("authorizationProviderConfigured")]
         public bool? AuthorizationProviderConfigured { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("authorizationProviderManagedByDeployment")]
+        public bool? AuthorizationProviderManagedByDeployment { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("authorizationProviderBootstrapStatus")]
+        public string? AuthorizationProviderBootstrapStatus { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cerbosPoliciesSynchronized")]
+        public bool? CerbosPoliciesSynchronized { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("authorizationProviderBootstrapMessage")]
+        public string? AuthorizationProviderBootstrapMessage { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("cerbosEndpointOwnership")]
         public SecretOwnershipDto? CerbosEndpointOwnership { get; set; } = default!;
 
@@ -96229,6 +96241,12 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("configured")]
         public bool Configured { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("authorizationProviderManagedByDeployment")]
+        public bool? AuthorizationProviderManagedByDeployment { get; set; } = false;
+
+        [System.Text.Json.Serialization.JsonPropertyName("authorizationProviderBootstrapStatus")]
+        public string? AuthorizationProviderBootstrapStatus { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
