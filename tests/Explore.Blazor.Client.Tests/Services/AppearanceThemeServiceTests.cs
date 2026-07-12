@@ -26,6 +26,11 @@ public class AppearanceThemeServiceTests
         await Assert.That(theme.LayoutProperties.AppbarHeight).IsEqualTo("112px");
         await Assert.That(theme.LayoutProperties.DefaultBorderRadius).IsEqualTo("12px");
         await Assert.That(theme.Typography?.Default?.FontFamily?.FirstOrDefault()).IsEqualTo("Inter");
+        await Assert.That(theme.PaletteLight.Success.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#047857");
+        await Assert.That(theme.PaletteLight.Warning.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#B45309");
+        await Assert.That(theme.PaletteLight.ActionDisabled.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#52525B");
+        await Assert.That(theme.PaletteLight.ActionDisabledBackground.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#E4E4E7");
+        await Assert.That(theme.PaletteLight.TextDisabled.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#52525B");
     }
 
     [Test]

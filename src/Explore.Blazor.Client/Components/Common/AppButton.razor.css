@@ -13,6 +13,16 @@
     transition: var(--isl-button-transition);
 }
 
+.app-button ::deep .mud-button-root:disabled {
+    color: var(--mud-palette-action-disabled) !important;
+    opacity: 1;
+    transition: none;
+}
+
+.app-button ::deep .mud-button-filled:disabled {
+    background-color: var(--mud-palette-action-disabled-background) !important;
+}
+
 /* ── Filled variant: no elevation shadow ── */
 .app-button ::deep .mud-button-filled {
     box-shadow: none;
