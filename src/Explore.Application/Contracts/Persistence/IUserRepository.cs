@@ -1,3 +1,6 @@
+// ABOUTME: Persistence contract for global user identity and normalized-email entity lookups.
+// ABOUTME: Keeps PII erasure and entity-first user resolution behind the Application boundary.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -9,6 +12,9 @@ public interface IUserRepository : IGenericRepository<User, Guid>
 {
     Task<User?> GetUserWithDetails(Guid id);
     Task<User?> GetUserByEmail(string email);
+    Task<IReadOnlyList<User>> GetUsersByNormalizedEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default);
     Task<bool> ExistsByEmail(string email);
     Task<List<User>> GetUsersByIdsAsync(List<Guid> ids);
 

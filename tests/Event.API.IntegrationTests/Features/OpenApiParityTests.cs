@@ -20,6 +20,8 @@ public sealed class OpenApiParityTests
     private const string NativeOpenApiEndpoint = "/openapi/event-api.json";
     private const string SwashbuckleOpenApiEndpoint = "/swagger/v0.1/swagger.json";
     private const string KeycloakAuthorizationUrl = "https://auth.example.com/realms/ISLAMU/protocol/openid-connect/auth";
+    private const string ManagedControlPlaneScheme = "ManagedControlPlane";
+    private const string ManagedControlPlaneHeader = "X-Control-Plane-Key";
 
     private static readonly OperationSelector[] CanaryOperations =
     [
@@ -28,6 +30,19 @@ public sealed class OpenApiParityTests
     ];
 
     private static readonly OperationSelector RequestBodyAliasCanaryOperation = new("/api/event", "post");
+
+    private static readonly OperationSecurityExpectation[] ManagementOperationSecurityExpectations =
+    [
+        new(new("/api/management/capabilities", "get"), []),
+        new(new("/api/management/tenants/preflight", "post"), [ManagedControlPlaneScheme]),
+        new(new("/api/management/tenants/provision", "post"), [ManagedControlPlaneScheme]),
+        new(new("/api/management/tenant-provisioning/{operationId}", "get"), [ManagedControlPlaneScheme]),
+        new(new("/api/management/tenant-provisioning/{operationId}/cancel", "post"), [ManagedControlPlaneScheme]),
+        new(new("/api/management/registration", "post"), ["Keycloak"]),
+        new(new("/api/event", "post"), ["Keycloak"])
+    ];
+
+    private static readonly OperationSelector UnrelatedAnonymousOperation = new("/api/event", "get");
 
     private static readonly string[] RepresentativeHalComponentSchemas =
     [
@@ -125,6 +140,60 @@ public sealed class OpenApiParityTests
     }
 
     [Test]
+    public async Task NativeAndSwashbuckleDocs_MatchManagedControlPlaneSecurityScheme()
+    {
+        using var nativeDocument = await GetOpenApiDocumentAsync(NativeOpenApiEndpoint);
+        using var swashbuckleDocument = await GetOpenApiDocumentAsync(SwashbuckleOpenApiEndpoint);
+
+        var differences = new List<string>();
+        CompareManagedControlPlaneSecurityScheme(nativeDocument, swashbuckleDocument, differences);
+
+        await Assert.That(differences)
+            .IsEmpty()
+            .Because("Both documents must expose the same header apiKey contract for managed machine calls. "
+                + string.Join("; ", differences));
+    }
+
+    [Test]
+    public async Task NativeAndSwashbuckleDocs_MatchManagedControlPlaneOperationSecurity()
+    {
+        await using var app = _fixture.Factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Keycloak:AuthorizationUrl"] = KeycloakAuthorizationUrl
+                });
+            });
+        });
+
+        using var client = app.CreateClient();
+        using var nativeDocument = await GetOpenApiDocumentAsync(client, NativeOpenApiEndpoint);
+        using var swashbuckleDocument = await GetOpenApiDocumentAsync(client, SwashbuckleOpenApiEndpoint);
+
+        var differences = new List<string>();
+        foreach (var expectation in ManagementOperationSecurityExpectations)
+        {
+            CompareEffectiveOperationSecurity(
+                expectation,
+                nativeDocument,
+                swashbuckleDocument,
+                differences);
+        }
+
+        CompareUnrelatedAnonymousOperationSecurity(
+            nativeDocument,
+            swashbuckleDocument,
+            differences);
+
+        await Assert.That(differences)
+            .IsEmpty()
+            .Because("Only managed-policy operations may require the Control Plane key; capabilities, registration, and unrelated endpoints retain their existing security. "
+                + string.Join("; ", differences));
+    }
+
+    [Test]
     public async Task NativeAndSwashbuckleDocs_MatchRequestBodyVersionedContentAliases()
     {
         using var nativeDocument = await GetOpenApiDocumentAsync(NativeOpenApiEndpoint);
@@ -209,6 +278,76 @@ public sealed class OpenApiParityTests
     private static bool HasKeycloakSecurityScheme(JsonDocument document)
         => TryGetKeycloakSecurityScheme(document, out _);
 
+    private static void CompareManagedControlPlaneSecurityScheme(
+        JsonDocument nativeDocument,
+        JsonDocument swashbuckleDocument,
+        List<string> differences)
+    {
+        if (!TryGetSecurityScheme(nativeDocument, ManagedControlPlaneScheme, out var nativeScheme))
+        {
+            differences.Add($"native document is missing components.securitySchemes.{ManagedControlPlaneScheme}");
+            return;
+        }
+
+        if (!TryGetSecurityScheme(swashbuckleDocument, ManagedControlPlaneScheme, out var swashbuckleScheme))
+        {
+            differences.Add($"Swashbuckle document is missing components.securitySchemes.{ManagedControlPlaneScheme}");
+            return;
+        }
+
+        CompareString("Managed Control Plane security scheme", "type", nativeScheme, swashbuckleScheme, differences);
+        CompareString("Managed Control Plane security scheme", "in", nativeScheme, swashbuckleScheme, differences);
+        CompareString("Managed Control Plane security scheme", "name", nativeScheme, swashbuckleScheme, differences);
+
+        if (GetStringProperty(nativeScheme, "type") != "apiKey"
+            || GetStringProperty(nativeScheme, "in") != "header"
+            || GetStringProperty(nativeScheme, "name") != ManagedControlPlaneHeader)
+        {
+            differences.Add("Managed Control Plane security scheme must be an X-Control-Plane-Key header apiKey");
+        }
+    }
+
+    private static void CompareEffectiveOperationSecurity(
+        OperationSecurityExpectation expectation,
+        JsonDocument nativeDocument,
+        JsonDocument swashbuckleDocument,
+        List<string> differences)
+    {
+        var nativeSchemes = GetEffectiveSecurityRequirementSchemeNames(nativeDocument, expectation.Selector);
+        var swashbuckleSchemes = GetEffectiveSecurityRequirementSchemeNames(swashbuckleDocument, expectation.Selector);
+        var expectedSchemes = expectation.ExpectedSchemes.ToHashSet(StringComparer.Ordinal);
+
+        if (!nativeSchemes.SetEquals(expectedSchemes))
+        {
+            differences.Add($"{expectation.Selector}: native effective security differs (expected={string.Join(',', expectedSchemes)}, actual={string.Join(',', nativeSchemes)})");
+        }
+
+        if (!swashbuckleSchemes.SetEquals(expectedSchemes))
+        {
+            differences.Add($"{expectation.Selector}: Swashbuckle effective security differs (expected={string.Join(',', expectedSchemes)}, actual={string.Join(',', swashbuckleSchemes)})");
+        }
+    }
+
+    private static void CompareUnrelatedAnonymousOperationSecurity(
+        JsonDocument nativeDocument,
+        JsonDocument swashbuckleDocument,
+        List<string> differences)
+    {
+        var nativeSchemes = GetEffectiveSecurityRequirementSchemeNames(nativeDocument, UnrelatedAnonymousOperation);
+        var swashbuckleSchemes = GetEffectiveSecurityRequirementSchemeNames(swashbuckleDocument, UnrelatedAnonymousOperation);
+
+        if (!nativeSchemes.SetEquals(swashbuckleSchemes))
+        {
+            differences.Add($"{UnrelatedAnonymousOperation}: effective security differs (native={string.Join(',', nativeSchemes)}, swashbuckle={string.Join(',', swashbuckleSchemes)})");
+        }
+
+        if (nativeSchemes.Contains(ManagedControlPlaneScheme)
+            || swashbuckleSchemes.Contains(ManagedControlPlaneScheme))
+        {
+            differences.Add($"{UnrelatedAnonymousOperation}: unrelated anonymous operation must not use {ManagedControlPlaneScheme}");
+        }
+    }
+
     private static void CompareEnumSchema(string schemaName, JsonDocument nativeDocument, JsonDocument swashbuckleDocument, List<string> differences)
     {
         if (!TryGetSchema(nativeDocument, schemaName, out var nativeSchema))
@@ -267,11 +406,14 @@ public sealed class OpenApiParityTests
     }
 
     private static bool TryGetKeycloakSecurityScheme(JsonDocument document, out JsonElement scheme)
+        => TryGetSecurityScheme(document, "Keycloak", out scheme);
+
+    private static bool TryGetSecurityScheme(JsonDocument document, string schemeName, out JsonElement scheme)
     {
         scheme = default;
         return document.RootElement.TryGetProperty("components", out var components)
             && components.TryGetProperty("securitySchemes", out var securitySchemes)
-            && securitySchemes.TryGetProperty("Keycloak", out scheme);
+            && securitySchemes.TryGetProperty(schemeName, out scheme);
     }
 
     private static void CompareScopes(JsonElement nativeImplicitFlow, JsonElement swashbuckleImplicitFlow, List<string> differences)
@@ -311,6 +453,24 @@ public sealed class OpenApiParityTests
             .SelectMany(requirement => requirement.EnumerateObject().Select(entry => entry.Name))
             .ToHashSet(StringComparer.Ordinal);
     }
+
+    private static HashSet<string> GetEffectiveSecurityRequirementSchemeNames(
+        JsonDocument document,
+        OperationSelector selector)
+    {
+        var operation = GetOperation(document, selector);
+        return operation.TryGetProperty("security", out var security)
+            ? GetSecurityRequirementSchemeNames(security)
+            : GetDocumentSecurityRequirementSchemeNames(document);
+    }
+
+    private static HashSet<string> GetSecurityRequirementSchemeNames(JsonElement security)
+        => security.ValueKind == JsonValueKind.Array
+            ? security.EnumerateArray()
+                .Where(requirement => requirement.ValueKind == JsonValueKind.Object)
+                .SelectMany(requirement => requirement.EnumerateObject().Select(entry => entry.Name))
+                .ToHashSet(StringComparer.Ordinal)
+            : [];
 
     private static JsonElement GetOperation(JsonDocument document, OperationSelector selector) => document.RootElement
         .GetProperty("paths")
@@ -713,4 +873,8 @@ public sealed class OpenApiParityTests
     {
         public override string ToString() => $"{Method.ToUpperInvariant()} {Path}";
     }
+
+    private readonly record struct OperationSecurityExpectation(
+        OperationSelector Selector,
+        IReadOnlyCollection<string> ExpectedSchemes);
 }

@@ -6,8 +6,10 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
+using Explore.Application.Features.Management;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 
@@ -17,7 +19,9 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
     ITenantRepository tenantRepository,
     ITenantLifecycleLogRepository lifecycleLogRepository,
     ICurrentUserService currentUserService,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ISettingMutationLock mutationLock,
+    TenantActivationCapacityPolicy capacityPolicy)
     : IRequestHandler<TransitionControlPlaneTenantLifecycleCommand, BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>
 {
     public async Task<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>> Handle(
@@ -36,7 +40,8 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
             return Failure($"{request.TargetStatus} requires a reason.");
         }
 
-        return await unitOfWork.ExecuteInTransactionAsync(async ct =>
+        async Task<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>> TransitionAsync(
+            CancellationToken ct)
         {
             var tenant = await tenantRepository.GetByIdAsNoTrackingAsync(request.TenantId, ct);
             if (tenant is null)
@@ -70,6 +75,17 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
 
             var oldStatusId = tenant.TenantStatusId;
             var newStatusId = (int)request.TargetStatus;
+            if (request.TargetStatus == TenantStatusEnum.Active)
+            {
+                TenantActivationCapacityAssessment capacity = await capacityPolicy.EvaluateAsync(
+                    requireMultiTenant: false,
+                    cancellationToken: ct);
+                if (!capacity.Allowed)
+                {
+                    return Failure(capacity.Error!, capacity.FailureCode);
+                }
+            }
+
             var transitioned = await tenantRepository.TryTransitionStatusAsync(
                 tenant.Id,
                 oldStatusId,
@@ -110,7 +126,14 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
                 request.TargetStatus is TenantStatusEnum.Purged
                     ? "Tenant purge scheduled."
                     : "Tenant lifecycle status updated.");
-        }, cancellationToken);
+        }
+
+        return capacityPolicy.IsEnforced
+            ? await mutationLock.ExecuteAsync(
+                GovernanceSettingKeys.Deployment.Mode,
+                TransitionAsync,
+                cancellationToken)
+            : await unitOfWork.ExecuteInTransactionAsync(TransitionAsync, cancellationToken);
     }
 
     private static bool RequiresReason(TenantStatusEnum targetStatus) =>
@@ -150,10 +173,13 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
             Message = message
         };
 
-    private static BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto> Failure(string message) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto> Failure(
+        string message,
+        string? failureCode = null) => new()
+        {
+            Success = false,
+            FailureCode = failureCode,
+            Message = message,
+            Errors = [message]
+        };
 }

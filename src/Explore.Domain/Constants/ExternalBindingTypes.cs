@@ -8,6 +8,7 @@ public static class ExternalBindingTypes
     public static class External
     {
         public const string ProviderCustomer = "provider-customer";
+        public const string ManagedTenantProvisioningOperation = "managed-tenant-provisioning-operation";
         public const string ExternalAdminUser = "external-admin-user";
         public const string ExternalAdminTenantUser = "external-admin-tenant-user";
         public const string ExternalAdminTenantUserProfile = "external-admin-tenant-user-profile";

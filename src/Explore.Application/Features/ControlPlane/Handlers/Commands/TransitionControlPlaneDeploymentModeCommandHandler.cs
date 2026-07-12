@@ -8,6 +8,7 @@ using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 
@@ -18,7 +19,7 @@ public sealed class TransitionControlPlaneDeploymentModeCommandHandler(
     ITenantRepository tenantRepository,
     ICurrentUserService currentUserService,
     IDeploymentModeProvider deploymentModeProvider,
-    IUnitOfWork unitOfWork) : IRequestHandler<TransitionControlPlaneDeploymentModeCommand, BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto>>
+    ISettingMutationLock mutationLock) : IRequestHandler<TransitionControlPlaneDeploymentModeCommand, BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto>>
 {
     public async Task<BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto>> Handle(
         TransitionControlPlaneDeploymentModeCommand request,
@@ -41,63 +42,84 @@ public sealed class TransitionControlPlaneDeploymentModeCommandHandler(
             return Failure($"Type {expectedConfirmation} to confirm this deployment-mode transition.");
         }
 
-        var currentMode = await deploymentModeProvider.GetCurrentModeAsync(cancellationToken);
-        if (currentMode == request.TargetMode)
-        {
-            return Failure($"Deployment mode is already {currentMode}.");
-        }
-
-        var activeTenantCount = await tenantRepository.GetActiveTenantCountAsync();
-        if (currentMode == DeploymentMode.MultiTenant
-            && request.TargetMode == DeploymentMode.SingleTenant
-            && activeTenantCount > 1)
-        {
-            return Failure(
-                "Cannot switch to single-tenant mode while more than one tenant is active. Suspend or archive extra active tenants first.",
-                FailureCodes.DeploymentModeChangeBlockedByActiveTenants);
-        }
-
         var transitionedAt = DateTimeOffset.UtcNow;
         var reason = NormalizeReason(request.Reason);
         var selectedMode = request.TargetMode.ToString();
 
-        await unitOfWork.ExecuteInTransactionAsync(async ct =>
-        {
-            var bootstrap = await instanceBootstrapStateRepository.GetCurrent(ct);
-            if (bootstrap is null)
-            {
-                await instanceBootstrapStateRepository.Create(new InstanceBootstrapState
+        BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto> response =
+            await mutationLock.ExecuteAsync(
+                GovernanceSettingKeys.Deployment.Mode,
+                async ct =>
                 {
-                    IsCompleted = true,
-                    CreatedAt = transitionedAt.UtcDateTime,
-                    CompletedAt = transitionedAt.UtcDateTime,
-                    CompletedByUserId = userId.Value,
-                    SelectedDeploymentMode = selectedMode
-                });
+                    InstanceBootstrapState? bootstrap = await instanceBootstrapStateRepository.GetCurrent(ct);
+                    DeploymentMode currentMode = ResolvePersistedMode(bootstrap);
+                    if (currentMode == request.TargetMode)
+                    {
+                        return Failure($"Deployment mode is already {currentMode}.");
+                    }
 
-                return;
-            }
+                    int activeTenantCount = await tenantRepository.GetActiveTenantCountAsync();
+                    if (currentMode == DeploymentMode.MultiTenant
+                        && request.TargetMode == DeploymentMode.SingleTenant
+                        && activeTenantCount > 1)
+                    {
+                        return Failure(
+                            "Cannot switch to single-tenant mode while more than one tenant is active. Suspend or archive extra active tenants first.",
+                            FailureCodes.DeploymentModeChangeBlockedByActiveTenants);
+                    }
 
-            bootstrap.IsCompleted = true;
-            bootstrap.CompletedAt = transitionedAt.UtcDateTime;
-            bootstrap.CompletedByUserId = userId.Value;
-            bootstrap.SelectedDeploymentMode = selectedMode;
-            await instanceBootstrapStateRepository.Update(bootstrap);
-        }, cancellationToken);
+                    if (bootstrap is null)
+                    {
+                        await instanceBootstrapStateRepository.Create(new InstanceBootstrapState
+                        {
+                            IsCompleted = true,
+                            CreatedAt = transitionedAt.UtcDateTime,
+                            CompletedAt = transitionedAt.UtcDateTime,
+                            CompletedByUserId = userId.Value,
+                            SelectedDeploymentMode = selectedMode
+                        });
+                    }
+                    else
+                    {
+                        bootstrap.IsCompleted = true;
+                        bootstrap.CompletedAt = transitionedAt.UtcDateTime;
+                        bootstrap.CompletedByUserId = userId.Value;
+                        bootstrap.SelectedDeploymentMode = selectedMode;
+                        await instanceBootstrapStateRepository.Update(bootstrap);
+                    }
 
-        await deploymentModeProvider.InvalidateCacheAsync();
+                    return Success(
+                        new ControlPlaneDeploymentModeTransitionDto
+                        {
+                            PreviousMode = currentMode.ToString(),
+                            NewMode = selectedMode,
+                            ActiveTenantCount = activeTenantCount,
+                            OperatorUserId = userId.Value,
+                            Reason = reason,
+                            TransitionedAtUtc = transitionedAt
+                        },
+                        $"Deployment mode changed from {currentMode} to {selectedMode}.");
+                },
+                cancellationToken);
 
-        return Success(
-            new ControlPlaneDeploymentModeTransitionDto
-            {
-                PreviousMode = currentMode.ToString(),
-                NewMode = selectedMode,
-                ActiveTenantCount = activeTenantCount,
-                OperatorUserId = userId.Value,
-                Reason = reason,
-                TransitionedAtUtc = transitionedAt
-            },
-            $"Deployment mode changed from {currentMode} to {selectedMode}.");
+        if (response.Success)
+        {
+            await deploymentModeProvider.InvalidateCacheAsync();
+        }
+
+        return response;
+    }
+
+    private static DeploymentMode ResolvePersistedMode(InstanceBootstrapState? bootstrap)
+    {
+        if (bootstrap?.IsCompleted != true)
+        {
+            return DeploymentMode.SingleTenant;
+        }
+
+        return Enum.TryParse(bootstrap.SelectedDeploymentMode, out DeploymentMode mode)
+            ? mode
+            : DeploymentMode.MultiTenant;
     }
 
     private static string? NormalizeReason(string? reason)

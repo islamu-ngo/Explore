@@ -9,6 +9,24 @@ namespace Explore.API.Hateoas;
 /// </summary>
 public static class RouteNames
 {
+    #region Managed Event Routes
+
+    public const string GetManagementCapabilities = "GetManagementCapabilities";
+    public const string TriggerManagementRegistration = "TriggerManagementRegistration";
+    public const string GetManagedEventInstance = "GetManagedEventInstance";
+    public const string GetManagementVersion = "GetManagementVersion";
+    public const string GetManagementHealth = "GetManagementHealth";
+    public const string EvaluateManagementUpgradePreflight = "EvaluateManagementUpgradePreflight";
+    public const string VerifyManagementUpgradePostflight = "VerifyManagementUpgradePostflight";
+    public const string RotateManagedControlPlaneCredential = "RotateManagedControlPlaneCredential";
+    public const string RevokeManagedControlPlaneRegistration = "RevokeManagedControlPlaneRegistration";
+    public const string EvaluateManagedTenantProvisioningPreflight = "EvaluateManagedTenantProvisioningPreflight";
+    public const string ScheduleManagedTenantProvisioning = "ScheduleManagedTenantProvisioning";
+    public const string GetManagedTenantProvisioningOperation = "GetManagedTenantProvisioningOperation";
+    public const string CancelManagedTenantProvisioningOperation = "CancelManagedTenantProvisioningOperation";
+
+    #endregion
+
     #region SEO Routes
 
     public const string GetSitemap = "GetSitemap";

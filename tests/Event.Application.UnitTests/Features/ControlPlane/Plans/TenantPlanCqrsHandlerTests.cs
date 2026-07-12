@@ -527,6 +527,7 @@ public sealed class TenantPlanCqrsHandlerTests
             tenantPlans,
             tenantSettings,
             systemSettings,
+            new TenantPlanStorageQuotaCeilingPolicy(systemSettings),
             unitOfWork,
             ImmediateSettingMutationLock.Instance, _settingsResolver, _mediator);
 
@@ -556,6 +557,7 @@ public sealed class TenantPlanCqrsHandlerTests
             tenantPlans,
             tenantSettings,
             systemSettings,
+            new TenantPlanStorageQuotaCeilingPolicy(systemSettings),
             unitOfWork,
             mutationLock,
             _settingsResolver,
@@ -611,6 +613,7 @@ public sealed class TenantPlanCqrsHandlerTests
             tenantPlans,
             tenantSettings,
             systemSettings,
+            new TenantPlanStorageQuotaCeilingPolicy(systemSettings),
             unitOfWork,
             ImmediateSettingMutationLock.Instance, _settingsResolver, _mediator);
 
@@ -669,6 +672,7 @@ public sealed class TenantPlanCqrsHandlerTests
             tenantPlans,
             tenantSettings,
             systemSettings,
+            new TenantPlanStorageQuotaCeilingPolicy(systemSettings),
             unitOfWork,
             mutationLock, _settingsResolver, _mediator);
 

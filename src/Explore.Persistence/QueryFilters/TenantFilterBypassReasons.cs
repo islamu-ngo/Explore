@@ -38,6 +38,9 @@ public static class TenantFilterBypassReasons
     public const string TenantLookupCacheWarmup =
         "Tenant lookup cache warmup reads active tenants and domain settings before a request tenant exists.";
 
+    public const string ManagedTenantDomainUniqueness =
+        "Managed tenant provisioning checks one normalized domain host across all tenant domain settings.";
+
     public const string LegacyTenantResolutionLookup =
         "Legacy tenant resolver performs pre-tenant host lookup using explicit setting predicates.";
 

@@ -1,3 +1,6 @@
+// ABOUTME: EF Core repository for global users, normalized-email resolution, and PII erasure.
+// ABOUTME: Returns user entities and keeps read-only identity lookups no-tracking.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +40,18 @@ public class UserRepository : GenericRepository<User, Guid>, IUserRepository
         return await _dbContext.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Pii != null && u.Pii.Email == email);
+    }
+
+    public async Task<IReadOnlyList<User>> GetUsersByNormalizedEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        string normalizedEmail = email.Trim().ToLowerInvariant();
+        return await _dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.Pii != null && user.Pii.Email.ToLower() == normalizedEmail)
+            .Take(2)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<List<User>> GetUsersByIdsAsync(List<Guid> ids)

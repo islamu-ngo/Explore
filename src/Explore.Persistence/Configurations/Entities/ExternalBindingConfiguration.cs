@@ -94,8 +94,16 @@ public class ExternalBindingConfiguration : IEntityTypeConfiguration<ExternalBin
                 var scopePredicate = pair.BindingTenantScopeRule == ReferenceTenantScopeRule.Global
                     ? "scope_tenant_id IS NULL"
                     : "scope_tenant_id IS NOT NULL";
-                return $"(external_type = {SqlLiteral(pair.ExternalType)} AND internal_type = {SqlLiteral(pair.InternalType)} AND {scopePredicate})";
-            });
+                return new
+                {
+                    Sql = $"(external_type = {SqlLiteral(pair.ExternalType)} AND internal_type = {SqlLiteral(pair.InternalType)} AND {scopePredicate})",
+                    pair.ExternalType,
+                    pair.InternalType
+                };
+            })
+            .OrderBy(x => x.ExternalType, StringComparer.Ordinal)
+            .ThenBy(x => x.InternalType, StringComparer.Ordinal)
+            .Select(x => x.Sql);
 
         return string.Join(" OR ", allowedPairs);
     }

@@ -8364,7 +8364,7 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("external_bindings", null, t =>
                         {
-                            t.HasCheckConstraint("ck_external_bindings_registered_pair_scope", "(external_type = 'provider-customer' AND internal_type = 'Tenant' AND scope_tenant_id IS NULL) OR (external_type = 'external-admin-user' AND internal_type = 'User' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user' AND internal_type = 'TenantUser' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user-profile' AND internal_type = 'TenantUserProfile' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-login' AND internal_type = 'UserExternalLogin' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization' AND internal_type = 'Organization' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-group' AND internal_type = 'Group' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-group-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL)");
+                            t.HasCheckConstraint("ck_external_bindings_registered_pair_scope", "(external_type = 'customer-group' AND internal_type = 'Group' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-group-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization' AND internal_type = 'Organization' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user' AND internal_type = 'TenantUser' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user-profile' AND internal_type = 'TenantUserProfile' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user' AND internal_type = 'User' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-login' AND internal_type = 'UserExternalLogin' AND scope_tenant_id IS NOT NULL) OR (external_type = 'managed-tenant-provisioning-operation' AND internal_type = 'Tenant' AND scope_tenant_id IS NOT NULL) OR (external_type = 'provider-customer' AND internal_type = 'Tenant' AND scope_tenant_id IS NULL)");
 
                             t.HasCheckConstraint("ck_external_bindings_status", "external_binding_status_id IN (1, 2, 3)");
 
@@ -9508,6 +9508,302 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_madhabs");
 
                     b.ToTable("madhabs", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ManagedControlPlaneRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ControlPlaneEndpoint")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("control_plane_endpoint");
+
+                    b.Property<DateTime>("ControlPlaneToEventCredentialExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("control_plane_to_event_credential_expires_at");
+
+                    b.Property<string>("ControlPlaneToEventKeyId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("control_plane_to_event_key_id");
+
+                    b.Property<string>("ControlPlaneToEventSecretHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("control_plane_to_event_secret_hash");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("CredentialSecretBindingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_secret_binding_id");
+
+                    b.Property<string>("DeploymentMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("deployment_mode");
+
+                    b.Property<Guid>("EventInstanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_instance_id");
+
+                    b.Property<DateTime>("EventToControlPlaneCredentialExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("event_to_control_plane_credential_expires_at");
+
+                    b.Property<string>("EventToControlPlaneKeyId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("event_to_control_plane_key_id");
+
+                    b.Property<string>("EventToControlPlaneSecretHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("event_to_control_plane_secret_hash");
+
+                    b.Property<string>("EventVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("event_version");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_at");
+
+                    b.Property<string>("LastFailureCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_failure_code");
+
+                    b.Property<Guid>("ManagedInstanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("managed_instance_id");
+
+                    b.Property<string>("ManagementApiVersion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("management_api_version");
+
+                    b.Property<DateTime?>("RegisteredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("registered_at");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("request_hash")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_managed_control_plane_registrations");
+
+                    b.HasIndex("ControlPlaneToEventKeyId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_managed_control_plane_registrations_control_plane_to_event_");
+
+                    b.HasIndex("CredentialSecretBindingId")
+                        .HasDatabaseName("ix_managed_control_plane_registrations_credential_secret_bindi");
+
+                    b.HasIndex("EventInstanceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_managed_control_plane_registrations_event_instance_id");
+
+                    b.HasIndex("EventToControlPlaneKeyId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_managed_control_plane_registrations_event_to_control_plane_");
+
+                    b.HasIndex("ManagedInstanceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_managed_control_plane_registrations_managed_instance_id");
+
+                    b.ToTable("managed_control_plane_registrations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_managed_control_plane_registration_expiry", "event_to_control_plane_credential_expires_at > created_at AND control_plane_to_event_credential_expires_at > created_at");
+
+                            t.HasCheckConstraint("ck_managed_control_plane_registration_registered", "(status IN ('Registered', 'Revoked')) = (registered_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_managed_control_plane_registration_revoked", "(status = 'Revoked') = (revoked_at IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.ManagedTenantProvisioningOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("CurrentOutboxMessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("current_outbox_message_id");
+
+                    b.Property<string>("ExternalCustomerReference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_customer_reference");
+
+                    b.Property<string>("ExternalRequestId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("external_request_id");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<Guid>("ManagedInstanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("managed_instance_id");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("request_hash")
+                        .IsFixedLength();
+
+                    b.Property<string>("RequestJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("request_json");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TenantAdministratorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_administrator_user_id");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("TenantSlug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tenant_slug");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_managed_tenant_provisioning_operations");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_managed_tenant_provisioning_operations_tenant_id");
+
+                    b.HasIndex("ManagedInstanceId", "ExternalCustomerReference")
+                        .IsUnique()
+                        .HasDatabaseName("ux_managed_tenant_provisioning_instance_customer");
+
+                    b.HasIndex("ManagedInstanceId", "ExternalRequestId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_managed_tenant_provisioning_instance_request");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_managed_tenant_provisioning_operations_status_created_at");
+
+                    b.ToTable("managed_tenant_provisioning_operations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_managed_tenant_provisioning_cancelled", "(status = 'Cancelled') = (cancelled_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_managed_tenant_provisioning_failed", "(status = 'Failed') = (failure_code IS NOT NULL AND failed_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_managed_tenant_provisioning_outbox_pointer", "current_outbox_message_id <> '00000000-0000-0000-0000-000000000000'::uuid");
+
+                            t.HasCheckConstraint("ck_managed_tenant_provisioning_request_snapshot", "(status IN ('Pending', 'Processing')) = (request_json IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_managed_tenant_provisioning_terminal_result", "(status = 'Succeeded') = (tenant_id IS NOT NULL AND tenant_administrator_user_id IS NOT NULL AND completed_at IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.ModuleDefinition", b =>
@@ -19111,6 +19407,16 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Location");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.ManagedControlPlaneRegistration", b =>
+                {
+                    b.HasOne("Explore.Domain.Secrets.SecretBinding", null)
+                        .WithMany()
+                        .HasForeignKey("CredentialSecretBindingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_managed_control_plane_registrations_secret_bindings_credent");
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>

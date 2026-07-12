@@ -12,7 +12,9 @@ using Explore.API.Mcp;
 using Explore.Application.Authorization;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Management;
 using Explore.Domain.Constants;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -57,15 +59,7 @@ public static class AuthenticationExtensions
             })
             .AddPolicyScheme(ApiAuthenticationSchemeNames.MultiAuth, ApiAuthenticationSchemeNames.MultiAuth, options =>
             {
-                options.ForwardDefaultSelector = context =>
-                {
-                    if (ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request))
-                    {
-                        return ApiAuthenticationSchemeNames.ApiKey;
-                    }
-
-                    return JwtBearerDefaults.AuthenticationScheme;
-                };
+                options.ForwardDefaultSelector = SelectDefaultAuthenticationScheme;
             })
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
             {
@@ -195,7 +189,10 @@ public static class AuthenticationExtensions
                     {
                         options.HeaderName = ApiAuthenticationHeaderNames.ApiKey;
                     }
-                });
+                })
+            .AddScheme<AuthenticationSchemeOptions, ManagedControlPlaneAuthenticationHandler>(
+                ManagedControlPlaneAuthenticationDefaults.Scheme,
+                _ => { });
 
         services.AddAuthorizationBuilder()
             .AddPolicy(McpAuthorizationPolicies.Read, policy => policy
@@ -234,11 +231,42 @@ public static class AuthenticationExtensions
                                   AuthorizationActions.Events.ModerateHeavy))))
             .AddPolicy(TickerQSchedulerOptions.InstanceAdminPolicyName, policy => policy
                 .RequireAuthenticatedUser()
-                .RequireClaim(AdminClaimTypes.InstanceAdmin, "true"));
+                .RequireClaim(AdminClaimTypes.InstanceAdmin, "true"))
+            .AddPolicy(ManagedControlPlaneAuthorizationPolicies.Read, policy => policy
+                .AddAuthenticationSchemes(ManagedControlPlaneAuthenticationDefaults.Scheme)
+                .RequireAuthenticatedUser()
+                .RequireAssertion(context => context.User
+                    .FindAll(ManagedControlPlaneAuthenticationDefaults.ScopeClaim)
+                    .Any(claim => claim.Value is ManagedControlPlaneContract.ControlPlaneReadScope
+                        or ManagedControlPlaneContract.ControlPlaneWriteScope)))
+            .AddPolicy(ManagedControlPlaneAuthorizationPolicies.Write, policy => policy
+                .AddAuthenticationSchemes(ManagedControlPlaneAuthenticationDefaults.Scheme)
+                .RequireAuthenticatedUser()
+                .RequireClaim(
+                    ManagedControlPlaneAuthenticationDefaults.ScopeClaim,
+                    ManagedControlPlaneContract.ControlPlaneWriteScope));
 
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, ProblemDetailsAuthorizationMiddlewareResultHandler>();
 
         return services;
+    }
+
+    internal static string SelectDefaultAuthenticationScheme(HttpContext context)
+    {
+        bool requiresManagedCredential = context.GetEndpoint()?.Metadata
+            .GetOrderedMetadata<IAuthorizeData>()
+            .Any(authorize => authorize.Policy is ManagedControlPlaneAuthorizationPolicies.Read
+                or ManagedControlPlaneAuthorizationPolicies.Write) == true;
+        if (requiresManagedCredential && ApiKeyHeaderReader.HasNonEmptyApiKey(
+                context.Request,
+                ManagedControlPlaneAuthenticationDefaults.HeaderName))
+        {
+            return ManagedControlPlaneAuthenticationDefaults.Scheme;
+        }
+
+        return ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request)
+            ? ApiAuthenticationSchemeNames.ApiKey
+            : JwtBearerDefaults.AuthenticationScheme;
     }
 
     private static bool ApiKeyCallerHasMcpReadAndEventReadAuthorityOrIsUser(ClaimsPrincipal principal)

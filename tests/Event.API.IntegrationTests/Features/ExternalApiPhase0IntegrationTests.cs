@@ -432,6 +432,30 @@ public sealed class ExternalApiPhase0IntegrationTests
     }
 
     [Test]
+    public async Task SecureProbe_WithBearerAndManagedControlPlaneKey_ReturnsBadRequest()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        await using var factory = new ExternalApiPhase0WebApplicationFactory
+        {
+            TenantSlugMappings = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["alpha"] = tenantId
+            }
+        };
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, ProbeUrl);
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer",
+            factory.CreateJwt(Guid.CreateVersion7()));
+        request.Headers.Add("X-Control-Plane-Key", "managed-key.secret");
+        request.Headers.Add("X-Tenant-Slug", "alpha");
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+    }
+
+    [Test]
     public async Task SecureProbe_WithTrustedForwardedHost_ResolvesTenantFromCustomDomain()
     {
         var tenantId = Guid.NewGuid();

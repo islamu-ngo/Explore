@@ -58,6 +58,8 @@ public partial class ExploreDbContext
     public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
     public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
     public DbSet<ExternalBinding> ExternalBindings { get; set; }
+    public DbSet<ManagedControlPlaneRegistration> ManagedControlPlaneRegistrations { get; set; }
+    public DbSet<ManagedTenantProvisioningOperation> ManagedTenantProvisioningOperations { get; set; }
 
     // ===== Authorization (RBAC) =====
     public DbSet<Role> Roles { get; set; }

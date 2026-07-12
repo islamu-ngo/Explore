@@ -13,7 +13,11 @@ using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Tools;
+using Explore.Application.Features.ControlPlane.Plans;
 using Explore.Application.Features.EventReporting;
+using Explore.Application.Features.ManagedProviderProvisioning;
+using Explore.Application.Features.ManagedProviderProvisioning.Handlers.Commands;
+using Explore.Application.Features.Management;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
@@ -90,6 +94,11 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IAnalyticsGovernanceService, AnalyticsGovernanceService>();
         services.AddScoped<IModuleCapabilityService, ModuleCapabilityService>();
         services.AddScoped<SettingUpsertService>();
+        services.AddScoped<ManagedTenantProvisioningPreflight>();
+        services.AddScoped<ManagedTenantProvisioningCapacityReader>();
+        services.AddScoped<TenantActivationCapacityPolicy>();
+        services.AddScoped<TenantPlanStorageQuotaCeilingPolicy>();
+        services.AddScoped<IManagedProviderClientProvisioner, EnsureManagedProviderClientProvisionedCommandHandler>();
 
         // Analytics consent / runtime profile resolution
         services.AddScoped<IAnalyticsRuntimeProfileResolver, AnalyticsRuntimeProfileResolver>();

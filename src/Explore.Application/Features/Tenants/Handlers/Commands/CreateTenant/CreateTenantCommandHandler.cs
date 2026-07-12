@@ -4,9 +4,11 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Tenant.Validators;
+using Explore.Application.Features.Management;
 using Explore.Application.Features.Tenants.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -22,6 +24,8 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly ILogger<CreateTenantCommandHandler> _logger;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ISettingMutationLock _mutationLock;
+    private readonly TenantActivationCapacityPolicy _capacityPolicy;
 
     public CreateTenantCommandHandler(
         ITenantRepository tenantRepository,
@@ -30,7 +34,9 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
         IRoleRepository roleRepository,
         ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
         ILogger<CreateTenantCommandHandler> logger,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ISettingMutationLock mutationLock,
+        TenantActivationCapacityPolicy capacityPolicy)
     {
         _tenantRepository = tenantRepository;
         _tenantUserRoleGrantRepository = tenantUserRoleGrantRepository;
@@ -39,6 +45,8 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
         _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
         _logger = logger;
         _unitOfWork = unitOfWork;
+        _mutationLock = mutationLock;
+        _capacityPolicy = capacityPolicy;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateTenantCommand request, CancellationToken cancellationToken)
@@ -68,8 +76,25 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
         var statusId = dto.IsActive ? (int)TenantStatusEnum.Active : (int)TenantStatusEnum.Provisioning;
         var assignAdmin = dto.AssignCurrentUserAsTenantAdmin && request.RequestingUserId.HasValue;
 
-        var tenantId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        async Task<BaseCommandResponse<Guid>> CreateAsync(CancellationToken ct)
         {
+            if (dto.IsActive)
+            {
+                TenantActivationCapacityAssessment capacity = await _capacityPolicy.EvaluateAsync(
+                    requireMultiTenant: false,
+                    cancellationToken: ct);
+                if (!capacity.Allowed)
+                {
+                    return new BaseCommandResponse<Guid>
+                    {
+                        Success = false,
+                        FailureCode = capacity.FailureCode,
+                        Message = capacity.Error,
+                        Errors = [capacity.Error!]
+                    };
+                }
+            }
+
             var tenant = await _tenantRepository.Create(new Tenant
             {
                 FullName = dto.FullName,
@@ -85,15 +110,22 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
                 await AssignRequestingUserAsTenantAdminAsync(tenant.Id, request.RequestingUserId!.Value, ct);
             }
 
-            return tenant.Id;
-        }, cancellationToken);
+            return new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = tenant.Id,
+                Message = assignAdmin
+                    ? "Tenant created successfully. You have been assigned as tenant administrator."
+                    : "Tenant created successfully."
+            };
+        }
 
-        response.Success = true;
-        response.Id = tenantId;
-        response.Message = assignAdmin
-            ? "Tenant created successfully. You have been assigned as tenant administrator."
-            : "Tenant created successfully.";
-        return response;
+        return _capacityPolicy.IsEnforced
+            ? await _mutationLock.ExecuteAsync(
+                GovernanceSettingKeys.Deployment.Mode,
+                CreateAsync,
+                cancellationToken)
+            : await _unitOfWork.ExecuteInTransactionAsync(CreateAsync, cancellationToken);
     }
 
     private async Task AssignRequestingUserAsTenantAdminAsync(Guid tenantId, Guid userId, CancellationToken ct)

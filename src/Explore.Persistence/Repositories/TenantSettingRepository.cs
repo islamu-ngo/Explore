@@ -1,5 +1,5 @@
-// ABOUTME: Repository implementation for TenantSetting entity providing data access
-// for tenant-specific setting overrides.
+// ABOUTME: Repository implementation for TenantSetting entity providing data access.
+// ABOUTME: Resolves tenant overrides and normalized cross-tenant domain-host ownership.
 
 namespace Explore.Persistence.Repositories;
 
@@ -28,6 +28,24 @@ public class TenantSettingRepository : ITenantSettingRepository
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key, cancellationToken);
     }
 
+    public Task<TenantSetting?> GetByDomainHostAsync(
+        string normalizedHost,
+        CancellationToken cancellationToken = default)
+    {
+        string normalizedValue = normalizedHost.Trim().TrimEnd('.').ToLowerInvariant();
+        return _dbContext.TenantSettingOverrides
+            .FromSqlInterpolated(
+                $$"""
+                SELECT *
+                FROM tenant_setting_overrides
+                WHERE setting_key IN ('domains.tenant_subdomain', 'domains.tenant_custom_domain')
+                  AND rtrim(lower(btrim(value::jsonb #>> '{}')), '.') = {{normalizedValue}}
+                """)
+            .IgnoreTenantFilter(TenantFilterBypassReasons.ManagedTenantDomainUniqueness)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task SetValueAsync(
         Guid tenantId,
         string key,
@@ -53,7 +71,7 @@ public class TenantSettingRepository : ITenantSettingRepository
 
         _dbContext.TenantSettingOverrides.Add(new TenantSetting
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             Tenant = null!,
             SettingKey = key,
@@ -172,7 +190,7 @@ public class TenantSettingRepository : ITenantSettingRepository
 
             _dbContext.TenantSettingOverrides.Add(new TenantSetting
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 TenantId = tenantId,
                 Tenant = null!,
                 SettingKey = overrideValue.SettingKey,

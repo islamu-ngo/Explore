@@ -427,6 +427,53 @@ public class ContractInvariantsTests
     }
 
     [Test]
+    public async Task OpenApiDocument_ManagementMachineOperationsRequireDedicatedApiKey()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        JsonElement root = document.RootElement;
+        JsonElement scheme = root.GetProperty("components")
+            .GetProperty("securitySchemes")
+            .GetProperty("ManagedControlPlane");
+
+        await Assert.That(scheme.GetProperty("type").GetString()).IsEqualTo("apiKey");
+        await Assert.That(scheme.GetProperty("in").GetString()).IsEqualTo("header");
+        await Assert.That(scheme.GetProperty("name").GetString()).IsEqualTo("X-Control-Plane-Key");
+
+        JsonElement capabilities = root.GetProperty("paths")
+            .GetProperty("/api/management/capabilities")
+            .GetProperty("get");
+        await Assert.That(capabilities.GetProperty("security").GetArrayLength()).IsEqualTo(0);
+
+        (string Path, string Method)[] protectedOperations =
+        [
+            ("/api/management/instance", "get"),
+            ("/api/management/version", "get"),
+            ("/api/management/health", "get"),
+            ("/api/management/upgrade/preflight", "post"),
+            ("/api/management/upgrade/postflight", "post"),
+            ("/api/management/tenants/preflight", "post"),
+            ("/api/management/tenants/provision", "post"),
+            ("/api/management/tenant-provisioning/{operationId}", "get"),
+            ("/api/management/tenant-provisioning/{operationId}/cancel", "post"),
+            ("/api/management/credentials/rotate", "post"),
+            ("/api/management/credentials", "delete")
+        ];
+
+        foreach ((string path, string method) in protectedOperations)
+        {
+            JsonElement security = root.GetProperty("paths")
+                .GetProperty(path)
+                .GetProperty(method)
+                .GetProperty("security");
+            bool hasManagedRequirement = security.EnumerateArray()
+                .Any(requirement => requirement.TryGetProperty("ManagedControlPlane", out _));
+            await Assert.That(hasManagedRequirement)
+                .IsTrue()
+                .Because($"{method.ToUpperInvariant()} {path} must require X-Control-Plane-Key.");
+        }
+    }
+
+    [Test]
     public async Task OpenApiDocument_RepresentativeNullablePropertiesIncludeNull()
     {
         using var document = await GetOpenApiDocumentAsync();

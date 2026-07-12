@@ -7,6 +7,8 @@ using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.ControlPlane.Handlers.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
+using Explore.Application.Features.Management;
+using Explore.Application.Management;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -313,7 +315,13 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             tenantRepository,
             lifecycleLogRepository,
             currentUserService,
-            unitOfWork);
+            unitOfWork,
+            Substitute.For<ISettingMutationLock>(),
+            new TenantActivationCapacityPolicy(
+                Substitute.For<IInstanceBootstrapStateRepository>(),
+                tenantRepository,
+                Substitute.For<IManagedTenantProvisioningOperationRepository>(),
+                Microsoft.Extensions.Options.Options.Create(new ManagedControlPlaneOptions())));
     }
 
     private static Tenant CreateTenant(TenantStatusEnum status)

@@ -16,6 +16,7 @@ using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Strategies;
 using Explore.Application.Contracts.Webhooks;
+using Explore.Application.Management;
 using Explore.Application.Models;
 using Explore.Application.Utilities;
 using Explore.Infrastructure.Ai;
@@ -27,6 +28,7 @@ using Explore.Infrastructure.Localization;
 using Explore.Infrastructure.Localization.Resilience;
 using Explore.Infrastructure.Mail;
 using Explore.Infrastructure.Mail.Unsubscribe;
+using Explore.Infrastructure.Management;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
@@ -53,6 +55,21 @@ public static class InfrastructureServicesRegistration
 {
     public static IServiceCollection ConfigureInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions<ManagedControlPlaneOptions>()
+            .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<ManagedControlPlaneOptions>, ManagedControlPlaneOptionsValidator>();
+        services.AddHttpClient<IManagedControlPlaneRegistrationClient, ManagedControlPlaneRegistrationClient>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(15);
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                UseCookies = false,
+                ConnectTimeout = TimeSpan.FromSeconds(10)
+            });
+
         // Email service: provider-agnostic SMTP via MailKit
         // Config resolved per-tenant from cascading settings engine (SystemSetting → TenantSetting)
         // Instance admin can lock settings to enforce SaaS-wide SMTP or let tenants override

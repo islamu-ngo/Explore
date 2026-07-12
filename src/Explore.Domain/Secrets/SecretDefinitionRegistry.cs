@@ -106,6 +106,12 @@ public static class SecretDefinitionRegistry
             public const string TmsApiKey = InfrastructureSecretSettingKeys.Localization.TmsApiKey;
         }
 
+        public static class Management
+        {
+            public const string ControlPlaneRegistrationCredentials =
+                InfrastructureSecretSettingKeys.Management.ControlPlaneRegistrationCredentials;
+        }
+
         public static class Cerbos
         {
             public const string GrpcEndpoint = "cerbos.grpc_endpoint";
@@ -545,6 +551,17 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "LOCALIZATION_TMS_API_KEY",
                 IsBootstrapSecret = false,
                 Description = "Tolgee/Weblate API token used only by backend TMS providers.",
+            },
+            new()
+            {
+                Key = Keys.Management.ControlPlaneRegistrationCredentials,
+                AllowedScopes = instanceOnly,
+                AllowedSources = [SecretSourceType.InlineEncrypted],
+                DefaultInfisicalPath = "/api",
+                DefaultInfisicalKey = "CONTROL_PLANE_REGISTRATION_CREDENTIALS",
+                DefaultEnvironmentVariableName = "CONTROL_PLANE_REGISTRATION_CREDENTIALS",
+                IsBootstrapSecret = false,
+                Description = "Protected directional machine credentials for optional managed mode.",
             },
 
             // --- integrations/listmonk/LISTMONK_* ---

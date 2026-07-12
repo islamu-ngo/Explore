@@ -112,6 +112,7 @@ builder.Services.AddScoped<IIncomingWebhookVerifier, CoopIncomingWebhookVerifier
 builder.Services.AddScoped<IIncomingWebhookVerifier, SvixIncomingWebhookVerifier>();
 builder.Services.AddScoped<IIncomingWebhookVerifierRegistry, IncomingWebhookVerifierRegistry>();
 builder.Services.AddScoped<IIncomingWebhookIntakeService, IncomingWebhookIntakeService>();
+builder.Services.AddScoped<IManagedEventHealthProbe, ManagedEventHealthProbe>();
 
 builder.Services.AddRouting(options =>
 {
@@ -253,10 +254,12 @@ builder.Services.AddOpenApi("event-api", options =>
         return Task.CompletedTask;
     });
     options.AddDocumentTransformer<Explore.API.OpenApi.KeycloakOpenApiSecurityTransformer>();
+    options.AddDocumentTransformer<Explore.API.OpenApi.ManagedControlPlaneOpenApiSecurityTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.OpenApiStringEnumDocumentTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.OperationIdInvariantTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.EndpointClassificationTransformer>();
+    options.AddOperationTransformer<Explore.API.OpenApi.ManagedControlPlaneOpenApiSecurityTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.StorageUploadRequestBodyTransformer>();
 });
 
@@ -316,6 +319,7 @@ if (!isOpenApiGeneration)
 // Testing hosts manage policy publishing explicitly to keep integration startup deterministic.
 if (!isOpenApiGeneration && !builder.Environment.IsEnvironment("Testing"))
 {
+    builder.Services.AddHostedService<ManagedControlPlaneRegistrationWorker>();
     builder.Services.AddHostedService<AiProviderSettingsBootstrapWorker>();
     builder.Services.AddSingleton<CerbosPolicyBootSyncRunner>();
     builder.Services.AddHostedService<CerbosPolicyBootSyncWorker>();

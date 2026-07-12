@@ -1,8 +1,6 @@
 // ABOUTME: Applies a tenant plan assignment by copying version settings into tenant overrides.
 // ABOUTME: Performs lock and quota preflight before transactional tenant-setting upserts.
 
-using System.Globalization;
-using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.ControlPlane.Plans;
@@ -21,6 +19,7 @@ public sealed class ApplyControlPlaneTenantPlanAssignmentCommandHandler(
     ITenantPlanRepository tenantPlanRepository,
     ITenantSettingRepository tenantSettingRepository,
     ISystemSettingRepository systemSettingRepository,
+    TenantPlanStorageQuotaCeilingPolicy storageQuotaCeilingPolicy,
     IUnitOfWork unitOfWork,
     ISettingMutationLock mutationLock,
     IHierarchicalSettingsResolver settingsResolver,
@@ -79,7 +78,9 @@ public sealed class ApplyControlPlaneTenantPlanAssignmentCommandHandler(
                 mutationKeys,
                 async innerToken =>
                 {
-                    string? quotaError = await ValidateQuotaCeilingsAsync(version, innerToken);
+                    string? quotaError = await storageQuotaCeilingPolicy.ValidateAsync(
+                        version.Quotas,
+                        innerToken);
                     if (quotaError is not null)
                     {
                         return (Response: Failure(request.AssignmentId, quotaError), Notifications: (IReadOnlyList<SettingChangedNotification>)[]);
@@ -139,62 +140,6 @@ public sealed class ApplyControlPlaneTenantPlanAssignmentCommandHandler(
         }
 
         return outcome.Response;
-    }
-
-    private async Task<string?> ValidateQuotaCeilingsAsync(
-        TenantPlanVersion version,
-        CancellationToken cancellationToken)
-    {
-        TenantPlanVersionQuota? storageQuota = version.Quotas
-            .FirstOrDefault(quota => quota.QuotaKey == TenantPlanQuotaKeys.StorageBytes);
-        if (storageQuota is null)
-        {
-            return null;
-        }
-
-        SystemSetting? ceilingSetting = await systemSettingRepository.GetByKey(
-            GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
-            cancellationToken);
-        if (ceilingSetting is null || !TryParseLong(ceilingSetting.Value, out long ceiling))
-        {
-            return null;
-        }
-
-        return storageQuota.Limit > ceiling ? "tenant_plan_quota_ceiling_exceeded" : null;
-    }
-
-    private static bool TryParseLong(string value, out long parsed)
-    {
-        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed))
-        {
-            return true;
-        }
-
-        try
-        {
-            using JsonDocument document = JsonDocument.Parse(value);
-            if (document.RootElement.ValueKind == JsonValueKind.Number)
-            {
-                return document.RootElement.TryGetInt64(out parsed);
-            }
-
-            if (document.RootElement.ValueKind == JsonValueKind.String)
-            {
-                return long.TryParse(
-                    document.RootElement.GetString(),
-                    NumberStyles.Integer,
-                    CultureInfo.InvariantCulture,
-                    out parsed);
-            }
-        }
-        catch (JsonException)
-        {
-            parsed = 0;
-            return false;
-        }
-
-        parsed = 0;
-        return false;
     }
 
     private static BaseCommandResponse<Guid> Failure(Guid assignmentId, string error) => new()

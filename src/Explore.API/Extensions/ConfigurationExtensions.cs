@@ -49,6 +49,16 @@ public static class ConfigurationExtensions
         var rawRealm = config["KEYCLOAK_REALM"] ?? config["Keycloak:Realm"];
         var baseUrl = config["KEYCLOAK_ENDPOINT"];
         var explicitAuthority = config["Keycloak:Authority"];
+        var rawKeycloakClientId = ReadFirst(
+            config,
+            "Keycloak:ClientId",
+            "KEYCLOAK_CLIENT_ID",
+            "KEYCLOAK_BLAZOR_CLIENT_ID");
+        var rawKeycloakClientSecret = ReadFirst(
+            config,
+            "Keycloak:ClientSecret",
+            "Keycloak:BlazorClientSecret",
+            "KEYCLOAK_BLAZOR_CLIENT_SECRET");
 
         string? keycloakAuthority = null;
         if (!string.IsNullOrEmpty(explicitAuthority))
@@ -63,31 +73,60 @@ public static class ConfigurationExtensions
         var metadataAddress = keycloakAuthority != null
             ? $"{keycloakAuthority}/.well-known/openid-configuration"
             : null;
+        var keycloakClientId = !string.IsNullOrWhiteSpace(rawKeycloakClientId)
+            ? rawKeycloakClientId
+            : keycloakAuthority is null
+                ? null
+                : "islamu-event-blazor";
         // Preserve the operator's raw input (bare host:port or full URL). Normalization happens only
         // at gRPC channel creation time so we don't surface a misleading scheme back to the UI/storage.
-        var cerbosGrpcEndpoint = config["CERBOS_GRPC_ENDPOINT"]?.Trim();
-        var cerbosHttpEndpoint = ReadFirst(config, "CERBOS_HTTP_ENDPOINT", "Cerbos:HttpEndpoint")?.Trim();
+        var cerbosGrpcEndpoint = ReadFirst(config, "Cerbos:GrpcEndpoint", "CERBOS_GRPC_ENDPOINT")?.Trim();
+        var cerbosHttpEndpoint = ReadFirst(config, "Cerbos:HttpEndpoint", "CERBOS_HTTP_ENDPOINT")?.Trim();
         var cerbosUsePolicyScope = NormalizeBoolean(
             ReadFirst(
                 config,
+                "Cerbos:UsePolicyScope",
                 "CERBOS_USE_POLICY_SCOPE",
-                "CERBOS__USE_POLICY_SCOPE",
-                "Cerbos:UsePolicyScope"));
+                "CERBOS__USE_POLICY_SCOPE"));
         var cerbosUseTls = NormalizeBoolean(
             ReadFirst(
                 config,
+                "Cerbos:UseTls",
                 "CERBOS_USE_TLS",
-                "CERBOS__USE_TLS",
-                "Cerbos:UseTls"));
+                "CERBOS__USE_TLS"));
         var cerbosPlaintextMode = NormalizeBoolean(
             ReadFirst(
                 config,
+                "Cerbos:PlaintextMode",
                 "CERBOS_PLAINTEXT_MODE",
-                "CERBOS__PLAINTEXT_MODE",
-                "Cerbos:PlaintextMode"));
-        var cerbosAdminUsername = ReadFirst(config, "CERBOS_ADMIN_USERNAME", "Cerbos:AdminApi:AdminUsername");
-        var cerbosAdminPassword = ReadFirst(config, "CERBOS_ADMIN_PASSWORD", "Cerbos:AdminApi:AdminPassword");
+                "CERBOS__PLAINTEXT_MODE"));
+        var cerbosAdminUsername = ReadFirst(config, "Cerbos:AdminApi:AdminUsername", "CERBOS_ADMIN_USERNAME");
+        var cerbosAdminPassword = ReadFirst(config, "Cerbos:AdminApi:AdminPassword", "CERBOS_ADMIN_PASSWORD");
         var deploymentMode = NormalizeDeploymentMode(config["DEPLOYMENT_MODE"]);
+        var managedControlPlaneEnabled = NormalizeBoolean(ReadFirst(
+            config,
+            "CONTROL_PLANE_MANAGED_MODE",
+            "ManagedControlPlane:Enabled"));
+        var managedControlPlaneUrl = ReadFirst(
+            config,
+            "CONTROL_PLANE_URL",
+            "ManagedControlPlane:ControlPlaneUrl");
+        var managedInstanceId = ReadFirst(
+            config,
+            "CONTROL_PLANE_INSTANCE_ID",
+            "ManagedControlPlane:ManagedInstanceId");
+        var managedRegistrationToken = ReadFirst(
+            config,
+            "CONTROL_PLANE_REGISTRATION_TOKEN",
+            "ManagedControlPlane:RegistrationToken");
+        var managedMaximumTenantCount = ReadFirst(
+            config,
+            "CONTROL_PLANE_MAXIMUM_TENANT_COUNT",
+            "ManagedControlPlane:MaximumTenantCount");
+        var managedTenantAdministratorSignInUrl = ReadFirst(
+            config,
+            "CONTROL_PLANE_TENANT_ADMINISTRATOR_SIGN_IN_URL",
+            "ManagedControlPlane:TenantAdministratorSignInUrl");
         var mcpEnabled = NormalizeBoolean(
             ReadFirst(
                 config,
@@ -161,6 +200,8 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Keycloak:Realm", rawRealm);
         TrySet(mappedConfig, config, "Keycloak:Authority", keycloakAuthority);
         TrySet(mappedConfig, config, "Keycloak:MetadataAddress", metadataAddress);
+        TrySet(mappedConfig, config, "Keycloak:ClientId", keycloakClientId);
+        TrySet(mappedConfig, config, "Keycloak:ClientSecret", rawKeycloakClientSecret);
         TrySet(mappedConfig, config, "Keycloak:Audience", "islamu-event-api");
         TrySet(mappedConfig, config, "Keycloak:RequireHttpsMetadata", "true");
 
@@ -211,6 +252,12 @@ public static class ConfigurationExtensions
 
         // Deployment
         TrySet(mappedConfig, config, "Deployment:Mode", deploymentMode);
+        TrySet(mappedConfig, config, "ManagedControlPlane:Enabled", managedControlPlaneEnabled);
+        TrySet(mappedConfig, config, "ManagedControlPlane:ControlPlaneUrl", managedControlPlaneUrl);
+        TrySet(mappedConfig, config, "ManagedControlPlane:ManagedInstanceId", managedInstanceId);
+        TrySet(mappedConfig, config, "ManagedControlPlane:RegistrationToken", managedRegistrationToken);
+        TrySet(mappedConfig, config, "ManagedControlPlane:MaximumTenantCount", managedMaximumTenantCount);
+        TrySet(mappedConfig, config, "ManagedControlPlane:TenantAdministratorSignInUrl", managedTenantAdministratorSignInUrl);
 
         // MCP
         TrySet(mappedConfig, config, "Mcp:Enabled", mcpEnabled);

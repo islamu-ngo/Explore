@@ -1,3 +1,6 @@
+// ABOUTME: Registers API services that need shared Swagger and authentication-aware contract configuration.
+// ABOUTME: Keeps transitional Swashbuckle output aligned with the canonical native OpenAPI document.
+
 using Explore.API.OpenApi;
 using Microsoft.OpenApi;
 
@@ -27,6 +30,10 @@ internal static class ServiceCollectionExtensions
             // Mirror the native document's media-type version aliases so both documents describe
             // the same public content negotiation contract.
             options.OperationFilter<OpenApiVersionedContentTypesOperationFilter>();
+            options.OperationFilter<ManagedControlPlaneOpenApiSecurityTransformer>();
+            options.AddSecurityDefinition(
+                ManagedControlPlaneOpenApiSecurityTransformer.SecuritySchemeName,
+                ManagedControlPlaneOpenApiSecurityTransformer.CreateSecurityScheme());
 
             // Register the Keycloak OAuth2 security definition only when the authorization URL
             // is configured. In test/dev environments where Keycloak is not wired up, we skip this

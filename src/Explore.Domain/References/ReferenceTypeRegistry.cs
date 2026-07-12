@@ -338,6 +338,11 @@ public static class ReferenceTypeRegistry
                 ReferenceTenantScopeRule.Global,
                 "Provider customer bindings point at the provisioned tenant and must have ScopeTenantId null."),
             Binding(
+                ExternalBindingTypes.External.ManagedTenantProvisioningOperation,
+                ExternalBindingTypes.Internal.Tenant,
+                ReferenceTenantScopeRule.TenantContextRequired,
+                "Managed provisioning operation bindings prove which durable operation created the scoped tenant."),
+            Binding(
                 ExternalBindingTypes.External.ExternalAdminUser,
                 ExternalBindingTypes.Internal.User,
                 ReferenceTenantScopeRule.TenantContextRequired,

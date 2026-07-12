@@ -1,5 +1,5 @@
-// ABOUTME: Repository interface for TenantSetting entity providing data access
-// for tenant-specific setting overrides.
+// ABOUTME: Repository contract for tenant-specific setting overrides.
+// ABOUTME: Supports normalized cross-tenant domain-host ownership checks.
 
 namespace Explore.Application.Contracts.Persistence;
 
@@ -18,6 +18,10 @@ public interface ITenantSettingRepository
     Task<TenantSetting?> GetByTenantAndKey(
         Guid tenantId,
         string key,
+        CancellationToken cancellationToken = default);
+
+    Task<TenantSetting?> GetByDomainHostAsync(
+        string normalizedHost,
         CancellationToken cancellationToken = default);
 
     Task SetValueAsync(

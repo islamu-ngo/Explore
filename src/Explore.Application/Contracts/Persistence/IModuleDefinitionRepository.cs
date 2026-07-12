@@ -20,6 +20,10 @@ public interface IModuleDefinitionRepository : IGenericRepository<ModuleDefiniti
     /// </summary>
     Task<List<ModuleDefinition>> GetAllActive();
 
+    Task<IReadOnlyList<ModuleDefinition>> GetActiveByKeysAsync(
+        IReadOnlyCollection<string> keys,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Checks if a module exists and is active.
     /// </summary>

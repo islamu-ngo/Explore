@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Net;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using Explore.API.Authentication;
 using Explore.API.ExceptionHandling;
 using Explore.Application.Authentication;
 using Explore.Application.Telemetry;
@@ -284,6 +285,22 @@ public static class RateLimitingExtensions
                 return RateLimitPartition.GetNoLimiter(ControlPlanePolicy);
             }
 
+            string? managedInstancePartition = GetManagedInstancePartitionKey(httpContext);
+            if (managedInstancePartition is not null)
+            {
+                return RateLimitPartition.GetTokenBucketLimiter(
+                    managedInstancePartition,
+                    _ => new TokenBucketRateLimiterOptions
+                    {
+                        TokenLimit = globalTokenLimit,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        ReplenishmentPeriod = TimeSpan.FromSeconds(globalReplenishPeriodSeconds),
+                        TokensPerPeriod = globalTokensPerPeriod,
+                        AutoReplenishment = true
+                    });
+            }
+
             var apiKeyId = httpContext.User.GetApiKeyId();
             if (!string.IsNullOrWhiteSpace(apiKeyId))
             {
@@ -401,8 +418,14 @@ public static class RateLimitingExtensions
         return context.Request.Path.StartsWithSegments(ControlPlanePathPrefix, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string GetAuthenticatedPartitionKey(HttpContext context)
+    internal static string GetAuthenticatedPartitionKey(HttpContext context)
     {
+        string? managedInstancePartition = GetManagedInstancePartitionKey(context);
+        if (managedInstancePartition is not null)
+        {
+            return managedInstancePartition;
+        }
+
         var apiKeyId = context.User.GetApiKeyId();
         if (!string.IsNullOrWhiteSpace(apiKeyId))
         {
@@ -415,5 +438,15 @@ public static class RateLimitingExtensions
             ?? context.User.Identity?.Name;
 
         return string.IsNullOrWhiteSpace(userId) ? "anonymous" : userId;
+    }
+
+    private static string? GetManagedInstancePartitionKey(HttpContext context)
+    {
+        string? rawManagedInstanceId = context.User.FindFirstValue(
+            ManagedControlPlaneAuthenticationDefaults.ManagedInstanceIdClaim);
+        return Guid.TryParse(rawManagedInstanceId, out Guid managedInstanceId)
+            && managedInstanceId != Guid.Empty
+                ? $"managed-instance:{managedInstanceId:D}"
+                : null;
     }
 }

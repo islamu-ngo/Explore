@@ -16,4 +16,5 @@ public class ManagedProviderClientProvisioningResultDto
     public Guid? OrganizerActorId { get; init; }
     public ManagedProviderOrganizerKindDto? OrganizerKind { get; init; }
     public Guid? OrganizerMembershipId { get; init; }
+    public Guid? TenantPlanAssignmentId { get; init; }
 }

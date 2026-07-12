@@ -1,0 +1,41 @@
+// ABOUTME: Sends idempotent Event managed-registration attempts to the configured private Control Plane API.
+// ABOUTME: Uses bounded HTTPS requests without redirects and never logs registration or credential payloads.
+
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.DTOs.Management;
+
+namespace Explore.Infrastructure.Management;
+
+internal sealed class ManagedControlPlaneRegistrationClient(HttpClient httpClient)
+    : IManagedControlPlaneRegistrationClient
+{
+    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
+    {
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) }
+    };
+
+    public async Task<CompleteManagedInstanceRegistrationResponse> CompleteRegistrationAsync(
+        Uri controlPlaneUrl,
+        CompleteManagedInstanceRegistrationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var endpoint = new Uri(
+            controlPlaneUrl,
+            $"/api/managed-event-instances/{request.ManagedInstanceId:D}/registration");
+        using var response = await httpClient.PostAsJsonAsync(
+            endpoint,
+            request,
+            SerializerOptions,
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<CompleteManagedInstanceRegistrationResponse>(
+                   SerializerOptions,
+                   cancellationToken)
+               ?? throw new InvalidOperationException("The Control Plane returned an empty registration response.");
+    }
+}

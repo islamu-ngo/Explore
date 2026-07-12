@@ -50,4 +50,10 @@ public static class InfrastructureSecretSettingKeys
     {
         public const string TmsApiKey = "localization.tms_api_key";
     }
+
+    public static class Management
+    {
+        public const string ControlPlaneRegistrationCredentials =
+            "management.control_plane_registration_credentials";
+    }
 }

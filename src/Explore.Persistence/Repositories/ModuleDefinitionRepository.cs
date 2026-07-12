@@ -32,6 +32,17 @@ public class ModuleDefinitionRepository : GenericRepository<ModuleDefinition, Gu
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<ModuleDefinition>> GetActiveByKeysAsync(
+        IReadOnlyCollection<string> keys,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.ModuleDefinitions
+            .AsNoTracking()
+            .Where(module => module.IsActive && keys.Contains(module.ModuleKey))
+            .OrderBy(module => module.ModuleKey)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> IsActive(string moduleKey)
     {
         var module = await _dbContext.ModuleDefinitions

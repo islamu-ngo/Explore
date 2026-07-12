@@ -30,8 +30,13 @@ public sealed class ApiAuthenticationConflictMiddleware
 
         var hasAuthorizationHeader = context.Request.Headers.ContainsKey("Authorization");
         var hasApiKeyHeader = ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request);
+        var hasManagedControlPlaneHeader = ApiKeyHeaderReader.HasNonEmptyApiKey(
+            context.Request,
+            ManagedControlPlaneAuthenticationDefaults.HeaderName);
 
-        if (hasAuthorizationHeader && hasApiKeyHeader)
+        if ((hasAuthorizationHeader ? 1 : 0)
+            + (hasApiKeyHeader ? 1 : 0)
+            + (hasManagedControlPlaneHeader ? 1 : 0) > 1)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
@@ -43,7 +48,7 @@ public sealed class ApiAuthenticationConflictMiddleware
                     Status = StatusCodes.Status400BadRequest,
                     Title = "Conflicting authentication credentials",
                     Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-                    Detail = "Send either Authorization or X-API-Key, but not both.",
+                    Detail = "Send exactly one supported authentication credential header.",
                     Instance = context.Request.Path
                 }
             });

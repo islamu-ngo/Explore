@@ -4,8 +4,11 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Tenant;
+using Explore.Application.Features.Management;
 using Explore.Application.Features.Tenants.Handlers.Commands.CreateTenant;
 using Explore.Application.Features.Tenants.Requests.Commands;
+using Explore.Application.Management;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Settings.Documents;
@@ -42,10 +45,12 @@ public class CreateTenantCommandHandlerTests
 
         // Execute lambdas inline — InMemory provider path
         _unitOfWork
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<Guid>>>(), Arg.Any<CancellationToken>())
+            .ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
+                Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var op = callInfo.Arg<Func<CancellationToken, Task<Guid>>>();
+                var op = callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
                 return op(CancellationToken.None);
             });
         _tenantUserRepository.Create(Arg.Any<TenantUser>()).Returns(callInfo =>
@@ -62,7 +67,13 @@ public class CreateTenantCommandHandlerTests
             _roleRepository,
             _tenantBrandingProvisioningService,
             _logger,
-            _unitOfWork);
+            _unitOfWork,
+            Substitute.For<ISettingMutationLock>(),
+            new TenantActivationCapacityPolicy(
+                Substitute.For<IInstanceBootstrapStateRepository>(),
+                _tenantRepository,
+                Substitute.For<IManagedTenantProvisioningOperationRepository>(),
+                Microsoft.Extensions.Options.Options.Create(new ManagedControlPlaneOptions())));
     }
 
     [Test]
