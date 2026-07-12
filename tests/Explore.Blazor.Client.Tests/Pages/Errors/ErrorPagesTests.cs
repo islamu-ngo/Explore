@@ -63,7 +63,7 @@ public class ErrorPagesTests : BlazorTestContext
 
         while (directory is not null)
         {
-            var candidate = Path.Combine(directory.FullName, "Explore.Blazor.Client", "Pages", "Errors", fileName);
+            var candidate = Path.Combine(directory.FullName, "src", "Explore.Blazor.Client", "Pages", "Errors", fileName);
             if (File.Exists(candidate))
             {
                 return candidate;
@@ -72,6 +72,6 @@ public class ErrorPagesTests : BlazorTestContext
             directory = directory.Parent;
         }
 
-        throw new InvalidOperationException($"Could not locate Explore.Blazor.Client/Pages/Errors/{fileName} from test base directory.");
+        throw new InvalidOperationException($"Could not locate src/Explore.Blazor.Client/Pages/Errors/{fileName} from test base directory.");
     }
 }

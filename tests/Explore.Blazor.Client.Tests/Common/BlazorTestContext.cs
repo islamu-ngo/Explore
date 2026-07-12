@@ -112,7 +112,8 @@ public class BlazorTestContext : BunitContext
     {
         var translationService = Substitute.For<ITranslationService>();
         translationService.CurrentLanguage.Returns("en");
-        translationService.T(Arg.Any<string>(), Arg.Any<string?>()).Returns(ci => ci.ArgAt<string>(0));
+        translationService.T(Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(ci => ci.ArgAt<string?>(1) ?? ci.ArgAt<string>(0));
         translationService.GetAvailableLanguagesAsync(Arg.Any<CancellationToken>())
             .Returns(new List<string> { "en" });
         translationService.PreloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())

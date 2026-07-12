@@ -21,7 +21,7 @@ public sealed class ProgramApiClientAntiforgeryRegistrationTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            var candidate = Path.Combine(directory.FullName, "Explore.Blazor.Client", "Program.cs");
+            var candidate = Path.Combine(directory.FullName, "src", "Explore.Blazor.Client", "Program.cs");
             if (File.Exists(candidate))
             {
                 return candidate;
@@ -30,6 +30,6 @@ public sealed class ProgramApiClientAntiforgeryRegistrationTests
             directory = directory.Parent;
         }
 
-        throw new FileNotFoundException("Could not locate Explore.Blazor.Client/Program.cs");
+        throw new FileNotFoundException("Could not locate src/Explore.Blazor.Client/Program.cs");
     }
 }

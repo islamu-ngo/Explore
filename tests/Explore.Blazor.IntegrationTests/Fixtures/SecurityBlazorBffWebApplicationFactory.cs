@@ -43,6 +43,7 @@ public class SecurityBlazorBffWebApplicationFactory : WebApplicationFactory<Prog
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("ConnectionStrings:cache", "localhost:6379,abortConnect=false,connectTimeout=100");
 
         builder.ConfigureAppConfiguration((_, config) =>
         {

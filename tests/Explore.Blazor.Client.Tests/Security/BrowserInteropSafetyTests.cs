@@ -21,7 +21,7 @@ public sealed class BrowserInteropSafetyTests
 
     private static readonly string[] RawHtmlRenderingAllowList =
     [
-        Path.Combine("Explore.Blazor.Client", "Pages", "Legal", "CommunityGuidelines.razor")
+        Path.Combine("src", "Explore.Blazor.Client", "Pages", "Legal", "CommunityGuidelines.razor")
     ];
 
     [Test]
@@ -91,6 +91,7 @@ public sealed class BrowserInteropSafetyTests
         var repositoryRoot = FindRepositoryRoot();
         var source = await File.ReadAllTextAsync(Path.Combine(
             repositoryRoot,
+            "src",
             "Explore.Blazor.Client",
             "wwwroot",
             "push-service-worker.js"));
@@ -107,7 +108,7 @@ public sealed class BrowserInteropSafetyTests
     {
         foreach (var projectName in new[] { "Explore.Blazor.Client", "Explore.Blazor" })
         {
-            var projectRoot = Path.Combine(repositoryRoot, projectName);
+            var projectRoot = Path.Combine(repositoryRoot, "src", projectName);
             if (!Directory.Exists(projectRoot))
             {
                 continue;

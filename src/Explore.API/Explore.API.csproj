@@ -14,6 +14,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Event.API.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Asp.Versioning.Mvc" />
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
     <PackageReference Include="Aspire.Keycloak.Authentication" />
@@ -83,9 +87,8 @@
     <Delete Files="$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache" />
   </Target>
 
-  <Target Name="NormalizeGeneratedOpenApiDocument" AfterTargets="GenerateOpenApiDocuments" Condition="Exists('$(MSBuildProjectDirectory)/../../schemas/openapi_event-api.json')">
-    <Copy SourceFiles="$(MSBuildProjectDirectory)/../../schemas/openapi_event-api.json" DestinationFiles="$(MSBuildProjectDirectory)/../../schemas/openapi.json" SkipUnchangedFiles="true" />
-    <Delete Files="$(MSBuildProjectDirectory)/../../schemas/openapi_event-api.json" />
+  <Target Name="NormalizeGeneratedOpenApiDocument" AfterTargets="GenerateOpenApiDocuments" Condition="Exists('$(MSBuildProjectDirectory)/../schemas/openapi_event-api.json')">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../schemas/openapi_event-api.json" DestinationFiles="$(MSBuildProjectDirectory)/../../schemas/openapi.json" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

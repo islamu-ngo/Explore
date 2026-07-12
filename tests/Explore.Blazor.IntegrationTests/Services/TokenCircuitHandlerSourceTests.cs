@@ -40,6 +40,7 @@ public sealed class TokenCircuitHandlerSourceTests
         {
             var candidate = Path.Combine(
                 directory.FullName,
+                "src",
                 "Explore.Blazor",
                 "Services",
                 "TokenCircuitHandler.cs");

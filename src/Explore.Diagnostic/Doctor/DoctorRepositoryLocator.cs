@@ -10,8 +10,8 @@ public static class DoctorRepositoryLocator
         var directory = new DirectoryInfo(startDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "Explore.sln"))
-                && Directory.Exists(Path.Combine(directory.FullName, "Explore.Diagnostic")))
+            if ((File.Exists(Path.Combine(directory.FullName, "Explore.slnx")) || File.Exists(Path.Combine(directory.FullName, "Explore.sln")))
+                && (Directory.Exists(Path.Combine(directory.FullName, "Explore.Diagnostic")) || Directory.Exists(Path.Combine(directory.FullName, "src", "Explore.Diagnostic"))))
             {
                 return directory.FullName;
             }

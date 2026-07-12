@@ -42,7 +42,7 @@ public sealed class ApiContractInventoryGeneratorTests
         var repoRoot = FindRepoRoot()
             ?? throw new InvalidOperationException(
                 "Could not locate repository root from AppContext.BaseDirectory. " +
-                "Expected to find a parent directory containing AGENTS.md and Explore.API/.");
+                "Expected to find a parent directory containing AGENTS.md and src/Explore.API/.");
 
         var schemaPath = Path.Combine(repoRoot, "schemas", "openapi.json");
         await Assert.That(File.Exists(schemaPath)).IsTrue()
@@ -185,7 +185,7 @@ public sealed class ApiContractInventoryGeneratorTests
         sb.AppendLine();
         sb.AppendLine($"**Source:** `schemas/openapi.json`");
         sb.AppendLine($"**Governed by:** [GOVERNANCE.md#api-contract-rules](GOVERNANCE.md#api-contract-rules)");
-        sb.AppendLine("**Regenerate:** `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter \"/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs\"`");
+        sb.AppendLine("**Regenerate:** `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter \"/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs\"`");
         sb.AppendLine();
         sb.AppendLine("## Summary");
         sb.AppendLine();
@@ -265,7 +265,7 @@ public sealed class ApiContractInventoryGeneratorTests
         while (dir is not null)
         {
             var marker = Path.Combine(dir.FullName, "AGENTS.md");
-            var exploreApi = Path.Combine(dir.FullName, "Explore.API");
+            var exploreApi = Path.Combine(dir.FullName, "src", "Explore.API");
             if (File.Exists(marker) && Directory.Exists(exploreApi))
             {
                 return dir.FullName;

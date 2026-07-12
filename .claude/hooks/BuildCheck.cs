@@ -8,13 +8,18 @@ using System.Linq;
 
 Console.WriteLine("🏗️  Checking compilation...");
 
-// 1. Find the solution (Explore.sln)
+// 1. Find the solution (Explore.slnx or Explore.sln)
 string workingDir = Directory.GetCurrentDirectory();
-string solutionPath = Path.Combine(workingDir, "Explore.sln");
+string solutionPath = Path.Combine(workingDir, "Explore.slnx");
+if (!File.Exists(solutionPath))
+{
+    solutionPath = Path.Combine(workingDir, "Explore.sln");
+}
 
 if (!File.Exists(solutionPath))
 {
-    var found = Directory.GetFiles(workingDir, "*.sln", SearchOption.AllDirectories)
+    var found = Directory.GetFiles(workingDir, "*.slnx", SearchOption.AllDirectories)
+                         .Concat(Directory.GetFiles(workingDir, "*.sln", SearchOption.AllDirectories))
                          .Where(x => !x.Contains(".claude"))
                          .FirstOrDefault();
     if (found != null) solutionPath = found;

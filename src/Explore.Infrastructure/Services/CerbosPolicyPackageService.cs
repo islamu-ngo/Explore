@@ -416,7 +416,7 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         while (current is not null)
         {
             var candidate = Path.Combine(current.FullName, "cerbos", "policies");
-            if (File.Exists(Path.Combine(current.FullName, "Explore.sln")) && Directory.Exists(candidate))
+            if ((File.Exists(Path.Combine(current.FullName, "Explore.slnx")) || File.Exists(Path.Combine(current.FullName, "Explore.sln"))) && Directory.Exists(candidate))
             {
                 policyRoot = candidate;
                 return true;

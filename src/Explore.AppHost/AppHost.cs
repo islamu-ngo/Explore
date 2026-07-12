@@ -18,7 +18,7 @@ if (File.Exists(dotenvPath))
     Env.NoClobber().Load(dotenvPath);
 var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
-var appHostConfigRoot = Path.Combine(repositoryRoot, "Explore.AppHost", "Config");
+var appHostConfigRoot = Path.Combine(repositoryRoot, "src", "Explore.AppHost", "Config");
 var cerbosPolicyPackagePath = Path.Combine(repositoryRoot, "cerbos", "policies");
 var cerbosConfigPath = Path.Combine(repositoryRoot, "cerbos", "config", ".cerbos.yaml");
 var cerbosSchemaPath = Path.Combine(repositoryRoot, "cerbos", "init", "cerbos-schema.sql");
@@ -638,6 +638,7 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
     var keycloakRealm = configuration["KEYCLOAK_REALM"] ?? "ISLAMU";
     var keycloakApiClientId = configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api";
     var keycloakBlazorClientId = configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor";
+    var keycloakBlazorClientSecret = configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? "islamu-event-blazor-secret";
     var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
     var cerbosAdminPassword = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD", "cerbos");
     var cerbosAdminPasswordHash = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD_HASH", LocalCerbosAdminPasswordHash);
@@ -656,6 +657,8 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
     api = api
         .WithEnvironment("KEYCLOAK_REALM", keycloakRealm)
         .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_ID", keycloakBlazorClientId)
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", keycloakBlazorClientSecret)
         .WithEnvironment("Keycloak__Realm", keycloakRealm)
         .WithEnvironment("Keycloak__Authority", keycloakAuthority)
         .WithEnvironment("Keycloak__MetadataAddress", keycloakMetadataAddress)
@@ -838,7 +841,7 @@ static string FindRepositoryRoot(string startDirectory)
 
     while (current is not null)
     {
-        if (File.Exists(Path.Combine(current.FullName, "Explore.sln"))
+        if ((File.Exists(Path.Combine(current.FullName, "Explore.slnx")) || File.Exists(Path.Combine(current.FullName, "Explore.sln")))
             && Directory.Exists(Path.Combine(current.FullName, "cerbos", "policies")))
         {
             return current.FullName;

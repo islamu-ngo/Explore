@@ -97,6 +97,7 @@ public class KeycloakRealmDoctorSourceTests
         {
             var candidate = Path.Combine(
                 directory.FullName,
+                "src",
                 "Explore.Blazor.Client",
                 "Pages",
                 "Admin",

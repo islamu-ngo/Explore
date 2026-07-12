@@ -250,7 +250,7 @@ public sealed class McpSdkContractTests
     [Test]
     public void ApiHostUsesStreamableHttpOnlyForProductMcpTransport()
     {
-        var program = ReadRepoFile("Explore.API/Program.cs");
+        var program = ReadRepoFile("src/Explore.API/Program.cs");
 
         program.Should().Contain(".WithHttpTransport(options =>");
         program.Should().Contain("options.Stateless = mcpAdapterSettings.Stateless");
@@ -265,7 +265,7 @@ public sealed class McpSdkContractTests
     [Test]
     public void ApiHostRegistersMcpSurfacesExplicitlyForAotReviewability()
     {
-        var program = ReadRepoFile("Explore.API/Program.cs");
+        var program = ReadRepoFile("src/Explore.API/Program.cs");
 
         program.Should().Contain(".WithTools<AiToolRegistryMcpTools>()");
         program.Should().Contain(".WithTools<AiAssistantMcpTools>()");
@@ -282,7 +282,7 @@ public sealed class McpSdkContractTests
     [Test]
     public void ServiceDefaultsExportsBoundedMcpTelemetrySourceAndMeter()
     {
-        var serviceDefaults = ReadRepoFile("Explore.ServiceDefaults/Extensions.cs");
+        var serviceDefaults = ReadRepoFile("src/Explore.ServiceDefaults/Extensions.cs");
 
         serviceDefaults.Should().Contain(".AddMeter(\"Explore.Mcp\")");
         serviceDefaults.Should().Contain(".AddSource(\"Explore.Mcp\")");

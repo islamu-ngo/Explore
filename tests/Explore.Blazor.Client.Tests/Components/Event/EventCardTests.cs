@@ -200,7 +200,7 @@ public class EventCardTests : IDisposable
     [Test]
     public async Task EventDetail_SourceIncludesVisibleShareAction()
     {
-        var eventDetailPath = FindSourceFilePath("Explore.Blazor.Client", "Pages", "Events", "EventDetail.razor");
+        var eventDetailPath = FindSourceFilePath("src", "Explore.Blazor.Client", "Pages", "Events", "EventDetail.razor");
         var source = await File.ReadAllTextAsync(eventDetailPath);
 
         await Assert.That(source).Contains("Share Event");

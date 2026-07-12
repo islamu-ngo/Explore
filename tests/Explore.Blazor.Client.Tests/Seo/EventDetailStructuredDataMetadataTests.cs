@@ -68,7 +68,7 @@ public sealed class EventDetailStructuredDataMetadataTests
 
         while (directory is not null)
         {
-            var candidate = Path.Combine(directory.FullName, "Explore.Blazor.Client", relativePath);
+            var candidate = Path.Combine(directory.FullName, "src", "Explore.Blazor.Client", relativePath);
             if (File.Exists(candidate))
             {
                 return await File.ReadAllTextAsync(candidate);
@@ -77,6 +77,6 @@ public sealed class EventDetailStructuredDataMetadataTests
             directory = directory.Parent;
         }
 
-        throw new InvalidOperationException($"Could not locate Explore.Blazor.Client/{relativePath} from test base directory.");
+        throw new InvalidOperationException($"Could not locate src/Explore.Blazor.Client/{relativePath} from test base directory.");
     }
 }

@@ -161,7 +161,7 @@ public class RoutesConfigurationTests
 
         while (directory is not null)
         {
-            var candidate = Path.Combine([directory.FullName, "Explore.Blazor.Client", .. relativeSegments]);
+            var candidate = Path.Combine([directory.FullName, "src", "Explore.Blazor.Client", .. relativeSegments]);
             if (File.Exists(candidate))
             {
                 return candidate;
@@ -170,6 +170,6 @@ public class RoutesConfigurationTests
             directory = directory.Parent;
         }
 
-        throw new InvalidOperationException("Could not locate Explore.Blazor.Client/Routes.razor from test base directory.");
+        throw new InvalidOperationException("Could not locate src/Explore.Blazor.Client/Routes.razor from test base directory.");
     }
 }

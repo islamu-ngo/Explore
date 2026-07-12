@@ -222,7 +222,7 @@ public class ApiClientNamingTests
     {
         var generatedClientPath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
-            "../../../../Explore.Blazor.Client/Clients/EventApiClient.g.cs"));
+            "../../../../../src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"));
 
         return File.ReadAllText(generatedClientPath);
     }
